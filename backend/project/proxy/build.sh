@@ -7,8 +7,8 @@ DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 BUILDROOT=$DIR/../../../
 CURDIR=${PWD##*/}
-POSTFIX=${DIR#*backend/}
-GOSRCPATH="backend/$POSTFIX"
+GOSRCPATH=${DIR#*backend/}
+
 echo $GOSRCPATH
 echo $BUILDROOT
 # Build docker
