@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"bytes"
-	"emotibot.com/backend/project/proxy/traffic"
+	"emotibot.com/emotigo/project/proxy/traffic"
 	"log"
 	"flag"
 )
