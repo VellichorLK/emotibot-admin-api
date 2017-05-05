@@ -1,0 +1,11 @@
+appdirs==1.4.0
+certifi==2017.1.23
+click==6.7
+elasticsearch==2.4.1
+elasticsearch-curator==4.2.6
+packaging==16.8
+pyparsing==2.1.10
+PyYAML==3.12
+six==1.10.0
+urllib3==1.20
+voluptuous==0.9.3

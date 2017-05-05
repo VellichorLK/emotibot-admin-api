@@ -1,0 +1,33 @@
+version: '2'
+services:
+    mysql:
+        image: mysql:5.7 
+        container_name: mysql
+        ports:
+            - "${MYSQL_MAIN_PORT}:${MYSQL_MAIN_PORT}"
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_MAIN_PASS} 
+        mem_limit: 5125m
+        volumes:
+            - ../mysql/my.cnf:/etc/mysql/my.cnf
+            - ../mysql/backend_log.sql:/var/local/database/backend_log.sql
+            - ../mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+            - ${DB_DATA_PATH}:/var/lib/mysql
+            - /etc/localtime:/etc/localtime
+        restart: always
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        ports:
+            - '3380:80'
+        mem_limit: 5125m
+        environment:
+            MYSQL_USERNAME: ${MYSQL_MAIN_USER}
+            MYSQL_PASSWORD: ${MYSQL_MAIN_PASS}
+        volumes:
+            - /etc/localtime:/etc/localtime
+        links:
+            - mysql:db
+        restart: always
+        depends_on:
+            - "mysql"
