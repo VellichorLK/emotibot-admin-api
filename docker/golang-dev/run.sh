@@ -32,7 +32,6 @@ fi
 # Mount the $PROJROOT into docker
 ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 PROJROOT=$ROOT/../../../emotigo
-PROJROOT=/home/wmyao/workspaces/emotigo
 
 # Start docker
 docker rm -f -v $CONTAINER
