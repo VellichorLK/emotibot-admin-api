@@ -5,8 +5,9 @@ Mainly development in golang.
 ## File structure
 ```
 emotigo/
-  docs: Documents.
   deployment: Deployment related scripts.
+  docs: Documents.
+  docker: Docker and dockerfiles.
   experimental: The playground.
   pkg: Packages/Services.
   vendor: All vendor libs. Need to check into git manually.
