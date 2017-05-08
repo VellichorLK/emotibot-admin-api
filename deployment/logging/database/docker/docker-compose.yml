@@ -31,3 +31,15 @@ services:
         restart: always
         depends_on:
             - "mysql"
+    mongo:
+        image: mongo:3.2.8
+        container_name: logging-mongo
+        ports:
+            - "${MONGO_MAIN_PORT}:${MONGO_MAIN_PORT}"
+        volumes:
+            - $MONGO_DATA_PATH/db:/data/db
+            - $MONGO_DATA_PATH/configdb:/data/configdb
+            - /etc/localtime:/etc/localtime
+            - ../mongo/init_users.js:/tmp/init_users.js
+        restart: always
+        command: mongod ${MONGO_AUTH}
