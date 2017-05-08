@@ -28,6 +28,23 @@ if [ ! -d "${DB_DATA_PATH}" ]; then
     mkdir -p ${DB_DATA_PATH}
 fi
 
-cmd="DB_DATA_PATH=${DB_DATA_PATH} docker-compose -f $DIR/docker-compose.yml up --force-recreate -d"
+# check environment MONGO_DATA_PATH
+if [ "${MONGO_DATA_PATH}" == "" ]; then
+	MONGO_DATA_PATH="$DIR/../mongo_storage"
+fi
+
+MONGO_AUTH="--auth"
+# check if mongo database persistant path exist
+if [ ! -d "${MONGO_DATA_PATH}" ]; then
+    mkdir -p ${MONGO_DATA_PATH}
+    mkdir -p $MONGO_DATA_PATH/db
+	mkdir -p $MONGO_DATA_PATH/configdb
+    # if this is first time mongo deployed, do not use authentication
+    MONGO_AUTH=""
+fi
+
+echo $MONGO_DATA_PATH
+
+cmd="DB_DATA_PATH=${DB_DATA_PATH} MONGO_DATA_PATH=${MONGO_DATA_PATH}  MONGO_AUTH=${MONGO_AUTH} docker-compose -f $DIR/docker-compose.yml up --force-recreate -d"
 echo $cmd
 eval $cmd
