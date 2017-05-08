@@ -1,7 +1,7 @@
 #!/bin/bash
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=logstash-jdbc
-TAG=$(git rev-parse --short HEAD)
+TAG=$(git rev-list --abbrev-commit -1 HEAD -- "../../logstash")
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

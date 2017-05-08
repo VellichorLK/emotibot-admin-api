@@ -9,7 +9,7 @@ CONTAINER=logstash-jdbc
 # </EDIT_ME>
 
 # Get tags from args
-TAG=$2
+TAG=$(git rev-list --abbrev-commit -1 HEAD -- "../../logstash")
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 echo "# Launching $DOCKER_IMAGE"
 # Check if docker image exists (locally or on the registry)
