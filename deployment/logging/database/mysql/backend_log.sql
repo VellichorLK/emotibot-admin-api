@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主機: db
--- 產生時間： 2017 年 05 月 03 日 10:36
+-- 產生時間： 2017 年 05 月 08 日 22:15
 -- 伺服器版本: 5.7.17
 -- PHP 版本： 7.0.16
 
@@ -32,6 +32,7 @@ USE `backend_log`;
 
 CREATE TABLE `chat_record` (
   `idchatlog` int(11) NOT NULL,
+  `app_id` char(64) NOT NULL DEFAULT '',
   `user_id` char(64) NOT NULL,
   `user_Q` text NOT NULL,
   `std_Q` char(255) DEFAULT NULL,
