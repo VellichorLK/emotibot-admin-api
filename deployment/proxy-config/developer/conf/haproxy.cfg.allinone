@@ -1,0 +1,28 @@
+# REF: https://serversforhackers.com/using-ssl-certificates-with-haproxy
+
+# Basic configuration
+global
+  maxconn 4096
+  tune.ssl.default-dh-param 2048
+
+# Some sane defaults
+defaults
+  mode http
+  # Keep timeouts at web speed, since this balancer sits in front of everything
+  # Backends will force timeout faster if needed.
+  timeout http-request 10s
+  timeout client  20s
+  timeout connect 4s
+  timeout server  60s
+  timeout http-keep-alive 4s
+
+# SSL only, will redirect http to https
+frontend https_frontend
+    mode http
+    bind *:443 ssl crt /etc/ssl/emotibot_com.pem
+    default_backend houta
+
+backend houta
+    mode http
+    balance roundrobin
+    server local 172.17.0.1:80
