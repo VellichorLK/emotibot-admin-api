@@ -10,7 +10,7 @@ fi
 
 Server=$2
 if [ -z "$Server" ]; then
-  Server='bot.emotibot.com:80'
+  Server='idc.emotibot.com:80'
 fi
 
 Userid=$3
@@ -22,7 +22,7 @@ echo "Server: $Server"
 echo "QPS: $qps"
 echo "Userid: $Userid"
 
-expressions2=(
+expressions=(
  "你们这群废柴给我收声！" \
  "口桀-口桀-朕還要再幹10個宮女" \
  "今次大獲仆街啦！" \
@@ -31,7 +31,7 @@ expressions2=(
  "你还未够班啊！" \
 )
 
-expressions=(
+expressions1=(
  "国足12强赛赛程" \
  "国足12强赛赛程?" \
  "国足12强赛赛程2016" \
@@ -59,7 +59,7 @@ do
     fi
     TXTALL="cmd=chat&appid=$APPID&userid=$USERID&text=$TXT"
     echo $TXTALL
-    time curl -X POST -d "$TXTALL" http://$Server/api/ApiKey/openapi.php &
+    time curl -X POST -d "$TXTALL" http://$Server/api/ApiKey/openapi.php 
   done
   sleep $sleepTime
 done
