@@ -10,7 +10,7 @@ fi
 
 Server=$2
 if [ -z "$Server" ]; then
-  Server='bot.emotibot.com:80'
+  Server='idc.emotibot.com:80'
 fi
 
 Userid=$3
