@@ -2,6 +2,7 @@ db = db.getSiblingDB('admin');
 cursor = db.system.users.find({'user':'root'});
 
 if(cursor.count()==0){
+	
 	// create root user (root user can operate all database)
 	db.createUser({user:'root', pwd:'Emotibot1', roles:['root']});
 
@@ -10,6 +11,11 @@ if(cursor.count()==0){
 	
 	// create readWrite user for log db
 	db.createUser({user:'logger', pwd:'Emotibot1', roles:[{role:'readWrite', db:'userlog'}]});
+	
+	// create index for logs
+	db = db.getSiblingDB("userlog")
+	db.createCollection("rawlogs")
+	db.rawlogs.createIndex({uuid:-1})
 	
 }
 else{
