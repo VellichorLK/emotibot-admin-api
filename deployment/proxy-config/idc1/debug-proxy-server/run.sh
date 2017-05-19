@@ -31,7 +31,7 @@ done
 
 echo "# Start the goproxy"
 cd $DIR/../goproxy-uid
-./run.sh
+./run.sh limit.env
 
 echo "# Your debug proxy should be good now."
 curl -v localhost:9000?userid=5566
