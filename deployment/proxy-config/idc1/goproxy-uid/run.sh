@@ -8,7 +8,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # <EDIT_ME>
 CONTAINER=goproxy-uid
 # </EDIT_ME>
-TAG=20170512
+TAG=20170519
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # global config:
@@ -21,6 +21,7 @@ globalConf="
 # <EDIT_ME>
 moduleConf="
   -p 9000:9000\
+  --env-file limit.env \
 "
 # </EDIT_ME>
 
