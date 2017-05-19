@@ -1,36 +1,30 @@
 package main
+
 import (
+	"bytes"
+	"io/ioutil"
+	"log"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
-	"io/ioutil"
-	"math/rand"
-	"bytes"
-	"emotibot.com/emotigo/deployment/proxy-config/idc1/goproxy-uid/traffic"
-	"log"
-	"flag"
+	"os"
 	"strconv"
+
+	"emotibot.com/emotigo/deployment/proxy-config/idc1/goproxy-uid/traffic"
 )
-
-
-var force_dispatch_apppid = map[string]bool{
-	"3239a33d48e057e7470a3a5f810e67ce": true, // botname = xinxx
-	"1fd273be896ec71d63c15c770225c079": true, // Trencent.com's appid
-}
 
 var AddTrafficChan chan string
 var ReadDestChan chan *trafficStats.RouteMap
 
+func GoProxy(w http.ResponseWriter, r *http.Request) {
 
-func GoProxy(w http.ResponseWriter, r *http.Request){
-
-	buf,_ := ioutil.ReadAll(r.Body)
+	buf, _ := ioutil.ReadAll(r.Body)
 
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 	rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
 
 	r.Body = rdr1
 	r.ParseMultipartForm(0)
-
 
 	appid := ""
 	userid := ""
@@ -52,83 +46,62 @@ func GoProxy(w http.ResponseWriter, r *http.Request){
 		userid += r.FormValue("user_id")
 	} else {
 		// FIXME: Should we drop non GET/POST requests?
-		log.Printf("Warning: Unknown request type.", r.Host, r.Method, string(buf))
+		log.Printf("Warning: Unknown request type. %s %s %s", r.Host, r.Method, string(buf))
 		http.Error(w, "Method Error", http.StatusBadGateway)
 		return
 	}
 
-
 	var route *trafficStats.RouteMap
 
-	AddTrafficChan<-userid
+	AddTrafficChan <- userid
 	route = <-ReadDestChan
 
-	_,ok:=route.GoRoute[userid]
-	url:= route.DefaultRoute
+	_, ok := route.GoRoute[userid]
+	url := route.DefaultRoute
 
-	if ok{
+	if ok {
 		userid = userid + strconv.Itoa(rand.Intn(1000))
 	}
-/*
-	if force_dispatch_apppid[appid] {
-                r.Header.Del("X-Lb-Uid")
-                log.Println("  Force Dispatch (appid): ", appid)
-        }
-*/
-        r.Header.Set("X-Lb-Uid", userid)
-        r.Header.Set("X-Openapi-Appid", appid)
-        r.Header.Set("X-Openapi-Cmd", openapiCmd)
+
+	r.Header.Set("X-Lb-Uid", userid)
+	r.Header.Set("X-Openapi-Appid", appid)
+	r.Header.Set("X-Openapi-Cmd", openapiCmd)
 
 	r.Body = rdr2
-	proxy:=httputil.NewSingleHostReverseProxy(url)
-	proxy.ServeHTTP(w,r)
-	
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.ServeHTTP(w, r)
 
 }
 
-/*
-
-func Reroute(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r)
-	})
-
-}
-*/
-
-func HealthCheck(w http.ResponseWriter, r *http.Request){
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-func main(){
+func checkerr(err error, who string) {
+	if err != nil {
+		log.Println("No ", who, " enviroments variable!", err)
+	}
+}
 
-	//parse the flag
-	duration:= flag.Int("d", 10, "duration of traffic statics (second)")
-	maxLimit:= flag.Int("n", 20, "max times to request in the duration")
-	flag.Parse()
-	log.Printf("Setting max %d request in %d seconds", *maxLimit, *duration)
+func main() {
+
+	duration, err := strconv.Atoi(os.Getenv("DURATION"))
+	checkerr(err, "DURATION")
+	maxLimit, err := strconv.Atoi(os.Getenv("MAXREQUESTS"))
+	checkerr(err, "MAXREQUESTS")
+	banPeriod, err := strconv.Atoi(os.Getenv("BANPERIOD"))
+	checkerr(err, "BANPERIOD")
+
+	log.Printf("Setting max %d request in %d seconds, banned period %d", maxLimit, duration, banPeriod)
 
 	//make the channel
 	AddTrafficChan = make(chan string)
 	ReadDestChan = make(chan *trafficStats.RouteMap)
 
-	trafficStats.Init(*duration,*maxLimit, AddTrafficChan, ReadDestChan)
+	trafficStats.Init(duration, maxLimit, int64(banPeriod), AddTrafficChan, ReadDestChan)
 
-
-/*
-	mux := http.NewServeMux()
-	mux.HandleFunc("/",GoProxy)
-	muxHandler := Reroute(mux)
-	http.ListenAndServe(":5000",muxHandler)
-	*/
-
-	http.HandleFunc("/",GoProxy)
-	http.HandleFunc("/healthcheck", HealthCheck)
-	log.Fatal(http.ListenAndServe(":9000",nil))
+	http.HandleFunc("/", GoProxy)
+	http.HandleFunc("/_health_check", HealthCheck)
+	log.Fatal(http.ListenAndServe(":9000", nil))
 
 }
-
-
-
-
-

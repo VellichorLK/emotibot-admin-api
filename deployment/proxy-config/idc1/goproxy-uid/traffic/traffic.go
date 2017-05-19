@@ -1,33 +1,34 @@
 package trafficStats
 
 import (
-	"time"
-	"github.com/paulbellamy/ratecounter"
-	"net/url"
 	"log"
+	"net/url"
+	"time"
+
+	"github.com/paulbellamy/ratecounter"
 )
 
-
-
-type RouteMap struct{
-	GoRoute map[string] string
+type RouteMap struct {
+	GoRoute      map[string]string
 	DefaultRoute *url.URL
+	timestamp    int64
 }
 
-
-var stats map[string] *ratecounter.RateCounter
+var stats map[string]*ratecounter.RateCounter
 var duration int
 var maxCon int64
-
+var banPeriod int64
+var newestRoute int64
 
 var ReadTrafficChan chan string
 var WriteRouteChan chan *RouteMap
 var UpdateRouteChan chan *RouteMap
 
-func Init(dur int, max_con int, readTrafficChan chan string, writeRouteChan chan *RouteMap){
-	stats = make(map[string] *ratecounter.RateCounter)
+func Init(dur int, max_con int, ban_period int64, readTrafficChan chan string, writeRouteChan chan *RouteMap) {
+	stats = make(map[string]*ratecounter.RateCounter)
 	duration = dur
 	maxCon = int64(max_con)
+	banPeriod = ban_period
 
 	ReadTrafficChan = readTrafficChan
 	WriteRouteChan = writeRouteChan
@@ -37,105 +38,99 @@ func Init(dur int, max_con int, readTrafficChan chan string, writeRouteChan chan
 	go PushRouteMap()
 }
 
-
-func DefaultRoute() *RouteMap{
+func DefaultRoute() *RouteMap {
 	routeMap := new(RouteMap)
-	routeMap.GoRoute = make(map[string] string)
-	u,_ := url.Parse("http://172.17.0.1:9001")
+	routeMap.GoRoute = make(map[string]string)
+	u, _ := url.Parse("http://172.17.0.1:9001")
 	routeMap.DefaultRoute = u
+	routeMap.timestamp = time.Now().UnixNano()
+	newestRoute = routeMap.timestamp
 	return routeMap
 }
 
-func PushRouteMap(){
-	route := DefaultRoute()	
+func PushRouteMap() {
+	route := DefaultRoute()
 
 	for {
 		select {
-			case WriteRouteChan <- route:
-			case route = <-UpdateRouteChan:
+		case route = <-UpdateRouteChan:
+		case WriteRouteChan <- route:
 		}
 	}
 }
 
+func MakeNewRoute(uid string) *RouteMap {
+	curRoute := <-WriteRouteChan
 
-func MakeNewRoute(uid string) *RouteMap{
-        curRoute:= <-WriteRouteChan
-        _,ok:= curRoute.GoRoute[uid]
-        if ok{
-                return nil
-        }
-        nr:=DefaultRoute()
-                //copy the map
-	for k,v := range curRoute.GoRoute{
+	if curRoute.timestamp < newestRoute {
+		return nil
+	}
+
+	_, ok := curRoute.GoRoute[uid]
+	if ok {
+		return nil
+	}
+	nr := DefaultRoute()
+	//copy the map
+	for k, v := range curRoute.GoRoute {
 		nr.GoRoute[k] = v
 	}
 	log.Println("Sets", uid, "redirect")
 	log.Println(uid, " has ", maxCon, " requests in ", duration, " seconds")
 	nr.GoRoute[uid] = "go"
 	return nr
-/*
-	curRoute:= <-WriteRouteChan
-	_,ok:= curRoute.GoRoute[uid]
-	if ok{
-		return nil
-	}
-	nr:=DefaultRoute()
-	u,err := url.Parse("http://127.0.0.1:4000")
-	if err == nil{
-		//copy the map
-		for k,v := range curRoute.GoRoute{
-			nr.GoRoute[k] = v
-		}
-		log.Println("Sets", uid, "redirect to ", u)
-		log.Println(uid, " has ", maxCon, " requests in ", duration, " seconds")
-		nr.GoRoute[uid] = u
-	}else{
-		return nil
-	}
-	return nr
-	*/
 }
 
-func MakeNewCounter(uid string, dur int) *ratecounter.RateCounter{
-	stat:= ratecounter.NewRateCounter(time.Duration(dur) * time.Second)
+func MakeNewCounter(uid string, dur int) *ratecounter.RateCounter {
+	stat := ratecounter.NewRateCounter(time.Duration(dur) * time.Second)
 	stats[uid] = stat
 	return stat
 }
 
-func UpdateTraffic() bool{
+func UpdateTraffic() bool {
 
 	var uid string
 	var newRoute *RouteMap = nil
+	var lastTimestamp, curTimestamp int64
 
-	for{
+	lastTimestamp = time.Now().Unix()
+
+	for {
 		uid = <-ReadTrafficChan
 
-		stat, ok:= stats[uid]
+		curTimestamp = time.Now().Unix()
 
-		if ok {
+		if curTimestamp-lastTimestamp >= banPeriod {
+			newRoute = DefaultRoute()
+			lastTimestamp = curTimestamp
+		} else {
 
-		}else{
-			stat = MakeNewCounter(uid, duration)
+			stat, ok := stats[uid]
 
-		}
-		stat.Incr(1)
+			if ok {
 
-		if stat.Rate() > maxCon {
-			tmpRoute := MakeNewRoute(uid)
-			if tmpRoute != nil {
-				newRoute = tmpRoute
+			} else {
+				stat = MakeNewCounter(uid, duration)
+
 			}
-			MakeNewCounter(uid, duration)
+			stat.Incr(1)
+
+			if stat.Rate() > maxCon {
+				tmpRoute := MakeNewRoute(uid)
+				if tmpRoute != nil {
+					newRoute = tmpRoute
+				}
+				MakeNewCounter(uid, duration)
+			}
 		}
 
 		if newRoute != nil {
-			select{
-				case UpdateRouteChan<-newRoute:
-					newRoute = nil
-				default:
+			select {
+			case UpdateRouteChan <- newRoute:
+				newRoute = nil
+			default:
 			}
 
 		}
 	}
 }
-

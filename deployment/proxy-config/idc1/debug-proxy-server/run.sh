@@ -25,7 +25,7 @@ for s in $Servers; do
   port=100$s
   docker rm -fv $name
   docker run -d --name $name -p $port:$port \
-    docker-reg.emotibot.com.cn:55688/goproxy-uid:20170512 \
+    docker-reg.emotibot.com.cn:55688/goproxy-uid:20170519 \
     /app/fakeserver/fakeserver $port $name
 done
 
