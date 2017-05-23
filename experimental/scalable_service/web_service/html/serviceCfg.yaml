@@ -1,0 +1,185 @@
+swagger: "2.0"
+
+info:
+  title: Sample API
+  description: API description in Markdown.
+  version: 0.0.1
+
+schemes:
+  - http
+responses:
+  Description200:
+    description: ok
+  Description400:
+    description: bad request
+  Description404:
+    description: not found
+  Description408:
+    description: request timeout
+  Description429:
+    description: too many requests
+  Description503:
+    description: service unavailable
+tags:
+  - name: Java
+    description: java echo service
+  - name: Python
+    description: python echo service
+  - name: Golang
+    description: golang echo service
+paths:
+  /doJava:
+    get:
+      tags:
+        - Java
+      summary: call java worker
+      description: call java worker in the backend
+      parameters:
+        - name: name
+          type: string
+          in: query
+      produces:
+        - text/plain
+      responses:
+          200:
+              $ref: '#/responses/Description200'
+          400:
+              $ref: '#/responses/Description400'
+          404:
+              $ref: '#/responses/Description404'
+          408:
+              $ref: '#/responses/Description408'
+          429:
+              $ref: '#/responses/Description429'
+          503:
+              $ref: '#/responses/Description503'
+    x-handler: default
+    x-queue: java_task
+  /doPython:
+    get:
+      tags:
+        - Python
+      summary: call python worker
+      description: call python worker in the backend
+      parameters:
+        - name: name
+          type: string
+          in: query
+      produces:
+        - application/json
+      responses:
+        200:
+            $ref: '#/responses/Description200'
+        400:
+            $ref: '#/responses/Description400'
+        404:
+            $ref: '#/responses/Description404'
+        408:
+            $ref: '#/responses/Description408'
+        429:
+            $ref: '#/responses/Description429'
+        503:
+            $ref: '#/responses/Description503'
+      x-handler: default
+      x-queue: python_task
+    post:
+      tags:
+        - Python
+      summary: call python worker
+      description: call python worker in the backend
+      parameters:
+        - in: body
+          name: testbody
+          schema:
+            type: object
+            required:
+              - testname
+              - testid
+            properties:
+              testname:
+                type: string
+              testid:
+                type: integer
+      produces:
+        - application/json
+      responses:
+        200:
+            $ref: '#/responses/Description200'
+        400:
+            $ref: '#/responses/Description400'
+        404:
+            $ref: '#/responses/Description404'
+        408:
+            $ref: '#/responses/Description408'
+        429:
+            $ref: '#/responses/Description429'
+        503:
+            $ref: '#/responses/Description503'
+    x-handler: default
+    x-queue: python_task
+  /doGolang:
+    get:
+      tags:
+        - Golang
+      summary: call golang worker
+      description: call golang worker in the backend
+      parameters:
+        - name: name
+          type: string
+          in: query
+      produces:
+        - text/plain
+      responses:
+        200:
+            $ref: '#/responses/Description200'
+        400:
+            $ref: '#/responses/Description400'
+        404:
+            $ref: '#/responses/Description404'
+        408:
+            $ref: '#/responses/Description408'
+        429:
+            $ref: '#/responses/Description429'
+        503:
+            $ref: '#/responses/Description503'
+      x-handler: default
+      x-queue: golang_task
+    post:
+      tags:
+        - Golang
+      summary: call golang worker
+      description: call golang worker in the backend
+      parameters:
+        - name: name
+          type: string
+          in: query
+        - in: body
+          name: testbody
+          schema:
+            type: object
+            required:
+              - testname
+              - testid
+            properties:
+              testname:
+                type: string
+              testid:
+                type: integer
+      produces:
+        - text/plain
+      responses:
+        200:
+            $ref: '#/responses/Description200'
+        400:
+            $ref: '#/responses/Description400'
+        404:
+            $ref: '#/responses/Description404'
+        408:
+            $ref: '#/responses/Description408'
+        429:
+            $ref: '#/responses/Description429'
+        503:
+            $ref: '#/responses/Description503'
+    x-handler: default
+    x-queue: golang_task
+  
