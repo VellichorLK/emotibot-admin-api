@@ -5,10 +5,10 @@ TAG=20170518
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BUILDROOT=$DIR/../../../../../
-CURDIR=${PWD##*/}
-GOPREFIX=${DIR#*emotigo/}
-GOSRCPATH="emotigo/$GOPREFIX/../"
+EMOTIGO=${DIR#*/emotibot.com/}
+BUILDROOT=${DIR%/emotigo/*}
+GOSRCPATH="$EMOTIGO/../"
+echo $DIR
 echo $GOSRCPATH
 echo $BUILDROOT
 # Build docker
