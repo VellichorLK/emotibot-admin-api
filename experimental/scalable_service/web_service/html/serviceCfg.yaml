@@ -80,8 +80,6 @@ paths:
             $ref: '#/responses/Description429'
         503:
             $ref: '#/responses/Description503'
-      x-handler: default
-      x-queue: python_task
     post:
       tags:
         - Python
@@ -122,11 +120,12 @@ paths:
       tags:
         - Golang
       summary: call golang worker
-      description: call golang worker in the backend
+      description: do fibonacci function
       parameters:
-        - name: name
-          type: string
+        - name: n
+          type: integer
           in: query
+          required: true
       produces:
         - text/plain
       responses:
@@ -142,8 +141,6 @@ paths:
             $ref: '#/responses/Description429'
         503:
             $ref: '#/responses/Description503'
-      x-handler: default
-      x-queue: golang_task
     post:
       tags:
         - Golang
