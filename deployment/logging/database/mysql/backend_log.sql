@@ -43,7 +43,7 @@ CREATE TABLE `chat_record` (
   `score` int(11) DEFAULT NULL,
   `custom_info` text,
   `host` char(32) NOT NULL,
-  `unique_id` char(16) NOT NULL,
+  `unique_id` char(100) NOT NULL,
   `note` text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
