@@ -25,7 +25,7 @@ fi
 echo "# Great! Docker image found: $DOCKER_IMAGE"
 
 ENV=$1
-if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ]; then
+if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ] && [ "$ENV" != "vip" ] ; then
     echo "# Error: parameter does not satisfied."
     exit 1
 fi

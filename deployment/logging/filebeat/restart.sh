@@ -7,7 +7,7 @@ BACKEND_LOGS_DIR="/home/deployer/backend_logs"
 DOCKER_IMG=$REPO/$CONTAINER:$TAG
 
 ENV=$1
-if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ] && [ "$ENV" != "localhost" ]; then
+if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ] && [ "$ENV" != "localhost" ] && [ "$ENV" != "vip" ]; then
     echo "invalid parameter"
     exit 1
 fi
