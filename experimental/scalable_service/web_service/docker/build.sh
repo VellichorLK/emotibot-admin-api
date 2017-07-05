@@ -5,12 +5,13 @@ TAG=20170518
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-EMOTIGO=${DIR#*/emotibot.com/}
+EMOTIGO=${DIR#*/emotigo/}
 BUILDROOT=${DIR%/emotigo/*}
-GOSRCPATH="$EMOTIGO/../"
+GOSRCPATH="emotigo/$EMOTIGO/../"
 echo $DIR
 echo $GOSRCPATH
 echo $BUILDROOT
+echo $EMOTIGO
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \
