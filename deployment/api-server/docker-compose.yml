@@ -102,11 +102,11 @@ services:
         depends_on:
             - "mysql"
             - "rabbitmq"
+
     # ========== Voice Emotion Analysis Worker: depends on rabbitmq
-    # TODO(mike): use scale to extend number of container or container should be multi-processes/thread
-    worker-voice-emotion-analysis-1:
+    worker-voice-emotion-analysis:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
-        container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
+        # container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
         mem_limit: 2048m
         logging:
             options:
@@ -128,37 +128,7 @@ services:
             ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
             ENV_KEY_ALWAYS_USE_NEW_WORKERS: "false"
         volumes:
-            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1:/usr/src/app/output
-            - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/usr/src/app/input
-        restart: always
-        depends_on:
-            - "rabbitmq"
-            - "mongo"
-    worker-voice-emotion-analysis-2:
-        image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
-        container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-2
-        mem_limit: 2048m
-        logging:
-            options:
-                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
-                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
-        environment:
-            ENV_KEY_MONGODB_ENABLE: "true"
-            ENV_KEY_MONGODB_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_MONGO_HOST}
-            ENV_KEY_MONGODB_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_MONGO_PORT}
-            ENV_KEY_MONGODB_DATABASE_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DB_NAME}
-            ENV_KEY_MONGODB_SAVE_RESULT_INFO: "true"
-            ENV_KEY_MONGODB_RESULT_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_RET_COLLECTION_NAME}
-            ENV_KEY_MONGODB_SAVE_DETAILS_INFO: "true"
-            ENV_KEY_MONGODB_DETAILS_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DETAIL_COLLECTION_NAME}
-            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_HOST}
-            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_PORT} 
-            ENV_KEY_RABBITMQ_TASK_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_TASK}
-            ENV_KEY_RABBITMQ_RESULT_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_RESULT} 
-            ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
-            ENV_KEY_ALWAYS_USE_NEW_WORKERS: "false"
-        volumes:
-            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}-2:/usr/src/app/output
+            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}:/usr/src/app/output
             - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/usr/src/app/input
         restart: always
         depends_on:

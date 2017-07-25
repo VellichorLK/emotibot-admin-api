@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# number of worker-voice-emotion-analysis
+num_of_woker_analysis=5
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 source $1
@@ -18,13 +21,20 @@ shift
 while [ $# != 0 ]
 do
     echo $1
-    service="$service "$1
+    if [ "$1" == "worker-voice-emotion-analysis" ]; then
+        service="$service "$1
+        scale="--scale $1=$num_of_woker_analysis"
+    fi
     shift
 done
 
+if [ "$service" == "" ]; then
+    scale="--scale worker-voice-emotion-analysis=$num_of_woker_analysis"
+fi
 # prepare docker-compose env file
 cp $envfile .env
 
-cmd="docker-compose -f ./docker-compose.yml up --force-recreate -d $service"
+docker-compose -f ./docker-compose.yml rm -s $service
+cmd="docker-compose -f ./docker-compose.yml up --force-recreate -d $scale $service" 
 echo $cmd
 eval $cmd
