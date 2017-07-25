@@ -219,8 +219,8 @@ services:
         volumes:
             - /etc/localtime:/etc/localtime
             - ${NGINX_CERT}:/etc/nginx/ssl/nginx.crt
-            - ${NGINX_KEY}:/etc/nginx/ssl/nginx.key"
-            - ${NGINX_CONF}:/etc/nginx/nginx.conf"
+            - ${NGINX_KEY}:/etc/nginx/ssl/nginx.key
+            - ${NGINX_CONF}:/etc/nginx/nginx.conf
         restart: always
         depends_on:
             - "api-voice-emotion"
