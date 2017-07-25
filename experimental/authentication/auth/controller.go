@@ -47,7 +47,9 @@ func SetRoute(c *Configuration) error {
 }
 
 func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-
+	if HandleHttpMethodError(r.Method, "GET") {
+		return
+	}
 	// get appid
 	appid := r.URL.Path[len(const_endpoint_appid_validate):]
 	log.Printf("appid: %s", appid)
@@ -78,6 +80,9 @@ func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
+	if HandleHttpMethodError(r.Method, "POST") {
+		return
+	}
 	// parse param
 	err := r.ParseForm()
 	if HandleHttpError(http.StatusBadRequest, err, w) {
@@ -121,21 +126,11 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 }
 
 func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	//:return: {"return": $ret_code, "return_message": $ret_msg}
-	//:rtype: json
+	if HandleHttpMethodError(r.Method, "POST") {
+		return
+	}
 
 	// 1. parse form
-	//account:test_enterprise
-	//nickName:test_name
-	//password:fdf505eb4699caaffeac4f043b88658d
-	//location:test_addr
-	//peopleNumber:150
-	//industry:电商
-	//linkEmail:test_name@test.com
-	//linkPhone:0000000000
-	//apiCnt: api count
-	//expTime: expiration time
-	//anaDuration: analynis duration
 	err := r.ParseForm()
 	if HandleHttpError(http.StatusBadRequest, err, w) {
 		return
@@ -191,7 +186,7 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 		// add app_id entry
 		app_id = GenAppId()
 		enterprise_id = GenEnterpriseId()
-		stmtIns, err := dao.Prepare("INSERT INTO appid_list VALUES(?, ?, ?, ?, ?, ?)")
+		stmtIns, err := dao.Prepare("insert into appid_list values(?, ?, ?, ?, ?, ?)")
 		defer stmtIns.Close()
 		if HandleError(-3, err, w) {
 			// goto ?
@@ -235,6 +230,9 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 
 // List all enterprises and its appid/login username, password
 func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
+	if HandleHttpMethodError(r.Method, "POST") {
+		return
+	}
 	// select all from enterprise_list join user_list on enterprise_id
 	rows, err := dao.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id")
 	if HandleError(-1, err, w) {

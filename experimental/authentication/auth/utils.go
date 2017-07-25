@@ -27,6 +27,13 @@ func RespJson(w http.ResponseWriter, es interface{}) {
 	fmt.Fprintf(w, string(js))
 }
 
+func HandleHttpMethodError(request_method string, allow_method string) bool {
+	if request_method != allow_method {
+		return true
+	}
+	return false
+}
+
 func HandleError(err_code int, err error, w http.ResponseWriter) bool {
 	if err == nil {
 		return false
