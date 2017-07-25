@@ -1,11 +1,13 @@
 package auth
 
-import "os"
+import (
+	"os"
+)
 
 const (
 	const_dfl_db_user     string = "root"
 	const_dfl_db_pass     string = "password"
-	const_dfl_db_url      string = "tcp(172.17.0.1:3306)"
+	const_dfl_db_url      string = "172.17.0.1:3306"
 	const_dfl_db_name     string = "authentication"
 	const_dfl_listen_port string = "8088"
 )
@@ -34,9 +36,11 @@ func GetConfig() *Configuration {
 	if c.DbPass == "" {
 		c.DbPass = const_dfl_db_pass
 	}
+
 	if c.DbName == "" {
 		c.DbName = const_dfl_db_name
 	}
+
 	if c.ListenPort == "" {
 		c.ListenPort = const_dfl_listen_port
 	}

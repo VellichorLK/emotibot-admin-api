@@ -99,12 +99,14 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 	}
 
 	for rows.Next() {
+		type priv struct {
+		}
 		type row struct {
-			User_id       string      `json:"user_id"`
-			User_type     int         `json:"user_type"`
-			Enterprise_id string      `json:"enterprise_id"`
-			Privilege     interface{} `json:"privilege"`
-			Role_name     string      `json:"role_name"`
+			User_id       string         `json:"user_id"`
+			User_type     int            `json:"user_type"`
+			Enterprise_id string         `json:"enterprise_id"`
+			Privilege     interface{}    `json:"privilege"`
+			Role_name     sql.NullString `json:"role_name"`
 		}
 		var r row
 		err := rows.Scan(&r.User_id, &r.User_type, &r.Enterprise_id, &r.Privilege, &r.Role_name)

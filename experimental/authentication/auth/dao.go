@@ -9,7 +9,7 @@ import (
 
 func GetDao(c *Configuration) (*sql.DB, error) {
 	log.Printf("config: %s", c)
-	url := fmt.Sprintf("%s:%s@%s/%s", c.DbUser, c.DbPass, c.DbUrl, c.DbName)
+	url := fmt.Sprintf("%s:%s@tcp(%s)/%s", c.DbUser, c.DbPass, c.DbUrl, c.DbName)
 	log.Printf("url: %s", url)
 	db, err := sql.Open("mysql", url)
 	if err != nil {
