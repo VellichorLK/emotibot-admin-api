@@ -43,7 +43,7 @@ services:
         depends_on:
             - "mysql"
     mongo:     
-        image: mongo:latest
+        image: mongo:3.2.8
         container_name: "mongo"
         environment:
             - MONGO_DATA_DIR=/data/db
@@ -94,6 +94,7 @@ services:
             DB_USER: ${API_VOICE_EMOTION_DB_USER}
             DB_PWD: ${API_VOICE_EMOTION_DB_PWD}
             LISTEN_PORT: ${API_VOICE_EMOTION_PORT}
+            FILE_PREFIX: ${API_VOICE_EMOTION_DATA_PATH}
         volumes:
             - ${API_VOICE_EMOTION_DATA_PATH}:/usr/src/app/upload_file
             - /etc/localtime:/etc/localtime
