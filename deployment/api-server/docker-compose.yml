@@ -1,0 +1,248 @@
+version: '2'
+services:
+    # ========== DATABASE ==========
+    mysql:
+        image: mysql:${MYSQL_TAG}
+        container_name: mysql
+        ports:
+            - "${MYSQL_PORT}:${MYSQL_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_MAIN_PASS} 
+        mem_limit: 5125m
+        volumes:
+            - ./database/mysql/my.cnf:/etc/mysql/my.cnf
+            - ./database/mysql/emotibot.sql:/var/local/database/emotibot.sql
+            - ./database/mysql/voice_emotion.sql:/var/local/database/voice_emotion.sql
+            - ./database/mysql/authentication.sql:/var/local/database/authentication.sql
+            - ./database/mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+            - ${MYSQL_DATA_PATH}:/var/lib/mysql
+            - /etc/localtime:/etc/localtime
+        restart: always
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        ports:
+            - "${PHPMYADMIN_PORT}:80" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 5125m
+        environment:
+            MYSQL_USERNAME: ${MYSQL_MAIN_USER}
+            MYSQL_PASSWORD: ${MYSQL_MAIN_PASS}
+        volumes:
+            - /etc/localtime:/etc/localtime
+        links:
+            - mysql:db
+        restart: always
+        depends_on:
+            - "mysql"
+    mongo:     
+        image: mongo:latest
+        container_name: "mongo"
+        environment:
+            - MONGO_DATA_DIR=/data/db
+            - MONGO_LOG_DIR=/dev/null
+        volumes:
+            - "${MONGO_DATA_PATH}:/data/db"
+        ports:
+            - "${MONGO_PORT}:${MONGO_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        restart: always          
+    # ========== Queue ==========
+    rabbitmq:
+        image: rabbitmq:${RABBITMQ_TAG}
+        hostname: "my-rabbit"
+        container_name: "rabbitmq"
+        ports:
+            - "${RABBITMQ_PORT}:${RABBITMQ_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 5125m
+        volumes:
+            - ${RABBITMQ_DATA_PATH}:/var/lib/rabbitmq
+            - /etc/localtime:/etc/localtime
+        restart: always
+    # ========== Voice Emotion APIs: depends on rabbitmq/mysql
+    api-voice-emotion:
+        image: ${API_VOICE_EMOTION_IMAGE}:${API_VOICE_EMOTION_TAG}
+        container_name: ${API_VOICE_EMOTION_CONTAINER}  
+        ports:
+            - "${API_VOICE_EMOTION_PORT}:${API_VOICE_EMOTION_PORT}" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 5125m
+        environment:
+            RABBITMQ_HOST: ${API_VOICE_EMOTION_RABBITMQ_HOST}
+            RABBITMQ_PORT: ${API_VOICE_EMOTION_RABBITMQ_PORT} 
+            RABBITMQ_USER: ${API_VOICE_EMOTION_RABBITMQ_USER} 
+            RABBITMQ_PWD: ${API_VOICE_EMOTION_RABBITMQ_PWD}
+            DB_HOST: ${API_VOICE_EMOTION_DB_HOST}
+            DB_PORT: ${API_VOICE_EMOTION_DB_PORT}
+            DB_USER: ${API_VOICE_EMOTION_DB_USER}
+            DB_PWD: ${API_VOICE_EMOTION_DB_PWD}
+            LISTEN_PORT: ${API_VOICE_EMOTION_PORT}
+        volumes:
+            - ${API_VOICE_EMOTION_DATA_PATH}:/usr/src/app/upload_file
+            - /etc/localtime:/etc/localtime
+        restart: always
+        depends_on:
+            - "mysql"
+            - "rabbitmq"
+    # ========== Voice Emotion Analysis Worker: depends on rabbitmq
+    # TODO(mike): use scale to extend number of container or container should be multi-processes/thread
+    worker-voice-emotion-analysis-1:
+        image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
+        container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
+        mem_limit: 2048m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}    
+        environment:
+            ENV_KEY_MONGODB_ENABLE: "true"
+            ENV_KEY_MONGODB_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_MONGO_HOST}
+            ENV_KEY_MONGODB_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_MONGO_PORT}
+            ENV_KEY_MONGODB_DATABASE_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DB_NAME}
+            ENV_KEY_MONGODB_SAVE_RESULT_INFO: "true"
+            ENV_KEY_MONGODB_RESULT_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_RET_COLLECTION_NAME}
+            ENV_KEY_MONGODB_SAVE_DETAILS_INFO: "true"
+            ENV_KEY_MONGODB_DETAILS_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DETAIL_COLLECTION_NAME}
+            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_HOST}
+            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_PORT} 
+            ENV_KEY_RABBITMQ_TASK_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_TASK}
+            ENV_KEY_RABBITMQ_RESULT_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_RESULT} 
+            ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
+            ENV_KEY_ALWAYS_USE_NEW_WORKERS: "true"
+        volumes:
+            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1:/usr/src/app/output
+            - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/usr/src/app/input
+        restart: always
+        depends_on:
+            - "rabbitmq"
+            - "mongo"
+    worker-voice-emotion-analysis-2:
+        image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
+        container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-2
+        mem_limit: 2048m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            ENV_KEY_MONGODB_ENABLE: "true"
+            ENV_KEY_MONGODB_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_MONGO_HOST}
+            ENV_KEY_MONGODB_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_MONGO_PORT}
+            ENV_KEY_MONGODB_DATABASE_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DB_NAME}
+            ENV_KEY_MONGODB_SAVE_RESULT_INFO: "true"
+            ENV_KEY_MONGODB_RESULT_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_RET_COLLECTION_NAME}
+            ENV_KEY_MONGODB_SAVE_DETAILS_INFO: "true"
+            ENV_KEY_MONGODB_DETAILS_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DETAIL_COLLECTION_NAME}
+            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_HOST}
+            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_PORT} 
+            ENV_KEY_RABBITMQ_TASK_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_TASK}
+            ENV_KEY_RABBITMQ_RESULT_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_RESULT} 
+            ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
+            ENV_KEY_ALWAYS_USE_NEW_WORKERS: "true"
+        volumes:
+            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}-2:/usr/src/app/output
+            - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/usr/src/app/input
+        restart: always
+        depends_on:
+            - "rabbitmq"
+            - "mongo"
+    
+    # ========== Voice Emotion Statistic Worker: depends on rabbitmq/mysql
+    worker-voice-emotion-statistic:
+        image: ${WORKER_VOICE_EMOTION_STATISTIC_IMAGE}:${WORKER_VOICE_EMOTION_STATISTIC_TAG}
+        container_name: ${WORKER_VOICE_EMOTION_STATISTIC_CONTAINER}
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        environment:
+            RABBITMQ_HOST: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_HOST}
+            RABBITMQ_PORT: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_PORT} 
+            RABBITMQ_USER: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_USER} 
+            RABBITMQ_PWD: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_PWD}
+            DB_HOST: ${WORKER_VOICE_EMOTION_STATISTIC_DB_HOST}
+            DB_PORT: ${WORKER_VOICE_EMOTION_STATISTIC_DB_PORT}
+            DB_USER: ${WORKER_VOICE_EMOTION_STATISTIC_DB_USER}
+            DB_PWD: ${WORKER_VOICE_EMOTION_STATISTIC_DB_PWD}
+        restart: always
+        depends_on:
+            - "mysql"
+            - "rabbitmq"
+    
+    # ========== Admin UI/admin UI
+    voice_emotion_houta:
+        image: ${VOICE_EMOTION_HOUTA_IMAGE}:${VOICE_EMOTION_HOUTA_TAG}
+        container_name: ${VOICE_EMOTION_HOUTA_CONTAINER} 
+        ports:
+            - "${VOICE_EMOTION_HOUTA_PORT}:80" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        volumes:
+            - /etc/localtime:/etc/localtime
+        depends_on:
+            - "mysql"
+
+    # ========== NGINX ==========
+    nginx:
+        image: nginx
+        container_name: nginx
+        ports:
+            - '80:80'
+            - '443:443'
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        volumes:
+            - /etc/localtime:/etc/localtime
+            - ${NGINX_CERT}:/etc/nginx/ssl/nginx.crt
+            - ${NGINX_KEY}:/etc/nginx/ssl/nginx.key"
+            - ${NGINX_CONF}:/etc/nginx/nginx.conf"
+        restart: always
+        depends_on:
+            - "api-voice-emotion"
+    
+    # ========== Authentication =========
+    authentication:
+        image: ${AUTH_IMAGE}:${AUTH_TAG}
+        container_name: ${AUTH_CONTAINER}
+        ports:
+            - "${AUTH_PORT}:${AUTH_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        environment:
+            MYSQL_URL: ${AUTH_MYSQL_URL}
+            MYSQL_USER: ${AUTH_MYSQL_USER}
+            MYSQL_PASS: ${AUTH_MYSQL_PASS}
+            MYSQL_DB: ${AUTH_MYSQL_DATABASE}
+        restart: always
+        depends_on:
+            - "mysql"
+
+    # ========== TODO(mike) consul
+    # ========== TODO(mike) logstash 
