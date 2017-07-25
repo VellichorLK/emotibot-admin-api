@@ -4,17 +4,20 @@ CONTAINER=goproxy-uid
 TAG="$(git rev-parse --short HEAD)"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
+# Define the environment, e.g.,
+# DIR=/home/wmyao/workspaces/emotigo/module/proxy
+# BUILDROOT=/home/wmyao/workspaces/emotigo/module/proxy/../../
+# PROJECT=module/proxy
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BUILDROOT=$DIR/../../../
-CURDIR=${PWD##*/}
-GOPREFIX=${DIR#*emotigo/}
-GOSRCPATH="emotigo/$GOPREFIX"
-echo $GOSRCPATH
-echo $BUILDROOT
+BUILDROOT=$DIR/../../        #buildroot = root of emotigo repo
+PROJECT=${DIR#*emotigo/}     #project = module/proxy
+echo "BUILDROOT=$BUILDROOT"
+echo "PROJECT=$PROJECT"
+
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \
-  --build-arg PROJECT=$GOSRCPATH \
+  --build-arg PROJECT=$PROJECT \
   -f $DIR/Dockerfile $BUILDROOT"
 echo $cmd
 eval $cmd
