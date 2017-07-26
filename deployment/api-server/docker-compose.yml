@@ -108,6 +108,7 @@ services:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
         # container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
         mem_limit: 2048m
+        hostname: worker-voice-emotion
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
@@ -128,7 +129,7 @@ services:
             ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
             ENV_KEY_ALWAYS_USE_NEW_WORKERS: "false"
         volumes:
-            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}/${WORKER_VOICE_EMOTION_ANA_CONTAINER}:/usr/src/app/output
+            - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}:/usr/src/app/output
             - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/usr/src/app/input
         restart: always
         depends_on:
