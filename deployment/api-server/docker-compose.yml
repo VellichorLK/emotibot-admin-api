@@ -108,7 +108,6 @@ services:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
         # container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
         mem_limit: 2048m
-        hostname: worker-voice-emotion
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
