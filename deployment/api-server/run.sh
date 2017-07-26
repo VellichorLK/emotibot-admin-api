@@ -1,7 +1,11 @@
 #!/bin/bash
 
 # number of worker-voice-emotion-analysis
-num_of_woker_analysis=5
+num_of_worker_analysis=$NUM_ANA_WORKER
+if [ "$num_of_worker_analysis" == "" ]; then
+	num_of_worker_analysis=5
+fi
+echo "num_of_worker_analysis: $num_of_worker_analysis"
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -23,7 +27,7 @@ do
     echo $1
     if [ "$1" == "worker-voice-emotion-analysis" ]; then
         service="$service "$1
-        scale="--scale $1=$num_of_woker_analysis"
+        scale="--scale $1=$num_of_worker_analysis"
     fi
     shift
 done
