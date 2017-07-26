@@ -26,9 +26,9 @@ while [ $# != 0 ]
 do
     echo $1
     if [ "$1" == "worker-voice-emotion-analysis" ]; then
-        service="$service "$1
         scale="--scale $1=$num_of_worker_analysis"
     fi
+    service="$service "$1
     shift
 done
 
@@ -39,6 +39,6 @@ fi
 cp $envfile .env
 
 docker-compose -f ./docker-compose.yml rm -s $service
-cmd="docker-compose -f ./docker-compose.yml up --force-recreate -d $scale $service" 
+cmd="docker-compose -f ./docker-compose.yml up --force-recreate --remove-orphans -d $scale $service" 
 echo $cmd
 eval $cmd
