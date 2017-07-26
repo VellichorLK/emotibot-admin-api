@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// should wrap as a struct
 func GetDao(c *Configuration) (*sql.DB, error) {
 	log.Printf("config: %s", c)
 	url := fmt.Sprintf("%s:%s@tcp(%s)/%s", c.DbUser, c.DbPass, c.DbUrl, c.DbName)

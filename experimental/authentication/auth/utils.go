@@ -74,7 +74,3 @@ func GenAppId() string {
 func GenUserId() string {
 	return genMD5ID("user")
 }
-
-func main() {
-	fmt.Println("vim-go")
-}
