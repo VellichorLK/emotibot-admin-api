@@ -185,12 +185,15 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 	return err
 }
 
-func ComputeChannelScore(eb *EmotionBlock, threashold float64) {
+func ComputeChannelScore(eb *EmotionBlock) {
 
 	const divider = 1000
 	NumSegInOneChannel := make(map[int]int)
 	TotalProbabilityWithEmotion := make(map[int]float64)
 	NumOfHasOneEmotionInOneChannel := make(map[int]int)
+
+	threashold := 0.7
+	weight := 0.5
 
 	for _, seg := range eb.Segments {
 		for _, s := range seg.ScoreList {
@@ -202,7 +205,7 @@ func ComputeChannelScore(eb *EmotionBlock, threashold float64) {
 				emotionChannelKey := seg.Channel*divider + int(label)
 				NumSegInOneChannel[emotionChannelKey]++
 				TotalProbabilityWithEmotion[emotionChannelKey] += s.Score
-				if s.Score > threashold {
+				if s.Score >= threashold {
 					NumOfHasOneEmotionInOneChannel[emotionChannelKey]++
 				}
 			}
@@ -211,13 +214,10 @@ func ComputeChannelScore(eb *EmotionBlock, threashold float64) {
 	}
 
 	for chEmotion, count := range NumSegInOneChannel {
-		var totalScore float64
-		if count > 10 {
-			totalScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
-		} else {
-			totalScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
-		}
-
+		var totalScore, weightScore, rateScore float64
+		weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
+		rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
+		totalScore = weightScore*weight + rateScore*(1-weight)
 		//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
 		InsertChannelScore(eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100)
 	}

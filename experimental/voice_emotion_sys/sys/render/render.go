@@ -67,7 +67,7 @@ func recordData(task string) (string, string) {
 	eb.IDUint64 = idInt64
 
 	handlers.InsertAnalysisRecord(eb)
-	handlers.ComputeChannelScore(eb, 0.8)
+	handlers.ComputeChannelScore(eb)
 	handlers.UpdateResult(eb)
 
 	return "", ""
