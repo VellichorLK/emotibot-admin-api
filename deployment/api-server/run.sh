@@ -33,7 +33,7 @@ do
 done
 
 if [ "$service" == "" ]; then
-    scale="--scale worker-voice-emotion-analysis=$num_of_woker_analysis"
+    scale="--scale worker-voice-emotion-analysis=$num_of_worker_analysis"
 fi
 # prepare docker-compose env file
 cp $envfile .env
