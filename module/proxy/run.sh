@@ -42,6 +42,7 @@ fi
 # - restart = always
 globalConf="
   --restart always \
+  -v /etc/localtime:/etc/localtime \
 "
 # <EDIT_ME>
 moduleConf="
