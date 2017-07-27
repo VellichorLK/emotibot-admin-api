@@ -47,6 +47,8 @@ globalConf="
 moduleConf="
   -p 9000:9000\
   --env-file $envfile \
+  --log-opt max-size=20m \
+  --log-opt max-file=20 \
 "
 # </EDIT_ME>
 
