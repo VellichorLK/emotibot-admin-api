@@ -149,6 +149,19 @@ func uploadFile(r *http.Request, fi *FileInfo) (int, error) {
 		file.Seek(0, 0)
 	}
 
+	filePrefix := "./upload_file/" + fi.Appid
+
+	//check appid folder exist
+	_, err = os.Stat(filePrefix)
+	if os.IsNotExist(err) {
+		err = os.Mkdir(filePrefix, 0755)
+		if err != nil {
+			log.Println(err)
+		} else {
+			log.Printf("[Warning] create appid folder %s\n", filePrefix)
+		}
+	}
+
 	//create string uuid
 	uuid := uuid.NewV4()
 	corrID := hex.EncodeToString(uuid[:])
@@ -156,7 +169,7 @@ func uploadFile(r *http.Request, fi *FileInfo) (int, error) {
 
 	fi.UFileName = fi.FileID + "-" + handler.Filename
 	fi.FileName = handler.Filename
-	f, err := os.OpenFile("./upload_file/"+fi.Appid+"/"+fi.UFileName, os.O_WRONLY|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filePrefix+"/"+fi.UFileName, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
