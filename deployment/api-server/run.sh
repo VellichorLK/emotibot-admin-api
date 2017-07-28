@@ -22,6 +22,12 @@ else
 fi
 shift
 
+if [ "$envfile" == "test.env" ]; then
+    mkdir -p /tmp/persistant_storage
+else
+    mkdir -p /home/deployer/persistant_storage
+fi
+
 while [ $# != 0 ]
 do
     echo $1
