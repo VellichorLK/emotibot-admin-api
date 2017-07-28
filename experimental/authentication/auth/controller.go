@@ -43,13 +43,16 @@ func SetRoute(c *Configuration) error {
 	http.HandleFunc(const_endpoint_enterprises, func(w http.ResponseWriter, r *http.Request) {
 		EnterprisesHandler(w, r, c, dao)
 	})
+	log.Printf("Set route OK.")
 	return nil
 }
 
 func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	if HandleHttpMethodError(r.Method, "GET") {
+	if r.Method != "GET" {
+		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
 	}
+
 	// get appid
 	appid := r.URL.Path[len(const_endpoint_appid_validate):]
 	log.Printf("appid: %s", appid)
@@ -80,9 +83,11 @@ func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	if HandleHttpMethodError(r.Method, "POST") {
-		return
-	}
+	//if r.Method != "POST" {
+	//	HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+	//	return
+	//}
+
 	// parse param
 	err := r.ParseForm()
 	if HandleHttpError(http.StatusBadRequest, err, w) {
@@ -126,7 +131,8 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 }
 
 func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	if HandleHttpMethodError(r.Method, "POST") {
+	if r.Method != "POST" {
+		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
 	}
 
@@ -230,11 +236,14 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 
 // List all enterprises and its appid/login username, password
 func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	if HandleHttpMethodError(r.Method, "POST") {
+	log.Printf("c: %s", c)
+	if r.Method != "GET" {
+		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
 	}
 	// select all from enterprise_list join user_list on enterprise_id
 	rows, err := dao.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id")
+
 	if HandleError(-1, err, w) {
 		return
 	}
