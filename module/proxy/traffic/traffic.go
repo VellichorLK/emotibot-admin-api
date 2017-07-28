@@ -16,13 +16,15 @@ type RouteMap struct {
 }
 
 type AppidIP struct {
-	Appid string
-	IP    string
+	Appid  string
+	IP     string
+	Userid string
 }
 
 type AppidCount struct {
-	FromWho map[string]uint64 //ip->count
-	Counter uint64            //counter in assigned period
+	FromWho  map[string]uint64 //ip -> count
+	FromUser map[string]uint64 //userid -> count
+	Counter  uint64            //counter in assigned period
 }
 
 var stats map[string]*ratecounter.RateCounter
@@ -37,7 +39,8 @@ var UpdateRouteChan chan *RouteMap
 var AppidChan chan *AppidIP
 
 var monitorAppid = map[string]bool{
-	"c385e97b0cdce3bdbbee59083ec3b0d0": true,
+	"c385e97b0cdce3bdbbee59083ec3b0d0": true, //ecovacs appid
+
 }
 
 func Init(dur int, max_con int, ban_period int64, logPeriod int, readTrafficChan chan string, writeRouteChan chan *RouteMap, appidChan chan *AppidIP, statsdURL string) {
@@ -174,10 +177,15 @@ func AppidCounter(period int, statsdURL string) {
 				if !ok {
 					ac = new(AppidCount)
 					ac.FromWho = make(map[string]uint64)
+					ac.FromUser = make(map[string]uint64)
 					flowCount[appip.Appid] = ac
 				}
 
+				//here we don't count how many times the ip or useid used this request
+				//so simply set it to zero
+				ac.FromUser[appip.Userid] = 0
 				ac.FromWho[appip.IP] = 0
+
 				ac.Counter++
 
 				err := c.Incr("request.count", []string{appip.Appid}, 1)
@@ -203,5 +211,12 @@ func goDatadog(c *statsd.Client, flowCount map[string]*AppidCount) {
 		if err != nil {
 			log.Println(err)
 		}
+
+		numOfUserID := len(v.FromUser)
+		err = c.Gauge("num.userid", float64(numOfUserID), []string{appid}, 1)
+		if err != nil {
+			log.Println(err)
+		}
 	}
+
 }
