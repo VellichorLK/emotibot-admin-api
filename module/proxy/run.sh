@@ -8,7 +8,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # <EDIT_ME>
 CONTAINER=goproxy-uid
 # </EDIT_ME>
-TAG=20170728
+TAG=20170728006
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # Check if docker image exists (locally or on the registry)

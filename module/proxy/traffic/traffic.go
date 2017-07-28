@@ -1,6 +1,7 @@
 package trafficStats
 
 import (
+	"fmt"
 	"log"
 	"net/url"
 	"time"
@@ -38,7 +39,7 @@ var WriteRouteChan chan *RouteMap
 var UpdateRouteChan chan *RouteMap
 var AppidChan chan *AppidIP
 
-var monitorAppid = map[string]bool{
+var MonitorAppid = map[string]bool{
 	"c385e97b0cdce3bdbbee59083ec3b0d0": true, //ecovacs appid
 
 }
@@ -171,28 +172,24 @@ func AppidCounter(period int, statsdURL string) {
 	for {
 		select {
 		case appip = <-AppidChan:
-			do, ok := monitorAppid[appip.Appid]
-			if do && ok {
-				ac, ok := flowCount[appip.Appid]
-				if !ok {
-					ac = new(AppidCount)
-					ac.FromWho = make(map[string]uint64)
-					ac.FromUser = make(map[string]uint64)
-					flowCount[appip.Appid] = ac
-				}
+			ac, ok := flowCount[appip.Appid]
+			if !ok {
+				ac = new(AppidCount)
+				ac.FromWho = make(map[string]uint64)
+				ac.FromUser = make(map[string]uint64)
+				flowCount[appip.Appid] = ac
+			}
 
-				//here we don't count how many times the ip or useid used this request
-				//so simply set it to zero
-				ac.FromUser[appip.Userid] = 0
-				ac.FromWho[appip.IP] = 0
+			//here we don't count how many times the ip or useid used this request
+			//so simply set it to zero
+			ac.FromUser[appip.Userid] = 0
+			ac.FromWho[appip.IP] = 0
 
-				ac.Counter++
+			ac.Counter++
 
-				err := c.Incr("request.count", []string{appip.Appid}, 1)
-				if err != nil {
-					log.Println(err)
-				}
-
+			err := c.Incr("request.count", []string{"appid:" + appip.Appid}, 1)
+			if err != nil {
+				log.Println(err)
 			}
 
 		case <-timeCh:
@@ -207,13 +204,20 @@ func goDatadog(c *statsd.Client, flowCount map[string]*AppidCount) {
 	for appid, v := range flowCount {
 		numOfIP := len(v.FromWho)
 		v.Counter = 0
-		err := c.Gauge("num.source", float64(numOfIP), []string{appid}, 1)
+		err := c.Gauge("num.source", float64(numOfIP), []string{"appid:" + appid}, 1)
 		if err != nil {
 			log.Println(err)
 		}
+		if numOfIP > 0 {
+			fmt.Printf("[%s] has below ip (%d):\n", appid, numOfIP)
+			for ip := range v.FromWho {
+				fmt.Printf("%s\n", ip)
+			}
+			fmt.Printf("-----------------------------------------\n")
+		}
 
 		numOfUserID := len(v.FromUser)
-		err = c.Gauge("num.userid", float64(numOfUserID), []string{appid}, 1)
+		err = c.Gauge("num.userid", float64(numOfUserID), []string{"appid:" + appid}, 1)
 		if err != nil {
 			log.Println(err)
 		}
