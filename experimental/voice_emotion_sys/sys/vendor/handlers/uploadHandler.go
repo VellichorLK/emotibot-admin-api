@@ -235,6 +235,8 @@ func updateDatabase(fi *FileInfo) error {
 }
 
 func goTaskOnFail(sid string) {
+
+	//remove database record
 	id, _ := strconv.ParseUint(sid, 10, 64)
 	err := DeleteFileRecord(id)
 	if err != nil {
