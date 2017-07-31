@@ -175,7 +175,6 @@ services:
             - "mysql"
         environment:
             HT_DB_HOST: ${VOICE_EMOTION_HOUTA_DB_HOST}
-            HT_MASTER_DB_HOST: ${VOICE_EMOTION_HOUTA_MASTER_DB_HOST}
             HT_DB_NAME: ${VOICE_EMOTION_HOUTA_DB_NAME}
             HT_DB_ACCOUNT: ${VOICE_EMOTION_HOUTA_DB_ACCOUNT}
             HT_DB_PASSWORD: ${VOICE_EMOTION_HOUTA_DB_PASSWORD}
