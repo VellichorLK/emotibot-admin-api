@@ -129,7 +129,7 @@ services:
             ENV_KEY_ALWAYS_USE_NEW_WORKERS: "false"
         volumes:
             - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}:/usr/src/app/output
-            - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:/home/deployer/persistant_storage/voice_emotion/upload_file
+            - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}
         restart: always
         depends_on:
             - "rabbitmq"
