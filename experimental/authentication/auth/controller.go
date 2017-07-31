@@ -87,11 +87,10 @@ func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 }
 
 func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
-	// TODO(mike): frontend php login with GET, need to change to POST
-	//if r.Method != "POST" {
-	//	HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
-	//	return
-	//}
+	if r.Method != "POST" {
+		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+		return
+	}
 
 	// parse param
 	if err := r.ParseForm(); err != nil {
@@ -110,7 +109,9 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 	// (TODO)check cache
 
 	// return user_id, user_type, enterprise_id, appid
-	cmd := fmt.Sprintf("select ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from user_list ul left join role_list rl on (ul.role_id=rl.role_id) where user_name=\"%s\" and password=\"%s\"", user_name, password)
+	// select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name='test1' and password='1c63129ae9db9c60c3e8aa94d3e00495') as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)
+
+	cmd := fmt.Sprintf("select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name=\"%s\" and password=\"%s\") as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)", user_name, password)
 	rows, err := dao.Query(cmd)
 	log.Printf("cmd: %s", cmd)
 	if HandleError(-1, err, w) {
@@ -121,6 +122,7 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 		type priv struct {
 		}
 		type row struct {
+			App_id        string         `json:"appid"`
 			User_id       string         `json:"user_id"`
 			User_type     int            `json:"user_type"`
 			Enterprise_id string         `json:"enterprise_id"`
@@ -128,11 +130,12 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 			Role_name     sql.NullString `json:"role_name"`
 		}
 		var r row
-		err := rows.Scan(&r.User_id, &r.User_type, &r.Enterprise_id, &r.Privilege, &r.Role_name)
+		err := rows.Scan(&r.App_id, &r.User_id, &r.User_type, &r.Enterprise_id, &r.Privilege, &r.Role_name)
 		log.Printf("err: %s, r: %s", err, r)
 		if HandleError(-2, err, w) {
 			return
 		}
+
 		RespJson(w, &r)
 		return
 	}
