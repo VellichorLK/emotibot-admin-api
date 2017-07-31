@@ -23,7 +23,7 @@ var FilePrefix string
 
 //Upload handler to store the file and start the task
 func Upload(w http.ResponseWriter, r *http.Request) {
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

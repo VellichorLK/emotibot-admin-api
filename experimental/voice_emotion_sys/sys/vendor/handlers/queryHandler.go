@@ -19,7 +19,7 @@ const MaxSlash = 6
 //QueryEmotion for basePath/emotion/{serviceId}
 func QueryEmotion(w http.ResponseWriter, r *http.Request) {
 
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -52,7 +52,7 @@ func QueryEmotion(w http.ResponseWriter, r *http.Request) {
 */
 
 func QueryEmotions(w http.ResponseWriter, r *http.Request) {
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -82,7 +82,7 @@ func QueryEmotions(w http.ResponseWriter, r *http.Request) {
 
 func QueryContinue(w http.ResponseWriter, r *http.Request) {
 
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -196,7 +196,7 @@ func Query(appid string, cursor string) ([]byte, int, error) {
 }
 
 func QueryEmotionDetail(w http.ResponseWriter, r *http.Request) {
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -233,7 +233,7 @@ func QueryEmotionDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 func GenerateReport(w http.ResponseWriter, r *http.Request) {
-	appid := r.Header.Get(NAPPID)
+	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
