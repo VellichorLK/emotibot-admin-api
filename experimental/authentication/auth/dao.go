@@ -21,7 +21,7 @@ type mysqlWrapper struct {
 
 type mysqlWrapperITF interface {
 	Init(db_url string, db_user string, db_pass string, db_name string) error
-	Query(cmd string, args ...interface{}) (*sql.Rows, error)
+	Query(cmd string) (*sql.Rows, error)
 	Exec(query string, args ...interface{}) (sql.Result, error) // TODO(mike): wrapper.Result
 	Destroy() error
 }
@@ -39,13 +39,13 @@ func (dao *mysqlWrapper) Init(db_url string, db_user string, db_pass string, db_
 	return dao.mysql.Ping()
 }
 
-func (dao *mysqlWrapper) Query(cmd string, args ...interface{}) (*sql.Rows, error) {
+func (dao *mysqlWrapper) Query(cmd string) (*sql.Rows, error) {
 	// TODO(mike): cmd parser / validation
 	if cmd == "" {
 		return nil, errors.New("invalid sql command")
 	}
 	log.Printf("command: %s", cmd)
-	return dao.mysql.Query(cmd, args)
+	return dao.mysql.Query(cmd)
 }
 
 func (dao *mysqlWrapper) Exec(query string, args ...interface{}) (sql.Result, error) {
@@ -53,7 +53,7 @@ func (dao *mysqlWrapper) Exec(query string, args ...interface{}) (sql.Result, er
 	if query == "" {
 		return nil, errors.New("invalid sql command")
 	}
-	return dao.mysql.Exec(query, args)
+	return dao.mysql.Exec(query, args...)
 }
 
 func (dao *mysqlWrapper) Destroy() error {

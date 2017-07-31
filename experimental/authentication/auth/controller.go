@@ -3,6 +3,7 @@ package auth
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -68,7 +69,8 @@ func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 	// (TODO) check cache
 
 	// check database if cache miss
-	rows, err := dao.Query("select count(app_id) from appid_list where app_id = ? AND activation = ?", appid, true)
+	cmd := fmt.Sprintf("select count(app_id) from appid_list where app_id = \"%s\" AND activation = true", appid)
+	rows, err := dao.Query(cmd)
 	if HandleHttpError(http.StatusInternalServerError, err, w) {
 		return
 	}
@@ -108,7 +110,9 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 	// (TODO)check cache
 
 	// return user_id, user_type, enterprise_id, appid
-	rows, err := dao.Query("select ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from user_list ul left join role_list rl on (ul.role_id = rl.role_id and user_name = ? and password = ?)", user_name, password)
+	cmd := fmt.Sprintf("select ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from user_list ul left join role_list rl on (ul.role_id=rl.role_id) where user_name=\"%s\" and password=\"%s\"", user_name, password)
+	rows, err := dao.Query(cmd)
+	log.Printf("cmd: %s", cmd)
 	if HandleError(-1, err, w) {
 		return
 	}
@@ -125,6 +129,7 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 		}
 		var r row
 		err := rows.Scan(&r.User_id, &r.User_type, &r.Enterprise_id, &r.Privilege, &r.Role_name)
+		log.Printf("err: %s, r: %s", err, r)
 		if HandleError(-2, err, w) {
 			return
 		}
@@ -175,7 +180,8 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 			generate enterprise_id and insert into enterprise_list
 			recovery if any of above 2 actions failed
 	*/
-	rows, err := dao.Query("select enterprise_id,app_id from enterprise_list where enterprise_name = ?", enterprise_name)
+	cmd := fmt.Sprintf("select enterprise_id,app_id from enterprise_list where enterprise_name=\"%s\"", enterprise_name)
+	rows, err := dao.Query(cmd)
 	if HandleError(-1, err, w) {
 		return
 	}
@@ -200,7 +206,7 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 			panic(err)
 		}
 		tm := time.Unix(i, 0)
-		_, err = dao.Exec("insert into appid_list values(?, ?, ?, ?, ?, ?", app_id, time.Now(), api_cnt, tm, ana_duration, activation)
+		_, err = dao.Exec("insert into appid_list values(?, ?, ?, ?, ?, ?)", app_id, time.Now(), api_cnt, tm, ana_duration, activation)
 		log.Printf("insert into appid_list, err: %s", err)
 		if HandleError(-3, err, w) {
 			return
@@ -217,7 +223,7 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 	user_id := GenUserId()
 	log.Printf("enterprise_id: %s, app_id: %s, user_id: %s", enterprise_id, app_id, user_id)
 
-	_, err = dao.Exec("insert into user_list values(, ?, ?, ?, ?, ?, ?)", user_id, user_name, user_type, password, nil, email, enterprise_id)
+	_, err = dao.Exec("insert into user_list values(?, ?, ?, ?, ?, ?, ?)", user_id, user_name, user_type, password, nil, email, enterprise_id)
 	log.Printf("insert into user_list, err: %s", err)
 	// TODO(mike): handle conflict
 	if HandleError(-5, err, w) {
