@@ -3,7 +3,6 @@ package auth
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -26,7 +25,7 @@ func SetRoute(c *Configuration) error {
 	// TODO(mike): input parameters verification
 
 	log.Printf("config: %s", c)
-	dao, err := GetDao(c)
+	dao, err := GetDao(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
 	if err != nil {
 		return err
 	}
@@ -47,19 +46,22 @@ func SetRoute(c *Configuration) error {
 	return nil
 }
 
-func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
+// return 200 OK: pass
+// return 403 Forbidden: invalid appid
+// reeturn 500 InternalServerError: database query failure
+func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
 	if r.Method != "GET" {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
 	}
 
 	// get appid
-	appid := r.URL.Path[len(const_endpoint_appid_validate):]
+	appid := r.Header.Get("Authorization")
 	log.Printf("appid: %s", appid)
 
 	// verify appid
 	if len(appid) != const_appid_length {
-		fmt.Fprint(w, false)
+		HandleHttpError(http.StatusForbidden, errors.New("Forbidden"), w)
 		return
 	}
 
@@ -76,23 +78,26 @@ func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 	}
 	log.Println(count)
 	if count >= 1 {
-		fmt.Fprint(w, true)
+		// do noting rturn 200
 	} else {
-		fmt.Fprint(w, false)
+		HandleHttpError(http.StatusForbidden, errors.New("Forbidden"), w)
 	}
 }
 
-func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
+func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
+	// TODO(mike): frontend php login with GET, need to change to POST
 	//if r.Method != "POST" {
 	//	HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 	//	return
 	//}
 
 	// parse param
-	err := r.ParseForm()
-	if HandleHttpError(http.StatusBadRequest, err, w) {
+	if err := r.ParseForm(); err != nil {
+		HandleHttpError(http.StatusBadRequest, err, w)
 		return
 	}
+	log.Println(r.Form)
+
 	user_name := r.FormValue("user_name")
 	password := r.FormValue("password")
 	log.Printf("user_name: %s, password: %s", user_name, password)
@@ -126,19 +131,18 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 		RespJson(w, &r)
 		return
 	}
-	http.Error(w, "invalid user", http.StatusForbidden)
-
+	HandleHttpError(http.StatusForbidden, errors.New("invalid user"), w)
 }
 
-func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
+func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
 	if r.Method != "POST" {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
 	}
 
 	// 1. parse form
-	err := r.ParseForm()
-	if HandleHttpError(http.StatusBadRequest, err, w) {
+	if err := r.ParseForm(); err != nil {
+		HandleHttpError(http.StatusBadRequest, err, w)
 		return
 	}
 	log.Println(r.Form)
@@ -160,7 +164,6 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 
 	if len(enterprise_name) == 0 || len(user_name) == 0 || len(password) == 0 {
 		HandleHttpError(http.StatusBadRequest, errors.New("lack of required parameters"), w)
-		//http.Error(w, "lack of required parameters", http.StatusBadRequest)
 		return
 	}
 	// 3. create enterprise entry, if enterprise exist, goto next stage
@@ -192,51 +195,39 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 		// add app_id entry
 		app_id = GenAppId()
 		enterprise_id = GenEnterpriseId()
-		stmtIns, err := dao.Prepare("insert into appid_list values(?, ?, ?, ?, ?, ?)")
-		defer stmtIns.Close()
-		if HandleError(-3, err, w) {
-			// goto ?
-			return
-		}
 		i, err := strconv.ParseInt(exp_time, 10, 64)
 		if err != nil {
 			panic(err)
 		}
 		tm := time.Unix(i, 0)
-		_, err = stmtIns.Exec(app_id, time.Now(), api_cnt, tm, ana_duration, activation)
-		if HandleError(-4, err, w) {
-			// goto ?
+		_, err = dao.Exec("insert into appid_list values(?, ?, ?, ?, ?, ?", app_id, time.Now(), api_cnt, tm, ana_duration, activation)
+		log.Printf("insert into appid_list, err: %s", err)
+		if HandleError(-3, err, w) {
 			return
 		}
-		// add enterprise_id entry
-		stmtIns2, err2 := dao.Prepare("insert into enterprise_list values(?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmtIns2.Close()
-		if HandleError(-5, err2, w) {
-			// goto ?
-			return
-		}
-		_, err2 = stmtIns2.Exec(enterprise_id, enterprise_name, time.Now(), industry, phone, location, people_number, app_id)
-		if HandleError(-6, err2, w) {
-			// goto ?
+
+		_, err2 := dao.Exec("insert into enterprise_list values(?, ?, ?, ?, ?, ?, ?, ?)", enterprise_id, enterprise_name, time.Now(), industry, phone, location, people_number, app_id)
+
+		log.Printf("insert enterprise_list, err2: %s", err2)
+		if HandleError(-4, err2, w) {
 			return
 		}
 	}
 	// 4. create user entry, 409 if exist
 	user_id := GenUserId()
 	log.Printf("enterprise_id: %s, app_id: %s, user_id: %s", enterprise_id, app_id, user_id)
-	stmtIns, err := dao.Prepare("insert into user_list values(?, ?, ?, ?, ?, ?, ?)") // user_id, user_name, user_type, password, role_id, email, enterprise_id
-	defer stmtIns.Close()
-	_, err = stmtIns.Exec(user_id, user_name, user_type, password, nil, email, enterprise_id)
-	// TODO: deal with conflict
-	if HandleError(-7, err, w) {
+
+	_, err = dao.Exec("insert into user_list values(, ?, ?, ?, ?, ?, ?)", user_id, user_name, user_type, password, nil, email, enterprise_id)
+	log.Printf("insert into user_list, err: %s", err)
+	// TODO(mike): handle conflict
+	if HandleError(-5, err, w) {
 		// goto
 		return
 	}
 }
 
 // List all enterprises and its appid/login username, password
-func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *sql.DB) {
-	log.Printf("c: %s", c)
+func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
 	if r.Method != "GET" {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
 		return
