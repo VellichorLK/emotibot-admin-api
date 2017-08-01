@@ -127,7 +127,7 @@ func StartSendTaskService(host string, port int, user string, pwd string, taskRe
 		task, corrID, queueName, priority := taskReceive()
 		//log.Println("task:"+task, " , file_id:"+corrID, ", queueName:"+queueName, ", priority:"+priority)
 		//log.Printf("task:%s, corrID:%s, queueName:%s, priority:%v\n ", task, corrID, queueName, priority)
-	retry:
+
 		err = ch.Publish(
 			"",        // exchange
 			queueName, // routing key
@@ -141,10 +141,9 @@ func StartSendTaskService(host string, port int, user string, pwd string, taskRe
 				DeliveryMode:  amqp.Persistent,
 			})
 		if err != nil {
-			//RelyQueue <- false
+			RelyQueue <- false
 			failOnError(err, "Failed to publish a message. Reconnect to rabbitmq")
 			ch = rebuildChannel(rc)
-			goto retry
 		} else {
 			RelyQueue <- true
 		}
