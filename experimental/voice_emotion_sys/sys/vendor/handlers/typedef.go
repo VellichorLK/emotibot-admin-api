@@ -55,16 +55,17 @@ type FileInfo struct {
 }
 
 type BasicInfo struct {
-	FileID     string `json:"file_id"`
-	FileName   string `json:"file_name"`
-	FileType   string `json:"file_type"`
-	Duration   uint32 `json:"duration"`
-	Size       uint64 `json:"size"`
-	CreateTime uint64 `json:"created_time"`
-	Checksum   string `json:"checksum"`
-	Tag        string `json:"tag1"`
-	Tag2       string `json:"tag2"`
-	Priority   uint8  `json:"-"`
+	FileID         string `json:"file_id"`
+	FileName       string `json:"file_name"`
+	FileType       string `json:"file_type"`
+	Duration       uint32 `json:"duration"`
+	Size           uint64 `json:"size"`
+	CreateTime     uint64 `json:"created_time"`
+	Checksum       string `json:"checksum"`
+	Tag            string `json:"tag1"`
+	Tag2           string `json:"tag2"`
+	Priority       uint8  `json:"-"`
+	AnalysisResult int    `json:"analysis_result"`
 }
 
 //ReturnBlock is used for api /emotion/files/<file_id>

@@ -78,13 +78,13 @@ const UpdateResultSQL = "update " + MainTable + " set " + NANAST + "=? ," + NANA
 	"=? where " + NID + "=?"
 
 const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NDURATION +
-	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE +
+	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
 
 const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NDURATION + "," +
-	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE +
+	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES +
 	" from " + MainTable + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 	",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
 	AnalysisTable + " where " + NID + "=(select " + NID + " from " + MainTable + " where " +
@@ -392,7 +392,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		var blob []uint8
 
 		err := rows.Scan(&id, &drb.FileID, &drb.FileName, &drb.FileType, &drb.Duration,
-			&drb.CreateTime, &drb.Checksum, &drb.Tag, &drb.Tag2, &drb.Priority, &drb.Size,
+			&drb.CreateTime, &drb.Checksum, &drb.Tag, &drb.Tag2, &drb.Priority, &drb.Size, &drb.AnalysisResult,
 			&file, &st, &ed, &ch, &status, &blob, &emType, &score)
 
 		if err != nil {
@@ -536,7 +536,8 @@ func QueryResult(appid string, conditions string, conditions2 string, rbs *[]*Re
 		var score sql.NullFloat64
 
 		err := rows.Scan(&nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
-			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &channel, &label, &score)
+			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &nrb.AnalysisResult,
+			&channel, &label, &score)
 
 		if err != nil {
 			log.Println(err)
