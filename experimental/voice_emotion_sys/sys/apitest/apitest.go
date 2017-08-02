@@ -95,6 +95,12 @@ func checkDetail(p *Profile, appidChan chan string, drb *handlers.DetailReturnBl
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Println(err)
+			select {
+			case appidChan <- appid:
+			case <-time.After(500 * time.Millisecond):
+				log.Printf("[Warning] waiting task queue is full, drop %s\n", appid)
+			}
+			continue
 		}
 
 		body, err := ioutil.ReadAll(resp.Body)
