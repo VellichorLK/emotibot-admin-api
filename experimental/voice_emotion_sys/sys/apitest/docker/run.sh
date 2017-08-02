@@ -6,11 +6,11 @@
 REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 # <EDIT_ME>
-CONTAINER=tester
+CONTAINER=voice_emotion_tester
 # </EDIT_ME>
 
 # Get tags from args
-TAG=20170801
+TAG=20170802
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 echo "# Launching $DOCKER_IMAGE"
 # Check if docker image exists (locally or on the registry)
@@ -26,6 +26,11 @@ fi
 echo "# Great! Docker image found: $DOCKER_IMAGE"
 
 
+if [ $# != 1 ];then
+  echo "need the mount folder"
+  echo "$0 /your/path/to/testfile/folder"
+  exit 1
+fi
 
 # global config:
 # - use local timezone
@@ -33,24 +38,21 @@ echo "# Great! Docker image found: $DOCKER_IMAGE"
 # - restart = always
 globalConf="
   -v /etc/localtime:/etc/localtime \
-  --restart always \
   --log-opt max-size=20m \
   --log-opt max-file=20 \
 "
 
 # <EDIT_ME>
 moduleConf="
-  --env-file $envfile \
+  -v $1:/usr/src/app/testfile \
 "
 # </EDIT_ME>
 
 docker rm -f -v $CONTAINER
-cmd="docker run -t --name $CONTAINER \
+cmd="docker run -it --name $CONTAINER \
   $globalConf \
   $moduleConf \
   $DOCKER_IMAGE \
-  $@ \
 "
 echo $cmd
-exit 0
 eval $cmd

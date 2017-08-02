@@ -40,6 +40,10 @@ type Profile struct {
 	fileType    string
 	duration    int
 	mode        string
+	save        string
+	createT     int64
+	tag1        string
+	tag2        string
 }
 
 var uploadSuccessCount uint64
@@ -273,10 +277,16 @@ func makeProfile() (*Profile, error) {
 	flag.IntVar(&p.period, "p", 300, "second to continuely send the task")
 	flag.StringVar(&p.url, "h", "https://api-sh.emotibot.com", "url to send the task to.")
 	flag.StringVar(&p.file, "f", "", "the file to upload to server")
+
 	//flag.StringVar(&p.config, "g", "", "config file to use. Currently not supported")
 	flag.StringVar(&p.fileType, "t", "wav", "file extension")
-	flag.IntVar(&p.duration, "d", 143136, "period of voice in second")
+	now := time.Now()
+	flag.Int64Var(&p.createT, "r", now.Unix(), "create_time of file")
+	flag.IntVar(&p.duration, "d", 143, "period of voice in second")
 	flag.StringVar(&p.mode, "m", "single", "stress test or test single file")
+	flag.StringVar(&p.save, "s", "", "save the resutl in json format to the assigned file. Only used at single mode")
+	flag.StringVar(&p.tag1, "t1", "", "tag1")
+	flag.StringVar(&p.tag2, "t2", "", "tag2")
 	kvHeader := flag.String("a", handlers.NAUTHORIZATION+":testappid", "authentication in header")
 	flag.Parse()
 
@@ -284,8 +294,9 @@ func makeProfile() (*Profile, error) {
 	p.params = make(map[string]string)
 	p.params[handlers.NFILETYPE] = p.fileType
 	p.params[handlers.NDURATION] = strconv.Itoa(p.duration)
-	now := time.Now()
-	p.params[handlers.NFILET] = strconv.FormatInt(now.Unix(), 10)
+	p.params[handlers.NFILET] = strconv.FormatInt(p.createT, 10)
+	p.params[handlers.NTAG] = p.tag1
+	p.params[handlers.NTAG2] = p.tag2
 
 	//header parameter
 	p.headers = make(map[string]string)
@@ -369,6 +380,21 @@ func correctnessTest(p *Profile) {
 		log.Printf("[test_result]:%serror%s\n", CLR_R, CLR_N)
 	}
 
+	if p.save != "" {
+		f, err := os.Create(p.save)
+		if err != nil {
+			log.Println(err)
+		} else {
+			defer f.Close()
+			d, err := json.Marshal(drb)
+			if err != nil {
+				log.Println(err)
+			} else {
+				f.WriteString(string(d[:]))
+			}
+		}
+
+	}
 }
 
 func usage() {
