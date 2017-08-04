@@ -1,22 +1,25 @@
 package auth
 
 import (
-	"database/sql"
 	"errors"
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 const (
-	const_endpoint_appid_validate      string = "/auth/v1/appid/validate"
-	const_endpoint_user_login          string = "/auth/v1/user/login"
-	const_endpoint_enterprises         string = "/auth/v1/enterprises"
-	const_endpoint_enterprise_register string = "/auth/v1/enterprise/register"
+	// endpoint: auth
+	const_endpoint_appid_validate string = "/auth/v1/appid/validate"
+	const_endpoint_user_login     string = "/auth/v1/user/login"
 
-	const_appid_length    int = 32 // md5sum length
+	// endpoint: enterprise management
+	const_endpoint_enterprises         string = "/auth/v1/enterprises"         // GET /auth/v1/enterprises
+	const_endpoint_enterprise_register string = "/auth/v1/enterprise/register" // POST /auth/v1/enterprise/register
+	const_endpoint_enterprise_id       string = "/auth/v1/enterprise/"         // GET|PATCH|DELETE /auth/v1/enterprise/<enterprise_id>
+
+	// endpoint: role management
+	// endpoint: general user management
+	// endpoint: sys settings
+
 	const_type_super_user int = 0
 )
 
@@ -25,70 +28,61 @@ const (
 func SetRoute(c *Configuration) error {
 	// TODO(mike): input parameters verification
 
-	log.Printf("config: %s", c)
-	dao, err := GetDao(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
+	LogInfo.Printf("config: %s", c)
+	// dao, err := GetDao(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
+	dao, err := DaoMysqlInit(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
 	if err != nil {
 		return err
 	}
-	log.Println(dao)
+	LogInfo.Println(dao)
+	// auth management
 	http.HandleFunc(const_endpoint_appid_validate, func(w http.ResponseWriter, r *http.Request) {
 		appidValidateHandler(w, r, c, dao)
 	})
 	http.HandleFunc(const_endpoint_user_login, func(w http.ResponseWriter, r *http.Request) {
 		userLoginHandler(w, r, c, dao)
 	})
+	// enterprise management
 	http.HandleFunc(const_endpoint_enterprise_register, func(w http.ResponseWriter, r *http.Request) {
 		EnterpriseRegisterHandler(w, r, c, dao)
 	})
 	http.HandleFunc(const_endpoint_enterprises, func(w http.ResponseWriter, r *http.Request) {
 		EnterprisesHandler(w, r, c, dao)
 	})
-	log.Printf("Set route OK.")
+	http.HandleFunc(const_endpoint_enterprise_id, func(w http.ResponseWriter, r *http.Request) {
+		EnterpriseIdHandler(w, r, c, dao)
+	})
+
+	LogInfo.Printf("Set route OK.")
 	return nil
 }
 
 // return 200 OK: pass
 // return 403 Forbidden: invalid appid
 // reeturn 500 InternalServerError: database query failure
-func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
-	if r.Method != "GET" {
-		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+func appidValidateHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET"}, w) {
 		return
 	}
 
 	// get appid
 	appid := r.Header.Get("Authorization")
-	log.Printf("appid: %s", appid)
+	LogInfo.Printf("appid: %s", appid)
 
-	// verify appid
-	if len(appid) != const_appid_length {
-		HandleHttpError(http.StatusForbidden, errors.New("Forbidden"), w)
-		return
-	}
+	// TODO(mike): check cache
 
-	// (TODO) check cache
-
-	// check database if cache miss
-	cmd := fmt.Sprintf("select count(app_id) from appid_list where app_id = \"%s\" AND activation = true", appid)
-	rows, err := dao.Query(cmd)
-	if HandleHttpError(http.StatusInternalServerError, err, w) {
-		return
-	}
-	var count int
-	for rows.Next() {
-		rows.Scan(&count)
-	}
-	log.Println(count)
-	if count >= 1 {
-		// do noting rturn 200
-	} else {
-		HandleHttpError(http.StatusForbidden, errors.New("Forbidden"), w)
+	if valid, err := AppIdValidation(appid, dao); err != nil || !valid {
+		if !valid {
+			HandleHttpError(http.StatusForbidden, errors.New("Forbidden"), w)
+		} else {
+			HandleHttpError(http.StatusInternalServerError, err, w)
+		}
 	}
 }
 
-func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
-	if r.Method != "POST" {
-		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+// return 200 with user infor. or 403
+func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
 	}
 
@@ -97,54 +91,22 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 		HandleHttpError(http.StatusBadRequest, err, w)
 		return
 	}
-	log.Println(r.Form)
+	LogInfo.Println(r.Form)
 
 	user_name := r.FormValue("user_name")
 	password := r.FormValue("password")
-	log.Printf("user_name: %s, password: %s", user_name, password)
-	if len(user_name) == 0 || len(password) == 0 {
-		http.Error(w, "invalid parameters", http.StatusBadRequest)
+	LogInfo.Printf("user_name: %s, password: %s", user_name, password)
+
+	u, err := UserLoginValidation(user_name, password, dao)
+	if err != nil {
+		HandleHttpError(http.StatusForbidden, err, w)
 		return
 	}
-	// (TODO)check cache
-
-	// return user_id, user_type, enterprise_id, appid
-	// select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name='test1' and password='1c63129ae9db9c60c3e8aa94d3e00495') as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)
-
-	cmd := fmt.Sprintf("select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name=\"%s\" and password=\"%s\") as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)", user_name, password)
-	rows, err := dao.Query(cmd)
-	log.Printf("cmd: %s", cmd)
-	if HandleError(-1, err, w) {
-		return
-	}
-
-	for rows.Next() {
-		type priv struct {
-		}
-		type row struct {
-			App_id        string         `json:"appid"`
-			User_id       string         `json:"user_id"`
-			User_type     int            `json:"user_type"`
-			Enterprise_id string         `json:"enterprise_id"`
-			Privilege     interface{}    `json:"privilege"`
-			Role_name     sql.NullString `json:"role_name"`
-		}
-		var r row
-		err := rows.Scan(&r.App_id, &r.User_id, &r.User_type, &r.Enterprise_id, &r.Privilege, &r.Role_name)
-		log.Printf("err: %s, r: %s", err, r)
-		if HandleError(-2, err, w) {
-			return
-		}
-
-		RespJson(w, &r)
-		return
-	}
-	HandleHttpError(http.StatusForbidden, errors.New("invalid user"), w)
+	RespJson(w, &u)
 }
 
-func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
-	if r.Method != "POST" {
-		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
 	}
 
@@ -153,123 +115,80 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 		HandleHttpError(http.StatusBadRequest, err, w)
 		return
 	}
-	log.Println(r.Form)
+	LogInfo.Println(r.Form)
+
+	var p EnterpriseUserProp
+	var a AppIdProp
 
 	// 2. check required parameters & assign default value
-	enterprise_name := r.FormValue("nickName")
-	user_name := r.FormValue("account")
-	password := r.FormValue("password")
-	location := r.FormValue("location")
-	people_number := r.FormValue("peopleNumber")
-	industry := r.FormValue("industry")
-	email := r.FormValue("linkEmail")
-	phone := r.FormValue("linkPhone")
-	api_cnt := r.FormValue("apiCnt")
-	exp_time := r.FormValue("expTime")
-	ana_duration := r.FormValue("anaDuration")
-	activation := true
-	user_type := const_type_super_user
+	p.EnterpriseName = r.FormValue("nickName")
+	p.UserName = r.FormValue("account")
+	p.UserPass = r.FormValue("password")
+	p.Address = r.FormValue("location")
+	p.PeopleNumbers, _ = strconv.Atoi(r.FormValue("peopleNumber"))
+	p.Industry = r.FormValue("industry")
+	p.UserEmail = r.FormValue("linkEmail")
+	p.PhoneNumber = r.FormValue("linkPhone")
+	p.UserType = const_type_super_user
+	a.ApiCnt = r.FormValue("apiCnt")
+	a.ExpirationTime = r.FormValue("expTime")
+	a.AnalysisDuration = r.FormValue("anaDuration")
+	a.Activation = true
 
-	if len(enterprise_name) == 0 || len(user_name) == 0 || len(password) == 0 {
-		HandleHttpError(http.StatusBadRequest, errors.New("lack of required parameters"), w)
-		return
-	}
-	// 3. create enterprise entry, if enterprise exist, goto next stage
-	/*
-		if enterprise_name in enterprise_list
-			goto next stage
-		else
-			generate app_id and insert into appid_list
-			generate enterprise_id and insert into enterprise_list
-			recovery if any of above 2 actions failed
-	*/
-	cmd := fmt.Sprintf("select enterprise_id,app_id from enterprise_list where enterprise_name=\"%s\"", enterprise_name)
-	rows, err := dao.Query(cmd)
-	if HandleError(-1, err, w) {
-		return
-	}
-	var enterprise_id string
-	var app_id string
-	// TODO(mike): check if rows count > 2?
-	for rows.Next() {
-		err := rows.Scan(&enterprise_id, &app_id)
-		if HandleError(-2, err, w) {
-			// goto ?
-			return
-		}
-		break
-	}
-	// add app_id entry and enterprise_id entry if need
-	if len(enterprise_id) == 0 {
-		// add app_id entry
-		app_id = GenAppId()
-		enterprise_id = GenEnterpriseId()
-		i, err := strconv.ParseInt(exp_time, 10, 64)
-		if err != nil {
-			panic(err)
-		}
-		tm := time.Unix(i, 0)
-		_, err = dao.Exec("insert into appid_list values(?, ?, ?, ?, ?, ?)", app_id, time.Now(), api_cnt, tm, ana_duration, activation)
-		log.Printf("insert into appid_list, err: %s", err)
-		if HandleError(-3, err, w) {
-			return
-		}
-
-		_, err2 := dao.Exec("insert into enterprise_list values(?, ?, ?, ?, ?, ?, ?, ?)", enterprise_id, enterprise_name, time.Now(), industry, phone, location, people_number, app_id)
-
-		log.Printf("insert enterprise_list, err2: %s", err2)
-		if HandleError(-4, err2, w) {
-			return
-		}
-	}
-	// 4. create user entry, 409 if exist
-	user_id := GenUserId()
-	log.Printf("enterprise_id: %s, app_id: %s, user_id: %s", enterprise_id, app_id, user_id)
-
-	_, err = dao.Exec("insert into user_list values(?, ?, ?, ?, ?, ?, ?)", user_id, user_name, user_type, password, nil, email, enterprise_id)
-	log.Printf("insert into user_list, err: %s", err)
-	// TODO(mike): handle conflict
-	if HandleError(-5, err, w) {
-		// goto
+	if err := EnterpriseRegister(&p, &a, dao); err != nil {
+		HandleHttpError(http.StatusInternalServerError, err, w)
 		return
 	}
 }
 
 // List all enterprises and its appid/login username, password
-func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *mysqlWrapper) {
-	if r.Method != "GET" {
-		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+// GET /auth/v1/enterprises
+// return 200 / 200 with error {} / 410
+func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET"}, w) {
 		return
 	}
-	// select all from enterprise_list join user_list on enterprise_id
-	rows, err := dao.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id")
+	ents, err := EnterprisesGet(dao)
+	if err != nil {
+		// 200 with error
+		HandleError(-1, err, w)
+		return
+	}
+	RespJson(w, ents)
+}
 
-	if HandleError(-1, err, w) {
+// Handle GET / DELETE / PATCH enterprise_id
+// GET /auth/v1/enterprise/<enterprise_id>, return 200 | 404 | 500
+// DELETE /auth/v1/enterprise/<enterprise_id>,  return 204 | 404 | 500
+// PATCH /auth/v1/enterprise/<enterprise_id>, return 204 | 400 | 404 | 500
+func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	// request method check
+	if HandleHttpMethodError(r.Method, []string{"GET", "DELETE", "PATCH"}, w) {
 		return
 	}
-	type row struct {
-		Enterprise_id   string `json:"enterprise_id"`
-		Enterprise_name string `json:"enterprise_name"`
-		Created_time    string `json:"created_time"`
-		Industry        string `json:"industry"`
-		Phone_number    string `json:"phone_number"`
-		Address         string `json:"address"`
-		People_numbers  int    `json:"people_numbers"`
-		App_id          string `json:"app_id"`
-		User_id         string `json:"user_id"`
-		User_name       string `json:"user_name"`
-		Email           string `json:"email"`
+
+	// get enterprise_id
+	enterprise_id := r.URL.Path[len(const_endpoint_enterprise_id):]
+	if IsValidEnterpriseId(enterprise_id) == false {
+		HandleHttpError(http.StatusBadRequest, errors.New("invalid parameters"), w)
+		return
 	}
-	got := []*row{}
-	for rows.Next() {
-		var r row
-		err := rows.Scan(&r.Enterprise_id, &r.Enterprise_name, &r.Created_time, &r.Industry, &r.Phone_number, &r.Address, &r.People_numbers, &r.App_id, &r.User_id, &r.User_name, &r.Email)
+	LogInfo.Printf("enterprise_id: %s", enterprise_id)
+
+	if r.Method == "GET" {
+		// enterprise_service.get_enterprise(enterprise_id)
+		// select all from enterprise_list join user_list on enterprise_id
+		ent, err := EnterpriseGetById(enterprise_id, d)
 		if err != nil {
-			log.Println(err)
-			continue
+			HandleError(-1, err, w)
+			return
 		}
-		log.Println(r)
-		got = append(got, &r)
+		RespJson(w, ent)
+	} else if r.Method == "DELETE" {
+		// delete appid_list where enterprise_id=enterprise_id
+		// delete user_list where enterprise_id=enterprise_id
+		// delete enterprise_list
+	} else {
+		// PATCH
 	}
-	RespJson(w, got)
 }

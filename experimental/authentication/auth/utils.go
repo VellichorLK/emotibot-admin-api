@@ -3,11 +3,17 @@ package auth
 import (
 	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
 	"time"
+)
+
+const (
+	const_appid_length        int = 32 // md5sum length
+	const_enterpriseid_length int = 32 // md5sum length
+	const_userid_length       int = 32 // md5sum length
 )
 
 type ErrStruct struct {
@@ -15,23 +21,49 @@ type ErrStruct struct {
 	Message string `json:"message"`
 }
 
+// validation
+func IsValidAppId(aid string) bool {
+	if len(aid) != const_appid_length {
+		return false
+	}
+	return true
+}
+
+func IsValidEnterpriseId(eid string) bool {
+	if len(eid) != const_enterpriseid_length {
+		return false
+	}
+	return true
+}
+
+func IsValidUserId(uid string) bool {
+	if len(uid) != const_userid_length {
+		return false
+	}
+	return true
+}
+
 func RespJson(w http.ResponseWriter, es interface{}) {
-	//log.Println(es)
+	//LogInfo.Println(es)
 	js, err := json.Marshal(es)
-	log.Println(js)
+	LogInfo.Println(js)
 	if HandleHttpError(http.StatusInternalServerError, err, w) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	log.Printf("js: %s", js)
+	LogInfo.Printf("js: %s", js)
 	fmt.Fprintf(w, string(js))
 }
 
-func HandleHttpMethodError(request_method string, allow_method string) bool {
-	if request_method != allow_method {
-		return true
+// return true: invalid
+func HandleHttpMethodError(request_method string, allowed_method []string, w http.ResponseWriter) bool {
+	for _, m := range allowed_method {
+		if request_method == m {
+			return false
+		}
 	}
-	return false
+	HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method Not Allowed"), w)
+	return true
 }
 
 func HandleError(err_code int, err error, w http.ResponseWriter) bool {
@@ -39,7 +71,7 @@ func HandleError(err_code int, err error, w http.ResponseWriter) bool {
 		return false
 	}
 	_, fn, line, _ := runtime.Caller(1)
-	log.Printf("%s:%d, %s", fn, line, err.Error())
+	LogInfo.Printf("%s:%d, %s", fn, line, err.Error())
 	es := ErrStruct{err_code, err.Error()}
 	RespJson(w, es)
 	return true
@@ -52,7 +84,7 @@ func HandleHttpError(err_code int, err error, w http.ResponseWriter) bool {
 		return false
 	}
 	_, fn, line, _ := runtime.Caller(1)
-	log.Printf("[%s]%s: %d: %s", time.Now(), fn, line, err.Error())
+	LogInfo.Printf("[%s]%s: %d: %s", time.Now(), fn, line, err.Error())
 	http.Error(w, err.Error(), err_code)
 	return true
 }

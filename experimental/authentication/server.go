@@ -3,18 +3,20 @@ package main
 import (
 	"emotibot.com/emotigo/experimental/authentication/auth"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 func main() {
+	auth.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	c := auth.GetConfig()
-	log.Printf("config: %s", c)
+	auth.LogInfo.Printf("config: %s", c)
 	err := auth.SetRoute(c)
 	if err != nil {
-		log.Fatalf("set route failed. %s", err.Error())
+		auth.LogError.Fatalf("set route failed. %s", err.Error())
 	}
 	p := fmt.Sprintf(":%s", c.ListenPort)
 	http.ListenAndServe(p, nil)
-	log.Println("bye!")
+	auth.LogInfo.Println("bye!")
 }
