@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
@@ -52,7 +53,7 @@ func SetRoute(c *Configuration) error {
 	http.HandleFunc(const_endpoint_enterprise_id, func(w http.ResponseWriter, r *http.Request) {
 		EnterpriseIdHandler(w, r, c, dao)
 	})
-
+	// role management
 	LogInfo.Printf("Set route OK.")
 	return nil
 }
@@ -131,8 +132,9 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 	p.PhoneNumber = r.FormValue("linkPhone")
 	p.UserType = const_type_super_user
 	a.ApiCnt = r.FormValue("apiCnt")
-	a.ExpirationTime = r.FormValue("expTime")
-	a.AnalysisDuration = r.FormValue("anaDuration")
+	exp_time, _ := strconv.ParseInt(r.FormValue("expTime"), 10, 64)
+	a.ExpirationTime = time.Unix(exp_time, 0)
+	a.AnalysisDuration, _ = strconv.Atoi(r.FormValue("anaDuration"))
 	a.Activation = true
 
 	if err := EnterpriseRegister(&p, &a, dao); err != nil {
@@ -175,6 +177,7 @@ func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 	}
 	LogInfo.Printf("enterprise_id: %s", enterprise_id)
 
+	// apploy get/delte/patch
 	if r.Method == "GET" {
 		// enterprise_service.get_enterprise(enterprise_id)
 		// select all from enterprise_list join user_list on enterprise_id
@@ -185,10 +188,17 @@ func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 		}
 		RespJson(w, ent)
 	} else if r.Method == "DELETE" {
+		err := EnterpriseDeleteByIds([]string{enterprise_id}, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		// TODO(mike)
 		// delete appid_list where enterprise_id=enterprise_id
 		// delete user_list where enterprise_id=enterprise_id
 		// delete enterprise_list
 	} else {
+		// TODO(mike)
 		// PATCH
 	}
 }

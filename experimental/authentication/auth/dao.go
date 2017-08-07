@@ -18,20 +18,13 @@ type DaoWrapper struct {
 	mysql *sql.DB
 }
 
-// interface definition
-type Query func(cmd string) (*sql.Rows, error)
-type QueryRow func(cmd string) *sql.Row
-type Exec func(cmd string) (sql.Result, error)
-type Finalize func() error
-
-// func implementation
 func DaoMysqlInit(db_url string, db_user string, db_pass string, db_name string) (d *DaoWrapper, err error) {
 	if len(db_url) == 0 || len(db_user) == 0 || len(db_pass) == 0 || len(db_name) == 0 {
 		return nil, errors.New("invalid parameters!")
 	}
 	LogInfo.Printf("db_url: %s, db_user: %s, db_pass: %s, db_name: %s", db_url, db_user, db_pass, db_name)
 
-	url := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s", db_user, db_pass, db_url, db_name, const_mysql_timeout, const_mysql_read_timeout, const_mysql_write_timeout)
+	url := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=true", db_user, db_pass, db_url, db_name, const_mysql_timeout, const_mysql_read_timeout, const_mysql_write_timeout)
 	LogInfo.Printf("url: %s", url)
 
 	db, err := sql.Open("mysql", url)
@@ -43,38 +36,101 @@ func DaoMysqlInit(db_url string, db_user string, db_pass string, db_name string)
 	return &dao, db.Ping()
 }
 
-func (d *DaoWrapper) Query(cmd string) (*sql.Rows, error) {
-	// TODO(mike): parameter check, isinstance(d, *sqlDB), query syntax check
-	if len(cmd) == 0 || d == nil {
-		return nil, errors.New("invalid parameter")
+// ===== appid related =====
+func (d *DaoWrapper) GetValidAppIdCount(appid string) (int, error) {
+	var c int
+	cmd := fmt.Sprintf("select count(app_id) from appid_list where app_id=\"%s\" and activation=true", appid)
+	LogInfo.Printf("appid: %s, cmd: %s", appid, cmd)
+
+	if err := d.mysql.QueryRow(cmd).Scan(&c); err != nil {
+		return 0, err
 	}
-	LogInfo.Printf("cmd: %s", cmd)
-	return d.mysql.Query(cmd)
+	return c, nil
 }
 
-func (d *DaoWrapper) QueryRow(cmd string) *sql.Row {
-	// TODO(mike): parameter check, isinstance(d, *sqlDB), query syntax check
-	if len(cmd) == 0 || d == nil {
-		return nil
+// ===== user related =====
+func (d *DaoWrapper) GetUserByName(user_name string, password string) (*UserLoginProp, error) {
+	LogInfo.Printf("user_name: %s, password: %s", user_name, password)
+
+	var u UserLoginProp
+	cmd := fmt.Sprintf("select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name=\"%s\" and password=\"%s\") as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)", user_name, password)
+	if err := d.mysql.QueryRow(cmd).Scan(&u.AppId, &u.UserId, &u.UserType, &u.EnterpriseId, &u.Privilege, &u.RoleName); err != nil {
+		// none existed also a kind of error
+		//if err == sql.ErrNoRows {
+		//	return nil, nil
+		//}
+		LogError.Printf("cmd: %s, err: %s", cmd, err)
+		return nil, err
 	}
-	LogInfo.Printf("cmd: %s", cmd)
-	return d.mysql.QueryRow(cmd)
+	u.UserName = user_name
+	return &u, nil
 }
 
-func (d *DaoWrapper) Exec(query string, args ...interface{}) (sql.Result, error) {
-	// TODO(mike): parameter check, isinstance(d, *sqlDB), query syntax check
-	if len(query) == 0 || d == nil {
-		return nil, errors.New("invalid parameter")
-	}
-	return d.mysql.Exec(query, args...)
-}
+// ===== enterprise related =====
+func (d *DaoWrapper) GetEnterpriseByName(enterprise_name string) (*EnterpriseUserProp, error) {
+	cmd := fmt.Sprintf("select enterprise_id,app_id from enterprise_list where enterprise_name=\"%s\"", enterprise_name)
+	LogInfo.Printf("enterprise_name: %s, cmd: %s", enterprise_name, cmd)
 
-func (d *DaoWrapper) Finalize() error {
-	if d != nil {
-		if err := d.mysql.Close(); err != nil {
-			LogInfo.Printf("close mysql failed: %s", err)
-			return err
+	// TODO(mike): enterprise_name should be unique
+	var e EnterpriseUserProp
+	if err := d.mysql.QueryRow(cmd).Scan(&e.EnterpriseId, &e.AppId); err != nil {
+		if err != sql.ErrNoRows {
+			return nil, err
 		}
 	}
-	return nil
+	return &e, nil
+}
+
+func (d *DaoWrapper) GetEnterpriseById(enterprise_id string) (*EnterpriseUserProp, error) {
+	cmd := fmt.Sprintf("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from (select enterprise_id,enterprise_name,created_time,industry,phone_number,address,people_numbers,app_id from enterprise_list where enterprise_id=\"%s\") as el left join user_list ul on el.enterprise_id = ul.enterprise_id", enterprise_id)
+	LogInfo.Printf("enterprise_id: %s, cmd: %s", enterprise_id, cmd)
+
+	// TODO(mike): enterprise_id should be unique
+	var e EnterpriseUserProp
+	if err := d.mysql.QueryRow(cmd).Scan(&e.EnterpriseId, &e.EnterpriseName, &e.CreatedTime, &e.Industry, &e.PhoneNumber, &e.Address, &e.PeopleNumbers, &e.AppId, &e.UserId, &e.UserName, &e.UserEmail); err != nil {
+		if err != sql.ErrNoRows {
+			return nil, err
+		}
+	}
+	return &e, nil
+}
+
+func (d *DaoWrapper) GetEnterprises() ([]*EnterpriseUserProp, error) {
+	rows, err := d.mysql.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id")
+	LogInfo.Printf("rows: %s, err: %s", rows, err)
+	if err != nil {
+		return nil, err
+	}
+
+	got := []*EnterpriseUserProp{}
+	for rows.Next() {
+		var r EnterpriseUserProp
+		err = rows.Scan(&r.EnterpriseId, &r.EnterpriseName, &r.CreatedTime, &r.Industry, &r.PhoneNumber, &r.Address, &r.PeopleNumbers, &r.AppId, &r.UserId, &r.UserName, &r.UserEmail)
+		if err != nil {
+			LogInfo.Println(err)
+			continue
+		}
+		LogInfo.Println(r)
+		got = append(got, &r)
+	}
+	return got, nil
+}
+
+// ===== enterprise register related =====
+func (d *DaoWrapper) AddAppEntry(a *AppIdProp) error {
+	_, err := d.mysql.Exec("insert into appid_list values(?, ?, ?, ?, ?, ?)", a.AppId, a.CreatedTime, a.ApiCnt, a.ExpirationTime, a.AnalysisDuration, a.Activation)
+	LogInfo.Printf("add appid: %s, (%s)", a, err)
+	return err
+}
+
+func (d *DaoWrapper) AddEnterpriseEntry(e *EnterpriseUserProp) error {
+	_, err := d.mysql.Exec("insert into enterprise_list values(?, ?, ?, ?, ?, ?, ?, ?)", e.EnterpriseId, e.EnterpriseName, e.CreatedTime, e.Industry, e.PhoneNumber, e.Address, e.PeopleNumbers, e.AppId)
+	LogInfo.Printf("add enterprise: %s, (%s)", e, err)
+	return err
+}
+
+func (d *DaoWrapper) AddUserEntry(e *EnterpriseUserProp) error {
+	_, err := d.mysql.Exec("insert into user_list values(?, ?, ?, ?, ?, ?, ?)", e.UserId, e.UserName, e.UserType, e.UserPass, nil, e.UserEmail, e.EnterpriseId)
+	LogInfo.Printf("add user: %s, (%s)", e, err)
+	return err
 }

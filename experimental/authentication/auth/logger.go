@@ -6,10 +6,10 @@ import (
 )
 
 var (
-	LogTrace   *log.Logger
-	LogInfo    *log.Logger
-	LogWarning *log.Logger
-	LogError   *log.Logger
+	LogTrace *log.Logger
+	LogInfo  *log.Logger
+	LogWarn  *log.Logger
+	LogError *log.Logger
 )
 
 func LogInit(
@@ -26,7 +26,7 @@ func LogInit(
 		"INFO: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 
-	LogWarning = log.New(warningHandle,
+	LogWarn = log.New(warningHandle,
 		"WARNING: ",
 		log.Ldate|log.Ltime|log.Lshortfile)
 

@@ -44,10 +44,9 @@ func IsValidUserId(uid string) bool {
 }
 
 func RespJson(w http.ResponseWriter, es interface{}) {
-	//LogInfo.Println(es)
 	js, err := json.Marshal(es)
-	LogInfo.Println(js)
 	if HandleHttpError(http.StatusInternalServerError, err, w) {
+		LogError.Printf("jsonize %s failed. %s", es, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -70,8 +69,8 @@ func HandleError(err_code int, err error, w http.ResponseWriter) bool {
 	if err == nil {
 		return false
 	}
-	_, fn, line, _ := runtime.Caller(1)
-	LogInfo.Printf("%s:%d, %s", fn, line, err.Error())
+	_, fn, _, _ := runtime.Caller(1)
+	LogError.Printf("%s: %s", fn, err.Error())
 	es := ErrStruct{err_code, err.Error()}
 	RespJson(w, es)
 	return true
@@ -83,8 +82,9 @@ func HandleHttpError(err_code int, err error, w http.ResponseWriter) bool {
 	if err == nil {
 		return false
 	}
-	_, fn, line, _ := runtime.Caller(1)
-	LogInfo.Printf("[%s]%s: %d: %s", time.Now(), fn, line, err.Error())
+
+	_, fn, _, _ := runtime.Caller(1)
+	LogError.Printf("%s: %s", fn, err.Error())
 	http.Error(w, err.Error(), err_code)
 	return true
 }
