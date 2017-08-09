@@ -220,10 +220,31 @@ services:
             - "mysql"
 
     # ========== TODO(mike) consul
+
+    # ========== elastic-closer
+    elastic-closer:
+        image: ${ESCLOSE_IMAGE}:${ESCLOSE_TAG}
+        container_name: ${ESCLOSE_CONTAINER}
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        external_links:
+            - ${ES_CONTAINER}:elasticsearch
+        environment:
+            ELASTIC_EXPIRE_DAYS: ${ESCLOSE_EXPIRE_DAYS}
+            ELASTIC_HOST: "elasticsearch"
+            ELASTIC_PORT: "${ES_PORT}"
+            ELASTIC_PREFIX: ${ESCLOSE_PREFIX}
+
+
     # ========== elasticsearch
     elasticsearch:
         image: ${ES_IMAGE}:${ES_TAG}
         container_name: ${ES_CONTAINER}
+        volumes:
+            - ${ES_DATA_PATH}/data:/usr/share/elasticsearch/data
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
@@ -260,7 +281,7 @@ services:
         depends_on:
             - "elasticsearch"
         volumes:
-            - ./logstash/logstash.conf:/config-dir/logstash.conf
+            - ${LOG_CONF}:/config-dir/logstash.conf
         command: ["/usr/share/logstash/bin/logstash", "-f", "/config-dir/logstash.conf"]
         entrypoint:
             - sh
