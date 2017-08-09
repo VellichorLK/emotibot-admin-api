@@ -187,9 +187,10 @@ services:
             - '80:80'
             - '443:443'
         logging:
+            driver: gelf
             options:
-                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
-                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+                gelf-address: "udp://172.17.0.1:${LOG_PORT}"
+                tag: "nginx"
         mem_limit: 2048m
         volumes:
             - /etc/localtime:/etc/localtime
@@ -197,9 +198,7 @@ services:
             - ${NGINX_KEY}:/etc/nginx/ssl/nginx.key
             - ${NGINX_CONF}:/etc/nginx/nginx.conf
         restart: always
-        depends_on:
-            - "api-voice-emotion"
-    
+
     # ========== Authentication =========
     authentication:
         image: ${AUTH_IMAGE}:${AUTH_TAG}
@@ -221,4 +220,47 @@ services:
             - "mysql"
 
     # ========== TODO(mike) consul
-    # ========== TODO(mike) logstash 
+    # ========== elasticsearch
+    elasticsearch:
+        image: ${ES_IMAGE}:${ES_TAG}
+        container_name: ${ES_CONTAINER}
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+    # ========== kibana
+    kibana:
+        image: ${KIBANA_IMAGE}:${KIBANA_TAG}
+        container_name: ${KIBANA_CONTAINER}
+        ports:
+            - "${KIBANA_PORT}:${KIBANA_PORT}"
+        external_links:
+            - ${ES_CONTAINER}:elasticsearch
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+
+    # ========== logstash 
+    logstash:
+        image: ${LOG_IMAGE}:${LOG_TAG}
+        container_name: ${LOG_CONTAINER}
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        restart: always
+        external_links:
+            - ${ES_CONTAINER}:elasticsearch
+        ports:
+            - "${LOG_PORT}:${LOG_PORT}/udp"
+        depends_on:
+            - "elasticsearch"
+        volumes:
+            - ./logstash/logstash.conf:/config-dir/logstash.conf
+        command: ["/usr/share/logstash/bin/logstash", "-f", "/config-dir/logstash.conf"]
+        entrypoint:
+            - sh
