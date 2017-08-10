@@ -25,7 +25,7 @@ fi
 echo "# Great! Docker image found: $DOCKER_IMAGE"
 
 ENV=$1
-if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ] && [ "$ENV" != "vip" ] ; then
+if [ "$ENV" != "dev" ] && [ "$ENV" != "idc" ] && [ "$ENV" != "vip" ] && [ "$ENV" != "changhong" ] && [ "$ENV" != "changhong.dev" ]; then
     echo "# Error: parameter does not satisfied."
     exit 1
 fi
@@ -40,6 +40,6 @@ fi
 JAR_DIR=$DIR/../plugin_jar
 
 docker rm -f $CONTAINER
-cmd="docker run --name $CONTAINER -d -v $BASE_DIR/backend_logs:/backend_logs -v $BASE_DIR/config-dir/logstash.$ENV.conf:/config-dir/logstash.conf -v $JAR_DIR:/vendor/jar -p 5043:5043 $DOCKER_IMAGE -f /config-dir/logstash.conf"
+cmd="docker run --name $CONTAINER -td -v $BASE_DIR/backend_logs:/backend_logs -v $BASE_DIR/config-dir/logstash.$ENV.conf:/config-dir/logstash.conf -v $JAR_DIR:/vendor/jar -p 12201:12201/udp -p 5043:5043 $DOCKER_IMAGE -f /config-dir/logstash.conf"
 echo $cmd
 eval $cmd
