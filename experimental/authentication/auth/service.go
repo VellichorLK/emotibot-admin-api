@@ -12,25 +12,25 @@ type EnterpriseUserProp struct {
 	EnterpriseId   string    `json:"enterprise_id"`
 	EnterpriseName string    `json:"enterprise_name"`
 	CreatedTime    time.Time `json:"created_time"`
-	Industry       string    `json:"industry"`
-	PhoneNumber    string    `json:"phone_number"`
-	Address        string    `json:"address"`
-	PeopleNumbers  int       `json:"people_numbers"`
+	Industry       string    `json:"industry"`       // editable
+	PhoneNumber    string    `json:"phone_number"`   // editable
+	Address        string    `json:"address"`        // editable
+	PeopleNumbers  int       `json:"people_numbers"` // editable
 	AppId          string    `json:"app_id"`
 	UserId         string    `json:"user_id"`
 	UserName       string    `json:"user_name"`
 	UserPass       string    `json:"user_pass"`
 	UserType       int       `json:"user_type"`
-	UserEmail      string    `json:"user_email"`
+	UserEmail      string    `json:"user_email"` // editable
 }
 
 type AppIdProp struct {
 	AppId            string    `json:"app_id"`
-	ApiCnt           string    `json:"api_cnt"`
+	ApiCnt           string    `json:"api_cnt"` // editable
 	CreatedTime      time.Time `json:"creted_time"`
-	ExpirationTime   time.Time `json:"exp_time"`
-	AnalysisDuration int       `json:"ana_duration"`
-	Activation       bool      `json:"activation"`
+	ExpirationTime   time.Time `json:"exp_time"`     // editable
+	AnalysisDuration int       `json:"ana_duration"` // editable
+	Activation       bool      `json:"activation"`   // editable
 }
 
 type UserLoginProp struct {
@@ -138,6 +138,52 @@ func EnterpriseGetById(enterprise_id string, d *DaoWrapper) (*EnterpriseUserProp
 }
 
 func EnterpriseDeleteByIds(ent_ids []string, d *DaoWrapper) error {
-	// TBD
+	if d == nil {
+		return errors.New("dao is nil")
+	}
+	var err error
+	for _, m := range ent_ids {
+		// TODO(mike)
+		// delete all users in user_list where enterprise_id=enterprise_id
+		// delete enterprise_list
+		// delete appid_list where enterprise_id=enterprise_id
+		if err = d.DeleteEnterprise(enterprise_id); err != nil {
+			LogWarn.Printf("delete %s failed. %s", enterprise_id, err)
+		}
+	}
+	return err
+}
+
+func EnterprisePatch(e *EnterpriseUserProp, a *AppIdProp) error {
+	// TODO(mike): TBD
 	return nil
 }
+
+// ==================== role management apis ====================
+func RolesGet(enterprise_id string, d *DaoWrapper) ([]*RoleProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
+	return d.GetRoles(enterprise_id)
+}
+
+func RoleGetById(enterprise_id string, role_id string, d *DaoWrapper) (*RoleProp, error) {
+	if !IsValidEnterpriseId(enterprise_id) {
+		return nil, errors.New("invalid enterprise id")
+	}
+	return d.GetRoleById(enterprise_id, role_id)
+}
+
+func RoleRegister(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
+	return nil
+}
+
+func RoleDeleteByIds(enterprise_id string, role_ids []string, d *DaoWrapper) error {
+	return nil
+}
+
+func RolePatch(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
+	return nil
+}
+
+// ==================== user management apis ====================

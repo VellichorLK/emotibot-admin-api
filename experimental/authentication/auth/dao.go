@@ -134,3 +134,65 @@ func (d *DaoWrapper) AddUserEntry(e *EnterpriseUserProp) error {
 	LogInfo.Printf("add user: %s, (%s)", e, err)
 	return err
 }
+
+// ===== enterprise delete related =====
+func (d *DaoWrapper) DeleteEnterprise(enterprise_id string) error {
+	cmd := fmt.Sprintf("delete el,al from enterprise_list join on appid_list al where el.enterprise_id=\"%s\" and al.app_id=el.app_id", enterprise_id)
+	if rows, err := d.mysql.Exec(cmd); err != nil {
+		LogErro.Printf("cmd: %s, err: %s", cmd, err)
+		return err
+	} else {
+		LogInfo.Printf("cmd: %s, affect rows: %s", cmd, rows)
+	}
+	cmd = fmt.Sprintf("delete from user_list where enterprise_id=\"%s\"", enterprise_id)
+	if rows, err := d.mysql.Exec(cmd); err != nil {
+		LogErro.Printf("cmd: %s, err: %s", cmd, err)
+		return err
+	} else {
+		LogInfo.Printf("cmd: %s, affect rows: %s", cmd, rows)
+	}
+	// TODO(mike): deal with privilege and role
+	return nil
+}
+
+// ==== admin apis: role related apis =====
+func (d *DaoWrapper) GetRoles(enterprise_id string) ([]*RoleProp, error) {
+	return nil, nil
+}
+
+func (d *DaoWrapper) GetRoleById(enterprise_id string, role_id string) (*RoleProp, error) {
+	return nil, nil
+}
+
+func (d *DaoWrapper) AddRole(enterprie_id string, r *RoleProp) error {
+	return nil
+}
+
+func (d *DaoWrapper) DeleteRole(enterprise_id string, role_id string) error {
+	return nil
+}
+
+func (d *DaoWrapper) PatchRole(enterprise_id string, r *RoleProp) error {
+	return nil
+}
+
+// ===== admin apis: user management =====
+func (d *DaoWrapper) GetUsers(enterprise_id string) ([]*UserLoginProp, error) {
+	return nil, nil
+}
+
+func (d *DaoWrapper) GetUserbyId(enterprise_id string, role_id string) (*UserLoginProp, error) {
+	return nil, nil
+}
+
+func (d *DaoWrapper) AddUser(enterprie_id string, r *UserLoginProp) error {
+	return nil
+}
+
+func (d *DaoWrapper) DeleteUser(enterprise_id string, user_id string) error {
+	return nil
+}
+
+func (d *DaoWrapper) PatchUser(user_id string, r *UserLoginProp) error {
+	return nil
+}

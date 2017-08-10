@@ -14,6 +14,7 @@ const (
 	const_appid_length        int = 32 // md5sum length
 	const_enterpriseid_length int = 32 // md5sum length
 	const_userid_length       int = 32 // md5sum length
+	const_roleid_length       int = 32 // md5sum length
 )
 
 type ErrStruct struct {
@@ -38,6 +39,13 @@ func IsValidEnterpriseId(eid string) bool {
 
 func IsValidUserId(uid string) bool {
 	if len(uid) != const_userid_length {
+		return false
+	}
+	return true
+}
+
+func IsValidRoleId(rid string) bool {
+	if len(rid) != const_roleid_length {
 		return false
 	}
 	return true
@@ -105,4 +113,8 @@ func GenAppId() string {
 
 func GenUserId() string {
 	return genMD5ID("user")
+}
+
+func GenRoleId() string {
+	return genMD5ID("role")
 }

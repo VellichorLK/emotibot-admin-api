@@ -18,6 +18,9 @@ const (
 	const_endpoint_enterprise_id       string = "/auth/v1/enterprise/"         // GET|PATCH|DELETE /auth/v1/enterprise/<enterprise_id>
 
 	// endpoint: role management
+	const_endpoint_roles string = "/admin/v1/roles"         // GET /admin/v1/roles
+	const_endpoint_roles string = "/admin/v1/role/register" // POST /admin/v1/role/register
+	const_endpoint_roles string = "/admin/v1/role/"         // GET|PATCH|DELETE /admin/v1/role/<rold_id>
 	// endpoint: general user management
 	// endpoint: sys settings
 
@@ -193,12 +196,14 @@ func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 			HandleError(-1, err, w)
 			return
 		}
-		// TODO(mike)
-		// delete appid_list where enterprise_id=enterprise_id
-		// delete user_list where enterprise_id=enterprise_id
-		// delete enterprise_list
+
 	} else {
+		if err := r.ParseForm(); err != nil {
+			HandleHttpError(http.StatusBadRequest, err, w)
+			return
+		}
 		// TODO(mike)
+		// parse EnterpsieUserProp and AppIdProp
 		// PATCH
 	}
 }
