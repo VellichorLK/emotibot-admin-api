@@ -31,8 +31,14 @@ stress test
     	stress test or test single file (default "single")
   -p int
     	second to continuely send the task (default 300)
+  -r int
+    	create_time of file (default 1502419575)
   -s string
     	save the resutl in json format to the assigned file. Only used at single mode
   -t string
     	file extension (default "wav")
+  -t1 string
+    	tag1
+  -t2 string
+    	tag2
 ```
