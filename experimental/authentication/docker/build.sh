@@ -6,18 +6,10 @@ TAG="20170804001"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-EMOTIGO=${DIR#*/emotigo/}
-BUILDROOT=${DIR%/emotigo/*}
-GOSRCPATH="emotigo/$EMOTIGO/../"
-echo $DIR
+EMOTIGO=${DIR#*/experimental/}
+BUILDROOT=${DIR%/experimental/*}
+GOSRCPATH="experimental/$EMOTIGO/../"
 
-# BUILDROOT=${DIR%/emotigo/*}
-# CURDIR=${PWD##*/}
-# GOPREFIX=${DIR#*emotigo/}
-# GOSRCPATH="emotigo/$GOPREFIX"
-echo $GOSRCPATH
-echo $BUILDROOT
-echo $EMOTIGO
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \

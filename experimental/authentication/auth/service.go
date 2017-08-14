@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -40,7 +39,23 @@ type UserLoginProp struct {
 	UserType     int            `json:"user_type"`
 	EnterpriseId string         `json:"enterprise_id"`
 	Privilege    interface{}    `json:"privilege"`
-	RoleName     sql.NullString `json:"role_name"`
+	RoleName     NullableString `json:"role_name"`
+}
+
+type UserProp struct {
+	UserId   string         `json:"user_id"`
+	UserName string         `json:"user_name"`
+	UserType int            `json:"user_type"`
+	RoleId   NullableString `json:"role_id,string"` //editable
+	Email    NullableString `json:"email"`
+	Password string         `json:"-"` //editable
+}
+
+type RoleProp struct {
+	RoleId       string `json:"role_id"`
+	RoleName     string `json:"role_name"`
+	Privilege    string `json:"privilege"`
+	EnterpriseId string `json:"-"`
 }
 
 // ==================== AppId Series Services ====================
@@ -137,22 +152,22 @@ func EnterpriseGetById(enterprise_id string, d *DaoWrapper) (*EnterpriseUserProp
 	return d.GetEnterpriseById(enterprise_id)
 }
 
-func EnterpriseDeleteByIds(ent_ids []string, d *DaoWrapper) error {
-	if d == nil {
-		return errors.New("dao is nil")
-	}
-	var err error
-	for _, m := range ent_ids {
-		// TODO(mike)
-		// delete all users in user_list where enterprise_id=enterprise_id
-		// delete enterprise_list
-		// delete appid_list where enterprise_id=enterprise_id
-		if err = d.DeleteEnterprise(enterprise_id); err != nil {
-			LogWarn.Printf("delete %s failed. %s", enterprise_id, err)
-		}
-	}
-	return err
-}
+// func EnterpriseDeleteByIds(ent_ids []string, d *DaoWrapper) error {
+// 	if d == nil {
+// 		return errors.New("dao is nil")
+// 	}
+// 	var err error
+// 	for _, m := range ent_ids {
+// 		// TODO(mike)
+// 		// delete all users in user_list where enterprise_id=enterprise_id
+// 		// delete enterprise_list
+// 		// delete appid_list where enterprise_id=enterprise_id
+// 		if err = d.DeleteEnterprise(enterprise_id); err != nil {
+// 			LogWarn.Printf("delete %s failed. %s", enterprise_id, err)
+// 		}
+// 	}
+// 	return err
+// }
 
 func EnterprisePatch(e *EnterpriseUserProp, a *AppIdProp) error {
 	// TODO(mike): TBD
@@ -160,30 +175,124 @@ func EnterprisePatch(e *EnterpriseUserProp, a *AppIdProp) error {
 }
 
 // ==================== role management apis ====================
-func RolesGet(enterprise_id string, d *DaoWrapper) ([]*RoleProp, error) {
+func RolesGet(appid string, d *DaoWrapper) ([]*RoleProp, error) {
 	if d == nil {
 		return nil, errors.New("dao is nil")
+	}
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
 	}
 	return d.GetRoles(enterprise_id)
 }
 
-func RoleGetById(enterprise_id string, role_id string, d *DaoWrapper) (*RoleProp, error) {
-	if !IsValidEnterpriseId(enterprise_id) {
-		return nil, errors.New("invalid enterprise id")
+// func RoleGetById(enterprise_id string, role_id string, d *DaoWrapper) (*RoleProp, error) {
+// 	if !IsValidEnterpriseId(enterprise_id) {
+// 		return nil, errors.New("invalid enterprise id")
+// 	}
+// 	return d.GetRoleById(enterprise_id, role_id)
+// }
+
+func RoleRegister(r *RoleProp, appid string, d *DaoWrapper) error {
+	if d == nil {
+		return errors.New("dao is nil")
 	}
-	return d.GetRoleById(enterprise_id, role_id)
-}
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return errors.New("Invalid appid")
+	}
 
-func RoleRegister(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
+	d.AddRole(enterprise_id, r)
 	return nil
 }
 
-func RoleDeleteByIds(enterprise_id string, role_ids []string, d *DaoWrapper) error {
-	return nil
-}
+// func RoleDeleteByIds(enterprise_id string, role_ids []string, d *DaoWrapper) error {
+// 	return nil
+// }
 
-func RolePatch(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
-	return nil
-}
+// func RolePatch(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
+// 	return nil
+// }
 
 // ==================== user management apis ====================
+func UserRegister(p *UserProp, appid string, d *DaoWrapper) error {
+	if p == nil {
+		return errors.New("UserProp is nil")
+	}
+	if d == nil {
+		return errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return errors.New("Invalid appid")
+	}
+	p.UserId = genMD5ID(p.UserName)
+	return d.AddUser(enterprise_id, p)
+}
+
+func UsersGet(d *DaoWrapper, appid string) ([]*UserProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
+	}
+	return d.GetUsers(enterprise_id)
+}
+
+func UserGetById(user_id string, appid string, d *DaoWrapper) (*UserProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
+	}
+
+	user, err := d.GetUserById(user_id, enterprise_id)
+
+	return user, err
+}
+
+func UserDeleteById(user_id string, appid string, d *DaoWrapper) error {
+	if d == nil {
+		return errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return errors.New("Invalid appid")
+	}
+
+	return d.DeleteUser(enterprise_id, user_id)
+}
+
+func UserPatchById(user_id string, appid string, user *UserProp, d *DaoWrapper) (*UserProp, error) {
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
+	}
+
+	dbUser, err := UserGetById(user_id, appid, d)
+	if err != nil {
+		return nil, err
+	}
+
+	patchUser(user, dbUser)
+	return d.PatchUser(user.UserId, enterprise_id, dbUser)
+}
+
+func patchUser(user *UserProp, dbUser *UserProp) {
+	if user.RoleId.Valid == true {
+		dbUser.RoleId.String = user.RoleId.String
+		dbUser.RoleId.Valid = true
+	}
+
+	if user.Password != "" {
+		dbUser.Password = user.Password
+	}
+}

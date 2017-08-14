@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,6 +21,35 @@ const (
 type ErrStruct struct {
 	Status  int    `json:"status"`
 	Message string `json:"message"`
+}
+
+// NullableString is used for compatiable using with mysql and json
+type NullableString struct {
+	sql.NullString
+}
+
+// MarshalJSON is used for json.stringify of NullableString
+func (v NullableString) MarshalJSON() ([]byte, error) {
+	if v.Valid {
+		return json.Marshal(v.String)
+	}
+	return json.Marshal(nil)
+}
+
+// UnmarshalJSON is used for parse NullableString from json string
+func (v *NullableString) UnmarshalJSON(data []byte) error {
+	// Unmarshalling into a pointer will let us detect null
+	var s *string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	if s != nil {
+		v.Valid = true
+		v.String = *s
+	} else {
+		v.Valid = false
+	}
+	return nil
 }
 
 // validation
@@ -81,6 +111,15 @@ func HandleError(err_code int, err error, w http.ResponseWriter) bool {
 	LogError.Printf("%s: %s", fn, err.Error())
 	es := ErrStruct{err_code, err.Error()}
 	RespJson(w, es)
+	return true
+}
+
+func HandleSuccess(w http.ResponseWriter, result interface{}) bool {
+	ret := make(map[string]interface{})
+	ret["status"] = 0
+	ret["message"] = "success"
+	ret["result"] = result
+	RespJson(w, ret)
 	return true
 }
 
