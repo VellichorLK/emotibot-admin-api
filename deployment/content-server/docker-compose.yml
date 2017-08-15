@@ -103,6 +103,8 @@ services:
         image: ${CONTENT_WEBAPI_IMAGE}:${CONTENT_WEBAPI_TAG}
         container_name: ${CONTENT_WEBAPI_CONTAINER}
         mem_limit: 5125m
+        ports: 
+            - "${CONTENT_WEBAPI_PORT}:${CONTENT_WEBAPI_PORT}"
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
