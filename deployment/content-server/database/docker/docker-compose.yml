@@ -1,0 +1,43 @@
+version: '2'
+services:
+    mysql:
+        image: mysql:5.7 
+        container_name: mysql
+        ports:
+            - ${RW_MYSQL_MAIN_PORT}:${RW_MYSQL_MAIN_PORT}
+        environment:
+            MYSQL_ROOT_PASSWORD: ${RW_MYSQL_MAIN_PASS} 
+        mem_limit: 5125m
+        volumes:
+            - ../mysql/my.cnf:/etc/mysql/my.cnf
+            - ../mysql/sport_soccer.sql:/var/local/database/sport_soccer.sql
+            - ../mysql/weather.sql:/var/local/database/weather.sql
+            - ../mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+            - ${DB_DATA_PATH}:/var/lib/mysql
+            - /etc/localtime:/etc/localtime
+        restart: always
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        ports:
+            - '3380:80'
+        mem_limit: 5125m
+        environment:
+            MYSQL_USERNAME: ${RW_MYSQL_MAIN_USER}
+            MYSQL_PASSWORD: ${RW_MYSQL_MAIN_PASS}
+        volumes:
+            - /etc/localtime:/etc/localtime
+        links:
+            - mysql:db
+        restart: always
+        depends_on:
+            - "mysql"
+    redis:
+        image: redis
+        container_name: redis
+        ports: 
+            - ${RW_REDIS_PORT}:${RW_REDIS_PORT}
+        mem_limit: 5125m
+        volumes:
+            - /etc/localtime:/etc/localtime
+        restart: always

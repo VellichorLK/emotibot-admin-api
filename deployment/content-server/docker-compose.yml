@@ -1,0 +1,154 @@
+version: '2.1'
+services:
+    # ========== DATABASE ==========
+    mysql:
+        image: mysql:${MYSQL_TAG}
+        container_name: mysql
+        ports:
+            - "${MYSQL_PORT}:${MYSQL_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MYSQL_PASS} 
+        mem_limit: 5125m
+        volumes:
+            - ./database/mysql/my.cnf:/etc/mysql/my.cnf
+            - ./database/mysql/sport_soccer.sql:/var/local/database/sport_soccer.sql
+            - ./database/mysql/weather.sql:/var/local/database/weather.sql
+            - ./database/mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+            - ${MYSQL_DATA_PATH}:/var/lib/mysql
+            - /etc/localtime:/etc/localtime
+        restart: always
+        healthcheck:
+            test: "/usr/bin/mysql --user=${MYSQL_USER} --password=${MYSQL_PASS} --execute \"SHOW DATABASES;\""
+            interval: 3s
+            timeout: 1s
+            retries: 5
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: phpmyadmin
+        ports:
+            - "${PHPMYADMIN_PORT}:80" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 5125m
+        environment:
+            MYSQL_USERNAME: ${MYSQL_USER}
+            MYSQL_PASSWORD: ${MYSQL_PASS}
+        volumes:
+            - /etc/localtime:/etc/localtime
+        links:
+            - mysql:db
+        restart: always
+        depends_on:
+            "mysql":
+                condition: service_healthy
+    redis:
+        image: redis
+        container_name: redis
+        ports: 
+            - ${REDIS_PORT}:${REDIS_PORT}
+        mem_limit: 5125m
+        volumes:
+            - /etc/localtime:/etc/localtime
+        restart: always
+    content-crawler:
+        image: ${CONTENT_CRAWLER_IMAGE}:${CONTENT_CRAWLER_TAG}
+        container_name: ${CONTENT_CRAWLER_CONTAINER}
+        mem_limit: 5125m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            RW_MYSQL_MAIN_IP: ${MYSQL_IP} 
+            RW_MYSQL_MAIN_PORT: ${MYSQL_PORT} 
+            RW_MYSQL_MAIN_USER: ${MYSQL_USER} 
+            RW_MYSQL_MAIN_PASS: ${MYSQL_PASS}
+            RW_REDIS_IP: ${REDIS_IP} 
+            RW_REDIS_PORT: ${REDIS_PORT}
+            RW_HOSTNAME: ${HOSTNAME}
+        restart: always
+        depends_on:
+            # - "redis"
+            "mysql":
+                condition: service_healthy
+    legacy-soccer:
+        image: ${LEGACY_SOCCER_IMAGE}:${LEGACY_SOCCER_TAG}
+        container_name: ${LEGACY_SOCCER_CONTAINER}
+        ports: 
+            - ${LEGACY_SOCCER_PORT}:${LEGACY_SOCCER_PORT}
+        mem_limit: 5125m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            RW_MYSQL_MAIN_IP: ${MYSQL_IP} 
+            RW_MYSQL_MAIN_PORT: ${MYSQL_PORT} 
+            RW_MYSQL_MAIN_USER: "${MYSQL_USER}"
+            RW_MYSQL_MAIN_PASS: "${MYSQL_PASS}"
+            RW_REDIS_IP: ${REDIS_IP} 
+            RW_REDIS_PORT: ${REDIS_PORT}
+            RW_SERVICE_PORT: ${LEGACY_SOCCER_PORT} 
+        restart: always
+        depends_on:
+            "mysql":
+                condition: service_healthy
+    content-webapi:
+        image: ${CONTENT_WEBAPI_IMAGE}:${CONTENT_WEBAPI_TAG}
+        container_name: ${CONTENT_WEBAPI_CONTAINER}
+        mem_limit: 5125m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            DOCKER_PORT: ${CONTENT_WEBAPI_PORT}
+            MYSQL_DB_SERVER: ${MYSQL_IP}
+            MYSQL_DB_USER: "${MYSQL_USER}"
+            MYSQL_DB_PASSWORD: "${MYSQL_PASS}"
+            REDIS_SERVER: ${REDIS_IP}
+            REDIS_DB: 0
+        restart: always
+        depends_on:
+            - "legacy-soccer"
+            - "content-crawler"
+    nginx:
+        image: nginx
+        container_name: nginx
+        ports:
+            - '80:80'
+            - '443:443'
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        volumes:
+            - /etc/localtime:/etc/localtime
+            - ${NGINX_CERT}:/etc/nginx/ssl/nginx.crt
+            - ${NGINX_KEY}:/etc/nginx/ssl/nginx.key
+            - ${NGINX_CONF}:/etc/nginx/nginx.conf
+        restart: always
+        depends_on:
+            - "content-webapi"
+    netdata:
+        image: titpetric/netdata
+        container_name: netdata
+        mem_limit: 2048m
+        ports:
+            - "${NETDATA_PORT}:${NETDATA_PORT}" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        volumes:
+            - ${NETDATA_HEALTH_ALARM_NOTIFY_CONF}:/etc/netdata/health_alarm_notify.conf
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+        restart: always
