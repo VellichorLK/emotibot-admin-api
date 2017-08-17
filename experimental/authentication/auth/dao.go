@@ -175,23 +175,58 @@ func (d *DaoWrapper) GetRoles(enterprise_id string) ([]*RoleProp, error) {
 	return got, nil
 }
 
-// func (d *DaoWrapper) GetRoleById(enterprise_id string, role_id string) (*RoleProp, error) {
-// 	return nil, nil
-// }
-
-func (d *DaoWrapper) AddRole(enterprie_id string, r *RoleProp) error {
-	_, err := d.mysql.Exec("insert into role_list values(?, ?, ?, ?)", r.RoleId, r.RoleName, r.Privilege, enterprie_id)
+func (d *DaoWrapper) AddRole(enterprise_id string, r *RoleProp) error {
+	_, err := d.mysql.Exec("insert into role_list values(?, ?, ?, ?)", r.RoleId, r.RoleName, r.Privilege, enterprise_id)
 	LogInfo.Printf("add role: %#v, (%s)", r, err)
 	return err
 }
 
-// func (d *DaoWrapper) DeleteRole(enterprise_id string, role_id string) error {
-// 	return nil
-// }
+func (d *DaoWrapper) GetRoleById(role_id string, enterprise_id string) (*RoleProp, error) {
+	cmd := fmt.Sprintf("select role_id, role_name, privilege from role_list where enterprise_id = \"%s\" and role_id = \"%s\"", enterprise_id, role_id)
+	LogInfo.Printf("cmd: %s", cmd)
 
-// func (d *DaoWrapper) PatchRole(enterprise_id string, r *RoleProp) error {
-// 	return nil
-// }
+	var r RoleProp
+	if err := d.mysql.QueryRow(cmd).Scan(&r.RoleId, &r.RoleName, &r.Privilege); err != nil {
+		return nil, err
+	}
+	LogInfo.Printf("Get role: %#v", r)
+	return &r, nil
+}
+
+func (d *DaoWrapper) DeleteRole(role_id string, enterprise_id string) error {
+	// 1. Change all user whose role is this, and change them into null
+	_, err := d.mysql.Exec("update user_list set role_id = ? where role_id = ? and enterprise_id = ", nil, role_id, enterprise_id)
+	if err != nil {
+		return err
+	}
+
+	// 2. Remove role in role_list
+	_, err = d.mysql.Exec("delete from role_list where role_id = ? and enterprise_id = ?", role_id, enterprise_id)
+	return err
+}
+
+func (d *DaoWrapper) PatchRole(role_id string, enterprise_id string, r *RoleProp) (*RoleProp, error) {
+	params := make([]string, 0)
+	if r.RoleName != "" {
+		params = append(params, fmt.Sprintf("role_name = '%s'", r.RoleName))
+	}
+	if r.Privilege != "" {
+		params = append(params, fmt.Sprintf("privilege = '%s'", r.Privilege))
+	}
+
+	if len(params) == 0 {
+		return r, nil
+	}
+
+	sets := strings.Join(params, ",")
+
+	sql := fmt.Sprintf("update user_list set %s where role_id = ? and enterprise_id = ?", sets)
+	_, err := d.mysql.Exec(sql, r.RoleId, enterprise_id)
+
+	log := fmt.Sprintf("update role: %#v, (%s), (%#v)\n", r, sql, err)
+	LogInfo.Print(log)
+	return r, err
+}
 
 // ===== admin apis: user management =====
 func (d *DaoWrapper) GetUsers(enterprise_id string) ([]*UserProp, error) {

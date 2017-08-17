@@ -80,6 +80,9 @@ func SetRoute(c *Configuration) error {
 	http.HandleFunc(const_endpoint_roles, func(w http.ResponseWriter, r *http.Request) {
 		RolesHandler(w, r, c, dao)
 	})
+	http.HandleFunc(const_endpoint_roles_id, func(w http.ResponseWriter, r *http.Request) {
+		RoleIdHandler(w, r, c, dao)
+	})
 
 	LogInfo.Printf("Set route OK.")
 	return nil
@@ -255,6 +258,7 @@ func UserRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 		HandleHttpError(http.StatusInternalServerError, err, w)
 		return
 	}
+	HandleSuccess(w, user)
 }
 
 // List all users and its appid/login username, password
@@ -401,6 +405,7 @@ func RoleRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 		HandleHttpError(http.StatusInternalServerError, err, w)
 		return
 	}
+	HandleSuccess(w, role)
 }
 
 // List all users and its appid/login username, password
@@ -432,6 +437,53 @@ func RolesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao 
 // DELETE /auth/v1/user/<user_id>,  return 204 | 404 | 500
 // PATCH /auth/v1/user/<user_id>, return 204 | 400 | 404 | 500
 func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	// request method check
+	if HandleHttpMethodError(r.Method, []string{"GET", "DELETE", "PATCH"}, w) {
+		return
+	}
+
+	// 0. Check header if it is valid
+	appid := r.Header.Get(const_type_authorization_header_key)
+	if appid == "" || !IsValidAppId(appid) {
+		HandleHttpError(http.StatusUnauthorized, nil, w)
+		return
+	}
+
+	// get role_id
+	role_id := r.URL.Path[len(const_endpoint_roles_id):]
+	if IsValidRoleId(role_id) == false {
+		HandleHttpError(http.StatusBadRequest, errors.New("invalid parameters"), w)
+		return
+	}
+	LogInfo.Printf("role_id: %s", role_id)
+
+	// apploy get/delte/patch
+	if r.Method == "GET" {
+		// enterprise_service.get_enterprise(enterprise_id)
+		// select all from enterprise_list join user_list on enterprise_id
+		ent, err := RoleGetById(role_id, appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		HandleSuccess(w, ent)
+	} else if r.Method == "DELETE" {
+		err := RoleDeleteById(role_id, appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+	} else if r.Method == "PATCH" {
+		user := getRoleFromForm(r, false)
+		patchedRole, err := RolePatchById(role_id, appid, user, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		HandleSuccess(w, patchedRole)
+	} else {
+		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method not allowed"), w)
+	}
 }
 
 func getRoleFromForm(r *http.Request, checkValue bool) *RoleProp {

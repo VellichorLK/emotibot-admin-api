@@ -201,18 +201,61 @@ func RoleRegister(r *RoleProp, appid string, d *DaoWrapper) error {
 	if err != nil {
 		return errors.New("Invalid appid")
 	}
+	roleId := GenRoleId()
+	r.RoleId = roleId
 
-	d.AddRole(enterprise_id, r)
-	return nil
+	// TODO: check if privilige valid
+	return d.AddRole(enterprise_id, r)
 }
 
-// func RoleDeleteByIds(enterprise_id string, role_ids []string, d *DaoWrapper) error {
-// 	return nil
-// }
+func RoleGetById(role_id string, appid string, d *DaoWrapper) (*RoleProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
 
-// func RolePatch(enterprise_id string, r *RoleProp, d *DaoWrapper) error {
-// 	return nil
-// }
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
+	}
+
+	role, err := d.GetRoleById(role_id, enterprise_id)
+
+	return role, err
+}
+
+func RoleDeleteById(role_id string, appid string, d *DaoWrapper) error {
+	if d == nil {
+		return errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return errors.New("Invalid appid")
+	}
+
+	return d.DeleteRole(role_id, enterprise_id)
+}
+
+func RolePatchById(role_id string, appid string, role *RoleProp, d *DaoWrapper) (*RoleProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, errors.New("Invalid appid")
+	}
+
+	dbRole, err := RoleGetById(role_id, appid, d)
+	if err != nil {
+		return nil, err
+	}
+
+	patchRole(role, dbRole)
+	return d.PatchRole(role_id, enterprise_id, dbRole)
+
+	return nil, nil
+}
 
 // ==================== user management apis ====================
 func UserRegister(p *UserProp, appid string, d *DaoWrapper) error {
@@ -294,5 +337,15 @@ func patchUser(user *UserProp, dbUser *UserProp) {
 
 	if user.Password != "" {
 		dbUser.Password = user.Password
+	}
+}
+
+func patchRole(role *RoleProp, dbRole *RoleProp) {
+	if role.Privilege != "" {
+		dbRole.Privilege = role.Privilege
+	}
+
+	if role.RoleName != "" {
+		dbRole.RoleName = role.RoleName
 	}
 }
