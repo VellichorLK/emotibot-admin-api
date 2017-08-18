@@ -514,7 +514,7 @@ func QueryResult(appid string, conditions string, conditions2 string, rbs *[]*Re
 		query += " where  " + conditions2
 	}
 
-	//log.Println(query)
+	log.Println(query)
 	rows, err := db.Query(query, appid)
 	if err != nil {
 		log.Println(err)

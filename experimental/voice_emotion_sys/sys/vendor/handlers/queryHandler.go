@@ -373,7 +373,7 @@ func pieceup(qas *QueryArgs) (string, error) {
 
 	cursor += ","
 	if qas.FileName != "" {
-		cursor += "=\"" + qas.FileName + "\""
+		cursor += "\"%" + qas.FileName + "%\""
 	}
 
 	cursor += ","
@@ -470,8 +470,15 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 	conditions = CursorFieldName[2] + cursorValues[2]
 	remainCursor = cursorValues[2]
 	for i := 3; i < IndexJoin; i++ {
+
 		if cursorValues[i] != "" {
-			conditions += " and " + CursorFieldName[i] + cursorValues[i]
+
+			if CursorFieldName[i] == NFILENAME {
+				conditions += " and " + CursorFieldName[i] + " like " + cursorValues[i]
+			} else {
+				conditions += " and " + CursorFieldName[i] + cursorValues[i]
+			}
+
 		}
 		remainCursor += "," + cursorValues[i]
 	}
@@ -484,14 +491,14 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 
 		if cursorValues[8] != "" {
 			ch1AngerCondition = "select " + NID + " from " + ChannelTable + " where " +
-				NCHANNEL + "=1 and " + NEMOTYPE + "=0 and " + NSCORE + cursorValues[8]
+				NCHANNEL + "=1 and " + NEMOTYPE + "=1 and " + NSCORE + cursorValues[8]
 		}
 		if cursorValues[9] != "" {
 			conditions2 += "select " + NID + " from " + ChannelTable + " where "
 			if ch1AngerCondition != "" {
 				conditions2 += NID + " in (" + ch1AngerCondition + ")" + " and "
 			}
-			conditions2 += NCHANNEL + "=2 and " + NEMOTYPE + "=0 and " + NSCORE + cursorValues[9]
+			conditions2 += NCHANNEL + "=2 and " + NEMOTYPE + "=1 and " + NSCORE + cursorValues[9]
 		} else {
 			conditions2 += ch1AngerCondition
 		}
@@ -514,8 +521,6 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 
 	remainCursor += "," + cursorValues[8]
 	remainCursor += "," + cursorValues[9]
-
-	//log.Println(conditions)
 
 	return conditions, conditions2, cursorValues[0], cursorValues[1], remainCursor
 }
