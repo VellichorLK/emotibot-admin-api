@@ -103,6 +103,8 @@ var DefaultEmotion = map[int]string{
 	1: "anger",
 }
 
+var AngerType = "1"
+
 //PAGELIMIT limit of row returned
 const PAGELIMIT = "500"
 const PAGELIMITINT = 500

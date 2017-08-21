@@ -720,6 +720,7 @@ func InitEmotionMap() {
 	defer rows.Close()
 
 	EmotionMap = make(map[int]string)
+	//var angerType string
 	for rows.Next() {
 		var id int
 		var emotion string
@@ -732,12 +733,20 @@ func InitEmotionMap() {
 		}
 
 		EmotionMap[id] = emotion
-
+		/*
+			if emotion == "anger" {
+				angerType = strconv.Itoa(id)
+			}
+		*/
 	}
 
 	if len(EmotionMap) == 0 {
 		EmotionMap = DefaultEmotion
 		log.Println("No emotion map in database.Using default emotion map")
 	}
-
+	/*
+		if angerType != "" {
+			AngerType = angerType
+		}
+	*/
 }

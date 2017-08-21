@@ -494,14 +494,14 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 
 		if cursorValues[8] != "" {
 			ch1AngerCondition = "select " + NID + " from " + ChannelTable + " where " +
-				NCHANNEL + "=1 and " + NEMOTYPE + "=1 and " + NSCORE + cursorValues[8]
+				NCHANNEL + "=1 and " + NEMOTYPE + "=" + AngerType + " and " + NSCORE + cursorValues[8]
 		}
 		if cursorValues[9] != "" {
 			conditions2 += "select " + NID + " from " + ChannelTable + " where "
 			if ch1AngerCondition != "" {
 				conditions2 += NID + " in (" + ch1AngerCondition + ")" + " and "
 			}
-			conditions2 += NCHANNEL + "=2 and " + NEMOTYPE + "=1 and " + NSCORE + cursorValues[9]
+			conditions2 += NCHANNEL + "=2 and " + NEMOTYPE + "=" + AngerType + " and " + NSCORE + cursorValues[9]
 		} else {
 			conditions2 += ch1AngerCondition
 		}
