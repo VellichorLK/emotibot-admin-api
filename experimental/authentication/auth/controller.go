@@ -26,6 +26,10 @@ const (
 	const_endpoint_users         string = "/admin/v1/users"         // GET /admin/v1/users
 	const_endpoint_user_register string = "/admin/v1/user/register" // POST /admin/v1/user/register
 	const_endpoint_user_id       string = "/admin/v1/user/"         // GET|PATCH|DELETE /admin/v1/user/user/<user_id>
+
+	// endpoint: privilege list
+	const_endpoint_privileges string = "/admin/v1/privileges"
+
 	// endpoint: sys settings
 
 	const_type_super_user   int = 0
@@ -60,9 +64,9 @@ func SetRoute(c *Configuration) error {
 	http.HandleFunc(const_endpoint_enterprises, func(w http.ResponseWriter, r *http.Request) {
 		EnterprisesHandler(w, r, c, dao)
 	})
-	// http.HandleFunc(const_endpoint_enterprise_id, func(w http.ResponseWriter, r *http.Request) {
-	// 	EnterpriseIdHandler(w, r, c, dao)
-	// })
+	http.HandleFunc(const_endpoint_enterprise_id, func(w http.ResponseWriter, r *http.Request) {
+		EnterpriseIdHandler(w, r, c, dao)
+	})
 	// user management
 	http.HandleFunc(const_endpoint_user_register, func(w http.ResponseWriter, r *http.Request) {
 		UserRegisterHandler(w, r, c, dao)
@@ -82,6 +86,10 @@ func SetRoute(c *Configuration) error {
 	})
 	http.HandleFunc(const_endpoint_roles_id, func(w http.ResponseWriter, r *http.Request) {
 		RoleIdHandler(w, r, c, dao)
+	})
+	// privilege list
+	http.HandleFunc(const_endpoint_privileges, func(w http.ResponseWriter, r *http.Request) {
+		PrivilegesHandler(w, r, c, dao)
 	})
 
 	LogInfo.Printf("Set route OK.")
@@ -193,47 +201,47 @@ func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration
 // GET /auth/v1/enterprise/<enterprise_id>, return 200 | 404 | 500
 // DELETE /auth/v1/enterprise/<enterprise_id>,  return 204 | 404 | 500
 // PATCH /auth/v1/enterprise/<enterprise_id>, return 204 | 400 | 404 | 500
-// func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
-// 	// request method check
-// 	if HandleHttpMethodError(r.Method, []string{"GET", "DELETE", "PATCH"}, w) {
-// 		return
-// 	}
+func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	// request method check
+	if HandleHttpMethodError(r.Method, []string{"GET", "DELETE", "PATCH"}, w) {
+		return
+	}
 
-// 	// get enterprise_id
-// 	enterprise_id := r.URL.Path[len(const_endpoint_enterprise_id):]
-// 	if IsValidEnterpriseId(enterprise_id) == false {
-// 		HandleHttpError(http.StatusBadRequest, errors.New("invalid parameters"), w)
-// 		return
-// 	}
-// 	LogInfo.Printf("enterprise_id: %s", enterprise_id)
+	// get enterprise_id
+	enterprise_id := r.URL.Path[len(const_endpoint_enterprise_id):]
+	if IsValidEnterpriseId(enterprise_id) == false {
+		HandleHttpError(http.StatusBadRequest, errors.New("invalid parameters"), w)
+		return
+	}
+	LogInfo.Printf("enterprise_id: %s", enterprise_id)
 
-// 	// apploy get/delte/patch
-// 	if r.Method == "GET" {
-// 		// enterprise_service.get_enterprise(enterprise_id)
-// 		// select all from enterprise_list join user_list on enterprise_id
-// 		ent, err := EnterpriseGetById(enterprise_id, d)
-// 		if err != nil {
-// 			HandleError(-1, err, w)
-// 			return
-// 		}
-// 		RespJson(w, ent)
-// 	} else if r.Method == "DELETE" {
-// 		err := EnterpriseDeleteByIds([]string{enterprise_id}, d)
-// 		if err != nil {
-// 			HandleError(-1, err, w)
-// 			return
-// 		}
+	// apploy get/delte/patch
+	if r.Method == "GET" {
+		// enterprise_service.get_enterprise(enterprise_id)
+		// select all from enterprise_list join user_list on enterprise_id
+		ent, err := EnterpriseGetById(enterprise_id, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		RespJson(w, ent)
+	} else if r.Method == "DELETE" {
+		err := EnterpriseDeleteByIds([]string{enterprise_id}, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
 
-// 	} else {
-// 		if err := r.ParseForm(); err != nil {
-// 			HandleHttpError(http.StatusBadRequest, err, w)
-// 			return
-// 		}
-// 		// TODO(mike)
-// 		// parse EnterpsieUserProp and AppIdProp
-// 		// PATCH
-// 	}
-// }
+	} else {
+		if err := r.ParseForm(); err != nil {
+			HandleHttpError(http.StatusBadRequest, err, w)
+			return
+		}
+		// TODO(mike)
+		// parse EnterpsieUserProp and AppIdProp
+		// PATCH
+	}
+}
 func UserRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
 	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
@@ -326,6 +334,7 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		HandleSuccess(w, nil)
 	} else if r.Method == "PATCH" {
 		user := getUserFromForm(r, false)
 		patchedUser, err := UserPatchById(user_id, appid, user, d)
@@ -473,6 +482,7 @@ func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		HandleSuccess(w, nil)
 	} else if r.Method == "PATCH" {
 		user := getRoleFromForm(r, false)
 		patchedRole, err := RolePatchById(role_id, appid, user, d)
@@ -506,4 +516,25 @@ func getRoleFromForm(r *http.Request, checkValue bool) *RoleProp {
 	}
 
 	return &role
+}
+
+func PrivilegesHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET"}, w) {
+		return
+	}
+
+	// 0. Check header if it is valid
+	appid := r.Header.Get(const_type_authorization_header_key)
+	if appid == "" || !IsValidAppId(appid) {
+		HandleHttpError(http.StatusUnauthorized, nil, w)
+		return
+	}
+
+	privileges, err := PrivilegesGet(appid, d)
+	if err != nil {
+		// 200 with error
+		HandleError(-1, err, w)
+		return
+	}
+	HandleSuccess(w, privileges)
 }

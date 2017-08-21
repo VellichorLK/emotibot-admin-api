@@ -57,6 +57,9 @@ func IsValidAppId(aid string) bool {
 	if len(aid) != const_appid_length {
 		return false
 	}
+	if !HasOnlyNumEng(aid) {
+		return false
+	}
 	return true
 }
 
@@ -64,11 +67,17 @@ func IsValidEnterpriseId(eid string) bool {
 	if len(eid) != const_enterpriseid_length {
 		return false
 	}
+	if !HasOnlyNumEng(eid) {
+		return false
+	}
 	return true
 }
 
 func IsValidUserId(uid string) bool {
 	if len(uid) != const_userid_length {
+		return false
+	}
+	if !HasOnlyNumEng(uid) {
 		return false
 	}
 	return true
@@ -156,4 +165,13 @@ func GenUserId() string {
 
 func GenRoleId() string {
 	return genMD5ID("role")
+}
+
+func HasOnlyNumEng(input string) bool {
+	for _, c := range input {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
 }

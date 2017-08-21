@@ -35,10 +35,10 @@ type AppIdProp struct {
 type UserLoginProp struct {
 	AppId        string         `json:"appid"`
 	UserId       string         `json:"user_id"`
-	UserName     string         `json:"user_id"`
+	UserName     string         `json:"user_name"`
 	UserType     int            `json:"user_type"`
 	EnterpriseId string         `json:"enterprise_id"`
-	Privilege    interface{}    `json:"privilege"`
+	Privilege    NullableString `json:"privilege"`
 	RoleName     NullableString `json:"role_name"`
 }
 
@@ -56,6 +56,11 @@ type RoleProp struct {
 	RoleName     string `json:"role_name"`
 	Privilege    string `json:"privilege"`
 	EnterpriseId string `json:"-"`
+}
+
+type PrivilegeProp struct {
+	Id   string `json:privilege_id`
+	Name string `json:privilege_name`
 }
 
 // ==================== AppId Series Services ====================
@@ -152,22 +157,22 @@ func EnterpriseGetById(enterprise_id string, d *DaoWrapper) (*EnterpriseUserProp
 	return d.GetEnterpriseById(enterprise_id)
 }
 
-// func EnterpriseDeleteByIds(ent_ids []string, d *DaoWrapper) error {
-// 	if d == nil {
-// 		return errors.New("dao is nil")
-// 	}
-// 	var err error
-// 	for _, m := range ent_ids {
-// 		// TODO(mike)
-// 		// delete all users in user_list where enterprise_id=enterprise_id
-// 		// delete enterprise_list
-// 		// delete appid_list where enterprise_id=enterprise_id
-// 		if err = d.DeleteEnterprise(enterprise_id); err != nil {
-// 			LogWarn.Printf("delete %s failed. %s", enterprise_id, err)
-// 		}
-// 	}
-// 	return err
-// }
+func EnterpriseDeleteByIds(ent_ids []string, d *DaoWrapper) error {
+	if d == nil {
+		return errors.New("dao is nil")
+	}
+	var err error
+	for _, enterprise_id := range ent_ids {
+		// TODO(mike)
+		// delete all users in user_list where enterprise_id=enterprise_id
+		// delete enterprise_list
+		// delete appid_list where enterprise_id=enterprise_id
+		if err = d.DeleteEnterprise(enterprise_id); err != nil {
+			LogWarn.Printf("delete %s failed. %s", enterprise_id, err)
+		}
+	}
+	return err
+}
 
 func EnterprisePatch(e *EnterpriseUserProp, a *AppIdProp) error {
 	// TODO(mike): TBD
@@ -335,6 +340,11 @@ func patchUser(user *UserProp, dbUser *UserProp) {
 		dbUser.RoleId.Valid = true
 	}
 
+	if user.Email.Valid == true {
+		dbUser.Email.String = user.Email.String
+		dbUser.Email.Valid = true
+	}
+
 	if user.Password != "" {
 		dbUser.Password = user.Password
 	}
@@ -348,4 +358,19 @@ func patchRole(role *RoleProp, dbRole *RoleProp) {
 	if role.RoleName != "" {
 		dbRole.RoleName = role.RoleName
 	}
+}
+
+func PrivilegesGet(appid string, d *DaoWrapper) ([]*PrivilegeProp, error) {
+	if d == nil {
+		return nil, errors.New("dao is nil")
+	}
+
+	cnt, err := d.GetValidAppIdCount(appid)
+	if err != nil {
+		return nil, err
+	} else if cnt <= 0 {
+		return nil, errors.New("Invalid appid")
+	}
+
+	return d.GetPrivileges()
 }

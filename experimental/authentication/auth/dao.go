@@ -194,9 +194,12 @@ func (d *DaoWrapper) GetRoleById(role_id string, enterprise_id string) (*RolePro
 }
 
 func (d *DaoWrapper) DeleteRole(role_id string, enterprise_id string) error {
+	LogInfo.Printf("delete role: %s enterprise: %s", role_id, enterprise_id)
 	// 1. Change all user whose role is this, and change them into null
-	_, err := d.mysql.Exec("update user_list set role_id = ? where role_id = ? and enterprise_id = ", nil, role_id, enterprise_id)
+	cmd := fmt.Sprintf("update user_list set role_id = NULL where role_id = '%s' and enterprise_id = '%s'", role_id, enterprise_id)
+	_, err := d.mysql.Exec(cmd)
 	if err != nil {
+		LogInfo.Print("Update user list error")
 		return err
 	}
 
@@ -220,7 +223,7 @@ func (d *DaoWrapper) PatchRole(role_id string, enterprise_id string, r *RoleProp
 
 	sets := strings.Join(params, ",")
 
-	sql := fmt.Sprintf("update user_list set %s where role_id = ? and enterprise_id = ?", sets)
+	sql := fmt.Sprintf("update role_list set %s where role_id = ? and enterprise_id = ?", sets)
 	_, err := d.mysql.Exec(sql, r.RoleId, enterprise_id)
 
 	log := fmt.Sprintf("update role: %#v, (%s), (%#v)\n", r, sql, err)
@@ -297,6 +300,9 @@ func (d *DaoWrapper) PatchUser(user_id string, enterprise_id string, u *UserProp
 	if u.Password != "" {
 		params = append(params, fmt.Sprintf("password = '%s'", u.Password))
 	}
+	if u.Email.Valid {
+		params = append(params, fmt.Sprintf("email = '%s'", u.Email.String))
+	}
 
 	if len(params) == 0 {
 		return u, nil
@@ -319,4 +325,24 @@ func (d *DaoWrapper) GetEnterpriseIdByAppId(appid string) (string, error) {
 		return "", err
 	}
 	return enterprise_id, nil
+}
+
+func (d *DaoWrapper) GetPrivileges() ([]*PrivilegeProp, error) {
+	rows, err := d.mysql.Query("select privilege_id, privilege_name from privilege_list")
+	LogInfo.Printf("rows: %#v, err: %s", rows, err)
+	if err != nil {
+		return nil, err
+	}
+
+	got := []*PrivilegeProp{}
+	for rows.Next() {
+		var p PrivilegeProp
+		err = rows.Scan(&p.Id, &p.Name)
+		if err != nil {
+			LogInfo.Println(err)
+			continue
+		}
+		got = append(got, &p)
+	}
+	return got, nil
 }
