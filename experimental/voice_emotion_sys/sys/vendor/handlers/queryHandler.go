@@ -125,63 +125,66 @@ func QueryContinue(w http.ResponseWriter, r *http.Request) {
 }
 
 func Query(appid string, cursor string) ([]byte, int, error) {
-	conditions, conditions2, _, offset, remainCursor := makeCondition(cursor)
+	conditions, conditions2, count, offset, remainCursor := makeCondition(cursor)
 	var countInt int
 	var err error
 
 	if conditions == "" {
 		return nil, http.StatusBadRequest, errors.New("Cursor parse error")
 	}
-	/*
-		if count == "" {
-			countInt, err = QueryCount(NAPPID + " = \"" + appid + "\" and " + conditions)
-			if err != nil {
-				log.Println(err)
-				return nil, http.StatusInternalServerError, errors.New("Internal server error")
-			}
-		} else {
-			countInt, err = strconv.Atoi(count)
-			if err != nil {
-				log.Printf(err.Error() + " count is not int")
-				return nil, http.StatusBadRequest, errors.New("Cursor count error")
-			}
+
+	if count == "" {
+		countInt, err = QueryCount(appid, conditions, conditions2)
+		if err != nil {
+			log.Println(err)
+			return nil, http.StatusInternalServerError, errors.New("Internal server error")
 		}
-	*/
+	} else {
+		countInt, err = strconv.Atoi(count)
+		if err != nil {
+			log.Printf(err.Error() + " count is not int")
+			return nil, http.StatusBadRequest, errors.New("Cursor count error")
+		}
+	}
 
 	rbs := make([]*ReturnBlock, 0)
 	rp := new(ResultPage)
 
-	conditions += " order by " + NFILET + " limit " + PAGELIMIT
+	//conditions += " order by " + NFILET + " limit " + PAGELIMIT
+	conditions += " order by " + NFILET
 
 	//parse offset
 	var offsetInt int
+
 	if offset != "" {
 		offsetInt, err = strconv.Atoi(offset)
 		if err != nil {
 			log.Printf(err.Error() + " offset is not int")
 			return nil, http.StatusBadRequest, errors.New("Cursor offset error")
 		}
-		conditions += " offset " + offset
+		//conditions += " offset " + offset
 	}
 	//rp.Offset = offsetInt
 
-	//query result
-	countInt, status, err := QueryResult(appid, conditions, conditions2, &rbs)
-	if err != nil {
-		return nil, status, err
-	}
-
-	//if countInt > offsetInt+PAGELIMITINT {
-	if countInt >= PAGELIMITINT {
-		//rp.HasMore = true
-
+	//do paging
+	if countInt > offsetInt+PAGELIMITINT {
+		//query result
+		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, true, &rbs)
+		if err != nil {
+			return nil, status, err
+		}
 		//make new cursor
-		//offsetInt += PAGELIMITINT
-		offsetInt += countInt
+		offsetInt += PAGELIMITINT
+		//offsetInt += countInt
 		var newCursor string
 		newCursor = strconv.Itoa(countInt)
 		newCursor += "," + strconv.Itoa(offsetInt) + "," + remainCursor
 		rp.Cursor = CreateCursor(newCursor)
+	} else {
+		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, false, &rbs)
+		if err != nil {
+			return nil, status, err
+		}
 	}
 
 	rp.Total = countInt
@@ -504,19 +507,6 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 		}
 
 		conditions2 += ")"
-		/*
-			conditions2 = "b." + NEMOTIONTYPE + "=0 and ("
-			if cursorValues[8] != "" {
-				conditions2 += " (b." + NCHANNEL + "=1 and b." + NSCORE + cursorValues[8] + ")"
-				if cursorValues[9] != "" {
-					conditions2 += " or"
-				}
-			}
-			if cursorValues[9] != "" {
-				conditions2 += " (b." + NCHANNEL + "=2 and b." + NSCORE + cursorValues[9] + ")"
-			}
-			conditions2 += ")"
-		*/
 	}
 
 	remainCursor += "," + cursorValues[8]

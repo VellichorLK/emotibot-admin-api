@@ -81,7 +81,7 @@ const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME 
 	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
 
-const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
+const QueryFileInfoAndChanScoreSQL2 = " as a inner join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NDURATION + "," +
 	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES +
@@ -503,18 +503,25 @@ func QuerySingleResult(fileID string, appid string) ([]byte, int, error) {
 
 }
 */
-func QueryResult(appid string, conditions string, conditions2 string, rbs *[]*ReturnBlock) (int, int, error) {
+func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, rbs *[]*ReturnBlock) (int, int, error) {
 	//debug.FreeOSMemory()
 
-	query := QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
+	query := "with joinr as ("
+	query += QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
 	query += " where " + NAPPID + "=?"
 	query += " and " + conditions + " )"
 	query += QueryFileInfoAndChanScoreSQL2
 	if conditions2 != "" {
-		query += " where  " + conditions2
+		query += " where " + conditions2
+	}
+	query += " )"
+	query += "select * from joinr "
+	if doPaging || offset > 0 {
+		query += "where " + NFILEID + " in (select * from (select distinct " + NFILEID +
+			" from joinr limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c);"
 	}
 
-	log.Println(query)
+	//log.Println(query)
 	rows, err := db.Query(query, appid)
 	if err != nil {
 		log.Println(err)
@@ -670,10 +677,21 @@ func QueryReport(appid string, conditions string, rc *ReportCtx) error {
 
 }
 
-func QueryCount(conditions string) (int, error) {
+func QueryCount(appid string, conditions string, conditions2 string) (int, error) {
 	var count int
-	query := "SELECT COUNT(*) as count FROM " + MainTable + " where " + conditions
-	rows, err := db.Query(query)
+
+	query := "select count(distinct a.id) from ( select * from " + MainTable
+	query += " where " + NAPPID + "=?"
+	query += " and " + conditions + " )"
+	query += QueryFileInfoAndChanScoreSQL2
+	if conditions2 != "" {
+		query += " where  " + conditions2
+	}
+
+	//log.Println(conditions2)
+	//log.Println(query)
+
+	rows, err := db.Query(query, appid)
 	if err != nil {
 		log.Println(err)
 		return 0, err
