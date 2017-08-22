@@ -239,7 +239,7 @@
 				}
 			],
 			"request": {
-				"url": "http://{{host}}:8080/auth/v1/enterprise/{{enterpriseID}}",
+				"url": "http://{{host}}:8088/auth/v1/enterprise/{{enterpriseID}}",
 				"method": "DELETE",
 				"header": [],
 				"body": {},
