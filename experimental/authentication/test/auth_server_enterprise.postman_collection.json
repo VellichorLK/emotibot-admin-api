@@ -45,7 +45,7 @@
 				}
 			],
 			"request": {
-				"url": "{{host}}:8088/auth/v1/enterprise/register",
+				"url": "http://{{host}}:8088/auth/v1/enterprise/register",
 				"method": "POST",
 				"header": [
 					{
@@ -193,7 +193,7 @@
 				}
 			],
 			"request": {
-				"url": "{{host}}:8088/auth/v1/user/login",
+				"url": "http://{{host}}:8088/auth/v1/user/login",
 				"method": "POST",
 				"header": [
 					{
@@ -239,7 +239,7 @@
 				}
 			],
 			"request": {
-				"url": "{{host}}/auth/v1/enterprise/{{enterpriseID}}",
+				"url": "http://{{host}}:8080/auth/v1/enterprise/{{enterpriseID}}",
 				"method": "DELETE",
 				"header": [],
 				"body": {},
