@@ -1,0 +1,304 @@
+{
+	"variables": [],
+	"info": {
+		"name": "auth server - enterprise",
+		"_postman_id": "def93106-624f-1474-cba7-1d876642bb20",
+		"description": "",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "registry enterprise",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"postman.setEnvironmentVariable(\"enterpriseID\", jsonData.result.enterprise.enterprise_id)",
+							"postman.setEnvironmentVariable(\"appid\", jsonData.result.appid.app_id)",
+							"",
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"tests[\"Return code is 0\"] = jsonData.status === 0;"
+						]
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"postman.setEnvironmentVariable(\"account\", \"unittest\")",
+							"postman.setEnvironmentVariable(\"nickName\", \"UNITTEST\")",
+							"postman.setEnvironmentVariable(\"password\", \"16802231b09f155b7a42a5dcaba33a74\") // unittest",
+							"postman.setEnvironmentVariable(\"location\", \"unittest addr\")",
+							"postman.setEnvironmentVariable(\"peopleNumber\", 50)",
+							"postman.setEnvironmentVariable(\"industry\", \"电商\")",
+							"postman.setEnvironmentVariable(\"linkEmail\", \"unittest@test.com\")",
+							"postman.setEnvironmentVariable(\"linkPhone\", \"0000000000\")",
+							"postman.setEnvironmentVariable(\"expTime\", \"1501013400\")",
+							"postman.setEnvironmentVariable(\"anaDuration\", \"100000\")",
+							"postman.setEnvironmentVariable(\"apiCnt\", \"1000\")"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{host}}:8088/auth/v1/enterprise/register",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "account",
+							"value": "{{account}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "nickName",
+							"value": "{{nickName}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "password",
+							"value": "{{password}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "location",
+							"value": "{{location}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "peopleNumber",
+							"value": "{{peopleNumber}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "industry",
+							"value": "{{industry}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "linkEmail",
+							"value": "{{linkEmail}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "linkPhone",
+							"value": "{{linkPhone}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "expTime",
+							"value": "{{expTime}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "anaDuration",
+							"value": "{{anaDuration}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "apiCnt",
+							"value": "{{apiCnt}}",
+							"type": "text",
+							"enabled": true
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "list enterprises",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"var results = jsonData.result;",
+							"",
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"tests[\"Return code is 0\"] = jsonData.status === 0;",
+							"",
+							"var enterprise;",
+							"results.forEach((ret) => {",
+							"    if (ret.enterprise_id === postman.getEnvironmentVariable(\"enterpriseID\")) {",
+							"        tests[\"Enterprise existed\"] = true;",
+							"        enterprise = ret;",
+							"    }",
+							"})",
+							"",
+							"if (!enterprise) {",
+							"    tests[\"Enterprise existed\"] = false;",
+							"} else {    ",
+							"    tests[\"check value of 'nickName'\"] = enterprise.enterprise_name === postman.getEnvironmentVariable(\"nickName\");",
+							"    tests[\"check value of 'location'\"] = enterprise.address === postman.getEnvironmentVariable(\"location\");",
+							"    tests[\"check value of 'peopleNumber'\"] = enterprise.people_numbers === parseInt(postman.getEnvironmentVariable(\"peopleNumber\"), 10);",
+							"    tests[\"check value of 'industry'\"] = enterprise.industry === postman.getEnvironmentVariable(\"industry\");",
+							"    tests[\"check value of 'lineEmail'\"] = enterprise.user_email === postman.getEnvironmentVariable(\"linkEmail\");",
+							"    tests[\"check value of 'linkPhone'\"] = enterprise.phone_number === postman.getEnvironmentVariable(\"linkPhone\");",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "http://{{host}}:8088/auth/v1/enterprises",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "login test",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"var results = jsonData.result;",
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"tests[\"Return code is 0\"] = jsonData.status === 0;",
+							"tests[\"Login appid\"] = results.appid === postman.getEnvironmentVariable(\"appid\")",
+							"tests[\"Login enterprise\"] = results.enterprise_id === postman.getEnvironmentVariable(\"enterpriseID\")"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{host}}:8088/auth/v1/user/login",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "user_name",
+							"value": "{{account}}",
+							"type": "text",
+							"enabled": true
+						},
+						{
+							"key": "password",
+							"value": "{{password}}",
+							"type": "text",
+							"enabled": true
+						}
+					]
+				},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "delete enterprise",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"tests[\"Return code is 0\"] = jsonData.status === 0;"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "{{host}}/auth/v1/enterprise/{{enterpriseID}}",
+				"method": "DELETE",
+				"header": [],
+				"body": {},
+				"description": ""
+			},
+			"response": []
+		},
+		{
+			"name": "list enterprises",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"var jsonData = JSON.parse(responseBody);",
+							"var results = jsonData.result;",
+							"",
+							"tests[\"Status code is 200\"] = responseCode.code === 200;",
+							"tests[\"Return code is 0\"] = jsonData.status === 0;",
+							"",
+							"var enterprise;",
+							"results.forEach((ret) => {",
+							"    if (ret.enterprise_id === postman.getEnvironmentVariable(\"enterpriseID\")) {",
+							"        tests[\"Enterprise existed\"] = true;",
+							"        enterprise = ret;",
+							"    }",
+							"})",
+							"",
+							"if (!enterprise) {",
+							"    tests[\"Enterprise deleted\"] = true;",
+							"    postman.clearEnvironmentVariable(\"account\");",
+							"    postman.clearEnvironmentVariable(\"nickName\");",
+							"    postman.clearEnvironmentVariable(\"password\");",
+							"    postman.clearEnvironmentVariable(\"location\");",
+							"    postman.clearEnvironmentVariable(\"peopleNumber\");",
+							"    postman.clearEnvironmentVariable(\"industry\");",
+							"    postman.clearEnvironmentVariable(\"linkEmail\");",
+							"    postman.clearEnvironmentVariable(\"linkPhone\");",
+							"    postman.clearEnvironmentVariable(\"expTime\");",
+							"    postman.clearEnvironmentVariable(\"anaDuration\");",
+							"    postman.clearEnvironmentVariable(\"apiCnt\");",
+							"    postman.clearEnvironmentVariable(\"enterpriseID\");",
+							"    postman.clearEnvironmentVariable(\"appid\");",
+							"} else {",
+							"    tests[\"Enterprise deleted\"] = false;",
+							"}"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "http://{{host}}:8088/auth/v1/enterprises",
+				"method": "GET",
+				"header": [],
+				"body": {},
+				"description": "The registred enterprise should be deleted"
+			},
+			"response": []
+		}
+	]
+}

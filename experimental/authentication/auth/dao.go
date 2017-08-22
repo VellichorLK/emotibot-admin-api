@@ -97,7 +97,7 @@ func (d *DaoWrapper) GetEnterpriseById(enterprise_id string) (*EnterpriseUserPro
 }
 
 func (d *DaoWrapper) GetEnterprises() ([]*EnterpriseUserProp, error) {
-	rows, err := d.mysql.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id")
+	rows, err := d.mysql.Query("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from enterprise_list el left join user_list ul on el.enterprise_id = ul.enterprise_id and ul.user_type = 0")
 	LogInfo.Printf("rows: %s, err: %s", rows, err)
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func (d *DaoWrapper) AddUserEntry(e *EnterpriseUserProp) error {
 
 // ===== enterprise delete related =====
 func (d *DaoWrapper) DeleteEnterprise(enterprise_id string) error {
-	cmd := fmt.Sprintf("delete el,al from enterprise_list join on appid_list al where el.enterprise_id=\"%s\" and al.app_id=el.app_id", enterprise_id)
+	cmd := fmt.Sprintf("delete el,al from enterprise_list as el join appid_list as al on al.app_id=el.app_id where el.enterprise_id=\"%s\"", enterprise_id)
 	if rows, err := d.mysql.Exec(cmd); err != nil {
 		LogError.Printf("cmd: %s, err: %s", cmd, err)
 		return err

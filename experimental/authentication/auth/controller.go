@@ -141,7 +141,7 @@ func userLoginHandler(w http.ResponseWriter, r *http.Request, c *Configuration, 
 		HandleHttpError(http.StatusForbidden, err, w)
 		return
 	}
-	RespJson(w, &u)
+	HandleSuccess(w, &u)
 }
 
 func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
@@ -179,6 +179,8 @@ func EnterpriseRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 		HandleHttpError(http.StatusInternalServerError, err, w)
 		return
 	}
+	a.AppId = p.AppId
+	HandleSuccess(w, map[string]interface{}{"enterprise": &p, "appid": &a})
 }
 
 // List all enterprises and its appid/login username, password
@@ -194,7 +196,7 @@ func EnterprisesHandler(w http.ResponseWriter, r *http.Request, c *Configuration
 		HandleError(-1, err, w)
 		return
 	}
-	RespJson(w, ents)
+	HandleSuccess(w, ents)
 }
 
 // Handle GET / DELETE / PATCH enterprise_id
@@ -231,7 +233,7 @@ func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 			HandleError(-1, err, w)
 			return
 		}
-
+		HandleSuccess(w, nil)
 	} else {
 		if err := r.ParseForm(); err != nil {
 			HandleHttpError(http.StatusBadRequest, err, w)
