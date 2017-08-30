@@ -31,7 +31,7 @@ done
 # prepare docker-compose env file
 cp $envfile .env
 
-echo "docker-compose -f ./docker-compose.yml rm -s $service"
+echo "docker-compose -f ./docker-compose.yml rm -sf $service"
 docker-compose -f ./docker-compose.yml rm -s $service
 
 depends="--no-deps"
