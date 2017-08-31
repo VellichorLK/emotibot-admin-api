@@ -72,6 +72,8 @@ services:
             RW_REDIS_IP: ${REDIS_IP} 
             RW_REDIS_PORT: ${REDIS_PORT}
             RW_HOSTNAME: ${HOSTNAME}
+        volumes:
+            - /etc/localtime:/etc/localtime
         restart: always
         depends_on:
             # - "redis"
@@ -95,6 +97,8 @@ services:
             RW_REDIS_IP: ${REDIS_IP} 
             RW_REDIS_PORT: ${REDIS_PORT}
             RW_SERVICE_PORT: ${LEGACY_SOCCER_PORT} 
+        volumes:
+            - /etc/localtime:/etc/localtime
         restart: always
         depends_on:
             "mysql":
@@ -116,6 +120,8 @@ services:
             MYSQL_DB_PASSWORD: "${MYSQL_PASS}"
             REDIS_SERVER: ${REDIS_IP}
             REDIS_DB: 0
+        volumes:
+            - /etc/localtime:/etc/localtime
         restart: always
         depends_on:
             - "legacy-soccer"
@@ -150,6 +156,7 @@ services:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
                 max-file: ${DOCKER_LOG_OPT_MAX_FILE}
         volumes:
+            - /etc/localtime:/etc/localtime
             - ${NETDATA_HEALTH_ALARM_NOTIFY_CONF}:/etc/netdata/health_alarm_notify.conf
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
