@@ -214,12 +214,15 @@ func ComputeChannelScore(eb *EmotionBlock) {
 	}
 
 	for chEmotion, count := range NumSegInOneChannel {
-		var totalScore, weightScore, rateScore float64
+		var twoFixedScore, totalScore, weightScore, rateScore float64
 		weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
 		rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
 		totalScore = weightScore*weight + rateScore*(1-weight)
 		//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
-		InsertChannelScore(eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100)
+
+		twoFixedScore = float64(int(totalScore*100*100)) / 100
+
+		InsertChannelScore(eb.IDUint64, chEmotion/divider, chEmotion%divider, twoFixedScore)
 	}
 
 	/*
