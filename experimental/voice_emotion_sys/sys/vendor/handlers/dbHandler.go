@@ -81,7 +81,7 @@ const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME 
 	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
 
-const QueryFileInfoAndChanScoreSQL2 = " as a inner join " + ChannelTable + " as b on a." + NID + "=b." + NID
+const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NDURATION + "," +
 	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES +
