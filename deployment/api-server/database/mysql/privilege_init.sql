@@ -1,34 +1,61 @@
+-- phpMyAdmin SQL Dump
+-- version 4.7.2
+-- https://www.phpmyadmin.net/
+--
+-- 主機: db
+-- 產生時間： 2017 年 09 月 12 日 08:34
+-- 伺服器版本: 8.0.2-dmr
+-- PHP 版本： 7.0.16
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+SET AUTOCOMMIT = 0;
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- 資料庫： `authentication`
+--
+
 -- --------------------------------------------------------
 
 --
--- Table structure for table `ecovacs_module`
---
-CREATE DATABASE IF NOT EXISTS `authentication` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
-USE `authentication`;
-
-CREATE TABLE IF NOT EXISTS `ecovacs_module` (
-  `ModuleId` int(11) NOT NULL AUTO_INCREMENT,
-  `ModuleCode` varchar(50) NOT NULL,
-  `ModuleName` varchar(100) NOT NULL,
-  `ParentCode` varchar(50) NOT NULL,
-  `ModuleUrl` varchar(500) NOT NULL,
-  `CreatedUserId` varchar(50) NOT NULL,
-  `CreatedTime` datetime NOT NULL,
-  `Status` int(11) DEFAULT '0' COMMENT '-1:删除; 0:停止; 1:启动',
-  `EditUserId` varchar(50) NOT NULL,
-  `UpdatedTime` datetime NOT NULL,
-  PRIMARY KEY (`ModuleId`),
-  KEY `ecovacs_module_ModuleCode_IDX` (`ModuleCode`,`ModuleName`,`ParentCode`,`Status`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
-
---
--- Dumping data for table `ecovacs_module`
+-- 資料表結構 `privilege_list`
 --
 
-INSERT INTO `ecovacs_module` (`ModuleId`, `ModuleCode`, `ModuleName`, `ParentCode`, `ModuleUrl`, `CreatedUserId`, `CreatedTime`, `Status`, `EditUserId`, `UpdatedTime`) VALUES
-(1, 'voiceCheck', '音頻檢查', '0', '', '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00', 1, '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00'),
-(2, 'voiceQueue', '分析隊列', '0', '', '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00', 1, '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00'),
-(3, 'voiceReport', '統計報表', '0', '', '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00', 1, '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00'),
-(4, 'systemConfig', '系統設置', '0', '', '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00', 1, '01C2DB528B60E5A498781452FCB509E6C', '2017-04-12 10:38:00');
+CREATE TABLE `privilege_list` (
+  `privilege_id` int(11) NOT NULL,
+  `privilege_name` varchar(32) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
--- --------------------------------------------------------
+--
+-- 資料表的匯出資料 `privilege_list`
+--
+
+INSERT INTO `privilege_list` (`privilege_id`, `privilege_name`) VALUES
+(1, 'voiceCheck'),
+(2, 'voiceUpload'),
+(3, 'voiceQueue'),
+(4, 'voiceReport'),
+(5, 'systemConfig'),
+(6, 'authConfig');
+
+--
+-- 已匯出資料表的索引
+--
+
+--
+-- 資料表索引 `privilege_list`
+--
+ALTER TABLE `privilege_list`
+  ADD PRIMARY KEY (`privilege_id`);
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
