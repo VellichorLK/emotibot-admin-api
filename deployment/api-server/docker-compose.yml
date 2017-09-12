@@ -18,6 +18,7 @@ services:
             - ./database/mysql/emotibot.sql:/var/local/database/emotibot.sql
             - ./database/mysql/voice_emotion.sql:/var/local/database/voice_emotion.sql
             - ./database/mysql/authentication.sql:/var/local/database/authentication.sql
+            - ./database/mysql/privilege_init.sql:/var/local/database/privilege_init.sql
             - ./database/mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
             - ${MYSQL_DATA_PATH}:/var/lib/mysql
             - /etc/localtime:/etc/localtime

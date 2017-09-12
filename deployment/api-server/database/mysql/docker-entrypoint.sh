@@ -194,6 +194,7 @@ if [ "$1" = 'mysqld' -a -z "$wantHelp" ]; then
 		"${mysql[@]}" < /var/local/database/emotibot.sql
 		"${mysql[@]}" < /var/local/database/voice_emotion.sql
 		"${mysql[@]}" < /var/local/database/authentication.sql
+		"${mysql[@]}" < /var/local/database/privilege_init.sql
 		# ===== end init table with sql file =====
 		
 		if ! kill -s TERM "$pid" || ! wait "$pid"; then
