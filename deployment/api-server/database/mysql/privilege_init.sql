@@ -21,6 +21,8 @@ SET time_zone = "+00:00";
 --
 -- 資料庫： `authentication`
 --
+CREATE DATABASE IF NOT EXISTS `authentication` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `authentication`;
 
 -- --------------------------------------------------------
 
@@ -28,7 +30,7 @@ SET time_zone = "+00:00";
 -- 資料表結構 `privilege_list`
 --
 
-CREATE TABLE `privilege_list` (
+CREATE TABLE IF NOT EXISTS `privilege_list` (
   `privilege_id` int(11) NOT NULL,
   `privilege_name` varchar(32) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
