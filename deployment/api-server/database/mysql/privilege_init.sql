@@ -3,6 +3,8 @@
 --
 -- Table structure for table `ecovacs_module`
 --
+CREATE DATABASE IF NOT EXISTS `emotibot` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+USE `emotibot`;
 
 CREATE TABLE IF NOT EXISTS `ecovacs_module` (
   `ModuleId` int(11) NOT NULL AUTO_INCREMENT,
