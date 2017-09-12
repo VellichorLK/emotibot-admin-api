@@ -32,7 +32,8 @@ USE `authentication`;
 
 CREATE TABLE IF NOT EXISTS `privilege_list` (
   `privilege_id` int(11) NOT NULL,
-  `privilege_name` varchar(32) NOT NULL
+  `privilege_name` varchar(32) NOT NULL,
+  PRIMARY KEY (`privilege_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
@@ -46,17 +47,6 @@ INSERT INTO `privilege_list` (`privilege_id`, `privilege_name`) VALUES
 (4, 'voiceReport'),
 (5, 'systemConfig'),
 (6, 'authConfig');
-
---
--- 已匯出資料表的索引
---
-
---
--- 資料表索引 `privilege_list`
---
-ALTER TABLE `privilege_list`
-  ADD PRIMARY KEY (`privilege_id`);
-COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
