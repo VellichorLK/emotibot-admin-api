@@ -443,9 +443,6 @@ func parseTime(t string, isStart bool) (string, error) {
 		}
 		if userT < 0 {
 			return "", errors.New("don't do early time")
-		} else if userT > now.Unix() {
-			return "", errors.New("don't do future time. Time traveler")
-
 		}
 		/*
 			t += "+08"
