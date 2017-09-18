@@ -77,7 +77,7 @@ const InsertChannelScoreSQL = "insert into " + ChannelTable + " (" + NID + ", " 
 const UpdateResultSQL = "update " + MainTable + " set " + NANAST + "=? ," + NANAET + "=? ," + NANARES + "=? ," + NRDURATION +
 	"=? where " + NID + "=?"
 
-const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NDURATION +
+const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
 	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
 

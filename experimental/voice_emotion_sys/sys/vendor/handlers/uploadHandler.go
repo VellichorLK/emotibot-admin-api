@@ -17,7 +17,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var args = [...]string{NFILETYPE, NDURATION, NFILET, NCHECKSUM, NTAG, NAPPID}
+//var args = [...]string{NFILETYPE, NDURATION, NFILET, NCHECKSUM, NTAG, NAPPID}
+var args = [...]string{NFILETYPE, NFILET, NCHECKSUM, NTAG, NAPPID}
 var optional = [...]string{NCHECKSUM, NTAG, NAPPID}
 var FilePrefix string
 
@@ -94,13 +95,17 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 		}
 	}
 
+	// make duration as optional field
+	f.Duration = uint32(0)
 	durationInt, err := strconv.Atoi(r.FormValue(NDURATION))
 	if err != nil {
-		return nil, errors.New("Wrong type of " + NDURATION)
+		// return nil, errors.New("Wrong type of " + NDURATION)
 	} else if durationInt < 0 {
 		return nil, errors.New(NDURATION + " < 0")
+	} else {
+		// set if given
+		f.Duration = uint32(durationInt)
 	}
-	f.Duration = uint32(durationInt)
 
 	now := time.Now()
 	createTimeInt64, err := strconv.ParseInt(r.FormValue(NFILET), 10, 64)
