@@ -66,6 +66,9 @@ func recordData(task string) (string, string) {
 	}
 	eb.IDUint64 = idInt64
 
+	// since render in ms (should voice-emotion worker modification)
+	eb.RDuration /= 1000
+
 	handlers.InsertAnalysisRecord(eb)
 	handlers.ComputeChannelScore(eb)
 	handlers.UpdateResult(eb)
