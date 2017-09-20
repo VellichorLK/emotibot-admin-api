@@ -78,13 +78,13 @@ const UpdateResultSQL = "update " + MainTable + " set " + NANAST + "=? ," + NANA
 	"=? where " + NID + "=?"
 
 const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
-	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES +
+	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES + ", a." + NUPT +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
 
 const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NDURATION + "," +
-	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES +
+	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
 	" from " + MainTable + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 	",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
 	AnalysisTable + " where " + NID + "=(select " + NID + " from " + MainTable + " where " +
@@ -103,7 +103,7 @@ func InsertFileRecord(fi *FileInfo) error {
 	defer stmt.Close()
 
 	res, err := stmt.Exec(fi.FileID, fi.FileName, fi.FileType, fi.Duration, fi.CreateTime,
-		fi.Checksum, fi.Tag, fi.Priority, fi.Appid, fi.Size, fi.Path, fi.UPTime, fi.Tag2, 0)
+		fi.Checksum, fi.Tag, fi.Priority, fi.Appid, fi.Size, fi.Path, fi.UploadTime, fi.Tag2, 0)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -395,7 +395,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		var blob []uint8
 
 		err := rows.Scan(&id, &drb.FileID, &drb.FileName, &drb.FileType, &drb.Duration,
-			&drb.CreateTime, &drb.Checksum, &drb.Tag, &drb.Tag2, &drb.Priority, &drb.Size, &drb.AnalysisResult,
+			&drb.CreateTime, &drb.Checksum, &drb.Tag, &drb.Tag2, &drb.Priority, &drb.Size, &drb.AnalysisResult, &drb.UploadTime,
 			&file, &st, &ed, &ch, &status, &blob, &emType, &score)
 
 		if err != nil {
@@ -546,7 +546,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		var score sql.NullFloat64
 
 		err := rows.Scan(&nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
-			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &nrb.AnalysisResult,
+			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &nrb.AnalysisResult, &nrb.UploadTime,
 			&channel, &label, &score)
 
 		if err != nil {

@@ -61,6 +61,7 @@ type BasicInfo struct {
 	Duration       uint32 `json:"duration"`
 	Size           uint64 `json:"size"`
 	CreateTime     uint64 `json:"created_time"`
+	UploadTime     uint64 `json:"upload_time"`
 	Checksum       string `json:"checksum"`
 	Tag            string `json:"tag1"`
 	Tag2           string `json:"tag2"`
