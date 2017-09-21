@@ -554,6 +554,9 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 			return 0, http.StatusInternalServerError, errors.New("Internal server error")
 		}
 
+		// render write in ms convert to second.
+		nrb.Duration /= 1000
+
 		rb, ok := ReturnBlockMap[nrb.FileID]
 		if !ok {
 			rb = nrb
