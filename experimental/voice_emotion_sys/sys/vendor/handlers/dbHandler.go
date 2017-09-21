@@ -83,7 +83,7 @@ const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME 
 
 const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
-const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NDURATION + "," +
+const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NRDURATION + "," +
 	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
 	" from " + MainTable + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 	",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
@@ -403,6 +403,8 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 			return http.StatusInternalServerError, errors.New("Internal server error")
 		}
 
+		drb.Duration /= 1000
+
 		if file.Valid && st.Valid && ed.Valid && ch.Valid && status.Valid {
 			chInt := int(ch.Int64)
 			dcr, ok := channelMapping[chInt]
@@ -553,6 +555,9 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 			log.Println(err)
 			return 0, http.StatusInternalServerError, errors.New("Internal server error")
 		}
+
+		// render write in ms convert to second.
+		nrb.Duration /= 1000
 
 		rb, ok := ReturnBlockMap[nrb.FileID]
 		if !ok {
