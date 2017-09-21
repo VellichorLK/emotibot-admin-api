@@ -116,7 +116,7 @@ def do_run(compose_file, env_file, services, depends, scale):
 
 def do_stop(compose_file, services):
     # docker-compose -f docker-compose.yml stop ${service}
-    cmd = 'docker-compose -f %s stop %s' % (compose_file, services)
+    cmd = 'docker-compose -f %s stop %s' % (compose_file, ' '.join(n for n in services))
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
 
@@ -133,7 +133,7 @@ def main():
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
     parser.add_argument('-f', '--compose_file', default='./docker-compose.yml')
     parser.add_argument('-e', '--env', default='./test.env')
-    parser.add_argument('-s', '--service', action='append')
+    parser.add_argument('-s', '--service', action='append', default=[])
     parser.add_argument('-d', '--depends', action='store_true', default=False,
                         help='if service is empty, depends always be true')
     parser.add_argument('-n', '--number', type=str, default='',
@@ -158,7 +158,7 @@ def main():
     elif args.stop:
         if not os.path.exists(args.compose_file):
             parser.print_help()
-        do_stop(args.compose_file, args.service, args.depends)
+        do_stop(args.compose_file, args.service)
     else:
         parser.print_help()
 
