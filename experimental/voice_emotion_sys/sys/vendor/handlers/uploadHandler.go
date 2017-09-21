@@ -18,7 +18,7 @@ import (
 )
 
 //var args = [...]string{NFILETYPE, NDURATION, NFILET, NCHECKSUM, NTAG, NAPPID}
-var args = [...]string{NFILETYPE, NFILET, NCHECKSUM, NTAG, NAPPID}
+var args = [...]string{NFILETYPE, NCHECKSUM, NTAG, NAPPID}
 var optional = [...]string{NCHECKSUM, NTAG, NAPPID}
 var FilePrefix string
 
@@ -109,15 +109,23 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 
 	now := time.Now()
 	createTimeInt64, err := strconv.ParseInt(r.FormValue(NFILET), 10, 64)
-	if err != nil {
-		return nil, errors.New("Wrong type of " + NFILET)
-	} else if createTimeInt64 < 0 {
-		return nil, errors.New(NFILET + " < 0")
-	} else if createTimeInt64 > now.Unix() {
-		return nil, errors.New("do not do future time (" + NFILET + "). time traveler. ")
-
+	if err != nil || createTimeInt64 < 0 {
+		createTimeInt64 = now.Unix()
 	}
 	f.CreateTime = uint64(createTimeInt64)
+	f.UploadTime = uint64(now.Unix())
+	f.UPTime = now.Unix()
+
+	/*
+		if err != nil {
+			return nil, errors.New("Wrong type of " + NFILET)
+		} else if createTimeInt64 < 0 {
+			return nil, errors.New(NFILET + " < 0")
+		} else if createTimeInt64 > now.Unix() {
+			return nil, errors.New("do not do future time (" + NFILET + "). time traveler. ")
+
+		}
+	*/
 	f.Priority = DEFAULTPRIORITY
 	/*
 		if r.FormValue(NPRIORITY) != "" {
@@ -199,8 +207,8 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 		}
 	*/
 
-	now := time.Now()
-	fi.UPTime = now.Unix()
+	//now := time.Now()
+	//fi.UPTime = now.Unix()
 	err := updateDatabase(fi)
 	if err != nil {
 		return http.StatusInternalServerError, err
