@@ -112,7 +112,8 @@ func (r *ReportCtx) openReport() error {
 func finishJSONReport(r *Report, writeToFile bool, f *os.File) ([]byte, string, error) {
 
 	for _, v := range r.Records {
-		duration := float64(v.Duration) / 1000
+		//duration := float64(v.Duration) / 1000
+		duration := float64(v.Duration)
 		r.CumulativeDuration += duration
 		r.Count++
 
