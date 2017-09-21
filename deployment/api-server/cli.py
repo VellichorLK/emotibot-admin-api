@@ -104,8 +104,12 @@ def do_run(compose_file, env_file, services, depends, scale):
     subprocess.call(cmd.strip().split(" "))
 
     # TODO: deal with depends and scale
-    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans -d %s' % (
-        compose_file, ' '.join(n for n in services) if services else '')
+    no_deps = ''
+    if services:
+        if depends is False:
+            no_deps = '--no-deps '
+    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s' % (
+        compose_file, no_deps, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
 
@@ -124,7 +128,7 @@ def main():
     group.add_argument('--save', action='store_true', help='Save images. E.g. docker-compose --save -o ${/path/to/output_folder} -f ${compose_yaml}')
     group.add_argument('--load', action='store_true', help='Load images. E.g. docker-compose --load -o ${/path/to/output_folder}')
     group.add_argument('--destroy', action='store_true', help='Destrop ALL images. E.g. docker-compose --destroy -f ${compose_yaml}')
-    group.add_argument('--run', action='store_true', help='Run service. E.g. docker-compose --run -f ${compose_yaml} -e ${env_file}')
+    group.add_argument('--run', action='store_true', help='Run service. E.g. docker-compose --run -f ${compose_yaml} -e ${env_file} -s ${service1} -s ${service2}')
     group.add_argument('--stop', action='store_true')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
     parser.add_argument('-f', '--compose_file', default='./docker-compose.yml')
