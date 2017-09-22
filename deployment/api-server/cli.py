@@ -72,7 +72,7 @@ def do_destroy(compose_file):
         subprocess.call(cmd.split())
 
 
-def do_run(compose_file, env_file, services, depends, scale):
+def do_run(compose_file, env_file, services, depends, number):
     '''
     1) copy env_file to .env
     2) compose comand:
@@ -105,11 +105,15 @@ def do_run(compose_file, env_file, services, depends, scale):
 
     # TODO: deal with depends and scale
     no_deps = ''
+    scale = ''
     if services:
         if depends is False:
             no_deps = '--no-deps '
-    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s' % (
-        compose_file, no_deps, ' '.join(n for n in services) if services else '')
+        for s in services:
+            if s == 'worker-voice-emotion-analysis':
+                scale = '--scale %s=%s ' % (s, number)
+    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s%s' % (
+        compose_file, no_deps, scale, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
 
@@ -136,7 +140,7 @@ def main():
     parser.add_argument('-s', '--service', action='append', default=[])
     parser.add_argument('-d', '--depends', action='store_true', default=False,
                         help='if service is empty, depends always be true')
-    parser.add_argument('-n', '--number', type=str, default='',
+    parser.add_argument('-n', '--number', type=int, default=1,
                         help='only affect on voice analysis service')
     args = parser.parse_args()
     print args
