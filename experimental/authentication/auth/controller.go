@@ -25,11 +25,14 @@ const (
 	// endpoint: general user management
 	const_endpoint_users         string = "/admin/v1/users"         // GET /admin/v1/users
 	const_endpoint_user_register string = "/admin/v1/user/register" // POST /admin/v1/user/register
-	const_endpoint_user_id       string = "/admin/v1/user/"         // GET|PATCH|DELETE /admin/v1/user/user/<user_id>
+	const_endpoint_user_id       string = "/admin/v1/user/"         // GET|PATCH|DELETE /admin/v1/user/<user_id>
 
 	// endpoint: privilege list
 	const_endpoint_privileges string = "/admin/v1/privileges"
 
+	// endpoint: sys setting/logo
+	const_endpoint_system_logo          string = "/admin/system/v1/logo"        // GET|DELETE
+	const_endpoint_system_logo_register string = "/admin/system/v1/logo/upload" // POST
 	// endpoint: sys settings
 
 	const_type_super_user   int = 0
@@ -45,7 +48,7 @@ func SetRoute(c *Configuration) error {
 
 	LogInfo.Printf("config: %s", c)
 	// dao, err := GetDao(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
-	dao, err := DaoMysqlInit(c.DbUrl, c.DbUser, c.DbPass, c.DbName)
+	dao, err := DaoInit(c.DbUrl, c.DbUser, c.DbPass, c.DbName, c.ConsulUrl)
 	if err != nil {
 		return err
 	}
@@ -90,6 +93,13 @@ func SetRoute(c *Configuration) error {
 	// privilege list
 	http.HandleFunc(const_endpoint_privileges, func(w http.ResponseWriter, r *http.Request) {
 		PrivilegesHandler(w, r, c, dao)
+	})
+	// system logo setting
+	http.HandleFunc(const_endpoint_system_logo_register, func(w http.ResponseWriter, r *http.Request) {
+		SystemLogoRegisterHandler(w, r, c, dao)
+	})
+	http.HandleFunc(const_endpoint_system_logo, func(w http.ResponseWriter, r *http.Request) {
+		SystemLogoHandler(w, r, c, dao)
 	})
 
 	LogInfo.Printf("Set route OK.")
@@ -320,7 +330,7 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 	}
 	LogInfo.Printf("user_id: %s", user_id)
 
-	// apploy get/delte/patch
+	// apply get/delte/patch
 	if r.Method == "GET" {
 		// enterprise_service.get_enterprise(enterprise_id)
 		// select all from enterprise_list join user_list on enterprise_id
@@ -539,4 +549,68 @@ func PrivilegesHandler(w http.ResponseWriter, r *http.Request, c *Configuration,
 		return
 	}
 	HandleSuccess(w, privileges)
+}
+
+// ========== system logo api
+// Handle POST logo (file upload)
+// return 400 - bad request (invalid parameter/size overflow)
+// return 500 - failed to store file
+func SystemLogoRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
+		return
+	}
+	// get appid
+	appid := r.Header.Get(const_type_authorization_header_key)
+	if !IsValidAppId(appid) {
+		HandleHttpError(http.StatusForbidden, errors.New("Invalid appid"), w)
+		return
+	}
+
+	// file limit is 64k, what happened if over ?
+	r.ParseMultipartForm(16 << 10) // 16k
+	file, _, err := r.FormFile("uploadfile")
+	if err != nil {
+		HandleHttpError(http.StatusBadRequest, errors.New("Bad Request"), w)
+		return
+	}
+	defer file.Close()
+
+	if err := SystemLogoRegister(appid, file, d); err != nil {
+		HandleHttpError(http.StatusBadRequest, err, w)
+		return
+	}
+}
+
+// return 200 - get success with b64 image str
+// return 204 - delete success without content
+// return 410
+// return 403
+func SystemLogoHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET", "DELETE"}, w) {
+		return
+	}
+
+	appid := r.Header.Get(const_type_authorization_header_key)
+	if !IsValidAppId(appid) {
+		HandleHttpError(http.StatusForbidden, errors.New("Invalid appid"), w)
+		return
+	}
+
+	if r.Method == "GET" {
+		imgb64str, err := SystemLogoGetByAppId(appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		RespPlainText(w, imgb64str)
+		return
+	}
+
+	// DELETE
+	//if err := SystemLogoDelete(appid); err != nil {
+	//	HandleError(-2, err, w)
+	//	return
+	//}
+	w.WriteHeader(http.StatusNoContent)
+	return
 }

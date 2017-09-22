@@ -1,8 +1,10 @@
 package auth
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"time"
 )
 
@@ -61,6 +63,11 @@ type RoleProp struct {
 type PrivilegeProp struct {
 	Id   string `json:privilege_id`
 	Name string `json:privilege_name`
+}
+
+// size inferface for multipart.File to get size
+type Size interface {
+	Size() int64
 }
 
 // ==================== AppId Series Services ====================
@@ -373,4 +380,39 @@ func PrivilegesGet(appid string, d *DaoWrapper) ([]*PrivilegeProp, error) {
 	}
 
 	return d.GetPrivileges()
+}
+
+// ==================== system related apis ====================
+func SystemLogoRegister(appid string, f multipart.File, d *DaoWrapper) error {
+	LogInfo.Printf("appid: %s, file: %v, dao: %v", appid, f, d)
+	if !IsValidAppId(appid) || d == nil {
+		return errors.New("Invalid parameter")
+	}
+	// get enterprise_id from app_id
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return err
+	}
+	if sizeInterface, ok := f.(Size); ok {
+		LogInfo.Printf("size: %d", sizeInterface.Size())
+		buf := make([]byte, sizeInterface.Size())
+		f.Read(buf)
+		imgBase64Str := base64.StdEncoding.EncodeToString(buf)
+		return d.AddLogo(enterprise_id, imgBase64Str)
+	}
+	return errors.New("Failed to get file size, maximum is 16KB.")
+}
+
+func SystemLogoGetByAppId(appid string, d *DaoWrapper) (string, error) {
+	LogInfo.Printf("appid: %s", appid)
+	if !IsValidAppId(appid) {
+		return "", errors.New("Invalid parameter")
+	}
+
+	// get enterprise_id
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return "", err
+	}
+	return d.GetLogo(enterprise_id)
 }

@@ -10,6 +10,7 @@ const (
 	const_dfl_db_url      string = "172.17.0.1:3306"
 	const_dfl_db_name     string = "authentication"
 	const_dfl_listen_port string = "8088"
+	const_dfl_consul_url  string = "172.17.0.1:8500"
 )
 
 type Configuration struct {
@@ -18,6 +19,7 @@ type Configuration struct {
 	DbPass     string
 	DbName     string
 	ListenPort string
+	ConsulUrl  string
 }
 
 func GetConfig() *Configuration {
@@ -27,6 +29,7 @@ func GetConfig() *Configuration {
 	c.DbPass = os.Getenv("MYSQL_PASS")
 	c.DbName = os.Getenv("MYSQL_DB")
 	c.ListenPort = os.Getenv("PORT")
+	c.ConsulUrl = os.Getenv("CONSUL_URL")
 	if c.DbUrl == "" {
 		c.DbUrl = const_dfl_db_url
 	}
@@ -43,6 +46,10 @@ func GetConfig() *Configuration {
 
 	if c.ListenPort == "" {
 		c.ListenPort = const_dfl_listen_port
+	}
+
+	if c.ConsulUrl == "" {
+		c.ConsulUrl = const_dfl_consul_url
 	}
 	return &c
 }

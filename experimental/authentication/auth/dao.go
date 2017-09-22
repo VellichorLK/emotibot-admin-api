@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,11 +17,16 @@ const (
 	const_mysql_read_timeout  string = "30s"
 )
 
-type DaoWrapper struct {
-	mysql *sql.DB
+type stConsulConfig struct {
+	consul_url string
 }
 
-func DaoMysqlInit(db_url string, db_user string, db_pass string, db_name string) (d *DaoWrapper, err error) {
+type DaoWrapper struct {
+	mysql  *sql.DB
+	consul *stConsulConfig
+}
+
+func DaoInit(db_url string, db_user string, db_pass string, db_name string, consul_url string) (d *DaoWrapper, err error) {
 	if len(db_url) == 0 || len(db_user) == 0 || len(db_pass) == 0 || len(db_name) == 0 {
 		return nil, errors.New("invalid parameters!")
 	}
@@ -33,7 +40,11 @@ func DaoMysqlInit(db_url string, db_user string, db_pass string, db_name string)
 		LogInfo.Printf("open db(%s) failed: %s", url, err)
 		return nil, err
 	}
-	dao := DaoWrapper{db}
+
+	// init consul client
+	consul := stConsulConfig{consul_url}
+
+	dao := DaoWrapper{db, &consul}
 	return &dao, db.Ping()
 }
 
@@ -345,4 +356,34 @@ func (d *DaoWrapper) GetPrivileges() ([]*PrivilegeProp, error) {
 		got = append(got, &p)
 	}
 	return got, nil
+}
+
+// ===== system setting related
+func (d *DaoWrapper) AddLogo(enterprise_id string, img_b64_str string) error {
+	// {consul-server-port}/v1/kv/voice-emotion/{enterprise_id}/system-setting/logo
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system-setting/logo", d.consul.consul_url, enterprise_id)
+	LogInfo.Printf("url: %s", url)
+
+	return DoPut(url, img_b64_str)
+}
+
+func (d *DaoWrapper) GetLogo(enterprise_id string) (string, error) {
+	// {consul-server-port}/v1/kv/voice-emotion/{enterprise_id}/system-setting/logo
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system-setting/logo?raw", d.consul.consul_url, enterprise_id)
+	LogInfo.Printf("url: %s", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		LogError.Printf("failed to get from %s, %v", url, err)
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		LogError.Printf("failed to read from body, %v", err)
+		return "", err
+	}
+
+	return string(body), nil
 }

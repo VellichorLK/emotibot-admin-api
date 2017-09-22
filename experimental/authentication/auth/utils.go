@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -101,6 +102,13 @@ func RespJson(w http.ResponseWriter, es interface{}) {
 	fmt.Fprintf(w, string(js))
 }
 
+func RespPlainText(w http.ResponseWriter, s string) {
+	if s != "" {
+		fmt.Fprintf(w, s)
+		//w.Write(s)
+	}
+}
+
 // return true: invalid
 func HandleHttpMethodError(request_method string, allowed_method []string, w http.ResponseWriter) bool {
 	for _, m := range allowed_method {
@@ -174,4 +182,29 @@ func HasOnlyNumEng(input string) bool {
 		}
 	}
 	return true
+}
+
+// ===== http related apis =====
+func DoPut(url string, data string) error {
+	if 0 == strings.Compare(url, "") {
+		return errors.New("invalid url")
+	}
+
+	if 0 == strings.Compare(data, "") {
+		return errors.New("invalid data")
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest(http.MethodPut, url, strings.NewReader(data))
+	if err != nil {
+		LogError.Printf("new request failed. %v", err)
+		return err
+	}
+
+	_, err = client.Do(req)
+	if err != nil {
+		LogError.Printf("do put request failed: %v", err)
+		return err
+	}
+	return nil
 }
