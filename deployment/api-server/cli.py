@@ -105,7 +105,7 @@ def do_run(compose_file, env_file, services, depends, number):
     subprocess.check_call(cmd.strip().split(" "))
 
     # compose command: remove previous service
-    cmd = 'docker-compose -f %s down --remove-orphans %s' % (
+    cmd = 'docker-compose -f %s rm -sf %s' % (
         compose_file, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.check_call(cmd.strip().split(" "))
