@@ -60,7 +60,7 @@ def do_destroy(compose_file):
     # docker rm $(docker ps -a -q)
     # Delete all images
     # docker rmi $(docker images -q)
-    cmd = 'docker-compose -f %s rm -sf' % compose_file
+    cmd = 'docker-compose -f %s down --remove-orphans' % compose_file
     print cmd
     subprocess.call(cmd.split())
     ret = subprocess.check_output(['docker', 'images', '-q'])
@@ -76,6 +76,7 @@ def do_run(compose_file, env_file, services, depends, number):
     '''
     1) copy env_file to .env
     2) compose comand:
+        docker-compose -f ./docker-compose.yml pull ${service}
         docker-compose -f ./docker-compose.yml rm -s ${service}
         docker-compose -f ./docker-compose.yml up --force-recreate --remove-orphans ${depends} -d ${scale} ${service}
     '''
@@ -97,11 +98,17 @@ def do_run(compose_file, env_file, services, depends, number):
         print 'copy %s to %s failed due to %s' % (env_file, dst_file, exp)
         sys.exit(1)
 
-    # compose command: remove previous service
-    cmd = 'docker-compose -f %s rm -sf %s' % (
+    # compose command: pull images
+    cmd = 'docker-compose -f %s pull --parallel %s' % (
         compose_file, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
-    subprocess.call(cmd.strip().split(" "))
+    subprocess.check_call(cmd.strip().split(" "))
+
+    # compose command: remove previous service
+    cmd = 'docker-compose -f %s down --remove-orphans %s' % (
+        compose_file, ' '.join(n for n in services) if services else '')
+    print '### exec cmd: [%s]' % cmd.strip()
+    subprocess.check_call(cmd.strip().split(" "))
 
     # TODO: deal with depends and scale
     no_deps = ''
@@ -113,14 +120,22 @@ def do_run(compose_file, env_file, services, depends, number):
             if s == 'worker-voice-emotion-analysis':
                 scale = '--scale %s=%s ' % (s, number)
     cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s%s' % (
-        compose_file, no_deps, scale, ' '.join(n for n in services) if services else '')
+        compose_file, no_deps, scale,
+        ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
 
 
 def do_stop(compose_file, services):
     # docker-compose -f docker-compose.yml stop ${service}
-    cmd = 'docker-compose -f %s stop %s' % (compose_file, ' '.join(n for n in services))
+    cmd = 'docker-compose -f %s stop %s' % (compose_file,
+                                            ' '.join(n for n in services))
+    print '### exec cmd: [%s]' % cmd.strip()
+    subprocess.call(cmd.strip().split(" "))
+
+
+def do_list(compose_file):
+    cmd = 'docker-compose -f %s config --service' % compose_file
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
 
@@ -134,6 +149,7 @@ def main():
     group.add_argument('--destroy', action='store_true', help='Destrop ALL images. E.g. docker-compose --destroy -f ${compose_yaml}')
     group.add_argument('--run', action='store_true', help='Run service. E.g. docker-compose --run -f ${compose_yaml} -e ${env_file} -s ${service1} -s ${service2}')
     group.add_argument('--stop', action='store_true')
+    group.add_argument('--list', action='store_true', help='list all supported services')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
     parser.add_argument('-f', '--compose_file', default='./docker-compose.yml')
     parser.add_argument('-e', '--env', default='./test.env')
@@ -163,6 +179,10 @@ def main():
         if not os.path.exists(args.compose_file):
             parser.print_help()
         do_stop(args.compose_file, args.service)
+    elif args.list:
+        if not os.path.exists(args.compose_file):
+            parser.print_help()
+        do_list(args.compose_file)
     else:
         parser.print_help()
 
