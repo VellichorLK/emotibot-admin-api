@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"sort"
 
 	"errors"
 	"net/http"
@@ -192,6 +193,8 @@ func ComputeChannelScore(eb *EmotionBlock) {
 	TotalProbabilityWithEmotion := make(map[int]float64)
 	NumOfHasOneEmotionInOneChannel := make(map[int]int)
 
+	angerScore := make([]float64, 0)
+
 	threashold := 0.7
 	weight := 0.5
 
@@ -208,6 +211,11 @@ func ComputeChannelScore(eb *EmotionBlock) {
 				if s.Score >= threashold {
 					NumOfHasOneEmotionInOneChannel[emotionChannelKey]++
 				}
+
+				//if it's anger
+				if int(label) == 1 && seg.Channel == 1 {
+					angerScore = append(angerScore, s.Score)
+				}
 			}
 
 		}
@@ -215,14 +223,41 @@ func ComputeChannelScore(eb *EmotionBlock) {
 
 	for chEmotion, count := range NumSegInOneChannel {
 		var twoFixedScore, totalScore, weightScore, rateScore float64
-		weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
-		rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
-		totalScore = weightScore*weight + rateScore*(1-weight)
+
 		//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
 
-		twoFixedScore = float64(int(totalScore*100*100)) / 100
+		channel := chEmotion / divider
+		emotionType := chEmotion % divider
 
-		InsertChannelScore(eb.IDUint64, chEmotion/divider, chEmotion%divider, twoFixedScore)
+		if count != 0 {
+
+			if emotionType == 1 && channel == 1 {
+				sort.Float64s(angerScore)
+				var topCount int
+				var length int
+				var top5Score float64
+				length = len(angerScore)
+				if length > 5 {
+					topCount = 5
+				} else {
+					topCount = length
+				}
+
+				for i := 0; i < topCount; i++ {
+					top5Score += angerScore[length-1-i]
+				}
+
+				twoFixedScore = float64(int((top5Score/float64(topCount))*100)) / 100
+
+			} else {
+				weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
+				rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
+				totalScore = weightScore*weight + rateScore*(1-weight)
+				twoFixedScore = float64(int(totalScore*100*100)) / 100
+			}
+
+			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
+		}
 	}
 
 	/*
