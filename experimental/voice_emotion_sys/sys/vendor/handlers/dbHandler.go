@@ -247,7 +247,7 @@ func ComputeChannelScore(eb *EmotionBlock) {
 					top5Score += angerScore[length-1-i]
 				}
 
-				twoFixedScore = float64(int((top5Score/float64(topCount))*100)) / 100
+				twoFixedScore = float64(int((top5Score/float64(topCount))*100*100)) / 100
 
 			} else {
 				weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
