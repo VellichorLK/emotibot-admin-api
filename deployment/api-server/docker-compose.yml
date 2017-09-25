@@ -334,3 +334,19 @@ services:
         command: ["/usr/share/logstash/bin/logstash", "-f", "/config-dir/logstash.conf"]
         entrypoint:
             - sh
+    netdata:
+        image: titpetric/netdata
+        container_name: netdata
+        mem_limit: 2048m
+        ports:
+            - "${NETDATA_PORT}:${NETDATA_PORT}" 
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        volumes:
+            - /etc/localtime:/etc/localtime
+            - ${NETDATA_HEALTH_ALARM_NOTIFY_CONF}:/etc/netdata/health_alarm_notify.conf
+            - /proc:/host/proc:ro
+            - /sys:/host/sys:ro
+        restart: always
