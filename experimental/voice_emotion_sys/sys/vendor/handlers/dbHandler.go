@@ -550,7 +550,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	query += QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
 	query += " where " + NAPPID + "=?"
 	query += " and " + conditions + " )"
-	query += QueryFileInfoAndChanScoreSQL2
+	query += QueryFileInfoAndChanScoreSQL2 + " order by " + NFILET + " desc "
 	if conditions2 != "" {
 		query += " where " + conditions2
 	}
