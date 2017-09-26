@@ -160,4 +160,5 @@ services:
             - ${NETDATA_HEALTH_ALARM_NOTIFY_CONF}:/etc/netdata/health_alarm_notify.conf
             - /proc:/host/proc:ro
             - /sys:/host/sys:ro
+            - /var/run/docker.sock:/var/run/docker.sock
         restart: always
