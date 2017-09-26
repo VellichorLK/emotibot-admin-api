@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -361,7 +362,7 @@ func (d *DaoWrapper) GetPrivileges() ([]*PrivilegeProp, error) {
 // ===== system setting related
 func (d *DaoWrapper) AddLogo(enterprise_id string, img_b64_str string) error {
 	// {consul-server-port}/v1/kv/voice-emotion/{enterprise_id}/system-setting/logo
-	url := fmt.Sprintf("http://%s/v1/kv/%s/system-setting/logo", d.consul.consul_url, enterprise_id)
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system/logo", d.consul.consul_url, enterprise_id)
 	LogInfo.Printf("url: %s", url)
 
 	return DoPut(url, img_b64_str)
@@ -369,7 +370,7 @@ func (d *DaoWrapper) AddLogo(enterprise_id string, img_b64_str string) error {
 
 func (d *DaoWrapper) GetLogo(enterprise_id string) (string, error) {
 	// {consul-server-port}/v1/kv/voice-emotion/{enterprise_id}/system-setting/logo
-	url := fmt.Sprintf("http://%s/v1/kv/%s/system-setting/logo?raw", d.consul.consul_url, enterprise_id)
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system/logo?raw", d.consul.consul_url, enterprise_id)
 	LogInfo.Printf("url: %s", url)
 
 	resp, err := http.Get(url)
@@ -386,4 +387,51 @@ func (d *DaoWrapper) GetLogo(enterprise_id string) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+func (d *DaoWrapper) GetSystemSetting(enterprise_id string) (*SystemProp, error) {
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system/setting?raw", d.consul.consul_url, enterprise_id)
+	LogInfo.Printf("url: %s", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		LogError.Printf("failed to get from %s, err: %v", url, err)
+		return nil, err
+	}
+
+	var s SystemProp
+	if resp.StatusCode != http.StatusOK {
+		LogError.Printf("failed to get from %s, resp: %v", url, resp)
+		return &s, err
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		LogError.Printf("failed to read from body, %v", err)
+		return nil, err
+	}
+	LogInfo.Printf("body(%d)", len(body))
+
+	if err := json.Unmarshal(body, &s); err != nil {
+		LogError.Printf("unmarshal %v failed. %v", body, err)
+		return nil, err
+	}
+
+	LogInfo.Printf("system prop: %v", s)
+	return &s, nil
+}
+
+func (d *DaoWrapper) PatchSystemSetting(enterprise_id string, s *SystemProp) (*SystemProp, error) {
+	url := fmt.Sprintf("http://%s/v1/kv/%s/system/setting", d.consul.consul_url, enterprise_id)
+	LogInfo.Printf("url: %s", url)
+	if es, err := json.Marshal(s); err != nil {
+		LogError.Printf("marshal failed.(%s)", err)
+		return nil, err
+	} else {
+		if err := DoPut(url, string(es)); err != nil {
+			LogError.Printf("put to %s failed. %s", url, err)
+			return nil, err
+		}
+	}
+	return d.GetSystemSetting(enterprise_id)
 }

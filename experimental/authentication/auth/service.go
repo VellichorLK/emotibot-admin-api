@@ -65,6 +65,15 @@ type PrivilegeProp struct {
 	Name string `json:privilege_name`
 }
 
+type DisplayProp struct {
+	Channel1 string `json:"channel1"`
+	Channel2 string `json:"channel2"`
+}
+
+type SystemProp struct {
+	DisplayProp `json:"display"`
+}
+
 // size inferface for multipart.File to get size
 type Size interface {
 	Size() int64
@@ -415,4 +424,31 @@ func SystemLogoGetByAppId(appid string, d *DaoWrapper) (string, error) {
 		return "", err
 	}
 	return d.GetLogo(enterprise_id)
+}
+
+func SystemSettingGetByAppId(appid string, d *DaoWrapper) (*SystemProp, error) {
+	LogInfo.Printf("appid: %s", appid)
+	if !IsValidAppId(appid) {
+		return nil, errors.New("Invalid parameter")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	return d.GetSystemSetting(enterprise_id)
+}
+
+func SystemSettingPatch(s *SystemProp, appid string, d *DaoWrapper) (*SystemProp, error) {
+	LogInfo.Printf("appid: %s", appid)
+	if !IsValidAppId(appid) {
+		return nil, errors.New("Invalid parameter")
+	}
+
+	enterprise_id, err := d.GetEnterpriseIdByAppId(appid)
+	if err != nil {
+		return nil, err
+	}
+	return d.PatchSystemSetting(enterprise_id, s)
 }

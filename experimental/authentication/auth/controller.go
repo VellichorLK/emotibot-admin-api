@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -33,12 +34,16 @@ const (
 	// endpoint: sys setting/logo
 	const_endpoint_system_logo          string = "/admin/system/v1/logo"        // GET|DELETE
 	const_endpoint_system_logo_register string = "/admin/system/v1/logo/upload" // POST
+
 	// endpoint: sys settings
+	const_endpoint_system_setting string = "/admin/system/v1/setting" // GET|POST|PATCH
 
 	const_type_super_user   int = 0
 	const_type_invalid_user int = -1
 
 	const_type_authorization_header_key string = "Authorization"
+
+	const_display_channel_len int = 16
 )
 
 // TODO(mike): split handler only to call service.{func}
@@ -100,6 +105,9 @@ func SetRoute(c *Configuration) error {
 	})
 	http.HandleFunc(const_endpoint_system_logo, func(w http.ResponseWriter, r *http.Request) {
 		SystemLogoHandler(w, r, c, dao)
+	})
+	http.HandleFunc(const_endpoint_system_setting, func(w http.ResponseWriter, r *http.Request) {
+		SystemSettingHandler(w, r, c, dao)
 	})
 
 	LogInfo.Printf("Set route OK.")
@@ -254,6 +262,7 @@ func EnterpriseIdHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 		// PATCH
 	}
 }
+
 func UserRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuration, dao *DaoWrapper) {
 	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
@@ -579,6 +588,7 @@ func SystemLogoRegisterHandler(w http.ResponseWriter, r *http.Request, c *Config
 		HandleHttpError(http.StatusBadRequest, err, w)
 		return
 	}
+	HandleSuccess(w, "done")
 }
 
 // return 200 - get success with b64 image str
@@ -602,7 +612,7 @@ func SystemLogoHandler(w http.ResponseWriter, r *http.Request, c *Configuration,
 			HandleError(-1, err, w)
 			return
 		}
-		RespPlainText(w, imgb64str)
+		HandleSuccess(w, imgb64str)
 		return
 	}
 
@@ -611,6 +621,56 @@ func SystemLogoHandler(w http.ResponseWriter, r *http.Request, c *Configuration,
 	//	HandleError(-2, err, w)
 	//	return
 	//}
-	w.WriteHeader(http.StatusNoContent)
+	//w.WriteHeader(http.StatusNoContent)
 	return
+}
+
+// return 400
+// return 410 - invalid http method
+func SystemSettingHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET", "PATCH"}, w) {
+		return
+	}
+
+	appid := r.Header.Get(const_type_authorization_header_key)
+	LogInfo.Printf("appid: %s", appid)
+
+	if !IsValidAppId(appid) {
+		HandleHttpError(http.StatusForbidden, errors.New("Invalid appid"), w)
+		return
+	}
+
+	if r.Method == "GET" {
+		setting, err := SystemSettingGetByAppId(appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		HandleSuccess(w, setting)
+		return
+	}
+
+	// PATCH
+	if err := r.ParseForm(); err != nil {
+		HandleHttpError(http.StatusBadRequest, err, w)
+		return
+	}
+
+	var s SystemProp
+	s.Channel1 = r.FormValue("channel1")
+	s.Channel2 = r.FormValue("channel2")
+
+	LogInfo.Printf("channel1: %s(%d), channel2: %s(%d)", s.Channel1, len(s.Channel1), s.Channel2, len(s.Channel2))
+
+	if len(s.Channel1) >= const_display_channel_len || len(s.Channel2) >= const_display_channel_len {
+		HandleError(-1, fmt.Errorf("Over length limitation(%d)", const_display_channel_len), w)
+		return
+	}
+
+	if ret, err := SystemSettingPatch(&s, appid, d); err != nil {
+		HandleError(-1, err, w)
+		return
+	} else {
+		HandleSuccess(w, ret)
+	}
 }
