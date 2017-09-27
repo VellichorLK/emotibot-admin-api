@@ -152,7 +152,7 @@ def main():
     group.add_argument('--list', action='store_true', help='list all supported services')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
     parser.add_argument('-f', '--compose_file', default='./docker-compose.yml')
-    parser.add_argument('-e', '--env', default='./test.env')
+    parser.add_argument('-e', '--env', required=True, help='test.env or api-sh.env or api.env')
     parser.add_argument('-s', '--service', action='append', default=[])
     parser.add_argument('-d', '--depends', action='store_true', default=False,
                         help='if service is empty, depends always be true')
