@@ -550,15 +550,17 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	query += QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
 	query += " where " + NAPPID + "=?"
 	query += " and " + conditions + " )"
-	query += QueryFileInfoAndChanScoreSQL2 + " order by " + NFILET + " desc "
+	query += QueryFileInfoAndChanScoreSQL2
 	if conditions2 != "" {
 		query += " where " + conditions2
 	}
 	query += " )"
 	query += "select * from joinr "
 	if doPaging || offset > 0 {
-		query += "where " + NFILEID + " in (select * from (select distinct " + NFILEID +
-			" from joinr limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c);"
+		query += "where " + NFILEID + " in (select " + NFILEID + " from (select " + NFILEID +
+			" from joinr group by " + NFILEID + " order by " + NFILET + " desc" +
+			" limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c)" +
+			" order by " + NFILET + " desc"
 	}
 
 	//log.Println(query)
