@@ -559,9 +559,9 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	if doPaging || offset > 0 {
 		query += "where " + NFILEID + " in (select " + NFILEID + " from (select " + NFILEID +
 			" from joinr group by " + NFILEID + " order by " + NFILET + " desc" +
-			" limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c)" +
-			" order by " + NFILET + " desc"
+			" limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c)"
 	}
+	query += " order by " + NFILET + " desc"
 
 	//log.Println(query)
 	rows, err := db.Query(query, appid)
