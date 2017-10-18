@@ -351,3 +351,27 @@ services:
             - /sys:/host/sys:ro
             - /var/run/docker.sock:/var/run/docker.sock
         restart: always
+    # ========== crontab email sender
+    crontab_sender:
+        image: ${CRONTAB_SENDER_IMAGE}:${CRONTAB_SENDER_TAG}
+        container_name: ${CRONTAB_SENDER_CONTAINER}
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        mem_limit: 2048m
+        environment:
+            RABBITMQ_HOST: ${CRONTAB_SENDER_RABBITMQ_HOST}
+            RABBITMQ_PORT: ${CRONTAB_SENDER_RABBITMQ_PORT} 
+            RABBITMQ_USER: ${CRONTAB_SENDER_RABBITMQ_USER} 
+            RABBITMQ_PWD: ${CRONTAB_SENDER_RABBITMQ_PWD}
+            DB_HOST: ${CRONTAB_SENDER_DB_HOST}
+            DB_PORT: ${CRONTAB_SENDER_DB_PORT}
+            DB_USER: ${CRONTAB_SENDER_DB_USER}
+            DB_PWD: ${CRONTAB_SENDER_DB_PWD}
+        restart: always
+        depends_on:
+            "mysql":
+                condition: service_healthy
+            "rabbitmq":
+                condition: service_healthy
