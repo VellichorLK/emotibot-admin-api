@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head><meta charset="UTF-8"></head>
+<body>
+<h3>情绪质检系统周统计报表 ({{.TargetDateFrom}} ~ {{.TargetDateTo}}) <span><a href="https://api.emotibot.com/emotivoice/login.html">进入系统</a></span></h3>
+<br />
+<h4>摘要</h4>
+<hr />
+<table border="1">
+    <tr>
+        <td>音频数</td>
+        <td>音频时长</td>
+        <td>{{.Channel1Text}}平均愤怒指数</td>
+        <td>{{.Channel2Text}}平均愤怒指数</td>
+    </tr>
+    {{with .Summaries}}
+    {{range .}}
+    <tr>
+        <td>{{.TotalNum}}</td>
+        <td>{{.TotalDuration}}</td>
+        <td>{{.Channel1Avg}}</td>
+        <td>{{.Channel2Avg}}</td>
+    </tr>
+    {{end}}
+    {{end}}
+</table>
+<h4>分析</h4>
+<hr />
+<table border=1>
+    <tr>
+        <td>项目</td>
+        <td>音频数</td>
+        <td>音频时长</td>
+        <td>{{.Channel1Text}}平均愤怒指数</td>
+        <td>{{.Channel2Text}}平均愤怒指数</td>
+    </tr>
+    {{range $i, $k := .Analysis}}
+    <tr>
+        {{if eq $i 0}}
+        <td>上周</td>
+        {{else if eq $i 1}}
+        <td>本周</td>
+        {{else if eq $i 2}}
+        <td>差异比率</td>
+        {{end}}
+        <td>{{.TotalNum}}</td>
+        <td>{{.TotalDuration}}</td>
+        <td>{{.Channel1Avg}}</td>
+        <td>{{.Channel2Avg}}</td>
+    </tr>
+    {{end}}
+</table>
+<h4>详细资讯</h4>
+<hr />
+<table border=1>
+    <tr>
+        <td>日期时间</td>
+        <td>音频数</td>
+        <td>音频时长</td>
+        <td>{{.Channel1Text}}平均愤怒指数</td>
+        <td>{{.Channel2Text}}平均愤怒指数</td>
+    </tr>
+    {{with .Details}}
+    {{range .}}
+    <tr>
+        <td>{{.TimeRange}}</td>	
+        <td>{{.Summ.TotalNum}}</td>
+        <td>{{.Summ.TotalDuration}}</td>
+        <td>{{.Summ.Channel1Avg}}</td>
+        <td>{{.Summ.Channel2Avg}}</td>
+    </tr>
+    {{end}}
+    {{end}}
+</table>
+</body>
+</html>
