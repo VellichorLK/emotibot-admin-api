@@ -73,17 +73,13 @@ func QueryStat(qas *QueryArgs, timeUnit int64, appid string) (*Statistics, int, 
 	paramsWithAppid[0] = appid
 	paramsWithAppid = append(paramsWithAppid, params...)
 
-	query := "with joinr as ("
-	query += QueryFileInfo + " where " + NAPPID + "=?"
-
+	tmpRes := "(" + QueryFileInfo + " where " + NAPPID + "=?"
 	if conditions != "" {
-		query += conditions
+		tmpRes += conditions
 	}
+	tmpRes += ")"
 
-	query += " )"
-	//query += "select " + NID + "," + NFILET + "," + NCHANNEL + "," + NEMOTYPE + "," + NSCORE + " from joinr order by " + NFILET + "," + NID
-
-	query += "select " + NID + "," + NFILET + "," + NCHANNEL + "," + NEMOTYPE + "," + NSCORE + "," + NRDURATION + " from joinr group by " +
+	query := "select " + NID + "," + NFILET + "," + NCHANNEL + "," + NEMOTYPE + "," + NSCORE + "," + NRDURATION + " from " + tmpRes + "as x group by " +
 		NID + "," + NFILET + "," + NCHANNEL + "," + NEMOTYPE + "," + NSCORE + " order by " + NFILET + "," + NID
 
 	//log.Println(query)

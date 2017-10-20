@@ -553,23 +553,25 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 }
 
 func QueryResult(offset int64, conditions string, params ...interface{}) ([]*ReturnBlock, int, error) {
-	query := "with joinr as ("
-	query += QueryFileInfo + " where " + NAPPID + "=?"
 
+	tmpRes := "(" + QueryFileInfo + " where " + NAPPID + "=?"
 	if conditions != "" {
-		query += conditions
+		tmpRes += conditions
 	}
+	tmpRes += ")"
 
-	query += " )"
-	query += "select * from joinr where " + NFILEID +
-		" in (select " + NFILEID + " from (select " + NFILEID +
-		" from joinr group by " + NFILEID + " order by " + NFILET + " desc" +
+	query := "select * from " + tmpRes + "as y where " + NFILEID +
+		" in (select " + NFILEID + " from (select x." + NFILEID +
+		" from " + tmpRes + "as x group by " + NFILEID + " order by " + NFILET + " desc" +
 		" limit " + PAGELIMIT + " offset " + strconv.FormatInt(offset, 10) + ") as d)" +
 		" order by " + NFILET + " desc"
 
+	doubleParams := make([]interface{}, 0)
+	doubleParams = append(doubleParams, params...)
+	doubleParams = append(doubleParams, params...)
 	//log.Println(query)
-	//log.Println(params...)
-	rows, err := db.Query(query, params...)
+	//log.Println(doubleParams...)
+	rows, err := db.Query(query, doubleParams...)
 	if err != nil {
 		log.Println(err)
 		return nil, http.StatusInternalServerError, errors.New("Internal server error")
