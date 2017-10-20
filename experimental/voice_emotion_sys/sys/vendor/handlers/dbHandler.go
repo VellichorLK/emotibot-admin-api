@@ -556,17 +556,20 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	tmpRes += ")"
 
 	//log.Println(tmpRes)
+	params := make([]interface{}, 0)
+	params = append(params, appid)
 
 	query := "select * from " + tmpRes + " as y "
 	if doPaging || offset > 0 {
 		query += "where " + NFILEID + " in (select " + NFILEID + " from (select x." + NFILEID +
 			" from " + tmpRes + " as x  group by " + NFILEID + " order by " + NFILET + " desc" +
 			" limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c)"
+		params = append(params, appid)
 	}
 	query += " order by " + NFILET + " desc"
 
 	//log.Println(query)
-	rows, err := db.Query(query, appid, appid)
+	rows, err := db.Query(query, params...)
 	if err != nil {
 		log.Println(err)
 		return 0, http.StatusInternalServerError, errors.New("Internal server error")
