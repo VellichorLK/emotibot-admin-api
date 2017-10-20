@@ -546,25 +546,27 @@ func QuerySingleResult(fileID string, appid string) ([]byte, int, error) {
 func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, rbs *[]*ReturnBlock) (int, int, error) {
 	//debug.FreeOSMemory()
 
-	query := "with joinr as ("
-	query += QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
-	query += " where " + NAPPID + "=?"
-	query += " and " + conditions + " )"
-	query += QueryFileInfoAndChanScoreSQL2
+	tmpRes := "(" + QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
+	tmpRes += " where " + NAPPID + "=?"
+	tmpRes += " and " + conditions + " )"
+	tmpRes += QueryFileInfoAndChanScoreSQL2
 	if conditions2 != "" {
-		query += " where " + conditions2
+		tmpRes += " where " + conditions2
 	}
-	query += " )"
-	query += "select * from joinr "
+	tmpRes += ")"
+
+	//log.Println(tmpRes)
+
+	query := "select * from " + tmpRes + " as y "
 	if doPaging || offset > 0 {
-		query += "where " + NFILEID + " in (select " + NFILEID + " from (select " + NFILEID +
-			" from joinr group by " + NFILEID + " order by " + NFILET + " desc" +
+		query += "where " + NFILEID + " in (select " + NFILEID + " from (select x." + NFILEID +
+			" from " + tmpRes + " as x  group by " + NFILEID + " order by " + NFILET + " desc" +
 			" limit " + PAGELIMIT + " offset " + strconv.Itoa(offset) + ") as c)"
 	}
 	query += " order by " + NFILET + " desc"
 
 	//log.Println(query)
-	rows, err := db.Query(query, appid)
+	rows, err := db.Query(query, appid, appid)
 	if err != nil {
 		log.Println(err)
 		return 0, http.StatusInternalServerError, errors.New("Internal server error")

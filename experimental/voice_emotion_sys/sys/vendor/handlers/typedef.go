@@ -107,8 +107,8 @@ var DefaultEmotion = map[int]string{
 var AngerType = "1"
 
 //PAGELIMIT limit of row returned
-const PAGELIMIT = "500"
-const PAGELIMITINT = 500
+const PAGELIMIT = "50"
+const PAGELIMITINT = 50
 
 //ResultPage page the query result if the count is over defined limit
 type ResultPage struct {

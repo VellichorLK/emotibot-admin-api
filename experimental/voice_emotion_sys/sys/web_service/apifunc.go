@@ -37,13 +37,13 @@ func fakeEnv() {
 	envs["RABBITMQ_PORT"] = "5672"
 	//envs["DB_HOST"] = "192.168.3.208"
 	envs["DB_HOST"] = "127.0.0.1"
-	envs["DB_PORT"] = "3306"
+	envs["DB_PORT"] = "3307"
 	envs["DB_USER"] = "root"
-	envs["DB_PWD"] = "tyler"
+	envs["DB_PWD"] = "password"
 	envs["FILE_PREFIX"] = "/Users/public/Documents"
 	envs["LISTEN_PORT"] = ":8080"
-	envs["RABBITMQ_USER"] = "root"
-	envs["RABBITMQ_PWD"] = "tyler"
+	envs["RABBITMQ_USER"] = "guest"
+	envs["RABBITMQ_PWD"] = "guest"
 }
 func FakeHandlers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
