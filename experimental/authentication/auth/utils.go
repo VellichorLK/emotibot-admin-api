@@ -13,11 +13,30 @@ import (
 )
 
 const (
-	const_appid_length        int = 32 // md5sum length
-	const_enterpriseid_length int = 32 // md5sum length
-	const_userid_length       int = 32 // md5sum length
-	const_roleid_length       int = 32 // md5sum length
+	const_appid_length        int = 32      // md5sum length
+	const_enterpriseid_length int = 32      // md5sum length
+	const_userid_length       int = 32      // md5sum length
+	const_roleid_length       int = 32      // md5sum length
+	const_cache_timeout       int = 30 * 60 // default time is 30 min
 )
+
+var (
+	userPrivCache        map[string]enterprisePrivCache
+	privListCache        map[string]privPropList
+	privListCacheExpired int
+)
+
+type enterprisePrivCache map[string]userPrivCacheContent
+
+type privPropList struct {
+	expiredTime int
+	propList    []*PrivilegeProp
+}
+
+type userPrivCacheContent struct {
+	privStr     string
+	expiredTime int
+}
 
 type ErrStruct struct {
 	Status  int    `json:"status"`
@@ -131,12 +150,17 @@ func HandleError(err_code int, err error, w http.ResponseWriter) bool {
 	return true
 }
 
-func HandleSuccess(w http.ResponseWriter, result interface{}) bool {
+func HandleResp(w http.ResponseWriter, code int, msg string, result interface{}) bool {
 	ret := make(map[string]interface{})
-	ret["status"] = 0
-	ret["message"] = "success"
+	ret["status"] = code
+	ret["message"] = msg
 	ret["result"] = result
 	RespJson(w, ret)
+	return true
+}
+
+func HandleSuccess(w http.ResponseWriter, result interface{}) bool {
+	HandleResp(w, 0, "success", result)
 	return true
 }
 
@@ -205,6 +229,88 @@ func DoPut(url string, data string) error {
 	if err != nil {
 		LogError.Printf("do put request failed: %v", err)
 		return err
+	}
+	return nil
+}
+
+func ClearEnterprisePriv(appid string) {
+	if userPrivCache == nil {
+		userPrivCache = make(map[string]enterprisePrivCache)
+	}
+	userPrivCache[appid] = make(map[string]userPrivCacheContent)
+}
+
+func ClearUserPriv(appid string, userid string) {
+	if userPrivCache == nil {
+		userPrivCache = make(map[string]enterprisePrivCache)
+	}
+
+	if enterprisePriv, ok := userPrivCache[appid]; ok {
+		if _, ok := enterprisePriv[userid]; ok {
+			delete(enterprisePriv, userid)
+		}
+	}
+}
+
+func SetUserPrivCache(appid string, userid string, priv string) {
+	if userPrivCache == nil {
+		userPrivCache = make(map[string]enterprisePrivCache)
+	}
+
+	if _, ok := userPrivCache[appid]; !ok {
+		userPrivCache[appid] = make(map[string]userPrivCacheContent)
+	}
+
+	timestamp := int(time.Now().Unix()) + const_cache_timeout
+	enterprisePriv := userPrivCache[appid]
+	enterprisePriv[userid] = userPrivCacheContent{
+		expiredTime: timestamp,
+		privStr:     priv,
+	}
+}
+
+func GetUserPrivCache(appid string, userid string) (string, error) {
+	if userPrivCache == nil {
+		userPrivCache = make(map[string]enterprisePrivCache)
+	}
+
+	if enterprisePriv, ok := userPrivCache[appid]; ok {
+		if userPriv, ok := enterprisePriv[userid]; ok {
+			timestamp := int(time.Now().Unix())
+
+			if timestamp < userPriv.expiredTime {
+				return userPriv.privStr, nil
+			}
+
+			delete(enterprisePriv, userid)
+		}
+	}
+	return "", errors.New("unavailable")
+}
+
+func SetPrivListCache(appid string, props []*PrivilegeProp) {
+	if privListCache == nil {
+		privListCache = make(map[string]privPropList)
+	}
+	timestamp := int(time.Now().Unix()) + const_cache_timeout
+	privListCache[appid] = privPropList{
+		expiredTime: timestamp,
+		propList:    props,
+	}
+}
+
+func GetPrivListCache(appid string) []*PrivilegeProp {
+	if privListCache == nil {
+		privListCache = make(map[string]privPropList)
+		return nil
+	}
+	timestamp := int(time.Now().Unix())
+	if enterprisePrivList, ok := privListCache[appid]; ok {
+		if timestamp < enterprisePrivList.expiredTime {
+			return privListCache[appid].propList
+		}
+
+		delete(privListCache, appid)
 	}
 	return nil
 }
