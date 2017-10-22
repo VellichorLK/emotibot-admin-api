@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -29,7 +30,8 @@ const (
 	const_endpoint_user_id       string = "/admin/v1/user/"         // GET|PATCH|DELETE /admin/v1/user/<user_id>
 
 	// endpoint: privilege list
-	const_endpoint_privileges string = "/admin/v1/privileges"
+	const_endpoint_privileges      string = "/admin/v1/privileges"
+	const_endpoint_privilege_check string = "/admin/v1/privilege/check"
 
 	// endpoint: sys setting/logo
 	const_endpoint_system_logo          string = "/admin/system/v1/logo"        // GET|DELETE
@@ -98,6 +100,10 @@ func SetRoute(c *Configuration) error {
 	// privilege list
 	http.HandleFunc(const_endpoint_privileges, func(w http.ResponseWriter, r *http.Request) {
 		PrivilegesHandler(w, r, c, dao)
+	})
+	// privilege list
+	http.HandleFunc(const_endpoint_privilege_check, func(w http.ResponseWriter, r *http.Request) {
+		PrivilegeCheckHandler(w, r, c, dao)
 	})
 	// system logo setting
 	http.HandleFunc(const_endpoint_system_logo_register, func(w http.ResponseWriter, r *http.Request) {
@@ -355,6 +361,7 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		ClearUserPriv(appid, user_id)
 		HandleSuccess(w, nil)
 	} else if r.Method == "PATCH" {
 		user := getUserFromForm(r, false)
@@ -363,6 +370,7 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		ClearUserPriv(appid, user_id)
 		HandleSuccess(w, patchedUser)
 	} else {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method not allowed"), w)
@@ -503,6 +511,7 @@ func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		ClearEnterprisePriv(appid)
 		HandleSuccess(w, nil)
 	} else if r.Method == "PATCH" {
 		user := getRoleFromForm(r, false)
@@ -511,6 +520,7 @@ func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 			HandleError(-1, err, w)
 			return
 		}
+		ClearEnterprisePriv(appid)
 		HandleSuccess(w, patchedRole)
 	} else {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method not allowed"), w)
@@ -558,6 +568,90 @@ func PrivilegesHandler(w http.ResponseWriter, r *http.Request, c *Configuration,
 		return
 	}
 	HandleSuccess(w, privileges)
+}
+
+func PrivilegeCheckHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *DaoWrapper) {
+	if HandleHttpMethodError(r.Method, []string{"GET"}, w) {
+		return
+	}
+
+	// 0. Check header if it is valid
+	appid := r.Header.Get(const_type_authorization_header_key)
+	if appid == "" || !IsValidAppId(appid) {
+		HandleHttpError(http.StatusUnauthorized, nil, w)
+		return
+	}
+
+	userid := r.FormValue("userid")
+	checkModuleName := r.FormValue("module")
+	// checkModuleCmd := r.FormValue("command")
+	checkModuleID := ""
+
+	user, err := UserGetById(userid, appid, d)
+	if err != nil {
+		// 200 with error
+		HandleError(-1, err, w)
+		return
+	}
+
+	// Super user will always return true
+	if user.UserType == 0 {
+		HandleResp(w, 0, "manager user", true)
+		return
+	}
+
+	// Try to get privilege list from cache, if not available, get from database
+	privileges := GetPrivListCache(appid)
+	if privileges == nil {
+		privileges, err = PrivilegesGet(appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		SetPrivListCache(appid, privileges)
+	}
+
+	for _, privilege := range privileges {
+		if privilege.Name == checkModuleName {
+			checkModuleID = privilege.Id
+		}
+	}
+
+	if checkModuleID == "" {
+		HandleResp(w, -1, "Error module", false)
+		return
+	}
+
+	// Try to get user's privilege from cache, if not available, get from database of role
+	privilegeStr, nil := GetUserPrivCache(appid, userid)
+	if nil != nil || privilegeStr == "" {
+		roleid := user.RoleId
+		if !roleid.Valid || len(roleid.String) == 0 {
+			HandleResp(w, 0, "No role", false)
+			return
+		}
+
+		role, err := RoleGetById(roleid.String, appid, d)
+		if err != nil {
+			HandleError(-1, err, w)
+			return
+		}
+		privilegeStr = role.Privilege
+	}
+
+	// Transfer string to json to check privilege
+	userPrivilege := make(map[string]bool)
+	if err := json.Unmarshal([]byte(privilegeStr), &userPrivilege); err != nil {
+		HandleError(-1, err, w)
+		return
+	}
+
+	if val, ok := userPrivilege[checkModuleID]; ok && val {
+		HandleResp(w, 0, "", true)
+		return
+	}
+
+	HandleResp(w, 0, "No priv", false)
 }
 
 // ========== system logo api
