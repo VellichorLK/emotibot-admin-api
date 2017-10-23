@@ -340,7 +340,7 @@ func (d *DaoWrapper) GetEnterpriseIdByAppId(appid string) (string, error) {
 }
 
 func (d *DaoWrapper) GetPrivileges() ([]*PrivilegeProp, error) {
-	rows, err := d.mysql.Query("select privilege_id, privilege_name from privilege_list")
+	rows, err := d.mysql.Query("select privilege_id, privilege_name, cmd_list from privilege_list")
 	LogInfo.Printf("rows: %#v, err: %s", rows, err)
 	if err != nil {
 		return nil, err
@@ -349,7 +349,7 @@ func (d *DaoWrapper) GetPrivileges() ([]*PrivilegeProp, error) {
 	got := []*PrivilegeProp{}
 	for rows.Next() {
 		var p PrivilegeProp
-		err = rows.Scan(&p.Id, &p.Name)
+		err = rows.Scan(&p.Id, &p.Name, &p.CmdList)
 		if err != nil {
 			LogInfo.Println(err)
 			continue
