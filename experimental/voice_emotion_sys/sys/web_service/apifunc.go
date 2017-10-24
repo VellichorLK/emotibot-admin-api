@@ -13,11 +13,13 @@ type apiFunc map[string]func(w http.ResponseWriter, r *http.Request)
 //add here if you hava v2 version api or something else
 //new the apiFunc and add it to services
 var v1api = apiFunc{
-	v1basePath + "/upload":         handlers.Upload,
-	v1basePath + "/files":          handlers.QueryEmotions,
-	v1basePath + "/files_continue": handlers.QueryContinue,
-	v1basePath + "/files/":         handlers.QueryEmotionDetail,
-	v1basePath + "/report":         handlers.GenerateReport,
+	v1basePath + "/upload":            handlers.Upload,
+	v1basePath + "/files":             handlers.QueryEmotions,
+	v1basePath + "/files_continue":    handlers.QueryContinue,
+	v1basePath + "/files/":            handlers.QueryEmotionDetail,
+	v1basePath + "/report":            handlers.GenerateReport,
+	v1basePath + "/user_column":       handlers.GetUserColumn,
+	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
 }
 
 var services = [...]apiFunc{
@@ -37,10 +39,10 @@ func fakeEnv() {
 	envs["RABBITMQ_PORT"] = "5672"
 	//envs["DB_HOST"] = "192.168.3.208"
 	envs["DB_HOST"] = "127.0.0.1"
-	envs["DB_PORT"] = "3307"
+	envs["DB_PORT"] = "3306"
 	envs["DB_USER"] = "root"
 	envs["DB_PWD"] = "password"
-	envs["FILE_PREFIX"] = "/Users/public/Documents"
+	envs["FILE_PREFIX"] = "/Users/public/go/src/emotibot.com/emotigo/experimental/voice_emotion_sys/sys/web_service/upload_file"
 	envs["LISTEN_PORT"] = ":8080"
 	envs["RABBITMQ_USER"] = "guest"
 	envs["RABBITMQ_PWD"] = "guest"

@@ -32,6 +32,11 @@ func readyHandlers() {
 
 	handlers.InitEmotionMap()
 
+	err = handlers.LoadUsrField()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	port, err := strconv.Atoi(envs["RABBITMQ_PORT"])
 	if err != nil {
 		log.Fatalf("Can't conver  RABBITMQ_PORT(%s) to int!!!", envs["RABBITMQ_PORT"])

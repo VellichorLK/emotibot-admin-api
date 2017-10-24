@@ -72,8 +72,15 @@ type BasicInfo struct {
 //ReturnBlock is used for api /emotion/files/<file_id>
 type ReturnBlock struct {
 	BasicInfo
-	Channels []*ChannelResult `json:"channels"`
+	Channels  []*ChannelResult `json:"channels"`
+	UsrColumn []*ColumnValue   `json:"user_column,omitempty"`
 }
+
+type ColumnValue struct {
+	Field string `json:"field_name"`
+	Value string `json:"field_value"`
+}
+
 type ChannelResult struct {
 	ChannelID int            `json:"channel_id"`
 	Result    []*EmtionScore `json:"result"`
@@ -81,7 +88,8 @@ type ChannelResult struct {
 
 type DetailReturnBlock struct {
 	BasicInfo
-	Channels []*DetailChannelResult `json:"channels"`
+	Channels  []*DetailChannelResult `json:"channels"`
+	UsrColumn []*ColumnValue         `json:"user_column,omitempty"`
 }
 type DetailChannelResult struct {
 	ChannelResult
@@ -294,3 +302,22 @@ const TimeFormat = "2006/01/02 15:04:05"
 
 const ContentTypeJSON = "application/json; charset=utf-8"
 const ContentTypeCSV = "text/csv; charset=utf-8"
+
+//Name of User defined column table
+const (
+	UsrColTable    = "userColumn"
+	UsrColValTable = "userColumnValue"
+	UsrSelValTable = "userSelectableValue"
+)
+
+//field name of user column table
+const (
+	NCOLID    = "col_id"
+	NCOLTYPE  = "col_type"
+	NCOLNAME  = "col_name"
+	NDEDAULT  = "default_value"
+	NCOLVALID = "col_val_id"
+	NCOLVAL   = "col_value"
+	NSELID    = "sel_id"
+	NSELVAL   = "sel_value"
+)

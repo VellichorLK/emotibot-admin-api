@@ -250,8 +250,11 @@ func updateDatabase(fi *FileInfo) error {
 func goTaskOnFail(sid string) {
 
 	//remove database record
-	id, _ := strconv.ParseUint(sid, 10, 64)
-	err := DeleteFileRecord(id)
+	err := ExecSQL(DeleteFileRowSQL, sid)
+	if err != nil {
+		log.Println(err)
+	}
+	err = ExecSQL(DeleteUsrFieldValueSQL, sid)
 	if err != nil {
 		log.Println(err)
 	}

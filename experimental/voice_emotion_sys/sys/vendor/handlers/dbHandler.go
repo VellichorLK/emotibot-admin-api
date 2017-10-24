@@ -53,7 +53,10 @@ const InsertFileInfoSQL = "insert into " + MainTable + " (" + NFILEID + ", " + N
 	NDURATION + ", " + NFILET + ", " + NCHECKSUM + ", " + NTAG + ", " + NPRIORITY + ", " + NAPPID + ", " + NSIZE + ", " +
 	NFILEPATH + ", " + NUPT + ", " + NTAG2 + ", " + NRDURATION + ")" + " values(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
-const DeleteFileRowSQL = "delete from " + MainTable
+const InsertUserFieldSQL = "insert into " + UsrColValTable + " (" + NID + "," + NCOLID + "," + NCOLVAL + ") values (?,?,?)"
+
+const DeleteFileRowSQL = "delete from " + MainTable + " where " + NID + "=?"
+const DeleteUsrFieldValueSQL = "delete from " + UsrColValTable + " where " + NID + "=?"
 
 //InsertAnalysisSQL used for insert a new emotion record
 const InsertAnalysisSQL = "insert into " + AnalysisTable + " (" + NID + ", " + NSEGST + ", " + NSEGET + ", " +
@@ -80,7 +83,7 @@ const UpdateResultSQL = "update " + MainTable + " set " + NANAST + "=? ," + NANA
 
 const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
 	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES + ", a." + NUPT +
-	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE
+	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE + ", a." + NCOLID + ", a." + NCOLVAL
 
 const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b on a." + NID + "=b." + NID
 
@@ -118,9 +121,53 @@ func InsertFileRecord(fi *FileInfo) error {
 
 	fi.ID = strconv.FormatUint(uint64(lastID), 10)
 
+	err = InsertDefaultUserFieldValue(fi.Appid, fi.ID)
+	if err != nil {
+		ExecSQL(DeleteFileRowSQL, lastID)
+		return err
+	}
+
 	return nil
 }
 
+func InsertDefaultUserFieldValue(appid string, id string) error {
+	dvs, ok := DefaulUsrField.DefaultValue[appid]
+	if ok {
+		stmt, err := db.Prepare(InsertUserFieldSQL)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		defer stmt.Close()
+
+		for _, dv := range dvs {
+			_, err := stmt.Exec(id, dv.ColID, dv.ColValue)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func ExecSQL(sql string, params ...interface{}) error {
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(params...)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	return nil
+}
+
+/*
 func DeleteFileRecord(id uint64) error {
 	query := DeleteFileRowSQL
 	query += " where " + NID + "=?"
@@ -138,8 +185,18 @@ func DeleteFileRecord(id uint64) error {
 	}
 
 	return nil
+}
+
+func DeleteUsrColumField(id string) error {
+	sql := "delete from " + UsrColValTable + " where " + NID + "=?"
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
 
 }
+*/
 
 func InsertAnalysisRecord(eb *EmotionBlock) error {
 	stmt, err := db.Prepare(InsertAnalysisSQL)
@@ -509,6 +566,14 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		dcr.Result = res.Result
 	}
 
+	cvs := make([]*ColumnValue, 0)
+	err = QueryUsrFieldValue(id, &cvs)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	drb.UsrColumn = cvs
+
 	return http.StatusOK, nil
 }
 
@@ -546,7 +611,8 @@ func QuerySingleResult(fileID string, appid string) ([]byte, int, error) {
 func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, rbs *[]*ReturnBlock) (int, int, error) {
 	//debug.FreeOSMemory()
 
-	tmpRes := "(" + QueryFileInfoAndChanScoreSQL + " from ( select * from " + MainTable
+	tmpRes := "(" + QueryFileInfoAndChanScoreSQL + " from ( select a.*,b." + NCOLID + ",b." + NCOLVAL + " from " + MainTable
+	tmpRes += " as a left join " + UsrColValTable + " as b on a." + NID + "=b." + NID
 	tmpRes += " where " + NAPPID + "=?"
 	tmpRes += " and " + conditions + " )"
 	tmpRes += QueryFileInfoAndChanScoreSQL2
@@ -559,7 +625,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	params := make([]interface{}, 0)
 	params = append(params, appid)
 
-	query := "select * from " + tmpRes + " as y "
+	query := "select * from " + tmpRes + " as y " //left join " + UsrColValTable + "as z on y." + NID + "=z." + NID
 	if doPaging || offset > 0 {
 		query += "where " + NFILEID + " in (select " + NFILEID + " from (select x." + NFILEID +
 			" from " + tmpRes + " as x  group by " + NFILEID + " order by " + NFILET + " desc" +
@@ -578,20 +644,25 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 
 	ReturnBlockMap := make(map[string]*ReturnBlock)
 	ChannelMap := make(map[string]*ChannelResult)
+	EmotionUsedMap := make(map[string]bool)
+	ColumFieldMap := make(map[string]bool)
 	var count int
 	for rows.Next() {
 		nrb := new(ReturnBlock)
 		nrb.Channels = make([]*ChannelResult, 0)
+		nrb.UsrColumn = make([]*ColumnValue, 0)
 		var cr *ChannelResult
 		var es *EmtionScore
 
 		var channel sql.NullInt64
 		var label sql.NullInt64
 		var score sql.NullFloat64
+		var colID sql.NullString
+		var colValue sql.NullString
 
 		err := rows.Scan(&nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
 			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &nrb.AnalysisResult, &nrb.UploadTime,
-			&channel, &label, &score)
+			&channel, &label, &score, &colID, &colValue)
 
 		if err != nil {
 			log.Println(err)
@@ -620,11 +691,32 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 			} else {
 				cr = ch
 			}
-			es = new(EmtionScore)
-			es.Label = EmotionMap[int(label.Int64)]
-			es.Score = score.Float64
-			cr.Result = append(cr.Result, es)
 
+			emoKey := key + strconv.Itoa(int(label.Int64))
+			_, ok = EmotionUsedMap[emoKey]
+			if !ok {
+				es = new(EmtionScore)
+				es.Label = EmotionMap[int(label.Int64)]
+				es.Score = score.Float64
+				cr.Result = append(cr.Result, es)
+				EmotionUsedMap[emoKey] = true
+			}
+
+		}
+
+		if colID.Valid && colValue.Valid {
+			key := rb.FileID + colID.String
+			_, ok := ColumFieldMap[key]
+			if !ok {
+				ColumFieldMap[key] = true
+
+				name, ok := DefaulUsrField.FieldNameMap[colID.String]
+				if ok {
+					val := &ColumnValue{name, colValue.String}
+					rb.UsrColumn = append(rb.UsrColumn, val)
+				}
+
+			}
 		}
 	}
 
@@ -677,6 +769,40 @@ func QueryChannelScore(id uint64, chs *[]*ChannelResult) error {
 	err = rows.Err()
 	if err != nil {
 		log.Println(err)
+		return err
+	}
+
+	return nil
+}
+
+func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
+	sql := "select " + NCOLID + "," + NCOLVAL + " from " + UsrColValTable + " where " + NID + "=?"
+	rows, err := db.Query(sql, id)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var colID, colVal string
+		err := rows.Scan(&colID, &colVal)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		name, ok := DefaulUsrField.FieldNameMap[colID]
+		if !ok {
+			return errors.New("No col_id " + colID + " name")
+		}
+
+		cv := &ColumnValue{name, colVal}
+		*cvs = append(*cvs, cv)
+	}
+
+	err = rows.Err()
+	if err != nil {
 		return err
 	}
 
