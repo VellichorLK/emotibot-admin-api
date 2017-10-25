@@ -712,7 +712,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 
 				name, ok := DefaulUsrField.FieldNameMap[colID.String]
 				if ok {
-					val := &ColumnValue{name, colValue.String}
+					val := &ColumnValue{name, colValue.String, colID.String}
 					rb.UsrColumn = append(rb.UsrColumn, val)
 				}
 
@@ -797,7 +797,7 @@ func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
 			return errors.New("No col_id " + colID + " name")
 		}
 
-		cv := &ColumnValue{name, colVal}
+		cv := &ColumnValue{name, colVal, colID}
 		*cvs = append(*cvs, cv)
 	}
 

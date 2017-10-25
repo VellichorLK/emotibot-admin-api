@@ -38,7 +38,7 @@ type UsrColumBlock struct {
 type UsrColumnUpdateBlock struct {
 	FileID string `json:"file_id"`
 	ColID  string `json:"col_id"`
-	Value  string `json:"value"`
+	Value  string `json:"col_value"`
 }
 
 var DefaulUsrField *UsrColHandler

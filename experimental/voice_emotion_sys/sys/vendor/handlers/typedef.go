@@ -77,8 +77,9 @@ type ReturnBlock struct {
 }
 
 type ColumnValue struct {
-	Field string `json:"field_name"`
-	Value string `json:"field_value"`
+	Field string `json:"col_name"`
+	Value string `json:"col_value"`
+	ColID string `json:"col_id"`
 }
 
 type ChannelResult struct {
