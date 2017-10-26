@@ -21,21 +21,12 @@ func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "dictionary",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("POST", "upload", handleUpload),
-			util.NewEntryPoint("GET", "download", handleDownload),
-			util.NewEntryPoint("GET", "download-meta", handleDownloadMeta),
-			util.NewEntryPoint("GET", "check", handleFileCheck),
+			util.NewEntryPoint("POST", "upload", []string{"view"}, handleUpload),
+			util.NewEntryPoint("GET", "download", []string{"export"}, handleDownload),
+			util.NewEntryPoint("GET", "download-meta", []string{"view"}, handleDownloadMeta),
+			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
 		},
 	}
-}
-
-// InitDatabase will init dao in module, which should called after read env
-func InitDatabase() {
-	url := getGlobalEnv("MYSQL_URL")
-	user := getGlobalEnv("MYSQL_USER")
-	pass := getGlobalEnv("MYSQL_PASS")
-	db := getGlobalEnv("MYSQL_DB")
-	DaoInit(url, user, pass, db)
 }
 
 func getEnvironments() map[string]string {

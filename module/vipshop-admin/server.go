@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/Dictionary"
+	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
 	"github.com/kataras/iris"
@@ -35,13 +36,12 @@ func main() {
 
 	setRoute(app)
 	initDB()
-	initAuditDB()
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
-		app.Run(iris.Addr(":" + port))
+		app.Run(iris.Addr(":"+port), iris.WithoutVersionChecker)
 	} else {
-		app.Run(iris.Addr(":8181"))
+		app.Run(iris.Addr(":8181"), iris.WithoutVersionChecker)
 	}
 
 }
@@ -49,18 +49,24 @@ func main() {
 // checkPrivilege will call auth api to check user's privilege of this API
 func checkPrivilege(ctx context.Context) {
 	paths := strings.Split(ctx.Path(), "/")
-	module := paths[2]
+	module := paths[3]
+	cmd := paths[4]
 
 	appid := ctx.GetHeader("Authorization")
 	userid := ctx.GetHeader("X-UserID")
 
-	if checkPrivilegeWithAPI(module, appid, userid) {
+	if len(appid) == 0 || len(userid) == 0 {
+		ctx.StatusCode(iris.StatusUnauthorized)
+		ctx.Skip()
+	}
+
+	if checkPrivilegeWithAPI(module, cmd, appid, userid) {
 		ctx.Next()
 	}
 	ctx.Skip()
 }
 
-func checkPrivilegeWithAPI(module string, appid string, userid string) bool {
+func checkPrivilegeWithAPI(module string, cmd string, appid string, userid string) bool {
 	if serverConfig == nil {
 		return true
 	}
@@ -71,6 +77,8 @@ func checkPrivilegeWithAPI(module string, appid string, userid string) bool {
 		req := make(map[string]string)
 		req["userid"] = userid
 		req["module"] = module
+		req["cmd"] = cmd
+		util.LogTrace.Printf("Check privilege: %#v", req)
 		// resp = util.HTTPGet(authURL)
 
 		return true
@@ -82,6 +90,7 @@ func checkPrivilegeWithAPI(module string, appid string, userid string) bool {
 func setRoute(app *iris.Application) {
 	modules := []interface{}{
 		Dictionary.ModuleInfo,
+		Switch.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -89,18 +98,12 @@ func setRoute(app *iris.Application) {
 		for _, entrypoint := range info.EntryPoints {
 			// entry will be api/v_/<module>/<entry>
 			entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
-			app.Handle(entrypoint.AllowMethod, entryPath, checkPrivilege, entrypoint.Callback)
+			if app.Handle(entrypoint.AllowMethod, entryPath, checkPrivilege, entrypoint.Callback) == nil {
+				util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
+			} else {
+				util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
+			}
 		}
-	}
-}
-
-func initDB() {
-	initFunc := []func(){
-		Dictionary.InitDatabase,
-	}
-
-	for _, function := range initFunc {
-		function()
 	}
 }
 
@@ -113,10 +116,17 @@ func getServerEnv(key string) string {
 	}
 	return ""
 }
-func initAuditDB() {
-	url := getServerEnv("AUDIT_MYSQL_URL")
-	user := getServerEnv("AUDIT_MYSQL_USER")
-	pass := getServerEnv("AUDIT_MYSQL_PASS")
-	db := getServerEnv("AUDIT_MYSQL_DB")
-	util.AuditDBInit(url, user, pass, db)
+
+func initDB() {
+	url := getServerEnv("MYSQL_URL")
+	user := getServerEnv("MYSQL_USER")
+	pass := getServerEnv("MYSQL_PASS")
+	db := getServerEnv("MYSQL_DB")
+	util.InitMainDB(url, user, pass, db)
+
+	url = getServerEnv("AUDIT_MYSQL_URL")
+	user = getServerEnv("AUDIT_MYSQL_USER")
+	pass = getServerEnv("AUDIT_MYSQL_PASS")
+	db = getServerEnv("AUDIT_MYSQL_DB")
+	util.InitAuditDB(url, user, pass, db)
 }

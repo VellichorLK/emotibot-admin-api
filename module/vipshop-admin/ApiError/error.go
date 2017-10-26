@@ -9,6 +9,7 @@ var (
 		102: "File extension should be xlsx",
 		103: "File size should smaller than 2MB",
 		104: "Multicustomer is not available",
+		201: "Get no info of given id",
 	}
 
 	// SUCCESS
@@ -28,6 +29,9 @@ var (
 	DICT_SIZE_ERROR = 103
 	// Dictionary error: multicustomer service is not available
 	DICT_SERVICE_ERROR = 104
+
+	// Switch-manage error: return from database is empty
+	SWITCH_NO_ROWS = 201
 )
 
 func GetErrorMsg(errno int) string {
