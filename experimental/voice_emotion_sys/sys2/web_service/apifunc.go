@@ -12,15 +12,17 @@ type apiFunc map[string]func(w http.ResponseWriter, r *http.Request)
 
 //new the apiFunc and add it to services
 var v2api = apiFunc{
-	v2basePath + "/upload":         handlers.Upload,
-	v2basePath + "/files":          handlers.QueryEmotions,
-	v2basePath + "/files_continue": handlers.QueryContinue,
-	v2basePath + "/files/":         handlers.QueryEmotionDetail,
-	v2basePath + "/report":         handlers.GenerateReport,
-	v2basePath + "/tags":           handlers.TagsOperation,
-	v2basePath + "/statistics":     handlers.GetStatistics,
-	v2basePath + "/notify":         handlers.NotifyOperation,
-	v2basePath + "/notify/":        handlers.NotifyModifyOperation,
+	v2basePath + "/upload":            handlers.Upload,
+	v2basePath + "/files":             handlers.QueryEmotions,
+	v2basePath + "/files_continue":    handlers.QueryContinue,
+	v2basePath + "/files/":            handlers.QueryEmotionDetail,
+	v2basePath + "/report":            handlers.GenerateReport,
+	v2basePath + "/tags":              handlers.TagsOperation,
+	v2basePath + "/statistics":        handlers.GetStatistics,
+	v2basePath + "/notify":            handlers.NotifyOperation,
+	v2basePath + "/notify/":           handlers.NotifyModifyOperation,
+	v2basePath + "/user_column":       handlers.GetUserColumn,
+	v2basePath + "/user_column_value": handlers.UpdateColumnVal,
 }
 
 var services = [...]apiFunc{

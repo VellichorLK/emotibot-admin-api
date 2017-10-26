@@ -51,6 +51,8 @@ const InsertFileInfoSQL = "insert into " + MainTable + " (" + NFILEID + ", " + N
 	NDURATION + ", " + NFILET + ", " + NCHECKSUM + ", " + NPRIORITY + ", " + NAPPID + ", " + NSIZE + ", " +
 	NFILEPATH + ", " + NUPT + ", " + NRDURATION + ")" + " values(?,?,?,?,?,?,?,?,?,?,?,?)"
 
+const InsertUserFieldSQL = "insert into " + UsrColValTable + " (" + NID + "," + NCOLID + "," + NCOLVAL + ") values (?,?,?)"
+
 const DeleteFileRowSQL = "delete from " + MainTable
 
 //InsertAnalysisSQL used for insert a new emotion record
@@ -76,8 +78,9 @@ const (
 const (
 	QueryFileInfo = "select a." + NID + ", a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
 		", a." + NFILET + ", a." + NCHECKSUM + ", a." + NPRIORITY + ", a." + NAPPID + ", a." + NSIZE + ", a." + NANARES + ",a." + NUPT +
-		", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE + ", c." + NTAG + " from " + MainTable + " as a left join " +
-		ChannelTable + " as b on a." + NID + "=b." + NID + " left join " + UserDefinedTagsTable + " as c on a." + NID + "=c." + NID
+		", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE + ", c." + NTAGID + ", c." + NTAG + ", d." + NCOLID + ", d." + NCOLVAL + " from " + MainTable + " as a left join " +
+		ChannelTable + " as b on a." + NID + "=b." + NID + " left join " + UserDefinedTagsTable + " as c on a." + NID + "=c." + NID +
+		" left join " + UsrColValTable + " as d on a." + NID + "=d." + NID
 
 	QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NRDURATION + "," +
 		NFILET + "," + NCHECKSUM + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
@@ -130,6 +133,35 @@ func InsertFileRecord(fi *FileInfo) error {
 		return err
 	}
 	fi.ID = strconv.FormatUint(uint64(lastID), 10)
+
+	err = InsertDefaultUserFieldValue(fi.Appid, fi.ID)
+	if err != nil {
+		ExecuteSQL(DeleteFileRowSQL, lastID)
+		return err
+	}
+	return nil
+}
+
+func InsertDefaultUserFieldValue(appid string, id string) error {
+	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
+	if ok {
+		stmt, err := db.Prepare(InsertUserFieldSQL)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+		defer stmt.Close()
+
+		dvs := dvsInterface.([]*DefaultValue)
+
+		for _, dv := range dvs {
+			_, err := stmt.Exec(id, dv.ColID, dv.ColValue)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -549,6 +581,14 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		return http.StatusInternalServerError, err
 	}
 	drb.Tags = tags
+
+	cvs := make([]*ColumnValue, 0)
+	err = QueryUsrFieldValue(id, &cvs)
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	drb.UsrColumn = cvs
+
 	return http.StatusOK, nil
 }
 
@@ -584,6 +624,7 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 	ChannelMap := make(map[string]*ChannelResult)
 	LabelMap := make(map[string]bool)
 	TagsMap := make(map[string]bool)
+	UsrColMap := make(map[string]bool)
 
 	for rows.Next() {
 		nrb := new(ReturnBlock)
@@ -595,13 +636,17 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 		var channel sql.NullInt64
 		var label sql.NullInt64
 		var score sql.NullFloat64
+		var tagID sql.NullString
 		var tag sql.NullString
 		var appid string
 		var id int64
 
+		var colID sql.NullString
+		var colValue sql.NullString
+
 		err := rows.Scan(&id, &nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
 			&nrb.CreateTime, &nrb.Checksum, &nrb.Priority, &appid, &nrb.Size, &nrb.AnalysisResult, &nrb.UploadTime,
-			&channel, &label, &score, &tag)
+			&channel, &label, &score, &tagID, &tag, &colID, &colValue)
 		if err != nil {
 			log.Println(err)
 			return nil, http.StatusInternalServerError, errors.New("Internal server error")
@@ -643,13 +688,27 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 		}
 
 		if tag.Valid {
-			key := rb.FileID + tag.String
-			_, ok := TagsMap[key]
+			_, ok := TagsMap[tagID.String]
 			if !ok {
 				rb.Tags = append(rb.Tags, tag.String)
-				TagsMap[key] = true
+				TagsMap[tagID.String] = true
 			}
 
+		}
+
+		if colID.Valid {
+			key := rb.FileID + colID.String
+			_, ok := UsrColMap[key]
+			if !ok {
+				UsrColMap[key] = true
+				nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID.String)
+
+				if ok {
+					name := nameInterface.(string)
+					val := &ColumnValue{name, colValue.String, colID.String}
+					rb.UsrColumn = append(rb.UsrColumn, val)
+				}
+			}
 		}
 	}
 
@@ -702,6 +761,42 @@ func QueryChannelScore(id uint64, chs *[]*ChannelResult) error {
 	err = rows.Err()
 	if err != nil {
 		log.Println(err)
+		return err
+	}
+
+	return nil
+
+}
+
+func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
+	sql := "select " + NCOLID + "," + NCOLVAL + " from " + UsrColValTable + " where " + NID + "=?"
+	rows, err := db.Query(sql, id)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var colID, colVal string
+		err := rows.Scan(&colID, &colVal)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+		nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID)
+
+		if !ok {
+			return errors.New("No col_id " + colID + " name")
+		}
+		name := nameInterface.(string)
+		cv := &ColumnValue{name, colVal, colID}
+		*cvs = append(*cvs, cv)
+	}
+
+	err = rows.Err()
+	if err != nil {
 		return err
 	}
 

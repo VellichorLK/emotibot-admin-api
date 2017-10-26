@@ -71,8 +71,16 @@ type BasicInfo struct {
 //ReturnBlock is used for api /emotion/files/<file_id>
 type ReturnBlock struct {
 	BasicInfo
-	Channels []*ChannelResult `json:"channels"`
+	Channels  []*ChannelResult `json:"channels"`
+	UsrColumn []*ColumnValue   `json:"user_column,omitempty"`
 }
+
+type ColumnValue struct {
+	Field string `json:"col_name"`
+	Value string `json:"col_value"`
+	ColID string `json:"col_id"`
+}
+
 type ChannelResult struct {
 	ChannelID int            `json:"channel_id"`
 	Result    []*EmtionScore `json:"result"`
@@ -80,7 +88,8 @@ type ChannelResult struct {
 
 type DetailReturnBlock struct {
 	BasicInfo
-	Channels []*DetailChannelResult `json:"channels"`
+	Channels  []*DetailChannelResult `json:"channels"`
+	UsrColumn []*ColumnValue         `json:"user_column,omitempty"`
 }
 type DetailChannelResult struct {
 	ChannelResult
@@ -157,9 +166,10 @@ type QueryArgs struct {
 	Status   string `json:"status"`
 	//Ch1Emotion []string `json:"ch1_emotions"`
 	//Ch2Emotion []string `json:"ch2_emotions"`
-	Ch1Anger int64    `json:"ch1_anger_score"`
-	Ch2Anger int64    `json:"ch2_anger_score"`
-	Tags     []string `json:"tags"`
+	Ch1Anger  int64          `json:"ch1_anger_score"`
+	Ch2Anger  int64          `json:"ch2_anger_score"`
+	Tags      []string       `json:"tags"`
+	UsrColumn []*ColumnValue `json:"user_column"`
 }
 
 //EmotionBlock is used for decode the data from voice module
@@ -306,6 +316,7 @@ const NEMOTYPE = "emotion_type"
 const NSCORE = "score"
 
 //column name of UserDefinedTagsTable
+const NTAGID = "defined_id"
 const NTAG = "tag"
 
 //column name of EmotionMapTable
@@ -364,3 +375,22 @@ const DEFAULTPRIORITY = 0
 
 const LIMITUSERTAGS = 5
 const LIMITVALUELEN = 64
+
+//Name of User defined column table
+const (
+	UsrColTable    = "userColumn"
+	UsrColValTable = "userColumnValue"
+	UsrSelValTable = "userSelectableValue"
+)
+
+//field name of user column table
+const (
+	NCOLID    = "col_id"
+	NCOLTYPE  = "col_type"
+	NCOLNAME  = "col_name"
+	NDEDAULT  = "default_value"
+	NCOLVALID = "col_val_id"
+	NCOLVAL   = "col_value"
+	NSELID    = "sel_id"
+	NSELVAL   = "sel_value"
+)

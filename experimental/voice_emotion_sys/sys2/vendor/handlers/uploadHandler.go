@@ -268,6 +268,10 @@ func goTaskOnFail(sid string) {
 	if err != nil {
 		log.Println(err)
 	}
+	_, err = ExecuteSQL(DeleteFileRowSQL, id)
+	if err != nil {
+		log.Println(err)
+	}
 	_, err = DeleteTag(id)
 	if err != nil {
 		log.Println(err)

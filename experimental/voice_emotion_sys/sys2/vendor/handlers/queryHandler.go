@@ -422,8 +422,30 @@ func makeCondition(qas *QueryArgs) (string, []interface{}, error) {
 		conditions += " group by " + NID + " having count(*)=" + strconv.Itoa(count) + ")"
 	}
 
+	if len(qas.UsrColumn) > 0 {
+		count := 0
+		conditions += " and a." + NID + " in (select " + NID + " from " + UsrColValTable + " where "
+		err := makeUsrColumnCondition(qas.UsrColumn, &count, &conditions, &params)
+		if err != nil {
+			return "", nil, err
+		}
+		conditions += " group by " + NID + " having count(*)=" + strconv.Itoa(count) + ")"
+	}
 	return conditions, params, nil
 
+}
+
+func makeUsrColumnCondition(cvs []*ColumnValue, count *int, conditions *string, params *[]interface{}) error {
+	for _, cv := range cvs {
+		if *count != 0 {
+			*conditions += " or "
+		}
+		*conditions += "(" + NCOLID + "=? and " + NCOLVAL + "=? )"
+		*params = append(*params, cv.ColID)
+		*params = append(*params, cv.Value)
+		*count++
+	}
+	return nil
 }
 
 func makeTagsCondition(tags []string, count *int, conditions *string, params *[]interface{}) error {
