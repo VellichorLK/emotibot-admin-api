@@ -1,6 +1,8 @@
 package Switch
 
 import (
+	"fmt"
+
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
@@ -88,8 +90,10 @@ func handleNewSwitch(ctx context.Context) {
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
 	} else {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, input))
+		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
 	}
 }
 
@@ -103,12 +107,20 @@ func handleUpdateSwitch(ctx context.Context) {
 		return
 	}
 
-	errCode, err := UpdateSwitch(appid, id, input)
+	orig, errCode, err := GetSwitch(appid, id)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+	}
+
+	errCode, err = UpdateSwitch(appid, id, input)
+	errMsg = ApiError.GetErrorMsg(errCode)
+	if errCode != ApiError.SUCCESS {
+		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update fail %s (%s)", errMsg, err.Error()), 0)
 	} else {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, input))
+		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update success %#v => %#v", orig, input), 1)
 	}
 }
 
@@ -120,8 +132,10 @@ func handleDeleteSwitch(ctx context.Context) {
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
 	} else {
 		ctx.JSON(util.GenRetObj(errCode, errMsg, nil))
+		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
 	}
 }
 
@@ -133,4 +147,11 @@ func loadSwitchFromContext(ctx context.Context) *SwitchInfo {
 	}
 
 	return input
+}
+
+func addAudit(ctx context.Context, operation string, msg string, result int) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
 }
