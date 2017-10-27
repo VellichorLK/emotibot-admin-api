@@ -12,8 +12,19 @@ const (
 	ModePerm os.FileMode = 0777
 )
 
+// GetFunctionSettingPath will return <appid>.property path of appid
+func GetFunctionSettingPath(appid string) string {
+	configPath := fmt.Sprintf("%s/%s.property", getAppidDir(appid), appid)
+	return configPath
+}
+
+func GetFunctionSettingTmpPath(appid string) string {
+	configPath := fmt.Sprintf("%s/%s_function_tmp.property", getAppidDir(appid), appid)
+	return configPath
+}
+
 func SaveDictionaryFile(appid string, filename string, file multipart.File) (int64, error) {
-	dirPath := fmt.Sprintf("./Files/%s", appid)
+	dirPath := getAppidDir(appid)
 	filePath := fmt.Sprintf("%s/%s", dirPath, filename)
 
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
@@ -37,4 +48,8 @@ func SaveDictionaryFile(appid string, filename string, file multipart.File) (int
 		return 0, err
 	}
 	return written, nil
+}
+
+func getAppidDir(appid string) string {
+	return fmt.Sprintf("./Files/settings/%s", appid)
 }

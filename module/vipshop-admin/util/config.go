@@ -65,3 +65,13 @@ func GetEnvOf(module string) map[string]string {
 	}
 	return make(map[string]string)
 }
+
+func getGlobalEnv(key string) string {
+	envs := GetEnvOf("server")
+	if envs != nil {
+		if val, ok := envs[key]; ok {
+			return val
+		}
+	}
+	return ""
+}

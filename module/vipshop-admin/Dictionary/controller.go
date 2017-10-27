@@ -13,10 +13,6 @@ var (
 	ModuleInfo util.ModuleInfo
 )
 
-const (
-	MulticustomerURLKey = "MC_URL"
-)
-
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "dictionary",
@@ -73,7 +69,6 @@ func handleUpload(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
-	mcURL := getGlobalEnv(MulticustomerURLKey)
 
 	file, info, err := ctx.FormFile("file")
 	defer file.Close()
@@ -95,17 +90,11 @@ func handleUpload(ctx context.Context) {
 	}
 
 	// 2. http request to multicustomer
-	// http://172.16.101.47:14501/entity?
-	// app_id, userip, userid, file_name
-	reqURL := fmt.Sprintf("%s/entity?app_id=%s&userid=%s&userip=%s&file_name=%s", mcURL, appid, userID, userIP, retFile)
-	util.LogTrace.Printf("mc req: %s", reqURL)
-
-	_, resErr := util.HTTPGetSimpleWithTimeout(reqURL, 1)
-	if resErr != nil {
-		errCode = ApiError.DICT_SERVICE_ERROR
+	errCode, err = util.UpdateWordBank(appid, userID, userIP, retFile)
+	if err != nil {
 		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenRetObj(errCode, errMsg, resErr.Error()))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("service error: %s", resErr.Error()), 0)
+		ctx.JSON(util.GenRetObj(errCode, errMsg, err.Error()))
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("service error: %s", err.Error()), 0)
 	} else {
 		errCode = ApiError.SUCCESS
 		errMsg := ApiError.GetErrorMsg(errCode)

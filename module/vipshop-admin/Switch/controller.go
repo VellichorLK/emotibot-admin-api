@@ -143,6 +143,7 @@ func loadSwitchFromContext(ctx context.Context) *SwitchInfo {
 	input := &SwitchInfo{}
 	err := ctx.ReadJSON(input)
 	if err != nil {
+		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 
