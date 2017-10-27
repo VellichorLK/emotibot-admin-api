@@ -74,9 +74,6 @@ func (v *NullableString) UnmarshalJSON(data []byte) error {
 
 // validation
 func IsValidAppId(aid string) bool {
-	if len(aid) != const_appid_length {
-		return false
-	}
 	if !HasOnlyNumEng(aid) {
 		return false
 	}

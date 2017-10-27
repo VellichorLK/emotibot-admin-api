@@ -274,9 +274,8 @@ func RolePatchById(role_id string, appid string, role *RoleProp, d *DaoWrapper) 
 	}
 
 	patchRole(role, dbRole)
-	return d.PatchRole(role_id, enterprise_id, dbRole)
 
-	return nil, nil
+	return d.PatchRole(role_id, enterprise_id, dbRole)
 }
 
 // ==================== user management apis ====================
