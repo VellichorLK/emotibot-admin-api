@@ -394,3 +394,5 @@ const (
 	NSELID    = "sel_id"
 	NSELVAL   = "sel_value"
 )
+
+const NUSRCOL = "user_column"

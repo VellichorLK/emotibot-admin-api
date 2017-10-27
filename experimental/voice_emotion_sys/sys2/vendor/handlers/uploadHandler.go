@@ -141,6 +141,45 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 		f.Tags = make([]string, 0)
 	}
 
+	if r.FormValue(NUSRCOL) != "" {
+		ucs := strings.Split(r.FormValue(NUSRCOL), ",")
+		for _, v := range ucs {
+			uc := strings.Split(v, "==")
+			if len(uc) != 2 {
+				return nil, errors.New("wrong format of user_column")
+			}
+			owner, ok := DefaulUsrField.FieldOwner[uc[0]]
+			if !ok || strings.Compare(owner, r.Header.Get(HXAPPID)) != 0 {
+				return nil, errors.New("no colum id " + uc[0])
+			}
+
+			nameInterface, ok := DefaulUsrField.FieldNameMap.Load(uc[0])
+			if !ok {
+				return nil, errors.New("no colum id " + uc[0] + " name")
+			}
+
+			if !checkSelectableVal(uc[0], uc[1]) {
+				return nil, errors.New("value " + uc[1] + " can't be set.")
+			}
+
+			name := nameInterface.(string)
+			cv := &ColumnValue{ColID: uc[0], Value: uc[1], Field: name}
+			f.UsrColumn = append(f.UsrColumn, cv)
+		}
+	} else {
+		dvsInterface, ok := DefaulUsrField.DefaultValue.Load(r.Header.Get(HXAPPID))
+		if ok {
+			dvs := dvsInterface.([]*DefaultValue)
+			for _, dv := range dvs {
+
+				cv := &ColumnValue{ColID: dv.ColID, Value: dv.ColValue, Field: dv.ColName}
+				f.UsrColumn = append(f.UsrColumn, cv)
+			}
+
+		}
+
+	}
+
 	return f, nil
 }
 

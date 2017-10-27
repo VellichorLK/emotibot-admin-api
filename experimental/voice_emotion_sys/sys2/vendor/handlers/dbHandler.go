@@ -134,12 +134,30 @@ func InsertFileRecord(fi *FileInfo) error {
 	}
 	fi.ID = strconv.FormatUint(uint64(lastID), 10)
 
-	err = InsertDefaultUserFieldValue(fi.Appid, fi.ID)
+	err = InsertUsrFieldValue(fi)
 	if err != nil {
 		ExecuteSQL(DeleteFileRowSQL, lastID)
 		return err
 	}
 	return nil
+}
+
+func InsertUsrFieldValue(fi *FileInfo) error {
+	stmt, err := db.Prepare(InsertUserFieldSQL)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer stmt.Close()
+	for _, uc := range fi.UsrColumn {
+		_, err := stmt.Exec(fi.ID, uc.ColID, uc.Value)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
+
 }
 
 func InsertDefaultUserFieldValue(appid string, id string) error {

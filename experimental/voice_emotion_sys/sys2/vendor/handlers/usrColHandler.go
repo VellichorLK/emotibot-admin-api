@@ -19,14 +19,16 @@ const (
 )
 
 type UsrColHandler struct {
-	FieldNameMap    sync.Map //col_id  -> field_name
-	DefaultValue    sync.Map //appid  -> default value
-	SelectableValue sync.Map // col_id  -> selectable map
+	FieldNameMap    sync.Map          //col_id  -> field_name
+	DefaultValue    sync.Map          //appid  -> default value
+	SelectableValue sync.Map          // col_id  -> selectable map
+	FieldOwner      map[string]string //col_id -> appid
 }
 
 type DefaultValue struct {
 	ColID    string
 	ColValue string
+	ColName  string
 }
 
 type UsrColumBlock struct {
@@ -46,6 +48,8 @@ var DefaulUsrField *UsrColHandler
 
 func LoadUsrField() error {
 	DefaulUsrField = &UsrColHandler{}
+
+	DefaulUsrField.FieldOwner = make(map[string]string)
 
 	rows, err := db.Query(GetSelValueSQL)
 	if err != nil {
@@ -67,6 +71,8 @@ func LoadUsrField() error {
 
 		key := colID
 
+		DefaulUsrField.FieldOwner[colID] = appid
+
 		_, ok := colIDMap[key]
 		if !ok {
 			colIDMap[key] = true
@@ -82,7 +88,7 @@ func LoadUsrField() error {
 				dvs = dvsInterface.([]*DefaultValue)
 			}
 
-			dv := &DefaultValue{colID, defValue}
+			dv := &DefaultValue{colID, defValue, colName}
 			dvs = append(dvs, dv)
 
 			DefaulUsrField.DefaultValue.Store(appid, dvs)
