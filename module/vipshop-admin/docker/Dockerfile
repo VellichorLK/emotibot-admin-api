@@ -17,5 +17,7 @@ COPY --from=build-env /go/bin/vipshop-admin /usr/local/bin/vipshop-admin
 WORKDIR /usr/local/bin
 COPY ${PROJECT}/docker/entrypoint.sh entrypoint.sh
 COPY ${PROJECT}/docker/env.template env.template
+COPY ${PROJECT}/docker/files_init.sh files_init.sh
+COPY ${PROJECT}/InitFiles InitFiles
 
 CMD ["./entrypoint.sh", "env.template"]
