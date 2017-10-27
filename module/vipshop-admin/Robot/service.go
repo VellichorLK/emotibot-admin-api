@@ -34,3 +34,45 @@ func UpdateFunctions(appid string, newInfos map[string]*FunctionInfo) (int, erro
 	}
 	return ApiError.SUCCESS, nil
 }
+
+func GetRobotQuestionCnt(appid string) (int, error) {
+	count, err := getAllRobotQACnt(appid)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, err
+}
+
+func GetRobotQAList(appid string) (*RetQAInfo, int, error) {
+	list, err := getAllRobotQAList(appid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	ret := RetQAInfo{
+		Count: len(list),
+		Infos: list,
+	}
+
+	return &ret, ApiError.SUCCESS, err
+}
+
+func GetRobotQAPage(appid string, page int, listPerPage int) (*RetQAInfo, int, error) {
+	list, err := getRobotQAListPage(appid, page, listPerPage)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	count, err := getAllRobotQACnt(appid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	ret := RetQAInfo{
+		Count: count,
+		Infos: list,
+	}
+
+	return &ret, ApiError.SUCCESS, err
+}

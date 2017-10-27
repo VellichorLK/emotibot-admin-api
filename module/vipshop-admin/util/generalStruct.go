@@ -53,7 +53,7 @@ type RetObj struct {
 }
 
 func GenRetObj(status int, message string, result interface{}) RetObj {
-	LogInfo.Printf("status: [%d] msg: [%s] obj: [%+#v]", status, message, result)
+	LogInfo.Printf("status: [%d] msg: [%s] obj: [%T]", status, message, result)
 	return RetObj{
 		Status:  status,
 		Message: message,

@@ -10,49 +10,8 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
 )
-
-var (
-	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
-)
-
-func init() {
-	ModuleInfo = util.ModuleInfo{
-		ModuleName: "robot",
-		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("GET", "functions", []string{"view"}, handleList),
-			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllFunction),
-			util.NewEntryPoint("POST", "function/{name:string}", []string{"edit"}, handleUpdateFunction),
-		},
-	}
-}
-
-func getEnvironments() map[string]string {
-	return util.GetEnvOf(ModuleInfo.ModuleName)
-}
-
-func getEnvironment(key string) string {
-	envs := util.GetEnvOf(ModuleInfo.ModuleName)
-	if envs != nil {
-		if val, ok := envs[key]; ok {
-			return val
-		}
-	}
-	return ""
-}
-
-func getGlobalEnv(key string) string {
-	envs := util.GetEnvOf("server")
-	if envs != nil {
-		if val, ok := envs[key]; ok {
-			return val
-		}
-	}
-	return ""
-}
-
 // handleList will show robot function list and it's status
-func handleList(ctx context.Context) {
+func handleFunctionList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 
 	ret, errCode, err := GetFunctions(appid)
@@ -149,13 +108,6 @@ func handleUpdateAllFunction(ctx context.Context) {
 		util.McUpdateFunction(appid)
 	}
 	addAudit(ctx, util.AuditOperationEdit, auditLog, result)
-}
-
-func addAudit(ctx context.Context, operation string, msg string, result int) {
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
-
-	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
 }
 
 func loadFunctionFromContext(ctx context.Context) *FunctionInfo {
