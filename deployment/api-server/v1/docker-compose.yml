@@ -208,10 +208,13 @@ services:
             - '80:80'
             - '443:443'
         logging:
-            driver: gelf
             options:
-                gelf-address: "udp://172.17.0.1:${LOG_PORT}"
-                tag: "nginx"
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+            #            driver: gelf
+            #options:
+            #    gelf-address: "udp://172.17.0.1:${LOG_PORT}"
+            #    tag: "nginx"
         mem_limit: 2048m
         volumes:
             - /etc/localtime:/etc/localtime
@@ -351,3 +354,21 @@ services:
             - /sys:/host/sys:ro
             - /var/run/docker.sock:/var/run/docker.sock
         restart: always
+    bf-ubt-apigw:
+        image: ${BF_UBT_APIGW_IMAGE}:${BF_UBT_APIGW_TAG}
+        container_name: ${BF_UBT_APIGW_CONTAINER}
+        ports:
+            - "${BF_UBT_APIGW_PORT}:${BF_UBT_APIGW_PORT}"
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            DOCKER_PORT: ${BF_UBT_APIGW_PORT}  
+        mem_limit: 2048m
+        volumes:
+            - /etc/localtime:/etc/localtime
+        depends_on:
+            - nginx
+        restart: always
+
