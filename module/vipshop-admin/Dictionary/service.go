@@ -10,7 +10,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-// Check wordbank status, 0: success, 1: running, -1: fail
+// CheckProcessStatus will Check wordbank status
 func CheckProcessStatus(appid string) (string, error) {
 	status, err := GetProcessStatus(appid)
 	if err != nil {
@@ -20,6 +20,17 @@ func CheckProcessStatus(appid string) (string, error) {
 	return status, nil
 }
 
+// CheckFullProcessStatus will return full wordbank status
+func CheckFullProcessStatus(appid string) (*StatusInfo, error) {
+	status, err := GetFullProcessStatus(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	return status, nil
+}
+
+// GetDownloadMeta will return latest two success process status
 func GetDownloadMeta(appid string) (map[string]*DownloadMeta, error) {
 	metas, err := GetLastTwoSuccess(appid)
 	if err != nil {

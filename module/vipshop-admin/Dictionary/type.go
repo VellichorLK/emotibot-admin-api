@@ -10,6 +10,12 @@ const (
 
 type Status string
 
+type StatusInfo struct {
+	Status    string    `json:"status"`
+	StartTime time.Time `json:"start_time"`
+	Message   string    `json:"message"`
+}
+
 // DownloadMeta is the struct describe file which can be downloaded
 type DownloadMeta struct {
 	UploadTime time.Time `json:"time"`

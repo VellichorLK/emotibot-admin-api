@@ -47,6 +47,8 @@ func SaveDictionaryFile(appid string, filename string, file multipart.File) (int
 		LogError.Printf("Cannot copy file into system (%s)", err.Error())
 		return 0, err
 	}
+
+	LogTrace.Printf("Write to file [%s] [%d] bytes successfully", filePath, written)
 	return written, nil
 }
 

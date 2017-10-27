@@ -21,6 +21,7 @@ func init() {
 			util.NewEntryPoint("GET", "download", []string{"export"}, handleDownload),
 			util.NewEntryPoint("GET", "download-meta", []string{"view"}, handleDownloadMeta),
 			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
+			util.NewEntryPoint("GET", "full-check", []string{"view"}, handleFullFileCheck),
 		},
 	}
 }
@@ -56,6 +57,22 @@ func handleFileCheck(ctx context.Context) {
 	util.LogTrace.Printf("Check dictionary info from [%s]", appid)
 
 	ret, err := CheckProcessStatus(appid)
+	if err != nil {
+		errMsg := ApiError.GetErrorMsg(ApiError.DB_ERROR)
+		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, errMsg, err.Error()))
+	} else {
+		errMsg := ApiError.GetErrorMsg(ApiError.SUCCESS)
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, errMsg, ret))
+	}
+}
+
+// handleFileCheck will call api to check if uploaded dictionary is finished
+func handleFullFileCheck(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+
+	util.LogTrace.Printf("Check dictionary full info from [%s]", appid)
+
+	ret, err := CheckFullProcessStatus(appid)
 	if err != nil {
 		errMsg := ApiError.GetErrorMsg(ApiError.DB_ERROR)
 		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, errMsg, err.Error()))

@@ -30,6 +30,30 @@ func GetProcessStatus(appid string) (string, error) {
 	return status, nil
 }
 
+// GetFullProcessStatus will get more status info from latest wordbank process
+func GetFullProcessStatus(appid string) (*StatusInfo, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	rows, err := mySQL.Query("SELECT status, start_at, message from process_status where app_id = ? and module = 'wordbank' order by id desc limit 1", appid)
+	if err != nil {
+		return nil, err
+	}
+
+	status := StatusInfo{}
+	ret := rows.Next()
+	if !ret {
+		return nil, nil
+	}
+	if err := rows.Scan(&status.Status, &status.StartTime, &status.Message); err != nil {
+		return nil, err
+	}
+
+	return &status, nil
+}
+
 // GetLastTwoSuccess will return last two record which status is success, order by time
 func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 	mySQL := util.GetMainDB()
