@@ -19,7 +19,13 @@ func init() {
 			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllFunction),
 			util.NewEntryPoint("POST", "function/{name:string}", []string{"edit"}, handleUpdateFunction),
 
-			util.NewEntryPoint("GET", "robotqas", []string{"view"}, handleRobotQAList),
+			util.NewEntryPoint("GET", "qas", []string{"view"}, handleRobotQAList),
+			util.NewEntryPoint("POST", "qabuild", []string{"edit"}, handleRobotQAModelRebuild),
+			util.NewEntryPoint("GET", "qa/{id:int}", []string{"view"}, handleRobotQA),
+			util.NewEntryPoint("POST", "qa/{id:int}", []string{"edit"}, handleUpdateRobotQA),
+
+			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
+			util.NewEntryPoint("POST", "chats", []string{"edit"}, handleMultiChatModify),
 		},
 	}
 }
@@ -48,9 +54,9 @@ func getGlobalEnv(key string) string {
 	return ""
 }
 
-func addAudit(ctx context.Context, operation string, msg string, result int) {
+func addAudit(ctx context.Context, module string, operation string, msg string, result int) {
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 
-	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
+	util.AddAuditLog(userID, userIP, module, operation, msg, result)
 }

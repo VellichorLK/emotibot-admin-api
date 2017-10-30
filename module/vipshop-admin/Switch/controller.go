@@ -56,11 +56,10 @@ func handleList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 
 	list, errCode, err := GetSwitches(appid)
-	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, list))
+		ctx.JSON(util.GenRetObj(errCode, list))
 	}
 }
 
@@ -69,11 +68,10 @@ func handleSwitch(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 
 	ret, errCode, err := GetSwitch(appid, id)
-	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, ret))
+		ctx.JSON(util.GenRetObj(errCode, ret))
 	}
 }
 
@@ -89,10 +87,10 @@ func handleNewSwitch(ctx context.Context) {
 	errCode, err := InsertSwitch(appid, input)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, input))
+		ctx.JSON(util.GenRetObj(errCode, input))
 		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
 	}
 }
@@ -110,16 +108,16 @@ func handleUpdateSwitch(ctx context.Context) {
 	orig, errCode, err := GetSwitch(appid, id)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 	}
 
 	errCode, err = UpdateSwitch(appid, id, input)
 	errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update fail %s (%s)", errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, input))
+		ctx.JSON(util.GenRetObj(errCode, input))
 		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update success %#v => %#v", orig, input), 1)
 	}
 }
@@ -131,10 +129,10 @@ func handleDeleteSwitch(ctx context.Context) {
 	errCode, err := DeleteSwitch(appid, id)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, nil))
+		ctx.JSON(util.GenRetObj(errCode, nil))
 		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
 	}
 }

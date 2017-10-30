@@ -47,7 +47,7 @@ func getFunctionList(appid string) (map[string]*FunctionInfo, error) {
 }
 
 func updateFunctionList(appid string, infos map[string]*FunctionInfo) error {
-	filePath := util.GetFunctionSettingTmpPath(appid)
+	filePath := util.GetFunctionSettingPath(appid)
 
 	lines := []string{}
 	for key, info := range infos {
@@ -57,9 +57,10 @@ func updateFunctionList(appid string, infos map[string]*FunctionInfo) error {
 	err := ioutil.WriteFile(filePath, []byte(content), 0644)
 	util.LogTrace.Printf("Upload function properties to %s", content)
 
+	tmpFilePath := util.GetFunctionSettingTmpPath(appid)
 	now := time.Now()
 	nowStr := now.Format("2000-01-01 00:00:00")
-	ioutil.WriteFile(filePath, []byte(nowStr), 0644)
+	ioutil.WriteFile(tmpFilePath, []byte(nowStr), 0644)
 
 	return err
 }
@@ -77,7 +78,6 @@ func getAllRobotQAList(appid string) ([]*QAInfo, error) {
 		return nil, err
 	}
 
-	// ret := []*QAInfo{}
 	dest := make([]interface{}, len(cols))
 	rawResult := make([][]byte, len(cols)-2)
 	var id int
@@ -146,16 +146,75 @@ func getAllAnswer(appid string) (map[int][]string, error) {
 	return ret, nil
 }
 
+func getAnswerOfQuestion(appid string, qid int) ([]string, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	ret := []string{}
+	queryStr := fmt.Sprintf("SELECT content FROM `%s_robotanswer` where parent_q_id = ?", appid)
+	rows, err := mySQL.Query(queryStr, qid)
+	if err != nil {
+		return nil, err
+	}
+
+	var content string
+	for rows.Next() {
+		err = rows.Scan(&content)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, content)
+	}
+
+	return ret, nil
+}
+
+func getAnswerOfQuestions(appid string, ids []int) (map[int][]string, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	ret := make(map[int][]string)
+	idsStr := strings.Trim(strings.Replace(fmt.Sprint(ids), " ", ",", -1), "[]")
+	queryStr := fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer` WHERE parent_q_id IN (%s)", appid, idsStr)
+	util.LogTrace.Printf("Select part of answer: %s", queryStr)
+
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	var qid int
+	var content string
+	for rows.Next() {
+		err = rows.Scan(&qid, &content)
+		if err != nil {
+			return nil, err
+		}
+		ret[qid] = append(ret[qid], content)
+	}
+
+	return ret, nil
+}
+
 func convertQuestionRowToQAInfo(row []interface{}) *QAInfo {
 	info := QAInfo{}
 
 	info.ID = *row[0].(*int)
 	info.CreatedTime = *row[1].(*time.Time)
+	info.Question = string(*row[2].(*[]byte))
 
-	for i := 2; i < len(row); i++ {
+	for i := 3; i < len(row); i++ {
 		question := string(*row[i].(*[]byte))
 		if len(question) > 0 {
-			info.Questions = append(info.Questions, question)
+			info.RelatedQuestions = append(info.RelatedQuestions, question)
 		}
 	}
 	return &info
@@ -215,7 +274,7 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 	}
 
 	// Load all answer and put into corresponded question
-	answerMap, err := getAnswerOfQuestion(appid, ids)
+	answerMap, err := getAnswerOfQuestions(appid, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -225,39 +284,6 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 				qaInfo.Answers = arr
 			}
 		}
-	}
-
-	return ret, nil
-}
-
-func getAnswerOfQuestion(appid string, ids []int) (map[int][]string, error) {
-	mySQL := util.GetMainDB()
-	if mySQL == nil {
-		return nil, errors.New("DB not init")
-	}
-
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	ret := make(map[int][]string)
-	idsStr := strings.Trim(strings.Replace(fmt.Sprint(ids), " ", ",", -1), "[]")
-	queryStr := fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer` WHERE parent_q_id IN (%s)", appid, idsStr)
-	util.LogTrace.Printf("Select part of answer: %s", queryStr)
-
-	rows, err := mySQL.Query(queryStr)
-	if err != nil {
-		return nil, err
-	}
-
-	var qid int
-	var content string
-	for rows.Next() {
-		err = rows.Scan(&qid, &content)
-		if err != nil {
-			return nil, err
-		}
-		ret[qid] = append(ret[qid], content)
 	}
 
 	return ret, nil
@@ -284,4 +310,229 @@ func getAllRobotQACnt(appid string) (int, error) {
 		}
 	}
 	return count, nil
+}
+
+func getRobotQA(appid string, id int) (*QAInfo, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
+	queryStr := fmt.Sprintf("SELECT %s FROM `%s_robotquestion` WHERE q_id = ?", strings.Join(cols, ","), appid)
+	rows, err := mySQL.Query(queryStr, id)
+	if err != nil {
+		return nil, err
+	}
+
+	dest := make([]interface{}, len(cols))
+	rawResult := make([][]byte, len(cols)-2)
+	var qid int
+	var createdTime time.Time
+
+	dest[0] = &qid
+	dest[1] = &createdTime
+	for i := range rawResult {
+		// Put pointers to each string in the interface slice
+		dest[i+2] = &rawResult[i]
+	}
+
+	ret := &QAInfo{}
+
+	// Set all info about question
+	if rows.Next() {
+		err = rows.Scan(dest...)
+		if err != nil {
+			util.LogTrace.Printf("Scan row error: %s", err.Error())
+			return nil, err
+		}
+
+		ret = convertQuestionRowToQAInfo(dest)
+	} else {
+		return nil, nil
+	}
+
+	// Load all answer and put into corresponded question
+	answerList, err := getAnswerOfQuestion(appid, id)
+	if err != nil {
+		return nil, err
+	}
+	ret.Answers = answerList
+	return ret, nil
+
+}
+
+func updateRobotQA(appid string, id int, info *QAInfo) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+	emptyStr := ""
+
+	link, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer link.Commit()
+
+	questionCols := 10
+	// Update question table
+	queryStr := fmt.Sprintf("UPDATE %s_robotquestion SET content = ?, content2 = ?, content3 = ?, content4 = ?, content5 = ?, content6 = ?, content7 = ?, content8 = ?, content9 = ?, content10 = ?, answer_count = ? WHERE q_id = ?", appid)
+	args := make([]interface{}, questionCols+2)
+	args[0] = info.Question
+	for i := 1; i < questionCols; i++ {
+		if i-1 < len(info.RelatedQuestions) {
+			args[i] = info.RelatedQuestions[i-1]
+		} else {
+			args[i] = emptyStr
+		}
+	}
+	args[questionCols] = len(info.Answers)
+	args[questionCols+1] = id
+
+	_, err = link.Query(queryStr, args...)
+	if err != nil {
+		link.Rollback()
+		return err
+	}
+
+	// Delete orig answer
+	queryStr = fmt.Sprintf("DELETE FROM %s_robotanswer WHERE parent_q_id = ?", appid)
+	_, err = link.Query(queryStr, id)
+	if err != nil {
+		link.Rollback()
+		return err
+	}
+
+	// Insert new answer
+	queryStr = fmt.Sprintf("INSERT INTO %s_robotanswer(parent_q_id, content, user) VALUES (?,?,?)", appid)
+	stmt, err := link.Prepare(queryStr)
+	if err != nil {
+		link.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, answer := range info.Answers {
+		_, err = stmt.Exec(id, answer, appid)
+		if err != nil {
+			link.Rollback()
+			return err
+		}
+	}
+
+	return nil
+}
+
+func getRobotChatList(appid string) ([]*ChatInfo, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("SELECT type, content FROM %s_robot_setting", appid)
+
+	contentMap := make(map[int][]string)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		chatType := 0
+		content := ""
+		err = rows.Scan(&chatType, &content)
+		if err != nil {
+			return nil, err
+		}
+		contentMap[chatType] = append(contentMap[chatType], content)
+	}
+
+	ret := []*ChatInfo{}
+	for key, contents := range contentMap {
+		ret = append(ret, &ChatInfo{
+			Type:     key,
+			Contents: contents,
+		})
+	}
+	return ret, nil
+}
+
+func getMultiRobotChat(appid string, input []int) ([]*ChatInfo, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	if len(input) == 0 {
+		return []*ChatInfo{}, nil
+	}
+
+	idsStr := strings.Trim(strings.Replace(fmt.Sprint(input), " ", ",", -1), "[]")
+	queryStr := fmt.Sprintf("SELECT type, content FROM %s_robot_setting where type in (%s)", appid, idsStr)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	contentMap := make(map[int][]string)
+	for rows.Next() {
+		chatType := 0
+		content := ""
+		err = rows.Scan(&chatType, &content)
+		if err != nil {
+			return nil, err
+		}
+		contentMap[chatType] = append(contentMap[chatType], content)
+	}
+
+	ret := []*ChatInfo{}
+	for key, contents := range contentMap {
+		ret = append(ret, &ChatInfo{
+			Type:     key,
+			Contents: contents,
+		})
+	}
+	return ret, nil
+}
+
+func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	link, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer link.Commit()
+
+	// Delete old contents
+	ids := []interface{}{}
+	for _, info := range input {
+		ids = append(ids, info.Type)
+	}
+	deleteStr := fmt.Sprintf("DELETE FROM %s_robot_setting where type in (?%s)", appid, strings.Repeat(",?", len(ids)-1))
+	util.LogTrace.Printf("SQL: %s\n", deleteStr)
+	util.LogTrace.Printf("param: %#v\n", ids)
+	_, err = link.Query(deleteStr, ids...)
+	if err != nil {
+		link.Rollback()
+		return err
+	}
+
+	// Insert new contents
+	insertStr := fmt.Sprintf("INSERT INTO %s_robot_setting(type, content) VALUES(?,?)", appid)
+	for _, info := range input {
+		for _, content := range info.Contents {
+			_, err = link.Query(insertStr, info.Type, content)
+			if err != nil {
+				link.Rollback()
+				return err
+			}
+		}
+	}
+
+	return nil
 }

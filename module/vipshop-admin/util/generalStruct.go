@@ -1,6 +1,7 @@
 package util
 
 import (
+	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"github.com/kataras/iris/context"
 )
 
@@ -52,7 +53,16 @@ type RetObj struct {
 	Result  interface{} `json:"result"`
 }
 
-func GenRetObj(status int, message string, result interface{}) RetObj {
+func GenRetObj(status int, result interface{}) RetObj {
+	LogInfo.Printf("status: [%d] msg: [%s] obj: [%T]", status, ApiError.GetErrorMsg(status), result)
+	return RetObj{
+		Status:  status,
+		Message: ApiError.GetErrorMsg(status),
+		Result:  result,
+	}
+}
+
+func GenRetObjWithCustomMsg(status int, message string, result interface{}) RetObj {
 	LogInfo.Printf("status: [%d] msg: [%s] obj: [%T]", status, message, result)
 	return RetObj{
 		Status:  status,
@@ -61,10 +71,10 @@ func GenRetObj(status int, message string, result interface{}) RetObj {
 	}
 }
 
-func GenSimpleRetObj(status int, message string) RetObj {
-	LogInfo.Printf("status: [%d] msg: [%s]", status, message)
+func GenSimpleRetObj(status int) RetObj {
+	LogInfo.Printf("status: [%d] msg: [%s]", status, ApiError.GetErrorMsg(status))
 	return RetObj{
 		Status:  status,
-		Message: message,
+		Message: ApiError.GetErrorMsg(status),
 	}
 }

@@ -10,16 +10,16 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
 )
+
 // handleList will show robot function list and it's status
 func handleFunctionList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 
 	ret, errCode, err := GetFunctions(appid)
-	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, ret))
+		ctx.JSON(util.GenRetObj(errCode, ret))
 	}
 }
 
@@ -31,15 +31,15 @@ func handleUpdateFunction(ctx context.Context) {
 	ret, errCode, err := GetFunctions(appid)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
-		addAudit(ctx, util.AuditOperationEdit,
+		ctx.JSON(util.GenRetObj(errCode, err))
+		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
 			fmt.Sprintf("Get orig setting of %s error", function), result)
 	}
 
 	origInfo := ret[function]
 	newInfo := loadFunctionFromContext(ctx)
 	if newInfo == nil {
-		addAudit(ctx, util.AuditOperationEdit, "Bad request", result)
+		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
 		ctx.StatusCode(iris.StatusBadRequest)
 		return
 	}
@@ -52,20 +52,19 @@ func handleUpdateFunction(ctx context.Context) {
 	auditLog := ""
 
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 		auditLog = fmt.Sprintf("Error[%s] %s => %s", errMsg, string(origStr), string(newStr))
 	} else {
 		// http request to multicustomer
 		// NOTE: no matter multicustomer return, return success
 		// Terriable flow in old houta
-		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenSimpleRetObj(errCode, errMsg))
+		ctx.JSON(util.GenSimpleRetObj(errCode))
 
 		auditLog = fmt.Sprintf("%s: [%s] => [%s]", function, string(origStr), string(newStr))
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(ctx, util.AuditOperationEdit, auditLog, result)
+	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 }
 
 func handleUpdateAllFunction(ctx context.Context) {
@@ -75,14 +74,14 @@ func handleUpdateAllFunction(ctx context.Context) {
 	origInfos, errCode, err := GetFunctions(appid)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
-		addAudit(ctx, util.AuditOperationEdit, "Get orig setting error", result)
+		ctx.JSON(util.GenRetObj(errCode, err))
+		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Get orig setting error", result)
 		return
 	}
 
 	newInfos := loadFunctionsFromContext(ctx)
 	if newInfos == nil {
-		addAudit(ctx, util.AuditOperationEdit, "Bad request", result)
+		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
 		ctx.StatusCode(iris.StatusBadRequest)
 		return
 	}
@@ -95,19 +94,18 @@ func handleUpdateAllFunction(ctx context.Context) {
 	auditLog := ""
 
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err))
+		ctx.JSON(util.GenRetObj(errCode, err))
 		auditLog = fmt.Sprintf("Error[%s] %s => %s", errMsg, string(origStr), string(newStr))
 	} else {
 		// http request to multicustomer
 		// NOTE: no matter multicustomer return, return success
 		// Terriable flow in old houta
-		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenSimpleRetObj(errCode, errMsg))
+		ctx.JSON(util.GenSimpleRetObj(errCode))
 		auditLog = fmt.Sprintf("%s => %s", string(origStr), string(newStr))
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(ctx, util.AuditOperationEdit, auditLog, result)
+	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 }
 
 func loadFunctionFromContext(ctx context.Context) *FunctionInfo {

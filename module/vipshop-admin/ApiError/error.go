@@ -21,6 +21,9 @@ var (
 	// IO error, like create dir fail, create file err, etc
 	IO_ERROR = -2
 
+	// Request error, like error input
+	REQUEST_ERROR = -3
+
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101
 	// Dictionary error: extension of uploaded file error

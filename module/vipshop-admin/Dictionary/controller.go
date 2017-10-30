@@ -58,11 +58,9 @@ func handleFileCheck(ctx context.Context) {
 
 	ret, err := CheckProcessStatus(appid)
 	if err != nil {
-		errMsg := ApiError.GetErrorMsg(ApiError.DB_ERROR)
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, errMsg, err.Error()))
+		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		errMsg := ApiError.GetErrorMsg(ApiError.SUCCESS)
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, errMsg, ret))
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }
 
@@ -74,11 +72,9 @@ func handleFullFileCheck(ctx context.Context) {
 
 	ret, err := CheckFullProcessStatus(appid)
 	if err != nil {
-		errMsg := ApiError.GetErrorMsg(ApiError.DB_ERROR)
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, errMsg, err.Error()))
+		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		errMsg := ApiError.GetErrorMsg(ApiError.SUCCESS)
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, errMsg, ret))
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }
 
@@ -96,12 +92,12 @@ func handleUpload(ctx context.Context) {
 	retFile, errCode, err := CheckUploadFile(appid, file, info)
 	if err != nil {
 		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err.Error()))
+		ctx.JSON(util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	} else if errCode != ApiError.SUCCESS {
 		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenSimpleRetObj(errCode, errMsg))
+		ctx.JSON(util.GenSimpleRetObj(errCode))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	}
@@ -109,13 +105,11 @@ func handleUpload(ctx context.Context) {
 	// 2. http request to multicustomer
 	errCode, err = util.UpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
-		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenRetObj(errCode, errMsg, err.Error()))
+		ctx.JSON(util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("service error: %s", err.Error()), 0)
 	} else {
 		errCode = ApiError.SUCCESS
-		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenSimpleRetObj(errCode, errMsg))
+		ctx.JSON(util.GenSimpleRetObj(errCode))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("upload %s", retFile), 1)
 	}
 }
@@ -138,10 +132,8 @@ func handleDownloadMeta(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	ret, err := GetDownloadMeta(appid)
 	if err != nil {
-		errMsg := ApiError.GetErrorMsg(ApiError.DB_ERROR)
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, errMsg, err.Error()))
+		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		errMsg := ApiError.GetErrorMsg(ApiError.SUCCESS)
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, errMsg, ret))
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }

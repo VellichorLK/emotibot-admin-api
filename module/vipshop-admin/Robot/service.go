@@ -1,6 +1,8 @@
 package Robot
 
 import (
+	"errors"
+
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 )
 
@@ -44,6 +46,14 @@ func GetRobotQuestionCnt(appid string) (int, error) {
 	return count, err
 }
 
+func GetRobotQA(appid string, id int) (*QAInfo, int, error) {
+	ret, err := getRobotQA(appid, id)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return ret, ApiError.SUCCESS, err
+}
+
 func GetRobotQAList(appid string) (*RetQAInfo, int, error) {
 	list, err := getAllRobotQAList(appid)
 	if err != nil {
@@ -75,4 +85,44 @@ func GetRobotQAPage(appid string, page int, listPerPage int) (*RetQAInfo, int, e
 	}
 
 	return &ret, ApiError.SUCCESS, err
+}
+
+func UpdateRobotQA(appid string, id int, info *QAInfo) (int, error) {
+	err := updateRobotQA(appid, id, info)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+
+	return ApiError.SUCCESS, nil
+}
+
+func GetRobotChatList(appid string) ([]*ChatInfo, int, error) {
+	ret, err := getRobotChatList(appid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	return ret, ApiError.SUCCESS, nil
+}
+
+func GetMultiRobotChat(appid string, id []int) ([]*ChatInfo, int, error) {
+	ret, err := getMultiRobotChat(appid, id)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	return ret, ApiError.SUCCESS, nil
+}
+
+func UpdateMultiChat(appid string, input []*ChatInfoInput) (int, error) {
+	if len(input) <= 0 {
+		return ApiError.REQUEST_ERROR, errors.New("Invalid request")
+	}
+
+	err := updateMultiRobotChat(appid, input)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+
+	return ApiError.SUCCESS, nil
 }
