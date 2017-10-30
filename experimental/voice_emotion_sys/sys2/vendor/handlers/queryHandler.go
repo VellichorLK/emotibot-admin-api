@@ -303,7 +303,7 @@ func parseArgs(qas *QueryArgs) error {
 	}
 
 	//check tags uniquely
-	if hasDupTags(qas.Tags) {
+	if hasDupString(qas.Tags) {
 		return errors.New("has duplicate tags")
 	}
 

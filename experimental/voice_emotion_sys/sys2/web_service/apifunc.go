@@ -21,8 +21,9 @@ var v2api = apiFunc{
 	v2basePath + "/statistics":        handlers.GetStatistics,
 	v2basePath + "/notify":            handlers.NotifyOperation,
 	v2basePath + "/notify/":           handlers.NotifyModifyOperation,
-	v2basePath + "/user_column":       handlers.GetUserColumn,
+	v2basePath + "/user_column":       handlers.UserColumnOperation,
 	v2basePath + "/user_column_value": handlers.UpdateColumnVal,
+	v2basePath + "/user_column/":      handlers.UserColumnModifier,
 }
 
 var services = [...]apiFunc{

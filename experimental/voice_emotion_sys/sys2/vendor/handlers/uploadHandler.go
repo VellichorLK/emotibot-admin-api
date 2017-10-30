@@ -133,7 +133,7 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 		}
 		f.Tags = tags[:bound]
 
-		if hasDupTags(f.Tags) {
+		if hasDupString(f.Tags) {
 			return nil, errors.New("has duplicate tags")
 		}
 
@@ -141,15 +141,17 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 		f.Tags = make([]string, 0)
 	}
 
+	hasColID := make(map[string]bool)
 	if r.FormValue(NUSRCOL) != "" {
 		ucs := strings.Split(r.FormValue(NUSRCOL), ",")
+
 		for _, v := range ucs {
 			uc := strings.Split(v, "==")
 			if len(uc) != 2 {
 				return nil, errors.New("wrong format of user_column")
 			}
-			owner, ok := DefaulUsrField.FieldOwner[uc[0]]
-			if !ok || strings.Compare(owner, r.Header.Get(HXAPPID)) != 0 {
+			owner, ok := DefaulUsrField.FieldOwner.Load(uc[0])
+			if !ok || strings.Compare(owner.(string), r.Header.Get(HXAPPID)) != 0 {
 				return nil, errors.New("no colum id " + uc[0])
 			}
 
@@ -165,17 +167,19 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 			name := nameInterface.(string)
 			cv := &ColumnValue{ColID: uc[0], Value: uc[1], Field: name}
 			f.UsrColumn = append(f.UsrColumn, cv)
-		}
-	} else {
-		dvsInterface, ok := DefaulUsrField.DefaultValue.Load(r.Header.Get(HXAPPID))
-		if ok {
-			dvs := dvsInterface.([]*DefaultValue)
-			for _, dv := range dvs {
 
+			hasColID[uc[0]] = true
+		}
+
+	}
+	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(r.Header.Get(HXAPPID))
+	if ok {
+		dvs := dvsInterface.([]*DefaultValue)
+		for _, dv := range dvs {
+			if _, ok := hasColID[dv.ColID]; !ok {
 				cv := &ColumnValue{ColID: dv.ColID, Value: dv.ColValue, Field: dv.ColName}
 				f.UsrColumn = append(f.UsrColumn, cv)
 			}
-
 		}
 
 	}
@@ -183,7 +187,7 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 	return f, nil
 }
 
-func hasDupTags(tags []string) bool {
+func hasDupString(tags []string) bool {
 	values := make(map[string]bool)
 	if tags != nil {
 		for _, v := range tags {

@@ -396,3 +396,11 @@ const (
 )
 
 const NUSRCOL = "user_column"
+const LIMITUSRCOL = 3
+const LIMITUSRSEL = 5
+
+//user colum type
+const (
+	UsrColumString = iota
+	UsrColumSel
+)
