@@ -124,9 +124,10 @@ func UserColumnOperation(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		GetUserColumn(w, r)
-	case "PUT":
-		AddUserColumn(w, r)
-
+		/*
+			case "PUT":
+				AddUserColumn(w, r)
+		*/
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -134,13 +135,15 @@ func UserColumnOperation(w http.ResponseWriter, r *http.Request) {
 
 func UserColumnModifier(w http.ResponseWriter, r *http.Request) {
 
-	paths := strings.SplitN(r.URL.Path, "/", MaxSlash)
+	//paths := strings.SplitN(r.URL.Path, "/", MaxSlash)
 
 	switch r.Method {
-	case "DELETE":
-		DeleteUserColumn(w, r, paths[MaxSlash-1])
-	case "PATCH":
-		UpdateUsrColumn(w, r, paths[MaxSlash-1])
+	/*
+		case "DELETE":
+			DeleteUserColumn(w, r, paths[MaxSlash-1])
+		case "PATCH":
+			UpdateUsrColumn(w, r, paths[MaxSlash-1])
+	*/
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
