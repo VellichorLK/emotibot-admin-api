@@ -61,9 +61,9 @@ type RoleProp struct {
 }
 
 type PrivilegeProp struct {
-	Id      string `json:privilege_id`
-	Name    string `json:privilege_name`
-	CmdList string `json:cmd_list`
+	Id      string `json:"privilege_id"`
+	Name    string `json:"privilege_name"`
+	CmdList string `json:"cmd_list"`
 }
 
 type DisplayProp struct {
