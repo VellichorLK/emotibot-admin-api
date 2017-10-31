@@ -109,6 +109,52 @@ CREATE TABLE IF NOT EXISTS `voice_emotion`.`channelScore` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `voice_emotion`.`userColumn`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`userColumn` (
+  `col_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `col_type` SMALLINT UNSIGNED NOT NULL,
+  `col_name` VARCHAR(64) NOT NULL,
+  `appid` VARCHAR(32) NOT NULL,
+  `default_value` VARCHAR(256) NOT NULL,
+  PRIMARY KEY (`col_id`),
+  INDEX `index` (`appid` ASC),
+  UNIQUE INDEX `col_id_UNIQUE` (`col_id` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `voice_emotion`.`userColumnValue`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`userColumnValue` (
+  `col_val_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `col_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `col_value` VARCHAR(256) NOT NULL,
+  PRIMARY KEY (`col_val_id`),
+  UNIQUE INDEX `col_val_id_UNIQUE` (`col_val_id` ASC),
+  UNIQUE INDEX `unique` (`id` ASC, `col_id` ASC),
+  INDEX `file_index` (`id` ASC),
+  INDEX `col_index` (`col_id` ASC),
+  INDEX `col_value_index` (`col_value` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `voice_emotion`.`userSelectableValue`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`userSelectableValue` (
+  `sel_id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `col_id` BIGINT UNSIGNED NULL DEFAULT NULL,
+  `sel_value` VARCHAR(256) NOT NULL,
+  PRIMARY KEY (`sel_id`),
+  UNIQUE INDEX `sel_id_UNIQUE` (`sel_id` ASC),
+  INDEX `col_index` (`col_id` ASC),
+  UNIQUE INDEX `unique_sel` (`col_id` ASC, `sel_value` ASC))
+ENGINE = InnoDB;
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
