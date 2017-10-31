@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -29,7 +30,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
 		r.ParseMultipartForm(512 << 10)
 
-		fi, err := parseParms(r)
+		fi, err := parseParms(r, appid)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -42,7 +43,15 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		status, err = sendTask(fi, appid)
+		tx, err := db.Begin()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback()
+
+		status, err = sendTask(fi, appid, tx)
 		if err != nil {
 			http.Error(w, err.Error(), status)
 			return
@@ -53,6 +62,8 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), status)
 			return
 		}
+
+		tx.Commit()
 
 		contentType := "application/json; charset=utf-8"
 
@@ -65,7 +76,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseParms(r *http.Request) (*FileInfo, error) {
+func parseParms(r *http.Request, appid string) (*FileInfo, error) {
 
 	f := new(FileInfo)
 
@@ -142,6 +153,12 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 	}
 
 	hasColID := make(map[string]bool)
+	uch := &UsrColHandler{}
+	err := uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		log.Println(err)
+		return nil, errors.New("internal server error")
+	}
 	if r.FormValue(NUSRCOL) != "" {
 		ucs := strings.Split(r.FormValue(NUSRCOL), ",")
 
@@ -150,17 +167,17 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 			if len(uc) != 2 {
 				return nil, errors.New("wrong format of user_column")
 			}
-			owner, ok := DefaulUsrField.FieldOwner.Load(uc[0])
+			owner, ok := uch.FieldOwner.Load(uc[0])
 			if !ok || strings.Compare(owner.(string), r.Header.Get(HXAPPID)) != 0 {
 				return nil, errors.New("no colum id " + uc[0])
 			}
 
-			nameInterface, ok := DefaulUsrField.FieldNameMap.Load(uc[0])
+			nameInterface, ok := uch.FieldNameMap.Load(uc[0])
 			if !ok {
 				return nil, errors.New("no colum id " + uc[0] + " name")
 			}
 
-			if !checkSelectableVal(uc[0], uc[1]) {
+			if !checkSelectableVal(uc[0], uc[1], uch) {
 				return nil, errors.New("value " + uc[1] + " can't be set.")
 			}
 
@@ -172,7 +189,7 @@ func parseParms(r *http.Request) (*FileInfo, error) {
 		}
 
 	}
-	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(r.Header.Get(HXAPPID))
+	dvsInterface, ok := uch.DefaultValue.Load(r.Header.Get(HXAPPID))
 	if ok {
 		dvs := dvsInterface.([]*DefaultValue)
 		for _, dv := range dvs {
@@ -255,12 +272,12 @@ func uploadFile(r *http.Request, fi *FileInfo) (int, error) {
 
 }
 
-func sendTask(fi *FileInfo, appid string) (int, error) {
+func sendTask(fi *FileInfo, appid string, tx *sql.Tx) (int, error) {
 
 	now := time.Now()
 	fi.UPTime = now.Unix()
 	fi.UploadTime = fi.UPTime
-	err := updateDatabase(fi)
+	err := updateDatabase(fi, tx)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -295,30 +312,12 @@ func pacakgeTask(fi *FileInfo) ([]byte, error) {
 	//return string(encodeTask), nil
 }
 
-func updateDatabase(fi *FileInfo) error {
-	err := InsertFileRecord(fi)
+func updateDatabase(fi *FileInfo, tx *sql.Tx) error {
+	err := InsertFileRecord(fi, tx)
 	if err != nil {
 		return err
 	}
-	return InsertUserDefinedTags(fi.ID, fi.Tags)
-}
-
-func goTaskOnFail(sid string) {
-
-	//remove database record
-	id, _ := strconv.ParseUint(sid, 10, 64)
-	_, err := DeleteFileRecord(id)
-	if err != nil {
-		log.Println(err)
-	}
-	_, err = ExecuteSQL(DeleteFileRowSQL, id)
-	if err != nil {
-		log.Println(err)
-	}
-	_, err = DeleteTag(id)
-	if err != nil {
-		log.Println(err)
-	}
+	return InsertUserDefinedTags(fi.ID, fi.Tags, tx)
 }
 
 func goTask(task *Task) error {
@@ -327,7 +326,6 @@ func goTask(task *Task) error {
 	case TaskQueue <- task:
 		break
 	case <-time.After(2 * time.Second):
-		goTaskOnFail(task.FileInfo.ID)
 		return errors.New("Push task to channel failed. Please retry later")
 	}
 	select {
@@ -335,7 +333,6 @@ func goTask(task *Task) error {
 		if ok {
 			return nil
 		}
-		goTaskOnFail(task.FileInfo.ID)
 		return errors.New("Push task to queue failed. Please retry later")
 	case <-time.After(2 * time.Second):
 		return errors.New("Get channel result failed after 2 second")

@@ -164,7 +164,7 @@ func doAddTag(appid string, fileID string, tag string) (int, error) {
 		} else if id == "" {
 			return http.StatusBadRequest, errors.New("No such file")
 		} else {
-			err = InsertUserDefinedTags(id, []string{tag})
+			err = InsertUserDefinedTags(id, []string{tag}, nil)
 			if err != nil {
 				//assume its duplicate
 				status = http.StatusBadRequest
@@ -178,7 +178,7 @@ func doAddTag(appid string, fileID string, tag string) (int, error) {
 }
 
 func doDeleteTag(params ...interface{}) (int, error) {
-	res, err := ExecuteSQL(DeleteTagByFileIDSQL, params...)
+	res, err := ExecuteSQL(nil, DeleteTagByFileIDSQL, params...)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

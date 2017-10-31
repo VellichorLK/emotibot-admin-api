@@ -30,7 +30,6 @@ func readyHandlers() {
 	}
 
 	handlers.InitEmotionMap()
-	handlers.LoadUsrField()
 
 	port, err := strconv.Atoi(envs["RABBITMQ_PORT"])
 	if err != nil {

@@ -76,7 +76,7 @@ type ReturnBlock struct {
 }
 
 type ColumnValue struct {
-	Field string `json:"col_name"`
+	Field string `json:"col_name,omitempty"`
 	Value string `json:"col_value"`
 	ColID string `json:"col_id"`
 }

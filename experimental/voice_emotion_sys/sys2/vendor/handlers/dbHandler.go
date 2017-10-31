@@ -117,9 +117,9 @@ const (
 	GetIDByFileIDSQL = "select " + NID + " from " + MainTable + " where " + NAPPID + " =? and " + NFILEID + " =?"
 )
 
-func InsertFileRecord(fi *FileInfo) error {
+func InsertFileRecord(fi *FileInfo, tx *sql.Tx) error {
 
-	res, err := ExecuteSQL(InsertFileInfoSQL, fi.FileID, fi.FileName, fi.FileType, fi.Duration, fi.CreateTime,
+	res, err := ExecuteSQL(tx, InsertFileInfoSQL, fi.FileID, fi.FileName, fi.FileType, fi.Duration, fi.CreateTime,
 		fi.Checksum, fi.Priority, fi.Appid, fi.Size, fi.Path, fi.UPTime, 0)
 
 	if err != nil {
@@ -134,16 +134,15 @@ func InsertFileRecord(fi *FileInfo) error {
 	}
 	fi.ID = strconv.FormatUint(uint64(lastID), 10)
 
-	err = InsertUsrFieldValue(fi)
-	if err != nil {
-		ExecuteSQL(DeleteFileRowSQL, lastID)
-		return err
+	if len(fi.UsrColumn) > 0 {
+		err = InsertUsrFieldValue(fi, tx)
 	}
+
 	return nil
 }
 
-func InsertUsrFieldValue(fi *FileInfo) error {
-	stmt, err := db.Prepare(InsertUserFieldSQL)
+func InsertUsrFieldValue(fi *FileInfo, tx *sql.Tx) error {
+	stmt, err := tx.Prepare(InsertUserFieldSQL)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -160,31 +159,15 @@ func InsertUsrFieldValue(fi *FileInfo) error {
 
 }
 
-func InsertDefaultUserFieldValue(appid string, id string) error {
-	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
-	if ok {
-		stmt, err := db.Prepare(InsertUserFieldSQL)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		defer stmt.Close()
-
-		dvs := dvsInterface.([]*DefaultValue)
-
-		for _, dv := range dvs {
-			_, err := stmt.Exec(id, dv.ColID, dv.ColValue)
-			if err != nil {
-				log.Println(err)
-				return err
-			}
-		}
+func InsertUserDefinedTags(id string, tags []string, tx *sql.Tx) error {
+	var stmt *sql.Stmt
+	var err error
+	if tx == nil {
+		stmt, err = db.Prepare(InsertUserTag)
+	} else {
+		stmt, err = tx.Prepare(InsertUserTag)
 	}
-	return nil
-}
 
-func InsertUserDefinedTags(id string, tags []string) error {
-	stmt, err := db.Prepare(InsertUserTag)
 	if err != nil {
 		log.Println(err)
 		return err
@@ -203,7 +186,7 @@ func InsertUserDefinedTags(id string, tags []string) error {
 }
 
 func UpdateTags(query string, params ...interface{}) (sql.Result, error) {
-	return ExecuteSQL(query, params...)
+	return ExecuteSQL(nil, query, params...)
 }
 
 func GetIDByFileID(appid string, fileID string) (string, error) {
@@ -260,9 +243,17 @@ func GetTagsByFileID(appid string, fileID string) (string, []string, error) {
 
 }
 
-func ExecuteSQL(query string, params ...interface{}) (sql.Result, error) {
+func ExecuteSQL(tx *sql.Tx, query string, params ...interface{}) (sql.Result, error) {
 
-	stmt, err := db.Prepare(query)
+	var stmt *sql.Stmt
+	var err error
+
+	if tx == nil {
+		stmt, err = db.Prepare(query)
+	} else {
+		stmt, err = tx.Prepare(query)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -273,13 +264,13 @@ func ExecuteSQL(query string, params ...interface{}) (sql.Result, error) {
 func DeleteFileRecord(id uint64) (sql.Result, error) {
 	query := DeleteFileRowSQL
 	query += " where " + NID + "=?"
-	return ExecuteSQL(query, id)
+	return ExecuteSQL(nil, query, id)
 }
 
 func DeleteTag(id uint64) (sql.Result, error) {
 	query := DeleteTagsSQL
 	query += " where " + NID + "=?"
-	return ExecuteSQL(query, id)
+	return ExecuteSQL(nil, query, id)
 }
 
 func InsertAnalysisRecord(eb *EmotionBlock) error {
@@ -719,11 +710,11 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 			_, ok := UsrColMap[key]
 			if !ok {
 				UsrColMap[key] = true
-				nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID.String)
+				//nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID.String)
 
 				if ok {
-					name := nameInterface.(string)
-					val := &ColumnValue{name, colValue.String, colID.String}
+					//name := nameInterface.(string)
+					val := &ColumnValue{Value: colValue.String, ColID: colID.String}
 					rb.UsrColumn = append(rb.UsrColumn, val)
 				}
 			}
@@ -802,14 +793,16 @@ func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
 			log.Println(err)
 			return err
 		}
+		/*
+			nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID)
 
-		nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID)
+			if !ok {
+				return errors.New("No col_id " + colID + " name")
+			}
 
-		if !ok {
-			return errors.New("No col_id " + colID + " name")
-		}
-		name := nameInterface.(string)
-		cv := &ColumnValue{name, colVal, colID}
+			name := nameInterface.(string)
+		*/
+		cv := &ColumnValue{Value: colVal, ColID: colID}
 		*cvs = append(*cvs, cv)
 	}
 

@@ -19,7 +19,7 @@ const (
 		NID + " = ( select " + NID + " from " + MainTable + " where " + NAPPID + "=? and " + NFILEID + " = ?) and " +
 		NCOLID + "=?"
 	GetSelValueSQL = "select a." + NCOLID + ",a." + NCOLNAME + ",a." + NAPPID + ",a." + NDEDAULT + ",b." + NSELVAL + " from " + UsrColTable + " as a left join " + UsrSelValTable +
-		" as b on a." + NCOLID + "=b." + NCOLID + " order by a." + NAPPID
+		" as b on a." + NCOLID + "=b." + NCOLID + " where " + NAPPID + "=? " + " order by a." + NAPPID
 )
 
 type UsrColHandler struct {
@@ -49,12 +49,11 @@ type UsrColumnUpdateBlock struct {
 	Value  string `json:"col_value"`
 }
 
-var DefaulUsrField *UsrColHandler
+//var DefaulUsrField *UsrColHandler
 
-func LoadUsrField() error {
-	DefaulUsrField = &UsrColHandler{}
+func (uch *UsrColHandler) LoadUsrField(query string, params ...interface{}) error {
 
-	rows, err := db.Query(GetSelValueSQL)
+	rows, err := db.Query(query, params...)
 	if err != nil {
 		return err
 	}
@@ -74,17 +73,17 @@ func LoadUsrField() error {
 
 		key := colID
 
-		DefaulUsrField.FieldOwner.Store(colID, appid)
+		uch.FieldOwner.Store(colID, appid)
 
 		_, ok := colIDMap[key]
 		if !ok {
 			colIDMap[key] = true
 
-			DefaulUsrField.FieldNameMap.Store(key, colName)
+			uch.FieldNameMap.Store(key, colName)
 
 			var dvs []*DefaultValue
 
-			dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
+			dvsInterface, ok := uch.DefaultValue.Load(appid)
 			if !ok {
 				dvs = make([]*DefaultValue, 0)
 			} else {
@@ -94,17 +93,17 @@ func LoadUsrField() error {
 			dv := &DefaultValue{colID, defValue, colName}
 			dvs = append(dvs, dv)
 
-			DefaulUsrField.DefaultValue.Store(appid, dvs)
+			uch.DefaultValue.Store(appid, dvs)
 
 		}
 
 		if colValue.Valid {
 
-			svInterface, ok := DefaulUsrField.SelectableValue.Load(key)
+			svInterface, ok := uch.SelectableValue.Load(key)
 			if !ok {
 				sv := &sync.Map{}
 				sv.Store(colValue.String, true)
-				DefaulUsrField.SelectableValue.Store(key, sv)
+				uch.SelectableValue.Store(key, sv)
 			} else {
 				sv := svInterface.(*sync.Map)
 				sv.Store(colValue.String, true)
@@ -124,10 +123,8 @@ func UserColumnOperation(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		GetUserColumn(w, r)
-		/*
-			case "PUT":
-				AddUserColumn(w, r)
-		*/
+	case "PUT":
+		AddUserColumn(w, r)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -135,15 +132,13 @@ func UserColumnOperation(w http.ResponseWriter, r *http.Request) {
 
 func UserColumnModifier(w http.ResponseWriter, r *http.Request) {
 
-	//paths := strings.SplitN(r.URL.Path, "/", MaxSlash)
+	paths := strings.SplitN(r.URL.Path, "/", MaxSlash)
 
 	switch r.Method {
-	/*
-		case "DELETE":
-			DeleteUserColumn(w, r, paths[MaxSlash-1])
-		case "PATCH":
-			UpdateUsrColumn(w, r, paths[MaxSlash-1])
-	*/
+	case "DELETE":
+		DeleteUserColumn(w, r, paths[MaxSlash-1])
+	case "PATCH":
+		UpdateUsrColumn(w, r, paths[MaxSlash-1])
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
@@ -153,7 +148,6 @@ func UserColumnModifier(w http.ResponseWriter, r *http.Request) {
 func AddUserColumn(w http.ResponseWriter, r *http.Request) {
 
 	appid := r.Header.Get(HXAPPID)
-
 	ucb := &UsrColumBlock{}
 
 	err := json.NewDecoder(r.Body).Decode(ucb)
@@ -168,7 +162,15 @@ func AddUserColumn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var dvs []*DefaultValue
-	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
+
+	uch := &UsrColHandler{}
+	err = uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		http.Error(w, "internal server error ", http.StatusInternalServerError)
+		return
+	}
+
+	dvsInterface, ok := uch.DefaultValue.Load(appid)
 	if ok {
 		dvs = dvsInterface.([]*DefaultValue)
 	} else {
@@ -240,12 +242,6 @@ func AddUserColumn(w http.ResponseWriter, r *http.Request) {
 	dv := &DefaultValue{colIDString, *ucb.DefaultVal, *ucb.ColName}
 	dvs = append(dvs, dv)
 
-	//update cache map
-	DefaulUsrField.DefaultValue.Store(appid, dvs)
-	DefaulUsrField.FieldOwner.Store(colIDString, appid)
-	DefaulUsrField.FieldNameMap.Store(colIDString, *ucb.ColName)
-	DefaulUsrField.SelectableValue.Store(colIDString, selMap)
-
 	ucb.ColID = colIDString
 
 	encodeRes, err := json.Marshal(ucb)
@@ -265,7 +261,14 @@ func DeleteUserColumn(w http.ResponseWriter, r *http.Request, colID string) {
 
 	appid := r.Header.Get(HXAPPID)
 
-	owner, ok := DefaulUsrField.FieldOwner.Load(colID)
+	uch := &UsrColHandler{}
+	err := uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		http.Error(w, "internal server error ", http.StatusInternalServerError)
+		return
+	}
+
+	owner, ok := uch.FieldOwner.Load(colID)
 	if !ok || strings.Compare(owner.(string), appid) != 0 {
 		http.Error(w, "No such col_id", http.StatusBadRequest)
 		return
@@ -317,35 +320,26 @@ func DeleteUserColumn(w http.ResponseWriter, r *http.Request, colID string) {
 		return
 	}
 
-	//update cache map
-	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
-	if ok {
-		dvs := dvsInterface.([]*DefaultValue)
-		for idx, dv := range dvs {
-			if strings.Compare(dv.ColID, colID) == 0 {
-				dvs = append(dvs[:idx], dvs[idx+1:]...)
-				break
-			}
-		}
-		DefaulUsrField.DefaultValue.Store(appid, dvs)
-	}
-	DefaulUsrField.FieldOwner.Delete(colID)
-	DefaulUsrField.FieldNameMap.Delete(colID)
-	DefaulUsrField.SelectableValue.Delete(colID)
-
 }
 
 func UpdateUsrColumn(w http.ResponseWriter, r *http.Request, colID string) {
 	appid := r.Header.Get(HXAPPID)
 
-	owner, ok := DefaulUsrField.FieldOwner.Load(colID)
+	uch := &UsrColHandler{}
+	err := uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		http.Error(w, "internal server error ", http.StatusInternalServerError)
+		return
+	}
+
+	owner, ok := uch.FieldOwner.Load(colID)
 	if !ok || strings.Compare(owner.(string), appid) != 0 {
 		http.Error(w, "No such col_id", http.StatusBadRequest)
 		return
 	}
 
 	ucb := &UsrColumBlock{}
-	err := json.NewDecoder(r.Body).Decode(ucb)
+	err = json.NewDecoder(r.Body).Decode(ucb)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -375,27 +369,31 @@ func UpdateUsrColumn(w http.ResponseWriter, r *http.Request, colID string) {
 			return
 		}
 
+		selMapInterface, ok := uch.SelectableValue.Load(colID)
+		var selMap *sync.Map
+		if ok {
+			selMap = selMapInterface.(*sync.Map)
+		}
 		var idx int
 		for idx = 0; idx < len(ucb.OrgSelValue); idx++ {
+
+			if selMap != nil {
+				_, ok := selMap.Load(ucb.OrgSelValue[idx])
+				if !ok {
+					http.Error(w, "no selectable value "+ucb.OrgSelValue[idx], http.StatusBadRequest)
+					return
+				}
+			}
+
 			selSQL := "update " + UsrSelValTable + " set " + NSELVAL + "=? where " + NSELVAL + "=? and " +
 				NCOLID + " in (select " + NCOLID + " from " + UsrColTable + " where " + NAPPID + "=?)"
-			rows, err := tx.Exec(selSQL, ucb.SelValue[idx], ucb.OrgSelValue[idx], appid)
+			_, err := tx.Exec(selSQL, ucb.SelValue[idx], ucb.OrgSelValue[idx], appid)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			aff, err := rows.RowsAffected()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			if aff == 0 {
-				http.Error(w, "no row updated at value "+ucb.OrgSelValue[idx], http.StatusBadRequest)
 				return
 			}
 		}
 
-		selMapInterface, ok := DefaulUsrField.SelectableValue.Load(colID)
 		if ok {
 			selMap := selMapInterface.(*sync.Map)
 			var countDef int
@@ -461,50 +459,6 @@ func UpdateUsrColumn(w http.ResponseWriter, r *http.Request, colID string) {
 	}
 
 	tx.Commit()
-
-	//update cache map
-	if ucb.DefaultVal != nil {
-		dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
-		if ok {
-			dvs := dvsInterface.([]*DefaultValue)
-			for _, dv := range dvs {
-				if strings.Compare(dv.ColID, colID) == 0 {
-					dv.ColValue = *ucb.DefaultVal
-					break
-				}
-			}
-		}
-	}
-	if ucb.ColName != nil {
-		DefaulUsrField.FieldNameMap.Store(colID, *ucb.ColName)
-	}
-
-	if ucb.SelValue != nil && len(ucb.SelValue) > 0 {
-		selMapInterface, ok := DefaulUsrField.SelectableValue.Load(colID)
-		if ok {
-			selMap := selMapInterface.(*sync.Map)
-			var idx int
-			for idx = 0; idx < len(ucb.OrgSelValue); idx++ {
-				_, ok := selMap.Load(ucb.OrgSelValue[idx])
-				if ok {
-					selMap.Delete(ucb.OrgSelValue[idx])
-					selMap.Store(ucb.SelValue[idx], true)
-				}
-			}
-
-			for i := idx; i < len(ucb.SelValue); i++ {
-				selMap.Store(ucb.SelValue[i], true)
-			}
-		} else {
-			selMap := &sync.Map{}
-			for _, sel := range ucb.SelValue {
-				selMap.Store(sel, true)
-			}
-			DefaulUsrField.SelectableValue.Store(colID, selMap)
-
-		}
-	}
-
 }
 
 func batchInsert(tx *sql.Tx, colID string, colVal string, appid string) error {
@@ -565,13 +519,15 @@ func batchInsert(tx *sql.Tx, colID string, colVal string, appid string) error {
 //GetUserColumn get the user defined column
 func GetUserColumn(w http.ResponseWriter, r *http.Request) {
 	appid := r.Header.Get(HXAPPID)
-	if DefaulUsrField == nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	uch := &UsrColHandler{}
+	err := uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		http.Error(w, "internal server error ", http.StatusInternalServerError)
 		return
 	}
 
 	ucbs := make([]*UsrColumBlock, 0)
-	dvsInterface, ok := DefaulUsrField.DefaultValue.Load(appid)
+	dvsInterface, ok := uch.DefaultValue.Load(appid)
 
 	if ok {
 		dvs := dvsInterface.([]*DefaultValue)
@@ -582,7 +538,7 @@ func GetUserColumn(w http.ResponseWriter, r *http.Request) {
 			ucb.ColID = dv.ColID
 			colVal := dv.ColValue
 			ucb.DefaultVal = &colVal
-			nameInterface, ok := DefaulUsrField.FieldNameMap.Load(dv.ColID)
+			nameInterface, ok := uch.FieldNameMap.Load(dv.ColID)
 
 			if !ok {
 				log.Println("Field name map has no colum id " + dv.ColID)
@@ -592,7 +548,7 @@ func GetUserColumn(w http.ResponseWriter, r *http.Request) {
 			name := nameInterface.(string)
 			ucb.ColName = &name
 
-			selMapInterface, ok := DefaulUsrField.SelectableValue.Load(dv.ColID)
+			selMapInterface, ok := uch.SelectableValue.Load(dv.ColID)
 			if ok {
 				selMap := selMapInterface.(*sync.Map)
 
@@ -623,8 +579,10 @@ func GetUserColumn(w http.ResponseWriter, r *http.Request) {
 //UpdateColumnVal update the column value
 func UpdateColumnVal(w http.ResponseWriter, r *http.Request) {
 	appid := r.Header.Get(HXAPPID)
-	if DefaulUsrField == nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+	uch := &UsrColHandler{}
+	err := uch.LoadUsrField(GetSelValueSQL, appid)
+	if err != nil {
+		http.Error(w, "internal server error ", http.StatusInternalServerError)
 		return
 	}
 
@@ -647,7 +605,7 @@ func UpdateColumnVal(w http.ResponseWriter, r *http.Request) {
 	//check if its fileID
 	if isFileID(ucub.FileID) {
 		if ucub.ColID != "" {
-			if !checkSelectableVal(ucub.ColID, ucub.Value) {
+			if !checkSelectableVal(ucub.ColID, ucub.Value, uch) {
 				http.Error(w, "value("+ucub.Value+") can't be set", http.StatusBadRequest)
 				return
 			}
@@ -662,9 +620,9 @@ func UpdateColumnVal(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func checkSelectableVal(colID string, val string) bool {
+func checkSelectableVal(colID string, val string, uch *UsrColHandler) bool {
 
-	selMapInterface, ok := DefaulUsrField.SelectableValue.Load(colID)
+	selMapInterface, ok := uch.SelectableValue.Load(colID)
 
 	if ok {
 		svs := selMapInterface.(*sync.Map)

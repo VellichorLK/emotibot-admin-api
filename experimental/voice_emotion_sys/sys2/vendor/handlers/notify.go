@@ -123,7 +123,7 @@ func addNotify(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	} else {
 		sql := "insert into " + NotifyTable + " (" + NCRONTAB + "," + NEMAIL + "," + NAPPID + ") values(?,?,?)"
-		res, err := ExecuteSQL(sql, cron, listEmail, appid)
+		res, err := ExecuteSQL(nil, sql, cron, listEmail, appid)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -169,7 +169,7 @@ func removeNotify(w http.ResponseWriter, r *http.Request) {
 	appid := r.Header.Get(HXAPPID)
 	url := strings.SplitN(r.URL.Path, "/", MaxSlash)
 	sql := "delete from " + NotifyTable + " where " + NAPPID + "=? and " + NREPORTID + "=?"
-	res, err := ExecuteSQL(sql, appid, url[len(url)-1])
+	res, err := ExecuteSQL(nil, sql, appid, url[len(url)-1])
 
 	if err != nil {
 		log.Println(err)
@@ -291,7 +291,7 @@ func updateNotify(w http.ResponseWriter, r *http.Request) {
 	params = append(params, appid)
 	params = append(params, url[len(url)-1])
 
-	resp, err := ExecuteSQL(sql, params...)
+	resp, err := ExecuteSQL(nil, sql, params...)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
