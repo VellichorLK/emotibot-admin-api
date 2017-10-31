@@ -180,10 +180,11 @@ func UpdateColumnVal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ucub := &UsrColumnUpdateBlock{}
+	ucubs := make([]*UsrColumnUpdateBlock, 0)
+	//ucub := &UsrColumnUpdateBlock{}
 
 	if r.Body != nil {
-		err := json.NewDecoder(r.Body).Decode(ucub)
+		err := json.NewDecoder(r.Body).Decode(&ucubs)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -191,22 +192,33 @@ func UpdateColumnVal(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	//check if its fileID
-	if isFileID(ucub.FileID) {
-		if ucub.ColID != "" {
-			if !checkSelectableVal(ucub.ColID, ucub.Value) {
-				http.Error(w, "value("+ucub.Value+") can't be set", http.StatusBadRequest)
+	tx, err := db.Begin()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	for _, ucub := range ucubs {
+		//check if its fileID
+		if isFileID(ucub.FileID) {
+			if ucub.ColID != "" {
+				if !checkSelectableVal(ucub.ColID, ucub.Value) {
+					http.Error(w, "value("+ucub.Value+") can't be set", http.StatusBadRequest)
+					return
+				}
+				_, err := updateColVal(appid, ucub.FileID, ucub.ColID, ucub.Value, tx)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			} else {
+				http.Error(w, "No col_id given", http.StatusBadRequest)
 				return
 			}
-			_, err := updateColVal(appid, ucub.FileID, ucub.ColID, ucub.Value)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-			}
-		} else {
-			http.Error(w, "No col_id given", http.StatusBadRequest)
-			return
 		}
 	}
+	tx.Commit()
+
 }
 
 func checkSelectableVal(colID string, val string) bool {
@@ -220,9 +232,9 @@ func checkSelectableVal(colID string, val string) bool {
 	return true
 }
 
-func updateColVal(appid string, fileID string, colID string, val string) (int64, error) {
+func updateColVal(appid string, fileID string, colID string, val string, tx *sql.Tx) (int64, error) {
 
-	stmt, err := db.Prepare(UpdateColValSQL)
+	stmt, err := tx.Prepare(UpdateColValSQL)
 	if err != nil {
 		return 0, err
 	}
