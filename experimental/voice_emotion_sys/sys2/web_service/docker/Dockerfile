@@ -1,4 +1,4 @@
-FROM golang:1.8-alpine AS build-env
+FROM golang:1.9.1-alpine AS build-env
 
 COPY . /go/src
 ARG Module
