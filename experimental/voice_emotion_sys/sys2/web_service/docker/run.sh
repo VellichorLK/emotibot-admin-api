@@ -10,7 +10,7 @@ CONTAINER=voice_emotion_reg_v2
 # </EDIT_ME>
 
 # Get tags from args
-TAG=2017103100
+TAG=2017103101
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 echo "# Launching $DOCKER_IMAGE"
 # Check if docker image exists (locally or on the registry)
