@@ -383,6 +383,9 @@ func UpdateUsrColumn(w http.ResponseWriter, r *http.Request, colID string) {
 					http.Error(w, "no selectable value "+ucb.OrgSelValue[idx], http.StatusBadRequest)
 					return
 				}
+			} else {
+				http.Error(w, "no selectable value "+ucb.OrgSelValue[idx], http.StatusBadRequest)
+				return
 			}
 
 			selSQL := "update " + UsrSelValTable + " set " + NSELVAL + "=? where " + NSELVAL + "=? and " +

@@ -712,11 +712,11 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 				UsrColMap[key] = true
 				//nameInterface, ok := DefaulUsrField.FieldNameMap.Load(colID.String)
 
-				if ok {
-					//name := nameInterface.(string)
-					val := &ColumnValue{Value: colValue.String, ColID: colID.String}
-					rb.UsrColumn = append(rb.UsrColumn, val)
-				}
+				//if ok {
+				//name := nameInterface.(string)
+				val := &ColumnValue{Value: colValue.String, ColID: colID.String}
+				rb.UsrColumn = append(rb.UsrColumn, val)
+				//}
 			}
 		}
 	}
