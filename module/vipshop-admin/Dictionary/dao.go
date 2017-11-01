@@ -51,6 +51,10 @@ func GetFullProcessStatus(appid string) (*StatusInfo, error) {
 		return nil, err
 	}
 
+	emptyMsg := ""
+	if status.Message == nil {
+		status.Message = &emptyMsg
+	}
 	return &status, nil
 }
 

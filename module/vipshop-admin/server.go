@@ -7,6 +7,7 @@ import (
 
 	"emotibot.com/emotigo/module/vipshop-admin/Dictionary"
 	"emotibot.com/emotigo/module/vipshop-admin/Robot"
+	"emotibot.com/emotigo/module/vipshop-admin/Stats"
 	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
@@ -93,6 +94,7 @@ func setRoute(app *iris.Application) {
 		Dictionary.ModuleInfo,
 		Switch.ModuleInfo,
 		Robot.ModuleInfo,
+		Stats.ModuleInfo,
 	}
 
 	for _, module := range modules {

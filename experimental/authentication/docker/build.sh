@@ -2,7 +2,7 @@
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=authentication
 # TAG="$(git rev-parse --short HEAD)"
-TAG="2017103001_vipshop"
+TAG="2017110101_vipshop"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

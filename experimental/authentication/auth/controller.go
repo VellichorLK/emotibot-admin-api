@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
+
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
 const (
@@ -44,6 +47,8 @@ const (
 	const_type_invalid_user int = -1
 
 	const_type_authorization_header_key string = "Authorization"
+	const_type_user_header_key          string = "X-UserID"
+	const_type_client_ip_header_key     string = "X-Real-IP"
 
 	const_display_channel_len int = 16
 )
@@ -60,6 +65,11 @@ func SetRoute(c *Configuration) error {
 		return err
 	}
 	LogInfo.Println(dao)
+
+	err = initAuditDB()
+	if err != nil {
+		return err
+	}
 	// auth management
 	http.HandleFunc(const_endpoint_appid_validate, func(w http.ResponseWriter, r *http.Request) {
 		appidValidateHandler(w, r, c, dao)
@@ -273,9 +283,12 @@ func UserRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
 	}
+	result := 0
 
 	// 0. Check header if it is valid
 	appid := r.Header.Get(const_type_authorization_header_key)
+	opuser := r.Header.Get(const_type_user_header_key)
+	ip := r.Header.Get(const_type_client_ip_header_key)
 	if appid == "" || !IsValidAppId(appid) {
 		HandleHttpError(http.StatusUnauthorized, nil, w)
 		return
@@ -288,12 +301,14 @@ func UserRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 		return
 	}
 
-	// check role id existed
+	userByte, _ := json.Marshal(user)
 	if err := UserRegister(user, appid, dao); err != nil {
 		HandleHttpError(http.StatusInternalServerError, err, w)
-		return
+	} else {
+		result = 1
+		HandleSuccess(w, user)
 	}
-	HandleSuccess(w, user)
+	util.AddAuditLog(opuser, ip, util.AuditModuleMembers, util.AuditOperationAdd, string(userByte), result)
 }
 
 // List all users and its appid/login username, password
@@ -332,6 +347,8 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 
 	// 0. Check header if it is valid
 	appid := r.Header.Get(const_type_authorization_header_key)
+	opuser := r.Header.Get(const_type_user_header_key)
+	ip := r.Header.Get(const_type_client_ip_header_key)
 	if appid == "" || !IsValidAppId(appid) {
 		HandleHttpError(http.StatusUnauthorized, nil, w)
 		return
@@ -356,22 +373,39 @@ func UserIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 		}
 		HandleSuccess(w, ent)
 	} else if r.Method == "DELETE" {
+		result := 0
+		origUser, _ := UserGetById(user_id, appid, d)
+		origUserStr, _ := json.Marshal(origUser)
+		auditMsg := fmt.Sprintf("Delete user [%s]", origUserStr)
 		err := UserDeleteById(user_id, appid, d)
 		if err != nil {
 			HandleError(-1, err, w)
-			return
+		} else {
+			ClearUserPriv(appid, user_id)
+			HandleSuccess(w, nil)
+			result = 1
 		}
-		ClearUserPriv(appid, user_id)
-		HandleSuccess(w, nil)
+		util.AddAuditLog(opuser, ip, util.AuditModuleMembers, util.AuditOperationDelete, auditMsg, result)
 	} else if r.Method == "PATCH" {
+		result := 0
+		auditMsg := ""
+		origUser, _ := UserGetById(user_id, appid, d)
+		origUserStr, _ := json.Marshal(origUser)
+
 		user := getUserFromForm(r, false)
 		patchedUser, err := UserPatchById(user_id, appid, user, d)
 		if err != nil {
 			HandleError(-1, err, w)
-			return
+			auditMsg = fmt.Sprintf("Attemp to update %s", origUserStr)
+		} else {
+			ClearUserPriv(appid, user_id)
+			HandleSuccess(w, patchedUser)
+			patchUserStr, _ := json.Marshal(patchedUser)
+			auditMsg = fmt.Sprintf("Update user [%s] => [%s]", string(origUserStr), string(patchUserStr))
+			result = 1
 		}
-		ClearUserPriv(appid, user_id)
-		HandleSuccess(w, patchedUser)
+
+		util.AddAuditLog(opuser, ip, util.AuditModuleMembers, util.AuditOperationEdit, auditMsg, result)
 	} else {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method not allowed"), w)
 	}
@@ -424,9 +458,12 @@ func RoleRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 	if HandleHttpMethodError(r.Method, []string{"POST"}, w) {
 		return
 	}
+	result := 0
 
 	// 0. Check header if it is valid
 	appid := r.Header.Get(const_type_authorization_header_key)
+	opuser := r.Header.Get(const_type_user_header_key)
+	ip := r.Header.Get(const_type_client_ip_header_key)
 	if appid == "" || !IsValidAppId(appid) {
 		HandleHttpError(http.StatusUnauthorized, nil, w)
 		return
@@ -441,9 +478,13 @@ func RoleRegisterHandler(w http.ResponseWriter, r *http.Request, c *Configuratio
 	// check role id existed
 	if err := RoleRegister(role, appid, dao); err != nil {
 		HandleHttpError(http.StatusInternalServerError, err, w)
-		return
+	} else {
+		HandleSuccess(w, role)
+		result = 1
 	}
-	HandleSuccess(w, role)
+
+	roleStr, _ := json.Marshal(role)
+	util.AddAuditLog(opuser, ip, util.AuditModuleRole, util.AuditOperationAdd, string(roleStr), result)
 }
 
 // List all users and its appid/login username, password
@@ -482,6 +523,8 @@ func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 
 	// 0. Check header if it is valid
 	appid := r.Header.Get(const_type_authorization_header_key)
+	opuser := r.Header.Get(const_type_user_header_key)
+	ip := r.Header.Get(const_type_client_ip_header_key)
 	if appid == "" || !IsValidAppId(appid) {
 		HandleHttpError(http.StatusUnauthorized, nil, w)
 		return
@@ -506,22 +549,39 @@ func RoleIdHandler(w http.ResponseWriter, r *http.Request, c *Configuration, d *
 		}
 		HandleSuccess(w, ent)
 	} else if r.Method == "DELETE" {
+		result := 0
+		origRole, _ := RoleGetById(role_id, appid, d)
+		origRoleStr, _ := json.Marshal(origRole)
+		auditMsg := fmt.Sprintf("Delete role [%s]", origRoleStr)
+
 		err := RoleDeleteById(role_id, appid, d)
 		if err != nil {
 			HandleError(-1, err, w)
-			return
+		} else {
+			ClearEnterprisePriv(appid)
+			HandleSuccess(w, nil)
+			result = 1
 		}
-		ClearEnterprisePriv(appid)
-		HandleSuccess(w, nil)
+		util.AddAuditLog(opuser, ip, util.AuditModuleRole, util.AuditOperationDelete, auditMsg, result)
 	} else if r.Method == "PATCH" {
+		result := 0
+		auditMsg := ""
+		origRole, _ := RoleGetById(role_id, appid, d)
+		origRoleStr, _ := json.Marshal(origRole)
+
 		user := getRoleFromForm(r, false)
 		patchedRole, err := RolePatchById(role_id, appid, user, d)
 		if err != nil {
 			HandleError(-1, err, w)
-			return
+			auditMsg = fmt.Sprintf("Attemp to update %s", origRoleStr)
+		} else {
+			ClearEnterprisePriv(appid)
+			HandleSuccess(w, patchedRole)
+			patchRoleStr, _ := json.Marshal(patchedRole)
+			result = 1
+			auditMsg = fmt.Sprintf("Update role [%s] => [%s]", string(origRoleStr), string(patchRoleStr))
 		}
-		ClearEnterprisePriv(appid)
-		HandleSuccess(w, patchedRole)
+		util.AddAuditLog(opuser, ip, util.AuditModuleRole, util.AuditOperationEdit, auditMsg, result)
 	} else {
 		HandleHttpError(http.StatusMethodNotAllowed, errors.New("Method not allowed"), w)
 	}
@@ -767,4 +827,13 @@ func SystemSettingHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 	} else {
 		HandleSuccess(w, ret)
 	}
+}
+
+func initAuditDB() error {
+	URL := os.Getenv("AUDIT_MYSQL_URL")
+	User := os.Getenv("AUDIT_MYSQL_USER")
+	Pass := os.Getenv("AUDIT_MYSQL_PASS")
+	Name := os.Getenv("AUDIT_MYSQL_DB")
+
+	return util.InitAuditDB(URL, User, Pass, Name)
 }

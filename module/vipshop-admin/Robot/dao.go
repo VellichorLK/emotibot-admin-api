@@ -210,6 +210,7 @@ func convertQuestionRowToQAInfo(row []interface{}) *QAInfo {
 	info.ID = *row[0].(*int)
 	info.CreatedTime = *row[1].(*time.Time)
 	info.Question = string(*row[2].(*[]byte))
+	info.Answers = []string{}
 
 	for i := 3; i < len(row); i++ {
 		question := string(*row[i].(*[]byte))
