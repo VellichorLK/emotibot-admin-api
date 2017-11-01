@@ -5,6 +5,7 @@ var (
 		0:   "success",
 		-1:  "db error",
 		-2:  "io error",
+		-4:  "consul server unavailable",
 		101: "Uploaded file still processing",
 		102: "File extension should be xlsx",
 		103: "File size should smaller than 2MB",
@@ -23,6 +24,9 @@ var (
 
 	// Request error, like error input
 	REQUEST_ERROR = -3
+
+	// Consul service is not available
+	CONSUL_SERVICE_ERROR = -4
 
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101

@@ -7,22 +7,23 @@ import (
 )
 
 const (
-	AuditOperationAdd    = "新增"
-	AuditOperationEdit   = "修改"
-	AuditOperationDelete = "删除"
-	AuditOperationImport = "导入"
-	AuditOperationExport = "导出"
-	AuditOperationLogin  = "登入"
+	AuditOperationAdd    = "0" // "新增"
+	AuditOperationEdit   = "1" // "修改"
+	AuditOperationDelete = "2" // "删除"
+	AuditOperationImport = "3" // "导入"
+	AuditOperationExport = "4" // "导出"
+	// AuditOperationRollback = "5" "回复", 目前無相關行為
+	AuditOperationLogin = "6" // "登入"
 
-	AuditModuleBotMessage     = "话术设置"
-	AuditModuleFunctionSwitch = "技能设置"
-	AuditModuleQASetting      = "问答库"
-	AuditModuleRobotProfile   = "形象设置"
-	AuditModuleSwitchList     = "开关管理"
-	AuditModuleDictionary     = "词库管理"
-	AuditModuleStatistics     = "数据管理"
-	AuditModuleMembers        = "用户管理"
-	AuditModuleRole           = "角色管理"
+	AuditModuleBotMessage     = "0" // "话术设置"
+	AuditModuleFunctionSwitch = "1" // "技能设置"
+	AuditModuleQA             = "2" // "问答库"
+	AuditModuleRobotProfile   = "3" // "形象设置"
+	AuditModuleSwitchList     = "4" // "开关管理"
+	AuditModuleDictionary     = "5" // "词库管理"
+	AuditModuleStatistics     = "6" // "数据管理"
+	AuditModuleMembers        = "7" // "用户管理"
+	AuditModuleRole           = "8" // "角色管理"
 )
 
 // AddAuditLog will add audit log to mysql-audit

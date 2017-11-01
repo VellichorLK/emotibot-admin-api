@@ -69,6 +69,8 @@ func handleMultiChatModify(ctx context.Context) {
 		ctx.JSON(util.GenSimpleRetObj(errCode))
 		auditMultiChatModify(ctx, origInfos, validInput, 1)
 	}
+	ret, err := util.ConsulUpdateRobotChat(appid)
+	util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
 }
 
 func auditMultiChatModify(ctx context.Context, origInfos []*ChatInfo, newInfos []*ChatInfoInput, result int) {
