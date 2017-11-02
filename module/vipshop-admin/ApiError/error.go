@@ -11,6 +11,7 @@ var (
 		103: "File size should smaller than 2MB",
 		104: "Multicustomer is not available",
 		201: "Get no info of given id",
+		301: "Return from openapi has error",
 	}
 
 	// SUCCESS
@@ -28,6 +29,12 @@ var (
 	// Consul service is not available
 	CONSUL_SERVICE_ERROR = -4
 
+	// Openapi service is not available
+	OPENAPI_URL_ERROR = -5
+
+	// Parse from json error
+	JSON_PARSE_ERROR = -6
+
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101
 	// Dictionary error: extension of uploaded file error
@@ -39,6 +46,9 @@ var (
 
 	// Switch-manage error: return from database is empty
 	SWITCH_NO_ROWS = 201
+
+	// QA test error: return format from openapi has error
+	QA_TEST_FORMAT_ERROR = 301
 )
 
 func GetErrorMsg(errno int) string {
