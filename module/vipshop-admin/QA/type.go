@@ -16,7 +16,8 @@ type RetData struct {
 	Intent          string          `json:"intent"`
 	SimilarQuestion []*QuestionInfo `json:"similar_question"`
 	OpenAPIReturn   int             `json:"openapi_return"`
-	Answer          string          `json:"answer"`
+	Answers         []*string       `json:"answers"`
+	Tokens          []*string       `json:"tokens"`
 }
 
 type QuestionInfo struct {

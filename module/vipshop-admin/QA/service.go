@@ -67,7 +67,10 @@ func DoChatRequest(appid string, user string, inputData *QATestInput) (*RetData,
 		ret.Intent = openAPIRet.Intent[0].Value
 	}
 	if openAPIRet.Data != nil && len(openAPIRet.Data) > 0 {
-		ret.Answer = openAPIRet.Data[0].Value
+		ret.Answers = []*string{}
+		for _, answer := range openAPIRet.Data {
+			ret.Answers = append(ret.Answers, &answer.Value)
+		}
 	} else {
 		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
 	}
@@ -75,6 +78,10 @@ func DoChatRequest(appid string, user string, inputData *QATestInput) (*RetData,
 	ret.SimilarQuestion = getSimilarFromCustomReturn(&openAPIRet)
 	if ret.SimilarQuestion == nil {
 		ret.SimilarQuestion = []*QuestionInfo{}
+	}
+	ret.Tokens = getTokensFromCustomReturn(&openAPIRet)
+	if ret.Tokens == nil {
+		ret.Tokens = []*string{}
 	}
 
 	return &ret, ApiError.SUCCESS, nil
@@ -98,12 +105,30 @@ func getSimilarFromCustomReturn(res *OpenAPIResponse) []*QuestionInfo {
 			similarQ.StandardQuestion = temp["stdQ"].(string)
 		}
 		if temp["userQ"] != nil {
-			similarQ.UserQuestion = temp["user_q"].(string)
+			similarQ.UserQuestion = temp["userQ"].(string)
 		}
 		if temp["score"] != nil {
 			similarQ.SimilarityScore = temp["score"].(float64)
 		}
 		ret = append(ret, &similarQ)
+	}
+	return ret
+}
+
+func getTokensFromCustomReturn(res *OpenAPIResponse) []*string {
+	defer func() {
+		if r := recover(); r != nil {
+			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
+		}
+	}()
+
+	ret := []*string{}
+
+	responseInfo := res.CustomReturn["response_other_info"].(map[string]interface{})
+	tokens := responseInfo["token"].([]interface{})
+	for _, val := range tokens {
+		temp := val.(string)
+		ret = append(ret, &temp)
 	}
 	return ret
 }
