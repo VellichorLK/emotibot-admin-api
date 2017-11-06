@@ -11,7 +11,7 @@ services:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
                 max-file: ${DOCKER_LOG_OPT_MAX_FILE}
         environment:
-            MYSQL_ROOT_PASSWORD: ${MYSQL_MAIN_PASS} 
+            MYSQL_ROOT_PASSWORD: ${MYSQL_MAIN_PASS}
         mem_limit: 5125m
         volumes:
             - ./database/mysql/my.cnf:/etc/mysql/my.cnf
@@ -25,14 +25,14 @@ services:
         restart: always
         healthcheck:
             test: "/usr/bin/mysql --user=${MYSQL_MAIN_USER} --password=${MYSQL_MAIN_PASS} --execute \"SHOW DATABASES;\""
-            interval: 3s
-            timeout: 1s
+            interval: "${DOCKER_HEALTH_CHECK_INTERVAL}"
+            timeout: "${DOCKER_HEALTH_CHECK_TIMEOUT}" 
             retries: 5
     phpmyadmin:
         image: phpmyadmin/phpmyadmin
         container_name: phpmyadmin
         ports:
-            - "${PHPMYADMIN_PORT}:80" 
+            - "${PHPMYADMIN_PORT}:80"
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
@@ -49,7 +49,7 @@ services:
         depends_on:
             "mysql":
                 condition: service_healthy
-    mongo:     
+    mongo:
         image: mongo:3.2.8
         container_name: "mongo"
         environment:
@@ -66,8 +66,8 @@ services:
         restart: always
         healthcheck:
             test: "mongo --quiet \"${MONGO_IP}/test\" --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"
-            interval: 3s
-            timeout: 1s
+            interval: "${DOCKER_HEALTH_CHECK_INTERVAL}"
+            timeout: "${DOCKER_HEALTH_CHECK_TIMEOUT}" 
             retries: 5
     # ========== Queue ==========
     rabbitmq:
@@ -90,9 +90,9 @@ services:
     # ========== Voice Emotion APIs: depends on rabbitmq/mysql
     api-voice-emotion:
         image: ${API_VOICE_EMOTION_IMAGE}:${API_VOICE_EMOTION_TAG}
-        container_name: ${API_VOICE_EMOTION_CONTAINER}  
+        container_name: ${API_VOICE_EMOTION_CONTAINER}
         ports:
-            - "${API_VOICE_EMOTION_PORT}:${API_VOICE_EMOTION_PORT}" 
+            - "${API_VOICE_EMOTION_PORT}:${API_VOICE_EMOTION_PORT}"
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
@@ -100,8 +100,8 @@ services:
         mem_limit: 5125m
         environment:
             RABBITMQ_HOST: ${API_VOICE_EMOTION_RABBITMQ_HOST}
-            RABBITMQ_PORT: ${API_VOICE_EMOTION_RABBITMQ_PORT} 
-            RABBITMQ_USER: ${API_VOICE_EMOTION_RABBITMQ_USER} 
+            RABBITMQ_PORT: ${API_VOICE_EMOTION_RABBITMQ_PORT}
+            RABBITMQ_USER: ${API_VOICE_EMOTION_RABBITMQ_USER}
             RABBITMQ_PWD: ${API_VOICE_EMOTION_RABBITMQ_PWD}
             DB_HOST: ${API_VOICE_EMOTION_DB_HOST}
             DB_PORT: ${API_VOICE_EMOTION_DB_PORT}
@@ -126,7 +126,7 @@ services:
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
-                max-file: ${DOCKER_LOG_OPT_MAX_FILE}    
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
         environment:
             ENV_KEY_MONGODB_ENABLE: "true"
             ENV_KEY_MONGODB_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_MONGO_HOST}
@@ -137,23 +137,23 @@ services:
             ENV_KEY_MONGODB_SAVE_DETAILS_INFO: "true"
             ENV_KEY_MONGODB_DETAILS_COLLECTION_NAME: ${WORKER_VOICE_EMOTION_ANA_MONGO_DETAIL_COLLECTION_NAME}
             ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_IP: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_HOST}
-            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_PORT} 
+            ENV_KEY_RABBITMQ_TASK_QUEUE_HOST_PORT: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_PORT}
             ENV_KEY_RABBITMQ_TASK_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_TASK}
-            ENV_KEY_RABBITMQ_RESULT_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_RESULT} 
+            ENV_KEY_RABBITMQ_RESULT_QUEUE_NAME: ${WORKER_VOICE_EMOTION_ANA_RABBITMQ_RESULT}
             ENV_KEY_KEEP_VOICE_INTERMEDIATES_WHEN_ERR: "false"
             ENV_KEY_ALWAYS_USE_NEW_WORKERS: "false"
             ENV_KEY_SAVE_FEATURE_EXTRACT_RESULT_TO_DB: "false"
-            ENV_KEY_INPUT_WAV_LENGTH_MIN_THRESHOLD_IN_MILLISECONDS: "${WORKER_VOICE_EMOTION_ANA_LENGTH_MIN_LIMITATION}" 
+            ENV_KEY_INPUT_WAV_LENGTH_MIN_THRESHOLD_IN_MILLISECONDS: "${WORKER_VOICE_EMOTION_ANA_LENGTH_MIN_LIMITATION}"
         volumes:
             - ${WORKER_VOICE_EMOTION_ANA_DATA_PATH}:/usr/src/app/output
             - ${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}:${WORKER_VOICE_EMOTIOM_ANA_INPUT_DATA_PATH}
         restart: always
         depends_on:
-            "rabbitmq": 
+            "rabbitmq":
                 condition: service_healthy
             "mongo":
                 condition: service_healthy
-    
+
     # ========== Voice Emotion Statistic Worker: depends on rabbitmq/mysql
     worker-voice-emotion-statistic:
         image: ${WORKER_VOICE_EMOTION_STATISTIC_IMAGE}:${WORKER_VOICE_EMOTION_STATISTIC_TAG}
@@ -165,8 +165,8 @@ services:
         mem_limit: 2048m
         environment:
             RABBITMQ_HOST: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_HOST}
-            RABBITMQ_PORT: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_PORT} 
-            RABBITMQ_USER: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_USER} 
+            RABBITMQ_PORT: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_PORT}
+            RABBITMQ_USER: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_USER}
             RABBITMQ_PWD: ${WORKER_VOICE_EMOTION_STATISTIC_RABBITMQ_PWD}
             DB_HOST: ${WORKER_VOICE_EMOTION_STATISTIC_DB_HOST}
             DB_PORT: ${WORKER_VOICE_EMOTION_STATISTIC_DB_PORT}
@@ -181,9 +181,9 @@ services:
     # ========== Admin UI/admin UI
     voice_emotion_houta:
         image: ${VOICE_EMOTION_HOUTA_IMAGE}:${VOICE_EMOTION_HOUTA_TAG}
-        container_name: ${VOICE_EMOTION_HOUTA_CONTAINER} 
+        container_name: ${VOICE_EMOTION_HOUTA_CONTAINER}
         ports:
-            - "${VOICE_EMOTION_HOUTA_PORT}:80" 
+            - "${VOICE_EMOTION_HOUTA_PORT}:80"
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
@@ -251,7 +251,7 @@ services:
     # ========== Consul ==========
     consul:
         image: consul:${CONSUL_TAG}
-        container_name: consul 
+        container_name: consul
         ports:
             - "${CONSUL_PORT}:${CONSUL_PORT}"
         logging:
@@ -315,7 +315,7 @@ services:
         volumes:
             - /etc/localtime:/etc/localtime
 
-    # ========== logstash 
+    # ========== logstash
     logstash:
         image: ${LOG_IMAGE}:${LOG_TAG}
         container_name: ${LOG_CONTAINER}
@@ -342,7 +342,7 @@ services:
         container_name: netdata
         mem_limit: 2048m
         ports:
-            - "${NETDATA_PORT}:${NETDATA_PORT}" 
+            - "${NETDATA_PORT}:${NETDATA_PORT}"
         logging:
             options:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"

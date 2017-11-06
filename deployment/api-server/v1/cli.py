@@ -77,7 +77,7 @@ def do_run(compose_file, env_file, services, depends, number):
     1) copy env_file to .env
     2) compose comand:
         docker-compose -f ./docker-compose.yml pull ${service}
-        docker-compose -f ./docker-compose.yml rm -s ${service}
+        docker-compose -f ./docker-compose.yml stop --remove-orphans ${service}
         docker-compose -f ./docker-compose.yml up --force-recreate --remove-orphans ${depends} -d ${scale} ${service}
     '''
     # mkdir for test env
@@ -90,25 +90,18 @@ def do_run(compose_file, env_file, services, depends, number):
                                                   exp)
                 sys.exit(1)
 
-    # copy env_file to .env
-    dst_file = os.path.join(os.path.dirname(env_file), '.env')
-    try:
-        shutil.copyfile(env_file, dst_file)
-    except Exception as exp:
-        print 'copy %s to %s failed due to %s' % (env_file, dst_file, exp)
-        sys.exit(1)
-
     # compose command: pull images
-    cmd = 'docker-compose -f %s pull --parallel %s' % (
+    # cmd = 'docker-compose -f %s pull --parallel %s' % (
+    cmd = 'docker-compose -f %s pull %s' % (
         compose_file, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.check_call(cmd.strip().split(" "))
 
     # compose command: remove previous service
-    cmd = 'docker-compose -f %s rm -sf %s' % (
+    cmd = 'docker-compose -f %s stop %s' % (
         compose_file, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
-    subprocess.check_call(cmd.strip().split(" "))
+    subprocess.call(cmd.strip().split(" "))
 
     # TODO: deal with depends and scale
     no_deps = ''
@@ -140,6 +133,16 @@ def do_list(compose_file):
     subprocess.call(cmd.strip().split(" "))
 
 
+def _do_copy_env(env_file):
+    # copy env_file to .env
+    dst_file = os.path.join(os.path.dirname(env_file), '.env')
+    try:
+        shutil.copyfile(env_file, dst_file)
+    except Exception as exp:
+        print 'copy %s to %s failed due to %s' % (env_file, dst_file, exp)
+        sys.exit(1)
+
+
 def main():
     # parse args
     parser = argparse.ArgumentParser()
@@ -162,6 +165,7 @@ def main():
     print args
 
     # do action
+    _do_copy_env(args.env)
     if args.save:
         if not os.path.exists(args.compose_file):
             parser.print_help()
