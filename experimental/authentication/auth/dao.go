@@ -66,13 +66,8 @@ func (d *DaoWrapper) GetUserByName(user_name string, password string) (*UserLogi
 	LogInfo.Printf("user_name: %s, password: %s", user_name, password)
 
 	var u UserLoginProp
-	cmd := fmt.Sprintf("select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name=\"%s\" and password=\"%s\") as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)", user_name, password)
-	if err := d.mysql.QueryRow(cmd).Scan(&u.AppId, &u.UserId, &u.UserType, &u.EnterpriseId, &u.Privilege, &u.RoleName); err != nil {
-		// none existed also a kind of error
-		//if err == sql.ErrNoRows {
-		//	return nil, nil
-		//}
-		LogError.Printf("cmd: %s, err: %s", cmd, err)
+	if err := d.mysql.QueryRow("select el.app_id,ul.user_id,ul.user_type,ul.enterprise_id,rl.privilege,rl.role_name from (select user_id,user_type,enterprise_id,role_id from user_list where user_name=? and password=?) as ul left join role_list rl on (ul.role_id=rl.role_id) left join enterprise_list el on (el.enterprise_id=ul.enterprise_id)", user_name, password).Scan(&u.AppId, &u.UserId, &u.UserType, &u.EnterpriseId, &u.Privilege, &u.RoleName); err != nil {
+		LogError.Printf("err: %s", err)
 		return nil, err
 	}
 	u.UserName = user_name
