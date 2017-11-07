@@ -6,6 +6,16 @@ import sys
 import os
 import subprocess
 import argparse
+import copy
+
+
+VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
+                         'worker-voice-emotion-analysis',
+                         'worker-voice-emotion-statistic',
+                         'voice_emotion_houta', 'nginx', 'authentication',
+                         'consul']
+VOICE_EMOTION_FULL = copy.deepcopy(VOICE_EMOTION_MINIMAL).extend(['netdata', 'phpmyadmin', 'kibana', 'elastic-closer', 'logstash', 'elasticsearch', 'kibana'])
+BF_UBT_APIGW = ['nginx', 'bf-ubt-apigw']
 
 
 def _create_folder(folder):
@@ -78,7 +88,8 @@ def do_run(compose_file, env_file, services, depends, number):
     2) compose comand:
         docker-compose -f ./docker-compose.yml pull ${service}
         docker-compose -f ./docker-compose.yml stop --remove-orphans ${service}
-        docker-compose -f ./docker-compose.yml up --force-recreate --remove-orphans ${depends} -d ${scale} ${service}
+        docker-compose -f ./docker-compose.yml up --force-recreate
+        --remove-orphans ${depends} -d ${scale} ${service}
     '''
     # mkdir for test env
     if env_file.endswith('test.env'):
@@ -98,7 +109,7 @@ def do_run(compose_file, env_file, services, depends, number):
     subprocess.check_call(cmd.strip().split(" "))
 
     # compose command: remove previous service
-    cmd = 'docker-compose -f %s stop %s' % (
+    cmd = 'docker-compose -f %s rm -sf %s' % (
         compose_file, ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
@@ -147,15 +158,38 @@ def main():
     # parse args
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--save', action='store_true', help='Save images. E.g. docker-compose --save -o ${/path/to/output_folder} -f ${compose_yaml}')
-    group.add_argument('--load', action='store_true', help='Load images. E.g. docker-compose --load -o ${/path/to/output_folder}')
-    group.add_argument('--destroy', action='store_true', help='Destrop ALL images. E.g. docker-compose --destroy -f ${compose_yaml}')
-    group.add_argument('--run', action='store_true', help='Run service. E.g. docker-compose --run -f ${compose_yaml} -e ${env_file} -s ${service1} -s ${service2}')
+    group.add_argument(
+        '--save',
+        action='store_true',
+        help='Save images. '
+        'E.g. docker-compose --save -o ${/path/to/output_folder} -f ${YAML}')
+    group.add_argument(
+        '--load',
+        action='store_true',
+        help='Load images. '
+        'E.g. docker-compose --load -o ${/path/to/output_folder}')
+    group.add_argument(
+        '--destroy',
+        action='store_true',
+        help='Destrop ALL images. '
+        'E.g. docker-compose --destroy -f ${YAML}')
+    group.add_argument(
+        '--run',
+        action='store_true',
+        help='Run service. '
+        'E.g. docker-compose --run -f ${YAML} -e ${ENV} -s ${service1} -s ${service2}')
     group.add_argument('--stop', action='store_true')
-    group.add_argument('--list', action='store_true', help='list all supported services')
+    group.add_argument('--list', action='store_true',
+                       help='list all supported services')
+    parser.add_argument('-g', '--service_group',
+                        choices=['voice-emotion-full',
+                                 'voice-emotion-min',
+                                 'bf-ubt-apigw'],
+                        default='voice-emotion-full')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
     parser.add_argument('-f', '--compose_file', default='./docker-compose.yml')
-    parser.add_argument('-e', '--env', required=True, help='test.env or api-sh.env or api.env')
+    parser.add_argument('-e', '--env', required=True,
+                        help='test.env or api-sh.env or api.env')
     parser.add_argument('-s', '--service', action='append', default=[])
     parser.add_argument('-d', '--depends', action='store_true', default=False,
                         help='if service is empty, depends always be true')
@@ -164,8 +198,19 @@ def main():
     args = parser.parse_args()
     print args
 
-    # do action
+    # copy env file as .env
     _do_copy_env(args.env)
+
+    # add service of group if not give
+    if not args.service:
+        if args.service_group == 'voice-emotion-min':
+            args.service.extend(VOICE_EMOTION_MINIMAL)
+        elif args.service_group == 'bf-ubt-apigw':
+            args.service.extend(BF_UBT_APIGW)
+        elif args.service_group == 'voice-emotion-full':
+            args.service.exetend(VOICE_EMOTION_FULL)
+
+    # do action
     if args.save:
         if not os.path.exists(args.compose_file):
             parser.print_help()
