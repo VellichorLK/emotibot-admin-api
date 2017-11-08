@@ -29,3 +29,13 @@ func GetUserID(ctx context.Context) string {
 func GetUserIP(ctx context.Context) string {
 	return ctx.GetHeader(ConstUserIPHeaderKey)
 }
+
+// Contains will check if str is in arr or not
+func Contains(arr []string, str string) bool {
+	for _, s := range arr {
+		if s == str {
+			return true
+		}
+	}
+	return false
+}

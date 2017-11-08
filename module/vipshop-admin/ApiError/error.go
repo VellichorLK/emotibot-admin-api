@@ -6,6 +6,7 @@ var (
 		-1:  "db error",
 		-2:  "io error",
 		-4:  "consul server unavailable",
+		-7:  "Error when send request to other API server",
 		101: "Uploaded file still processing",
 		102: "File extension should be xlsx",
 		103: "File size should smaller than 2MB",
@@ -34,6 +35,9 @@ var (
 
 	// Parse from json error
 	JSON_PARSE_ERROR = -6
+
+	// API Request Error
+	WEB_REQUEST_ERROR = -7
 
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101

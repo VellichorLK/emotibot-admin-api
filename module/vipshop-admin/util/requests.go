@@ -142,6 +142,86 @@ func HTTPPostJSON(url string, data interface{}, timeout int) (string, error) {
 	return string(body), nil
 }
 
+func HTTPPostJSONWithStatus(url string, data interface{}, timeout int) (int, string, error) {
+	if url == "" {
+		return 0, "", errors.New("Invalid url")
+	}
+
+	var client *http.Client
+
+	if timeout > 0 {
+		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
+		client = &http.Client{
+			Timeout: getTimeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	jsonByte, err := json.Marshal(data)
+	if err != nil {
+		return 0, "", err
+	}
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(jsonByte)))
+	if err != nil {
+		return 0, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := client.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return 0, "", nil
+	}
+
+	return response.StatusCode, string(body), nil
+}
+
+func HTTPRequestJSONWithStatus(url string, data interface{}, timeout int, method string) (int, string, error) {
+	if url == "" {
+		return 0, "", errors.New("Invalid url")
+	}
+
+	var client *http.Client
+
+	if timeout > 0 {
+		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
+		client = &http.Client{
+			Timeout: getTimeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	jsonByte, err := json.Marshal(data)
+	if err != nil {
+		return 0, "", err
+	}
+	req, err := http.NewRequest(method, url, strings.NewReader(string(jsonByte)))
+	if err != nil {
+		return 0, "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := client.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return 0, "", nil
+	}
+
+	return response.StatusCode, string(body), nil
+}
+
 func HTTPPut(url string, data interface{}, timeout int) (string, error) {
 	if url == "" {
 		return "", errors.New("Invalid url")
