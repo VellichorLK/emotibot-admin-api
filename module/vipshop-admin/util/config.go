@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"strings"
 )
@@ -54,7 +55,9 @@ func LoadConfigFromFile(path string) error {
 		moduleEnv := envs[envType].(map[string]string)
 		moduleEnv[newKey] = strings.Trim(val, "\"")
 	}
-	LogTrace.Printf("Load config: %+v\n", envs)
+
+	envsStr, err := json.MarshalIndent(envs, "", "  ")
+	LogTrace.Printf("Load config: %s\n", envsStr)
 
 	return nil
 }
