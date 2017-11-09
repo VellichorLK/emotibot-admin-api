@@ -98,6 +98,7 @@ services:
                 max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
                 max-file: ${DOCKER_LOG_OPT_MAX_FILE}
         mem_limit: 5125m
+        privileged: true
         environment:
             RABBITMQ_HOST: ${API_VOICE_EMOTION_RABBITMQ_HOST}
             RABBITMQ_PORT: ${API_VOICE_EMOTION_RABBITMQ_PORT} 
@@ -109,6 +110,8 @@ services:
             DB_PWD: ${API_VOICE_EMOTION_DB_PWD}
             LISTEN_PORT: ${API_VOICE_EMOTION_PORT}
             FILE_PREFIX: ${API_VOICE_EMOTION_DATA_PATH}
+            GLUSTERFS_HOST: ${API_GLUSTERFS_HOST}
+            GLUSTERFS_VOLUME: ${API_GLUSTERFS_VOLUME}
         volumes:
             - ${API_VOICE_EMOTION_DATA_PATH}:/usr/src/app/upload_file
             - /etc/localtime:/etc/localtime
@@ -118,6 +121,10 @@ services:
                 condition: service_healthy
             "rabbitmq":
                 condition: service_healthy
+            "glusterfs":
+                condition: service_healthy
+        links:
+            - "glusterfs: ${API_GLUSTERFS_HOST}"
     # ========== Voice Emotion Analysis Worker: depends on rabbitmq
     worker-voice-emotion-analysis:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
@@ -375,3 +382,26 @@ services:
                 condition: service_healthy
             "rabbitmq":
                 condition: service_healthy
+# ========== glusterfs
+    glusterfs:
+      image: ${GLUSTERFS_IMAGE}:${GLUSTERFS_TAG}
+      container_name: ${GLUSTERFS_HOST}
+      privileged: true
+      logging:
+          options:
+              max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+              max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+      mem_limit: 5125m
+      environment:
+          GLUSTERFS_HOST: ${GLUSTERFS_HOST}
+          GLUSTERFS_VOLUME: ${GLUSTERFS_VOLUME}
+      volumes:
+          - ${GLUSTERFS_DATA_VOLUME}:/usr/src/app/data
+          - /etc/glusterfs:/etc/glusterfs:z
+          - /var/lib/glusterd:/var/lib/glusterd:z 
+          - /var/log/glusterfs:/var/log/glusterfs:z
+          - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      devices:
+          - /dev/:/dev
+      healthcheck:
+          test: "gluster volume status ${GLUSTERFS_VOLUME} || (gluster volume create ${GLUSTERFS_VOLUME} ${GLUSTERFS_HOST}:/usr/src/app/data force &&  gluster volume start ${GLUSTERFS_VOLUME})  || gluster volume status ${GLUSTERFS_VOLUME}"
