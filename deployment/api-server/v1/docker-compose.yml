@@ -366,6 +366,7 @@ services:
         environment:
             DOCKER_PORT: ${BF_UBT_APIGW_PORT}
             BF_API_URL: ${BF_API_URL}
+            BF_LEVEL_API_URL: ${BF_LEVEL_API_URL}
             KG_API_URL: ${KG_API_URL}
         mem_limit: 2048m
         volumes:
