@@ -68,8 +68,9 @@ func DoChatRequest(appid string, user string, inputData *QATestInput) (*RetData,
 	}
 	if openAPIRet.Data != nil && len(openAPIRet.Data) > 0 {
 		ret.Answers = []*string{}
-		for _, answer := range openAPIRet.Data {
-			ret.Answers = append(ret.Answers, &answer.Value)
+		for idx := range openAPIRet.Data {
+			ret.Answers = append(ret.Answers, &openAPIRet.Data[idx].Value)
+
 		}
 	} else {
 		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
