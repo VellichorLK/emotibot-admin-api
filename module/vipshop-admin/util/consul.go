@@ -13,18 +13,19 @@ const (
 )
 
 func ConsulUpdateRobotChat(appid string) (int, error) {
-	key := fmt.Sprintf("%sdata/%s", appid)
-	now := fmt.Sprintf("%d", time.Now().Unix())
+	key := fmt.Sprintf("%sdata/%s", appid, appid)
+	now := time.Now().Unix()
 	return ConsulUpdateVal(key, now)
 }
 
-func ConsulUpdateVal(key string, val string) (int, error) {
+func ConsulUpdateVal(key string, val interface{}) (int, error) {
 	consulURL := getGlobalEnv(ConsulURLKey)
 	if consulURL == "" {
 		return ApiError.CONSUL_SERVICE_ERROR, errors.New("Consul URL unavailable")
 	}
 
 	reqURL := fmt.Sprintf("%s/%s", consulURL, key)
+	logTraceConsul("update", reqURL)
 	_, resErr := HTTPPut(reqURL, val, 5)
 	if resErr != nil {
 		logConsulError(resErr)

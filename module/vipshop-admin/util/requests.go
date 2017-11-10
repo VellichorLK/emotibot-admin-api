@@ -246,7 +246,6 @@ func HTTPPut(url string, data interface{}, timeout int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	req.Header.Set("Content-Type", "application/json")
 
 	response, err := client.Do(req)
 	if err != nil {

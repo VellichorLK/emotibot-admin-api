@@ -109,6 +109,7 @@ func handleUpdateSwitch(ctx context.Context) {
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
+		return
 	}
 
 	errCode, err = UpdateSwitch(appid, id, input)
@@ -121,7 +122,11 @@ func handleUpdateSwitch(ctx context.Context) {
 		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update success %#v => %#v", orig, input), 1)
 	}
 	ret, err := util.ConsulUpdateRobotChat(appid)
-	util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+	if err != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+	} else {
+		util.LogInfo.Printf("Update consul result: %d", ret)
+	}
 }
 
 func handleDeleteSwitch(ctx context.Context) {
