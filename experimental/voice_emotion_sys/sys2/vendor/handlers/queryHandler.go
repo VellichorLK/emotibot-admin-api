@@ -119,7 +119,7 @@ func Query(appid string, cas *CursorArgs) ([]byte, int, error) {
 	paramsWithAppid = append(paramsWithAppid, params...)
 
 	if cas.Count == 0 {
-		cas.Count, err = QueryCount(conditions, paramsWithAppid...)
+		cas.Count, err = QueryCount(conditions, cas.Qas.SortCondition, paramsWithAppid...)
 		if err != nil {
 			log.Println(err)
 			return nil, http.StatusInternalServerError, errors.New("Internal server error")
@@ -128,7 +128,7 @@ func Query(appid string, cas *CursorArgs) ([]byte, int, error) {
 
 	rp := new(ResultPage)
 
-	rbs, status, err := QueryResult(cas.Offset, conditions, paramsWithAppid...)
+	rbs, status, err := QueryResult(cas.Qas.SortField, cas.Qas.SortCondition, cas.Offset, conditions, paramsWithAppid...)
 	if err != nil {
 		return nil, status, errors.New("Internal server error")
 	}
@@ -307,7 +307,34 @@ func parseArgs(qas *QueryArgs) error {
 		return errors.New("has duplicate tags")
 	}
 
+	qas.SortField, qas.SortCondition, err = parseSortingField(qas.SortingBy)
+	if err != nil {
+		return err
+	}
+
 	return nil
+
+}
+
+func parseSortingField(sortingBy string) (string, []string, error) {
+
+	conditions := make([]string, 0)
+	switch sortingBy {
+	case "ch1_anger":
+		conditions = append(conditions, NCHANNEL+"=1")
+		conditions = append(conditions, NEMOTYPE+"=1")
+		return NSCORE, conditions, nil
+	case "ch2_anger":
+		conditions = append(conditions, NCHANNEL+"=2")
+		conditions = append(conditions, NEMOTYPE+"=1")
+		return NSCORE, conditions, nil
+	case "":
+		fallthrough
+	case "time":
+		return NFILET, nil, nil
+	default:
+		return "", nil, errors.New("wrong sorting field")
+	}
 
 }
 

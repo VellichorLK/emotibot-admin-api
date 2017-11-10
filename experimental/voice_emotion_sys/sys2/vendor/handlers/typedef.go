@@ -131,8 +131,8 @@ var DefaultRevertEmotion = map[string][]string{
 }
 
 //PAGELIMIT limit of row returned
-const PAGELIMIT = "500"
-const PAGELIMITINT = 500
+const PAGELIMIT = "8"
+const PAGELIMITINT = 8
 
 //ResultPage page the query result if the count is over defined limit
 type ResultPage struct {
@@ -166,10 +166,13 @@ type QueryArgs struct {
 	Status   string `json:"status"`
 	//Ch1Emotion []string `json:"ch1_emotions"`
 	//Ch2Emotion []string `json:"ch2_emotions"`
-	Ch1Anger  int64          `json:"ch1_anger_score"`
-	Ch2Anger  int64          `json:"ch2_anger_score"`
-	Tags      []string       `json:"tags"`
-	UsrColumn []*ColumnValue `json:"user_column"`
+	Ch1Anger      int64          `json:"ch1_anger_score"`
+	Ch2Anger      int64          `json:"ch2_anger_score"`
+	Tags          []string       `json:"tags"`
+	UsrColumn     []*ColumnValue `json:"user_column"`
+	SortingBy     string         `json:"sorting_by"`
+	SortField     string         `json:"sort_field"`
+	SortCondition []string       `json:"sort_condition"`
 }
 
 //EmotionBlock is used for decode the data from voice module

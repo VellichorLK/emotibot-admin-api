@@ -601,7 +601,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 	return http.StatusOK, nil
 }
 
-func QueryResult(offset int64, conditions string, params ...interface{}) ([]*ReturnBlock, int, error) {
+func QueryResult(sortField string, sortCondition []string, offset int64, conditions string, params ...interface{}) ([]*ReturnBlock, int, error) {
 
 	tmpRes := "(" + QueryFileInfo + " where " + NAPPID + "=?"
 	if conditions != "" {
@@ -609,11 +609,31 @@ func QueryResult(offset int64, conditions string, params ...interface{}) ([]*Ret
 	}
 	tmpRes += ")"
 
+	maxSortField := "max(" + sortField + ")"
+	var sortCondition1, sortCondition2 string
+	var i int
+	for i = 0; i < len(sortCondition); i++ {
+		if i == 0 {
+			sortCondition1 += "where "
+		} else {
+			sortCondition1 += " and "
+			sortCondition2 += ","
+		}
+
+		sortCondition1 += sortCondition[i]
+		sortCondition2 += sortCondition[i] + " desc"
+	}
+
+	if i != 0 {
+		sortCondition2 += ","
+	}
+	sortCondition2 += sortField + " desc"
+
 	query := "select * from " + tmpRes + "as y where " + NFILEID +
 		" in (select " + NFILEID + " from (select x." + NFILEID +
-		" from " + tmpRes + "as x group by " + NFILEID + " order by " + NFILET + " desc" +
+		" from " + tmpRes + "as x " + sortCondition1 + " group by " + NFILEID + " order by " + maxSortField + " desc" +
 		" limit " + PAGELIMIT + " offset " + strconv.FormatInt(offset, 10) + ") as d)" +
-		" order by " + NFILET + " desc"
+		" order by " + sortCondition2
 
 	doubleParams := make([]interface{}, 0)
 	doubleParams = append(doubleParams, params...)
@@ -859,7 +879,7 @@ func QueryReport(appid string, conditions string, rc *ReportCtx) error {
 
 }
 
-func QueryCount(conditions string, params ...interface{}) (int64, error) {
+func QueryCount(conditions string, sortingCondition []string, params ...interface{}) (int64, error) {
 	var count int64
 
 	query := "select count(distinct " + NFILEID + ") from ("
@@ -868,6 +888,11 @@ func QueryCount(conditions string, params ...interface{}) (int64, error) {
 	if conditions != "" {
 		query += conditions
 	}
+
+	for _, v := range sortingCondition {
+		query += " and " + v + " "
+	}
+
 	query += ") as d"
 
 	rows, err := db.Query(query, params...)
