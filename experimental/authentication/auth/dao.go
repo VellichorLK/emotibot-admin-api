@@ -52,10 +52,10 @@ func DaoInit(db_url string, db_user string, db_pass string, db_name string, cons
 // ===== appid related =====
 func (d *DaoWrapper) GetValidAppIdCount(appid string) (int, error) {
 	var c int
-	cmd := fmt.Sprintf("select count(app_id) from appid_list where app_id=\"%s\" and activation=true", appid)
-	LogInfo.Printf("appid: %s, cmd: %s", appid, cmd)
-
-	if err := d.mysql.QueryRow(cmd).Scan(&c); err != nil {
+	LogInfo.Printf("appid: %s", appid)
+	fmt.Printf("%s", appid)
+	if err := d.mysql.QueryRow("select count(app_id) from appid_list where app_id=? and activation=true", appid).Scan(&c); err != nil {
+		fmt.Printf("err: %v", err)
 		return 0, err
 	}
 	return c, nil
@@ -76,12 +76,11 @@ func (d *DaoWrapper) GetUserByName(user_name string, password string) (*UserLogi
 
 // ===== enterprise related =====
 func (d *DaoWrapper) GetEnterpriseByName(enterprise_name string) (*EnterpriseUserProp, error) {
-	cmd := fmt.Sprintf("select enterprise_id,app_id from enterprise_list where enterprise_name=\"%s\"", enterprise_name)
-	LogInfo.Printf("enterprise_name: %s, cmd: %s", enterprise_name, cmd)
+	LogInfo.Printf("enterprise_name: %s", enterprise_name)
 
 	// TODO(mike): enterprise_name should be unique
 	var e EnterpriseUserProp
-	if err := d.mysql.QueryRow(cmd).Scan(&e.EnterpriseId, &e.AppId); err != nil {
+	if err := d.mysql.QueryRow("select enterprise_id,app_id from enterprise_list where enterprise_name=?", enterprise_name).Scan(&e.EnterpriseId, &e.AppId); err != nil {
 		if err != sql.ErrNoRows {
 			return nil, err
 		}
@@ -90,12 +89,11 @@ func (d *DaoWrapper) GetEnterpriseByName(enterprise_name string) (*EnterpriseUse
 }
 
 func (d *DaoWrapper) GetEnterpriseById(enterprise_id string) (*EnterpriseUserProp, error) {
-	cmd := fmt.Sprintf("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from (select enterprise_id,enterprise_name,created_time,industry,phone_number,address,people_numbers,app_id from enterprise_list where enterprise_id=\"%s\") as el left join user_list ul on el.enterprise_id = ul.enterprise_id", enterprise_id)
-	LogInfo.Printf("enterprise_id: %s, cmd: %s", enterprise_id, cmd)
+	LogInfo.Printf("enterprise_id: %s", enterprise_id)
 
 	// TODO(mike): enterprise_id should be unique
 	var e EnterpriseUserProp
-	if err := d.mysql.QueryRow(cmd).Scan(&e.EnterpriseId, &e.EnterpriseName, &e.CreatedTime, &e.Industry, &e.PhoneNumber, &e.Address, &e.PeopleNumbers, &e.AppId, &e.UserId, &e.UserName, &e.UserEmail); err != nil {
+	if err := d.mysql.QueryRow("select el.enterprise_id,el.enterprise_name,el.created_time,el.industry,el.phone_number,el.address,el.people_numbers,el.app_id,ul.user_id,ul.user_name,ul.email from (select enterprise_id,enterprise_name,created_time,industry,phone_number,address,people_numbers,app_id from enterprise_list where enterprise_id=?) as el left join user_list ul on el.enterprise_id = ul.enterprise_id", enterprise_id).Scan(&e.EnterpriseId, &e.EnterpriseName, &e.CreatedTime, &e.Industry, &e.PhoneNumber, &e.Address, &e.PeopleNumbers, &e.AppId, &e.UserId, &e.UserName, &e.UserEmail); err != nil {
 		if err != sql.ErrNoRows {
 			return nil, err
 		}
@@ -145,19 +143,17 @@ func (d *DaoWrapper) AddUserEntry(e *EnterpriseUserProp) error {
 
 // ===== enterprise delete related =====
 func (d *DaoWrapper) DeleteEnterprise(enterprise_id string) error {
-	cmd := fmt.Sprintf("delete el,al from enterprise_list as el join appid_list as al on al.app_id=el.app_id where el.enterprise_id=\"%s\"", enterprise_id)
-	if rows, err := d.mysql.Exec(cmd); err != nil {
-		LogError.Printf("cmd: %s, err: %s", cmd, err)
+	if rows, err := d.mysql.Exec("delete el,al from enterprise_list as el join appid_list as al on al.app_id=el.app_id where el.enterprise_id=?", enterprise_id); err != nil {
+		LogError.Printf("err: %s", err)
 		return err
 	} else {
-		LogInfo.Printf("cmd: %s, affect rows: %s", cmd, rows)
+		LogInfo.Printf("affect rows: %s", rows)
 	}
-	cmd = fmt.Sprintf("delete from user_list where enterprise_id=\"%s\"", enterprise_id)
-	if rows, err := d.mysql.Exec(cmd); err != nil {
-		LogError.Printf("cmd: %s, err: %s", cmd, err)
+	if rows, err := d.mysql.Exec("delete from user_list where enterprise_id=?", enterprise_id); err != nil {
+		LogError.Printf("err: %s", err)
 		return err
 	} else {
-		LogInfo.Printf("cmd: %s, affect rows: %s", cmd, rows)
+		LogInfo.Printf("affect rows: %s", rows)
 	}
 	// TODO(mike): deal with privilege and role
 	return nil
@@ -165,8 +161,7 @@ func (d *DaoWrapper) DeleteEnterprise(enterprise_id string) error {
 
 // ==== admin apis: role related apis =====
 func (d *DaoWrapper) GetRoles(enterprise_id string) ([]*RoleProp, error) {
-	sql := fmt.Sprintf("select role_id, role_name, privilege from role_list where enterprise_id = \"%s\"", enterprise_id)
-	rows, err := d.mysql.Query(sql)
+	rows, err := d.mysql.Query("select role_id, role_name, privilege from role_list where enterprise_id = ?", enterprise_id)
 
 	got := []*RoleProp{}
 	for rows.Next() {
@@ -189,11 +184,8 @@ func (d *DaoWrapper) AddRole(enterprise_id string, r *RoleProp) error {
 }
 
 func (d *DaoWrapper) GetRoleById(role_id string, enterprise_id string) (*RoleProp, error) {
-	cmd := fmt.Sprintf("select role_id, role_name, privilege from role_list where enterprise_id = \"%s\" and role_id = \"%s\"", enterprise_id, role_id)
-	LogInfo.Printf("cmd: %s", cmd)
-
 	var r RoleProp
-	if err := d.mysql.QueryRow(cmd).Scan(&r.RoleId, &r.RoleName, &r.Privilege); err != nil {
+	if err := d.mysql.QueryRow("select role_id, role_name, privilege from role_list where enterprise_id = ? and role_id = ?", enterprise_id, role_id).Scan(&r.RoleId, &r.RoleName, &r.Privilege); err != nil {
 		return nil, err
 	}
 	LogInfo.Printf("Get role: %#v", r)
@@ -203,8 +195,7 @@ func (d *DaoWrapper) GetRoleById(role_id string, enterprise_id string) (*RolePro
 func (d *DaoWrapper) DeleteRole(role_id string, enterprise_id string) error {
 	LogInfo.Printf("delete role: %s enterprise: %s", role_id, enterprise_id)
 	// 1. Change all user whose role is this, and change them into null
-	cmd := fmt.Sprintf("update user_list set role_id = NULL where role_id = '%s' and enterprise_id = '%s'", role_id, enterprise_id)
-	_, err := d.mysql.Exec(cmd)
+	_, err := d.mysql.Exec("update user_list set role_id = NULL where role_id = ? and enterprise_id = ?", role_id, enterprise_id)
 	if err != nil {
 		LogInfo.Print("Update user list error")
 		return err
@@ -231,7 +222,7 @@ func (d *DaoWrapper) PatchRole(role_id string, enterprise_id string, r *RoleProp
 	sets := strings.Join(params, ",")
 
 	sql := fmt.Sprintf("update role_list set %s where role_id = ? and enterprise_id = ?", sets)
-	_, err := d.mysql.Exec(sql, r.RoleId, enterprise_id)
+	_, err := d.mysql.Exec("update role_list set ? where role_id = ? and enterprise_id = ?", sets, r.RoleId, enterprise_id)
 
 	log := fmt.Sprintf("update role: %#v, (%s), (%#v)\n", r, sql, err)
 	LogInfo.Print(log)
@@ -240,9 +231,7 @@ func (d *DaoWrapper) PatchRole(role_id string, enterprise_id string, r *RoleProp
 
 // ===== admin apis: user management =====
 func (d *DaoWrapper) GetUsers(enterprise_id string) ([]*UserProp, error) {
-	cmd := fmt.Sprintf("select user_id, user_name, user_type, role_id, email from user_list where enterprise_id = \"%s\"", enterprise_id)
-	LogInfo.Printf("cmd: %s", cmd)
-	rows, err := d.mysql.Query(cmd)
+	rows, err := d.mysql.Query("select user_id, user_name, user_type, role_id, email from user_list where enterprise_id = ?", enterprise_id)
 	LogInfo.Printf("rows: %#v, err: %s", rows, err)
 	if err != nil {
 		return nil, err
@@ -262,11 +251,10 @@ func (d *DaoWrapper) GetUsers(enterprise_id string) ([]*UserProp, error) {
 }
 
 func (d *DaoWrapper) GetUserById(user_id string, enterprise_id string) (*UserProp, error) {
-	cmd := fmt.Sprintf("select user_id, user_name, user_type, role_id, email from user_list where enterprise_id = \"%s\" and user_id = \"%s\"", enterprise_id, user_id)
-	LogInfo.Printf("cmd: %s", cmd)
+	LogInfo.Printf("user_id: %s, enterprise_id: %s", user_id, enterprise_id)
 
 	var r UserProp
-	if err := d.mysql.QueryRow(cmd).Scan(&r.UserId, &r.UserName, &r.UserType, &r.RoleId, &r.Email); err != nil {
+	if err := d.mysql.QueryRow("select user_id, user_name, user_type, role_id, email from user_list where enterprise_id = ? and user_id = ?", enterprise_id, user_id).Scan(&r.UserId, &r.UserName, &r.UserType, &r.RoleId, &r.Email); err != nil {
 		return nil, err
 	}
 	return &r, nil
@@ -318,7 +306,7 @@ func (d *DaoWrapper) PatchUser(user_id string, enterprise_id string, u *UserProp
 	sets := strings.Join(params, ",")
 
 	sql := fmt.Sprintf("update user_list set %s where user_id = ? and enterprise_id = ?", sets)
-	_, err := d.mysql.Exec(sql, u.UserId, enterprise_id)
+	_, err := d.mysql.Exec("update user_list set ? where user_id = ? and enterprise_id = ?", sets, u.UserId, enterprise_id)
 
 	log := fmt.Sprintf("update user: %#v, (%s), (%#v)\n", u, sql, err)
 	LogInfo.Print(log)
@@ -326,9 +314,9 @@ func (d *DaoWrapper) PatchUser(user_id string, enterprise_id string, u *UserProp
 }
 
 func (d *DaoWrapper) GetEnterpriseIdByAppId(appid string) (string, error) {
-	cmd := fmt.Sprintf("select enterprise_id from enterprise_list where app_id = \"%s\"", appid)
+	LogInfo.Printf("appid: %s", appid)
 	var enterprise_id string
-	if err := d.mysql.QueryRow(cmd).Scan(&enterprise_id); err != nil {
+	if err := d.mysql.QueryRow("select enterprise_id from enterprise_list where app_id = ?", appid).Scan(&enterprise_id); err != nil {
 		return "", err
 	}
 	return enterprise_id, nil

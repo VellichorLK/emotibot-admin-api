@@ -4,7 +4,11 @@ REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 CONTAINER=authentication
 #TAG="$(git rev-parse --short HEAD)"
-TAG="20170822001"
+TAG=$1
+LAST_RELEASE_TAG="20170926001"
+if [ "$TAG" == "" ]; then
+    TAG="$LAST_RELEASE_TAG"
+fi
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 globalConf="
