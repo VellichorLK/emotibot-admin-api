@@ -629,18 +629,15 @@ func QueryResult(sortField string, sortCondition []string, offset int64, conditi
 	}
 	sortCondition2 += sortField + " desc"
 
-	query := "select * from " + tmpRes + "as y where " + NFILEID +
+	query := "select * from (" + QueryFileInfo + ")as y where " + NFILEID +
 		" in (select " + NFILEID + " from (select x." + NFILEID +
 		" from " + tmpRes + "as x " + sortCondition1 + " group by " + NFILEID + " order by " + maxSortField + " desc" +
 		" limit " + PAGELIMIT + " offset " + strconv.FormatInt(offset, 10) + ") as d)" +
 		" order by " + sortCondition2
 
-	doubleParams := make([]interface{}, 0)
-	doubleParams = append(doubleParams, params...)
-	doubleParams = append(doubleParams, params...)
 	//log.Println(query)
-	//log.Println(doubleParams...)
-	rows, err := db.Query(query, doubleParams...)
+	//log.Println(params...)
+	rows, err := db.Query(query, params...)
 	if err != nil {
 		log.Println(err)
 		return nil, http.StatusInternalServerError, errors.New("Internal server error")

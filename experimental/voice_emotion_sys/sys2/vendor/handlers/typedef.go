@@ -131,8 +131,8 @@ var DefaultRevertEmotion = map[string][]string{
 }
 
 //PAGELIMIT limit of row returned
-const PAGELIMIT = "8"
-const PAGELIMITINT = 8
+const PAGELIMIT = "500"
+const PAGELIMITINT = 500
 
 //ResultPage page the query result if the count is over defined limit
 type ResultPage struct {
