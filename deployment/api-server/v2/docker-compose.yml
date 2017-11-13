@@ -25,8 +25,8 @@ services:
         restart: always
         healthcheck:
             test: "/usr/bin/mysql --user=${MYSQL_MAIN_USER} --password=${MYSQL_MAIN_PASS} --execute \"SHOW DATABASES;\""
-            interval: 3s
-            timeout: 1s
+            interval: "${DOCKER_HEALTH_CHECK_INTERVAL}"
+            timeout: "${DOCKER_HEALTH_CHECK_TIMEOUT}" 
             retries: 5
     phpmyadmin:
         image: phpmyadmin/phpmyadmin
@@ -66,8 +66,8 @@ services:
         restart: always
         healthcheck:
             test: "mongo --quiet \"${MONGO_IP}/test\" --eval 'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)'"
-            interval: 3s
-            timeout: 1s
+            interval: "${DOCKER_HEALTH_CHECK_INTERVAL}"
+            timeout: "${DOCKER_HEALTH_CHECK_TIMEOUT}"
             retries: 5
     # ========== Queue ==========
     rabbitmq:
