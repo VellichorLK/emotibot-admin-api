@@ -180,12 +180,14 @@ func delRolePrivilege(ctx context.Context) {
 
 	if role, ok := Roles[input.RoleName]; ok {
 		if _, ok := Privileges[input.PrivilegeName]; !ok {
+			fmt.Printf("privName invalid")
 			retError(ctx, errors.New("privName invalid"))
 			return
 		}
 		role.Privileges = Remove(role.Privileges, input.PrivilegeName)
 		fmt.Printf("Remove role %s: %+v", input.PrivilegeName, role)
 	} else {
+		fmt.Printf("roleName invalid")
 		retError(ctx, errors.New("roleName invalid"))
 		return
 	}
@@ -242,17 +244,23 @@ func addUserRole(ctx context.Context) {
 		return
 	}
 
+	if _, ok := Roles[input.RoleName]; !ok {
+		retError(ctx, errors.New("roleName invalid"))
+		return
+	}
+
 	if user, ok := Users[input.UserAccount]; ok {
-		if _, ok := Roles[input.RoleName]; !ok {
-			retError(ctx, errors.New("roleName invalid"))
-			return
-		}
 		if !Contains(user.Roles, input.RoleName) {
 			user.Roles = append(user.Roles, input.RoleName)
 		}
 	} else {
-		retError(ctx, errors.New("userAccount invalid"))
-		return
+		Users[input.UserAccount] = &StoreUser{
+			UserName:       input.UserAccount,
+			UserDepartment: "test",
+			UserAccountID:  input.UserAccount,
+			UserCode:       0,
+			Roles:          []string{input.RoleName},
+		}
 	}
 
 	retSuccess(ctx)

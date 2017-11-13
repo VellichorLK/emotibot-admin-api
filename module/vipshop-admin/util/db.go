@@ -24,7 +24,7 @@ const (
 
 // InitMainDB will add a db handler in allDB, which key is main
 func InitMainDB(mysqlURL string, mysqlUser string, mysqlPass string, mysqlDB string) error {
-	db, err := initDB(mysqlURL, mysqlUser, mysqlPass, mysqlDB)
+	db, err := InitDB(mysqlURL, mysqlUser, mysqlPass, mysqlDB)
 	if err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func GetMainDB() *sql.DB {
 
 // InitAuditDB should be called before insert all audit log
 func InitAuditDB(auditURL string, auditUser string, auditPass string, auditDB string) error {
-	db, err := initDB(auditURL, auditUser, auditPass, auditDB)
+	db, err := InitDB(auditURL, auditUser, auditPass, auditDB)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func InitAuditDB(auditURL string, auditUser string, auditPass string, auditDB st
 	return nil
 }
 
-func initDB(url string, user string, pass string, db string) (*sql.DB, error) {
+func InitDB(url string, user string, pass string, db string) (*sql.DB, error) {
 	linkURL := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=true", user, pass, url, db, mySQLTimeout, mySQLReadTimeout, mySQLWriteTimeout)
 
 	if len(url) == 0 || len(user) == 0 || len(pass) == 0 || len(db) == 0 {
@@ -73,4 +73,8 @@ func GetDB(key string) *sql.DB {
 		return db
 	}
 	return nil
+}
+
+func SetDB(key string, db *sql.DB) {
+	allDB[key] = db
 }

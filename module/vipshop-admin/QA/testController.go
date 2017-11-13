@@ -55,7 +55,7 @@ func hadleChatTest(ctx context.Context) {
 	input, err := loadQATestInput(ctx)
 	if err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err))
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
 		return
 	}
 

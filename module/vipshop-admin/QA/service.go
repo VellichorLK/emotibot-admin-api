@@ -49,7 +49,7 @@ func DoChatRequest(appid string, user string, inputData *QATestInput) (*RetData,
 
 	response, err := util.HTTPPostForm(openAPIURL, input, 10)
 	if err != nil {
-		return nil, ApiError.OPENAPI_URL_ERROR, nil
+		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
 	util.LogTrace.Printf("Raw response from OpenAPI: %s", response)
 
