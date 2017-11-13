@@ -84,7 +84,7 @@ const (
 
 	QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NRDURATION + "," +
 		NFILET + "," + NCHECKSUM + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
-		" from " + MainTable + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
+		" from " + MainTable + " where " + NAPPID + "=?" + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 		",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
 		AnalysisTable + " where " + NID + "=(select " + NID + " from " + MainTable + " where " +
 		NAPPID + "=? and " + NFILEID + "=?)) as b left join " + EmotionTable + " as c " +
@@ -482,7 +482,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 
 	query := QueryDetailSQL
 
-	rows, err := db.Query(query, appid, fileID, fileID)
+	rows, err := db.Query(query, appid, appid, fileID, fileID)
 	if err != nil {
 		log.Println(err)
 		return http.StatusInternalServerError, errors.New("Internal server error")
