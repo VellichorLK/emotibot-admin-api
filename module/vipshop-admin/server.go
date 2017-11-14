@@ -39,6 +39,7 @@ func main() {
 
 	setRoute(app)
 	initDB()
+	app.StaticWeb("/Files", util.GetMountDir())
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
