@@ -4,7 +4,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 CONTAINER=vipshop-admin-api
 #TAG="$(git rev-parse --short HEAD)"
-TAG="2017111002"
+TAG="2017111401"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 globalConf="
