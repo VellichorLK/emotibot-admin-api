@@ -59,6 +59,7 @@ func checkPrivilege(ctx context.Context) {
 	userid := ctx.GetHeader("X-UserID")
 
 	if len(appid) == 0 || len(userid) == 0 {
+		util.LogTrace.Printf("Unauthorized appid:[%s] userid:[%s]", appid, userid)
 		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.Skip()
 	}
@@ -135,4 +136,6 @@ func initDB() {
 	pass = getServerEnv("AUDIT_MYSQL_PASS")
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	util.InitAuditDB(url, user, pass, db)
+
+	Stats.InitDB()
 }

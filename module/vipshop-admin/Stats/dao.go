@@ -1,11 +1,17 @@
 package Stats
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+)
+
+const (
+	RECORD_TABLE_FORMAT = "%s_record"
+	RECORD_INFO_TABLE   = "static_record_info"
 )
 
 func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
@@ -27,6 +33,10 @@ func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
 	if input.Filter != nil && input.Filter.Operation != "-1" {
 		conditions = append(conditions, "operation = ?")
 		args = append(args, input.Filter.Operation)
+	}
+	if input.Filter != nil && input.Filter.UserID != "" {
+		conditions = append(conditions, "user_id = ?")
+		args = append(args, input.Filter.UserID)
 	}
 
 	conditions = append(conditions, "(UNIX_TIMESTAMP(create_time) BETWEEN ? and ?)")
@@ -73,6 +83,10 @@ func getAuditListPage(appid string, input *AuditInput, page int, listPerPage int
 	if input.Filter != nil && input.Filter.Operation != "-1" {
 		conditions = append(conditions, "operation = ?")
 		args = append(args, input.Filter.Operation)
+	}
+	if input.Filter != nil && input.Filter.UserID != "" {
+		conditions = append(conditions, "user_id = ?")
+		args = append(args, input.Filter.UserID)
 	}
 
 	conditions = append(conditions, "(UNIX_TIMESTAMP(create_time) BETWEEN ? and ?)")
@@ -147,5 +161,37 @@ func getAuditListCnt(appid string, input *AuditInput) (int, error) {
 		}
 	}
 
+	return ret, nil
+}
+
+func initStatDB(url string, user string, pass string, db string) (*sql.DB, error) {
+	return util.InitDB(url, user, pass, db)
+}
+
+func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*StatRow, error) {
+	mySQL := getStatsDB()
+	if mySQL == nil {
+		return nil, errors.New("DB is not inited")
+	}
+
+	table := fmt.Sprintf(RECORD_TABLE_FORMAT, appid)
+	queryPart := fmt.Sprintf("SELECT r.user_q, COUNT(*) as cnt, MAX(r.answer), MAX(r.score), r.std_q FROM %s AS r LEFT JOIN %s AS info USING(unique_id)", table, RECORD_INFO_TABLE)
+	condition := "WHERE info.qa_solved = -1 and r.created_time between FROM_UNIXTIME(?) and FROM_UNIXTIME(?) GROUP BY r.user_q, r.std_q ORDER BY cnt DESC"
+
+	queryStr := queryPart + " " + condition
+
+	util.LogTrace.Printf("Query for stats unresolve question: %s, with [%d, %d]", queryStr, start, end)
+	rows, err := mySQL.Query(queryStr, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []*StatRow{}
+	for rows.Next() {
+		temp := StatRow{}
+		rows.Scan(&temp.UserQuery, &temp.Count, &temp.Answer, &temp.Score, &temp.StandardQuestion)
+		util.LogTrace.Printf("==== %#v", temp)
+		ret = append(ret, &temp)
+	}
 	return ret, nil
 }

@@ -1,6 +1,9 @@
 package Stats
 
 import (
+	"database/sql"
+	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,8 +26,27 @@ func init() {
 		ModuleName: "statistic",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "audit", []string{"view"}, handleListAudit),
+
+			util.NewEntryPoint("GET", "question", []string{"view"}, handleQuestionStatistic),
 		},
 	}
+}
+
+func InitDB() {
+	url := getEnvironment("MYSQL_URL")
+	user := getEnvironment("MYSQL_USER")
+	pass := getEnvironment("MYSQL_PASS")
+	db := getEnvironment("MYSQL_DB")
+	dao, err := initStatDB(url, user, pass, db)
+	if err != nil {
+		util.LogError.Printf("Cannot init statistic db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+	}
+
+	util.SetDB(ModuleInfo.ModuleName, dao)
+}
+
+func getStatsDB() *sql.DB {
+	return util.GetDB(ModuleInfo.ModuleName)
 }
 
 func getEnvironments() map[string]string {
@@ -96,4 +118,46 @@ func loadFilter(ctx context.Context) (*AuditInput, error) {
 		input.Start = input.End - 60*60*24
 	}
 	return input, nil
+}
+
+func handleQuestionStatistic(ctx context.Context) {
+	// user query, standard query, score, count
+	day, qType, err := getQuestionParam(ctx)
+	if err != nil {
+		ctx.StatusCode(iris.StatusBadRequest)
+		return
+	}
+
+	appid := util.GetAppID(ctx)
+
+	util.LogTrace.Printf("Request Questions Statistic: days=[%d] type=[%s]", day, qType)
+
+	ret, code, err := GetQuestionStatisticResult(appid, day, qType)
+	if err != nil {
+		ctx.JSON(util.GenRetObj(code, err.Error()))
+	} else {
+		ctx.JSON(util.GenRetObj(code, ret))
+	}
+}
+
+func getQuestionParam(ctx context.Context) (int, string, error) {
+	dayStr := ctx.FormValue("days")
+	questionType := ctx.FormValue("type")
+	day, err := strconv.Atoi(dayStr)
+	if err != nil {
+		return 1, "", err
+	}
+
+	if day < 0 {
+		day = 1
+	}
+	if day > 30 {
+		day = 30
+	}
+
+	if util.Contains([]string{"unsolved"}, questionType) {
+		return 1, questionType, errors.New("Not support type")
+	}
+
+	return day, questionType, nil
 }

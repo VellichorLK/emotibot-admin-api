@@ -13,7 +13,7 @@ type AuditInput struct {
 type AuditFilter struct {
 	Module    string `json:"module"`
 	Operation string `json:"operation"`
-	UserID    string `json:"user_id"`
+	UserID    string `json:"uid"`
 }
 
 type AuditLog struct {
@@ -29,4 +29,16 @@ type AuditLog struct {
 type AuditRet struct {
 	TotalCount int         `json:"total"`
 	Data       []*AuditLog `json:"data"`
+}
+
+type StatRow struct {
+	UserQuery        string `json:"question"`
+	Count            int    `json:"count"`
+	StandardQuestion string `json:"std_q"`
+	Score            int    `json:"score"`
+	Answer           string `json:"answer"`
+}
+
+type StatRet struct {
+	Data []*StatRow `json:"data"`
 }
