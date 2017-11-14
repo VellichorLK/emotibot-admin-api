@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -71,7 +72,7 @@ func getAuditListPage(appid string, input *AuditInput, page int, listPerPage int
 
 	util.LogTrace.Printf("Search for audit: %#v", input.Filter)
 
-	columns := []string{"user_id", "ip_source", "create_time", "module", "operation", "content", "result"}
+	columns := []string{"id", "user_id", "ip_source", "UNIX_TIMESTAMP(create_time)", "module", "operation", "content", "result"}
 
 	conditions := []string{}
 	args := []interface{}{}
@@ -109,7 +110,10 @@ func getAuditListPage(appid string, input *AuditInput, page int, listPerPage int
 	ret := []*AuditLog{}
 	for rows.Next() {
 		temp := AuditLog{}
-		rows.Scan(&temp.UserID, &temp.UserIP, &temp.CreateTime, &temp.Module, &temp.Operation, &temp.Content, &temp.Result)
+		var id int
+		var timestamp int64
+		rows.Scan(&id, &temp.UserID, &temp.UserIP, &timestamp, &temp.Module, &temp.Operation, &temp.Content, &temp.Result)
+		temp.CreateTime = time.Unix(timestamp, 0)
 		ret = append(ret, &temp)
 	}
 
