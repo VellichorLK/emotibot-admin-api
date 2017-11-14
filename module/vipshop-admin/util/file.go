@@ -9,8 +9,8 @@ import (
 
 const (
 	// ModePerm is 777 for created dir shared with other docker
-	ModePerm          os.FileMode = 0777
-	settingDirPathKey string      = "SETTING_PATH"
+	ModePerm        os.FileMode = 0777
+	mountDirPathKey string      = "MOUNT_PATH"
 )
 
 // GetFunctionSettingPath will return <appid>.property path of appid
@@ -54,13 +54,19 @@ func SaveDictionaryFile(appid string, filename string, file multipart.File) (int
 }
 
 func getAppidDir(appid string) string {
-	settingPath := getGlobalEnv(settingDirPathKey)
-	LogTrace.Printf("Setting path: %s", settingPath)
+	mountPath := getGlobalEnv(mountDirPathKey)
+	LogTrace.Printf("Mount path: %s", mountPath)
 
-	dirPath := fmt.Sprintf("%s/%s", settingPath, appid)
+	dirPath := fmt.Sprintf("%s/settings/%s", mountPath, appid)
 	mkdirErr := os.MkdirAll(dirPath, ModePerm)
 	if mkdirErr != nil {
 		LogError.Printf("Cannot create appid dir into system (%s)", mkdirErr.Error())
 	}
 	return dirPath
+}
+
+func GetMountDir() string {
+	mountPath := getGlobalEnv(mountDirPathKey)
+	LogTrace.Printf("Mount path: %s", mountPath)
+	return mountPath
 }
