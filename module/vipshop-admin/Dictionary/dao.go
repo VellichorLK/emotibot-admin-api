@@ -2,6 +2,7 @@ package Dictionary
 
 import (
 	"errors"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -37,7 +38,7 @@ func GetFullProcessStatus(appid string) (*StatusInfo, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	rows, err := mySQL.Query("SELECT status, start_at, message from process_status where app_id = ? and module = 'wordbank' order by id desc limit 1", appid)
+	rows, err := mySQL.Query("SELECT status, UNIX_TIMESTAMP(start_at), message from process_status where app_id = ? and module = 'wordbank' order by id desc limit 1", appid)
 	if err != nil {
 		return nil, err
 	}
@@ -47,9 +48,12 @@ func GetFullProcessStatus(appid string) (*StatusInfo, error) {
 	if !ret {
 		return nil, nil
 	}
-	if err := rows.Scan(&status.Status, &status.StartTime, &status.Message); err != nil {
+
+	var timestamp int64
+	if err := rows.Scan(&status.Status, &timestamp, &status.Message); err != nil {
 		return nil, err
 	}
+	status.StartTime = time.Unix(timestamp, 0)
 
 	emptyMsg := ""
 	if status.Message == nil {
@@ -65,7 +69,7 @@ func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	rows, err := mySQL.Query("SELECT start_at,entity_file_name from process_status where app_id = ? and module = 'wordbank' and status = 'success' order by start_at desc limit 2", appid)
+	rows, err := mySQL.Query("SELECT UNIX_TIMESTAMP(start_at),entity_file_name from process_status where app_id = ? and module = 'wordbank' and status = 'success' order by start_at desc limit 2", appid)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +77,13 @@ func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 	ret := []*DownloadMeta{}
 	for rows.Next() {
 		var meta DownloadMeta
-		if err := rows.Scan(&meta.UploadTime, &meta.UploadFile); err != nil {
+		var startTime int64
+		if err := rows.Scan(&startTime, &meta.UploadFile); err != nil {
 			return nil, err
 		}
+
+		meta.UploadTime = time.Unix(startTime, 0)
+
 		ret = append(ret, &meta)
 	}
 
