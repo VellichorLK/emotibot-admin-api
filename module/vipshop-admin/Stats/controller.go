@@ -2,11 +2,11 @@ package Stats
 
 import (
 	"database/sql"
-	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -125,6 +125,7 @@ func handleQuestionStatistic(ctx context.Context) {
 	day, qType, err := getQuestionParam(ctx)
 	if err != nil {
 		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 		return
 	}
 
@@ -153,10 +154,6 @@ func getQuestionParam(ctx context.Context) (int, string, error) {
 	}
 	if day > 30 {
 		day = 30
-	}
-
-	if util.Contains([]string{"unsolved"}, questionType) {
-		return 1, questionType, errors.New("Not support type")
 	}
 
 	return day, questionType, nil
