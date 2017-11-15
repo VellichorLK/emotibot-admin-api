@@ -14,18 +14,18 @@ const (
 	applicationName     = "VCA"
 	rolesEntry          = "roleRest/getAllRolesByAppName"
 	privOfRoleEntry     = "privilegeRest/getPrivilegesByRole"
-	usersOfRoleEntry    = "roleRest/getUsesByRole"
-	roleOfUserEntry     = "roleRest/getRolesByUsers"
-	removeUserRoleEntry = "roleRest/delUserRole"
-	addUserRoleEntry    = "roleRest/addUserRole"
-	removeRolePrivEntry = "roleRest/delRolePrivilege"
-	addRolePrivEntry    = "roleRest/addRolePrivilege"
+	usersOfRoleEntry    = "userRest/getUsesByRole"
+	roleOfUserEntry     = "userRoleRest/getRolesByUsers"
+	removeUserRoleEntry = "userRoleRest/delUserRole"
+	addUserRoleEntry    = "userRoleRest/addUserRole"
+	removeRolePrivEntry = "rolePrivilegeRest/delRolePrivilege"
+	addRolePrivEntry    = "rolePrivilegeRest/addRolePrivilege"
 	createRoleEntry     = "roleRest/createRole"
 	deleteRoleEntry     = "roleRest/deleteRole"
 )
 
 func getRolesFromCAuth() (*AllRolesRet, error) {
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), rolesEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), rolesEntry)
 	param := RolesParam{
 		ApplicationName: applicationName,
 		AppKey:          getCAuthAppKey(),
@@ -46,7 +46,7 @@ func getRolesFromCAuth() (*AllRolesRet, error) {
 }
 
 func getPrivilegeOfRoleFromCAuth(name string) (*PrivilegesRet, error) {
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), privOfRoleEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), privOfRoleEntry)
 	param := RolePrivilegesParam{
 		RoleName:        name,
 		ApplicationName: applicationName,
@@ -68,7 +68,7 @@ func getPrivilegeOfRoleFromCAuth(name string) (*PrivilegesRet, error) {
 }
 
 func getUsersOfRoleFromCAuth(name string) (*UsersRet, error) {
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), usersOfRoleEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), usersOfRoleEntry)
 	param := RoleUsersParam{
 		RoleName:        name,
 		ApplicationName: applicationName,
@@ -123,7 +123,7 @@ func getUserRoles(userID string) ([]*SimpleRoleRet, error) {
 }
 
 func getUsersRoles(userIDs []string) (*UserRolesRet, error) {
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), roleOfUserEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), roleOfUserEntry)
 	param := UserRolesParam{
 		UserAccounts:    userIDs,
 		ApplicationName: applicationName,
@@ -139,7 +139,7 @@ func getUsersRoles(userIDs []string) (*UserRolesRet, error) {
 }
 
 func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet, newRoleID string) error {
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), addUserRoleEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), addUserRoleEntry)
 	param := UserRoleInput{
 		RoleName:        newRoleID,
 		UserAccount:     userID,
@@ -164,7 +164,7 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 		}
 	}
 
-	postURL = fmt.Sprintf("%s/%s", getCAuthServer(), removeUserRoleEntry)
+	postURL = fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), removeUserRoleEntry)
 	for _, role := range origRoles {
 		param.RoleName = role.RoleName
 		code, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
@@ -208,7 +208,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 		}
 	}
 
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), addRolePrivEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), addRolePrivEntry)
 	param := RolePrivilegeInput{
 		RoleName:        roleID,
 		ApplicationName: applicationName,
@@ -227,7 +227,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 		util.LogTrace.Printf("Add priv [%s] from [%s]: %s", priv, roleID, body)
 	}
 
-	postURL = fmt.Sprintf("%s/%s", getCAuthServer(), removeRolePrivEntry)
+	postURL = fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), removeRolePrivEntry)
 	for _, priv := range deletePrivs {
 		param.PrivilegeName = priv
 		ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
