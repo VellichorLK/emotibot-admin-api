@@ -76,7 +76,7 @@ func handleRoleList(ctx context.Context) {
 			RoleName: role.RoleName,
 		}
 
-		privList, err := getRolePrivs(role.RoleName)
+		privList, err := GetRolePrivs(role.RoleName)
 		if err != nil {
 			ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 			return
@@ -149,7 +149,7 @@ func handleUserUpdate(ctx context.Context) {
 
 	roleID := strings.Trim(ctx.FormValue("role_id"), " ")
 
-	origUserRoles, err := getUserRoles(id)
+	origUserRoles, err := GetUserRoles(id)
 	if err != nil {
 		util.LogTrace.Printf("Cannot get orig role of user, %s", err.Error())
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -199,7 +199,7 @@ func handleRoleUpdate(ctx context.Context) {
 		return
 	}
 
-	origRolePriv, err := getRolePrivs(id)
+	origRolePriv, err := GetRolePrivs(id)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 		return
@@ -260,5 +260,5 @@ func handleDeleteRole(ctx context.Context) {
 		result = 1
 	}
 	logMsg := fmt.Sprintf("delete role: %s", id)
-	util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationAdd, logMsg, result)
+	util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationDelete, logMsg, result)
 }

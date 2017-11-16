@@ -3,6 +3,7 @@ package CAuth
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/kataras/iris"
@@ -108,7 +109,7 @@ func getCAuthRetWithStatus(url string, param interface{}) (int, string, error) {
 	return util.HTTPPostJSONWithStatus(url, param, 5)
 }
 
-func getUserRoles(userID string) ([]*SimpleRoleRet, error) {
+func GetUserRoles(userID string) ([]*SimpleRoleRet, error) {
 	rets, err := getUsersRoles([]string{userID})
 	if err != nil {
 		return nil, err
@@ -124,6 +125,7 @@ func getUserRoles(userID string) ([]*SimpleRoleRet, error) {
 
 func getUsersRoles(userIDs []string) (*UserRolesRet, error) {
 	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), roleOfUserEntry)
+	log.Println(postURL)
 	param := UserRolesParam{
 		UserAccounts:    userIDs,
 		ApplicationName: applicationName,
@@ -181,7 +183,7 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 	return nil
 }
 
-func getRolePrivs(id string) (map[int][]string, error) {
+func GetRolePrivs(id string) (map[int][]string, error) {
 	cauthPrivSet, err := getPrivilegeOfRoleFromCAuth(id)
 	if err != nil {
 		return nil, err
@@ -320,7 +322,7 @@ func addRole(roleName string) error {
 		AppKey:          getCAuthAppKey(),
 	}
 
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), createRoleEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), createRoleEntry)
 	ret, body, err := util.HTTPPostJSONWithStatus(postURL, param, 5)
 	if err != nil {
 		return err
@@ -346,7 +348,7 @@ func deleteRole(roleName string) error {
 	}
 	fmt.Printf("%#v\n", param)
 
-	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), deleteRoleEntry)
+	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), deleteRoleEntry)
 	ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
 	if err != nil {
 		return err

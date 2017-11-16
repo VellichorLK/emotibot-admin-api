@@ -16,14 +16,14 @@ fi
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-EMOTIGO=${DIR#*/module/}
-BUILDROOT=${DIR%/module/*}
-GOSRCPATH="module/$EMOTIGO/../"
+GOSRCPATH="$(cd "$DIR/../" && pwd )"
+MODULE=${GOSRCPATH##/*/}
+BUILDROOT=$DIR/../../
 
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \
-  --build-arg PROJECT=$GOSRCPATH \
+  --build-arg PROJECT=$MODULE \
   -f $DIR/Dockerfile $BUILDROOT"
 echo $cmd
 eval $cmd

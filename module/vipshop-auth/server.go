@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"emotibot.com/emotigo/module/vipshop-auth/CAS"
+
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-auth/CAuth"
 
@@ -46,13 +48,18 @@ func main() {
 func setRoute(app *iris.Application) {
 	modules := []interface{}{
 		CAuth.ModuleInfo,
+		CAS.ModuleInfo,
 	}
 
 	for _, module := range modules {
 		info := module.(util.ModuleInfo)
 		for _, entrypoint := range info.EntryPoints {
 			// entry will be api/v_/<module>/<entry>
+
 			entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
+			if info.ModuleName == "cas" {
+				entryPath = "login"
+			}
 			if app.Handle(entrypoint.AllowMethod, entryPath, entrypoint.Callback) == nil {
 				util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
 			} else {
