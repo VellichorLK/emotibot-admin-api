@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
-	"sort"
 
 	"errors"
 	"net/http"
@@ -246,77 +245,150 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 func ComputeChannelScore(eb *EmotionBlock) {
 
 	const divider = 1000
-	NumSegInOneChannel := make(map[int]int)
-	TotalProbabilityWithEmotion := make(map[int]float64)
-	NumOfHasOneEmotionInOneChannel := make(map[int]int)
+	const gap = 0.7
+	const weight = 1.5
+	const portion = 0.25
 
-	angerScore := make([]float64, 0)
-
-	threashold := 0.7
-	weight := 0.5
-
+	EmotionScoreInEachChannel := make(map[int][]float64)
 	for _, seg := range eb.Segments {
 		for _, s := range seg.ScoreList {
 			label, ok := s.Label.(float64)
 			if !ok {
 				log.Printf("label is not float, %v %T\n", s.Label, s.Label)
 			} else {
-
 				emotionChannelKey := seg.Channel*divider + int(label)
-				NumSegInOneChannel[emotionChannelKey]++
-				TotalProbabilityWithEmotion[emotionChannelKey] += s.Score
-				if s.Score >= threashold {
-					NumOfHasOneEmotionInOneChannel[emotionChannelKey]++
-				}
-
-				//if it's anger
-				if int(label) == 1 && seg.Channel == 1 {
-					angerScore = append(angerScore, s.Score)
-				}
+				EmotionScoreInEachChannel[emotionChannelKey] = append(EmotionScoreInEachChannel[emotionChannelKey], s.Score)
 			}
-
 		}
 	}
 
-	for chEmotion, count := range NumSegInOneChannel {
-		var twoFixedScore, totalScore, weightScore, rateScore float64
-
-		//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
-
+	for chEmotion, scores := range EmotionScoreInEachChannel {
 		channel := chEmotion / divider
 		emotionType := chEmotion % divider
+		count := len(scores)
 
-		if count != 0 {
+		if count > 0 {
 
-			if emotionType == 1 && channel == 1 {
-				sort.Float64s(angerScore)
-				var topCount int
-				var length int
-				var top5Score float64
-				length = len(angerScore)
-				if length > 5 {
-					topCount = 5
-				} else {
-					topCount = length
-				}
+			var twoFixedScore float64
 
-				for i := 0; i < topCount; i++ {
-					top5Score += angerScore[length-1-i]
-				}
+			var upRateCount int
+			var avgCountAcc float64
+			var upRate, avgProb float64
+			var start int
 
-				twoFixedScore = float64(int((top5Score/float64(topCount))*100*100)) / 100
-
+			if emotionType == 1 && channel == 2 {
+				start = 1
 			} else {
-				weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
-				rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
-				totalScore = weightScore*weight + rateScore*(1-weight)
-				twoFixedScore = float64(int(totalScore*100*100)) / 100
+				start = 0
+			}
+
+			for i := start; i < count; i++ {
+				if scores[i] > gap {
+					upRateCount++
+				}
+				avgCountAcc += scores[i]
+			}
+
+			upRate = float64(upRateCount) / float64(count-start)
+			avgProb = avgCountAcc / float64(count-start)
+
+			twoFixedScore = float64(int(((upRate+avgProb)/2)*100*100)) / 100
+			if emotionType == 1 && channel == 2 && count > 20 {
+				twentyFivePercent := int(float64(count)*portion + 0.5)
+				firstPart := count - twentyFivePercent
+				var i int
+				var upRateScore float64
+				var avgScoreAcc float64
+
+				var totalScore float64
+				for i = 1; i < firstPart; i++ {
+					if scores[i] > gap {
+						upRateScore++
+					}
+					avgScoreAcc += scores[i]
+				}
+				for ; i < count; i++ {
+					if scores[i] > gap {
+						upRateScore += weight
+						avgScoreAcc += (scores[i] * weight)
+					} else {
+						avgScoreAcc += scores[i]
+					}
+
+				}
+
+				upRateScore = upRateScore / float64(count-1)
+				avgScoreAcc = avgScoreAcc / float64(count-1)
+
+				totalScore = float64(int(((upRateScore+avgScoreAcc)/2)*100*100)) / 100
+
+				if totalScore <= 100 {
+					twoFixedScore = totalScore
+				}
 			}
 
 			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
 		}
 	}
 
+	/*
+		const divider = 1000
+		NumSegInOneChannel := make(map[int]int)
+		TotalProbabilityWithEmotion := make(map[int]float64)
+		NumOfHasOneEmotionInOneChannel := make(map[int]int)
+
+		threashold := 0.7
+		weight := 0.5
+
+		lastPartWeight := 1.5
+
+		for _, seg := range eb.Segments {
+			for _, s := range seg.ScoreList {
+				label, ok := s.Label.(float64)
+				if !ok {
+					log.Printf("label is not float, %v %T\n", s.Label, s.Label)
+				} else {
+
+					emotionChannelKey := seg.Channel*divider + int(label)
+					NumSegInOneChannel[emotionChannelKey]++
+					TotalProbabilityWithEmotion[emotionChannelKey] += s.Score
+					if s.Score >= threashold {
+						NumOfHasOneEmotionInOneChannel[emotionChannelKey]++
+					}
+
+				}
+
+			}
+		}
+
+		for chEmotion, count := range NumSegInOneChannel {
+			var twoFixedScore, totalScore, weightScore, rateScore float64
+
+			//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
+
+			channel := chEmotion / divider
+			emotionType := chEmotion % divider
+
+			if count != 0 {
+
+				if emotionType == 1 && channel == 2 {
+
+
+
+
+					twoFixedScore = float64(int((top5Score/float64(topCount))*100*100)) / 100
+
+				} else {
+					weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
+					rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
+					totalScore = weightScore*weight + rateScore*(1-weight)
+					twoFixedScore = float64(int(totalScore*100*100)) / 100
+				}
+
+				InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
+			}
+		}
+	*/
 	/*
 		const divider = 100
 
