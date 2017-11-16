@@ -14,7 +14,8 @@ VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
                          'worker-voice-emotion-statistic',
                          'voice_emotion_houta', 'nginx', 'authentication',
                          'consul']
-VOICE_EMOTION_FULL = copy.deepcopy(VOICE_EMOTION_MINIMAL).extend(['netdata', 'phpmyadmin', 'kibana', 'elastic-closer', 'logstash', 'elasticsearch', 'kibana'])
+VOICE_EMOTION_FULL = copy.deepcopy(VOICE_EMOTION_MINIMAL)
+VOICE_EMOTION_FULL.extend(['netdata', 'phpmyadmin', 'kibana', 'elastic-closer', 'logstash', 'elasticsearch', 'kibana'])
 BF_UBT_APIGW = ['nginx', 'bf-ubt-apigw']
 
 
@@ -208,7 +209,7 @@ def main():
         elif args.service_group == 'bf-ubt-apigw':
             args.service.extend(BF_UBT_APIGW)
         elif args.service_group == 'voice-emotion-full':
-            args.service.exetend(VOICE_EMOTION_FULL)
+            args.service.extend(VOICE_EMOTION_FULL)
 
     # do action
     if args.save:
