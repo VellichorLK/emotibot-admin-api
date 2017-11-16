@@ -12,7 +12,7 @@ import (
 
 // constant define all const used in server
 var constant = map[string]interface{}{
-	"API_PREFIX":  "auth",
+	"API_PREFIX":  "cauth",
 	"API_VERSION": 1,
 }
 

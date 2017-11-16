@@ -127,6 +127,17 @@ var (
 				"view-log", "export-log", "view-analysis", "export-analysis", "view-safety", "export-safety", "view-qa", "export-qa", "import-qa", "add-qa", "modify-qa", "delete-qa", "view-qatest", "view-dict", "export-dict", "import-dict", "view-profile", "modify-profile", "view-skill", "modify-skill", "view-answer", "modify-answer", "view-switch", "modify-switch", "add-user", "modify-user", "delete-user", "modify-role",
 			},
 		},
+		"test": &StoreRole{
+			RoleName:        "test",
+			ApplicationName: "VCA",
+			CreateTime:      1509220897,
+			LastModifyTime:  1509220897,
+			RoleDesc:        "test",
+			RoleState:       1,
+			Privileges: []string{
+				"view-log",
+			},
+		},
 	}
 	Users = map[string]*StoreUser{
 		"VipAdmin": &StoreUser{
@@ -135,6 +146,20 @@ var (
 			UserAccountID:  "VipAdmin",
 			UserCode:       0,
 			Roles:          []string{"admin"},
+		},
+		"unittest1": &StoreUser{
+			UserName:       "测试1",
+			UserDepartment: "test",
+			UserAccountID:  "unittest1",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"unittest2": &StoreUser{
+			UserName:       "测试2",
+			UserDepartment: "test",
+			UserAccountID:  "unittest2",
+			UserCode:       0,
+			Roles:          []string{""},
 		},
 	}
 )

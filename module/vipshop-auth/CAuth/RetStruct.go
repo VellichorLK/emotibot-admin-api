@@ -3,9 +3,9 @@ package CAuth
 import "emotibot.com/emotigo/module/vipshop-admin/ApiError"
 
 type RetObj struct {
-	Status  int
-	Message string
-	Result  interface{}
+	Status  int         `json:"status"`
+	Message string      `json:"message"`
+	Result  interface{} `json:"result"`
 }
 
 type Privilege struct {
