@@ -2,9 +2,9 @@
 
 REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
-CONTAINER=vipshop-admin-api
+CONTAINER=vipshop-fake-auth
 #TAG="$(git rev-parse --short HEAD)"
-TAG="2017111602"
+TAG="2017111601"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 globalConf="
@@ -12,8 +12,7 @@ globalConf="
     --restart always \
 "
 moduleConf="
-    -p 8181:8181
-    --env-file $1
+    -p 8787:8787
 "
 
 docker rm -f $CONTAINER

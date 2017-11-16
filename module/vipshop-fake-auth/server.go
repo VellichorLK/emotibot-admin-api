@@ -254,13 +254,8 @@ func addUserRole(ctx context.Context) {
 			user.Roles = append(user.Roles, input.RoleName)
 		}
 	} else {
-		Users[input.UserAccount] = &StoreUser{
-			UserName:       input.UserAccount,
-			UserDepartment: "test",
-			UserAccountID:  input.UserAccount,
-			UserCode:       0,
-			Roles:          []string{input.RoleName},
-		}
+		retError(ctx, fmt.Errorf("User %s is not existed", input.UserAccount))
+		return
 	}
 
 	retSuccess(ctx)

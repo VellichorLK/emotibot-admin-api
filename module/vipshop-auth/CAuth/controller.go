@@ -30,6 +30,10 @@ func init() {
 
 			util.NewEntryPoint("PATCH", "user/{id:string}", []string{}, handleUserUpdate),
 			util.NewEntryPoint("PATCH", "role/{id:string}", []string{}, handleRoleUpdate),
+
+			util.NewEntryPoint("POST", "role/register", []string{}, handleAddRole),
+
+			util.NewEntryPoint("DELETE", "role/{id:string}", []string{}, handleDeleteRole),
 		},
 	}
 }
@@ -72,39 +76,11 @@ func handleRoleList(ctx context.Context) {
 			RoleName: role.RoleName,
 		}
 
-		// CAuthPrivileges, err := getPrivilegeOfRoleFromCAuth(role.RoleName)
 		privList, err := getRolePrivs(role.RoleName)
 		if err != nil {
 			ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 			return
 		}
-		// privList := make(map[int][]string)
-		// for _, CAuthPriv := range CAuthPrivileges.Data {
-		// 	params := strings.Split(CAuthPriv.PrivilegeName, "-")
-		// 	if len(params) != 2 {
-		// 		fmt.Printf("Error priv in role %s: %s", role.RoleName, CAuthPriv.PrivilegeName)
-		// 		continue
-		// 	}
-
-		// 	cmd := params[0]
-		// 	module := params[1]
-
-		// 	if cmd == "create" {
-		// 		cmd = "add"
-		// 	}
-
-		// 	if cmd == "modify" {
-		// 		cmd = "edit"
-		// 	}
-
-		// 	if _, ok := PrivilegesMap[module]; !ok {
-		// 		fmt.Printf("Error cauth module which not existed in system: %s\n", module)
-		// 		continue
-		// 	}
-
-		// 	id := PrivilegesMap[module].ID
-		// 	privList[id] = append(privList[id], cmd)
-		// }
 		privStr, _ := json.Marshal(privList)
 		temp.Privilege = string(privStr)
 
@@ -171,12 +147,7 @@ func handleUserUpdate(ctx context.Context) {
 		return
 	}
 
-	roleID := ctx.FormValue("role_id")
-	if strings.Trim(roleID, " ") == "" {
-		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "rold_id is invalid"))
-		return
-	}
+	roleID := strings.Trim(ctx.FormValue("role_id"), " ")
 
 	origUserRoles, err := getUserRoles(id)
 	if err != nil {
@@ -242,8 +213,52 @@ func handleRoleUpdate(ctx context.Context) {
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
-		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
+		ret := Role{
+			Privilege: newPrivStr,
+			RoleID:    id,
+			RoleName:  id,
+		}
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 		result = 1
 	}
 	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, util.AuditOperationEdit, logMsg, result)
+}
+
+func handleAddRole(ctx context.Context) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	roleName := strings.Trim(ctx.FormValue("role_name"), " ")
+	result := 0
+
+	err := addRole(roleName)
+	if err != nil {
+		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	} else {
+		ret := Role{
+			Privilege: "{}",
+			RoleID:    roleName,
+			RoleName:  roleName,
+		}
+		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
+		result = 1
+	}
+	logMsg := fmt.Sprintf("Add new role: %s", roleName)
+	util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationAdd, logMsg, result)
+}
+
+func handleDeleteRole(ctx context.Context) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	id := ctx.Params().GetEscape("id")
+	result := 0
+
+	err := deleteRole(id)
+	if err != nil {
+		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	} else {
+		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
+		result = 1
+	}
+	logMsg := fmt.Sprintf("delete role: %s", id)
+	util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationAdd, logMsg, result)
 }

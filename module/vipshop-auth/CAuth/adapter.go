@@ -2,7 +2,6 @@ package CAuth
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -21,6 +20,8 @@ const (
 	addUserRoleEntry    = "roleRest/addUserRole"
 	removeRolePrivEntry = "roleRest/delRolePrivilege"
 	addRolePrivEntry    = "roleRest/addRolePrivilege"
+	createRoleEntry     = "roleRest/createRole"
+	deleteRoleEntry     = "roleRest/deleteRole"
 )
 
 func getRolesFromCAuth() (*AllRolesRet, error) {
@@ -116,7 +117,7 @@ func getUserRoles(userID string) ([]*SimpleRoleRet, error) {
 	ret := rets.Data[userID]
 	if ret == nil || len(ret) <= 0 {
 		util.LogTrace.Printf("Get role list: %#v", ret)
-		return nil, errors.New("There should not exist user which has multiple role")
+		return []*SimpleRoleRet{}, nil
 	}
 	return ret, nil
 }
@@ -142,23 +143,31 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 	param := UserRoleInput{
 		RoleName:        newRoleID,
 		UserAccount:     userID,
-		Requestor:       requester,
+		Requestor:       getCAuthRequester(),
 		ApplicationName: applicationName,
 		AppKey:          getCAuthAppKey(),
 	}
 
-	code, body, err := getCAuthRetWithStatus(postURL, param)
-	if err != nil {
-		return err
-	}
-	if code != iris.StatusOK {
-		return fmt.Errorf("Add role faild: %s", body)
+	if newRoleID != "" {
+		code, body, err := getCAuthRetWithStatus(postURL, param)
+		if err != nil {
+			return err
+		}
+		if code != iris.StatusOK {
+			apiRet := CAuthStatus{}
+			err := json.Unmarshal([]byte(body), &apiRet)
+			if err != nil {
+				return fmt.Errorf("Add Role fail: %d [%s]", code, body)
+			} else {
+				return fmt.Errorf("Add Role fail: %s", apiRet.Error.Message)
+			}
+		}
 	}
 
 	postURL = fmt.Sprintf("%s/%s", getCAuthServer(), removeUserRoleEntry)
 	for _, role := range origRoles {
 		param.RoleName = role.RoleName
-		code, body, err = util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
+		code, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
 		if err != nil {
 			return err
 		}
@@ -203,7 +212,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 	param := RolePrivilegeInput{
 		RoleName:        roleID,
 		ApplicationName: applicationName,
-		Requestor:       operator,
+		Requestor:       getCAuthRequester(),
 		AppKey:          getCAuthAppKey(),
 	}
 	for _, priv := range addPrivs {
@@ -300,4 +309,56 @@ func convertAPIPrivToCAuthPriv(priv map[int][]string) []string {
 		}
 	}
 	return ret
+}
+
+func addRole(roleName string) error {
+	param := RoleInput{
+		RoleDesc:        roleName,
+		RoleName:        roleName,
+		ApplicationName: applicationName,
+		Requestor:       getCAuthRequester(),
+		AppKey:          getCAuthAppKey(),
+	}
+
+	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), createRoleEntry)
+	ret, body, err := util.HTTPPostJSONWithStatus(postURL, param, 5)
+	if err != nil {
+		return err
+	}
+	if ret != iris.StatusOK {
+		apiRet := CAuthStatus{}
+		err := json.Unmarshal([]byte(body), &apiRet)
+		if err != nil {
+			return fmt.Errorf("Add Role fail: %d [%s]", ret, body)
+		} else {
+			return fmt.Errorf("Add Role fail: %s", apiRet.Error.Message)
+		}
+	}
+	return nil
+}
+
+func deleteRole(roleName string) error {
+	param := DeleteRoleInput{
+		RoleName:        roleName,
+		ApplicationName: applicationName,
+		Requestor:       getCAuthRequester(),
+		AppKey:          getCAuthAppKey(),
+	}
+	fmt.Printf("%#v\n", param)
+
+	postURL := fmt.Sprintf("%s/%s", getCAuthServer(), deleteRoleEntry)
+	ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
+	if err != nil {
+		return err
+	}
+	if ret != iris.StatusOK {
+		apiRet := CAuthStatus{}
+		err := json.Unmarshal([]byte(body), &apiRet)
+		if err != nil {
+			return fmt.Errorf("Delete Role fail: %d [%s]", ret, body)
+		} else {
+			return fmt.Errorf("Delete Role fail: %s", apiRet.Error.Message)
+		}
+	}
+	return nil
 }

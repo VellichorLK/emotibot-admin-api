@@ -126,10 +126,17 @@ type UserRoleInput struct {
 // Struct used in addRole/delRole
 // =====================================
 
-// RoleInput used in addUserRole/delUserRole
+// RoleInput used in createRole/deleteRole
 type RoleInput struct {
 	RoleName        string `json:"roleName"`
 	RoleDesc        string `json:"roleDesc"`
+	ApplicationName string `json:"applicationName"`
+	Requestor       string `json:"requestor"`
+	AppKey          string `json:"appKey"`
+}
+
+type DeleteRoleInput struct {
+	RoleName        string `json:"roleName"`
 	ApplicationName string `json:"applicationName"`
 	Requestor       string `json:"requestor"`
 	AppKey          string `json:"appKey"`
