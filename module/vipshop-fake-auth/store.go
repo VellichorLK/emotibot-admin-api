@@ -140,26 +140,75 @@ var (
 		},
 	}
 	Users = map[string]*StoreUser{
-		"VipAdmin": &StoreUser{
-			UserName:       "VipAdmin",
+		"user1": &StoreUser{
+			UserName:       "测试1",
 			UserDepartment: "test",
-			UserAccountID:  "VipAdmin",
+			UserAccountID:  "user1",
 			UserCode:       0,
 			Roles:          []string{"admin"},
 		},
-		"unittest1": &StoreUser{
-			UserName:       "测试1",
+		"user2": &StoreUser{
+			UserName:       "测试2",
 			UserDepartment: "test",
-			UserAccountID:  "unittest1",
+			UserAccountID:  "user2",
 			UserCode:       0,
 			Roles:          []string{"test"},
 		},
-		"unittest2": &StoreUser{
-			UserName:       "测试2",
+		"user3": &StoreUser{
+			UserName:       "测试3",
 			UserDepartment: "test",
-			UserAccountID:  "unittest2",
+			UserAccountID:  "user3",
 			UserCode:       0,
-			Roles:          []string{""},
+			Roles:          []string{"test"},
+		},
+		"user4": &StoreUser{
+			UserName:       "测试4",
+			UserDepartment: "test",
+			UserAccountID:  "user4",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user5": &StoreUser{
+			UserName:       "测试5",
+			UserDepartment: "test",
+			UserAccountID:  "user5",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user6": &StoreUser{
+			UserName:       "测试6",
+			UserDepartment: "test",
+			UserAccountID:  "user6",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user7": &StoreUser{
+			UserName:       "测试7",
+			UserDepartment: "test",
+			UserAccountID:  "user7",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user8": &StoreUser{
+			UserName:       "测试8",
+			UserDepartment: "test",
+			UserAccountID:  "user8",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user9": &StoreUser{
+			UserName:       "测试9",
+			UserDepartment: "test",
+			UserAccountID:  "user9",
+			UserCode:       0,
+			Roles:          []string{"test"},
+		},
+		"user10": &StoreUser{
+			UserName:       "测试10",
+			UserDepartment: "test",
+			UserAccountID:  "user10",
+			UserCode:       0,
+			Roles:          []string{"test"},
 		},
 	}
 )
