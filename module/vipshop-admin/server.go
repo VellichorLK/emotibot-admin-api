@@ -100,7 +100,6 @@ func setRoute(app *iris.Application) {
 		Robot.ModuleInfo,
 		Stats.ModuleInfo,
 		QA.ModuleInfo,
-		UI.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -113,6 +112,18 @@ func setRoute(app *iris.Application) {
 			} else {
 				util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
 			}
+		}
+	}
+
+	// Entry for ui setting do not has to check privilege
+	info := UI.ModuleInfo
+	for _, entrypoint := range info.EntryPoints {
+		// entry will be api/v_/<module>/<entry>
+		entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
+		if app.Handle(entrypoint.AllowMethod, entryPath, entrypoint.Callback) == nil {
+			util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
+		} else {
+			util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
 		}
 	}
 }
