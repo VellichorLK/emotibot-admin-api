@@ -11,18 +11,18 @@ import (
 
 func main() {
 	app := iris.New()
-	app.Handle("POST", "/roleRest/getAllRolesByAppName", getAllRolesByAppName)
+	app.Handle("POST", "/authsys-webapp/roleRest/getAllRolesByAppName", getAllRolesByAppName)
 
-	app.Handle("POST", "/roleRest/createRole", createRole)
-	app.Handle("DELETE", "/roleRest/deleteRole", deleteRole)
-	app.Handle("POST", "/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
-	app.Handle("POST", "/roleRest/addRolePrivilege", addRolePrivilege)
-	app.Handle("DELETE", "/roleRest/delRolePrivilege", delRolePrivilege)
+	app.Handle("POST", "/authsys-webapp/roleRest/createRole", createRole)
+	app.Handle("DELETE", "/authsys-webapp/roleRest/deleteRole", deleteRole)
+	app.Handle("POST", "/authsys-webapp/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
+	app.Handle("POST", "/authsys-webapp/rolePrivilegeRest/addRolePrivilege", addRolePrivilege)
+	app.Handle("DELETE", "/authsys-webapp/rolePrivilegeRest/delRolePrivilege", delRolePrivilege)
 
-	app.Handle("POST", "/roleRest/getRolesByUsers", getRolesByUsers)
-	app.Handle("POST", "/roleRest/addUserRole", addUserRole)
-	app.Handle("DELETE", "/roleRest/delUserRole", delUserRole)
-	app.Handle("POST", "/roleRest/getUsesByRole", getUsesByRole)
+	app.Handle("POST", "/authsys-webapp/userRoleRest/getRolesByUsers", getRolesByUsers)
+	app.Handle("POST", "/authsys-webapp/userRoleRest/addUserRole", addUserRole)
+	app.Handle("DELETE", "/authsys-webapp/userRoleRest/delUserRole", delUserRole)
+	app.Handle("POST", "/authsys-webapp/userRest/getUsesByRole", getUsesByRole)
 
 	app.Run(iris.Addr(":8787"), iris.WithoutVersionChecker)
 }
