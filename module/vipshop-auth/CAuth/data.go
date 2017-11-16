@@ -5,6 +5,7 @@ import "emotibot.com/emotigo/module/vipshop-admin/util"
 const cAuthServerKey = "SERVER_ADDR"
 const requestHashKey = "APP_KEY"
 const requestRequesterKey = "REQUESTER"
+const cAuthPrefix = "PREFIX"
 
 var (
 	// PrivilegesMap is a map, key is module from cauth return, value is the same in origin system
@@ -44,4 +45,8 @@ func getCAuthAppKey() string {
 
 func getCAuthRequester() string {
 	return getEnvironment(requestRequesterKey)
+}
+
+func getCAuthPrefix() string {
+	return getEnvironment(cAuthPrefix)
 }
