@@ -2,7 +2,17 @@
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=vipshop-admin-api
 # TAG="$(git rev-parse --short HEAD)"
-TAG="2017111603"
+LAST_RELEASE_TAG="20171118-7071bc5"
+GIT_HEAD="$(git rev-parse --short HEAD)"
+DATE=`date +%Y%m%d`
+TAG=$1
+
+if [ "$TAG" == "" ]; then
+    TAG="$DATE-$GIT_HEAD"
+elif [ "$TAG" == "LR" ]; then
+    TAG=$LAST_RELEASE_TAG
+fi
+
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
