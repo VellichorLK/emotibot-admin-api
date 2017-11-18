@@ -378,7 +378,7 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 
 	questionCols := 10
 	// Update question table
-	queryStr := fmt.Sprintf("UPDATE %s_robotquestion SET content = ?, content2 = ?, content3 = ?, content4 = ?, content5 = ?, content6 = ?, content7 = ?, content8 = ?, content9 = ?, content10 = ?, answer_count = ? WHERE q_id = ?", appid)
+	queryStr := fmt.Sprintf("UPDATE %s_robotquestion SET content = ?, content2 = ?, content3 = ?, content4 = ?, content5 = ?, content6 = ?, content7 = ?, content8 = ?, content9 = ?, content10 = ?, status = 1, answer_count = ? WHERE q_id = ?", appid)
 	args := make([]interface{}, questionCols+2)
 	args[0] = info.Question
 	for i := 1; i < questionCols; i++ {
