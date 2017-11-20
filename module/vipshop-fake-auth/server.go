@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"strings"
 	"time"
 
 	"github.com/kataras/iris"
@@ -13,18 +16,49 @@ func main() {
 	app := iris.New()
 	app.Handle("POST", "/authsys-webapp/roleRest/getAllRolesByAppName", getAllRolesByAppName)
 
-	app.Handle("POST", "/authsys-webapp/roleRest/createRole", createRole)
-	app.Handle("DELETE", "/authsys-webapp/roleRest/deleteRole", deleteRole)
-	app.Handle("POST", "/authsys-webapp/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
-	app.Handle("POST", "/authsys-webapp/rolePrivilegeRest/addRolePrivilege", addRolePrivilege)
-	app.Handle("DELETE", "/authsys-webapp/rolePrivilegeRest/delRolePrivilege", delRolePrivilege)
+	//adminGroup for
+	adminGroup := app.Party("/authsys-webapp/", checkRequestorMiddleware)
+	adminGroup.Handle("POST", "/roleRest/createRole", createRole)
+	adminGroup.Handle("DELETE", "/roleRest/deleteRole", deleteRole)
+	adminGroup.Handle("POST", "/rolePrivilegeRest/addRolePrivilege", addRolePrivilege)
+	adminGroup.Handle("DELETE", "/rolePrivilegeRest/delRolePrivilege", delRolePrivilege)
+	adminGroup.Handle("POST", "/userRoleRest/addUserRole", addUserRole)
+	adminGroup.Handle("DELETE", "/userRoleRest/delUserRole", delUserRole)
 
+	app.Handle("POST", "/authsys-webapp/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
 	app.Handle("POST", "/authsys-webapp/userRoleRest/getRolesByUsers", getRolesByUsers)
-	app.Handle("POST", "/authsys-webapp/userRoleRest/addUserRole", addUserRole)
-	app.Handle("DELETE", "/authsys-webapp/userRoleRest/delUserRole", delUserRole)
 	app.Handle("POST", "/authsys-webapp/userRest/getUsesByRole", getUsesByRole)
 
 	app.Run(iris.Addr(":8787"), iris.WithoutVersionChecker)
+}
+
+func checkRequestorMiddleware(ctx context.Context) {
+	//anonymous struct for reading requestor from body
+	var requestor struct {
+		Requestor string `json:"requestor"`
+	}
+
+	// Because ctx.ReadJSON will empty the Body, so we need to copy it out first or ReadJSON twice will emit error
+	buf, _ := ioutil.ReadAll(ctx.Request().Body)
+	ctx.Request().Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	err := ctx.ReadJSON(&requestor)
+	ctx.Request().Body = ioutil.NopCloser(bytes.NewBuffer(buf))
+	if err != nil {
+		fmt.Println(err)
+		retError(ctx, err)
+		ctx.Skip()
+	}
+
+	// Only admin user user1 can continue the admin operation
+	if strings.Compare(requestor.Requestor, "user1") == 0 {
+		ctx.Next()
+	} else {
+		// Error message based on real error log
+		err := fmt.Errorf("Not admin user: %s of application : 371", requestor.Requestor)
+		retError(ctx, err)
+		ctx.StopExecution()
+	}
+
 }
 
 func retError(ctx context.Context, err error) {

@@ -114,6 +114,10 @@ var (
 			PrivilegeName: "modify-role",
 			AssetName:     "权限管理",
 		},
+		"modify-taskengine": PrivilegeRet{
+			PrivilegeName: "modify-taskengine",
+			AssetName:     "任务引擎",
+		},
 	}
 	Roles = map[string]*StoreRole{
 		"admin": &StoreRole{
