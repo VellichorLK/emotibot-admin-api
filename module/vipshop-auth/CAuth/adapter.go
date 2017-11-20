@@ -145,7 +145,7 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 	param := UserRoleInput{
 		RoleName:        newRoleID,
 		UserAccount:     userID,
-		Requestor:       getCAuthRequester(),
+		Requestor:       requester,
 		ApplicationName: applicationName,
 		AppKey:          getCAuthAppKey(),
 	}
@@ -214,7 +214,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 	param := RolePrivilegeInput{
 		RoleName:        roleID,
 		ApplicationName: applicationName,
-		Requestor:       getCAuthRequester(),
+		Requestor:       operator,
 		AppKey:          getCAuthAppKey(),
 	}
 	for _, priv := range addPrivs {
