@@ -128,7 +128,7 @@ var (
 			RoleDesc:        "admin",
 			RoleState:       1,
 			Privileges: []string{
-				"view-log", "export-log", "view-analysis", "export-analysis", "view-safety", "export-safety", "view-qa", "export-qa", "import-qa", "add-qa", "modify-qa", "delete-qa", "view-qatest", "view-dict", "export-dict", "import-dict", "view-profile", "modify-profile", "view-skill", "modify-skill", "view-answer", "modify-answer", "view-switch", "modify-switch", "add-user", "modify-user", "delete-user", "modify-role",
+				"view-log", "export-log", "view-analysis", "export-analysis", "view-safety", "export-safety", "view-qa", "export-qa", "import-qa", "add-qa", "modify-qa", "delete-qa", "view-qatest", "view-dict", "export-dict", "import-dict", "view-profile", "modify-profile", "view-skill", "modify-skill", "view-answer", "modify-answer", "view-switch", "modify-switch", "add-user", "modify-user", "delete-user", "modify-role", "modify-taskengine",
 			},
 		},
 		"test": &StoreRole{
