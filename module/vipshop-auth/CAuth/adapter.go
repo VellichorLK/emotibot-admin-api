@@ -2,6 +2,7 @@ package CAuth
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -224,7 +225,9 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 			return err
 		}
 		if ret != iris.StatusOK {
-			util.LogInfo.Printf("Add priv %s to role %s fail: %s", priv, roleID, body)
+			errMsg := fmt.Sprintf("Add priv %s to role %s fail: %s", priv, roleID, body)
+			util.LogInfo.Printf("%s\n", errMsg)
+			return errors.New(errMsg)
 		}
 		util.LogTrace.Printf("Add priv [%s] from [%s]: %s", priv, roleID, body)
 	}
@@ -237,7 +240,9 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 			return err
 		}
 		if ret != iris.StatusOK {
-			util.LogInfo.Printf("delete priv %s to role %s fail: %s", priv, roleID, body)
+			errMsg := fmt.Sprintf("delete priv %s to role %s fail: %s", priv, roleID, body)
+			util.LogInfo.Printf("%s\n", errMsg)
+			return errors.New(errMsg)
 		}
 		util.LogTrace.Printf("Delete priv [%s] from [%s]: %s", priv, roleID, body)
 	}
