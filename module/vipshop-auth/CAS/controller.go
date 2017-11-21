@@ -16,8 +16,6 @@ var (
 	ModuleInfo util.ModuleInfo
 )
 
-const validAppID = "vipshop"
-
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "cas",
@@ -28,12 +26,6 @@ func init() {
 }
 
 func handleLogin(ctx context.Context) {
-
-	appid := util.GetAppID(ctx)
-	if appid != validAppID {
-		ctx.StatusCode(iris.StatusUnauthorized)
-		return
-	}
 
 	userID := ctx.FormValue("user_name")
 	if strings.Trim(userID, " ") == "" {
