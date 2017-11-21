@@ -4,7 +4,7 @@
 REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 CONTAINER=vipshop-fake-cas
-TAG="1.0.0"
+TAG="1.0.1"
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 globalConf="

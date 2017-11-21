@@ -44,11 +44,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if strings.Compare(parameters["appid"][0], "VCA") != 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "appid incorrect")
+		return
 	}
 
 	if strings.Compare(parameters["type"][0], "json") != 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "mock api only support json return type")
+		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")
