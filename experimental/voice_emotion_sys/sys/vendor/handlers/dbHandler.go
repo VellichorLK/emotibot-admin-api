@@ -327,7 +327,7 @@ func ComputeChannelScore(eb *EmotionBlock) {
 				}
 			}
 
-			if eb.RDuration <= (60 * 1000) {
+			if eb.RDuration <= (60*1000) && channel == 2 {
 				twoFixedScore = float64(int((twoFixedScore/2)*100)) / 100
 			}
 

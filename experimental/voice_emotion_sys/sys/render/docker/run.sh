@@ -10,7 +10,7 @@ CONTAINER=render
 # </EDIT_ME>
 
 # Get tags from args
-TAG=2017112000
+TAG=2017112100
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 echo "# Launching $DOCKER_IMAGE"
 # Check if docker image exists (locally or on the registry)
