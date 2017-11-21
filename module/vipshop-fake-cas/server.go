@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,7 +20,7 @@ func main() {
 
 }
 
-var input_parameters = []string{"type", "appid", "ac", "pw"}
+var restrictedParameters = []string{"type", "appid", "ac", "pw"}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	parameters, err := url.ParseQuery(r.URL.RawQuery)
@@ -29,7 +30,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var cantFound bool
-	for _, key := range input_parameters {
+	for _, key := range restrictedParameters {
 		if _, found := parameters[key]; !found {
 			cantFound = true
 			break
@@ -58,11 +59,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ret := ret_msg{
 		Code: 200,
 	}
-	if !validateUser(parameters["ac"][0], parameters["pw"][0]) {
+	var acct = parameters["ac"][0]
+	var password = parameters["pw"][0]
+	log.Printf("login attempt from ip:%s ac:%s, pw:%s", r.RemoteAddr, acct, password)
+	if !validateUser(acct, password) {
+		log.Println("failed! ")
 		ret.Code = 400
+	} else {
+		log.Println("success!")
 	}
-	ret_str, _ := json.Marshal(ret)
-	w.Write(ret_str)
+	retStr, _ := json.Marshal(ret)
+	w.Write(retStr)
 }
 
 var valid_users = map[string]string{
