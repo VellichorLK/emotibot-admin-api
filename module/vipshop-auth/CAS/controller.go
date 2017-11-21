@@ -16,6 +16,8 @@ var (
 	ModuleInfo util.ModuleInfo
 )
 
+const validAppID = "vipshop"
+
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "cas",
