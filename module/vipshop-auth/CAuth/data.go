@@ -13,16 +13,16 @@ var (
 		"log":        GenPrivilege(1, "statistic-daily", "view,export"),
 		"analysis":   GenPrivilege(2, "statistic-analysis", "view,export"),
 		"safety":     GenPrivilege(3, "statistic-audit", "view,export"),
-		"qa":         GenPrivilege(4, "qalist", "view,modify,add,delete,export,import"),
+		"qa":         GenPrivilege(4, "qalist", "view,edit,create,delete,export,import"),
 		"qatest":     GenPrivilege(5, "qatest", "view"),
 		"dict":       GenPrivilege(6, "dictionary", "view,import,export"),
-		"profile":    GenPrivilege(7, "robot-profile", "view,modify"),
-		"skill":      GenPrivilege(8, "robot-skill", "view,modify"),
+		"profile":    GenPrivilege(7, "robot-profile", "view,edit"),
+		"skill":      GenPrivilege(8, "robot-skill", "view,edit"),
 		"answer":     GenPrivilege(9, "robot-chat", "view,edit"),
 		"switch":     GenPrivilege(10, "switch-manage", "view,edit"),
-		"user":       GenPrivilege(11, "user-manage", "modify"),
-		"role":       GenPrivilege(12, "role-manage", "modify"),
-		"taskengine": GenPrivilege(13, "task-engine", "modify"),
+		"user":       GenPrivilege(11, "user-manage", "edit"),
+		"role":       GenPrivilege(12, "role-manage", "edit"),
+		"taskengine": GenPrivilege(13, "task-engine", "edit"),
 	}
 )
 
