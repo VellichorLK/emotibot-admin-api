@@ -313,12 +313,12 @@ func convertAPIPrivToCAuthPriv(priv map[int][]string) []string {
 	return ret
 }
 
-func addRole(roleName string) error {
+func addRole(roleName string, requestor string) error {
 	param := RoleInput{
 		RoleDesc:        roleName,
 		RoleName:        roleName,
 		ApplicationName: applicationName,
-		Requestor:       getCAuthRequester(),
+		Requestor:       requestor,
 		AppKey:          getCAuthAppKey(),
 	}
 
@@ -339,14 +339,13 @@ func addRole(roleName string) error {
 	return nil
 }
 
-func deleteRole(roleName string) error {
+func deleteRole(roleName string, requestor string) error {
 	param := DeleteRoleInput{
 		RoleName:        roleName,
 		ApplicationName: applicationName,
-		Requestor:       getCAuthRequester(),
+		Requestor:       requestor,
 		AppKey:          getCAuthAppKey(),
 	}
-	fmt.Printf("%#v\n", param)
 
 	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), deleteRoleEntry)
 	ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")

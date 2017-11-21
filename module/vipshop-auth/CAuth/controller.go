@@ -230,7 +230,7 @@ func handleAddRole(ctx context.Context) {
 	roleName := strings.Trim(ctx.FormValue("role_name"), " ")
 	result := 0
 
-	err := addRole(roleName)
+	err := addRole(roleName, userID)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
@@ -252,7 +252,7 @@ func handleDeleteRole(ctx context.Context) {
 	id := ctx.Params().GetEscape("id")
 	result := 0
 
-	err := deleteRole(id)
+	err := deleteRole(id, userID)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
