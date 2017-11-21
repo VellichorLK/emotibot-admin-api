@@ -1,12 +1,12 @@
 FROM golang:1.8-alpine AS build-env
 
-ENV GOPREFIX /go/src/emotibot.com/emotigo
+
 ARG PROJECT
 RUN apk add --no-cache git
 
-RUN mkdir -p ${GOPREFIX}
-ADD . ${GOPREFIX}/
-RUN cd ${GOPREFIX}/${PROJECT} && go-wrapper download && go-wrapper install
+COPY . /go/src/emotibot.com/emotigo/module
+RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper download 
+RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper install
 
 FROM alpine:3.5
 
