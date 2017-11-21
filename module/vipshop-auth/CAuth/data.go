@@ -22,7 +22,7 @@ var (
 		"switch":     GenPrivilege(10, "switch-manage", "view,edit"),
 		"user":       GenPrivilege(11, "user-manage", "modify"),
 		"role":       GenPrivilege(12, "role-manage", "modify"),
-		"taskengine": GenPrivilege(13, "task-engine", "view,edit"),
+		"taskengine": GenPrivilege(13, "task-engine", "modify"),
 	}
 )
 
