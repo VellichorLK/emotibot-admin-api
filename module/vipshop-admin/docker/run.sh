@@ -5,12 +5,12 @@ REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=vipshop-admin-api
 #TAG="$(git rev-parse --short HEAD)"
 LAST_RELEASE_TAG="20171118-7071bc5"
-DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
-TAG=$1
+TAG=$2
 if [ "$TAG" == "" ]; then
     TAG="$LAST_RELEASE_TAG"
 fi
+DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 globalConf="
     -v /etc/localtime:/etc/localtime \
