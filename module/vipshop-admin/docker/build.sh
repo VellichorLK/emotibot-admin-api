@@ -2,7 +2,7 @@
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=vipshop-admin-api
 # TAG="$(git rev-parse --short HEAD)"
-LAST_RELEASE_TAG="20171123-d46df0b"
+LAST_RELEASE_TAG="20171124-fe27a1f"
 GIT_HEAD="$(git rev-parse --short HEAD)"
 DATE=`date +%Y%m%d`
 TAG=$1
