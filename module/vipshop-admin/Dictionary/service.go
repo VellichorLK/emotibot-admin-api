@@ -41,11 +41,11 @@ func GetDownloadMeta(appid string) (map[string]*DownloadMeta, error) {
 	util.LogTrace.Printf("Get download meta: (%d) %+v", len(ret), metas)
 
 	if len(metas) >= 1 {
-		ret["lastFile"] = metas[0]
+		ret["currentFile"] = metas[0]
 	}
 
 	if len(metas) >= 2 {
-		ret["currentFile"] = metas[1]
+		ret["lastFile"] = metas[1]
 	}
 	util.LogInfo.Printf("Transfor finish")
 
