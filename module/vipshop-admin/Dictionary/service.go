@@ -2,9 +2,12 @@ package Dictionary
 
 import (
 	"fmt"
+	"io"
 	"mime/multipart"
 	"path"
 	"time"
+
+	"github.com/tealeg/xlsx"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -81,9 +84,21 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 
 	if size < 0 || size > 2*1024*1024 {
 		InsertProcess(appid, StatusFail, filename, "size error")
-		return "", ApiError.DICT_SIZE_ERROR, nil
+		return "", ApiError.DICT_SIZE_ERROR, fmt.Errorf("Size error: %d", size)
 	}
 
+	// Check if xlsx format is correct or not
+	file.Seek(0, io.SeekStart)
+	buf := make([]byte, size)
+	if _, err := file.Read(buf); err != nil {
+		InsertProcess(appid, StatusFail, filename, "Read file error")
+		return "", ApiError.IO_ERROR, err
+	}
+	_, err = xlsx.OpenBinary(buf)
+	if err != nil {
+		InsertProcess(appid, StatusFail, filename, "Not correct xlsx file format")
+		return "", ApiError.DICT_FORMAT_ERROR, fmt.Errorf("Not correct xlsx file format: %s", err.Error())
+	}
 	// 4. insert to db the running file
 	// Note: running record will be added from multicustomer, WTF
 
