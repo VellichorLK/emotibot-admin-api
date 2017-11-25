@@ -3,6 +3,7 @@ package QA
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -125,10 +126,13 @@ func getTokensFromCustomReturn(res *OpenAPIResponse) []*string {
 
 	ret := []*string{}
 
-	responseInfo := res.CustomReturn["response_other_info"].(map[string]interface{})
-	tokens := responseInfo["token"].([]interface{})
-	for _, val := range tokens {
-		temp := val.(string)
+	tokens := res.CustomReturn["cu_word"].([]interface{})
+	for _, rawVal := range tokens {
+		val := rawVal.(map[string]interface{})
+		word := val["word"]
+		// pos := val["pos"]
+		// temp := fmt.Sprintf("%s/%s", word, pos)
+		temp := fmt.Sprintf("%s", word)
 		ret = append(ret, &temp)
 	}
 	return ret
