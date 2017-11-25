@@ -7,7 +7,7 @@ overwrite_file="
 
 for file in `find InitFiles -type f`
 do
-  target=`echo $file | sed "s#InitFiles#${SERVER_MOUNT_PATH}#g"`;
+  target=`echo $file | sed "s#InitFiles#${VIP_SERVER_MOUNT_PATH}#g"`;
   target_dir=`dirname $target`
   if ! [[ -e $target ]];
   then
