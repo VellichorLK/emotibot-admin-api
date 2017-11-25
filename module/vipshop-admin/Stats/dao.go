@@ -143,6 +143,10 @@ func getAuditListCnt(appid string, input *AuditInput) (int, error) {
 		conditions = append(conditions, "operation = ?")
 		args = append(args, input.Filter.Operation)
 	}
+	if input.Filter != nil && input.Filter.UserID != "" {
+		conditions = append(conditions, "user_id = ?")
+		args = append(args, input.Filter.UserID)
+	}
 
 	conditions = append(conditions, "(UNIX_TIMESTAMP(create_time) BETWEEN ? and ?)")
 	args = append(args, input.Start)
