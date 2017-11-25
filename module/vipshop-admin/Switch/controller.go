@@ -2,6 +2,7 @@ package Switch
 
 import (
 	"fmt"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -151,7 +152,7 @@ func loadSwitchFromContext(ctx context.Context) *SwitchInfo {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
-
+	input.UpdateTime = time.Now()
 	return input
 }
 
