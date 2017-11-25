@@ -4,7 +4,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 CONTAINER=vipshop-admin-api
 #TAG="$(git rev-parse --short HEAD)"
-LAST_RELEASE_TAG="20171124-fe27a1f"
+LAST_RELEASE_TAG="20171125-360f885"
 
 TAG=$2
 if [ "$TAG" == "" ]; then
