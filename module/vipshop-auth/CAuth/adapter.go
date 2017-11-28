@@ -151,7 +151,18 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 		AppKey:          getCAuthAppKey(),
 	}
 
-	if newRoleID != "" {
+	deleteRoles := []*SimpleRoleRet{}
+	newRoleExisted := false
+
+	for _, role := range origRoles {
+		if role.RoleName != newRoleID {
+			deleteRoles = append(deleteRoles, role)
+		} else {
+			newRoleExisted = true
+		}
+	}
+
+	if newRoleID != "" && !newRoleExisted {
 		code, body, err := getCAuthRetWithStatus(postURL, param)
 		if err != nil {
 			return err
@@ -168,7 +179,7 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 	}
 
 	postURL = fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), removeUserRoleEntry)
-	for _, role := range origRoles {
+	for _, role := range deleteRoles {
 		param.RoleName = role.RoleName
 		code, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
 		if err != nil {
