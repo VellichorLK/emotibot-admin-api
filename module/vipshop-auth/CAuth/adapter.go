@@ -27,7 +27,7 @@ const (
 )
 
 func getRolesFromCAuth() (*AllRolesRet, error) {
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), rolesEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), rolesEntry)
 	param := RolesParam{
 		ApplicationName: applicationName,
 		AppKey:          getCAuthAppKey(),
@@ -48,7 +48,7 @@ func getRolesFromCAuth() (*AllRolesRet, error) {
 }
 
 func getPrivilegeOfRoleFromCAuth(name string) (*PrivilegesRet, error) {
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), privOfRoleEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), privOfRoleEntry)
 	param := RolePrivilegesParam{
 		RoleName:        name,
 		ApplicationName: applicationName,
@@ -70,7 +70,7 @@ func getPrivilegeOfRoleFromCAuth(name string) (*PrivilegesRet, error) {
 }
 
 func getUsersOfRoleFromCAuth(name string) (*UsersRet, error) {
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), usersOfRoleEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), usersOfRoleEntry)
 	param := RoleUsersParam{
 		RoleName:        name,
 		ApplicationName: applicationName,
@@ -125,7 +125,7 @@ func GetUserRoles(userID string) ([]*SimpleRoleRet, error) {
 }
 
 func getUsersRoles(userIDs []string) (*UserRolesRet, error) {
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), roleOfUserEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), roleOfUserEntry)
 	log.Println(postURL)
 	param := UserRolesParam{
 		UserAccounts:    userIDs,
@@ -142,7 +142,7 @@ func getUsersRoles(userIDs []string) (*UserRolesRet, error) {
 }
 
 func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet, newRoleID string) error {
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), addUserRoleEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), addUserRoleEntry)
 	param := UserRoleInput{
 		RoleName:        newRoleID,
 		UserAccount:     userID,
@@ -167,7 +167,7 @@ func updateUserRole(requester string, userID string, origRoles []*SimpleRoleRet,
 		}
 	}
 
-	postURL = fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), removeUserRoleEntry)
+	postURL = fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), removeUserRoleEntry)
 	for _, role := range origRoles {
 		param.RoleName = role.RoleName
 		code, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
@@ -211,7 +211,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 		}
 	}
 
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), addRolePrivEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), addRolePrivEntry)
 	param := RolePrivilegeInput{
 		RoleName:        roleID,
 		ApplicationName: applicationName,
@@ -232,7 +232,7 @@ func updateRolePriv(operator string, roleID string, oldPriv map[int][]string, ne
 		util.LogTrace.Printf("Add priv [%s] from [%s]: %s", priv, roleID, body)
 	}
 
-	postURL = fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), removeRolePrivEntry)
+	postURL = fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), removeRolePrivEntry)
 	for _, priv := range deletePrivs {
 		param.PrivilegeName = priv
 		ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
@@ -327,7 +327,7 @@ func addRole(roleName string, requestor string) error {
 		AppKey:          getCAuthAppKey(),
 	}
 
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), createRoleEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), createRoleEntry)
 	ret, body, err := util.HTTPPostJSONWithStatus(postURL, param, 5)
 	if err != nil {
 		return err
@@ -352,7 +352,7 @@ func deleteRole(roleName string, requestor string) error {
 		AppKey:          getCAuthAppKey(),
 	}
 
-	postURL := fmt.Sprintf("%s/%s/%s", getCAuthServer(), getCAuthPrefix(), deleteRoleEntry)
+	postURL := fmt.Sprintf("%s%s/%s", getCAuthServer(), getCAuthPrefix(), deleteRoleEntry)
 	ret, body, err := util.HTTPRequestJSONWithStatus(postURL, param, 5, "DELETE")
 	if err != nil {
 		return err
