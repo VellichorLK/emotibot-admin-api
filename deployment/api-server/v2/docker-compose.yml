@@ -129,7 +129,7 @@ services:
     worker-voice-emotion-analysis:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
         # container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
-        mem_limit: 2048m
+        mem_limit: 4096m
         privileged: true
         logging:
             options:
