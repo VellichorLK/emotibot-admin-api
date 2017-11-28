@@ -49,6 +49,9 @@ func handleExportAuditLog(ctx context.Context) {
 	case "statistic-analysis":
 		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
 		break
+	case "statistic-daily":
+		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		break
 	}
 
 	if moduleID == "" || fileName == "" {
@@ -57,7 +60,8 @@ func handleExportAuditLog(ctx context.Context) {
 		return
 	}
 
-	log := fmt.Sprintf("%s %s", util.Msg["DownloadFile"], fileName)
+	moduleName := util.ModuleName[module]
+	log := fmt.Sprintf("%s%s %s", util.Msg["DownloadFile"], moduleName, fileName)
 	err := util.AddAuditLog(userID, userIP, moduleID, util.AuditOperationExport, log, 1)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
