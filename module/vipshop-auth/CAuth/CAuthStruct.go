@@ -87,7 +87,7 @@ type UserRet struct {
 	UserName       string `json:"userName"`
 	UserDepartment string `json:"userDepartment"`
 	UserAcountID   string `json:"userAcountId"`
-	UserCode       int64  `json:"userCode"`
+	UserCode       string `json:"userCode"`
 }
 
 // UsersRet is struct returned by getUsesByRole
