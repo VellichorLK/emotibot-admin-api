@@ -274,23 +274,16 @@ func ComputeChannelScore(eb *EmotionBlock) {
 			var upRateCount int
 			var avgCountAcc float64
 			var upRate, avgProb float64
-			var start int
 
-			if emotionType == 1 && channel == 2 {
-				start = 1
-			} else {
-				start = 0
-			}
-
-			for i := start; i < count; i++ {
+			for i := 0; i < count; i++ {
 				if scores[i] > gap {
 					upRateCount++
 				}
 				avgCountAcc += scores[i]
 			}
 
-			upRate = float64(upRateCount) / float64(count-start)
-			avgProb = avgCountAcc / float64(count-start)
+			upRate = float64(upRateCount) / float64(count)
+			avgProb = avgCountAcc / float64(count)
 
 			twoFixedScore = float64(int(((upRate+avgProb)/2)*100*100)) / 100
 			if emotionType == 1 && channel == 2 && count > 20 {
