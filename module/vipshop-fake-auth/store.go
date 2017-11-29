@@ -144,20 +144,6 @@ var (
 		},
 	}
 	Users = map[string]*StoreUser{
-		"richard.fu": &StoreUser{
-			UserName:       "richard",
-			UserDepartment: "test",
-			UserAccountID:  "richard",
-			UserCode:       "0",
-			Roles:          []string{"admin"},
-		},
-		"xianghong01.wang": &StoreUser{
-			UserName:       "测试1",
-			UserDepartment: "test",
-			UserAccountID:  "user1",
-			UserCode:       "0",
-			Roles:          []string{"admin"},
-		},
 		"user1": &StoreUser{
 			UserName:       "测试1",
 			UserDepartment: "test",
