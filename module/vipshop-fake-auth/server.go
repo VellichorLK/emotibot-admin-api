@@ -14,10 +14,10 @@ import (
 
 func main() {
 	app := iris.New()
-	app.Handle("POST", "/authsys-webapp/roleRest/getAllRolesByAppName", getAllRolesByAppName)
+	app.Handle("POST", "/roleRest/getAllRolesByAppName", getAllRolesByAppName)
 
 	//adminGroup for
-	adminGroup := app.Party("/authsys-webapp/", checkRequestorMiddleware)
+	adminGroup := app.Party("/", checkRequestorMiddleware)
 	adminGroup.Handle("POST", "/roleRest/createRole", createRole)
 	adminGroup.Handle("DELETE", "/roleRest/deleteRole", deleteRole)
 	adminGroup.Handle("POST", "/rolePrivilegeRest/addRolePrivilege", addRolePrivilege)
@@ -25,9 +25,9 @@ func main() {
 	adminGroup.Handle("POST", "/userRoleRest/addUserRole", addUserRole)
 	adminGroup.Handle("DELETE", "/userRoleRest/delUserRole", delUserRole)
 
-	app.Handle("POST", "/authsys-webapp/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
-	app.Handle("POST", "/authsys-webapp/userRoleRest/getRolesByUsers", getRolesByUsers)
-	app.Handle("POST", "/authsys-webapp/userRest/getUsesByRole", getUsesByRole)
+	app.Handle("POST", "/privilegeRest/getPrivilegesByRole", getPrivilegesByRole)
+	app.Handle("POST", "/userRoleRest/getRolesByUsers", getRolesByUsers)
+	app.Handle("POST", "/userRest/getUsesByRole", getUsesByRole)
 
 	app.Run(iris.Addr(":8787"), iris.WithoutVersionChecker)
 }
@@ -50,7 +50,7 @@ func checkRequestorMiddleware(ctx context.Context) {
 	}
 
 	// Only admin user user1 can continue the admin operation
-	if strings.Compare(requestor.Requestor, "user1") == 0 {
+	if strings.Compare(requestor.Requestor, "user1") == 0 || strings.Compare(requestor.Requestor, "xianghong01.wang") == 0 || strings.Compare(requestor.Requestor, "richard.fu") == 0 {
 		ctx.Next()
 	} else {
 		// Error message based on real error log
