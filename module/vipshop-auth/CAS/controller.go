@@ -2,6 +2,7 @@ package CAS
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -62,6 +63,7 @@ func handleLogin(ctx context.Context) {
 	}
 
 	if resp == nil {
+		err = errors.New("empty response")
 		util.LogInfo.Printf("msg: [%s]", err.Error())
 		casServerError(ctx, err)
 		return
