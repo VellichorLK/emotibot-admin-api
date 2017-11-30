@@ -110,7 +110,7 @@ func handleUpload(ctx context.Context) {
 	} else {
 		errCode = ApiError.SUCCESS
 		ctx.JSON(util.GenSimpleRetObj(errCode))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("upload %s", retFile), 1)
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
 	}
 }
 

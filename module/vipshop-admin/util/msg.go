@@ -3,6 +3,7 @@ package util
 var (
 	Msg = map[string]string{
 		"DownloadFile": "下载",
+		"UploadFile":   "上传",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",
