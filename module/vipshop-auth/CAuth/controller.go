@@ -161,7 +161,20 @@ func handleUserUpdate(ctx context.Context) {
 		origRoles = append(origRoles, role.RoleName)
 	}
 
-	logMsg := fmt.Sprintf("Update user (%s) role: [%s] -> [%s]", id, strings.Join(origRoles, ","), roleID)
+	logMsg := ""
+	operation := util.AuditOperationEdit
+	if roleID == "" {
+		// Update role to empty means delete user in VCA application
+		logMsg = fmt.Sprintf("%s%s %s", util.Msg["Delete"], util.Msg["User"], id)
+		operation = util.AuditOperationDelete
+	} else if len(origRoles) == 0 {
+		// Update role from empty means add user in VCA application
+		logMsg = fmt.Sprintf("%s%s %s", util.Msg["Add"], util.Msg["User"], id)
+		operation = util.AuditOperationAdd
+	} else {
+		logMsg = fmt.Sprintf("%s%s (%s) %s: %s -> %s",
+			util.Msg["Modify"], util.Msg["User"], id, util.Msg["Role"], strings.Join(origRoles, ","), roleID)
+	}
 
 	err = updateUserRole(operator, id, origUserRoles, roleID)
 	if err != nil {
@@ -170,7 +183,7 @@ func handleUserUpdate(ctx context.Context) {
 		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, util.AuditOperationEdit, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, operation, logMsg, result)
 }
 
 func handleRoleUpdate(ctx context.Context) {

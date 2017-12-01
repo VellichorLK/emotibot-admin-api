@@ -4,6 +4,11 @@ var (
 	Msg = map[string]string{
 		"DownloadFile": "下载",
 		"UploadFile":   "上传",
+		"Delete":       "删除",
+		"Modify":       "修改",
+		"User":         "用户",
+		"Role":         "角色",
+		"Add":          "新增",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",
