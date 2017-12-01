@@ -183,7 +183,7 @@ func handleUserUpdate(ctx context.Context) {
 		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, operation, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleRole, operation, logMsg, result)
 }
 
 func handleRoleUpdate(ctx context.Context) {
