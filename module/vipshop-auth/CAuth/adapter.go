@@ -119,7 +119,7 @@ func GetUserRoles(userID string) ([]*SimpleRoleRet, error) {
 	ret := rets.Data[userID]
 	if ret == nil || len(ret) <= 0 {
 		util.LogTrace.Printf("Get role list: %#v", ret)
-		return []*SimpleRoleRet{}, nil
+		return []*SimpleRoleRet{}, fmt.Errorf("%s has no roles", userID)
 	}
 	return ret, nil
 }
