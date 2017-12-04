@@ -11,6 +11,7 @@ import copy
 
 VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
                          'worker-voice-emotion-analysis',
+                         'mongo',
                          'worker-voice-emotion-statistic',
                          'voice_emotion_houta', 'nginx', 'authentication',
                          'consul']
