@@ -2,6 +2,7 @@ package CAS
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-auth/CAuth"
 )
@@ -27,6 +28,11 @@ func getUserPrivs(userID string, pwd string) (*LoginRes, error) {
 	}
 
 	lr := &LoginRes{}
+	lr.Appid = validAppID
+	lr.UsrName = userID
+	if len(sres) == 0 {
+		return nil, fmt.Errorf("User %s has no role", userID)
+	}
 
 	for _, sre := range sres {
 		rolesPriv, err := CAuth.GetRolePrivs(sre.RoleName)
@@ -34,9 +40,7 @@ func getUserPrivs(userID string, pwd string) (*LoginRes, error) {
 			return nil, err
 		}
 
-		lr.Appid = validAppID
 		lr.RoleName = sre.RoleName
-		lr.UsrName = userID
 
 		rolesPrivString, err := json.Marshal(rolesPriv)
 		if err != nil {

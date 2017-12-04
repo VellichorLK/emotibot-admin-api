@@ -20,6 +20,13 @@ type Role struct {
 	Privilege string `json:"privilege"`
 }
 
+type SingleUserProp struct {
+	UserId     string `json:"user_id`
+	UserType   int    `json:"user_type`
+	RoleId     string `json:"role_id"`
+	Privileges string `json:"privileges"`
+}
+
 type UserProp struct {
 	UserId   string `json:"user_id"`
 	UserName string `json:"user_name"`

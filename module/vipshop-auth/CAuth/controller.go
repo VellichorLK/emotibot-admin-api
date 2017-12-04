@@ -28,6 +28,7 @@ func init() {
 			util.NewEntryPoint("GET", "users", []string{}, handleUserList),
 			util.NewEntryPoint("GET", "roles", []string{}, handleRoleList),
 
+			util.NewEntryPoint("GET", "user/{id:string}", []string{}, handleUserGet),
 			util.NewEntryPoint("PATCH", "user/{id:string}", []string{}, handleUserUpdate),
 			util.NewEntryPoint("PATCH", "role/{id:string}", []string{}, handleRoleUpdate),
 
@@ -128,6 +129,45 @@ func handleUserList(ctx context.Context) {
 	}
 
 	ctx.JSON(GenRetObj(ApiError.SUCCESS, users))
+}
+
+func handleUserGet(ctx context.Context) {
+	id := ctx.Params().GetEscape("id")
+	appid := util.GetAppID(ctx)
+	if appid != validAppID {
+		ctx.StatusCode(iris.StatusUnauthorized)
+		return
+	}
+
+	user := &SingleUserProp{
+		UserId:   id,
+		UserType: 1,
+	}
+	roles, err := GetUserRoles(id)
+	if err != nil {
+		ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+		return
+	}
+
+	if len(roles) <= 0 {
+		user.RoleId = ""
+		user.Privileges = "{}"
+		ctx.JSON(GenRetObj(ApiError.SUCCESS, user))
+		return
+	}
+
+	role := roles[0]
+	privList, err := GetRolePrivs(role.RoleName)
+	if err != nil {
+		ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+		return
+	}
+	privStr, _ := json.Marshal(privList)
+
+	user.RoleId = role.RoleName
+	user.Privileges = string(privStr)
+	ctx.JSON(GenRetObj(ApiError.SUCCESS, user))
+	return
 }
 
 func handleUserUpdate(ctx context.Context) {
