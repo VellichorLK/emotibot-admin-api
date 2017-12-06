@@ -9,6 +9,15 @@ var (
 		"User":         "用户",
 		"Role":         "角色",
 		"Add":          "新增",
+		"Size":         "档案大小",
+		"Error":        "错误",
+		"Systen":       "系统",
+		"Read":         "读取",
+		"Save":         "写入",
+		"File":         "档案",
+		"Format":       "格式",
+		"Server":       "伺服器",
+		"Not":          "非",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

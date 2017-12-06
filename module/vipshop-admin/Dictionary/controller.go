@@ -106,7 +106,8 @@ func handleUpload(ctx context.Context) {
 	errCode, err = util.UpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("service error: %s", err.Error()), 0)
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
+		util.LogError.Printf("update wordbank with multicustomer error: %s", err.Error())
 	} else {
 		errCode = ApiError.SUCCESS
 		ctx.JSON(util.GenSimpleRetObj(errCode))
