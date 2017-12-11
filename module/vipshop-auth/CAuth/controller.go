@@ -223,7 +223,7 @@ func handleUserUpdate(ctx context.Context) {
 		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleRole, operation, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, operation, logMsg, result)
 }
 
 func handleRoleUpdate(ctx context.Context) {
@@ -239,6 +239,12 @@ func handleRoleUpdate(ctx context.Context) {
 
 	if len(strings.Trim(id, " ")) == 0 {
 		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(util.GenSimpleRetObj(ApiError.REQUEST_ERROR))
+		return
+	}
+
+	if len(strings.Trim(operator, " ")) == 0 {
+		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.JSON(util.GenSimpleRetObj(ApiError.REQUEST_ERROR))
 		return
 	}
@@ -274,7 +280,7 @@ func handleRoleUpdate(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, util.AuditOperationEdit, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleRole, util.AuditOperationEdit, logMsg, result)
 }
 
 func handleAddRole(ctx context.Context) {
