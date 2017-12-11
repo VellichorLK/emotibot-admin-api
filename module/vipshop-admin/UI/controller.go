@@ -35,6 +35,7 @@ func handleDumpUISetting(ctx context.Context) {
 func handleExportAuditLog(ctx context.Context) {
 	module := ctx.FormValue("module")
 	fileName := ctx.FormValue("filename")
+	extMsg := ctx.FormValue("info")
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 
@@ -61,7 +62,7 @@ func handleExportAuditLog(ctx context.Context) {
 	}
 
 	moduleName := util.ModuleName[module]
-	log := fmt.Sprintf("%s%s %s", util.Msg["DownloadFile"], moduleName, fileName)
+	log := fmt.Sprintf("%s%s %s: %s", util.Msg["DownloadFile"], moduleName, fileName, extMsg)
 	err := util.AddAuditLog(userID, userIP, moduleID, util.AuditOperationExport, log, 1)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
