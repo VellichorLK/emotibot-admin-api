@@ -1,6 +1,7 @@
 package Dictionary
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -70,34 +71,42 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	ext := path.Ext(info.Filename)
 	util.LogTrace.Printf("upload file ext: [%s]", ext)
 	if ext != ".xlsx" {
-		InsertProcess(appid, StatusFail, info.Filename, "format error")
-		return "", ApiError.DICT_FORMAT_ERROR, nil
+		errMsg := fmt.Sprintf("%s %s %s", util.Msg["File"], util.Msg["Format"], util.Msg["Error"])
+		InsertProcess(appid, StatusFail, info.Filename, errMsg)
+		return "", ApiError.DICT_FORMAT_ERROR, errors.New(errMsg)
 	}
 
 	now := time.Now()
 	filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 	size, err := util.SaveDictionaryFile(appid, filename, file)
 	if err != nil {
-		InsertProcess(appid, StatusFail, filename, "io error")
-		return "", ApiError.IO_ERROR, err
+		errMsg := fmt.Sprintf("%s %s %s", util.Msg["Save"], util.Msg["File"], util.Msg["Error"])
+		InsertProcess(appid, StatusFail, filename, errMsg)
+		util.LogError.Printf("save dict io error: %s", err.Error())
+		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 
 	if size < 0 || size > 2*1024*1024 {
-		InsertProcess(appid, StatusFail, filename, "size error")
-		return "", ApiError.DICT_SIZE_ERROR, fmt.Errorf("Size error: %d", size)
+		errMsg := fmt.Sprintf("%s %s %s", util.Msg["File"], util.Msg["Size"], util.Msg["Error"])
+		InsertProcess(appid, StatusFail, info.Filename, errMsg)
+		return "", ApiError.DICT_SIZE_ERROR, errors.New(errMsg)
 	}
 
 	// Check if xlsx format is correct or not
 	file.Seek(0, io.SeekStart)
 	buf := make([]byte, size)
 	if _, err := file.Read(buf); err != nil {
-		InsertProcess(appid, StatusFail, filename, "Read file error")
-		return "", ApiError.IO_ERROR, err
+		errMsg := fmt.Sprintf("%s %s %s", util.Msg["Read"], util.Msg["File"], util.Msg["Error"])
+		InsertProcess(appid, StatusFail, filename, errMsg)
+		util.LogError.Printf("read dict io error: %s", err.Error())
+		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 	_, err = xlsx.OpenBinary(buf)
 	if err != nil {
-		InsertProcess(appid, StatusFail, filename, "Not correct xlsx file format")
-		return "", ApiError.DICT_FORMAT_ERROR, fmt.Errorf("Not correct xlsx file format: %s", err.Error())
+		errMsg := fmt.Sprintf("%s %s %s, %s xlsx", util.Msg["File"], util.Msg["Format"], util.Msg["Error"], util.Msg["Not"])
+		InsertProcess(appid, StatusFail, info.Filename, errMsg)
+		util.LogError.Printf("Not correct xlsx: %s", err.Error())
+		return "", ApiError.DICT_FORMAT_ERROR, errors.New(errMsg)
 	}
 	// 4. insert to db the running file
 	// Note: running record will be added from multicustomer, WTF
