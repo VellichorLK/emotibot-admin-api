@@ -1,0 +1,559 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for FAQ RestAPIs
+  version: 1.0.0
+  title: FAQ
+  contact:
+    email: kenchang@emotibot.com
+tags:
+  - name: questions
+    description: get questions and answers of the questions
+  - name: question
+    description: get single question and answers of the question
+  - name: categories
+    description: get categories
+components:
+  schemas:
+    categoryId:
+      type: integer
+      description: questions under which category
+    time:
+      type: string
+      format: date-time
+    question:
+      type: object
+      description: question
+      properties:
+        categoryId:
+          $ref: '#/components/schemas/categoryId'
+        categoryName:
+          type: string
+        content:
+          type: string
+        questionId:
+          type: integer
+        similarQuestions:
+          type: array
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/answer'
+    answer:
+      type: object
+      description: answer
+      properties:
+        content:
+          type: string
+        dynamicMenu:
+          type: array
+        relativeQuesions:
+          type: array
+        answerCMD:
+          type: string
+        answerCMDMsg:
+          type: string
+        notShowInRelativeQuestion:
+          type: boolean
+          default: false
+        dimension:
+          type: array
+        beginTime:
+          $ref: '#/components/schemas/time'
+        endTime:
+          $ref: '#/components/schemas/time'
+    similarQuestion:
+      type: object
+      properties:
+        sqid:
+          type: integer
+        content:
+          type: string
+    category:
+      type: object
+      properties:
+        categoryId:
+          $ref: '#/components/schemas/categoryId'
+        content:
+          type: string
+        parent:
+          $ref: '#/components/schemas/categoryId'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/category'
+  parameters:
+    qid:
+      name: qid
+      in: path
+      required: true
+      description: question id
+      schema:
+        type: string
+    user:
+      name: user
+      in: query
+      description: user who does the operation
+      schema:
+        type: string
+    sqid:
+      name: sqid
+      in: path
+      required: true
+      description: similar question id
+      schema:
+        type: string
+    content:
+      name: content
+      in: query
+      description: content body
+      schema:
+        type: string
+    categoryId:
+      name: categoryId
+      in: path
+      required: true
+      description: category id
+      schema:
+        $ref: '#/components/schemas/categoryId'
+paths:
+  /questions:
+    get:
+      tags:
+        - questions
+      summary: get questions by given condition
+      parameters:
+        - name: beginTime
+          in: query
+          description: begin of search duration
+          schema:
+            $ref: '#/components/schemas/time'
+        - name: endTime
+          in: query
+          description: end of search duration
+          schema:
+            $ref: '#/components/schemas/time'
+        - name: keyword
+          in: query
+          description: keyword
+          schema:
+            type: string
+        - name: relativeQuestion
+          in: query
+          description: question should have relative questions or not
+          schema:
+            type: boolean
+            default: false
+        - name: dynamicMenu
+          in: query
+          description: question should have dynamic menu or not
+          schema:
+            type: boolean
+            default: false
+        - name: notShowInRecommand
+          in: query
+          description: question should not in recommand or not
+          schema:
+            type: boolean
+            default: false
+        - name: categoryId
+          in: query
+          description: questions under which category
+          schema:
+            $ref: '#/components/schemas/categoryId'
+        - name: row
+          in: query
+          description: the number of questions to return at one query
+          schema:
+            type: integer
+            default: 10
+        - name: startPage
+          description: start fetching page of this query
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: a list of questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/question'
+  '/question/{qid}':
+    get:
+      tags:
+        - question
+      summary: get a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+      responses:
+        '200':
+          description: a question
+          content:
+            application/json:
+              schema:
+                type: object
+                description: question
+                properties:
+                  categoryId:
+                    type: integer
+                  categoryName:
+                    type: string
+                  content:
+                    type: string
+                  questionId:
+                    type: integer
+                  similarQuestions:
+                    type: array
+                  answers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/answer'
+        '404':
+          description: the question does not exist
+    post:
+      tags:
+        - question
+      summary: add/update a new question
+      parameters:
+        - name: categoryId
+          in: query
+          description: question should put under which category
+          schema:
+            $ref: '#/components/schemas/categoryId'
+        - $ref: '#/components/parameters/content'
+        - name: similarQuestionCount
+          in: query
+          description: number of similar questions of the question
+          schema:
+            type: integer
+            default: 0
+        - name: answers
+          in: query
+          description: answers of the question
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/answer'
+        - $ref: '#/components/parameters/user'
+      responses:
+        '200':
+          description: a question is created/updated
+        '500':
+          description: 'an error occurred, the operation failed'
+    delete:
+      tags:
+        - question
+      summary: delete a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+      responses:
+        '200':
+          description: a question is deleted
+        '404':
+          description: the question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+  '/question/{qid}/similar-questions':
+    get:
+      tags:
+        - question
+      summary: get simiar questions of a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+      responses:
+        '200':
+          description: a list of simiar question of the target question
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/similarQuestion'
+        '404':
+          description: the question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    post:
+      tags:
+        - question
+      summary: update similar questions of a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+        - $ref: '#/components/parameters/user'
+        - name: similarQuestions
+          in: query
+          description: array of new similar questions
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/similarQuestion'
+      responses:
+        '200':
+          description: update similar questions success
+        '404':
+          description: the question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    delete:
+      tags:
+        - question
+      summary: delete all similar questions of a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+      responses:
+        '200':
+          description: the similar questions are deleted
+        '404':
+          description: the question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+  '/question/{qid}/similar-question/{sqid}':
+    get:
+      tags:
+        - question
+      summary: get target similar question of indicated question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+        - $ref: '#/components/parameters/sqid'
+      responses:
+        '200':
+          description: get the target similar question
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/similarQuestion'
+        '404':
+          description: the question does not exist or similar question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    post:
+      tags:
+        - question
+      summary: update a similar question of a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+        - $ref: '#/components/parameters/sqid'
+        - name: content
+          in: query
+          description: new content of the similar question
+          schema:
+            type: string
+      responses:
+        '200':
+          description: the similar question is updated
+        '404':
+          description: the question does not exist or similar question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    delete:
+      tags:
+        - question
+      summary: delete a similar question of a question
+      parameters:
+        - $ref: '#/components/parameters/qid'
+        - $ref: '#/components/parameters/sqid'
+      responses:
+        '200':
+          description: the similar question is deleted
+        '404':
+          description: the question does not exist or similar question does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+  /categories:
+    get:
+      tags:
+        - category
+      summary: get all categories
+      responses:
+        '200':
+          description: category trees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/category'
+        '500':
+          description: 'an error occurred, the operation failed'
+  /category:
+    put:
+      tags:
+        - category
+      summary: add a category
+      parameters:
+        - $ref: '#/components/parameters/content'
+        - name: parent
+          in: query
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/user'
+      responses:
+        '200':
+          description: a new category tree
+  '/category/{categoryId}':
+    get:
+      tags:
+        - category
+      summary: get a category tree
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+      responses:
+        '200':
+          description: get a ccategory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/category'
+        '404':
+          description: the category does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    delete:
+      tags:
+        - category
+      summary: delete a category tree
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+      responses:
+        '200':
+          description: delete a ccategory
+        '404':
+          description: the category does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+    post:
+      tags:
+        - category
+      summary: update a category tree (only support rename in v1)
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+        - $ref: '#/components/parameters/content'
+      responses:
+        '200':
+          description: update a category  content success
+        '404':
+          description: the category does not exist
+        '500':
+          description: 'an error occurred, the operation failed'
+  /qa/questions/operations:
+    get:
+      summary: 取得最近num筆的該使用者問答庫行為記錄
+      operationId: getOperations
+      parameters:
+        - name: num
+          in: query
+          schema:
+            type: integer
+          required: true
+          description: 取得最多num筆行為記錄
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  records:
+                    type: array
+                    description: 使用者最近n天的行為紀錄(從新到舊排序）
+                    items:
+                      type: object
+                      properties:
+                        action:
+                          description: 行為的模式(全量、批量導入、全量導出）
+                          type: string
+                          enum:
+                            - full_import
+                            - incr_import
+                            - export
+                        status:
+                          description: 行為的狀態(成功、失敗、運行中）
+                          type: string
+                          enum:
+                            - success
+                            - fail
+                            - running
+                        created_time:
+                          type: string
+                          description: 行為時間
+                          format: date-time
+                        extra_info:
+                          description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
+                          type: string
+  /qa/questions/operation/import:
+    post:
+      summary: import questions
+      description: '匯入xlsx格式的資料檔案, 會鎖定問答庫匯入匯出'
+      operationId: importQuestions
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                mode:
+                  description: 增量或全量導入
+                  type: string
+                  enum:
+                    - incre
+                    - full
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: operation message
+        '400':
+          description: Invalid status value
+        '500':
+          description: System cant get the lock until timeout
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Display error message
+                  userID:
+                    type: string
+                    description: user who are using the lock right now
+  /qa/questions/operation/export:
+    get:
+      summary: export currrent questions
+      description: 'Exporting all the questions, will lock down questions operation'
+      operationId: exportQuestions
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/xlsx:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid value
+        '500':
+          description: System cant get the lock until timeout
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Display error message
+                  userID:
+                    type: string
+                    description: user who are using the lock right now

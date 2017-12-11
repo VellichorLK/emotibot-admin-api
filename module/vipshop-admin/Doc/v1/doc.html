@@ -1,0 +1,17 @@
+<html>
+    <script>
+        function goTo(target) {
+            var docUrl = "http://" + window.location.host +"/api/v1/doc/"+ target;
+            var targetUrl = "http://" + window.location.host + "/api/v1/doc/swagger.html?url="+docUrl;
+            window.open(targetUrl);
+            // window.location = targetUrl;
+        }
+    </script>
+    <body>
+        <ul>
+            <li>
+                <a href="#" onclick="goTo('qa2.yaml'); return false;">FAQ</a>
+            </li>
+        </ul>
+    </body>
+</html>
