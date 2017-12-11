@@ -22,7 +22,8 @@ func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
 }
 
 func GetQuestionStatisticResult(appid string, day int, qType string) (*StatRet, int, error) {
-	end := time.Now().Unix()
+	now := time.Now().Local()
+	end := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
 	start := end - int64(day*24*60*60)
 
 	var data []*StatRow

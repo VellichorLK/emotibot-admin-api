@@ -2,6 +2,7 @@ package Stats
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,9 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	ModuleInfo   util.ModuleInfo
+	cache        map[string]*StatRet
+	cacheTimeout *time.Time
 )
 
 const (
@@ -30,6 +33,8 @@ func init() {
 			util.NewEntryPoint("GET", "question", []string{"view"}, handleQuestionStatistic),
 		},
 	}
+	cacheTimeout = nil
+	cache = make(map[string]*StatRet)
 }
 
 func InitDB() {
@@ -133,11 +138,40 @@ func handleQuestionStatistic(ctx context.Context) {
 
 	util.LogTrace.Printf("Request Questions Statistic: days=[%d] type=[%s]", day, qType)
 
-	ret, code, err := GetQuestionStatisticResult(appid, day, qType)
+	code := ApiError.SUCCESS
+	ret := getRetInCache(day, qType)
+	if ret == nil {
+		ret, code, err = GetQuestionStatisticResult(appid, day, qType)
+		setRetCache(day, qType, ret)
+	}
 	if err != nil {
 		ctx.JSON(util.GenRetObj(code, err.Error()))
 	} else {
 		ctx.JSON(util.GenRetObj(code, ret))
+	}
+}
+
+func getRetInCache(day int, qType string) *StatRet {
+	if cacheTimeout == nil {
+		util.LogTrace.Printf("No cache")
+		return nil
+	} else if time.Now().After(*cacheTimeout) {
+		util.LogTrace.Printf("Cache timeout")
+		return nil
+	}
+	key := fmt.Sprintf("%d-%s", day, qType)
+	return cache[key]
+}
+
+func setRetCache(day int, qType string, ret *StatRet) {
+	if ret != nil {
+		key := fmt.Sprintf("%d-%s", day, qType)
+		cache[key] = ret
+
+		now := time.Now().Local()
+		dayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999, now.Location())
+		cacheTimeout = &dayEnd
+		util.LogTrace.Printf("Update cache of %s: %s", key, dayEnd.Format(time.RFC3339))
 	}
 }
 
