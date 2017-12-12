@@ -323,7 +323,7 @@ func handleDeleteRole(ctx context.Context) {
 	}
 	if len(CAuthUsers.Data) > 0 {
 		logMsg = fmt.Sprintf("%s%s%s %s: %s%s", util.Msg["Cannot"], util.Msg["Delete"], util.Msg["Role"], id, util.Msg["Has"], util.Msg["User"])
-		ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, logMsg))
+		ctx.JSON(GenRetObj(ApiError.REQUEST_ERROR, logMsg))
 		return
 	}
 
