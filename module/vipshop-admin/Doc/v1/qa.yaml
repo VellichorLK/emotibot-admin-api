@@ -12,6 +12,8 @@ tags:
     description: get single question and answers of the question
   - name: categories
     description: get categories
+  - name: operations
+    description: QA related operation(Import, Export, etc...)
 components:
   schemas:
     categoryId:
@@ -449,6 +451,8 @@ paths:
           description: 'an error occurred, the operation failed'
   /qa/questions/operations:
     get:
+      tags:
+        - operations
       summary: 取得最近num筆的該使用者問答庫行為記錄
       operationId: getOperations
       parameters:
@@ -493,13 +497,15 @@ paths:
                         extra_info:
                           description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
                           type: string
-  /qa/questions/operation/progress:
+  '/qa/questions/operations/{id}/progress':
     get:
+      tags:
+        - operations
       summary: 查詢匯入匯出進度
       description: 查詢
       parameters:
         - name: id
-          in: query
+          in: path
           schema:
             type: string
           required: true
@@ -527,9 +533,64 @@ paths:
                     format: date
                     description: 上傳/下載開始時間
         '204':
+          description: cant found the operation in DB
+  /qa/questions/operations/locking:
+    get:
+      tags:
+        - operations
+      summary: 查詢問答庫狀態
+      description: 查詢是否有人匯入匯出中
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: 傳入的查詢ID
+                  stats:
+                    type: string
+                    enum:
+                      - running
+                      - failed
+                      - success
+                    description: 任務執行狀態
+                  created_time:
+                    type: string
+                    format: date
+                    description: 上傳/下載開始時間
+        '204':
+          description: No one is locking db now
+  /qa/questions/operations/download:
+    get:
+      tags:
+        - operations
+      summary: 取得檔案
+      description: 查詢
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: string
+          required: true
+          description: '使用匯入匯出API成功時所取得的唯一id來查詢目前進度, 若無則可使用/qa/questions/operations API取得該ID'
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/xlsx:
+              schema:
+                type: string
+                format: binary
+        '204':
           description: Operation not found
-  /qa/questions/operation/import:
+  /qa/questions/operations/import:
     post:
+      tags:
+        - operations
       summary: import questions
       description: '匯入xlsx格式的資料檔案, 會鎖定問答庫匯入匯出'
       operationId: importQuestions
@@ -558,7 +619,7 @@ paths:
                   message:
                     type: string
                     description: operation message
-                  id:
+                  statID:
                     type: string
                     description: ID for querying progress
         '400':
@@ -572,7 +633,7 @@ paths:
                     type: string
                     description: error message
         '500':
-          description: System cant get the lock until timeout
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -584,22 +645,62 @@ paths:
                   userID:
                     type: string
                     description: user who are using the lock right now
-  /qa/questions/operation/export:
-    get:
+        '502':
+          description: 'Lock Error, Multicustomer 無法取得匯入權限'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: error message
+                  userID:
+                    type: string
+                    description: user who are using the lock right now
+                  action:
+                    type: string
+                    description: action name
+                    enum:
+                      - full_import
+                      - incr_import
+                      - export
+  /qa/questions/operations/export:
+    post:
+      tags:
+        - operations
       summary: export currrent questions
-      description: 'Exporting all the questions, will lock down questions operation'
+      description: 'Exporting all the questions, will lock questions operation'
       operationId: exportQuestions
       responses:
         '200':
           description: successful operation
           content:
-            application/xlsx:
+            application/json:
               schema:
-                type: string
-                format: binary
-        '400':
-          description: Invalid value
+                type: object
+                properties:
+                  stat_id:
+                    type: string
+                    description: 傳入的查詢ID
+                  created_time:
+                    type: string
+                    format: date
+                    description: 上傳開始時間
         '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: error message
+                  userID:
+                    type: string
+                    description: user who are using the lock right now
+        '502':
           description: System cant get the lock until timeout
           content:
             application/json:
