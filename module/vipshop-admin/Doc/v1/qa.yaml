@@ -553,8 +553,8 @@ paths:
                     type: string
                     format: date
                     description: 上傳/下載開始時間
-          '204':
-            description: No one is locking db now
+        '204':
+          description: No one is locking db now
   /qa/questions/operations/download:
     get:
       tags:
@@ -580,7 +580,7 @@ paths:
           description: Operation not found
   /qa/questions/operations/import:
     post:
-     tags:
+      tags:
         - operations
       summary: import questions
       description: '匯入xlsx格式的資料檔案, 會鎖定問答庫匯入匯出'
