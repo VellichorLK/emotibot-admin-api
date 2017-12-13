@@ -8,7 +8,7 @@ import (
 )
 
 func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
-	list, totalCnt, err := getAuditListPage(appid, input, input.Page, input.ListPerPage)
+	list, totalCnt, err := getAuditListData(appid, input, input.Page, input.ListPerPage, input.Export)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
