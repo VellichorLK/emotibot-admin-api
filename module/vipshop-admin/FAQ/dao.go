@@ -2,7 +2,6 @@ package FAQ
 
 import (
 	"fmt"
-	"time"
 	"errors"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
