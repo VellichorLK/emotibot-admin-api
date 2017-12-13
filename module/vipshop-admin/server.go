@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/UI"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -93,6 +94,10 @@ func checkPrivilegeWithAPI(module string, cmd string, appid string, userid strin
 	return true
 }
 
+func clientNoStoreCache(ctx context.Context) {
+	ctx.Header("Cache-Control", "no-store, private")
+}
+
 func setRoute(app *iris.Application) {
 	modules := []interface{}{
 		Dictionary.ModuleInfo,
@@ -100,6 +105,7 @@ func setRoute(app *iris.Application) {
 		Robot.ModuleInfo,
 		Stats.ModuleInfo,
 		QA.ModuleInfo,
+		FAQ.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -107,7 +113,7 @@ func setRoute(app *iris.Application) {
 		for _, entrypoint := range info.EntryPoints {
 			// entry will be api/v_/<module>/<entry>
 			entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
-			if app.Handle(entrypoint.AllowMethod, entryPath, checkPrivilege, entrypoint.Callback) == nil {
+			if app.Handle(entrypoint.AllowMethod, entryPath, checkPrivilege, entrypoint.Callback, clientNoStoreCache) == nil {
 				util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
 			} else {
 				util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
