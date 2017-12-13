@@ -18,6 +18,8 @@ var (
 		"Format":       "格式",
 		"Server":       "伺服器",
 		"Not":          "非",
+		"Cannot":       "无法",
+		"Has":          "拥有",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

@@ -71,7 +71,7 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	ext := path.Ext(info.Filename)
 	util.LogTrace.Printf("upload file ext: [%s]", ext)
 	if ext != ".xlsx" {
-		errMsg := fmt.Sprintf("%s %s %s", util.Msg["File"], util.Msg["Format"], util.Msg["Error"])
+		errMsg := fmt.Sprintf("%s%s%s", util.Msg["File"], util.Msg["Format"], util.Msg["Error"])
 		InsertProcess(appid, StatusFail, info.Filename, errMsg)
 		return "", ApiError.DICT_FORMAT_ERROR, errors.New(errMsg)
 	}
@@ -80,14 +80,14 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 	size, err := util.SaveDictionaryFile(appid, filename, file)
 	if err != nil {
-		errMsg := fmt.Sprintf("%s %s %s", util.Msg["Save"], util.Msg["File"], util.Msg["Error"])
+		errMsg := fmt.Sprintf("%s%s%s", util.Msg["Save"], util.Msg["File"], util.Msg["Error"])
 		InsertProcess(appid, StatusFail, filename, errMsg)
 		util.LogError.Printf("save dict io error: %s", err.Error())
 		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 
 	if size < 0 || size > 2*1024*1024 {
-		errMsg := fmt.Sprintf("%s %s %s", util.Msg["File"], util.Msg["Size"], util.Msg["Error"])
+		errMsg := fmt.Sprintf("%s%s%s", util.Msg["File"], util.Msg["Size"], util.Msg["Error"])
 		InsertProcess(appid, StatusFail, info.Filename, errMsg)
 		return "", ApiError.DICT_SIZE_ERROR, errors.New(errMsg)
 	}
@@ -96,14 +96,14 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	file.Seek(0, io.SeekStart)
 	buf := make([]byte, size)
 	if _, err := file.Read(buf); err != nil {
-		errMsg := fmt.Sprintf("%s %s %s", util.Msg["Read"], util.Msg["File"], util.Msg["Error"])
+		errMsg := fmt.Sprintf("%s%s%s", util.Msg["Read"], util.Msg["File"], util.Msg["Error"])
 		InsertProcess(appid, StatusFail, filename, errMsg)
 		util.LogError.Printf("read dict io error: %s", err.Error())
 		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 	_, err = xlsx.OpenBinary(buf)
 	if err != nil {
-		errMsg := fmt.Sprintf("%s %s %s, %s xlsx", util.Msg["File"], util.Msg["Format"], util.Msg["Error"], util.Msg["Not"])
+		errMsg := fmt.Sprintf("%s%s%s, %s xlsx", util.Msg["File"], util.Msg["Format"], util.Msg["Error"], util.Msg["Not"])
 		InsertProcess(appid, StatusFail, info.Filename, errMsg)
 		util.LogError.Printf("Not correct xlsx: %s", err.Error())
 		return "", ApiError.DICT_FORMAT_ERROR, errors.New(errMsg)

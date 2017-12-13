@@ -223,7 +223,7 @@ func handleUserUpdate(ctx context.Context) {
 		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleRole, operation, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, operation, logMsg, result)
 }
 
 func handleRoleUpdate(ctx context.Context) {
@@ -239,6 +239,12 @@ func handleRoleUpdate(ctx context.Context) {
 
 	if len(strings.Trim(id, " ")) == 0 {
 		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(util.GenSimpleRetObj(ApiError.REQUEST_ERROR))
+		return
+	}
+
+	if len(strings.Trim(operator, " ")) == 0 {
+		ctx.StatusCode(iris.StatusUnauthorized)
 		ctx.JSON(util.GenSimpleRetObj(ApiError.REQUEST_ERROR))
 		return
 	}
@@ -274,7 +280,7 @@ func handleRoleUpdate(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
 		result = 1
 	}
-	util.AddAuditLog(operator, userIP, util.AuditModuleMembers, util.AuditOperationEdit, logMsg, result)
+	util.AddAuditLog(operator, userIP, util.AuditModuleRole, util.AuditOperationEdit, logMsg, result)
 }
 
 func handleAddRole(ctx context.Context) {
@@ -304,14 +310,29 @@ func handleDeleteRole(ctx context.Context) {
 	userIP := util.GetUserIP(ctx)
 	id := ctx.Params().GetEscape("id")
 	result := 0
+	logMsg := ""
 
-	err := deleteRole(id, userID)
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationDelete, logMsg, result)
+	}()
+
+	CAuthUsers, err := getUsersOfRoleFromCAuth(id)
+	if err != nil {
+		ctx.JSON(GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+		return
+	}
+	if len(CAuthUsers.Data) > 0 {
+		logMsg = fmt.Sprintf("%s%s%s %s: %s%s", util.Msg["Cannot"], util.Msg["Delete"], util.Msg["Role"], id, util.Msg["Has"], util.Msg["User"])
+		ctx.JSON(GenRetObj(ApiError.REQUEST_ERROR, logMsg))
+		return
+	}
+
+	err = deleteRole(id, userID)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
 		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
+		logMsg = fmt.Sprintf("%s%s %s", util.Msg["Delete"], util.Msg["Role"], id)
 		result = 1
 	}
-	logMsg := fmt.Sprintf("delete role: %s", id)
-	util.AddAuditLog(userID, userIP, util.AuditModuleRole, util.AuditOperationDelete, logMsg, result)
 }
