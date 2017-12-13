@@ -46,8 +46,12 @@ components:
           type: string
         dynamicMenu:
           type: array
+          items:
+            $ref: "#/components/schemas/extendMenu"
         relativeQuesions:
           type: array
+          items:
+            $ref: "#/components/schemas/extendMenu"
         answerCMD:
           type: string
         answerCMDMsg:
@@ -57,6 +61,8 @@ components:
           default: false
         dimension:
           type: array
+          items:
+            type: string
         beginTime:
           $ref: '#/components/schemas/time'
         endTime:
@@ -79,8 +85,11 @@ components:
           $ref: '#/components/schemas/categoryId'
         children:
           type: array
+          description: "a list of child category"
           items:
             $ref: '#/components/schemas/category'
+    extendMenu:
+      type: string
   parameters:
     qid:
       name: qid
