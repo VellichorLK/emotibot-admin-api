@@ -568,6 +568,16 @@ paths:
                         type: string
                         format: date
                         description: operation 開始時間
+        '500':
+          description: Server Internal Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: error message
   /qa/questions/operations/download:
     get:
       tags:
@@ -591,6 +601,16 @@ paths:
                 format: binary
         '404':
           description: Operation not found
+        '500':
+          description: Server internal error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: error message
   /qa/questions/operations/import:
     post:
       tags:
