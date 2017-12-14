@@ -53,6 +53,9 @@ func handleExportAuditLog(ctx context.Context) {
 	case "statistic-daily":
 		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
 		break
+	case "statistic-audit":
+		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		break
 	}
 
 	if moduleID == "" || fileName == "" {
