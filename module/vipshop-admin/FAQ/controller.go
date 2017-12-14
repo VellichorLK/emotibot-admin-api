@@ -14,7 +14,7 @@ var (
 
 func init() {
 	ModuleInfo = util.ModuleInfo{
-		ModuleName: "FAQ",
+		ModuleName: "faq",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "question/{qid:string}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
