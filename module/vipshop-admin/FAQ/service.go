@@ -1,4 +1,7 @@
 package FAQ
+import (
+	"emotibot.com/emotigo/module/vipshop-admin/util"
+)
 
 func updateSimilarQuestions(qid string, appid string, user string, sqs []SimilarQuestion) error {
 	// delete old similar questions
@@ -6,6 +9,9 @@ func updateSimilarQuestions(qid string, appid string, user string, sqs []Similar
 
 	// put new similar questions
 	insertSimilarQuestions(qid, appid, user, sqs)
+
+	// notify multicustomer TODO: update consul directly
+	util.McManualBusiness(appid)
 
 	// save audit log
 
