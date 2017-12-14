@@ -59,6 +59,22 @@ func McRebuildRobotQA(appid string) (int, error) {
 	return ApiError.SUCCESS, nil
 }
 
+func McManualBusiness(appid string) (int, error) {
+	mcURL := getGlobalEnv(MulticustomerURLKey)
+	// manual_edit
+	// app_id
+	reqURL := fmt.Sprintf("%s/manual_business?app_id=%s&type=robot", mcURL, appid)
+	logTraceMC("req", reqURL)
+
+	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 5)
+	if resErr != nil {
+		logMCError(resErr)
+		return ApiError.DICT_SERVICE_ERROR, resErr
+	}
+	logTraceMC("rebuild question", body)
+	return ApiError.SUCCESS, nil
+}
+
 func logTraceMC(function string, msg string) {
 	LogTrace.Printf("[MC][%s]:%s", function, msg)
 }
