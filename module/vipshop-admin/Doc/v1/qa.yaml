@@ -49,11 +49,11 @@ components:
         dynamicMenu:
           type: array
           items:
-            $ref: "#/components/schemas/extendMenu"
+            $ref: '#/components/schemas/extendMenu'
         relativeQuesions:
           type: array
           items:
-            $ref: "#/components/schemas/extendMenu"
+            $ref: '#/components/schemas/extendMenu'
         answerCMD:
           type: string
         answerCMDMsg:
@@ -87,7 +87,7 @@ components:
           $ref: '#/components/schemas/categoryId'
         children:
           type: array
-          description: "a list of child category"
+          description: a list of child category
           items:
             $ref: '#/components/schemas/category'
     extendMenu:
@@ -491,9 +491,8 @@ paths:
                             - fail
                             - running
                         created_time:
-                          type: string
-                          description: 行為時間
-                          format: date-time
+                          type: integer
+                          description: 行為時間 (Unix Mill Sec)
                         extra_info:
                           description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
                           type: string
@@ -529,9 +528,11 @@ paths:
                       - success
                     description: 任務執行狀態
                   created_time:
+                    type: integer
+                    description: 上傳/下載開始時間(Unix Mill Sec)
+                  extra_info:
                     type: string
-                    format: date
-                    description: 上傳/下載開始時間
+                    description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
         '404':
           description: cant found the operation in DB
   /qa/questions/operations/locking:
@@ -565,9 +566,8 @@ paths:
                           - incr_import
                           - export
                       created_time:
-                        type: string
-                        format: date
-                        description: operation 開始時間
+                        type: integer
+                        description: operation 開始時間(Unix Mill Sec)
         '500':
           description: Server Internal Error
           content:
@@ -640,9 +640,6 @@ paths:
               schema:
                 type: object
                 properties:
-                  message:
-                    type: string
-                    description: operation message
                   statID:
                     type: string
                     description: ID for querying progress
@@ -666,10 +663,7 @@ paths:
                   message:
                     type: string
                     description: error message
-                  userID:
-                    type: string
-                    description: user who are using the lock right now
-        '502':
+        '503':
           description: 'Lock Error, Multicustomer 無法取得匯入權限'
           content:
             application/json:
@@ -724,7 +718,7 @@ paths:
                   userID:
                     type: string
                     description: user who are using the lock right now
-        '502':
+        '503':
           description: System cant get the lock until timeout
           content:
             application/json:
