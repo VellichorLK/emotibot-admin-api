@@ -8,6 +8,7 @@ type AuditInput struct {
 	Filter      *AuditFilter `json:"filters"`
 	Page        int          `json:"page"`
 	ListPerPage int          `json:"limit"`
+	Export		bool		 `json:"export"`
 }
 
 type AuditFilter struct {

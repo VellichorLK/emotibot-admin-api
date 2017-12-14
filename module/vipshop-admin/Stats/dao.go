@@ -63,7 +63,7 @@ func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
 	return ret, nil
 }
 
-func getAuditListPage(appid string, input *AuditInput, page int, listPerPage int) ([]*AuditLog, int, error) {
+func getAuditListData(appid string, input *AuditInput, page int, listPerPage int, export bool) ([]*AuditLog, int, error) {
 	// Audit log is not splited by appid for now
 	mySQL := util.GetAuditDB()
 	if mySQL == nil {
@@ -95,9 +95,15 @@ func getAuditListPage(appid string, input *AuditInput, page int, listPerPage int
 	args = append(args, input.End)
 
 	shift := (page - 1) * listPerPage
-	queryStr := fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(columns, ","), strings.Join(conditions, " and "))
-	args = append(args, listPerPage)
-	args = append(args, shift)
+	queryStr := ""
+	if export == true {
+		queryStr = fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc", strings.Join(columns, ","), strings.Join(conditions, " and "))
+	} else {
+		queryStr = fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(columns, ","), strings.Join(conditions, " and "))
+		args = append(args, listPerPage)
+		args = append(args, shift)
+	}
+	
 
 	util.LogTrace.Printf("Query for audit: %s", queryStr)
 	util.LogTrace.Printf("Query param: %#v", args)

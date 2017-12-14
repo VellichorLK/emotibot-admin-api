@@ -13,7 +13,7 @@ tags:
   - name: categories
     description: get categories
   - name: operations
-    description: QA related operation(Import, Export, etc...)
+    description: 'QA related operation(Import, Export, etc...)'
 components:
   schemas:
     categoryId:
@@ -532,7 +532,7 @@ paths:
                     type: string
                     format: date
                     description: 上傳/下載開始時間
-        '204':
+        '404':
           description: cant found the operation in DB
   /qa/questions/operations/locking:
     get:
@@ -548,22 +548,36 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
+                  isLocked:
+                    type: boolean
+                    description: '是否有人鎖定資料庫,若有則帶operation物件'
+                  operation:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        description: operation ID
+                      action:
+                        type: string
+                        description: action name
+                        enum:
+                          - full_import
+                          - incr_import
+                          - export
+                      created_time:
+                        type: string
+                        format: date
+                        description: operation 開始時間
+        '500':
+          description: Server Internal Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
                     type: string
-                    description: 傳入的查詢ID
-                  stats:
-                    type: string
-                    enum:
-                      - running
-                      - failed
-                      - success
-                    description: 任務執行狀態
-                  created_time:
-                    type: string
-                    format: date
-                    description: 上傳/下載開始時間
-        '204':
-          description: No one is locking db now
+                    description: error message
   /qa/questions/operations/download:
     get:
       tags:
@@ -585,8 +599,18 @@ paths:
               schema:
                 type: string
                 format: binary
-        '204':
+        '404':
           description: Operation not found
+        '500':
+          description: Server internal error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: error message
   /qa/questions/operations/import:
     post:
       tags:
