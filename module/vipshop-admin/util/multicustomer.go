@@ -63,7 +63,7 @@ func McManualBusiness(appid string) (int, error) {
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	// manual_edit
 	// app_id
-	reqURL := fmt.Sprintf("%s/manual_business?app_id=%s&type=robot", mcURL, appid)
+	reqURL := fmt.Sprintf("%s/manual_business?app_id=%s&type=other", mcURL, appid)
 	logTraceMC("req", reqURL)
 
 	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 5)
