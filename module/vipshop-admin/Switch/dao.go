@@ -18,6 +18,7 @@ func getSwitchList(appid string) ([]*SwitchInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	ret := []*SwitchInfo{}
 	for rows.Next() {
@@ -42,6 +43,7 @@ func getSwitch(appid string, id int) (*SwitchInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var info SwitchInfo
 	if rows.Next() {
@@ -62,7 +64,7 @@ func updateSwitch(appid string, id int, input *SwitchInfo) error {
 	}
 
 	queryStr := fmt.Sprintf("UPDATE %s_onoff SET OnOff_Code = ?, OnOff_Name = ?, OnOff_Status = ?, OnOff_Remark = ?, OnOff_Scenario = ?, OnOff_NumType = ?, OnOff_Num = ?, OnOff_Msg = ?, OnOff_Flow = ?, OnOff_WhiteList = ?, OnOff_BlackList = ?, UpdateTime = ? where OnOff_Id = ?", appid)
-	_, err := mySQL.Query(queryStr, input.Code, input.Name, input.Status, input.Remark, input.Scenario, input.NumType, input.Num, input.Msg, input.Flow, input.WhiteList, input.BlackList, input.UpdateTime, id)
+	_, err := mySQL.Exec(queryStr, input.Code, input.Name, input.Status, input.Remark, input.Scenario, input.NumType, input.Num, input.Msg, input.Flow, input.WhiteList, input.BlackList, input.UpdateTime, id)
 	if err != nil {
 		return err
 	}
@@ -81,6 +83,7 @@ func insertSwitch(appid string, input *SwitchInfo) error {
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	res, err := stmt.Exec(input.Code, input.Name, input.Status, input.Remark, input.Scenario, input.NumType, input.Num, input.Msg, input.Flow, input.WhiteList, input.BlackList, input.UpdateTime)
 	if err != nil {
@@ -100,7 +103,7 @@ func deleteSwitch(appid string, id int) error {
 	}
 
 	queryStr := fmt.Sprintf("DELETE FROM %s_onoff where OnOff_Id = ?", appid)
-	_, err := mySQL.Query(queryStr, id)
+	_, err := mySQL.Exec(queryStr, id)
 	if err != nil {
 		return err
 	}

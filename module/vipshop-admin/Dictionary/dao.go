@@ -18,6 +18,7 @@ func GetProcessStatus(appid string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer rows.Close()
 
 	var status string
 	ret := rows.Next()
@@ -42,6 +43,7 @@ func GetFullProcessStatus(appid string) (*StatusInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	status := StatusInfo{}
 	ret := rows.Next()
@@ -73,6 +75,7 @@ func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	ret := []*DownloadMeta{}
 	for rows.Next() {
@@ -97,7 +100,7 @@ func InsertProcess(appid string, status Status, filename string, message string)
 		return errors.New("DB not init")
 	}
 
-	_, err := mySQL.Query("insert process_status(app_id, module, status, entity_file_name, message) values (?, 'wordbank', ?, ?, ?)", appid, status, filename, message)
+	_, err := mySQL.Exec("insert process_status(app_id, module, status, entity_file_name, message) values (?, 'wordbank', ?, ?, ?)", appid, status, filename, message)
 	if err != nil {
 		return err
 	}

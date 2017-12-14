@@ -77,6 +77,7 @@ func getAllRobotQAList(appid string) ([]*QAInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	dest := make([]interface{}, len(cols))
 	rawResult := make([][]byte, len(cols)-2)
@@ -132,6 +133,7 @@ func getAllAnswer(appid string) (map[int][]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var qid int
 	var content string
@@ -158,6 +160,7 @@ func getAnswerOfQuestion(appid string, qid int) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var content string
 	for rows.Next() {
@@ -190,6 +193,7 @@ func getAnswerOfQuestions(appid string, ids []int) (map[int][]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var qid int
 	var content string
@@ -239,6 +243,7 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	// ret := []*QAInfo{}
 	dest := make([]interface{}, len(cols))
@@ -302,6 +307,7 @@ func getAllRobotQACnt(appid string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer rows.Close()
 
 	count := 0
 	if rows.Next() {
@@ -325,6 +331,7 @@ func getRobotQA(appid string, id int) (*QAInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	dest := make([]interface{}, len(cols))
 	rawResult := make([][]byte, len(cols)-2)
@@ -391,7 +398,7 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 	args[questionCols] = len(info.Answers)
 	args[questionCols+1] = id
 
-	_, err = link.Query(queryStr, args...)
+	_, err = link.Exec(queryStr, args...)
 	if err != nil {
 		link.Rollback()
 		return err
@@ -399,7 +406,7 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 
 	// Delete orig answer
 	queryStr = fmt.Sprintf("DELETE FROM %s_robotanswer WHERE parent_q_id = ?", appid)
-	_, err = link.Query(queryStr, id)
+	_, err = link.Exec(queryStr, id)
 	if err != nil {
 		link.Rollback()
 		return err
@@ -409,19 +416,20 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 	queryStr = fmt.Sprintf("INSERT INTO %s_robotanswer(parent_q_id, content, user) VALUES (?,?,?)", appid)
 	stmt, err := link.Prepare(queryStr)
 	if err != nil {
+		stmt.Close()
 		link.Rollback()
 		return err
 	}
-	defer stmt.Close()
 
 	for _, answer := range info.Answers {
 		_, err = stmt.Exec(id, answer, appid)
 		if err != nil {
+			stmt.Close()
 			link.Rollback()
 			return err
 		}
 	}
-
+	stmt.Close()
 	return nil
 }
 
@@ -438,6 +446,7 @@ func getRobotChatList(appid string) ([]*ChatInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		chatType := 0
@@ -475,6 +484,7 @@ func getMultiRobotChat(appid string, input []int) ([]*ChatInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	contentMap := make(map[int][]string)
 	for rows.Next() {
@@ -517,7 +527,7 @@ func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
 	deleteStr := fmt.Sprintf("DELETE FROM %s_robot_setting where type in (?%s)", appid, strings.Repeat(",?", len(ids)-1))
 	util.LogTrace.Printf("SQL: %s\n", deleteStr)
 	util.LogTrace.Printf("param: %#v\n", ids)
-	_, err = link.Query(deleteStr, ids...)
+	_, err = link.Exec(deleteStr, ids...)
 	if err != nil {
 		link.Rollback()
 		return err
@@ -527,7 +537,7 @@ func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
 	insertStr := fmt.Sprintf("INSERT INTO %s_robot_setting(type, content) VALUES(?,?)", appid)
 	for _, info := range input {
 		for _, content := range info.Contents {
-			_, err = link.Query(insertStr, info.Type, content)
+			_, err = link.Exec(insertStr, info.Type, content)
 			if err != nil {
 				link.Rollback()
 				return err

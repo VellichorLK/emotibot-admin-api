@@ -52,6 +52,7 @@ func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	ret := []*AuditLog{}
 	for rows.Next() {
@@ -112,6 +113,7 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 	if err != nil {
 		return nil, 0, err
 	}
+	defer rows.Close()
 
 	ret := []*AuditLog{}
 	for rows.Next() {
@@ -166,6 +168,7 @@ func getAuditListCnt(appid string, input *AuditInput) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer rows.Close()
 
 	var ret int
 	if rows.Next() {
@@ -199,6 +202,7 @@ func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*St
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	ret := []*StatRow{}
 	for rows.Next() {
