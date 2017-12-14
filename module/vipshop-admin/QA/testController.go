@@ -9,7 +9,7 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	TestModuleInfo util.ModuleInfo
 )
 
 const (
@@ -17,8 +17,8 @@ const (
 )
 
 func init() {
-	ModuleInfo = util.ModuleInfo{
-		ModuleName: "qa",
+	TestModuleInfo = util.ModuleInfo{
+		ModuleName: "qatest",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "chat-test", []string{"view"}, hadleChatTest),
 		},

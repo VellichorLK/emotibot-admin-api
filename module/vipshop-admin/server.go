@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/Dictionary"
+	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 	"emotibot.com/emotigo/module/vipshop-admin/QA"
 	"emotibot.com/emotigo/module/vipshop-admin/Robot"
 	"emotibot.com/emotigo/module/vipshop-admin/Stats"
 	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/UI"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
-	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -106,6 +106,7 @@ func setRoute(app *iris.Application) {
 		Stats.ModuleInfo,
 		QA.ModuleInfo,
 		FAQ.ModuleInfo,
+		QA.TestModuleInfo,
 	}
 
 	for _, module := range modules {
