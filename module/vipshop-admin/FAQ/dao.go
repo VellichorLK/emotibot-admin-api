@@ -48,35 +48,38 @@ func insertSimilarQuestions(qid string, appid string, user string, sqs []Similar
 		return errors.New("DB not init")
 	}
 
-	// prepare insert sql
-	sqlStr := fmt.Sprintf("INSERT INTO %s_squestion(Question_Id, Content, CreatedUser, CreatedTime) VALUES ", appid)
-	vals := []interface{}{}
+	if len(sqs) > 0 {
+		// prepare insert sql
+		sqlStr := fmt.Sprintf("INSERT INTO %s_squestion(Question_Id, Content, CreatedUser, CreatedTime) VALUES ", appid)
+		vals := []interface{}{}
 
-	for _, sq := range sqs {
-		sqlStr += "(?, ?, ?, now()),"
-		vals = append(vals, qid, sq.Content, user)
-	}
-	
-	//trim the last ,
-	sqlStr = sqlStr[0:len(sqlStr)-1]
+		for _, sq := range sqs {
+			sqlStr += "(?, ?, ?, now()),"
+			vals = append(vals, qid, sq.Content, user)
+		}
+		
+		//trim the last ,
+		sqlStr = sqlStr[0:len(sqlStr)-1]
 
-	//prepare the statement
-	stmt, err := mySQL.Prepare(sqlStr)
-	if err != nil {
-		util.LogInfo.Printf("error: ", err.Error())
+		//prepare the statement
+		stmt, err := mySQL.Prepare(sqlStr)
+		if err != nil {
+			util.LogInfo.Printf("error: ", err.Error())
+		}
+
+		//format all vals at once
+		_, err = stmt.Exec(vals...)
+		if err != nil {
+			util.LogInfo.Printf("error: ", err.Error())
+		}
 	}
 
-	//format all vals at once
-	_, err = stmt.Exec(vals...)
-	if err != nil {
-		util.LogInfo.Printf("error: ", err.Error())
-	}
 
 	// hack here, because houta use SQuestion_count to store sq count instead of join similar question table
 	// so we have to update SQuestion_count in question table, WTF .....
 	// TODO: rewrite query function and left join squestion table
-	sqlStr = fmt.Sprintf("UPDATE %s_question SET SQuestion_count = %d, Status = 1 WHERE Question_Id = ?", appid, len(sqs))
-	_, err = mySQL.Query(sqlStr, qid)
+	sqlStr := fmt.Sprintf("UPDATE %s_question SET SQuestion_count = %d, Status = 1 WHERE Question_Id = ?", appid, len(sqs))
+	_, err := mySQL.Query(sqlStr, qid)
 	if err != nil {
 		return err
 	}
