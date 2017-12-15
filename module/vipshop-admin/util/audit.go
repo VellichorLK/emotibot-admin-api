@@ -34,7 +34,7 @@ func AddAuditLog(userID string, userIP string, module string, operation string, 
 		return errors.New("DB not init")
 	}
 
-	_, err := auditDB.Query("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)", userID, userIP, module, operation, content, result)
+	_, err := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)", userID, userIP, module, operation, content, result)
 	if err != nil {
 		LogInfo.Printf("insert audit fail: %s", err.Error())
 		return err

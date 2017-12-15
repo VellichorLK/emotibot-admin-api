@@ -462,6 +462,29 @@ paths:
             type: integer
           required: true
           description: 取得最多num筆行為記錄
+        - name: UserID
+          in: query
+          schema:
+            type: string
+            description: '使用者ID, 若無則為所有使用者'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - success
+              - failed
+              - running
+            description: 狀態，若無則為所有狀態
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum:
+              - full_import
+              - incre_import
+              - export
+          description: 行為種類，若無則為所有種類
       responses:
         '200':
           description: successful operation
@@ -476,6 +499,8 @@ paths:
                     items:
                       type: object
                       properties:
+                        state_id:
+                          description: 行為id
                         action:
                           description: 行為的模式(全量、批量導入、全量導出）
                           type: string
@@ -493,6 +518,9 @@ paths:
                         created_time:
                           type: integer
                           description: 行為時間 (Unix Mill Sec)
+                        updated_time:
+                          type: integer
+                          description: 行為最後更新時間(Unix Mill Sec)
                         extra_info:
                           description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
                           type: string
@@ -517,10 +545,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  id:
+                  state_id:
                     type: string
                     description: 傳入的查詢ID
-                  stats:
+                  status:
                     type: string
                     enum:
                       - running
@@ -535,50 +563,7 @@ paths:
                     description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
         '404':
           description: cant found the operation in DB
-  /qa/questions/operations/locking:
-    get:
-      tags:
-        - operations
-      summary: 查詢問答庫狀態
-      description: 查詢是否有人匯入匯出中
-      responses:
-        '200':
-          description: successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  isLocked:
-                    type: boolean
-                    description: '是否有人鎖定資料庫,若有則帶operation物件'
-                  operation:
-                    type: object
-                    properties:
-                      id:
-                        type: string
-                        description: operation ID
-                      action:
-                        type: string
-                        description: action name
-                        enum:
-                          - full_import
-                          - incr_import
-                          - export
-                      created_time:
-                        type: integer
-                        description: operation 開始時間(Unix Mill Sec)
-        '500':
-          description: Server Internal Error
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    description: error message
-  /qa/questions/operations/download:
+  '/qa/questions/operations/{id}/download':
     get:
       tags:
         - operations
@@ -586,7 +571,7 @@ paths:
       description: 查詢
       parameters:
         - name: id
-          in: query
+          in: path
           schema:
             type: string
           required: true
@@ -595,7 +580,7 @@ paths:
         '200':
           description: successful operation
           content:
-            application/xlsx:
+            application/octet-stream:
               schema:
                 type: string
                 format: binary
@@ -640,7 +625,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  statID:
+                  state_id:
                     type: string
                     description: ID for querying progress
         '400':
@@ -698,7 +683,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  stat_id:
+                  state_id:
                     type: string
                     description: 傳入的查詢ID
                   created_time:
