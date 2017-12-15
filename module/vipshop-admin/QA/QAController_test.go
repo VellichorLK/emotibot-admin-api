@@ -14,7 +14,7 @@ import (
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
-	httptest "github.com/kataras/iris/httptest"
+	"github.com/kataras/iris/httptest"
 )
 
 type mockMCClient http.Client
@@ -55,6 +55,10 @@ var mHeader = map[string]string{
 }
 
 func TestMain(m *testing.M) {
+
+	buf := bytes.NewBuffer([]byte{})
+	util.LogInit(buf, buf, buf, buf)
+
 	apiClient = mockMCClient{}
 	app = iris.New()
 	app.Post("/test/import", importExcel)
@@ -74,7 +78,12 @@ func TestImportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 	var expectedResponse = "{\"state_id\":123}"
 	var buf = strings.NewReader("test")
-	body := e.POST("/test/import").WithMultipart().WithFormField("mode", "full_import").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
+
+	//400 situaction
+	e.POST("/test/import").WithMultipart().WithFormField("mode", "random").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(http.StatusBadRequest)
+	e.POST("/test/import").WithMultipart().WithFormField("mode", "full").WithFile("file", "test.exe", buf).WithHeaders(mHeader).Expect().Status(http.StatusBadRequest)
+
+	body := e.POST("/test/import").WithMultipart().WithFormField("mode", "full").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	//TODO Test different situaction and Audit Log
 	if t.Failed() {
 		fmt.Println("Logging Error message")
@@ -95,8 +104,6 @@ func TestExportExcel(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	e := httptest.New(t, app)
-	buf := bytes.NewBuffer([]byte{})
-	util.LogInit(buf, buf, buf, buf)
 	db := util.GetMainDB()
 	rows, _ := db.Query("SELECT content, status FROM State_machine WHERE state_id = ?", 5)
 	var expectedContent, status string
@@ -117,8 +124,6 @@ func TestDownload(t *testing.T) {
 
 func TestProgress(t *testing.T) {
 	e := httptest.New(t, app)
-	buf := bytes.NewBuffer([]byte{})
-	util.LogInit(buf, buf, buf, buf)
 	db := util.GetMainDB()
 	rows, _ := db.Query("SELECT status FROM State_machine WHERE state_id = ?", 4)
 	var expectedStatus string

@@ -501,6 +501,7 @@ paths:
                       properties:
                         state_id:
                           description: 行為id
+                          type: integer
                         action:
                           description: 行為的模式(全量、批量導入、全量導出）
                           type: string
@@ -563,7 +564,7 @@ paths:
                     description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
         '404':
           description: cant found the operation in DB
-  '/qa/questions/operations/{id}/download':
+  /qa/questions/operations/{id}/download:
     get:
       tags:
         - operations
@@ -595,6 +596,16 @@ paths:
                 properties:
                   message:
                     type: string
+                    description: error message
+        '503':
+          description: Operation still running, service not available.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: 
+                    type: string 
                     description: error message
   /qa/questions/operations/import:
     post:

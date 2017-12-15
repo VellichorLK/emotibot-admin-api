@@ -34,6 +34,9 @@ func init() {
 
 }
 
+var successAuditMessage string
+var failedAuditMessage string
+
 type errorJSON struct {
 	Message string `json:"message"`
 }
@@ -46,42 +49,63 @@ func importExcel(ctx context.Context) {
 		Action  string `json:"action,omitempty"`
 	}
 	var jsonResponse returnJSON
+	var userID = util.GetUserID(ctx)
+	var userIP = util.GetUserIP(ctx)
+	var status = 0 // 0 == failed, 1 == success
+	var auditMessage string
 
 	_, fileHeader, err := ctx.FormFile("file")
 	if err != nil {
 		jsonResponse.Message = "请上传档案"
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(jsonResponse)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, "导入檔案传送失败", status)
 		return
 	}
 	ext := filepath.Ext(fileHeader.Filename)
 	if strings.Compare(ext, ".xlsx") != 0 {
 		jsonResponse.Message = "[" + fileHeader.Filename + "] 后缀名为" + ext + " 请上传后缀名为.xlsx的文件!"
-		ctx.JSON(jsonResponse)
 		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(jsonResponse)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, "导入檔案传送失败", status)
 		return
 	}
 
 	mode := ctx.FormValue("mode")
-	// if err != nil {
-	// 	jsonResponse.Message = err.Error()
-	// 	ctx.StatusCode(http.StatusInternalServerError)
-	// 	ctx.JSON(jsonResponse)
-	// 	return
-	// }
-	response, err := apiClient.McImportExcel(*fileHeader, util.GetUserID(ctx), util.GetUserIP(ctx), mode)
+	switch mode {
+	case "incre":
+		auditMessage = fmt.Sprintf("全量导入文件 %s", fileHeader.Filename)
+	case "full":
+		auditMessage = fmt.Sprintf("增量导入文件 %s", fileHeader.Filename)
+	default:
+		jsonResponse.Message = "上傳模式只支援[全量(incre), 增量(full)]"
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(jsonResponse)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+	}
 
-	if err == util.ErrorMCLock {
+	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode)
+
+	switch err {
+	case util.ErrorMCLock: //503
+		jsonResponse.Message = err.Error()
 		jsonResponse.UserID = response.SyncInfo.UserID
 		jsonResponse.Action = response.SyncInfo.Action
-	} else if err != nil { // Return 500
-		jsonResponse.Message = "服务器不正常, " + err.Error()
+		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(jsonResponse)
-		ctx.StatusCode(http.StatusInternalServerError)
-	} else { // Return 200
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+	case nil: //200
+		status = 1
 		jsonResponse.StateID = response.SyncInfo.StatID
 		ctx.JSON(jsonResponse)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+	default: //500
+		jsonResponse.Message = "服务器不正常, " + err.Error()
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(jsonResponse)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	}
+
 }
 
 func exportExcel(ctx context.Context) {
@@ -92,18 +116,26 @@ func exportExcel(ctx context.Context) {
 		Message string `json:"message"`
 		UserID  string `json:"user_id,omitempty"`
 	}
+	var userID = util.GetUserID(ctx)
+	var userIP = util.GetUserIP(ctx)
+	var status = 0 // 0 == failed, 1 == success
+	var auditMessage = "全量导出"
 
-	mcResponse, err := apiClient.McExportExcel(util.GetUserID(ctx), util.GetUserIP(ctx))
+	mcResponse, err := apiClient.McExportExcel(userID, userIP)
 	switch err {
 	case nil: // 200
+		status = 1
 		ctx.StatusCode(http.StatusOK)
 		ctx.JSON(successJSON{StateID: mcResponse.SyncInfo.StatID})
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
 	case util.ErrorMCLock: //503 MCError
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(errorJSON{err.Error(), mcResponse.SyncInfo.UserID})
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
 	default: //500 error
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{err.Error(), ""})
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
 	}
 }
 
