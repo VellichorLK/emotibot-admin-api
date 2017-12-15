@@ -41,7 +41,7 @@ type errorJSON struct {
 func importExcel(ctx context.Context) {
 	type returnJSON struct {
 		Message string `json:"message,omitempty"`
-		StatID  int    `json:"stat_id,omitempty"`
+		StateID int    `json:"state_id,omitempty"`
 		UserID  string `json:"user_id,omitempty"`
 		Action  string `json:"action,omitempty"`
 	}
@@ -79,14 +79,14 @@ func importExcel(ctx context.Context) {
 		ctx.JSON(jsonResponse)
 		ctx.StatusCode(http.StatusInternalServerError)
 	} else { // Return 200
-		jsonResponse.StatID = response.SyncInfo.StatID
+		jsonResponse.StateID = response.SyncInfo.StatID
 		ctx.JSON(jsonResponse)
 	}
 }
 
 func exportExcel(ctx context.Context) {
 	type successJSON struct {
-		StatID int `json:"stat_id"`
+		StateID int `json:"state_id"`
 	}
 	type errorJSON struct {
 		Message string `json:"message"`
@@ -97,7 +97,7 @@ func exportExcel(ctx context.Context) {
 	switch err {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
-		ctx.JSON(successJSON{StatID: mcResponse.SyncInfo.StatID})
+		ctx.JSON(successJSON{StateID: mcResponse.SyncInfo.StatID})
 	case util.ErrorMCLock: //503 MCError
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(errorJSON{err.Error(), mcResponse.SyncInfo.UserID})
@@ -143,9 +143,10 @@ func download(ctx context.Context) {
 
 func progress(ctx context.Context) {
 	type successJSON struct {
-		ID          int          `json:"id"`
-		Status      string       `json:"stats"`
+		ID          int          `json:"state_id"`
+		Status      string       `json:"status"`
 		CreatedTime JSONUnixTime `json:"created_time"`
+		ExtraInfo   string       `json:"extra_info"`
 	}
 
 	db := util.GetMainDB()
@@ -159,13 +160,13 @@ func progress(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(errorJSON{Message: err.Error()})
 	}
-	rows, err := db.Query("SELECT status, created_time FROM state_machine WHERE state_id = ?", statID)
+	rows, err := db.Query("SELECT status, created_time, extra_info FROM state_machine WHERE state_id = ?", statID)
 	var returnJSON = successJSON{ID: statID}
 	if !rows.Next() {
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
-	rows.Scan(&returnJSON.Status, &returnJSON.CreatedTime)
+	rows.Scan(&returnJSON.Status, &returnJSON.CreatedTime, &returnJSON.ExtraInfo)
 	defer rows.Close()
 
 	if err = rows.Err(); err != nil {
