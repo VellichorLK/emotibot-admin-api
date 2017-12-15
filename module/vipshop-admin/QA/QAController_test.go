@@ -72,7 +72,7 @@ func TestMain(m *testing.M) {
 }
 func TestImportExcel(t *testing.T) {
 	e := httptest.New(t, app)
-	var expectedResponse = "{\"stat_id\":123}"
+	var expectedResponse = "{\"state_id\":123}"
 	var buf = strings.NewReader("test")
 	body := e.POST("/test/import").WithMultipart().WithFormField("mode", "full_import").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	//TODO Test different situaction and Audit Log
@@ -85,7 +85,7 @@ func TestImportExcel(t *testing.T) {
 func TestExportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 
-	var expectedResponse = "{\"stat_id\":123}"
+	var expectedResponse = "{\"state_id\":123}"
 	body := e.POST("/test/export").WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	if t.Failed() {
 		fmt.Println("Logging Error message")
@@ -133,10 +133,11 @@ func TestProgress(t *testing.T) {
 		t.Fatalf("%s", err.Error())
 	}
 	var successJSON, _ = json.Marshal(struct {
-		ID          int          `json:"id"`
-		Status      string       `json:"stats"`
+		ID          int          `json:"state_id"`
+		Status      string       `json:"status"`
 		CreatedTime JSONUnixTime `json:"created_time"`
-	}{4, "running", JSONUnixTime(selectedTime)})
+		ExtraInfo   string       `json:"extra_info"`
+	}{4, "running", JSONUnixTime(selectedTime), ""})
 
 	body := e.GET("/test/{id}/progress").WithPath("id", 4).WithHeaders(mHeader).Expect().Status(200).Body().Equal(string(successJSON))
 	if t.Failed() {
