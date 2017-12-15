@@ -251,7 +251,7 @@ func viewOperations(ctx context.Context) {
 	}
 	var SQLQuery = "SELECT state_id, user_id, action, status, created_time, updated_time, extra_info FROM state_machine "
 	if len(parameters) > 0 {
-		SQLQuery += "WHERE " + strings.Join(whereQuery, ",")
+		SQLQuery += "WHERE " + strings.Join(whereQuery, " AND ")
 	}
 	rows, err := db.Query(SQLQuery+" ORDER BY updated_time "+limitedQuery, parameters...)
 	if err != nil {
