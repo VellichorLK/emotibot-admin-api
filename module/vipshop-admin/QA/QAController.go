@@ -162,13 +162,16 @@ func download(ctx context.Context) {
 		return
 	}
 	rows.Scan(&content, &status)
-	if strings.Compare(status, "success") == 0 || strings.Compare(status, "failed") == 0 {
+	if strings.Compare(status, "success") == 0 || strings.Compare(status, "fail") == 0 {
 		ctx.Header("Content-Disposition", "attachment; filename=other_"+id+".xlsx")
 		ctx.Header("Cache-Control", "public")
 		ctx.Binary(content)
-	} else {
+	} else if strings.Compare(status, "running") == 0 {
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(errorJSON{"still running, download later."})
+	} else {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(errorJSON{"unknown status '" + status + "'."})
 	}
 
 }

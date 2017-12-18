@@ -473,7 +473,7 @@ paths:
             type: string
             enum:
               - success
-              - failed
+              - fail
               - running
             description: 狀態，若無則為所有狀態
         - name: action
@@ -553,7 +553,7 @@ paths:
                     type: string
                     enum:
                       - running
-                      - failed
+                      - fail
                       - success
                     description: 任務執行狀態
                   created_time:
