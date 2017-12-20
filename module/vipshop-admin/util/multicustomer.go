@@ -116,7 +116,7 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 	queryString.Set("type", "other")
 	queryString.Set("userid", userID)
 	queryString.Set("userip", userIP)
-	queryString.Set("mode", mode)
+	queryString.Set("module", mode)
 	reqURL := fmt.Sprintf("%s/business?%s", mcURL, queryString.Encode())
 	req, err := http.NewRequest("POST", reqURL, w)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
