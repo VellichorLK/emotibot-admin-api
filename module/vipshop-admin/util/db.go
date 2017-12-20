@@ -3,6 +3,7 @@ package util
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -47,10 +48,19 @@ func InitAuditDB(auditURL string, auditUser string, auditPass string, auditDB st
 	return nil
 }
 
-func InitDB(url string, user string, pass string, db string) (*sql.DB, error) {
-	linkURL := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=true", user, pass, url, db, mySQLTimeout, mySQLReadTimeout, mySQLWriteTimeout)
+func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) {
+	linkURL := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=true&loc=%s",
+		user,
+		pass,
+		dbURL,
+		db,
+		mySQLTimeout,
+		mySQLReadTimeout,
+		mySQLWriteTimeout,
+		url.QueryEscape("Asia/Shanghai"), //A quick dirty fix to ensure time.Time parsing
+	)
 
-	if len(url) == 0 || len(user) == 0 || len(pass) == 0 || len(db) == 0 {
+	if len(dbURL) == 0 || len(user) == 0 || len(pass) == 0 || len(db) == 0 {
 		return nil, fmt.Errorf("invalid parameters in initDB: %s", linkURL)
 	}
 
