@@ -256,7 +256,7 @@ func viewOperations(ctx context.Context) {
 	if len(parameters) > 0 {
 		SQLQuery += "WHERE " + strings.Join(whereQuery, " AND ")
 	}
-	rows, err := db.Query(SQLQuery+" ORDER BY updated_time DESC"+limitedQuery, parameters...)
+	rows, err := db.Query(SQLQuery+" ORDER BY updated_time DESC "+limitedQuery, parameters...)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{err.Error()})
