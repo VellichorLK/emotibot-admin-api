@@ -74,9 +74,9 @@ func importExcel(ctx context.Context) {
 	mode := ctx.FormValue("mode")
 	switch mode {
 	case "incre":
-		auditMessage = fmt.Sprintf("全量导入文件 %s", fileHeader.Filename)
-	case "full":
 		auditMessage = fmt.Sprintf("增量导入文件 %s", fileHeader.Filename)
+	case "full":
+		auditMessage = fmt.Sprintf("全量导入文件 %s", fileHeader.Filename)
 	default:
 		jsonResponse.Message = "上傳模式只支援[全量(incre), 增量(full)]"
 		ctx.StatusCode(http.StatusBadRequest)
