@@ -1,6 +1,9 @@
 package FAQ
 
 import (
+	"fmt"
+	"strings"
+
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
 	"github.com/kataras/iris"
@@ -30,40 +33,52 @@ func handleQuerySimilarQuestions(ctx context.Context) {
 func handleUpdateSimilarQuestions(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	qid := ctx.Params().GetEscape("qid")
+	proccessStatus := 0
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
 
-	util.LogInfo.Printf("qid: %s", qid)
-	util.LogInfo.Printf("appid: %s", appid)
-
-	// return NOT FOUND if question id does not exist
-	exist, err := findQuestion(qid, appid)
+	qContent, err := selectQuestion(qid, appid)
+	if qContent == "" { // return NOT FOUND if question content is empty
+		ctx.StatusCode(iris.StatusNotFound)
+		return
+	} else if err != nil {
+		ctx.StatusCode(iris.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	auditMessage := fmt.Sprintf("[标准Q]:%s", qContent)
+	// select origin answers for audit log
+	originSimilarityAnswers, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
+		ctx.StatusCode(iris.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	auditMessage += fmt.Sprintf("[相似问题]:\"%s\" => ", strings.Join(originSimilarityAnswers, "\", \""))
+	body := SimilarQuestionReqBody{}
+	if err = ctx.ReadJSON(&body); err != nil {
+		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		ctx.StatusCode(iris.StatusBadRequest)
+		return
+	}
+	sqs := body.SimilarQuestions
+
+	// update similar questions
+	err = updateSimilarQuestions(qid, appid, userID, sqs)
+	if err != nil {
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, "更新相似问失败", proccessStatus)
+		util.LogError.Println(err)
 		ctx.StatusCode(iris.StatusInternalServerError)
 		return
 	}
-
-	if !exist {
-		ctx.StatusCode(iris.StatusNotFound)
-		return
+	// save audit log
+	var a = make([]string, len(sqs))
+	for i, s := range sqs {
+		a[i] = s.Content
 	}
-
-	body := fetchSimilarQuestionList(ctx)
-	sqs := body.SimilarQuestions
-	user := body.User
-
-	// update similar questions
-	updateSimilarQuestions(qid, appid, user, sqs)
-}
-
-func fetchSimilarQuestionList(ctx context.Context) *SimilarQuestionReqBody {
-	reqBody := &SimilarQuestionReqBody{}
-	err := ctx.ReadJSON(reqBody)
-
-	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
-		return nil
-	}
-
-	return reqBody
+	proccessStatus = 1
+	auditMessage += fmt.Sprintf("\"%s\"", strings.Join(a, "\", \""))
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, proccessStatus)
 }
 
 func handleDeleteSimilarQuestions(ctx context.Context) {

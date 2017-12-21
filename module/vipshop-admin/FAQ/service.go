@@ -1,19 +1,35 @@
 package FAQ
+
 import (
+	"fmt"
+
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
 func updateSimilarQuestions(qid string, appid string, user string, sqs []SimilarQuestion) error {
+	var err error
+	db := util.GetMainDB()
+	t, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("can't aquire transaction lock, %s", err)
+	}
+	defer t.Commit()
 	// delete old similar questions
-	deleteSimilarQuestionsByQuestionId(qid, appid)
+	if err = deleteSimilarQuestionsByQuestionID(t, qid, appid); err != nil {
+		t.Rollback()
+		return fmt.Errorf("delete operation failed, %s", err)
+	}
 
 	// put new similar questions
-	insertSimilarQuestions(qid, appid, user, sqs)
+	if err = insertSimilarQuestions(t, qid, appid, user, sqs); err != nil {
+		t.Rollback()
+		return fmt.Errorf("insert operation failed, %s", err)
+	}
 
 	// notify multicustomer TODO: update consul directly
-	util.McManualBusiness(appid)
-
-	// save audit log
+	if _, err = util.McManualBusiness(appid); err != nil {
+		return fmt.Errorf("error in requesting to MultiCustomer module: %s", err)
+	}
 
 	return nil
 }
