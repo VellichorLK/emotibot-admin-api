@@ -49,7 +49,7 @@ func McUpdateFunction(appid string) (int, error) {
 	reqURL := fmt.Sprintf("%s/robot_config?app_id=%s&type=function", mcURL, appid)
 	logTraceMC("req", reqURL)
 
-	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 5)
+	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 30)
 	if resErr != nil {
 		logMCError(resErr)
 		return ApiError.DICT_SERVICE_ERROR, resErr
@@ -65,7 +65,7 @@ func McRebuildRobotQA(appid string) (int, error) {
 	reqURL := fmt.Sprintf("%s/manual_edit?app_id=%s&type=robot", mcURL, appid)
 	logTraceMC("req", reqURL)
 
-	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 5)
+	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 30)
 	if resErr != nil {
 		logMCError(resErr)
 		return ApiError.DICT_SERVICE_ERROR, resErr
@@ -81,7 +81,7 @@ func McManualBusiness(appid string) (int, error) {
 	reqURL := fmt.Sprintf("%s/manual_business?app_id=%s&type=other", mcURL, appid)
 	logTraceMC("req", reqURL)
 
-	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 5)
+	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 30)
 	if resErr != nil {
 		logMCError(resErr)
 		return ApiError.DICT_SERVICE_ERROR, resErr

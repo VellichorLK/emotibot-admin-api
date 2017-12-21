@@ -25,6 +25,7 @@ func updateSimilarQuestions(qid string, appid string, user string, sqs []Similar
 		t.Rollback()
 		return fmt.Errorf("insert operation failed, %s", err)
 	}
+	t.Commit()
 
 	// notify multicustomer TODO: update consul directly
 	if _, err = util.McManualBusiness(appid); err != nil {
