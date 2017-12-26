@@ -46,7 +46,7 @@ type TextData struct {
 type CUData struct {
 	Type     string        `json:"type"`
 	Value    string        `json:"value"`
-	Score    float64       `json:"score"`
+	Score    interface{}   `json:"score"`
 	Category string        `json:"category"`
 	Data     []interface{} `json:"data"`
 }
