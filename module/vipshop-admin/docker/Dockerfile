@@ -1,8 +1,7 @@
-FROM golang:1.8-alpine AS build-env
+FROM docker-reg.emotibot.com.cn:55688/go-build:20171221_2d62f2b AS build-env
 
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
-RUN apk add --no-cache git
 
 COPY . /go/src/emotibot.com/emotigo/module
 RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper download && go-wrapper install
@@ -11,6 +10,7 @@ FROM alpine:3.5
 
 ARG PROJECT
 ENV GOPREFIX /go/src/emotibot.com
+RUN apk add --no-cache tzdata
 COPY --from=build-env /go/bin/vipshop-admin /usr/local/bin/vipshop-admin
 
 WORKDIR /usr/local/bin
