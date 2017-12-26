@@ -69,6 +69,7 @@ func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) 
 	if err != nil {
 		return nil, err
 	}
+	openDB.SetMaxIdleConns(0)
 	return openDB, nil
 }
 
