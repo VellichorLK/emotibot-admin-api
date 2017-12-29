@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"sort"
 
 	"errors"
 	"net/http"
@@ -245,9 +246,6 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 func ComputeChannelScore(eb *EmotionBlock) {
 
 	const divider = 1000
-	const gap = 0.7
-	const weight = 1.5
-	const portion = 0.25
 
 	EmotionScoreInEachChannel := make(map[int][]float64)
 	for _, seg := range eb.Segments {
@@ -270,155 +268,109 @@ func ComputeChannelScore(eb *EmotionBlock) {
 		if count > 0 {
 
 			var twoFixedScore float64
+			var weight float64
+			var calculateNum float64
+			if channel == 1 {
+				sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
+				if count > 30 && eb.RDuration > (180*1000) {
 
-			var upRateCount int
-			var avgCountAcc float64
-			var upRate, avgProb float64
+					const gap = 0.6
 
-			for i := 0; i < count; i++ {
-				if scores[i] > gap {
-					upRateCount++
-				}
-				avgCountAcc += scores[i]
-			}
+					const extractNum = 5
 
-			upRate = float64(upRateCount) / float64(count)
-			avgProb = avgCountAcc / float64(count)
-
-			twoFixedScore = float64(int(((upRate+avgProb)/2)*100*100)) / 100
-			if emotionType == 1 && channel == 2 && count > 20 {
-				twentyFivePercent := int(float64(count)*portion + 0.5)
-				firstPart := count - twentyFivePercent
-				var i int
-				var upRateScore float64
-				var avgScoreAcc float64
-
-				var totalScore float64
-				for i = 1; i < firstPart; i++ {
-					if scores[i] > gap {
-						upRateScore++
+					hasEmotionCount := 0
+					weight = 0.8
+					for _, s := range scores {
+						if s < gap {
+							break
+						}
+						hasEmotionCount++
 					}
-					avgScoreAcc += scores[i]
-				}
-				for ; i < count; i++ {
-					if scores[i] > gap {
-						upRateScore += weight
-						avgScoreAcc += (scores[i] * weight)
+
+					if hasEmotionCount > extractNum {
+						for i := 0; i < extractNum; i++ {
+							twoFixedScore += scores[i]
+						}
+						calculateNum = extractNum
+
 					} else {
+						for _, s := range scores {
+							twoFixedScore += s
+						}
+						calculateNum = float64(count)
+					}
+
+				} else {
+					weight = 0.5
+					for _, s := range scores {
+						twoFixedScore += s
+					}
+					calculateNum = float64(count)
+				}
+
+				twoFixedScore = float64(int((twoFixedScore/calculateNum)*100*weight*100)) / 100
+			} else {
+				var upRateCount int
+				var avgCountAcc float64
+				var upRate, avgProb float64
+
+				const gap = 0.7
+				const weight = 1.5
+				const portion = 0.25
+
+				for i := 0; i < count; i++ {
+					if scores[i] > gap {
+						upRateCount++
+					}
+					avgCountAcc += scores[i]
+				}
+
+				upRate = float64(upRateCount) / float64(count)
+				avgProb = avgCountAcc / float64(count)
+
+				twoFixedScore = float64(int(((upRate+avgProb)/2)*100*100)) / 100
+				if emotionType == 1 && channel == 2 && count > 20 {
+					twentyFivePercent := int(float64(count)*portion + 0.5)
+					firstPart := count - twentyFivePercent
+					var i int
+					var upRateScore float64
+					var avgScoreAcc float64
+
+					var totalScore float64
+					for i = 1; i < firstPart; i++ {
+						if scores[i] > gap {
+							upRateScore++
+						}
 						avgScoreAcc += scores[i]
 					}
+					for ; i < count; i++ {
+						if scores[i] > gap {
+							upRateScore += weight
+							avgScoreAcc += (scores[i] * weight)
+						} else {
+							avgScoreAcc += scores[i]
+						}
 
+					}
+
+					upRateScore = upRateScore / float64(count-1)
+					avgScoreAcc = avgScoreAcc / float64(count-1)
+
+					totalScore = float64(int(((upRateScore+avgScoreAcc)/2)*100*100)) / 100
+
+					if totalScore <= 100 {
+						twoFixedScore = totalScore
+					}
 				}
 
-				upRateScore = upRateScore / float64(count-1)
-				avgScoreAcc = avgScoreAcc / float64(count-1)
-
-				totalScore = float64(int(((upRateScore+avgScoreAcc)/2)*100*100)) / 100
-
-				if totalScore <= 100 {
-					twoFixedScore = totalScore
+				if eb.RDuration <= (60*1000) && channel == 2 {
+					twoFixedScore = float64(int((twoFixedScore/2)*100)) / 100
 				}
-			}
-
-			if eb.RDuration <= (60*1000) && channel == 2 {
-				twoFixedScore = float64(int((twoFixedScore/2)*100)) / 100
 			}
 
 			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
 		}
 	}
-
-	/*
-		const divider = 1000
-		NumSegInOneChannel := make(map[int]int)
-		TotalProbabilityWithEmotion := make(map[int]float64)
-		NumOfHasOneEmotionInOneChannel := make(map[int]int)
-
-		threashold := 0.7
-		weight := 0.5
-
-		lastPartWeight := 1.5
-
-		for _, seg := range eb.Segments {
-			for _, s := range seg.ScoreList {
-				label, ok := s.Label.(float64)
-				if !ok {
-					log.Printf("label is not float, %v %T\n", s.Label, s.Label)
-				} else {
-
-					emotionChannelKey := seg.Channel*divider + int(label)
-					NumSegInOneChannel[emotionChannelKey]++
-					TotalProbabilityWithEmotion[emotionChannelKey] += s.Score
-					if s.Score >= threashold {
-						NumOfHasOneEmotionInOneChannel[emotionChannelKey]++
-					}
-
-				}
-
-			}
-		}
-
-		for chEmotion, count := range NumSegInOneChannel {
-			var twoFixedScore, totalScore, weightScore, rateScore float64
-
-			//log.Printf("id:%v, ch:%d, emotion:%d, score:%v, chemotion:%v\n", eb.IDUint64, chEmotion/divider, chEmotion%divider, totalScore*100, chEmotion)
-
-			channel := chEmotion / divider
-			emotionType := chEmotion % divider
-
-			if count != 0 {
-
-				if emotionType == 1 && channel == 2 {
-
-
-
-
-					twoFixedScore = float64(int((top5Score/float64(topCount))*100*100)) / 100
-
-				} else {
-					weightScore = TotalProbabilityWithEmotion[chEmotion] / float64(count)
-					rateScore = float64(NumOfHasOneEmotionInOneChannel[chEmotion]) / float64(count)
-					totalScore = weightScore*weight + rateScore*(1-weight)
-					twoFixedScore = float64(int(totalScore*100*100)) / 100
-				}
-
-				InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
-			}
-		}
-	*/
-	/*
-		const divider = 100
-
-		totalEmotionCount := make(map[int]int)
-		emotionCount := make(map[int]int)
-		for _, seg := range eb.Segments {
-			for _, s := range seg.ScoreList {
-				label, ok := s.Label.(float64)
-				if !ok {
-					log.Printf("label is not float, %v %T\n", s.Label, s.Label)
-				} else {
-					key := seg.Channel*divider + int(label)
-					_, ok := emotionCount[key]
-					if !ok {
-						emotionCount[key] = 0
-						totalEmotionCount[key] = 0
-					}
-					if s.Score > threashold {
-						emotionCount[key]++
-					}
-					totalEmotionCount[key]++
-				}
-			}
-		}
-
-		for k, v := range emotionCount {
-			channel := k / divider
-			label := k % divider
-			InsertChannelScore(eb.IDUint64, channel, label, float64(v)/float64(totalEmotionCount[k]))
-
-			//log.Printf("chan: %v label:%v count:%v total:%v, score:%v\n", channel, label, v, totalEmotionCount[k], float64(v)/float64(totalEmotionCount[k]))
-		}
-	*/
 }
 
 func InsertChannelScore(id uint64, channel int, emotion int, score float64) error {
