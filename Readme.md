@@ -25,3 +25,10 @@ cd docker/golang-dev
 cd experimental/hello
 go run hello.go
 ```
+## How to start developing:
+``` shell
+# use go env to check your GOPATH
+mkdir -p $GOPATH/src/emotibot.com/
+mv emotigo/ $GOPATH/src/emotibot.com/
+# Download third party source code if needed
+```
