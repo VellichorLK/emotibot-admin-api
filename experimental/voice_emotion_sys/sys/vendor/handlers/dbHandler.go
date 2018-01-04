@@ -293,6 +293,10 @@ func ComputeChannelScore(eb *EmotionBlock) {
 						}
 						calculateNum = extractNum
 
+						if twoFixedScore/calculateNum > 0.75 {
+							weight = 0.64
+						}
+
 					} else {
 						for _, s := range scores {
 							twoFixedScore += s
