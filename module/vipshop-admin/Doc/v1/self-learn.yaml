@@ -93,6 +93,12 @@ paths:
     get:
       summary: "取得週報的詳細資料"
       parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+          description: "週報ID"
       responses:
         200:
           description: "OK"
@@ -104,6 +110,13 @@ paths:
     get:
       summary: "取得某週報的全部分組"
       description: "對話分組列表"
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+          description: "週報ID"
       responses:
         200:
           description: "OK"
@@ -111,10 +124,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/cluster'
-  /clusters/{id}/userQuestions:
+  /userQuestions:
     get:
-      summary: "取得分群的使用者對話"
-      description: "用於優化頁"
+      summary: "取得使用者對話"
+      parameters: 
+        - name: reportID
+          in: query
+          schema:
+            type: integer
+          required: true
+          description: "週報ID"
+        - name: clusterID
+          in: query
+          schema:
+            type: integer
+          description: "群集ID"
       responses:
         200:
           description: "OK"
@@ -124,7 +148,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/userQuestion'
-  /userQuestions/:
     post:
       summary: "批次將使用者問題設為已匹配"
       requestBody:
@@ -171,7 +194,4 @@ paths:
           description: "OK"
         404:
           description: "userQuestion not found"
-  
-
-
   
