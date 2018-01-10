@@ -25,9 +25,12 @@ components:
           type: string
           format: date-time
           description: "周報結束日期"
-        size:
+        clusterSize:
           type: integer
           description: "在工作內的群集數量"
+        userQuestionSize:
+          type: integer
+          description: "在群集內的未解決問題數量"
         status:
           description: "週報的執行狀態(0:執行中, 1:成功, -1: 失敗)"
     cluster:
@@ -37,7 +40,7 @@ components:
         id:
           type: integer
           format: int64
-        size:
+        userQuestionSize:
           type: integer
           description: "在群集內的未解決問題數量"
         tags:
@@ -45,7 +48,7 @@ components:
           description: "群集的標籤"
           items: 
             type: string
-    feedback:
+    userQuestion:
       type: object
       description: "使用者的未解決問題"
       properties:
@@ -89,6 +92,7 @@ paths:
   /reports/{id}:
     get:
       summary: "取得週報的詳細資料"
+      parameters:
       responses:
         200:
           description: "OK"
@@ -107,7 +111,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/cluster'
-  /clusters/{id}/feedbacks:
+  /clusters/{id}/userQuestions:
     get:
       summary: "取得分群的使用者對話"
       description: "用於優化頁"
@@ -119,8 +123,8 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/feedback'
-  /feedbacks/:
+                  $ref: '#/components/schemas/userQuestion'
+  /userQuestions/:
     post:
       summary: "批次將使用者問題設為已匹配"
       requestBody:
@@ -141,8 +145,8 @@ paths:
         200:
           description: "OK"
         409:
-          description: "conflicted, Already match the std question of the feedbacks"
-  /feedbacks/{id}:
+          description: "conflicted, Already match the std question of the userQuestions"
+  /userQuestions/{id}:
     get:
       summary: "取得使用者未解決對話"
       responses:
@@ -151,22 +155,22 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/feedback'
+                $ref: '#/components/schemas/userQuestion'
     post:
       summary: "將使用者問題設為已匹配"
       responses:
         200:
           description: "OK"
         409:
-          description: "conflicted, Already match the std question of the feedbacks"
-  /feedbacks/{id}/revoke:
+          description: "conflicted, Already match the std question of the userQuestions"
+  /userQuestions/{id}/revoke:
     post:
       summary: "撤銷使用者問題的已匹配狀態"
       responses:
         200: 
           description: "OK"
         404:
-          description: "feedback not found"
+          description: "userQuestion not found"
   
 
 
