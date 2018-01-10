@@ -122,7 +122,13 @@ func handleUpdateSwitch(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(errCode, input))
 		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update success %#v => %#v", orig, input), 1)
 	}
-	ret, err := util.ConsulUpdateRobotChat(appid)
+
+	var ret int
+	if orig.Code == "task_engine" {
+		ret, err = util.ConsulUpdateTaskEngine(appid, input.Status == 1)
+	} else {
+		ret, err = util.ConsulUpdateRobotChat(appid)
+	}
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
 	} else {

@@ -12,6 +12,12 @@ const (
 	ConsulURLKey = "CONSUL_URL"
 )
 
+func ConsulUpdateTaskEngine(appid string, val bool) (int, error) {
+	// key contains no appid, becaues this can be use in vipshop for now
+	key := "te/enabled"
+	return ConsulUpdateVal(key, val)
+}
+
 func ConsulUpdateRobotChat(appid string) (int, error) {
 	key := fmt.Sprintf("%sdata/%s", appid, appid)
 	now := time.Now().Unix()
