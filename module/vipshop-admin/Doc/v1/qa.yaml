@@ -192,6 +192,28 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/question'
+  /questions/search:
+    get:
+      tags:
+        - question
+      summary: 搜尋標準問
+      parameters:
+        - name: content
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: a question
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  questionId:
+                    type: integer
+          '404':
+            description: question content does not match any question
   '/question/{qid}':
     get:
       tags:
