@@ -20,6 +20,15 @@ var (
 		"Not":          "非",
 		"Cannot":       "无法",
 		"Has":          "拥有",
+		"Success":      "成功",
+
+		// Used in Switch
+		"Name":     "名称",
+		"Status":   "状态",
+		"Remark":   "描述",
+		"Scenario": "业务场景",
+		"Num":      "次数配置",
+		"Msg":      "文案",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",
