@@ -21,6 +21,9 @@ var (
 		"Cannot":       "无法",
 		"Has":          "拥有",
 		"Success":      "成功",
+		"Open":         "开启",
+		"Close":        "关闭",
+		"Request":      "請求",
 
 		// Used in Switch
 		"Name":     "名称",
@@ -29,6 +32,14 @@ var (
 		"Scenario": "业务场景",
 		"Num":      "次数配置",
 		"Msg":      "文案",
+
+		// Used in Robot Skill
+		"function_weathermodule":     "天气模块",
+		"function_computationmodule": "数学计算模块",
+		"function_jokemodule":        "笑话模块",
+		"function_storymodule":       "讲故事模块",
+		"function_riddlemodule":      "猜谜语模块",
+		"function_chengyumodule":     "成语模块",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",
