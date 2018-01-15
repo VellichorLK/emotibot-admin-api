@@ -1,8 +1,9 @@
 package Robot
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -78,10 +79,12 @@ func handleRobotQAModelRebuild(ctx context.Context) {
 	errCode, err := util.McRebuildRobotQA(appid)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
-		auditLog = fmt.Sprintf("Rebuild robot QA fail")
+		auditLog = fmt.Sprintf("%s%s%s",
+			util.Msg["RobotProfile"], util.Msg["Rebuild"], util.Msg["Error"])
 	} else {
 		ctx.JSON(util.GenSimpleRetObj(errCode))
-		auditLog = fmt.Sprintf("Rebuild robot QA success")
+		auditLog = fmt.Sprintf("%s%s%s",
+			util.Msg["RobotProfile"], util.Msg["Rebuild"], util.Msg["Success"])
 		result = 1
 	}
 	addAudit(ctx, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
@@ -95,14 +98,16 @@ func handleUpdateRobotQA(ctx context.Context) {
 	errMsg := ""
 	var retObj interface{}
 
-	// defer addAudit(ctx, util.AuditOperationEdit, auditLog, result)
-	// defer ctx.JSON(util.GenRetObj(errCode, errMsg, retObj))
+	failMsg := fmt.Sprintf("%s%s%s",
+		util.Msg["Modify"], util.Msg["RobotProfile"], util.Msg["Error"])
+	successMsg := fmt.Sprintf("%s%s%s",
+		util.Msg["Modify"], util.Msg["RobotProfile"], util.Msg["Success"])
 
 	id, err := ctx.Params().GetInt("id")
 	info := loadQAInfoFromContext(ctx)
 	if err != nil || id <= 0 || info == nil {
 		ctx.StatusCode(iris.StatusBadRequest)
-		auditLog = fmt.Sprintf("Update robot QA fail: Bad request")
+		auditLog = fmt.Sprintf("%s: %s%s", failMsg, util.Msg["Request"], util.Msg["Error"])
 		errCode = ApiError.REQUEST_ERROR
 		addAudit(ctx, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
 		ctx.JSON(util.GenRetObj(errCode, retObj))
@@ -113,16 +118,16 @@ func handleUpdateRobotQA(ctx context.Context) {
 	if err != nil {
 		errMsg = ApiError.GetErrorMsg(errCode)
 		retObj = err.Error()
-		auditLog = fmt.Sprintf("Update robot QA fail: %s", errMsg)
+		auditLog = fmt.Sprintf("%s: %s", failMsg, errMsg)
 	} else {
 		errCode, err = UpdateRobotQA(appid, id, info)
 		if errCode != ApiError.SUCCESS {
 			retObj = err.Error()
-			auditLog = fmt.Sprintf("Update robot QA fail")
+			errMsg = ApiError.GetErrorMsg(errCode)
+			auditLog = fmt.Sprintf("%s: %s", failMsg, errMsg)
 		} else {
-			origStr, _ := json.Marshal(origInfo)
-			newStr, _ := json.Marshal(info)
-			auditLog = fmt.Sprintf("Update robot QA success: id:[%d] [%s] => [%s]", id, origStr, newStr)
+			auditLog = fmt.Sprintf("%s: %s",
+				successMsg, diffQAInfo(origInfo, info))
 			result = 1
 		}
 	}
@@ -139,4 +144,17 @@ func loadQAInfoFromContext(ctx context.Context) *QAInfo {
 	}
 
 	return input
+}
+
+func diffQAInfo(origInfo *QAInfo, newInfo *QAInfo) string {
+	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("%s%s \"%s\"\n", util.Msg["Modify"], util.Msg["Question"], origInfo.Question))
+
+	origAnswers := strings.Join(origInfo.Answers, ", ")
+	newAnswers := strings.Join(newInfo.Answers, ", ")
+	buffer.WriteString(fmt.Sprintf("%s: [%s]\n%s: [%s]",
+		util.Msg["Origin"], origAnswers,
+		util.Msg["Updated"], newAnswers))
+
+	return buffer.String()
 }

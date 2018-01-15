@@ -24,6 +24,11 @@ var (
 		"Open":         "开启",
 		"Close":        "关闭",
 		"Request":      "請求",
+		"Rebuild":      "重新建模",
+		"RobotProfile": "机器人形象",
+		"Question":     "问题",
+		"Origin":       "原始",
+		"Updated":      "更新后",
 
 		// Used in Switch
 		"Name":     "名称",
