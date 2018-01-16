@@ -59,10 +59,10 @@ func hadleChatTest(ctx context.Context) {
 		return
 	}
 
-	ret, errCode, err := DoChatRequest(appid, user, input)
+	ret, errCode, err := DoChatRequestWithDC(appid, user, input)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
-	} else {
+} else {
 		ctx.JSON(util.GenRetObj(errCode, ret))
 	}
 }
@@ -74,6 +74,10 @@ func loadQATestInput(ctx context.Context) (*QATestInput, error) {
 		return nil, err
 	}
 	return input, nil
+}
+
+func getOpenAPIURL() string {
+	return getEnvironment("OPENAPI_TEST_URL")
 }
 
 func getTestURL() string {

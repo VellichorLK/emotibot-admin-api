@@ -50,3 +50,11 @@ type CUData struct {
 	Category string        `json:"category"`
 	Data     []interface{} `json:"data"`
 }
+
+type DCResponse struct {
+	Return  string `json:"answer"`
+	Emotion string `json:"topic_mood"`
+	Intent  string `json:"intent"`
+
+	CustomReturn map[string]interface{} `json:"customReturn"`
+}
