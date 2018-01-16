@@ -111,3 +111,29 @@ func insertSimilarQuestions(t *sql.Tx, qid string, appid string, user string, sq
 
 	return nil
 }
+
+func searchQuestionByContent(content string) (StdQuestion, error) {
+	var q StdQuestion
+	db := util.GetMainDB()
+	if db == nil {
+		return q, fmt.Errorf("main db connection pool is nil")
+	}
+	rawQuery := "SELECT Question_id, Content FROM vipshop_question WHERE Content = ? ORDER BY Question_id DESC"
+	results, err := db.Query(rawQuery, content)
+	if err != nil {
+		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
+	}
+	defer results.Close()
+	if results.Next() {
+		results.Scan(&q.QuestionID, &q.Content)
+	} else { //404 Not Found
+		return q, util.ErrSQLRowNotFound
+	}
+
+	if err = results.Err(); err != nil {
+		return q, fmt.Errorf("scanning data have failed, %s", err)
+	}
+
+	return q, nil
+
+}

@@ -9,6 +9,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 	"emotibot.com/emotigo/module/vipshop-admin/QA"
 	"emotibot.com/emotigo/module/vipshop-admin/Robot"
+	"emotibot.com/emotigo/module/vipshop-admin/SelfLearning"
 	"emotibot.com/emotigo/module/vipshop-admin/Stats"
 	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/UI"
@@ -107,6 +108,7 @@ func setRoute(app *iris.Application) {
 		QA.ModuleInfo,
 		FAQ.ModuleInfo,
 		QA.TestModuleInfo,
+		SelfLearning.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -159,4 +161,6 @@ func initDB() {
 	util.InitAuditDB(url, user, pass, db)
 
 	Stats.InitDB()
+
+	SelfLearning.InitDB()
 }

@@ -2,6 +2,7 @@ package FAQ
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -22,6 +23,7 @@ func init() {
 			util.NewEntryPoint("GET", "question/{qid:string}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
+			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 		},
 	}
 }
@@ -83,4 +85,20 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 
 func handleDeleteSimilarQuestions(ctx context.Context) {
 	ctx.Writef("[]")
+}
+
+func handleSearchQuestion(ctx context.Context) {
+	content := ctx.FormValue("content")
+	question, err := searchQuestionByContent(content)
+	if err == util.ErrSQLRowNotFound {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	} else if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Printf("searching Question by content [%s] failed, %s", content, err)
+		return
+	}
+	ctx.StatusCode(http.StatusOK)
+	ctx.JSON(question)
+
 }

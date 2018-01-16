@@ -10,7 +10,7 @@ DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 GOSRCPATH="$(cd "$DIR/../" && pwd )"
 MODULE=${GOSRCPATH##/*/}
-BUILDROOT=$DIR/../../
+BUILDROOT=$DIR/..
 
 # Build docker
 cmd="docker build \
