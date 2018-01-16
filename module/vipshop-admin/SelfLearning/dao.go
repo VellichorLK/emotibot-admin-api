@@ -240,7 +240,7 @@ var ErrRowNotFound = errors.New("Not Found")
 var ErrAlreadyOccupied = errors.New("db row already updated")
 
 //UpdateStdQuestion update an array of feedback's ID of the stdQuestion parameter.
-func UpdateStdQuestion(feedbacks []int, stdQuestion string) error {
+func UpdateStdQuestions(feedbacks []int, stdQuestion string) error {
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		return fmt.Errorf("could not get the Self learn DB pool")
@@ -287,10 +287,17 @@ func UpdateStdQuestion(feedbacks []int, stdQuestion string) error {
 			return ErrAlreadyOccupied
 		}
 
-		_, err = stmt.Exec(stdQuestion, id)
+		execResult, err := stmt.Exec(stdQuestion, id)
 		if err != nil {
 			tx.Rollback()
 			return fmt.Errorf("db updated feedback failed, %s", err)
+		}
+		if rowEffected, err := execResult.RowsAffected(); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("db updated feedback failed, %s", err)
+		} else if rowEffected != 1 {
+			tx.Rollback()
+			return fmt.Errorf("didnt updated feedback id [%d]", id)
 		}
 	}
 
