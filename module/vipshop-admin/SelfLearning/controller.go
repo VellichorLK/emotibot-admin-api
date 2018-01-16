@@ -292,6 +292,11 @@ func handleUpdateUserQuestion(ctx context.Context) {
 		util.LogError.Printf("Request's body cant parse as JSON Data. %s\n", err)
 		return
 	}
+	if request.StdQuestion == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("request input invalid")
+		return
+	}
 	stdQuestion := request.StdQuestion
 	qid, err := strconv.Atoi(ctx.Params().GetEscape("id"))
 	if err != nil {
@@ -299,8 +304,16 @@ func handleUpdateUserQuestion(ctx context.Context) {
 		return
 	}
 
-	err = UpdateStdQuestion([]int{qid}, stdQuestion)
-	if err != nil {
+	err = UpdateStdQuestions([]int{qid}, stdQuestion)
+	if err == ErrRowNotFound {
+		ctx.StatusCode(http.StatusNotFound)
+		ctx.Writef("Can't found one of the id")
+		return
+	} else if err == ErrAlreadyOccupied {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("Can't updated one of the id, because it already has value")
+		return
+	} else if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Printf("Update id [%d] failed, %s\n", qid, err)
 		return
@@ -318,11 +331,15 @@ func handleUpdateUserQuestions(ctx context.Context) {
 	err := ctx.ReadJSON(&request)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
-		util.LogError.Printf("Request's body cant parse as JSON Data. %s\n", err)
+		ctx.Writef("Request's body cant parse as JSON Data. %s\n", err)
 		return
 	}
-
-	err = UpdateStdQuestion(request.Feedbacks, request.StdQuestion)
+	if request.Feedbacks == nil || len(request.Feedbacks) == 0 || request.StdQuestion == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("request input invalid")
+		return
+	}
+	err = UpdateStdQuestions(request.Feedbacks, request.StdQuestion)
 	if err == ErrRowNotFound {
 		ctx.StatusCode(http.StatusNotFound)
 		ctx.Writef("Can't found one of the id")
