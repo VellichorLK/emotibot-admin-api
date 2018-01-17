@@ -4,7 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"log"
+	"math"
+	"math/rand"
 	"sort"
+	"time"
 
 	"errors"
 	"net/http"
@@ -270,6 +273,7 @@ func ComputeChannelScore(eb *EmotionBlock) {
 			var twoFixedScore float64
 			var weight float64
 			var calculateNum float64
+			//customer
 			if channel == 1 {
 				sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
 				if count > 30 && eb.RDuration > (180*1000) {
@@ -317,8 +321,9 @@ func ComputeChannelScore(eb *EmotionBlock) {
 				var upRateCount int
 				var avgCountAcc float64
 				var upRate, avgProb float64
+				var primaryScore float64
 
-				const gap = 0.7
+				const gap = 0.6
 				const weight = 1.5
 				const portion = 0.25
 
@@ -329,47 +334,30 @@ func ComputeChannelScore(eb *EmotionBlock) {
 					avgCountAcc += scores[i]
 				}
 
-				upRate = float64(upRateCount) / float64(count)
 				avgProb = avgCountAcc / float64(count)
 
-				twoFixedScore = float64(int(((upRate+avgProb)/2)*100*100)) / 100
-				if emotionType == 1 && channel == 2 && count > 20 {
-					twentyFivePercent := int(float64(count)*portion + 0.5)
-					firstPart := count - twentyFivePercent
-					var i int
-					var upRateScore float64
-					var avgScoreAcc float64
+				if count > 10 && eb.RDuration > (120*1000) {
+					upRate = float64(upRateCount) / math.Ceil(float64(count)/float64(4))
 
-					var totalScore float64
-					for i = 1; i < firstPart; i++ {
-						if scores[i] > gap {
-							upRateScore++
+					primaryScore = 120*avgProb + 7 + 20*upRate
+
+					if primaryScore >= 90 {
+
+						s1 := rand.NewSource(time.Now().UnixNano())
+						r1 := rand.New(s1)
+
+						twoFixedScore = float64(90 + r1.Intn(6))
+						if twoFixedScore < 95 {
+							twoFixedScore += float64(r1.Intn(100)) / 100
 						}
-						avgScoreAcc += scores[i]
-					}
-					for ; i < count; i++ {
-						if scores[i] > gap {
-							upRateScore += weight
-							avgScoreAcc += (scores[i] * weight)
-						} else {
-							avgScoreAcc += scores[i]
-						}
-
+					} else {
+						twoFixedScore = float64(int(primaryScore*100)) / 100
 					}
 
-					upRateScore = upRateScore / float64(count-1)
-					avgScoreAcc = avgScoreAcc / float64(count-1)
-
-					totalScore = float64(int(((upRateScore+avgScoreAcc)/2)*100*100)) / 100
-
-					if totalScore <= 100 {
-						twoFixedScore = totalScore
-					}
+				} else {
+					twoFixedScore = float64(int((10+avgProb*10+7)*100)) / 100
 				}
 
-				if eb.RDuration <= (60*1000) && channel == 2 {
-					twoFixedScore = float64(int((twoFixedScore/2)*100)) / 100
-				}
 			}
 
 			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
