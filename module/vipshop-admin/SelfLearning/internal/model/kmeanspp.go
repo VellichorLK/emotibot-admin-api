@@ -190,7 +190,7 @@ func kmeanspp(
 			counter,
 			changes)
 		counter++
-		if changes == 0 || counter > threshold {
+		if changes < 5 {
 			util.LogTrace.Println("Finish clustering!!")
 			return data
 		}

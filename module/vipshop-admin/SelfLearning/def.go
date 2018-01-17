@@ -9,6 +9,13 @@ const (
 	END_TIME = "end_time"
 )
 
+//status code of clustering
+const (
+	S_PANIC = -1 + iota
+	S_PROCESSING
+	S_SUCCESS
+)
+
 type clusterTable struct {
 	feedback      feedbackProps
 	clusterTag    tagProps

@@ -12,21 +12,20 @@ import (
 
 func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster) error {
 
-	status := 1
+	status := S_SUCCESS
 	//update the status
 	defer func() {
 		if r := recover(); r != nil {
 			util.LogError.Printf("do clustering panic. %s: %s\n ", r, debug.Stack())
-			status = -1
+			status = S_PANIC
 		}
-
 		sql := "update " + TableProps.report.name + " set " + TableProps.report.status + "=? where " + TableProps.report.id + "=?"
 		sqlExec(sql, status, reportID)
 	}()
 
 	feedbackQs, feedbackQID, err := getFeedbackQ(s, e)
 	if err != nil {
-		status = -1
+		status = S_PANIC
 		util.LogError.Println(err)
 		return err
 	}
@@ -36,13 +35,13 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster)
 
 		//no clustering result
 		if cluster == nil {
-			status = -1
+			status = S_PANIC
 		} else {
 			util.LogTrace.Printf("Num of clusters %v,%v\n", cluster.numClustered, len(cluster.clusters))
 			cluster.reportID = reportID
 			err = storeClusterData(store, cluster)
 			if err != nil {
-				status = -1
+				status = S_PANIC
 				util.LogError.Println(err)
 			}
 		}
@@ -149,31 +148,31 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 	util.LogTrace.Printf("Calculate embeddings ends. Time consuming: [%v]s\n",
 		time.Since(embeddingStart).Seconds())
 
+	clusters := make([]clustering, 0)
+
 	if len(embeddings) == 0 {
 		util.LogError.Println("This task is going to be closed, because: [effective embedding size is 0]")
-		return nil
-	}
+		clusters = append(clusters, clustering{feedbackID: feedbackQID, tags: make([]string, 0)})
+	} else {
+		clusterIdxes := doCluster(embeddings, 10)
+		for _, idxes := range clusterIdxes {
+			feedbackQIDs := make([]uint64, 0)
+			clusterTags := make([]string, 0)
+			clusterPos := make([]string, 0)
+			for _, idx := range idxes {
 
-	clusters := make([]clustering, 0)
-	clusterIdxes := doCluster(embeddings, 10)
-	for _, idxes := range clusterIdxes {
-		feedbackQIDs := make([]uint64, 0)
-		clusterTags := make([]string, 0)
-		clusterPos := make([]string, 0)
-		for _, idx := range idxes {
-
-			feedbackQIDs = append(feedbackQIDs, feedbackQID[idx])
-			for _, v := range nativeLog.Logs[idx].KeyWords {
-				clusterPos = append(clusterPos, v)
+				feedbackQIDs = append(feedbackQIDs, feedbackQID[idx])
+				for _, v := range nativeLog.Logs[idx].KeyWords {
+					clusterPos = append(clusterPos, v)
+				}
 			}
+			tags := data.ExtractTags(clusterPos, 2)
+			for _, v := range tags {
+				clusterTags = append(clusterTags, v.Text())
+			}
+			clusters = append(clusters, clustering{feedbackID: feedbackQIDs, tags: clusterTags})
 		}
-		tags := data.ExtractTags(clusterPos, 2)
-		for _, v := range tags {
-			clusterTags = append(clusterTags, v.Text())
-		}
-		clusters = append(clusters, clustering{feedbackID: feedbackQIDs, tags: clusterTags})
 	}
-
 	return &clusteringResult{numClustered: len(nativeLog.Logs), clusters: clusters}
 }
 
