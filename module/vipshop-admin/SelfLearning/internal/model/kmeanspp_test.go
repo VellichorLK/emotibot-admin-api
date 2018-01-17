@@ -1,16 +1,17 @@
 package model
 
 import (
-	"testing"
-
-	"logger"
 	"math/rand"
+	"os"
+	"testing"
 	"time"
+
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
 func TestKmeans(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	logger.ClsLogger = logger.SetLogPath("./")
+	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	rawData := []Vector{
 		{0, 2},
 		{1, 1},

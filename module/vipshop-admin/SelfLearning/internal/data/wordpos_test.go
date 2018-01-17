@@ -2,16 +2,16 @@ package data
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
+
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-func init() {
-	config.SetConfPath("../../")
-	logger.ClsLogger = logger.SetLogPath("../../")
-}
-
 func TestWordpos(t *testing.T) {
+	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	nluURL := "http://172.16.101.47:13901"
 	testQuestions := []string{
 		"APP交易指南—如何买入/卖出",
 		"APP内有止盈止损的功能吗",
@@ -78,10 +78,8 @@ func TestWordpos(t *testing.T) {
 	start := time.Now()
 	var nativeLog NativeLog
 	nativeLog.Init()
-	nativeLog.GetWordPos(testQuestions)
-	logger.Info("Test ends. Calculate [%v] questions in [%v]s",
-		len(testQuestions),
-		time.Since(start).Seconds())
+	nativeLog.GetWordPos(nluURL, testQuestions)
+	util.LogInfo.Printf("Test ends. Calculate [%v] questions in [%v]s\n", len(testQuestions), time.Since(start).Seconds())
 	for i := 0; i < len(nativeLog.Logs); i++ {
 		datItem := nativeLog.Logs[i]
 		fmt.Println(datItem.Tokens)
