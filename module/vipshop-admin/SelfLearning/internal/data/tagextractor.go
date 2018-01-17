@@ -19,6 +19,9 @@ func ExtractTags(clusterPos []string, top int) (tags Segments) {
 		if _, ok := StopWord[w]; ok {
 			continue
 		}
+		if w == "" {
+			continue
+		}
 		freqMap[w] += 1.0
 		total++
 	}
