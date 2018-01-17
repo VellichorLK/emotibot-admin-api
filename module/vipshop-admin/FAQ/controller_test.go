@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"testing"
@@ -29,6 +30,7 @@ func TestMain(m *testing.M) {
 	os.Exit(retCode)
 }
 
+//TODO: Multicustomer mock up neeeded!
 func TestUpdateHandler(t *testing.T) {
 	e := httptest.New(t, app)
 	db, mock, err := sqlmock.New()
@@ -70,6 +72,7 @@ func TestUpdateHandler(t *testing.T) {
 	e.POST("/question/{qid}/similar-questions").WithPath("qid", qid).WithJSON(body).WithHeaders(mHeader).Expect().Status(http.StatusOK)
 
 	if err := mock.ExpectationsWereMet(); err != nil {
+		fmt.Println(body)
 		t.Fatal(err.Error)
 	}
 }

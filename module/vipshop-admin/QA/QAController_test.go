@@ -2,6 +2,7 @@ package QA
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
@@ -10,11 +11,11 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/httptest"
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 type mockMCClient http.Client
@@ -53,6 +54,7 @@ var mHeader = map[string]string{
 	"X-UserID":  "userX",
 	"X-Real-IP": "0.0.0.0",
 }
+var mainDBMock, auditDBMock sqlmock.Sqlmock
 
 func TestMain(m *testing.M) {
 
@@ -66,8 +68,13 @@ func TestMain(m *testing.M) {
 	app.Get("/test/{id:int}/download", download)
 	app.Get("/test/{id:int}/progress", progress)
 	app.Get("/test/views", viewOperations)
-	//TODO Mock SQL DB
-	if err := util.InitMainDB("127.0.0.1:3306", "root", "password", "emotibot"); err != nil {
+	var err error
+	var db, auditDB *sql.DB
+	db, mainDBMock, err = sqlmock.New()
+	auditDB, auditDBMock, err = sqlmock.New()
+	util.SetDB("main", db)
+	util.SetDB("audit", auditDB)
+	if err != nil {
 		fmt.Println("Can not connect to local test server")
 		os.Exit(1)
 	}
@@ -78,11 +85,12 @@ func TestImportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 	var expectedResponse = "{\"state_id\":123}"
 	var buf = strings.NewReader("test")
-
+	auditDBMock.ExpectExec("insert audit_record").WillReturnResult(sqlmock.NewResult(1, 1))
 	//400 situaction
 	e.POST("/test/import").WithMultipart().WithFormField("mode", "random").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(http.StatusBadRequest)
+	auditDBMock.ExpectExec("insert audit_record").WillReturnResult(sqlmock.NewResult(1, 1))
 	e.POST("/test/import").WithMultipart().WithFormField("mode", "full").WithFile("file", "test.exe", buf).WithHeaders(mHeader).Expect().Status(http.StatusBadRequest)
-
+	auditDBMock.ExpectExec("insert audit_record").WillReturnResult(sqlmock.NewResult(1, 1))
 	body := e.POST("/test/import").WithMultipart().WithFormField("mode", "full").WithFile("file", "test.xlsx", buf).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	//TODO Test different situaction and Audit Log
 	if t.Failed() {
@@ -104,47 +112,37 @@ func TestExportExcel(t *testing.T) {
 
 func TestDownload(t *testing.T) {
 	e := httptest.New(t, app)
-	db := util.GetMainDB()
-	rows, _ := db.Query("SELECT content, status FROM State_machine WHERE state_id = ?", 5)
-	var expectedContent, status string
-	if rows.Next() {
-		rows.Scan(&expectedContent, &status)
-		defer rows.Close()
-	}
+	id := "1"
+	var expectedContent = "EMPTY"
+	success := sqlmock.NewRows([]string{"content", "status"}).AddRow(expectedContent, "success")
+	mainDBMock.ExpectQuery("SELECT content, status FROM state_machine").WithArgs(id).WillReturnRows(success)
 	//200
-	body := e.GET("/test/{id}/download").WithPath("id", 5).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedContent)
-	if t.Failed() {
-		fmt.Println("Logging Error message")
-		fmt.Println(body)
+	if body := e.GET("/test/{id}/download").WithPath("id", id).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedContent); t.Failed() {
+		fmt.Printf("Logging body: %s", body)
 	}
-	//503
-	e.GET("/test/{id}/download").WithPath("id", 4).WithHeaders(mHeader).Expect().Status(http.StatusServiceUnavailable)
 
+	pending := sqlmock.NewRows([]string{"content", "status"}).AddRow([]byte{}, "running")
+	mainDBMock.ExpectQuery("SELECT content, status FROM state_machine WHERE state_id").WithArgs(id).WillReturnRows(pending)
+	//503
+	if body := e.GET("/test/{id}/download").WithPath("id", id).WithHeaders(mHeader).Expect().Status(http.StatusServiceUnavailable); t.Failed() {
+		fmt.Printf("Logging body: %s", body)
+	}
 }
 
 func TestProgress(t *testing.T) {
 	e := httptest.New(t, app)
-	db := util.GetMainDB()
-	rows, _ := db.Query("SELECT status FROM State_machine WHERE state_id = ?", 4)
-	var expectedStatus string
-	if rows.Next() {
-		rows.Scan(&expectedStatus)
-		defer rows.Close()
-	}
-	var mysqlLayout = "2006-01-02 15:04:05"
-
-	selectedTime, err := time.Parse(mysqlLayout, "2017-12-13 08:27:26")
-	if err != nil {
-		t.Fatalf("%s", err.Error())
-	}
+	id := 1
+	var expectedTime = JSONUnixTime{}
+	rows := sqlmock.NewRows([]string{"status", "created_time", "extra_info"}).AddRow("running", expectedTime, "")
+	mainDBMock.ExpectQuery("SELECT status, created_time, extra_info FROM state_machine  ").WithArgs(id).WillReturnRows(rows)
 	var successJSON, _ = json.Marshal(struct {
 		ID          int          `json:"state_id"`
 		Status      string       `json:"status"`
 		CreatedTime JSONUnixTime `json:"created_time"`
 		ExtraInfo   string       `json:"extra_info"`
-	}{4, "running", JSONUnixTime(selectedTime), ""})
+	}{1, "running", expectedTime, ""})
 
-	body := e.GET("/test/{id}/progress").WithPath("id", 4).WithHeaders(mHeader).Expect().Status(200).Body().Equal(string(successJSON))
+	body := e.GET("/test/{id}/progress").WithPath("id", id).WithHeaders(mHeader).Expect().Status(200).Body().Equal(string(successJSON))
 	if t.Failed() {
 		fmt.Println("Logging Error message")
 		fmt.Println(body)
@@ -154,7 +152,8 @@ func TestProgress(t *testing.T) {
 func TestViewOperations(t *testing.T) {
 	e := httptest.New(t, app)
 	values := url.Values{}
-	// values.Set("userID", "dean")
+	rows := sqlmock.NewRows([]string{"state_id", "user_id", "action", "status", "created_time", "updated_time", "extra_info"}).AddRow(1, "", "export", "success", nil, nil, "")
+	mainDBMock.ExpectQuery("SELECT state_id, user_id, action, status, created_time, updated_time, extra_info FROM state_machine ").WillReturnRows(rows)
 	body := e.GET("/test/views").WithQueryString(values.Encode()).WithHeaders(mHeader).Expect().Status(200).Body()
 
 	if t.Failed() {

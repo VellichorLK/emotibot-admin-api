@@ -197,6 +197,11 @@ func progress(ctx context.Context) {
 	}
 	rows, err := db.Query("SELECT status, created_time, extra_info FROM state_machine WHERE state_id = ?", statID)
 	var returnJSON = successJSON{ID: statID}
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(errorJSON{Message: err.Error()})
+		return
+	}
 	if !rows.Next() {
 		ctx.StatusCode(http.StatusNotFound)
 		return

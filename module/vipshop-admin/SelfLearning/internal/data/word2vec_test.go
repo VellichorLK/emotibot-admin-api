@@ -6,7 +6,7 @@ import (
 )
 
 func TestStopWords(t *testing.T) {
-	fmt.Println(InitializeWord2Vec("../../"))
+	fmt.Println(InitializeWord2Vec("../../../"))
 	Word2Vec.Range(func(key, value interface{}) bool {
 		if key == "老翁" {
 			fmt.Println(key, value)

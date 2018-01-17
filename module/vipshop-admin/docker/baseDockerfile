@@ -1,0 +1,8 @@
+FROM docker-reg.emotibot.com.cn:55688/go-build:20180112_b34f7b5
+
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+COPY . /go/src/emotibot.com/emotigo/module
+WORKDIR /go/src/emotibot.com/emotigo/module/${PROJECT}
+RUN go-wrapper download
