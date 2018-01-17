@@ -1,6 +1,7 @@
 package SelfLearning
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -125,5 +126,38 @@ func TestGetClusteringResult(t *testing.T) {
 		fmt.Printf("avg sentence length %f \n", avgLength)
 	} else {
 		t.Fatal("no clusters")
+	}
+}
+
+func TestConcurrencyGetClusteringResult(t *testing.T) {
+	empty := bytes.NewBuffer([]byte{})
+	util.LogInit(empty, empty, empty, empty)
+	var feedbacks = newArray(size)
+	var feedbackID []uint64
+
+	var length float64
+	for i := 0; i < len(feedbacks); i++ {
+		feedbackID = append(feedbackID, uint64(i))
+		length += float64(utf8.RuneCountInString(feedbacks[i]))
+	}
+	avgLength := length / float64(len(feedbacks))
+	fmt.Printf("每句平均長度:%f\n", avgLength)
+	receiver := make(chan *clusteringResult)
+	for i := 0; i <= 9; i++ {
+		go func(output chan *clusteringResult) {
+			result := getClusteringResult(feedbacks, feedbackID)
+			receiver <- result
+		}(receiver)
+	}
+
+	for i := 0; i <= 9; i++ {
+
+		result := <-receiver
+		if result == nil {
+			t.Fatal("result should not be nil")
+		} else if result.clusters == nil || len(result.clusters) == 0 {
+			t.Fatal("result cluster should have at least one cluster")
+		}
+		fmt.Printf("result cluster size: %d\n", len(result.clusters))
 	}
 }
