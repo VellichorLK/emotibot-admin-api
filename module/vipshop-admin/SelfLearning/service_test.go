@@ -23,16 +23,32 @@ func TestMain(m *testing.M) {
 
 }
 
+//logs contains non-duplicated slice of testing data
 var logs []string
-var envSeed, _ = os.LookupEnv("seed")
-var seed = initSeed(envSeed)
 
-func initSeed(seedstr string) (s int64) {
-	if seedstr == "" {
+//seed control how to populate the testing data
+var seed = initSeed("seed")
+
+//size control the size of the testing data
+var size = initSize("array_size")
+
+func initSeed(env string) (s int64) {
+	var envSeed, exists = os.LookupEnv(env)
+
+	if !exists {
 		s = 1
 	}
-	for _, b := range []byte(seedstr) {
+	for _, b := range []byte(envSeed) {
 		s += int64(b)
+	}
+	return
+}
+
+func initSize(env string) (s int) {
+	arraySize, exists := os.LookupEnv(env)
+	s, err := strconv.Atoi(arraySize)
+	if !exists || err != nil {
+		s = 500
 	}
 	return
 }
@@ -86,11 +102,7 @@ func BenchmarkGetClusteringResult(b *testing.B) {
 	fmt.Printf("字串平均長度:%f", avgLength)
 }
 func TestGetClusteringResult(t *testing.T) {
-	arraySize, _ := os.LookupEnv("array_size")
-	size, err := strconv.Atoi(arraySize)
-	if err != nil {
-		size = 500
-	}
+
 	var feedbacks = newArray(size)
 	var feedbackID []uint64
 
