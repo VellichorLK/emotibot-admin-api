@@ -100,8 +100,8 @@ func getFeedbackQ(s time.Time, e time.Time) ([]string, []uint64, error) {
 		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " + TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) group by " + TableProps.feedback.question +
 		" limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
 
-	feedbackQs := make([]string, 0)
-	feedbackQID := make([]uint64, 0)
+	feedbackQs := make([]string, MaxNumToCluster)
+	feedbackQID := make([]uint64, MaxNumToCluster)
 
 	rows, err := sqlQuery(sql, s.Unix(), e.Unix())
 	if err != nil {
