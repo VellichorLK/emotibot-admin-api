@@ -53,9 +53,9 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster)
 	return err
 }
 
-func createOneReport(s time.Time, e time.Time) (uint64, error) {
-	sql := "insert into " + TableProps.report.name + " (" + TableProps.report.startTime + "," + TableProps.report.endTime + ") values (?,?)"
-	result, err := sqlExec(sql, s, e)
+func createOneReport(s time.Time, e time.Time, appid string) (uint64, error) {
+	sql := "insert into " + TableProps.report.name + " (" + TableProps.report.startTime + "," + TableProps.report.endTime + "," + TableProps.report.appid + ") values (?,?,?)"
+	result, err := sqlExec(sql, s, e, appid)
 	if err != nil {
 		util.LogError.Println(err)
 		return 0, err
@@ -68,12 +68,12 @@ func createOneReport(s time.Time, e time.Time) (uint64, error) {
 	return uint64(reportID), nil
 }
 
-func isDuplicate(s time.Time, e time.Time) (bool, uint64, error) {
+func isDuplicate(s time.Time, e time.Time, appid string) (bool, uint64, error) {
 
 	sql := "select " + TableProps.report.id + " from " + TableProps.report.name + " where " + TableProps.report.startTime + "=?" +
-		" and " + TableProps.report.endTime + "=?"
+		" and " + TableProps.report.endTime + "=?" + " and " + TableProps.report.appid + "=?"
 
-	rows, err := sqlQuery(sql, s, e)
+	rows, err := sqlQuery(sql, s, e, appid)
 	if err != nil {
 		return false, 0, err
 	}
