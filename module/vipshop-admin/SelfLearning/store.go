@@ -1,5 +1,9 @@
 package SelfLearning
 
+import (
+	"fmt"
+)
+
 type dbStore struct{}
 
 func (store *dbStore) Store(cr *clusteringResult) error {
@@ -34,7 +38,7 @@ func (store *dbStore) Store(cr *clusteringResult) error {
 			_, err := resultStmt.Exec(qID, cr.reportID, idx)
 			if err != nil {
 				tx.Rollback()
-				return err
+				return fmt.Errorf("insert clustering result %v, report_id:%v failed\n %v", qID, cr.reportID, err)
 			}
 		}
 
@@ -42,7 +46,7 @@ func (store *dbStore) Store(cr *clusteringResult) error {
 			_, err := tagStmt.Exec(cr.reportID, idx, tag)
 			if err != nil {
 				tx.Rollback()
-				return err
+				return fmt.Errorf("insert clustering tag %v, report_id:%v failed\n %v", tag, cr.reportID, err)
 			}
 		}
 

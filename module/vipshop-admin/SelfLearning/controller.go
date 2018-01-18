@@ -123,6 +123,13 @@ func handleClustering(ctx context.Context) {
 		return
 	}
 
+	appid := ctx.GetHeader("Authorization")
+	if appid == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, "No permission"))
+		return
+	}
+
 	type respID struct {
 		ReportID uint64 `json:"reportID"`
 	}
@@ -135,7 +142,7 @@ func handleClustering(ctx context.Context) {
 	et := time.Unix(e, 0)
 	ctx.StatusCode(http.StatusOK)
 
-	isDup, reportID, err = isDuplicate(st, et)
+	isDup, reportID, err = isDuplicate(st, et, appid)
 
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -145,7 +152,7 @@ func handleClustering(ctx context.Context) {
 
 	if !isDup {
 
-		reportID, err = createOneReport(st, et)
+		reportID, err = createOneReport(st, et, appid)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(status, err.Error()))
