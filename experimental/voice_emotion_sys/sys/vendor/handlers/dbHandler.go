@@ -327,17 +327,23 @@ func ComputeChannelScore(eb *EmotionBlock) {
 				const weight = 1.5
 				const portion = 0.25
 
+				var lastNSentence int
+				lastNSentence = int(math.Ceil(float64(count) / float64(4)))
+
 				for i := 0; i < count; i++ {
-					if scores[i] > gap {
+					avgCountAcc += scores[i]
+				}
+
+				for i := 0; i < lastNSentence; i++ {
+					if scores[count-1-i] > gap {
 						upRateCount++
 					}
-					avgCountAcc += scores[i]
 				}
 
 				avgProb = avgCountAcc / float64(count)
 
 				if count > 10 && eb.RDuration > (120*1000) {
-					upRate = float64(upRateCount) / math.Ceil(float64(count)/float64(4))
+					upRate = float64(upRateCount) / float64(lastNSentence)
 
 					primaryScore = 120*avgProb + 7 + 20*upRate
 
