@@ -1,7 +1,9 @@
 package Switch
 
 import (
+	"bytes"
 	"fmt"
+	"reflect"
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
@@ -96,6 +98,22 @@ func handleNewSwitch(ctx context.Context) {
 	}
 }
 
+func diffSwitchInfo(switchA *SwitchInfo, switchB *SwitchInfo) string {
+	var buf bytes.Buffer
+	fields := []string{"Name", "Status", "Remark", "Scenario", "Num", "Msg"}
+
+	reflectA := reflect.ValueOf(switchA)
+	reflectB := reflect.ValueOf(switchB)
+	for _, field := range fields {
+		valA := reflect.Indirect(reflectA).FieldByName(field).String()
+		valB := reflect.Indirect(reflectB).FieldByName(field).String()
+		if valA != valB {
+			buf.WriteString(fmt.Sprintf("%s [%v]->[%v]; ", util.Msg[field], valA, valB))
+		}
+	}
+	return buf.String()
+}
+
 func handleUpdateSwitch(ctx context.Context) {
 	id, _ := ctx.Params().GetInt("id")
 	appid := util.GetAppID(ctx)
@@ -117,10 +135,23 @@ func handleUpdateSwitch(ctx context.Context) {
 	errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update fail %s (%s)", errMsg, err.Error()), 0)
+		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
+			util.Msg["Modify"], util.Msg["Error"], input.Code, errMsg, err.Error()), 0)
 	} else {
 		ctx.JSON(util.GenRetObj(errCode, input))
-		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("Update success %#v => %#v", orig, input), 1)
+		diffMsg := diffSwitchInfo(orig, input)
+		var msg string
+
+		if diffMsg != "" {
+			msg = fmt.Sprintf(
+				"%s%s code[%s]\n %s",
+				util.Msg["Modify"], util.Msg["Success"], input.Code, diffMsg)
+		} else {
+			msg = fmt.Sprintf(
+				"%s%s code[%s]",
+				util.Msg["Modify"], util.Msg["Success"], input.Code)
+		}
+		addAudit(ctx, util.AuditOperationEdit, msg, 1)
 	}
 
 	var ret int
