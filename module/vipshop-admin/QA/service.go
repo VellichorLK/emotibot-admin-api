@@ -57,15 +57,14 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	}
 
 	ret := RetData{}
-	if strings.Trim(DCRet.Emotion, " ") != "" {
-		splits := strings.Split(DCRet.Emotion, " ")
-		ret.Emotion = splits[0]
+	if DCRet.Emotion != nil && len(DCRet.Emotion) > 0 {
+		ret.Emotion = DCRet.Emotion[0].Item
 	}
-	if strings.Trim(DCRet.Intent, " ") != "" {
-		splits := strings.Split(DCRet.Intent, " ")
-		ret.Intent = splits[0]
+	if DCRet.Intent != nil && len(DCRet.Intent) > 0 {
+		ret.Intent = DCRet.Intent[0].Item
 	}
 
+	// Parse for multi answer in format [ans1],[ans2],[[CMD]:{something}]
 	if strings.Trim(DCRet.Return, " ") != "" {
 		answers := strings.Split(DCRet.Return, "],[")
 		ret.Answers = []*string{}
@@ -84,11 +83,12 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	} else {
 		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
 	}
-	ret.SimilarQuestion = getSimilarFromCustomReturn(&DCRet.CustomReturn)
+
+	ret.SimilarQuestion = getSimilarFromDCCustomReturn(&DCRet.CustomReturn)
 	if ret.SimilarQuestion == nil {
 		ret.SimilarQuestion = []*QuestionInfo{}
 	}
-	ret.Tokens = getTokensFromCustomReturn(&DCRet.CustomReturn)
+	ret.Tokens = getTokensFromDCCustomReturn(&DCRet.CustomReturn)
 	if ret.Tokens == nil {
 		ret.Tokens = []*string{}
 	}
@@ -104,15 +104,10 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 
 	// Prepare for openAPI input
 	input := make(map[string]interface{})
-	// input["userid"] = user
-	// input["appid"] = appid
-	// input["text"] = inputData.UserInput
-	// input["cmd"] = "chat"
-
-	input["UniqueID"] = "test"
-	input["Text1"] = inputData.UserInput
-	input["robot"] = appid
-	input["UserID"] = user
+	input["userid"] = user
+	input["appid"] = appid
+	input["text"] = inputData.UserInput
+	input["cmd"] = "chat"
 
 	customInfo := map[string]string{
 		"qtype":    "debug",
@@ -168,11 +163,11 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
 	}
 	ret.OpenAPIReturn = openAPIRet.Return
-	ret.SimilarQuestion = getSimilarFromCustomReturn(&openAPIRet.CustomReturn)
+	ret.SimilarQuestion = getSimilarFromOpenAPICustomReturn(&openAPIRet.CustomReturn)
 	if ret.SimilarQuestion == nil {
 		ret.SimilarQuestion = []*QuestionInfo{}
 	}
-	ret.Tokens = getTokensFromCustomReturn(&openAPIRet.CustomReturn)
+	ret.Tokens = getTokensFromOpenAPICustomReturn(&openAPIRet.CustomReturn)
 	if ret.Tokens == nil {
 		ret.Tokens = []*string{}
 	}
@@ -180,7 +175,7 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 	return &ret, ApiError.SUCCESS, nil
 }
 
-func getSimilarFromCustomReturn(customReturn *map[string]interface{}) []*QuestionInfo {
+func getSimilarFromOpenAPICustomReturn(customReturn *map[string]interface{}) []*QuestionInfo {
 	defer func() {
 		if r := recover(); r != nil {
 			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
@@ -208,7 +203,7 @@ func getSimilarFromCustomReturn(customReturn *map[string]interface{}) []*Questio
 	return ret
 }
 
-func getTokensFromCustomReturn(customReturn *map[string]interface{}) []*string {
+func getTokensFromOpenAPICustomReturn(customReturn *map[string]interface{}) []*string {
 	defer func() {
 		if r := recover(); r != nil {
 			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
@@ -225,6 +220,46 @@ func getTokensFromCustomReturn(customReturn *map[string]interface{}) []*string {
 		// temp := fmt.Sprintf("%s/%s", word, pos)
 		temp := fmt.Sprintf("%s", word)
 		ret = append(ret, &temp)
+	}
+	return ret
+}
+
+func getSimilarFromDCCustomReturn(customReturn *map[string]interface{}) []*QuestionInfo {
+	return getSimilarFromOpenAPICustomReturn(customReturn)
+}
+
+func getTokensFromDCCustomReturn(customReturn *map[string]interface{}) []*string {
+	defer func() {
+		if r := recover(); r != nil {
+			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
+		}
+	}()
+
+	ret := []*string{}
+
+	// real token may in customReturn.response_other_info.token or customReturn.cu_word
+	cuWord, ok := (*customReturn)["cu_word"]
+	var tokens []interface{}
+	if ok {
+		tokens = cuWord.([]interface{})
+		for _, rawVal := range tokens {
+			val := rawVal.(map[string]interface{})
+			word := val["word"]
+			pos := val["pos"]
+			temp := fmt.Sprintf("%s/%s", word, pos)
+			ret = append(ret, &temp)
+		}
+		return ret
+	}
+
+	responseOtherInfo, ok := (*customReturn)["response_other_info"].(map[string]interface{})
+	if ok {
+		tokens = responseOtherInfo["token"].([]interface{})
+	}
+
+	for _, rawVal := range tokens {
+		val := rawVal.(string)
+		ret = append(ret, &val)
 	}
 	return ret
 }

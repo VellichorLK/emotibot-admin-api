@@ -45,16 +45,24 @@ type TextData struct {
 
 type CUData struct {
 	Type     string        `json:"type"`
-	Value    string        `json:"value"`
 	Score    interface{}   `json:"score"`
 	Category string        `json:"category"`
 	Data     []interface{} `json:"data"`
+	Value    string        `json:"value"`
+}
+
+type CUDataFromDC struct {
+	Type     string      `json:"type"`
+	Score    interface{} `json:"score"`
+	Category string      `json:"category"`
+	Data     interface{} `json:"data"`
+	Item     string      `json:"item"`
 }
 
 type DCResponse struct {
-	Return  string `json:"answer"`
-	Emotion string `json:"topic_mood"`
-	Intent  string `json:"intent"`
+	Return  string         `json:"answer"`
+	Emotion []CUDataFromDC `json:"emotion_openapi"`
+	Intent  []CUDataFromDC `json:"intent_openapi"`
 
 	CustomReturn map[string]interface{} `json:"customReturn"`
 }
