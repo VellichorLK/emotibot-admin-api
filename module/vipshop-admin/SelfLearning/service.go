@@ -3,6 +3,7 @@ package SelfLearning
 import (
 	"runtime/debug"
 	"sort"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/SelfLearning/internal/data"
@@ -96,8 +97,9 @@ func isDuplicate(s time.Time, e time.Time, appid string) (bool, uint64, error) {
 func getFeedbackQ(s time.Time, e time.Time) ([]string, []uint64, error) {
 
 	sql := "select " + TableProps.feedback.id + "," + TableProps.feedback.question + " from " + TableProps.feedback.name +
-		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " + TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) group by " + TableProps.feedback.question +
-		" limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
+		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " +
+		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) group by " +
+		TableProps.feedback.question + " limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
 
 	feedbackQs := make([]string, 0, MaxNumToCluster)
 	feedbackQID := make([]uint64, 0, MaxNumToCluster)
@@ -155,10 +157,13 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 		clusters = append(clusters, clustering{feedbackID: feedbackQID, tags: make([]string, 0)})
 	} else {
 		clusterIdxes := doCluster(embeddings, 10)
+		clusterMap := make(map[string]clustering, 0)
+
 		for _, idxes := range clusterIdxes {
 			feedbackQIDs := make([]uint64, 0)
 			clusterTags := make([]string, 0)
 			clusterPos := make([]string, 0)
+
 			for _, idx := range idxes {
 
 				feedbackQIDs = append(feedbackQIDs, feedbackQID[idx])
@@ -170,7 +175,26 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 			for _, v := range tags {
 				clusterTags = append(clusterTags, v.Text())
 			}
-			clusters = append(clusters, clustering{feedbackID: feedbackQIDs, tags: clusterTags})
+
+			sort.Strings(clusterTags)
+
+			tagKey := strings.Join(clusterTags, "|")
+
+			if c, ok := clusterMap[tagKey]; ok {
+				c.feedbackID = append(c.feedbackID, feedbackQIDs...)
+				clusterMap[tagKey] = c
+			} else {
+				var c clustering
+				c.feedbackID = feedbackQIDs
+				c.tags = clusterTags
+				clusterMap[tagKey] = c
+			}
+
+			//clusters = append(clusters, clustering{feedbackID: feedbackQIDs, tags: clusterTags})
+		}
+
+		for _, v := range clusterMap {
+			clusters = append(clusters, clustering{feedbackID: v.feedbackID, tags: v.tags})
 		}
 	}
 	return &clusteringResult{numClustered: len(nativeLog.Logs), clusters: clusters}
