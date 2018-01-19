@@ -60,9 +60,11 @@ type CUDataFromDC struct {
 }
 
 type DCResponse struct {
-	Return  string         `json:"answer"`
-	Emotion []CUDataFromDC `json:"emotion_openapi"`
-	Intent  []CUDataFromDC `json:"intent_openapi"`
+	Return  string      `json:"answer"`
+	Emotion interface{} `json:"emotion_openapi"`
+	Intent  interface{} `json:"intent_openapi"`
+	// Emotion []CUDataFromDC `json:"emotion_openapi"`
+	// Intent  []CUDataFromDC `json:"intent_openapi"`
 
 	CustomReturn map[string]interface{} `json:"customReturn"`
 }

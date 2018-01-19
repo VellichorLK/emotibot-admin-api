@@ -57,11 +57,13 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	}
 
 	ret := RetData{}
-	if DCRet.Emotion != nil && len(DCRet.Emotion) > 0 {
-		ret.Emotion = DCRet.Emotion[0].Item
+	cuRet := getFirstCUData(DCRet.Emotion)
+	if cuRet != nil {
+		ret.Emotion = cuRet.Item
 	}
-	if DCRet.Intent != nil && len(DCRet.Intent) > 0 {
-		ret.Intent = DCRet.Intent[0].Item
+	cuRet = getFirstCUData(DCRet.Intent)
+	if cuRet != nil {
+		ret.Intent = cuRet.Item
 	}
 
 	// Parse for multi answer in format [ans1],[ans2],[[CMD]:{something}]
@@ -94,6 +96,34 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	}
 
 	return &ret, ApiError.SUCCESS, nil
+}
+
+func getFirstCUData(input interface{}) *CUDataFromDC {
+	defer func() {
+		if r := recover(); r != nil {
+			util.LogError.Printf("Parse cudata error from %#v", input)
+			return
+		}
+	}()
+
+	jsonByte, _ := json.Marshal(input)
+	ret := CUDataFromDC{}
+
+	switch t := input.(type) {
+	case map[string]interface{}:
+		util.LogTrace.Printf("Parse %v for hash", t)
+		json.Unmarshal(jsonByte, &ret)
+		return &ret
+	case []interface{}:
+		util.LogTrace.Printf("Parse %v for array", t)
+		temp := []*CUDataFromDC{}
+		json.Unmarshal(jsonByte, &temp)
+		if len(temp) > 0 {
+			return temp[0]
+		}
+		return nil
+	}
+	return nil
 }
 
 func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
