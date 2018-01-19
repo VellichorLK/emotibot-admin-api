@@ -247,6 +247,9 @@ func handleGetUserQuestions(ctx context.Context) {
 	}
 	if err != nil {
 		util.LogError.Printf("input [limit] can't parseInt. %s\n", err)
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("input [limit] can't parseInt. %s\n", err)
+		return
 	}
 
 	if p := ctx.FormValue("page"); p == "" {
@@ -255,7 +258,10 @@ func handleGetUserQuestions(ctx context.Context) {
 		page, err = strconv.Atoi(p)
 	}
 	if err != nil {
-		util.LogError.Printf("input [limit] can't parseInt. %s\n", err)
+		util.LogError.Printf("input [page] can't parseInt. %s\n", err)
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("input [page] can't parseInt. %s\n", err)
+		return
 	}
 
 	questions, err := GetUserQuestions(reportID, clusterID, page, limit)
