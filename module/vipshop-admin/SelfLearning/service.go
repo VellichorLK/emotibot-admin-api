@@ -11,7 +11,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster) error {
+func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string) error {
 
 	status := S_SUCCESS
 	//update the status
@@ -24,7 +24,7 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster)
 		sqlExec(sql, status, reportID)
 	}()
 
-	feedbackQs, feedbackQID, err := getFeedbackQ(s, e)
+	feedbackQs, feedbackQID, err := getFeedbackQ(s, e, appid)
 	if err != nil {
 		status = S_PANIC
 		util.LogError.Println(err)
@@ -94,17 +94,17 @@ func isDuplicate(s time.Time, e time.Time, appid string) (bool, uint64, error) {
 }
 
 //return parameters, questions, id of questions in database, error
-func getFeedbackQ(s time.Time, e time.Time) ([]string, []uint64, error) {
+func getFeedbackQ(s time.Time, e time.Time, appid string) ([]string, []uint64, error) {
 
-	sql := "select " + TableProps.feedback.id + "," + TableProps.feedback.question + " from " + TableProps.feedback.name +
+	sql := "select max(" + TableProps.feedback.id + ")," + TableProps.feedback.question + " from " + TableProps.feedback.name +
 		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " +
-		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) group by " +
-		TableProps.feedback.question + " limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
+		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) and " + TableProps.feedback.appid + "=? " +
+		"group by " + TableProps.feedback.question + " limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
 
 	feedbackQs := make([]string, 0, MaxNumToCluster)
 	feedbackQID := make([]uint64, 0, MaxNumToCluster)
 
-	rows, err := sqlQuery(sql, s.Unix(), e.Unix())
+	rows, err := sqlQuery(sql, s.Unix(), e.Unix(), appid)
 	if err != nil {
 		return nil, nil, err
 	}

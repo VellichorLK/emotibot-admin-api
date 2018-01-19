@@ -159,7 +159,7 @@ func handleClustering(ctx context.Context) {
 			return
 		}
 
-		go doClustering(st, et, reportID, &dbStore{})
+		go doClustering(st, et, reportID, &dbStore{}, appid)
 	}
 
 	respone.ReportID = reportID
