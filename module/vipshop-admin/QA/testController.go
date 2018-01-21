@@ -62,7 +62,7 @@ func hadleChatTest(ctx context.Context) {
 	ret, errCode, err := DoChatRequestWithDC(appid, user, input)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
-} else {
+	} else {
 		ctx.JSON(util.GenRetObj(errCode, ret))
 	}
 }

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -18,7 +20,7 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 
 	// Prepare for DC input
 	input := make(map[string]interface{})
-	input["UniqueID"] = "test"
+	input["UniqueID"] = genRandomUUIDSameAsOpenAPI()
 	input["Text1"] = inputData.UserInput
 	input["robot"] = appid
 	input["UserID"] = user
@@ -291,5 +293,15 @@ func getTokensFromDCCustomReturn(customReturn *map[string]interface{}) []*string
 		val := rawVal.(string)
 		ret = append(ret, &val)
 	}
+	return ret
+}
+
+func genRandomUUIDSameAsOpenAPI() string {
+	now := time.Now()
+	randomNum := rand.Intn(900) + 100
+	ret := fmt.Sprintf("%d%02d%02d%02d%02d%02d%06d%03d",
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000,
+		randomNum)
 	return ret
 }
