@@ -103,7 +103,6 @@ func near(
 
 // Instead of initializing randomly the seeds, make a sound decision of initializing
 func seedpp(data []ClusteredVector, k int) []Vector {
-	r := rand.New(rand.NewSource(1))
 	centroids := make([]Vector, k)
 	if len(data) == 0 {
 		util.LogError.Println("The seed generation fails, caused by: [data size is 0]")
@@ -111,7 +110,7 @@ func seedpp(data []ClusteredVector, k int) []Vector {
 	}
 
 	util.LogTrace.Println("Generate seed starts.")
-	centroids[0] = data[r.Intn(len(data))].Vector
+	centroids[0] = data[rand.Intn(len(data))].Vector
 	util.LogTrace.Printf("Generate seed[0] ends. Seed[0]: %v\n",
 		centroids[0])
 	distPow2 := make([]float64, len(data))
