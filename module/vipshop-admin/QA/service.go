@@ -46,7 +46,10 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	input["customInfo"] = customInfo
 	input["customReturn"] = customReturn
 
-	response, err := util.HTTPPostJSON(openAPIURL, input, 10)
+	customHeader := make(map[string]string)
+	customHeader["X-Lb-Uid"] = user
+
+	response, err := util.HTTPPostJSONWithHeader(openAPIURL, input, 10, customHeader)
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}

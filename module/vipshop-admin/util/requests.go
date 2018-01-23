@@ -103,6 +103,10 @@ func HTTPPostForm(requestURL string, data map[string]string, timeout int) (strin
 }
 
 func HTTPPostJSON(url string, data interface{}, timeout int) (string, error) {
+	return HTTPPostJSONWithHeader(url, data, timeout, make(map[string]string))
+}
+
+func HTTPPostJSONWithHeader(url string, data interface{}, timeout int, header map[string]string) (string, error) {
 	if url == "" {
 		return "", errors.New("Invalid url")
 	}
@@ -127,6 +131,9 @@ func HTTPPostJSON(url string, data interface{}, timeout int) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	for name, val := range header {
+		req.Header.Set(name, val)
+	}
 
 	response, err := client.Do(req)
 	if err != nil {
