@@ -2,6 +2,7 @@ package SelfLearning
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -59,7 +60,7 @@ func setup() error {
 	MinSizeCluster = 10
 	MaxNumToCluster = 10
 	EarlyStopThreshold = 3
-	ClusteringBatch = 50
+	ClusteringBatch = 20
 	//empty := bytes.NewBuffer([]byte{})
 	//util.LogInit(empty, empty, empty, empty)
 	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
@@ -84,6 +85,7 @@ func newArray(size int) []string {
 	}
 	return results
 }
+
 func BenchmarkGetClusteringResult(b *testing.B) {
 	if err := setup(); err != nil {
 		b.Fatal(err)
@@ -101,6 +103,57 @@ func BenchmarkGetClusteringResult(b *testing.B) {
 	b.ResetTimer()
 	getClusteringResult(feedbacks, feedbackIDs)
 	fmt.Printf("字串平均長度:%f", avgLength)
+}
+
+func TestWholeFileGetClusteringResult(t *testing.T) {
+	var feedbacks = logs
+	var feedbackID []uint64
+
+	var length float64
+	for i := 0; i < len(feedbacks); i++ {
+		feedbackID = append(feedbackID, uint64(i))
+		length += float64(utf8.RuneCountInString(feedbacks[i]))
+	}
+
+	results := getClusteringResult(feedbacks, feedbackID)
+	f, err := os.Create("./golden_result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	var clusters = make([]struct {
+		ID        int      `json:"clusterID"`
+		Questions []string `json:"questions"`
+		Tags      []string `json:"tags"`
+	}, 0)
+	for i, c := range results.clusters {
+
+		var texts []string
+		for _, id := range c.feedbackID {
+			texts = append(texts, feedbacks[id])
+		}
+		var cluster = struct {
+			ID        int      `json:"clusterID"`
+			Questions []string `json:"questions"`
+			Tags      []string `json:"tags"`
+		}{
+			ID:        i,
+			Questions: texts,
+			Tags:      c.tags,
+		}
+		clusters = append(clusters, cluster)
+	}
+	data, err := json.Marshal(clusters)
+	if err != nil {
+		t.Fatal(err)
+	}
+	num, err := fmt.Fprintf(f, "%d: %+v", len(clusters), string(data))
+	if num == 0 {
+		t.Fatal("Nothing write to file")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 func TestGetClusteringResult(t *testing.T) {
 
