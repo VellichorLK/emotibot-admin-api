@@ -68,7 +68,8 @@ func setup() error {
 		return fmt.Errorf("init failed")
 	}
 
-	filePath := "/Users/public/Downloads/vip_cluster_sort_test.txt"
+	cwd, _ := os.Getwd()
+	filePath := cwd + "/../user_q.txt"
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -118,7 +119,7 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 	}
 
 	results := getClusteringResult(feedbacks, feedbackID)
-	f, err := os.Create("./golden_cluster_result.json")
+	f, err := os.Create("./golden_result.json")
 	if err != nil {
 		t.Fatal(err)
 	}
