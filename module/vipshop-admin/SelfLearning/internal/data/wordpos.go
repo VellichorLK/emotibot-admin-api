@@ -26,17 +26,29 @@ func (w *WordCount) GetWordCount() map[string]int {
 
 const nluQuerySize = 20
 
-func (l *NativeLog) GetWordPos(nluURL string, questions []string) {
+func (l *NativeLog) GetWordPos(nluURL string, questions []string, questionIDs []uint64) {
 	start := time.Now()
 	util.LogTrace.Println("Load Word-Pos start.")
 
 	size := len(questions)
 	for i := 0; i < size/nluQuerySize; i++ {
 		partial := questions[i*nluQuerySize : (i+1)*nluQuerySize]
+
+		contentIDMap := make(map[string]uint64)
+		for j := i * nluQuerySize; j < (i+1)*nluQuerySize; j++ {
+			contentIDMap[questions[j]] = questionIDs[j]
+		}
+
 		dalItems := parseFromWordPosRsp(
 			callWordPosService(
 				getWordPosRequest(partial), nluURL))
 		for _, dalItem := range dalItems {
+
+			id, ok := contentIDMap[dalItem.Content]
+			if !ok {
+				util.LogError.Printf("Cannot find the question (%s) index\n", dalItem.Content)
+			}
+			dalItem.ContentID = id
 			l.Logs = append(l.Logs, dalItem)
 		}
 	}

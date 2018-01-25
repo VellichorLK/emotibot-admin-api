@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 	"unicode/utf8"
 
 	"emotibot.com/emotigo/module/vipshop-admin/SelfLearning/internal/data"
@@ -58,7 +59,6 @@ func initSize(env string) (s int) {
 func setup() error {
 	NluURL = "http://172.16.101.47:13901"
 	MinSizeCluster = 10
-	MaxNumToCluster = 10
 	EarlyStopThreshold = 3
 	ClusteringBatch = 20
 	//empty := bytes.NewBuffer([]byte{})
@@ -67,8 +67,8 @@ func setup() error {
 	if ok := data.InitializeWord2Vec("../"); !ok {
 		return fmt.Errorf("init failed")
 	}
-	cwd, _ := os.Getwd()
-	filePath := cwd + "/../user_q.txt"
+
+	filePath := "./testdata/user_q.txt"
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -109,6 +109,8 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 	var feedbacks = logs
 	var feedbackID []uint64
 
+	rand.Seed(time.Now().UnixNano())
+
 	var length float64
 	for i := 0; i < len(feedbacks); i++ {
 		feedbackID = append(feedbackID, uint64(i))
@@ -116,7 +118,7 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 	}
 
 	results := getClusteringResult(feedbacks, feedbackID)
-	f, err := os.Create("./golden_result")
+	f, err := os.Create("./golden_result.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,6 +127,7 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 		ID        int      `json:"clusterID"`
 		Questions []string `json:"questions"`
 		Tags      []string `json:"tags"`
+		HitRate   float64  `json:"hitrate"`
 	}, 0)
 	for i, c := range results.clusters {
 
@@ -136,24 +139,35 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 			ID        int      `json:"clusterID"`
 			Questions []string `json:"questions"`
 			Tags      []string `json:"tags"`
+			HitRate   float64  `json:"hitrate"`
 		}{
 			ID:        i,
 			Questions: texts,
 			Tags:      c.tags,
+			HitRate:   hitRate(texts, c.tags),
 		}
 		clusters = append(clusters, cluster)
+	}
+	var totalHitRate float64
+	for _, c := range clusters {
+		totalHitRate += c.HitRate
+	}
+	avgHitRate := totalHitRate / float64(len(clusters))
+	if avgHitRate <= 0.6 {
+		t.Fatalf("expect hit rate above 0.6, but got %v", avgHitRate)
 	}
 	data, err := json.Marshal(clusters)
 	if err != nil {
 		t.Fatal(err)
 	}
-	num, err := fmt.Fprintf(f, "%d: %+v", len(clusters), string(data))
+	num, err := fmt.Fprintf(f, "%.4f: %+v", avgHitRate, string(data))
 	if num == 0 {
 		t.Fatal("Nothing write to file")
 	}
 	if err != nil {
 		t.Fatal(err)
 	}
+
 }
 func TestGetClusteringResult(t *testing.T) {
 
@@ -213,4 +227,20 @@ func TestConcurrencyGetClusteringResult(t *testing.T) {
 		}
 		fmt.Printf("result cluster size: %d\n", len(result.clusters))
 	}
+}
+
+func hitRate(sentences []string, tags []string) float64 {
+	var hit = 0
+hits:
+	for _, sentence := range sentences {
+
+		for _, tag := range tags {
+			if strings.Contains(sentence, tag) {
+				hit++
+				continue hits
+			}
+
+		}
+	}
+	return float64(hit) / float64(len(sentences))
 }

@@ -6,6 +6,7 @@ import (
 
 type DalItem struct {
 	Content   string
+	ContentID uint64
 	Tokens    []string
 	KeyWords  []string
 	Word2Vec  map[string]model.Vector
