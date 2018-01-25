@@ -58,7 +58,6 @@ func initSize(env string) (s int) {
 func setup() error {
 	NluURL = "http://172.16.101.47:13901"
 	MinSizeCluster = 10
-	MaxNumToCluster = 10
 	EarlyStopThreshold = 3
 	ClusteringBatch = 20
 	//empty := bytes.NewBuffer([]byte{})
@@ -143,6 +142,11 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 		}
 		clusters = append(clusters, cluster)
 	}
+	var totalHitRate float64
+	for _, c := range clusters {
+		totalHitRate += hitRate(c.Questions, c.Tags)
+	}
+
 	data, err := json.Marshal(clusters)
 	if err != nil {
 		t.Fatal(err)
@@ -153,6 +157,9 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 	}
 	if err != nil {
 		t.Fatal(err)
+	}
+	if avg := totalHitRate / float64(len(clusters)); avg <= 0.6 {
+		t.Fatalf("expect hit rate above 0.6, but got %v", avg)
 	}
 }
 func TestGetClusteringResult(t *testing.T) {
@@ -213,4 +220,19 @@ func TestConcurrencyGetClusteringResult(t *testing.T) {
 		}
 		fmt.Printf("result cluster size: %d\n", len(result.clusters))
 	}
+}
+
+func hitRate(sentences []string, tags []string) float64 {
+	var hit = 0
+hits:
+	for _, sentence := range sentences {
+		for _, tag := range tags {
+			if strings.Contains(sentence, tag) {
+				hit++
+				break hits
+			}
+
+		}
+	}
+	return float64(hit) / float64(len(sentences))
 }
