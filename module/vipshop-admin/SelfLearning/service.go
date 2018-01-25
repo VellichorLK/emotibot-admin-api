@@ -131,7 +131,7 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 
 	util.LogTrace.Printf("The size of sentences to cluster is [%v]\n", len(feedbackQs))
 
-	nativeLog.GetWordPos(NluURL, feedbackQs)
+	nativeLog.GetWordPos(NluURL, feedbackQs, feedbackQID)
 	util.LogTrace.Println("Calculate embeddings starts.")
 	embeddingStart := time.Now()
 	embeddingBatch := time.Now()
@@ -166,7 +166,7 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 
 			for _, idx := range idxes {
 
-				feedbackQIDs = append(feedbackQIDs, feedbackQID[idx])
+				feedbackQIDs = append(feedbackQIDs, nativeLog.Logs[idx].ContentID)
 				for _, v := range nativeLog.Logs[idx].KeyWords {
 					clusterPos = append(clusterPos, v)
 				}
@@ -204,6 +204,11 @@ func doCluster(vectors []model.Vector, topN int) [][]int {
 	util.LogTrace.Println("Clustering starts.")
 
 	numClusters := len(vectors) / ClusteringBatch
+
+	if numClusters == 0 {
+		numClusters = 1
+	}
+
 	clusteredVectors := model.KmeansPP(
 		vectors,
 		numClusters,
