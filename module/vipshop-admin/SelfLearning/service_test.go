@@ -68,8 +68,7 @@ func setup() error {
 		return fmt.Errorf("init failed")
 	}
 
-	cwd, _ := os.Getwd()
-	filePath := cwd + "/../user_q.txt"
+	filePath := "./testdata/user_q.txt"
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
