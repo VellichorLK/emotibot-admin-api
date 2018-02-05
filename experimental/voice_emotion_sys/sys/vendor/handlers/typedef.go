@@ -297,6 +297,8 @@ const NFROM = "from"
 const NTO = "to"
 const NTOTFILES = "total_files"
 const NSUMD = "total_voice_duration"
+const NFIELD = "field"
+const NDATE = "date"
 
 const ReportLimitDay = 90 * 24 * 60 * 60
 const TimeFormat = "2006/01/02 15:04:05"
@@ -322,3 +324,20 @@ const (
 	NSELID    = "sel_id"
 	NSELVAL   = "sel_value"
 )
+
+type DailyReport struct {
+	Total       int           `json:"total"`
+	AvgEmotions []*AvgEmotion `json:"date"`
+}
+type AvgEmotion struct {
+	Date        string  `json:"date_str"`
+	Total       uint64  `json:"total"`
+	AvgDuration uint64  `json:"avg_duration"`
+	AvgCh1Anger float64 `json:"avg_ch1_angry"`
+	AvgCh2Anger float64 `json:"avg_ch2_angry"`
+}
+
+type WhereStates struct {
+	name    string
+	compare string
+}

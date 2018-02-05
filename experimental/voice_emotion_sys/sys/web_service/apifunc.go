@@ -17,7 +17,7 @@ var v1api = apiFunc{
 	v1basePath + "/files":             handlers.QueryEmotions,
 	v1basePath + "/files_continue":    handlers.QueryContinue,
 	v1basePath + "/files/":            handlers.QueryEmotionDetail,
-	v1basePath + "/report":            handlers.GenerateReport,
+	v1basePath + "/report":            handlers.CallAverageEmotion,
 	v1basePath + "/user_column":       handlers.GetUserColumn,
 	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
 }
@@ -39,7 +39,7 @@ func fakeEnv() {
 	envs["RABBITMQ_PORT"] = "5672"
 	//envs["DB_HOST"] = "192.168.3.208"
 	envs["DB_HOST"] = "127.0.0.1"
-	envs["DB_PORT"] = "3306"
+	envs["DB_PORT"] = "3309"
 	envs["DB_USER"] = "root"
 	envs["DB_PWD"] = "password"
 	envs["FILE_PREFIX"] = "/Users/public/go/src/emotibot.com/emotigo/experimental/voice_emotion_sys/sys/web_service/upload_file"
