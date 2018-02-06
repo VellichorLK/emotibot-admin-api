@@ -46,6 +46,8 @@ func AddTimeUnit(t int64, unit int64) int64 {
 	switch unit {
 	case Hour:
 		return t1.Unix() + Hour
+	case Week:
+		t1 = t1.AddDate(0, 0, 7)
 	case Day:
 		t1 = t1.AddDate(0, 0, 1)
 	case Month:
@@ -59,41 +61,43 @@ func AddTimeUnit(t int64, unit int64) int64 {
 }
 
 //ParseTime return t1,t2 in unix epoch time
-func ParseTime(_t1 string, _t2 string) (uint64, uint64, error) {
+func ParseTime(_t1 string, _t2 string) (uint64, uint64, int, error) {
 
 	layout := "20060102"
 	//t1, err := time.Parse(layout, _t1)
 
 	loc, err := time.LoadLocation("Local")
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	t1, err := time.ParseInLocation(layout, _t1, loc)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	//t2, err := time.Parse(layout, _t2)
 	t2, err := time.ParseInLocation(layout, _t2, loc)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	return CheckAndRoundTime(t1, t2)
 
 }
 
-func CheckAndRoundTime(t1 time.Time, t2 time.Time) (uint64, uint64, error) {
+func CheckAndRoundTime(t1 time.Time, t2 time.Time) (uint64, uint64, int, error) {
 	if t1.Unix() > t2.Unix() {
-		return 0, 0, errors.New("t1 >= t2")
+		return 0, 0, 0, errors.New("t1 >= t2")
 	}
 
 	now := time.Now()
 
 	if t2.Unix() > now.Unix() {
-		return 0, 0, errors.New("t2 > now. don't do future time. time traveler")
+		return 0, 0, 0, errors.New("t2 > now. don't do future time. time traveler")
 	}
 
-	return uint64(t1.Unix()), uint64(t2.Unix()), nil
+	days := int(t2.Sub(t1).Hours()/24) + 1
+
+	return uint64(t1.Unix()), uint64(t2.Unix()), days, nil
 }

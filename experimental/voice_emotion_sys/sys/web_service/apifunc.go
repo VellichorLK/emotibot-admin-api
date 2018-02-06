@@ -18,6 +18,7 @@ var v1api = apiFunc{
 	v1basePath + "/files_continue":    handlers.QueryContinue,
 	v1basePath + "/files/":            handlers.QueryEmotionDetail,
 	v1basePath + "/report":            handlers.CallAverageEmotion,
+	v1basePath + "/report/":           handlers.GroupAverageEmotion,
 	v1basePath + "/user_column":       handlers.GetUserColumn,
 	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
 }

@@ -337,6 +337,40 @@ type AvgEmotion struct {
 	AvgCh2Anger float64 `json:"avg_ch2_angry"`
 }
 
+type GroupReport struct {
+	Total int                `json:"total"`
+	Group []*GroupAvgEmotion `json:"group"`
+}
+
+type GroupsEmotion []*GroupAvgEmotion
+
+func (s GroupsEmotion) Len() int {
+	return len(s)
+}
+func (s GroupsEmotion) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s GroupsEmotion) Less(i, j int) bool {
+	return s[i].Tag < s[j].Tag
+}
+
+type GroupAvgEmotion struct {
+	Tag  string              `json:"tag_value"`
+	Data []*SimpleAvgEmotion `json:"data"`
+}
+type SimpleAvgEmotion struct {
+	Date        string  `json:"date_str"`
+	AvgCh1Anger float64 `json:"avg_ch1_angry"`
+	AvgCh2Anger float64 `json:"avg_ch2_angry"`
+}
+
+type ScoreCount struct {
+	score1 float64
+	count1 uint64
+	score2 float64
+	count2 uint64
+}
+
 type WhereStates struct {
 	name    string
 	compare string
