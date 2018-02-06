@@ -58,10 +58,6 @@ func addGroupAvgEmotion(date int64, group map[string]*ScoreCount, groups map[str
 
 		sae := genSimpleAvgEmotion(date, scores)
 		saes = append(saes, sae)
-
-		fmt.Printf("Date:%s, count1:%d, avg1:%v, count2:%d, avg2:%v, tag:%s\n",
-			sae.Date, scores.count1, sae.AvgCh1Anger, scores.count2, sae.AvgCh2Anger, tag)
-
 		groups[tag] = saes
 	}
 
