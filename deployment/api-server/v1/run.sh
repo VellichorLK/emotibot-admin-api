@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# number of worker-voice-emotion-analysis
+# number of w-v-emotion(worker-voice-emotion-analysis)
 num_of_worker_analysis=$NUM_ANA_WORKER
 if [ "$num_of_worker_analysis" == "" ]; then
 	num_of_worker_analysis=5
@@ -31,7 +31,7 @@ fi
 while [ $# != 0 ]
 do
     echo $1
-    if [ "$1" == "worker-voice-emotion-analysis" ]; then
+    if [ "$1" == "w-v-emotion" ]; then
         scale="--scale $1=$num_of_worker_analysis"
     fi
     service="$service "$1
@@ -39,7 +39,7 @@ do
 done
 
 if [ "$service" == "" ]; then
-    scale="--scale worker-voice-emotion-analysis=$num_of_worker_analysis"
+    scale="--scale w-v-emotion=$num_of_worker_analysis"
 fi
 # prepare docker-compose env file
 cp $envfile .env

@@ -8,9 +8,9 @@ import subprocess
 import argparse
 import copy
 
-
+# worker-voice-emotion-analysis => w-v-emotion
 VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
-                         'worker-voice-emotion-analysis',
+                         'w-v-emotion',
                          'mongo',
                          'worker-voice-emotion-statistic',
                          'voice_emotion_houta', 'nginx', 'authentication',
@@ -123,7 +123,7 @@ def do_run(compose_file, env_file, services, depends, number):
         if depends is False:
             no_deps = '--no-deps '
         for s in services:
-            if s == 'worker-voice-emotion-analysis':
+            if s == 'w-v-emotion':
                 scale = '--scale %s=%s ' % (s, number)
     cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s%s' % (
         compose_file, no_deps, scale,

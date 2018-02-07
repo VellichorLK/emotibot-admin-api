@@ -118,8 +118,8 @@ services:
                 condition: service_healthy
             "rabbitmq":
                 condition: service_healthy
-    # ========== Voice Emotion Analysis Worker: depends on rabbitmq
-    worker-voice-emotion-analysis:
+    # ========== Voice Emotion Analysis Worker: depends on rabbitmq  (worker-voice-emotion-analysis)
+    w-v-emotion:
         image: ${WORKER_VOICE_EMOTION_ANA_IMAGE}:${WORKER_VOICE_EMOTION_ANA_TAG}
         # container_name: ${WORKER_VOICE_EMOTION_ANA_CONTAINER}-1
         mem_limit: 4096m
