@@ -19,6 +19,8 @@ VOICE_EMOTION_FULL = copy.deepcopy(VOICE_EMOTION_MINIMAL)
 VOICE_EMOTION_FULL.extend(['netdata', 'phpmyadmin', 'kibana', 'elastic-closer', 'logstash', 'elasticsearch', 'kibana'])
 BF_UBT_APIGW = ['nginx', 'bf-ubt-apigw']
 
+VOICE_EMOTION_ASR = copy.deepcopy(VOICE_EMOTION_FULL)
+VOICE_EMOTION_ASR.append('w-v-asr')
 
 def _create_folder(folder):
     # real_path = os.path.realpath(output_folder)
@@ -84,7 +86,7 @@ def do_destroy(compose_file):
         subprocess.call(cmd.split())
 
 
-def do_run(compose_file, env_file, services, depends, number):
+def do_run(compose_file, env_file, services, depends, number, number_asr):
     '''
     1) copy env_file to .env
     2) compose comand:
@@ -119,14 +121,21 @@ def do_run(compose_file, env_file, services, depends, number):
     # TODO: deal with depends and scale
     no_deps = ''
     scale = ''
+    scaleList = list()
+
     if services:
         if depends is False:
             no_deps = '--no-deps '
         for s in services:
             if s == 'w-v-emotion':
-                scale = '--scale %s=%s ' % (s, number)
-    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s%s' % (
-        compose_file, no_deps, scale,
+                scaleList.append('--scale %s=%s' % (s, number))
+            elif s == 'w-v-asr':
+                scaleList.append('--scale %s=%s' % (s, number_asr))
+
+    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s %s' % (
+        compose_file,
+        no_deps,
+        ' '.join(n for n in scaleList) if scaleList else '',
         ' '.join(n for n in services) if services else '')
     print '### exec cmd: [%s]' % cmd.strip()
     subprocess.call(cmd.strip().split(" "))
@@ -186,6 +195,7 @@ def main():
     parser.add_argument('-g', '--service_group',
                         choices=['voice-emotion-full',
                                  'voice-emotion-min',
+                                 'voice-emotion-asr',
                                  'bf-ubt-apigw'],
                         default='voice-emotion-full')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
@@ -197,6 +207,8 @@ def main():
                         help='if service is empty, depends always be true')
     parser.add_argument('-n', '--number', type=int, default=1,
                         help='only affect on voice analysis service')
+    parser.add_argument('-n_asr', '--number_asr', type=int, default=2,
+                        help='only affect on voice asr service')
     args = parser.parse_args()
     print args
 
@@ -211,6 +223,8 @@ def main():
             args.service.extend(BF_UBT_APIGW)
         elif args.service_group == 'voice-emotion-full':
             args.service.extend(VOICE_EMOTION_FULL)
+        elif args.service_group == 'voice-emotion-asr':
+            args.service.extend(VOICE_EMOTION_ASR)
 
     # do action
     if args.save:
@@ -225,7 +239,7 @@ def main():
         if not os.path.exists(args.compose_file):
             parser.print_help()
         do_run(args.compose_file, args.env, args.service,
-               args.depends, args.number)
+               args.depends, args.number, args.number_asr)
     elif args.stop:
         if not os.path.exists(args.compose_file):
             parser.print_help()

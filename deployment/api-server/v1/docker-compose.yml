@@ -171,40 +171,38 @@ services:
 
 
 
-#    # ========== ASR Workers: depends on rabbitmq/mysql/w-v-emotion(VoiceEmotionAnalysisWorker)
-#    # ASR Models will exhaust lots memory which need you to pay attention on whether the memory limit is reached
-#    w-v-asr:
-#        image: ${WORKER_VOICE_ASR_IMAGE}:${WORKER_VOICE_ASR_TAG}
-#        mem_limit: 4096m
-#        logging:
-#            options:
-#                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
-#                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
-#        environment:
-#            ENV_KEY_ASR_ORM_DBG_FLAG: "true"
-#            ENV_KEY_ASR_MAX_WORKERS:                ${WORKER_ENV_KEY_ASR_MAX_WORKERS}
-#            ENV_KEY_ASR_RABBITMQ_HOST_IP:           ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_HOST_IP}          # Must the same ip with the w-v-emotion
-#            ENV_KEY_ASR_RABBITMQ_HOST_PORT:         ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_HOST_PORT}        # Must the same port with the w-v-emotion
-#            ENV_KEY_ASR_RABBITMQ_TASK_QUEUE_NAME:   ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_NAME}             # Must the same queue with the w-v-emotion
-#            ENV_KEY_ASR_DATABASE_IP:                ${WORKER_ENV_KEY_ASR_DATABASE_IP}
-#            ENV_KEY_ASR_N_OF_N_BEST:                ${WORKER_ENV_KEY_ASR_N_OF_N_BEST}
-#            ENV_KEY_ASR_DATABASE_NAME:              ${WORKER_ENV_KEY_ASR_DATABASE_NAME}
-#            ENV_KEY_ASR_DATABASE_PORT:              ${MYSQL_PORT}
-#            ENV_KEY_ASR_DATABASE_USER_NAME:         ${MYSQL_MAIN_USER}
-#            ENV_KEY_ASR_DATABASE_PWD:               ${MYSQL_MAIN_PASS}
-#
-#
-#        volumes:
-#            - ${WORKER_VOICE_ASR_DATA_PATH}:/usr/src/app/output            # logs output path
-#            - ${WORKER_VOICE_ASR_SHARED_FOLDER}:/usr/src/app/shared_asr    # The mount path must shared with "w-v-emotion"
-#        restart: always
-#        depends_on:
-#            "mysql":
-#                condition: service_healthy
-#            "rabbitmq":
-#                condition: service_healthy
-#            "w-v-emotion":
-#                condition: service_healthy
+    # ========== ASR Workers: depends on rabbitmq/mysql/w-v-emotion(VoiceEmotionAnalysisWorker)
+    # ASR Models will exhaust lots memory which need you to pay attention on whether the memory limit is reached
+    w-v-asr:
+        image: ${WORKER_VOICE_ASR_IMAGE}:${WORKER_VOICE_ASR_TAG}
+        mem_limit: 4096m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        environment:
+            ENV_KEY_ASR_ORM_DBG_FLAG: "true"
+            ENV_KEY_ASR_MAX_WORKERS:                ${WORKER_ENV_KEY_ASR_MAX_WORKERS}
+            ENV_KEY_ASR_RABBITMQ_HOST_IP:           ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_HOST_IP}          # Must the same ip with the w-v-emotion
+            ENV_KEY_ASR_RABBITMQ_HOST_PORT:         ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_HOST_PORT}        # Must the same port with the w-v-emotion
+            ENV_KEY_ASR_RABBITMQ_TASK_QUEUE_NAME:   ${WORKER_ENV_KEY_ASR_OUTPUT_QUEUE_NAME}             # Must the same queue with the w-v-emotion
+            ENV_KEY_ASR_DATABASE_IP:                ${WORKER_ENV_KEY_ASR_DATABASE_IP}
+            ENV_KEY_ASR_N_OF_N_BEST:                ${WORKER_ENV_KEY_ASR_N_OF_N_BEST}
+            ENV_KEY_ASR_DATABASE_NAME:              ${WORKER_ENV_KEY_ASR_DATABASE_NAME}
+            ENV_KEY_ASR_DATABASE_PORT:              ${MYSQL_PORT}
+            ENV_KEY_ASR_DATABASE_USER_NAME:         ${MYSQL_MAIN_USER}
+            ENV_KEY_ASR_DATABASE_PWD:               ${MYSQL_MAIN_PASS}
+
+
+        volumes:
+            - ${WORKER_VOICE_ASR_DATA_PATH}:/usr/src/app/output            # logs output path
+            - ${WORKER_VOICE_ASR_SHARED_FOLDER}:/usr/src/app/shared_asr    # The mount path must shared with "w-v-emotion"
+        restart: always
+        depends_on:
+            "mysql":
+                condition: service_healthy
+            "rabbitmq":
+                condition: service_healthy
 
 
 
