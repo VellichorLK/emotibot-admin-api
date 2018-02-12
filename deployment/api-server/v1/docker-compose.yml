@@ -175,8 +175,8 @@ services:
     # ASR Models will exhaust lots memory which need you to pay attention on whether the memory limit is reached
     w-v-asr:
         image: ${WORKER_VOICE_ASR_IMAGE}:${WORKER_VOICE_ASR_TAG}
-	# ASR model is very big which will eat lots of memory. Not enough memory will result in system very low or fail.
-	# mem_limit will depend on how many worker processes you create in the docker. 500MB for each one. You can custom with the param : WORKER_ENV_KEY_ASR_MAX_WORKERS
+    # ASR model is very big which will eat lots of memory. Not enough memory will result in system very low or fail.
+    # mem_limit will depend on how many worker processes you create in the docker. 500MB for each one. You can custom with the param : WORKER_ENV_KEY_ASR_MAX_WORKERS
         mem_limit: 8192m   
         logging:
             options:
