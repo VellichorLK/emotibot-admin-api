@@ -13,4 +13,12 @@ type SimilarQuestionReqBody struct {
 type StdQuestion struct {
 	QuestionID int    `json:"questionId"`
 	Content    string `json:"content"`
+	CategoryID int
+}
+
+//Category represents sql table vipshop_category
+type Category struct {
+	ID       int
+	Name     string
+	ParentID int
 }

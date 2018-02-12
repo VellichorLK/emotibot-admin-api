@@ -2,7 +2,6 @@ package FAQ
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -11,7 +10,7 @@ import (
 //errorNotFound represent SQL select query fetch zero item
 // var errorNotFound = errors.New("items not found")
 
-func selectSimilarQuestions(qID string, appID string) ([]string, error) {
+func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 	query := fmt.Sprintf("SELECT Content FROM %s_squestion WHERE Question_Id = ?", appID)
 	db := util.GetMainDB()
 	if db == nil {
@@ -24,7 +23,7 @@ func selectSimilarQuestions(qID string, appID string) ([]string, error) {
 	defer rows.Close()
 	var contents []string
 
-	if rows.Next() {
+	for rows.Next() {
 		var content string
 		rows.Scan(&content)
 		contents = append(contents, content)
@@ -36,33 +35,26 @@ func selectSimilarQuestions(qID string, appID string) ([]string, error) {
 	return contents, nil
 }
 
-func selectQuestion(qid string, appid string) (string, error) {
-	var content string
+//selectQuestion will return StdQuestion struct of the qid, if not found will return sql.ErrNoRows
+func selectQuestion(qid int, appid string) (StdQuestion, error) {
+	var q StdQuestion
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return content, errors.New("DB not init")
+		return q, fmt.Errorf("Main DB has not init")
 	}
 
-	queryStr := fmt.Sprintf("SELECT Content from %s_question WHERE Question_Id = ?", appid)
-	rows, err := mySQL.Query(queryStr, qid)
-	if err != nil {
-		util.LogInfo.Printf("error: %s", err.Error())
-		return content, fmt.Errorf("SQL Query Failed, err: %s", err)
+	err := mySQL.QueryRow("SELECT Content, Category_Id from "+appid+"_question WHERE Question_Id = ?", qid).Scan(&q.Content, &q.CategoryID)
+	if err == sql.ErrNoRows {
+		return q, err
+	} else if err != nil {
+		return q, fmt.Errorf("SQL query error: %s", err)
 	}
-	defer rows.Close()
-	if !rows.Next() {
-		return content, nil
-	}
+	q.QuestionID = qid
 
-	rows.Scan(&content)
-	if err = rows.Err(); err != nil {
-		return "", fmt.Errorf("SQL scan error: %s", err)
-	}
-
-	return content, nil
+	return q, nil
 }
 
-func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid string, appid string) error {
+func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid int, appid string) error {
 	queryStr := fmt.Sprintf("DELETE FROM %s_squestion WHERE Question_Id = ?", appid)
 	_, err := t.Exec(queryStr, qid)
 	if err != nil {
@@ -71,7 +63,7 @@ func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid string, appid string) err
 	return nil
 }
 
-func insertSimilarQuestions(t *sql.Tx, qid string, appid string, user string, sqs []SimilarQuestion) error {
+func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs []SimilarQuestion) error {
 
 	if len(sqs) > 0 {
 		// prepare insert sql
@@ -135,5 +127,52 @@ func searchQuestionByContent(content string) (StdQuestion, error) {
 	}
 
 	return q, nil
+
+}
+
+// GetCategoryFullPath will return full name of category by ID
+func GetCategoryFullPath(categoryID int) (string, error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return "", fmt.Errorf("main db connection pool is nil")
+	}
+
+	rows, err := db.Query("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories")
+	if err != nil {
+		return "", fmt.Errorf("query category table failed, %v", err)
+	}
+	defer rows.Close()
+	var categories = make(map[int]Category)
+
+	for rows.Next() {
+		var c Category
+		rows.Scan(&c.ID, &c.Name, &c.ParentID)
+		categories[c.ID] = c
+	}
+	if err = rows.Err(); err != nil {
+		return "", fmt.Errorf("Rows scaning failed, %v", err)
+	}
+
+	if c, ok := categories[categoryID]; ok {
+		switch c.ParentID {
+		case 0:
+			fallthrough
+		case -1:
+			return "/" + c.Name, nil
+		}
+		var fullPath string
+		for ; ok; c, ok = categories[c.ParentID] {
+			fullPath = "/" + c.Name + fullPath
+			if c.ParentID == 0 {
+				break
+			}
+		}
+		if !ok {
+			return "", fmt.Errorf("category id %d has invalid parentID %d", c.ID, c.ParentID)
+		}
+		return fullPath, nil
+	} else {
+		return "", fmt.Errorf("Cant find category id %d in db", categoryID)
+	}
 
 }

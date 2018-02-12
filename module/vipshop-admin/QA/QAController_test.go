@@ -49,6 +49,10 @@ func (m mockMCClient) McExportExcel(UserID string, UserIP string) (util.MCRespon
 	}, nil
 }
 
+func (m mockMCClient) McManualBusiness(appid string) (int, error) {
+	panic("Function not implemented")
+}
+
 var app *iris.Application
 var mHeader = map[string]string{
 	"X-UserID":  "userX",
