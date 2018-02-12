@@ -190,8 +190,15 @@ func GetUserQuestions(reportID string, clusterID string, page int, limit int) (u
 		parameters = append(parameters, clusterID)
 	}
 
-	rawQuery := fmt.Sprintf("SELECT f.%s, f.%s, f.%s, f.%s, f.%s FROM %s as r INNER JOIN %s as f ON r.%s = f.%s %s ORDER BY f.%s LIMIT %d, %d",
-		f.id, f.question, f.stdQuestion, f.createdTime, f.updatedTime, r.name, f.name, r.feedbackID, f.id, wherePart, TableProps.feedback.id, page*limit, limit)
+	var limitPart string
+	if page == 0 && limit == 0 {
+		limitPart = ""
+	} else {
+		limitPart = fmt.Sprintf(" LIMIT %d, %d ", page*limit, limit)
+	}
+
+	rawQuery := fmt.Sprintf("SELECT f.%s, f.%s, f.%s, f.%s, f.%s FROM %s as r INNER JOIN %s as f ON r.%s = f.%s %s ORDER BY f.%s %s",
+		f.id, f.question, f.stdQuestion, f.createdTime, f.updatedTime, r.name, f.name, r.feedbackID, f.id, wherePart, TableProps.feedback.id, limitPart)
 	results, err := db.Query(rawQuery, parameters...)
 	if err != nil {
 		err = fmt.Errorf("sql query %s failed. %s", rawQuery, err)
