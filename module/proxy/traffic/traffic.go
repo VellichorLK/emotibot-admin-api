@@ -29,12 +29,21 @@ type AppidCount struct {
 }
 
 var stats map[string]*ratecounter.RateCounter
+
+//duration RateCounter計算的時間長度
 var duration int
+
+//maxCon ?最大連接數？
 var maxCon int64
+
 var banPeriod int64
+
 var newestRoute int64
 
+// ReadTrafficChan UpdateTraffic函式的資料來源
 var ReadTrafficChan chan string
+
+// WriteRouteChan MakeNewRoute的資料來源
 var WriteRouteChan chan *RouteMap
 var UpdateRouteChan chan *RouteMap
 var AppidChan chan *AppidIP
@@ -70,6 +79,7 @@ func DefaultRoute() *RouteMap {
 	return routeMap
 }
 
+//PushRouteMap 把 UpadteRouteChan的route轉給WriteRouteChan
 func PushRouteMap() {
 	route := DefaultRoute()
 
@@ -81,6 +91,7 @@ func PushRouteMap() {
 	}
 }
 
+//MakeNewRoute 從WriteRouteChan取得一個資料, 並產生新的RouteMap給新的userID
 func MakeNewRoute(uid string) *RouteMap {
 	curRoute := <-WriteRouteChan
 
@@ -97,18 +108,21 @@ func MakeNewRoute(uid string) *RouteMap {
 	for k, v := range curRoute.GoRoute {
 		nr.GoRoute[k] = v
 	}
-	log.Println("Sets", uid, "redirect")
-	log.Println(uid, " has ", maxCon, " requests in ", duration, " seconds")
+	log.Printf("Sets %s redirect\n", uid)
+	log.Printf("%s has %d requests in %d seconds\n", uid, maxCon, duration)
 	nr.GoRoute[uid] = "go"
 	return nr
 }
 
+//MakeNewCounter create a ratecounter.RateCounter base on Duration and userID
 func MakeNewCounter(uid string, dur int) *ratecounter.RateCounter {
 	stat := ratecounter.NewRateCounter(time.Duration(dur) * time.Second)
+	//FIXME: Not concurrency-safe write, should use sync.Map instead
 	stats[uid] = stat
 	return stat
 }
 
+//UpdateTraffic Read Traffic from channel and make counter for every user id
 func UpdateTraffic() bool {
 
 	var uid string

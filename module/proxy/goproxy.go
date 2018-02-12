@@ -70,7 +70,7 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var route *trafficStats.RouteMap
-
+	//Some blocking may happen in here
 	AddTrafficChan <- userid
 	route = <-ReadDestChan
 
@@ -97,8 +97,7 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 
 func checkerr(err error, who string) {
 	if err != nil {
-		log.Println("No ", who, " enviroments variable!", err)
-		panic(1)
+		log.Fatalf("No %s env variable, %v\n", who, err)
 	}
 }
 
@@ -114,13 +113,11 @@ func main() {
 	checkerr(err, "LOGPERIOD")
 	statsdHost := os.Getenv("STATSDHOST")
 	if statsdHost == "" {
-		log.Println("No STATSDHOST")
-		panic(1)
+		log.Fatal("No STATSDHOST")
 	}
 	statsdPort := os.Getenv("STATSDPORT")
 	if statsdPort == "" {
-		log.Println("No STATSDPORT")
-		panic(1)
+		log.Fatal("No STATSDPORT")
 	}
 
 	log.Printf("Setting max %d request in %d seconds, banned period %d, log period:%d\n", maxLimit, duration, banPeriod, logPeriod)
