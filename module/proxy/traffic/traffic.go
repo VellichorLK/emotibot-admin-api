@@ -10,6 +10,7 @@ import (
 	"github.com/paulbellamy/ratecounter"
 )
 
+//RouteMap is a singleton struct represnting every users and it's
 type RouteMap struct {
 	GoRoute      map[string]string
 	DefaultRoute *url.URL
@@ -33,7 +34,7 @@ var stats map[string]*ratecounter.RateCounter
 //duration RateCounter計算的時間長度
 var duration int
 
-//maxCon ?最大連接數？
+//maxCon 代表counter生成時要以多少為最大強制分流值
 var maxCon int64
 
 var banPeriod int64
@@ -53,6 +54,7 @@ var MonitorAppid = map[string]bool{
 
 }
 
+//Init initaized all the channel and config for other functions
 func Init(dur int, max_con int, ban_period int64, logPeriod int, readTrafficChan chan string, writeRouteChan chan *RouteMap, appidChan chan *AppidIP, statsdURL string) {
 	stats = make(map[string]*ratecounter.RateCounter)
 	duration = dur
@@ -69,17 +71,19 @@ func Init(dur int, max_con int, ban_period int64, logPeriod int, readTrafficChan
 	go AppidCounter(logPeriod, statsdURL)
 }
 
+var DefaultRoutingURL = "http://172.17.0.1:9001"
+
 func DefaultRoute() *RouteMap {
 	routeMap := new(RouteMap)
 	routeMap.GoRoute = make(map[string]string)
-	u, _ := url.Parse("http://172.17.0.1:9001")
+	u, _ := url.Parse(DefaultRoutingURL)
 	routeMap.DefaultRoute = u
 	routeMap.timestamp = time.Now().UnixNano()
 	newestRoute = routeMap.timestamp
 	return routeMap
 }
 
-//PushRouteMap 把 UpadteRouteChan的route轉給WriteRouteChan
+//PushRouteMap 把 UpdateRouteChan 的 route 轉給 WriteRouteChan
 func PushRouteMap() {
 	route := DefaultRoute()
 
@@ -91,7 +95,7 @@ func PushRouteMap() {
 	}
 }
 
-//MakeNewRoute 從WriteRouteChan取得一個資料, 並產生新的RouteMap給新的userID
+//MakeNewRoute 從WriteRouteChan取得一個資料, 並產生新的 RouteMap 給新的 userID
 func MakeNewRoute(uid string) *RouteMap {
 	curRoute := <-WriteRouteChan
 
@@ -110,6 +114,7 @@ func MakeNewRoute(uid string) *RouteMap {
 	}
 	log.Printf("Sets %s redirect\n", uid)
 	log.Printf("%s has %d requests in %d seconds\n", uid, maxCon, duration)
+	// go has no meaning in assigning, only a place holder for flagging this user has already overflowed
 	nr.GoRoute[uid] = "go"
 	return nr
 }
@@ -163,7 +168,7 @@ func UpdateTraffic() bool {
 		if newRoute != nil {
 			select {
 			case UpdateRouteChan <- newRoute:
-				newRoute = nil
+				newRoute = nil //Why?
 			default:
 			}
 
