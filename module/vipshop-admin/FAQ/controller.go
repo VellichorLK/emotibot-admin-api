@@ -1,13 +1,15 @@
 package FAQ
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
-	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
 
@@ -34,33 +36,40 @@ func handleQuerySimilarQuestions(ctx context.Context) {
 
 func handleUpdateSimilarQuestions(ctx context.Context) {
 	appid := util.GetAppID(ctx)
-	qid := ctx.Params().GetEscape("qid")
+	qid, err := strconv.Atoi(ctx.Params().GetEscape("qid"))
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
 	proccessStatus := 0
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 
-	qContent, err := selectQuestion(qid, appid)
-	if qContent == "" { // return NOT FOUND if question content is empty
-		ctx.StatusCode(iris.StatusNotFound)
+	question, err := selectQuestion(qid, appid)
+	if err == sql.ErrNoRows {
+		ctx.StatusCode(http.StatusNotFound)
 		return
 	} else if err != nil {
-		ctx.StatusCode(iris.StatusInternalServerError)
+		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
-	auditMessage := fmt.Sprintf("[标准Q]:%s", qContent)
-	// select origin answers for audit log
-	originSimilarityAnswers, err := selectSimilarQuestions(qid, appid)
+	questionCategory, err := GetCategoryFullPath(question.CategoryID)
 	if err != nil {
-		ctx.StatusCode(iris.StatusInternalServerError)
+		ctx.StatusCode(http.StatusInternalServerError)
+	}
+	auditMessage := fmt.Sprintf("[相似問題]:[%s][%s]:", questionCategory, question.Content)
+	// select origin answers for audit log
+	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
-	auditMessage += fmt.Sprintf("[相似问题]:\"%s\" => ", strings.Join(originSimilarityAnswers, "\", \""))
 	body := SimilarQuestionReqBody{}
 	if err = ctx.ReadJSON(&body); err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
-		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 	sqs := body.SimilarQuestions
@@ -70,16 +79,28 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	if err != nil {
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, "更新相似问失败", proccessStatus)
 		util.LogError.Println(err)
-		ctx.StatusCode(iris.StatusInternalServerError)
+		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	// save audit log
-	var a = make([]string, len(sqs))
-	for i, s := range sqs {
-		a[i] = s.Content
+	//sqsStr 移除了沒更動的相似問
+	var sqsStr []string
+auditLogging:
+	for i := len(sqs) - 1; i >= 0; i-- {
+		sq := sqs[i].Content
+		for j := len(originSimilarityQuestions) - 1; j >= 0; j-- {
+			oldSq := originSimilarityQuestions[j]
+			if sq == oldSq {
+				originSimilarityQuestions = append(originSimilarityQuestions[:j], originSimilarityQuestions[j+1:]...)
+				continue auditLogging
+			}
+		}
+		sqsStr = append(sqsStr, sq)
 	}
+	sort.Strings(originSimilarityQuestions)
+	sort.Strings(sqsStr)
+	auditMessage += fmt.Sprintf("%s=>%s", strings.Join(originSimilarityQuestions, ";"), strings.Join(sqsStr, ";"))
+
 	proccessStatus = 1
-	auditMessage += fmt.Sprintf("\"%s\"", strings.Join(a, "\", \""))
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, proccessStatus)
 }
 

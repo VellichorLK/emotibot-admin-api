@@ -6,7 +6,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-func updateSimilarQuestions(qid string, appid string, user string, sqs []SimilarQuestion) error {
+func updateSimilarQuestions(qid int, appid string, user string, sqs []SimilarQuestion) error {
 	var err error
 	db := util.GetMainDB()
 	t, err := db.Begin()

@@ -18,9 +18,13 @@ const (
 	MulticustomerURLKey = "MC_URL"
 )
 
+//DefaultMCClient is used as default client for MC, like http.DefaultClient.
+var DefaultMCClient MultiCustomerClient = MultiCustomerHttpClient{}
+
 type MultiCustomerClient interface {
 	McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string) (MCResponse, error)
 	McExportExcel(UserID string, UserIP string) (MCResponse, error)
+	McManualBusiness(appid string) (int, error)
 }
 
 type MultiCustomerHttpClient http.Client
@@ -74,19 +78,31 @@ func McRebuildRobotQA(appid string) (int, error) {
 	return ApiError.SUCCESS, nil
 }
 
+//McManualBusiness use DefaultMCClient to call REST API of Multicustomer , response for scanning faq into Solr
 func McManualBusiness(appid string) (int, error) {
+	return DefaultMCClient.McManualBusiness(appid)
+}
+
+//McManualBusiness is a REST API of Multicustomer, response for scanning faq into Solr
+func (m MultiCustomerHttpClient) McManualBusiness(appid string) (int, error) {
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	// manual_edit
 	// app_id
 	reqURL := fmt.Sprintf("%s/manual_business?app_id=%s&type=other", mcURL, appid)
 	logTraceMC("req", reqURL)
 
-	body, resErr := HTTPGetSimpleWithTimeout(reqURL, 30)
-	if resErr != nil {
-		logMCError(resErr)
-		return ApiError.DICT_SERVICE_ERROR, resErr
+	response, err := http.Get(reqURL)
+	if err != nil {
+		logMCError(err)
+		return ApiError.DICT_SERVICE_ERROR, err
 	}
-	logTraceMC("rebuild question", body)
+	defer response.Body.Close()
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		logMCError(err)
+		return ApiError.IO_ERROR, err
+	}
+	logTraceMC("rebuild question", string(data))
 	return ApiError.SUCCESS, nil
 }
 
