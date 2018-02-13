@@ -69,8 +69,23 @@ func recordData(task string) (string, string) {
 	handlers.InsertAnalysisRecord(eb)
 	handlers.ComputeChannelScore(eb)
 	handlers.UpdateResult(eb)
+	if true == getEnvAsBoolean("ENABLE_SILENCE_COMPUTING", false) {
+		handlers.ComputeSilence(eb)
+	}
 
 	return "", ""
+}
+
+func getEnvAsBoolean(keyName string, defaultValue bool) bool {
+	keyValue, keyExist := os.LookupEnv(keyName)
+	if false == keyExist {
+		return defaultValue
+	}
+	parseResult, err := strconv.ParseBool(keyValue)
+	if err != nil {
+		return defaultValue
+	}
+	return parseResult
 }
 
 func fakeEnv() {

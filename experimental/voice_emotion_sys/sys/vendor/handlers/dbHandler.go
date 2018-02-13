@@ -201,6 +201,108 @@ func DeleteUsrColumField(id string) error {
 }
 */
 
+
+
+func ComputeSilence(eb *EmotionBlock) error {
+
+	if (nil == eb) || (nil == eb.Segments) || (0 == len(eb.Segments)) {
+		e := errors.New("eb.segments is empty or nil. ")
+		log.Println(e)
+		return e
+	}
+
+	stmt, err := db.Prepare(InsertAnalysisSQL)
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	defer stmt.Close()
+
+	mergedList := GetSilenceList(eb)
+
+	// Insert
+	for _, aInterval := range mergedList {
+		enc, err := json.Marshal(aInterval.ExtraInfo)
+		if err != nil {
+			log.Println(err)
+			enc = []byte{}
+		}
+
+		_, err = stmt.Exec(eb.IDUint64, aInterval.SegStartTime, aInterval.SegEndTime, aInterval.Channel, aInterval.Status, enc)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
+	// 1. sort
+	sort.Sort(ComparatorOfVoiceSegment(eb.Segments))
+
+	// 2. merge
+	var voiceLength float64 = float64(eb.RDuration) / 1000		//ms -> seconds
+	mergedList := make([]VoiceSegment, 0, len(eb.Segments))
+	for _, segmentInterval := range eb.Segments {
+		if 0 == len(mergedList) || mergedList[len(mergedList)-1].SegEndTime < segmentInterval.SegStartTime {
+			// non-overlap, must fit 0 <= startTime < endTime <= voiceLength
+			if segmentInterval.SegStartTime <= segmentInterval.SegEndTime {		// err check, most of cases start <= end
+				mergedList = append(mergedList, VoiceSegment {
+					segmentInterval.Status,
+					segmentInterval.Channel,
+					math.Max(0, segmentInterval.SegStartTime),
+					math.Min(segmentInterval.SegEndTime, voiceLength),
+					nil,
+					nil })
+			}
+		} else {
+			//overlap
+			mergedList[len(mergedList)-1].SegEndTime = math.Max(mergedList[len(mergedList)-1].SegEndTime, segmentInterval.SegEndTime);
+		}
+	}
+
+	const STATUS_SILENCE int = 1
+	const CHANNEL_SILENCE int = 0
+
+	// 3. append the last one.
+	mergedList = append(mergedList, VoiceSegment {
+		STATUS_SILENCE,
+		CHANNEL_SILENCE,
+		voiceLength,
+		voiceLength,
+		nil,
+		nil })
+
+	// 4. use the merged list, the reverse part is the empty part.
+	for index:=len(mergedList)-1; index >= 0; index-- {
+		mergedList[index].Channel = CHANNEL_SILENCE
+		mergedList[index].SegEndTime = mergedList[index].SegStartTime
+		if index != 0 {
+			mergedList[index].SegStartTime = mergedList[index-1].SegEndTime
+		} else {	// first item
+			mergedList[index].SegStartTime = 0
+		}
+	}
+
+	return mergedList
+}
+
+
+// sort interface.
+type ComparatorOfVoiceSegment []VoiceSegment
+
+func (voiceSegmentlist ComparatorOfVoiceSegment) Len() int {
+	return len(voiceSegmentlist)
+}
+func (voiceSegmentlist ComparatorOfVoiceSegment) Swap(i, j int) {
+	voiceSegmentlist[i], voiceSegmentlist[j] = voiceSegmentlist[j], voiceSegmentlist[i]
+}
+func (voiceSegmentlist ComparatorOfVoiceSegment) Less(i, j int) bool {
+	return voiceSegmentlist[i].SegStartTime < voiceSegmentlist[j].SegStartTime
+}
+
+
 func InsertAnalysisRecord(eb *EmotionBlock) error {
 	stmt, err := db.Prepare(InsertAnalysisSQL)
 	if err != nil {
