@@ -83,23 +83,20 @@ func TestGoProxy(t *testing.T) {
 
 //TestGoProxyForcedByPass 測試GoProxy函式是否正確分流
 func TestGoProxyForcedByPass(t *testing.T) {
-	trafficStats.Init(10, 1, 100000, 100000, AddTrafficChan, ReadDestChan, AppidChan, "127.0.0.1:8500")
-	rr := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/", nil)
-	values := url.Values{}
-	values.Set("userid", "123")
-	r.URL.RawQuery = values.Encode()
-	var counter = 0
+	maxConnection := 10
+	trafficStats.Init(60, maxConnection, 100000, 100000, AddTrafficChan, ReadDestChan, AppidChan, "127.0.0.1:8500")
+	//counter 用1開始的 代表第一個request 就已經算上connection
+	counter := 1
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		defer w.Write([]byte{})
 		uIDHeader := r.Header.Get("X-Lb-Uid")
-		if counter == 0 && uIDHeader != "123" {
+		if counter <= maxConnection && uIDHeader != "123" {
 			w.WriteHeader(500)
 			t.Fatalf("response should have origin user header, but got [%v]", uIDHeader)
 		}
-		if counter == 1 && uIDHeader == "123" {
+		if counter > maxConnection && uIDHeader == "123" {
 			w.WriteHeader(500)
-			fmt.Println("response should active bypassing now, but still got Header as 123")
+			fmt.Printf("Number of %d response should active bypassing now, but still got Header as 123\n", counter)
 			return
 		}
 		w.WriteHeader(200)
@@ -107,13 +104,16 @@ func TestGoProxyForcedByPass(t *testing.T) {
 		counter++
 	})
 	go http.ListenAndServe(":9001", nil)
-	GoProxy(rr, r)
-	if r := rr.Result(); r.StatusCode != 200 {
-		t.Fatalf("response should be OK, but got %v", r.Status)
+	for i := 0; i <= maxConnection*2; i++ {
+		rr := httptest.NewRecorder()
+		r := httptest.NewRequest(http.MethodPost, "/", nil)
+		values := url.Values{}
+		values.Set("userid", "123")
+		r.URL.RawQuery = values.Encode()
+		GoProxy(rr, r)
+		if r := rr.Result(); r.StatusCode != 200 {
+			t.Fatalf("response should be OK, but got %v", r.Status)
+		}
 	}
-	rr = httptest.NewRecorder()
-	GoProxy(rr, r)
-	if r := rr.Result(); r.StatusCode != 200 {
-		t.Fatalf("response should be OK, but got %v", r.Status)
-	}
+
 }

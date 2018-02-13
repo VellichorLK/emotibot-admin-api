@@ -156,7 +156,7 @@ func UpdateTraffic() bool {
 			}
 			stat.Incr(1)
 
-			if stat.Rate() > maxCon {
+			if stat.Rate() >= maxCon {
 				tmpRoute := MakeNewRoute(uid)
 				if tmpRoute != nil {
 					newRoute = tmpRoute
