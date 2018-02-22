@@ -93,7 +93,7 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 			},
 			200,
 			util.AuditOperationAdd,
-			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:=>相似问题3",
+			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题3",
 		},
 		{
 			"刪除",
@@ -102,7 +102,7 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 			},
 			200,
 			util.AuditOperationDelete,
-			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题4=>",
+			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题4",
 		},
 	}
 	e := httptest.New(t, app)
