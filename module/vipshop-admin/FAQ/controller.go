@@ -59,7 +59,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
 	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", questionCategory, question.Content)
-	// select origin answers for audit log
+	// select origin Similarity Questions for audit log
 	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
