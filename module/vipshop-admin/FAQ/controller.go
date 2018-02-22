@@ -58,8 +58,8 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
-	auditMessage := fmt.Sprintf("[相似問題]:[%s][%s]:", questionCategory, question.Content)
-	// select origin answers for audit log
+	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", questionCategory, question.Content)
+	// select origin Similarity Questions for audit log
 	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -84,24 +84,37 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	}
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
-auditLogging:
-	for i := len(sqs) - 1; i >= 0; i-- {
+	//contentMatching 邏輯: 移除掉一模一樣的新舊相似問內容, 來寫audit log
+contentMatching:
+	for i := 0; i < len(sqs); i++ {
 		sq := sqs[i].Content
 		for j := len(originSimilarityQuestions) - 1; j >= 0; j-- {
 			oldSq := originSimilarityQuestions[j]
 			if sq == oldSq {
 				originSimilarityQuestions = append(originSimilarityQuestions[:j], originSimilarityQuestions[j+1:]...)
-				continue auditLogging
+				continue contentMatching
 			}
 		}
 		sqsStr = append(sqsStr, sq)
 	}
 	sort.Strings(originSimilarityQuestions)
 	sort.Strings(sqsStr)
-	auditMessage += fmt.Sprintf("%s=>%s", strings.Join(originSimilarityQuestions, ";"), strings.Join(sqsStr, ";"))
 
 	proccessStatus = 1
-	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, proccessStatus)
+	operation := util.AuditOperationEdit
+	//當全部都是新的(原始的被扣完)行為要改成新增, 全部都是舊的(新的是空的)行為要改成刪除
+	if len(originSimilarityQuestions) == 0 {
+		operation = util.AuditOperationAdd
+		auditMessage += fmt.Sprintf("%s", strings.Join(sqsStr, ";"))
+	} else if len(sqsStr) == 0 {
+		operation = util.AuditOperationDelete
+		auditMessage += fmt.Sprintf("%s", strings.Join(originSimilarityQuestions, ";"))
+	} else {
+		auditMessage += fmt.Sprintf("%s=>%s", strings.Join(originSimilarityQuestions, ";"), strings.Join(sqsStr, ";"))
+
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
+
 }
 
 func handleDeleteSimilarQuestions(ctx context.Context) {
