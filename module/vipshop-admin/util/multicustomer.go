@@ -23,7 +23,7 @@ var DefaultMCClient MultiCustomerClient = MultiCustomerHttpClient{}
 
 type MultiCustomerClient interface {
 	McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string) (MCResponse, error)
-	McExportExcel(UserID string, UserIP string) (MCResponse, error)
+	McExportExcel(UserID string, UserIP string, AnswerIDs []string) (MCResponse, error)
 	McManualBusiness(appid string) (int, error)
 }
 
@@ -133,6 +133,7 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 	queryString.Set("userid", userID)
 	queryString.Set("userip", userIP)
 	queryString.Set("module", mode)
+	
 	reqURL := fmt.Sprintf("%s/business?%s", mcURL, queryString.Encode())
 	req, err := http.NewRequest("POST", reqURL, w)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -169,13 +170,18 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 }
 
 // MCExportExcel
-func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string) (MCResponse, error) {
+func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string) (MCResponse, error) {
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	queryString := url.Values{}
 	queryString.Set("app_id", "vipshop")
 	queryString.Set("userid", userID)
 	queryString.Set("userip", userIP)
 	queryString.Set("module", "business")
+	if len(answerIDs) > 0 {
+		// queryString.Set("answerid", answerIDs)
+		queryString["answerid"] = answerIDs
+	}
+
 	reqURL := fmt.Sprintf("%s/download?%s", mcURL, queryString.Encode())
 	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
 
