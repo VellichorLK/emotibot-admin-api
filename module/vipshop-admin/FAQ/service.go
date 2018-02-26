@@ -1,7 +1,10 @@
 package FAQ
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
+	// "strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -37,4 +40,75 @@ func updateSimilarQuestions(qid int, appid string, user string, sqs []SimilarQue
 
 func deleteSimilarQuestions(qid string) error {
 	return nil
+}
+
+func DoFilter(condition QueryCondition, appid string) ([]int, int, error) {
+	var qids, err = FilterQuestionIDs(condition, appid)
+	if err != nil {
+		return qids, 0, err
+	}
+
+	return qids, len(qids), nil
+}
+
+func ParseCondition(param Parameter) (QueryCondition, error) {
+	timeSet := param.FormValue("timeset")
+	categoryid := param.FormValue("category_id")
+	searchStdQ := param.FormValue("search_question")
+	searchAns := param.FormValue("search_answer")
+	searchDM := param.FormValue("search_dm")
+	searchRQ := param.FormValue("search_rq")
+	notShowSet := param.FormValue("not_show")
+	dimension := param.FormValue("dimension")
+
+	var condition = QueryCondition{
+		TimeSet:                false,
+		BeginTime:              param.FormValue("begin_time"),
+		EndTime:                param.FormValue("end_time"),
+		Keyword:                param.FormValue("key_word"),
+		SearchDynamicMenu:      false,
+		SearchRelativeQuestion: false,
+		SearchQuestion:         false,
+		SearchAnswer:           false,
+		NotShow:                false,
+		CategoryId:             0,
+		Limit:                  10,
+		CurPage:                0,
+	}
+
+	time, _ := strconv.ParseBool(timeSet)
+	condition.TimeSet = time
+
+	question, _ := strconv.ParseBool(searchStdQ)
+	condition.SearchQuestion = question
+
+	answer, _ := strconv.ParseBool(searchAns)
+	condition.SearchAnswer = answer
+
+	dynamicMenu, _ := strconv.ParseBool(searchDM)
+	condition.SearchDynamicMenu = dynamicMenu
+
+	relativeQuestion, _ := strconv.ParseBool(searchRQ)
+	condition.SearchRelativeQuestion = relativeQuestion
+
+	notShow, _ := strconv.ParseBool(notShowSet)
+	condition.NotShow = notShow
+
+	i, err := strconv.Atoi(categoryid)
+	if err != nil {
+		return condition, err
+	}
+	condition.CategoryId = i
+
+	// handle dimension select
+	if dimension != "[]" && dimension != "" {
+		var dimensionGroups []DimensionGroup
+		err := json.Unmarshal([]byte(dimension), &dimensionGroups)
+		if err != nil {
+			return condition, err
+		}
+		condition.Dimension = dimensionGroups
+	}
+
+	return condition, nil
 }
