@@ -26,6 +26,7 @@ func init() {
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
+			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 		},
 	}
 }
@@ -108,6 +109,7 @@ func handleDeleteSimilarQuestions(ctx context.Context) {
 	ctx.Writef("[]")
 }
 
+// search question by exactly matching content
 func handleSearchQuestion(ctx context.Context) {
 	content := ctx.FormValue("content")
 	question, err := searchQuestionByContent(content)
@@ -122,4 +124,35 @@ func handleSearchQuestion(ctx context.Context) {
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(question)
 
+}
+
+func handleQuestionFilter(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	// parse QueryCondition
+	condition, err := ParseCondition(ctx)
+	if err != nil {
+		util.LogError.Printf("Error happened while parsing query options %s", err.Error())
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+
+	// fetch question ids and total row number
+	qids, _, err := DoFilter(condition, appid)
+	if err != nil {
+		util.LogError.Printf("Error happened while Filter questions %s", err.Error())
+	}
+
+	// paging qids
+	start := condition.CurPage * condition.Limit
+	end := start + condition.Limit
+
+	// fetch returned question and answers
+	questions, err := FetchQuestions(condition, qids[start:end], "vipshop")
+	if err != nil {
+		util.LogError.Printf("Error happened Fetch questions %s", err.Error())
+	}
+
+
+	util.LogError.Printf("Error happened Fetch questions %v", questions)
+	ctx.JSON(questions)
 }
