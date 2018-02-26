@@ -217,14 +217,14 @@ def main():
 
     # add service of group if not give
     if not args.service:
-        if args.service_group == 'voice-emotion-min':
+        if (args.service_group == 'voice-emotion-asr') or (getEnvFromFile('WORKER_ENV_KEY_ASR_ENABLE', True, bool) is True):
+            args.service.extend(VOICE_EMOTION_ASR)
+        elif args.service_group == 'voice-emotion-min':
             args.service.extend(VOICE_EMOTION_MINIMAL)
         elif args.service_group == 'bf-ubt-apigw':
             args.service.extend(BF_UBT_APIGW)
         elif args.service_group == 'voice-emotion-full':
             args.service.extend(VOICE_EMOTION_FULL)
-        elif args.service_group == 'voice-emotion-asr':
-            args.service.extend(VOICE_EMOTION_ASR)
 
     # do action
     if args.save:
@@ -250,6 +250,17 @@ def main():
         do_list(args.compose_file)
     else:
         parser.print_help()
+
+
+def getEnvFromFile(keyname, defaultValue, defaultValueType):
+    with open('.env', 'r') as fd:
+        for line in fd:
+            try:
+                if line.find(keyname) != -1:
+                    return defaultValueType(line.split('=')[-1])
+            except:
+                print(traceback.format_exc())
+    return defaultValue
 
 
 if __name__ == '__main__':

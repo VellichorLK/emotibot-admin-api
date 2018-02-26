@@ -48,7 +48,7 @@ func selectQuestion(qid int, appid string) (StdQuestion, error) {
 		return q, fmt.Errorf("Main DB has not init")
 	}
 
-	err := mySQL.QueryRow("SELECT Content, Category_Id from "+appid+"_question WHERE Question_Id = ?", qid).Scan(&q.Content, &q.CategoryID)
+	err := mySQL.QueryRow("SELECT Content, CategoryId from "+appid+"_question WHERE Question_Id = ?", qid).Scan(&q.Content, &q.CategoryID)
 	if err == sql.ErrNoRows {
 		return q, err
 	} else if err != nil {

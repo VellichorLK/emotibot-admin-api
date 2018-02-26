@@ -30,13 +30,13 @@ const (
 func AddAuditLog(userID string, userIP string, module string, operation string, content string, result int) error {
 	auditDB := GetAuditDB()
 	if auditDB == nil {
-		LogInfo.Printf("Audit DB connection hasn't init")
+		LogError.Printf("Audit DB connection hasn't init")
 		return errors.New("DB not init")
 	}
 
 	_, err := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)", userID, userIP, module, operation, content, result)
 	if err != nil {
-		LogInfo.Printf("insert audit fail: %s", err.Error())
+		LogError.Printf("insert audit fail: %s", err.Error())
 		return err
 	}
 
