@@ -2,7 +2,6 @@ package imagesManager
 
 import (
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"io/ioutil"
 	"path"
@@ -12,23 +11,20 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-func storeImage(file *uploadArg) error {
-	id, fileName, err := getUniqueName(file.FileName)
+func storeImage(fileName string, content []byte) error {
+
+	id, fileName, err := getUniqueName(fileName)
 	if err != nil {
 		return err
 	}
 
+	//delete the record from databse in case something happened
 	defer func() {
 		if id != 0 {
 			sql := "delete from " + imageTable + " where " + attrID + "=?"
 			SqlExec(sql, id)
 		}
 	}()
-
-	content, err := base64.StdEncoding.DecodeString(file.Content)
-	if err != nil {
-		return err
-	}
 
 	err = ioutil.WriteFile(Volume+"/"+fileName, content, 0644)
 	if err != nil {

@@ -1,6 +1,7 @@
 package imagesManager
 
 import (
+	"encoding/base64"
 	"net/http"
 	"path/filepath"
 
@@ -56,7 +57,15 @@ func receiveImage(ctx context.Context) {
 	}
 
 	for _, file := range args {
-		err = storeImage(file)
+
+		content, err := base64.StdEncoding.DecodeString(file.Content)
+		if err != nil {
+			ctx.StatusCode(http.StatusBadRequest)
+			ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+			return
+		}
+
+		err = storeImage(file.FileName, content)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
