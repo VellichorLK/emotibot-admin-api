@@ -7,6 +7,7 @@ import os
 import subprocess
 import argparse
 import copy
+import traceback
 
 # worker-voice-emotion-analysis => w-v-emotion
 VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
@@ -217,7 +218,7 @@ def main():
 
     # add service of group if not give
     if not args.service:
-        if (args.service_group == 'voice-emotion-asr') or (getEnvFromFile('WORKER_ENV_KEY_ASR_ENABLE', False, bool) is True):
+        if (args.service_group == 'voice-emotion-asr') or (getBoolFromEnvFile('WORKER_ENV_KEY_ASR_ENABLE', False) is True):
             args.service.extend(VOICE_EMOTION_ASR)
         elif args.service_group == 'voice-emotion-min':
             args.service.extend(VOICE_EMOTION_MINIMAL)
@@ -252,12 +253,15 @@ def main():
         parser.print_help()
 
 
-def getEnvFromFile(keyname, defaultValue, defaultValueType):
+def getBoolFromEnvFile(keyname, defaultValue):
     with open('.env', 'r') as fd:
         for line in fd:
             try:
                 if line.find(keyname) != -1:
-                    return defaultValueType(line.split('=')[-1])
+                    if line.split('=')[-1].strip(' \t\n\r').lower() in ['true', 't', '1']:
+                        return True
+                    else:
+                        return False
             except:
                 print(traceback.format_exc())
     return defaultValue
