@@ -15,11 +15,11 @@ services:
         mem_limit: 5125m
         volumes:
             - ./database/mysql/my.cnf:/etc/mysql/my.cnf
-            - ./database/mysql/emotibot.sql:/var/local/database/emotibot.sql
-            - ./database/mysql/voice_emotion.sql:/var/local/database/voice_emotion.sql
-            - ./database/mysql/authentication.sql:/var/local/database/authentication.sql
-            - ./database/mysql/privilege_init.sql:/var/local/database/privilege_init.sql
-            - ./database/mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+            - ./database/mysql/emotibot.sql:/docker-entrypoint-initdb.d/emotibot.sql
+            - ./database/mysql/voice_emotion.sql:/docker-entrypoint-initdb.d/voice_emotion.sql
+            - ./database/mysql/authentication.sql:/docker-entrypoint-initdb.d/authentication.sql
+            - ./database/mysql/privilege_init.sql:/docker-entrypoint-initdb.d/privilege_init.sql
+            # - ./database/mysql/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
             - ${MYSQL_DATA_PATH}:/var/lib/mysql
             - /etc/localtime:/etc/localtime
         restart: always
