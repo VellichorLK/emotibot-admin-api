@@ -217,7 +217,7 @@ def main():
 
     # add service of group if not give
     if not args.service:
-        if (args.service_group == 'voice-emotion-asr') or (getEnvFromFile('WORKER_ENV_KEY_ASR_ENABLE', True, bool) is True):
+        if (args.service_group == 'voice-emotion-asr') or (getEnvFromFile('WORKER_ENV_KEY_ASR_ENABLE', False, bool) is True):
             args.service.extend(VOICE_EMOTION_ASR)
         elif args.service_group == 'voice-emotion-min':
             args.service.extend(VOICE_EMOTION_MINIMAL)
