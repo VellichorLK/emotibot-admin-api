@@ -52,7 +52,6 @@ func importExcel(ctx context.Context) {
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
 	var status = 0 // 0 == failed, 1 == success
-	var auditMessage string
 
 	_, fileHeader, err := ctx.FormFile("file")
 	if err != nil {
@@ -70,20 +69,19 @@ func importExcel(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, "导入檔案传送失败", status)
 		return
 	}
-
+	var method string
 	mode := ctx.FormValue("mode")
 	switch mode {
 	case "incre":
-		auditMessage = fmt.Sprintf("传送增量导入文件 %s", fileHeader.Filename)
+		method = "增量导入"
 	case "full":
-		auditMessage = fmt.Sprintf("传送全量导入文件 %s", fileHeader.Filename)
+		method = "全量导入"
 	default:
-		jsonResponse.Message = "上傳模式只支援[全量(incre), 增量(full)]"
+		jsonResponse.Message = "上传模式只支援[全量(incre), 增量(full)]"
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(jsonResponse)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		return
 	}
-
 	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode)
 
 	switch err {
@@ -93,16 +91,18 @@ func importExcel(ctx context.Context) {
 		jsonResponse.Action = response.SyncInfo.Action
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(jsonResponse)
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileHeader.Filename, "导入正在执行中")
+
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	case nil: //200
 		status = 1
 		jsonResponse.StateID = response.SyncInfo.StatID
 		ctx.JSON(jsonResponse)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	default: //500
 		jsonResponse.Message = "服务器不正常, " + err.Error()
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(jsonResponse)
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileHeader.Filename, "服务器不正常")
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	}
 
@@ -118,24 +118,21 @@ func exportExcel(ctx context.Context) {
 	}
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
-	var status = 0 // 0 == failed, 1 == success
-	var auditMessage = "全量导出"
 
 	mcResponse, err := apiClient.McExportExcel(userID, userIP)
+
 	switch err {
 	case nil: // 200
-		status = 1
 		ctx.StatusCode(http.StatusOK)
 		ctx.JSON(successJSON{StateID: mcResponse.SyncInfo.StatID})
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
 	case util.ErrorMCLock: //503 MCError
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(errorJSON{err.Error(), mcResponse.SyncInfo.UserID})
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 其他操作正在进行中", 0)
 	default: //500 error
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{err.Error(), ""})
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, status)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 服务器不正常", 0)
 	}
 }
 
@@ -155,14 +152,19 @@ func download(ctx context.Context) {
 	}
 	defer rows.Close()
 
+	var userID = util.GetUserID(ctx)
+	var userIP = util.GetUserIP(ctx)
 	var content []byte
 	var status string
+
 	if !rows.Next() {
 		ctx.StatusCode(http.StatusNoContent)
 		return
 	}
 	rows.Scan(&content, &status)
 	if strings.Compare(status, "success") == 0 || strings.Compare(status, "fail") == 0 {
+		var auditMessage = "[全量导出]:" + "other_" + id + ".xlsx"
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, 1) // 0 == failed, 1 == success
 		ctx.Header("Content-Disposition", "attachment; filename=other_"+id+".xlsx")
 		ctx.Header("Cache-Control", "public")
 		ctx.Binary(content)
