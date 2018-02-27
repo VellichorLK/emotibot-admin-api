@@ -11,3 +11,36 @@ type Image struct {
 	CreatedTime      util.JSONUnixTime
 	LastModifiedTime util.JSONUnixTime
 }
+
+type uploadArg struct {
+	FileName string `json:"fileName"`
+	Content  string `json:"content"`
+}
+
+//table name of meida base center
+const (
+	imageTable    = "images"
+	locationTable = "image_location"
+	relationTable = "image_question"
+)
+
+//field name of each table
+const (
+	attrID           = "id"
+	attrFileName     = "fileName"
+	attrLocationID   = "locationId"
+	attrCreateTime   = "createdTime"
+	attrLatestUpdate = "lastModified"
+
+	attrLocation   = "location"
+	attrImageID    = "image_id"
+	attrQuestionID = "question_id"
+)
+
+//request parameter name
+const ()
+
+//error number of mysql
+const (
+	ErDupEntry = 1062
+)

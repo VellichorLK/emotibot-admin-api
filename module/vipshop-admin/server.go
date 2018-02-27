@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/Stats"
 	"emotibot.com/emotigo/module/vipshop-admin/Switch"
 	"emotibot.com/emotigo/module/vipshop-admin/UI"
+	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
 	"github.com/kataras/iris"
@@ -109,6 +110,7 @@ func setRoute(app *iris.Application) {
 		FAQ.ModuleInfo,
 		QA.TestModuleInfo,
 		SelfLearning.ModuleInfo,
+		imagesManager.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -163,4 +165,5 @@ func initDB() {
 	Stats.InitDB()
 
 	SelfLearning.InitDB()
+	imagesManager.InitDB()
 }
