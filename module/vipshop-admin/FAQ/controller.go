@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"math"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
@@ -150,7 +151,8 @@ func handleQuestionFilter(ctx context.Context) {
 	}
 
 	// fetch question ids and total row number
-	qids, _, err := DoFilter(condition, appid)
+	qids, aids, err := DoFilter(condition, appid)
+	
 	if err != nil {
 		util.LogError.Printf("Error happened while Filter questions %s", err.Error())
 	}
@@ -160,12 +162,48 @@ func handleQuestionFilter(ctx context.Context) {
 	end := start + condition.Limit
 
 	// fetch returned question and answers
-	questions, err := FetchQuestions(condition, qids[start:end], "vipshop")
+	// questions, err := FetchQuestions(qids[start:end], aids, "vipshop")
+	type Response struct {
+		CurPage string `json:"CurPage"`
+		Questions []Question `json:"QueryResult"`
+		PageNum float64 `json:"TotalNum"`
+		QuestionNum int `json:"TotalQuestionNum"`
+	}
+
+	var pagedQIDs []int
+	var pagedAIDs [][]string
+	if len(qids) == 0 {
+		response := Response{
+			CurPage: "0",
+			Questions: make([]Question, 0),
+			PageNum: 0,
+			QuestionNum: 0,
+		}
+	
+		ctx.JSON(response)
+		return
+	} else if len(qids) < condition.Limit {
+		pagedQIDs = qids
+		pagedAIDs = aids
+	} else {
+		pagedQIDs = qids[start:end]
+		pagedAIDs = aids[start:end]
+	}
+
+	questions, err := DoFetch(pagedQIDs, pagedAIDs, appid)
 	if err != nil {
 		util.LogError.Printf("Error happened Fetch questions %s", err.Error())
 	}
 
+	total := len(qids)
+	pageNum := math.Floor(float64(total / condition.Limit))
 
-	util.LogError.Printf("Error happened Fetch questions %v", questions)
-	ctx.JSON(questions)
+	response := Response{
+		CurPage: strconv.Itoa(condition.CurPage),
+		Questions: questions,
+		PageNum: pageNum,
+		QuestionNum: total,
+	}
+
+	ctx.JSON(response)
 }

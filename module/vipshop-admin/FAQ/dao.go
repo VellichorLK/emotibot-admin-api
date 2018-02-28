@@ -1,16 +1,16 @@
 package FAQ
 
 import (
-	"strings"
 	"database/sql"
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-var SEPARATOR = "#SEPARATE_TOKEN#"
+const SEPARATOR = "#SEPARATE_TOKEN#"
 
 //errorNotFound represent SQL select query fetch zero item
 // var errorNotFound = errors.New("items not found")
@@ -181,69 +181,116 @@ func GetCategoryFullPath(categoryID int) (string, error) {
 	}
 }
 
-func FilterQuestionIDs(condition QueryCondition, appid string) ([]int, error) {
-	db := util.GetMainDB()
-	var qids []int
-	searchKeyword :=!condition.SearchAnswer && !condition.SearchDynamicMenu && !condition.SearchRelativeQuestion && !condition.SearchQuestion
-	if !condition.NotShow && condition.Keyword == "" && searchKeyword && !condition.TimeSet && condition.CategoryId == 0 && len(condition.Dimension) == 0 {
-		// basically no filter
-		sql := fmt.Sprintf("select q.Question_Id from %s_question as q where q.status > -1 order by q.Question_Id desc", appid)
-		rows, err := db.Query(sql)
+func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]string, error) {
+	var qids = make([]int, 0)
+	var aidMap = make(map[int]string)
+	var query string
+	var sqlParams []interface{}
+
+	if HasCondition(condition) {
+		// TODO: filter by condition
+		query = `SELECT q.Question_Id, GROUP_CONCAT(DISTINCT a.Answer_Id) as aids from`
+
+		var qids []int
+		qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
 		if err != nil {
-			return qids, err
+			return qids, aidMap, err
 		}
-		defer rows.Close()
+		query += fmt.Sprintf(" (%s) as q", qSQL)
 
-		for rows.Next() {
-			var qid int
-			rows.Scan(&qid)
-			qids = append(qids, qid)
+		var aids [][]string
+		query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
+
+		if condition.SearchDynamicMenu {
+			dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu"
+			dmCondition = fmt.Sprintf(dmCondition, appid)
+			if condition.Keyword != "" {
+				dmCondition += " where DynamicMenu like \"%" + condition.Keyword + "%\""
+			}
+
+			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		}
 
-		return qids, nil
+		if condition.SearchRelativeQuestion {
+			rqCondition := "select Answer_Id, RelatedQuestion from %s_related_question"
+			rqCondition = fmt.Sprintf(rqCondition, appid)
+			if condition.Keyword != "" {
+				rqCondition += " where RelatedQuestion like \"%" + condition.Keyword + "%\""
+			}
+
+			query += fmt.Sprintf(" inner join (%s) as rq on rq.Answer_Id = a.Answer_Id", rqCondition)
+		}
+
+		if len(condition.Dimension) != 0 {
+			sqlStr, err := dimensionSQL(condition, appid)
+			if err != nil {
+				return qids, aidMap, err
+			}
+			query += fmt.Sprintf(" inner join (%s) as tag on tag.a_id = a.Answer_Id", sqlStr)
+		}
+
+		query += " group by q.Question_Id order by q.Question_Id desc"
+
+	} else {
+		// no filter
+		query = `SELECT q.Question_Id, GROUP_CONCAT(DISTINCT a.Answer_Id) as aids from vipshop_question as q
+				inner join vipshop_answer as a on q.Question_Id = a.Question_Id
+				group by q.Question_Id
+				order by q.Question_Id desc`
 	}
-	return qids, nil
+
+	db := util.GetMainDB()
+	rows, err := db.Query(query, sqlParams...)
+	if err != nil {
+		return qids, aidMap, err
+	}
+
+	for rows.Next() {
+		var qid int
+		var aidStr string
+
+		rows.Scan(&qid, &aidStr)
+		qids = append(qids, qid)
+		aidMap[qid] = aidStr
+	}
+	return qids, aidMap, nil
 }
 
-func FetchQuestions(condition QueryCondition, qids []int, appid string) ([]Question, error) {
+func HasCondition(condition QueryCondition) bool {
+	searchKeyword := condition.SearchAnswer || condition.SearchDynamicMenu || condition.SearchRelativeQuestion || condition.SearchQuestion
+	if !condition.NotShow && !searchKeyword && !condition.TimeSet && condition.CategoryId == 0 && len(condition.Dimension) == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
+func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid string) ([]Question, error) {
+	var questions []Question
+	var sqlParams []interface{}
 	db := util.GetMainDB()
 
-	sql := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, a.Begin_Time, a.End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
-	if len(condition.Dimension) == 0 {
-		sql = fmt.Sprintf(sql, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
-	} else {
-		sql = fmt.Sprintf(sql, SEPARATOR, SEPARATOR, "tag_ids")
+	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, a.Begin_Time, a.End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
+	query = fmt.Sprintf(query, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
+
+	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
+	if err != nil {
+		return questions, err
 	}
-	sql += fmt.Sprintf(" from (%s) as q", questionSQL(condition, qids, appid))
+	query += fmt.Sprintf(" from (%s) as q", qSQL)
+	query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
+	query += fmt.Sprintf(" left join %s_dynamic_menu as dm on dm.Answer_id = a.Answer_Id", appid)
+	query += fmt.Sprintf(" left join %s_related_question as rq on rq.Answer_id = a.Answer_Id", appid)
 
-	sql += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, appid))
-
-	// dynamic menu
-	if condition.SearchDynamicMenu {
-		// TODO: handle dynamic menu condition here
-	} else {
-		sql += fmt.Sprintf(" left join %s_dynamic_menu as dm on dm.Answer_id = a.Answer_Id", appid)
+	dimensionSQL, err := dimensionSQL(condition, appid)
+	if err != nil {
+		return questions, err
 	}
-
-	// relateive questions
-	if condition.SearchRelativeQuestion {
-		// TODO: relative question condition here
-	} else {
-		sql += fmt.Sprintf(" left join %s_related_question as rq on rq.Answer_id = a.Answer_Id", appid)
-	}
-
-	// dimension
-	if len(condition.Dimension) == 0 {
-		sql += fmt.Sprintf(" left join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL(condition, appid))
-	} else {
-		sql += fmt.Sprintf(" inner join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL(condition, appid))
-	}
-
-	sql += " group by a.Answer_Id order by q.Question_Id desc, a.Answer_Id"
+	query += fmt.Sprintf(" left join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL)
+	query += " group by a.Answer_Id order by q.Question_Id desc, a.Answer_Id"
 
 	// fetch
-	rows, err := db.Query(sql)
-	var questions []Question
+	rows, err := db.Query(query)
 	if err != nil {
 		return questions, err
 	}
@@ -259,21 +306,25 @@ func FetchQuestions(condition QueryCondition, qids []int, appid string) ([]Quest
 	for rows.Next() {
 		var answer Answer
 		var question Question
-		var rq string
-		var dm string
-		var tagIDs string
+		var rq sql.NullString
+		var dm sql.NullString
+		var tagIDs sql.NullString
 		var answerString string
+
 		rows.Scan(&question.QuestionId, &question.CategoryId, &question.Content, &question.SQuestionConunt, &question.CategoryName, &answer.AnswerId, &answer.Content, &answerString, &answer.AnswerCmd, &answer.AnswerCmdMsg, &answer.NotShow, &answer.BeginTime, &answer.EndTime, &rq, &dm, &tagIDs)
 
 		// encode answer content
 		answer.Content = Escape(answer.Content)
 
 		// transform tag id format
-		if tagIDs == "" {
-			answer.Dimension = []string {"", "", "", "", ""}
+		if tagIDs.String == "" {
+			answer.Dimension = []string{"", "", "", "", ""}
 		} else {
-			answer.Dimension = FormDimension(strings.Split(tagIDs, ","), tagMap)
+			answer.Dimension = FormDimension(strings.Split(tagIDs.String, ","), tagMap)
 		}
+
+		answer.RelatedQuestion = rq.String
+		answer.DynamicMenu = dm.String
 
 		if currentQuestion == nil || currentQuestion.QuestionId != question.QuestionId {
 			question.Answers = append(question.Answers, answer)
@@ -282,7 +333,6 @@ func FetchQuestions(condition QueryCondition, qids []int, appid string) ([]Quest
 		} else {
 			currentQuestion.Answers = append(currentQuestion.Answers, answer)
 		}
-		util.LogError.Printf("questions %+v", question)
 	}
 
 	return questions, nil
@@ -295,14 +345,14 @@ func Escape(target string) string {
 
 func FormDimension(tagIDs []string, tagMap map[string]Tag) []string {
 	// get tag string to type
-	tags := []string {"", "", "", "", ""}
+	tags := []string{"", "", "", "", ""}
 	if len(tagIDs) == 0 {
 		return tags
 	}
 
 	for _, tagID := range tagIDs {
- 		tag := tagMap[tagID]
-		index := tag.Type - 1 
+		tag := tagMap[tagID]
+		index := tag.Type - 1
 
 		if tags[index] == "" {
 			tags[index] += tag.Content
@@ -334,7 +384,7 @@ func TagMapFactory(appid string) (map[string]Tag, error) {
 		var content string
 
 		rows.Scan(&tagID, &tag.Type, &content)
-		
+
 		tagIDstr := strconv.Itoa(tagID)
 		tag.Content = strings.Replace(content, "#", "", -1)
 
@@ -344,8 +394,8 @@ func TagMapFactory(appid string) (map[string]Tag, error) {
 	return tagMap, nil
 }
 
-func questionSQL(condition QueryCondition, qids []int, appid string) string {
-	sql := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, fullc.CategoryName from (
+func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, appid string) (string, error) {
+	query := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, fullc.CategoryName from (
 		select * from %s_question
 		where %s_question.status >= 0
 		#CATEGORY_CONDITION#
@@ -363,87 +413,222 @@ func questionSQL(condition QueryCondition, qids []int, appid string) string {
 			left join (select * from %s_categories) as level1 on level1.categoryid = level2.parentid
 	) as fullc on fullc.id = tmp_q.CategoryId`
 
-	sql = fmt.Sprintf(sql, appid, appid, appid, appid, appid, appid, appid, appid, appid, appid)
+	query = fmt.Sprintf(query, appid, appid, appid, appid, appid, appid, appid, appid, appid, appid)
 
 	if len(qids) == 0 {
-		sql = strings.Replace(sql, "#QUESITION_CONDTION#", "", -1)
+		query = strings.Replace(query, "#QUESITION_CONDTION#", "", -1)
 	} else {
-		// TODO: replace quetion condition here
-		idStr := ""
-		for i, qid := range qids {
-			if i == 0 {
-				idStr += strconv.Itoa(qid)
-			} else {
-				idStr += fmt.Sprintf(",%s", strconv.Itoa(qid))
-			}
-		}
+		idStr := GenIdStr(qids)
 		questionCondition := fmt.Sprintf(" and %s_question.Question_Id in(%s)", appid, idStr)
-		sql = strings.Replace(sql, "#QUESITION_CONDTION#", questionCondition, -1)
+		query = strings.Replace(query, "#QUESITION_CONDTION#", questionCondition, -1)
 	}
 
 	if condition.CategoryId == 0 {
-		sql = strings.Replace(sql, "#CATEGORY_CONDITION#", "", -1)
+		query = strings.Replace(query, "#CATEGORY_CONDITION#", "", -1)
 	} else {
-		// TODO: fectch parent categorires & replace category condition here
+		// fectch parent categorires & replace category condition here
+		categoryMap, err := GenCagtegoryMap(appid)
+		
+		if err != nil {
+			return query, err
+		}
+		category := categoryMap[condition.CategoryId]
+		idStr := GenIdStr(category.Children)
+		categoryCondition := fmt.Sprintf(" and vipshop_question.CategoryId in(%s)", idStr)
+		query = strings.Replace(query, "#CATEGORY_CONDITION#", categoryCondition, -1)
 	}
 
 	if condition.SearchQuestion && condition.Keyword != "" {
-		// TODO: replace keyword condition here
+		// replace keyword condition
+		keywordCondition := " and vipshop_question.content like ?"
+		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		*sqlParam = newParam
+		query = strings.Replace(query, "#KEYWORD_CONDITION#", keywordCondition, -1)
 	} else {
-		sql = strings.Replace(sql, "#KEYWORD_CONDITION#", "", -1)
+		query = strings.Replace(query, "#KEYWORD_CONDITION#", "", -1)
 	}
 
-	return sql
+	return query, nil
 }
 
-func answerSQL(condition QueryCondition, appid string) string {
-	sql := `select tmp_a.Answer_Id, tmp_a.Content, tmp_a.Content_String, tmp_a.Answer_CMD, tmp_a.Answer_CMD_Msg, tmp_a.Not_Show_In_Relative_Q, tmp_a.Begin_Time, tmp_a.End_Time, tmp_a.Question_Id from %s_answer as tmp_a
+func GenIdStr(ids []int) string {
+	idStr := ""
+	for i, id := range ids {
+		if i == 0 {
+			idStr += strconv.Itoa(id)
+		} else {
+			idStr += fmt.Sprintf(",%s", strconv.Itoa(id))
+		}
+	}
+	return idStr
+}
+
+func GenCagtegoryMap(appid string) (map[int]*Category, error) {
+	query := `select CategoryId, ParentId from %s_categories order by ParentId`
+	query = fmt.Sprintf(query, appid)
+
+	db := util.GetMainDB()
+	categoryMap := make(map[int]*Category)
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return categoryMap, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var category Category
+		var parent int
+		rows.Scan(&category.ID, &category.ParentID)
+		categoryMap[category.ID] = &category
+
+		parent = category.ParentID
+		for parent != 0 {
+			parentCategory := categoryMap[parent]
+			parentCategory.Children = append(parentCategory.Children, category.ID)
+			parent = parentCategory.ParentID
+		}
+	}
+
+	return categoryMap, nil
+}
+
+func answerSQL(condition QueryCondition, aids [][]string, sqlParam *[]interface{}, appid string) string {
+	query := `select tmp_a.Answer_Id, tmp_a.Content, tmp_a.Content_String, tmp_a.Answer_CMD, tmp_a.Answer_CMD_Msg, tmp_a.Not_Show_In_Relative_Q, tmp_a.Begin_Time, tmp_a.End_Time, tmp_a.Question_Id from %s_answer as tmp_a
+			#ANSWER_CONDITION#
 			#TIME_CONDITION#
 			#KEYWORD_CONDTION#
 			#NOT_SHOW_CONDITION#`
 
-	sql = fmt.Sprintf(sql, appid)
+	query = fmt.Sprintf(query, appid)
+	hasWhere := false
 
-	if condition.TimeSet {
-		// TODO: replace time condition
+	if len(aids) == 0 {
+		query = strings.Replace(query, "#ANSWER_CONDITION#", "", -1)
 	} else {
-		sql = strings.Replace(sql, "#TIME_CONDITION#", "", -1)
+		idStr := ""
+		for i, ids := range aids {
+			for j, id := range ids {
+				if i == 0 && j == 0 {
+					idStr += id
+				} else {
+					idStr += fmt.Sprintf(",%s", id)
+				}
+			}
+		}
+
+		var answerCondition string
+		if hasWhere {
+			answerCondition = fmt.Sprintf(" and tmp_a.Answer_Id in(%s)", idStr)
+		} else {
+			answerCondition = fmt.Sprintf(" where tmp_a.Answer_Id in(%s)", idStr)
+			hasWhere = true
+		}
+		query = strings.Replace(query, "#ANSWER_CONDITION#", answerCondition, -1)
+	}
+
+	if condition.TimeSet && condition.BeginTime != "" && condition.EndTime != "" {
+		// replace time condition
+		var timeCondition string
+		if hasWhere {
+			timeCondition = fmt.Sprintf(" and tmp_a.Begin_Time >= '%s' and tmp_a.End_Time <= '%s'", condition.BeginTime, condition.EndTime)
+		} else {
+			hasWhere = true
+			timeCondition = fmt.Sprintf(" where tmp_a.Begin_Time >= '%s' and tmp_a.End_Time <= '%s'", condition.BeginTime, condition.EndTime)
+		}
+		query = strings.Replace(query, "#TIME_CONDITION#", timeCondition, -1)
+	} else {
+		query = strings.Replace(query, "#TIME_CONDITION#", "", -1)
 	}
 
 	if condition.SearchAnswer && condition.Keyword != "" {
-		// TODO: replace keword condition
+		// replace keword condition
+		var keywordCondition string
+		if hasWhere {
+			keywordCondition = " and tmp_a.Content_String like ?"
+		} else {
+			hasWhere = true
+			keywordCondition = " where tmp_a.Content_String like ?"
+		}
+		query = strings.Replace(query, "#KEYWORD_CONDTION#", keywordCondition, -1)
+		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		*sqlParam = newParam
 	} else {
-		sql = strings.Replace(sql, "#KEYWORD_CONDTION#", "", -1)
+		query = strings.Replace(query, "#KEYWORD_CONDTION#", "", -1)
 	}
 
 	if condition.NotShow {
-		// TODO: replace not show condition
+		// replace not show condition
+		var notShowCondition string
+		if hasWhere {
+			notShowCondition = " and tmp_a.Not_Show_In_Relative_Q = 1"
+		} else {
+			notShowCondition = " where tmp_a.Not_Show_In_Relative_Q = 1"
+			hasWhere = true
+		}
+		query = strings.Replace(query, "#NOT_SHOW_CONDITION#", notShowCondition, -1)
 	} else {
-		sql = strings.Replace(sql, "#NOT_SHOW_CONDITION#", "", -1)
+		query = strings.Replace(query, "#NOT_SHOW_CONDITION#", "", -1)
 	}
-	return sql
+	return query
 }
 
-func dimensionSQL(condition QueryCondition, appid string) string {
+func dimensionSQL(condition QueryCondition, appid string) (string, error) {
 	// sql without condition
-	sql := `select %s_answertag.Answer_Id as a_id,%s_answertag.Tag_Id, %s_tag.Tag_Type, %s_tag.Tag_Name from %s_answertag
+	query := `select %s_answertag.Answer_Id as a_id,%s_answertag.Tag_Id, %s_tag.Tag_Type, %s_tag.Tag_Name from %s_answertag
 	left join %s_tag on %s_tag.Tag_Id = %s_answertag.Tag_Id
 	left join %s_tag_type on %s_tag_type.Type_id = %s_tag.Tag_Type`
 
 	if len(condition.Dimension) == 0 {
 		appids := []interface{}{appid, appid, appid, appid, appid, appid, appid, appid, appid, appid, appid}
-		return fmt.Sprintf(sql, appids...)
+		return fmt.Sprintf(query, appids...), nil
 	}
 
-	sql = `select Answer_Id as a_id, tag_ids from (
+	query = `select Answer_Id as a_id, tag_ids from (
 		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) as tag_ids from (SELECT answer_id, Tag_Type, anst.Tag_Id
 		FROM   %s_answertag as anst, %s_tag as tag
 		WHERE  anst.tag_id IN ( %s ) and anst.tag_id = tag.Tag_Id
 		GROUP  BY answer_id, Tag_Type) as ans_tag group by answer_id having count(*) = %d
 	) as tmp_tags`
 
-	// TODO create tag id string
-	sql = fmt.Sprintf(sql, appid, appid, "tag_id_string", len(condition.Dimension))
+	// create tag id string
+	// get dimension to tag id map
+	var tagIDs []int
+	dimensionToIdMAP, err := DimensionToIdMapFactory(appid)
+	if err != nil {
+		return query, err
+	}
+	for _, dimensionGroup := range condition.Dimension {
+		dimensions := strings.Split(dimensionGroup.Content, ",")
+		for _, dimension := range dimensions {
+			tagIDs = append(tagIDs, dimensionToIdMAP[dimension])
+		}
+	}
+	tagIDstr := GenIdStr(tagIDs)
 
-	return sql
+	query = fmt.Sprintf(query, appid, appid, tagIDstr, len(condition.Dimension))
+	return query, nil
+}
+
+func DimensionToIdMapFactory(appid string) (map[string]int, error) {
+	var dimensionIdMap = make(map[string]int)
+	query := "select Tag_Id, Tag_Name from %s_tag"
+	query = fmt.Sprintf(query, appid)
+
+	db := util.GetMainDB()
+	rows, err := db.Query(query)
+	if err != nil {
+		return dimensionIdMap, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var dimension string
+		var tagID int
+		rows.Scan(&tagID, &dimension)
+
+		dimensionIdMap[dimension] = tagID
+	}
+
+	return dimensionIdMap, nil
 }

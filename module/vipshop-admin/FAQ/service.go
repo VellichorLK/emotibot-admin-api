@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"strings"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -42,13 +43,27 @@ func deleteSimilarQuestions(qid string) error {
 	return nil
 }
 
-func DoFilter(condition QueryCondition, appid string) ([]int, int, error) {
-	var qids, err = FilterQuestionIDs(condition, appid)
+func DoFilter(condition QueryCondition, appid string) ([]int, [][]string, error) {
+	qids, aidMap, err := FilterQuestion(condition, appid)
+	aids := make([][]string, len(qids))
+
 	if err != nil {
-		return qids, 0, err
+		return qids, aids, err
 	}
 
-	return qids, len(qids), nil
+	for i, qid := range qids {
+		aidStr := aidMap[qid]
+		aids[i] = strings.Split(aidStr, ",")
+	}
+
+	return qids, aids, nil
+}
+
+func DoFetch(qids []int, aids [][]string, appid string) ([]Question, error) {
+	emptyCondition := QueryCondition{}
+	questions, err := FetchQuestions(emptyCondition, qids, aids, appid)
+
+	return questions, err
 }
 
 func ParseCondition(param Parameter) (QueryCondition, error) {
