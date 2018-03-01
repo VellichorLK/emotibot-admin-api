@@ -46,7 +46,7 @@ func TestMain(m *testing.M) {
 	app = iris.New()
 	app.Post("/question/{qid:string}/similar-questions", handleUpdateSimilarQuestions)
 	app.Get("/RFQuestions", handleGetRFQuestions)
-	app.Post("/RFQuestions", HandleSetRFQuestions)
+	app.Post("/RFQuestions", handleSetRFQuestions)
 	app.Get("/category/{cid:int}/questions", handleCategoryQuestions)
 
 	var err error
@@ -231,4 +231,3 @@ func TestGetQuestionsByCategoryId(t *testing.T) {
 		})
 	}
 }
-
