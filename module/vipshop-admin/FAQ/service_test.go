@@ -2,9 +2,9 @@ package FAQ
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
 )
 
 type paramMock struct {
@@ -12,7 +12,7 @@ type paramMock struct {
 }
 
 func (m *paramMock) FormValue(key string) string {
-	switch  key {
+	switch key {
 	case "set_time_range":
 		return "false"
 	case "begin_time":
@@ -46,24 +46,24 @@ func (m *paramMock) FormValue(key string) string {
 	}
 }
 
-func TestFilterQuestion(t *testing.T) {	
+func TestFilterQuestion(t *testing.T) {
 	mockParam := new(paramMock)
 	condition, err := ParseCondition(mockParam)
 
-	targetCondition := QueryCondition {
-		TimeSet: false,
-		BeginTime: "1970-01-01 00:00:00",
-		EndTime: "2999-12-31 23:59:00",
-		Keyword: "test",
-		SearchAnswer: true,
-		SearchQuestion: false,
-		SearchDynamicMenu: false,
+	targetCondition := QueryCondition{
+		TimeSet:                false,
+		BeginTime:              "1970-01-01 00:00:00",
+		EndTime:                "2999-12-31 23:59:00",
+		Keyword:                "test",
+		SearchAnswer:           true,
+		SearchQuestion:         false,
+		SearchDynamicMenu:      false,
 		SearchRelativeQuestion: true,
-		NotShow: false,
-		Dimension: make([]DimensionGroup, 0),
-		CategoryId: 0,
-		Limit: 10,
-		CurPage: 0,
+		NotShow:                false,
+		Dimension:              make([]DimensionGroup, 0),
+		CategoryId:             0,
+		Limit:                  10,
+		CurPage:                0,
 	}
 
 	assert.Equal(t, err, nil, "shold not have error")

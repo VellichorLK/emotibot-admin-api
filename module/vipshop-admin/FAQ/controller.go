@@ -30,7 +30,7 @@ func init() {
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
-			util.NewEntryPoint("GET", "category/{cid:int}/questions", []string{"view"}, handleCategoryQuestions),
+			util.NewEntryPoint("GET", "category/{cid:string}/questions", []string{"view"}, handleCategoryQuestions),
 		},
 	}
 }
@@ -152,6 +152,8 @@ func handleGetRFQuestions(ctx iris.Context) {
 	questions, err := GetRFQuestions()
 	if err != nil {
 		util.LogError.Printf("Get RFQuestions failed, %v\n", err)
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 	ctx.JSON(questions)
 }
@@ -181,7 +183,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 		return
 	}
 	if len(questions) == 0 {
-		ctx.StatusCode(http.StatusNotFound)
+		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 	var contents = make([]string, len(questions))
@@ -196,7 +198,8 @@ func handleSetRFQuestions(ctx iris.Context) {
 }
 
 func handleCategoryQuestions(ctx iris.Context) {
-	id, err := ctx.Params().GetInt("cid")
+	cid := ctx.Params().Get("cid")
+	id, err := strconv.Atoi(cid)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return

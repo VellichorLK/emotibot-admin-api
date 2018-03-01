@@ -167,21 +167,21 @@ func GetCategory(ID int) (Category, error) {
 
 // GetRFQuestions return RemoveFeedbackQuestions.
 // It need to joined with StdQuestions table, because there is no way to make sure data consistency.
-func GetRFQuestions() ([]RFQuestion, error) {
-	var questions = make([]RFQuestion, 0)
+func GetRFQuestions() ([]StdQuestion, error) {
+	var questions = make([]StdQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "SELECT rf.id, rf.Question_Content FROM vipshop_question AS stdQ INNER JOIN vipshop_removeFeedbackQuestion AS rf ON stdQ.Content = rf.Content"
+	rawQuery := "SELECT rf.id, rf.Question_Content, stdQ.CategoryId FROM vipshop_question AS stdQ INNER JOIN vipshop_removeFeedbackQuestion AS rf ON stdQ.Content = rf.Question_Content"
 	rows, err := db.Query(rawQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query %s failed, %v", rawQuery, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var q RFQuestion
-		rows.Scan(&q.ID, &q.Content)
+		var q StdQuestion
+		rows.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
 		questions = append(questions, q)
 	}
 	if err = rows.Err(); err != nil {
@@ -192,11 +192,14 @@ func GetRFQuestions() ([]RFQuestion, error) {
 
 //InsertRFQuestions will save content as RFQuestion into DB.
 func InsertRFQuestions(contents []string) error {
+	if len(contents) == 0 {
+		return fmt.Errorf("an empty slice is passed in")
+	}
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) " + strings.Repeat("VALUES(?) ", len(contents))
+	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents))
 	var parameters = make([]interface{}, len(contents))
 	for i, c := range contents {
 		parameters[i] = c
@@ -225,7 +228,7 @@ func GetQuestionsByCategories(categories []Category) ([]StdQuestion, error) {
 		return nil, fmt.Errorf("query question failed, %v", err)
 	}
 	defer rows.Close()
-	var questions []StdQuestion
+	var questions = make([]StdQuestion, 0)
 	for rows.Next() {
 		var q StdQuestion
 		rows.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
@@ -484,7 +487,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 	} else {
 		// fectch parent categorires & replace category condition here
 		categoryMap, err := GenCagtegoryMap(appid)
-		
+
 		if err != nil {
 			return query, err
 		}
