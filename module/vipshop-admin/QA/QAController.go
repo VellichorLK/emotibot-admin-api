@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 	"github.com/kataras/iris/context"
+	
 )
 
 // ModuleInfo is web info of questions entrypoints
@@ -118,9 +120,36 @@ func exportExcel(ctx context.Context) {
 	}
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
+	var appid = util.GetAppID(ctx)
+	var status = 0 // 0 == failed, 1 == success
+	var auditMessage = "全量导出"
 
-	mcResponse, err := apiClient.McExportExcel(userID, userIP)
+	// check if we need should do any db query
+	condition, err := FAQ.ParseCondition(ctx)
+	if err != nil {
+		util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
 
+	// TODO: change audit log format
+	var answerIDs []string
+	// var answerIDs []string = make([]string, 0)
+	if FAQ.HasCondition(condition) {
+		_, aids, err := FAQ.DoFilter(condition, appid)
+		if err != nil {
+			util.LogError.Printf("Error happened while fetch question ids & answer ids: %s", err.Error())
+			ctx.StatusCode(http.StatusInternalServerError)
+			return
+		}
+		for _, aidSlice := range aids {
+			for _, aid := range aidSlice {
+				answerIDs = append(answerIDs, aid)
+			}
+		}
+	}
+
+	mcResponse, err := apiClient.McExportExcel(userID, userIP, answerIDs)
 	switch err {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
@@ -135,6 +164,7 @@ func exportExcel(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 服务器不正常", 0)
 	}
 }
+
 
 func download(ctx context.Context) {
 	id := ctx.Params().Get("id")

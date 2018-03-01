@@ -35,7 +35,7 @@ func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, Us
 	}
 	return mResp, nil
 }
-func (m mockMCClient) McExportExcel(UserID string, UserIP string) (util.MCResponse, error) {
+func (m mockMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string) (util.MCResponse, error) {
 	return util.MCResponse{
 		SyncInfo: struct {
 			StatID int    `json:"stateID"`
@@ -107,7 +107,27 @@ func TestExportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 
 	var expectedResponse = "{\"state_id\":123}"
-	body := e.POST("/test/export").WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
+	var mockDimension = []DimensionGroup{
+		DimensionGroup{
+			TypeId: 1,
+			Content: "#weixin#",
+		},
+		DimensionGroup{
+			TypeId: 2,
+			Content: "#特卖会APP#",
+		},
+		DimensionGroup{
+			TypeId: 3,
+			Content: "#男#",
+		},
+	}
+	dimensionJson, _ := json.Marshal(mockDimension)
+	var form = map[string]string {
+		"category_id": "1",
+		"permanent": "1",
+		"dimension": string(dimensionJson),
+	}
+	body := e.POST("/test/export").WithMultipart().WithForm(form).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	if t.Failed() {
 		fmt.Println("Logging Error message")
 		fmt.Println(body)

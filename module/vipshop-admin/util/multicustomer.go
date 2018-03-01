@@ -171,21 +171,31 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 
 // MCExportExcel
 func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string) (MCResponse, error) {
+	var mcResponse MCResponse
 	mcURL := getGlobalEnv(MulticustomerURLKey)
-	queryString := url.Values{}
-	queryString.Set("app_id", "vipshop")
-	queryString.Set("userid", userID)
-	queryString.Set("userip", userIP)
-	queryString.Set("module", "business")
-	if len(answerIDs) > 0 {
-		// queryString.Set("answerid", answerIDs)
-		queryString["answerid"] = answerIDs
+	type requestJSON struct {
+		AppID string `json:"app_id"`
+		UserID string `json:"userid"`
+		UserIP string `json:"userip"`
+		Module string `json:"module"`
+		AnswerIDs []string `json:"answerid"`
+	}
+	reqBody := requestJSON{}
+	reqBody.AppID = "vipshop"
+	reqBody.UserID = userID
+	reqBody.UserIP = userIP
+	reqBody.Module = "business"
+	reqBody.AnswerIDs = answerIDs
+
+	bodyStr, err := json.Marshal(reqBody)
+	if err != nil {
+		return mcResponse, err
 	}
 
-	reqURL := fmt.Sprintf("%s/download?%s", mcURL, queryString.Encode())
-	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
+	reqURL := fmt.Sprintf("%s/download", mcURL)
+	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBuffer(bodyStr))
+	req.Header.Set("Content-Type", "application/json")
 
-	var mcResponse MCResponse
 	if err != nil {
 		return mcResponse, err
 	}
