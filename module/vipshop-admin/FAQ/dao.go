@@ -3,6 +3,7 @@ package FAQ
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -36,22 +37,32 @@ func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 }
 
 //selectQuestion will return StdQuestion struct of the qid, if not found will return sql.ErrNoRows
-func selectQuestion(qid int, appid string) (StdQuestion, error) {
-	var q StdQuestion
-	mySQL := util.GetMainDB()
-	if mySQL == nil {
-		return q, fmt.Errorf("Main DB has not init")
+func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
+	var questions []StdQuestion
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("Main DB has not init")
+	}
+	var parameters = make([]interface{}, len(groupID))
+	for i, id := range groupID {
+		parameters[i] = id
+	}
+	rawQuery := fmt.Sprintf("SELECT Question_id, Content, CategoryId from %s_question WHERE Question_Id IN (? %s)",
+		appid, strings.Repeat(",?", len(groupID)-1))
+	result, err := db.Query(rawQuery, parameters...)
+	if err != nil {
+		return nil, fmt.Errorf("SQL query %s error: %s", rawQuery, err)
+	}
+	for result.Next() {
+		var q StdQuestion
+		result.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
+		questions = append(questions, q)
+	}
+	if err := result.Err(); err != nil {
+		return nil, err
 	}
 
-	err := mySQL.QueryRow("SELECT Content, CategoryId from "+appid+"_question WHERE Question_Id = ?", qid).Scan(&q.Content, &q.CategoryID)
-	if err == sql.ErrNoRows {
-		return q, err
-	} else if err != nil {
-		return q, fmt.Errorf("SQL query error: %s", err)
-	}
-	q.QuestionID = qid
-
-	return q, nil
+	return questions, nil
 }
 
 func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid int, appid string) error {
@@ -104,20 +115,22 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 	return nil
 }
 
+//searchQuestionByContent return standard question based on content given.
+//return util.ErrSQLRowNotFound if query is empty
 func searchQuestionByContent(content string) (StdQuestion, error) {
 	var q StdQuestion
 	db := util.GetMainDB()
 	if db == nil {
 		return q, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "SELECT Question_id, Content FROM vipshop_question WHERE Content = ? ORDER BY Question_id DESC"
+	rawQuery := "SELECT Question_id, Content, CategoryId FROM vipshop_question WHERE Content = ? ORDER BY Question_id DESC"
 	results, err := db.Query(rawQuery, content)
 	if err != nil {
 		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
 	}
 	defer results.Close()
 	if results.Next() {
-		results.Scan(&q.QuestionID, &q.Content)
+		results.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
 	} else { //404 Not Found
 		return q, util.ErrSQLRowNotFound
 	}
@@ -130,49 +143,93 @@ func searchQuestionByContent(content string) (StdQuestion, error) {
 
 }
 
-// GetCategoryFullPath will return full name of category by ID
-func GetCategoryFullPath(categoryID int) (string, error) {
+// GetCategory will return find Category By ID.
+// return error sql.ErrNoRows if category can not be found with given ID
+func GetCategory(ID int) (Category, error) {
+	db := util.GetMainDB()
+	var c Category
+	if db == nil {
+		return c, fmt.Errorf("main db connection pool is nil")
+	}
+	rawQuery := "SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories WHERE CategoryId = ?"
+	err := db.QueryRow(rawQuery, ID).Scan(&c.ID, &c.Name, &c.ParentID)
+	if err == sql.ErrNoRows {
+		return c, err
+	} else if err != nil {
+		return c, fmt.Errorf("query row failed, %v", err)
+	}
+	return c, nil
+}
+
+// GetRFQuestions return RemoveFeedbackQuestions.
+// It need to joined with StdQuestions table, because there is no way to make sure data consistency.
+func GetRFQuestions() ([]RFQuestion, error) {
+	var questions = make([]RFQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
-		return "", fmt.Errorf("main db connection pool is nil")
+		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-
-	rows, err := db.Query("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories")
+	rawQuery := "SELECT rf.id, rf.Question_Content FROM vipshop_question AS stdQ INNER JOIN vipshop_removeFeedbackQuestion AS rf ON stdQ.Content = rf.Content"
+	rows, err := db.Query(rawQuery)
 	if err != nil {
-		return "", fmt.Errorf("query category table failed, %v", err)
+		return nil, fmt.Errorf("query %s failed, %v", rawQuery, err)
 	}
 	defer rows.Close()
-	var categories = make(map[int]Category)
-
 	for rows.Next() {
-		var c Category
-		rows.Scan(&c.ID, &c.Name, &c.ParentID)
-		categories[c.ID] = c
+		var q RFQuestion
+		rows.Scan(&q.ID, &q.Content)
+		questions = append(questions, q)
 	}
 	if err = rows.Err(); err != nil {
-		return "", fmt.Errorf("Rows scaning failed, %v", err)
+		return nil, fmt.Errorf("scan rows failed, %v", err)
+	}
+	return questions, nil
+}
+
+//InsertRFQuestions will save content as RFQuestion into DB.
+func InsertRFQuestions(contents []string) error {
+	db := util.GetMainDB()
+	if db == nil {
+		return fmt.Errorf("main db connection pool is nil")
+	}
+	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) " + strings.Repeat("VALUES(?) ", len(contents))
+	var parameters = make([]interface{}, len(contents))
+	for i, c := range contents {
+		parameters[i] = c
+	}
+	_, err := db.Exec(rawQuery, parameters...)
+	if err != nil {
+		return fmt.Errorf("insert failed, %v", err)
 	}
 
-	if c, ok := categories[categoryID]; ok {
-		switch c.ParentID {
-		case 0:
-			fallthrough
-		case -1:
-			return "/" + c.Name, nil
-		}
-		var fullPath string
-		for ; ok; c, ok = categories[c.ParentID] {
-			fullPath = "/" + c.Name + fullPath
-			if c.ParentID == 0 {
-				break
-			}
-		}
-		if !ok {
-			return "", fmt.Errorf("category id %d has invalid parentID %d", c.ID, c.ParentID)
-		}
-		return fullPath, nil
-	} else {
-		return "", fmt.Errorf("Cant find category id %d in db", categoryID)
+	return nil
+}
+
+//GetQuestionsByCategories search all the questions contained in given categories.
+func GetQuestionsByCategories(categories []Category) ([]StdQuestion, error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("main db connection pool is nil")
+	}
+	rawQuery := "SELECT Question_id, Content, CategoryId FROM vipshop_question WHERE CategoryId IN (? " + strings.Repeat(",? ", len(categories)-1) + ")"
+	var args = make([]interface{}, len(categories))
+	for i, c := range categories {
+		args[i] = c.ID
+	}
+	rows, err := db.Query(rawQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query question failed, %v", err)
+	}
+	defer rows.Close()
+	var questions []StdQuestion
+	for rows.Next() {
+		var q StdQuestion
+		rows.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
+		questions = append(questions, q)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan failed, %v", err)
 	}
 
+	return questions, nil
 }
