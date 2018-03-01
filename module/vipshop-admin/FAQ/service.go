@@ -76,6 +76,8 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 	searchAll := param.FormValue("search_all")
 	notShowSet := param.FormValue("not_show")
 	dimension := param.FormValue("dimension")
+	curPage := param.FormValue("cur_page")
+	limit := param.FormValue("page_limit")
 
 	var condition = QueryCondition{
 		TimeSet:                false,
@@ -128,6 +130,16 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 			return condition, err
 		}
 		condition.Dimension = dimensionGroups
+	}
+
+	page, err := strconv.Atoi(curPage)
+	if err == nil {
+		condition.CurPage = page
+	}
+
+	pageLimit, err := strconv.Atoi(limit)
+	if err == nil {
+		condition.Limit = pageLimit
 	}
 
 	return condition, nil
