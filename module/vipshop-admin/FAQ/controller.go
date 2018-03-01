@@ -158,6 +158,9 @@ func handleGetRFQuestions(ctx iris.Context) {
 func HandleSetRFQuestions(ctx iris.Context) {
 	value := ctx.Request().URL.Query()
 	if _, ok := value["id"]; !ok {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
 
 	var groupID = make([]int, len(value["id"]))
 	for i, id := range value["id"] {
@@ -244,6 +247,8 @@ func handleQuestionFilter(ctx context.Context) {
 	
 	if err != nil {
 		util.LogError.Printf("Error happened while Filter questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 
 	// paging qids

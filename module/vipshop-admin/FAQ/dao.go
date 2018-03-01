@@ -139,7 +139,7 @@ func searchQuestionByContent(content string) (StdQuestion, error) {
 		return q, util.ErrSQLRowNotFound
 	}
 
-	if err = rows.Err(); err != nil {
+	if err = results.Err(); err != nil {
 		return q, fmt.Errorf("scanning data have failed, %s", err)
 	}
 
@@ -234,6 +234,7 @@ func GetQuestionsByCategories(categories []Category) ([]StdQuestion, error) {
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("scan failed, %v", err)
 	}
+	return questions, nil
 }
 
 func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]string, error) {
