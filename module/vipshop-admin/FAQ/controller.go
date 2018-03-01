@@ -159,24 +159,15 @@ func handleGetRFQuestions(ctx iris.Context) {
 }
 
 func handleSetRFQuestions(ctx iris.Context) {
-	value := ctx.Request().URL.Query()
-	if _, ok := value["id"]; !ok {
+	var args UpdateRFQuestionsArgs
+	err := ctx.ReadJSON(&args)
+	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 
-	var groupID = make([]int, len(value["id"]))
-	for i, id := range value["id"] {
-		var err error
-		groupID[i], err = strconv.Atoi(id)
-		if err != nil {
-			util.LogError.Printf("id %s parse failed, %v \n", id, err)
-			ctx.StatusCode(http.StatusBadRequest)
-			return
-		}
-	}
 	appID := util.GetAppID(ctx)
-	questions, err := selectQuestions(groupID, appID)
+	questions, err := selectQuestions(args.GroupID, appID)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
@@ -190,7 +181,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 	for i, q := range questions {
 		contents[i] = q.Content
 	}
-	if err = InsertRFQuestions(contents); err != nil {
+	if err = SetRFQuestions(contents); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return

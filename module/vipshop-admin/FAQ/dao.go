@@ -190,8 +190,8 @@ func GetRFQuestions() ([]StdQuestion, error) {
 	return questions, nil
 }
 
-//InsertRFQuestions will save content as RFQuestion into DB.
-func InsertRFQuestions(contents []string) error {
+// SetRFQuestions will reset RFQuestion table and save given content as RFQuestion.
+func SetRFQuestions(contents []string) error {
 	if len(contents) == 0 {
 		return fmt.Errorf("an empty slice is passed in")
 	}
@@ -199,12 +199,16 @@ func InsertRFQuestions(contents []string) error {
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents))
+	_, err := db.Exec("TRUNCATE vipshop_removeFeedbackQuestion")
+	if err != nil {
+		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
+	}
+	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents)-1)
 	var parameters = make([]interface{}, len(contents))
 	for i, c := range contents {
 		parameters[i] = c
 	}
-	_, err := db.Exec(rawQuery, parameters...)
+	_, err = db.Exec(rawQuery, parameters...)
 	if err != nil {
 		return fmt.Errorf("insert failed, %v", err)
 	}
