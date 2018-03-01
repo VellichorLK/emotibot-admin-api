@@ -1,0 +1,61 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for UI RestAPIs
+  version: 1.0.0
+  title: UI
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v1/ui/
+paths:
+  /envs:
+    get:
+      summary: "取得所有环境变数"
+      description: "用于UI从环境变数取得设定"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ENV_NAME:
+                    type: string
+                example:
+                  AUTH_SYSTEM: VIP
+        500:
+          description: "Internal server error"
+  /export-log:
+    post:
+      summary: "纪录下载档案"
+      parameters:
+        - name: module
+          description: "操作模块"
+          in: query
+          schema:
+            type: string
+            enum: [
+              2, #问答库
+              5, #词库管理
+              6, #数据管理
+            ]
+          required: true
+        - name: filename
+          description: "下载档案名称"
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: info
+          description: "额外资讯"
+          in: query
+          schema:
+            type: string
+      responses:
+        200:
+          description: "完成log纪录"
+        400:
+          description: "缺乏参数"
+        500:
+          description: "Internal server error"

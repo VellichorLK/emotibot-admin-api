@@ -2,11 +2,11 @@ package FAQ
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
 	"strings"
-	"math"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
@@ -28,7 +28,9 @@ func init() {
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
-			util.NewEntryPoint("GET", "RFQuestion", []string{"view"}, handleGetRFQuestions),
+			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
+			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
+			util.NewEntryPoint("GET", "category/{cid:int}/questions", []string{"view"}, handleCategoryQuestions),
 		},
 	}
 }
@@ -146,7 +148,6 @@ func handleSearchQuestion(ctx context.Context) {
 
 }
 
-
 func handleGetRFQuestions(ctx iris.Context) {
 	questions, err := GetRFQuestions()
 	if err != nil {
@@ -155,7 +156,7 @@ func handleGetRFQuestions(ctx iris.Context) {
 	ctx.JSON(questions)
 }
 
-func HandleSetRFQuestions(ctx iris.Context) {
+func handleSetRFQuestions(ctx iris.Context) {
 	value := ctx.Request().URL.Query()
 	if _, ok := value["id"]; !ok {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -244,7 +245,7 @@ func handleQuestionFilter(ctx context.Context) {
 	}
 	// fetch question ids and total row number
 	qids, aids, err := DoFilter(condition, appid)
-	
+
 	if err != nil {
 		util.LogError.Printf("Error happened while Filter questions %s", err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -258,22 +259,22 @@ func handleQuestionFilter(ctx context.Context) {
 	// fetch returned question and answers
 	// questions, err := FetchQuestions(qids[start:end], aids, "vipshop")
 	type Response struct {
-		CurPage string `json:"CurPage"`
-		Questions []Question `json:"QueryResult"`
-		PageNum float64 `json:"TotalNum"`
-		QuestionNum int `json:"TotalQuestionNum"`
+		CurPage     string     `json:"CurPage"`
+		Questions   []Question `json:"QueryResult"`
+		PageNum     float64    `json:"TotalNum"`
+		QuestionNum int        `json:"TotalQuestionNum"`
 	}
 
 	var pagedQIDs []int
 	var pagedAIDs [][]string
 	if len(qids) == 0 {
 		response := Response{
-			CurPage: "0",
-			Questions: make([]Question, 0),
-			PageNum: 0,
+			CurPage:     "0",
+			Questions:   make([]Question, 0),
+			PageNum:     0,
 			QuestionNum: 0,
 		}
-	
+
 		ctx.JSON(response)
 		return
 	} else if len(qids) < condition.Limit {
@@ -297,9 +298,9 @@ func handleQuestionFilter(ctx context.Context) {
 	pageNum := math.Floor(float64(total / condition.Limit))
 
 	response := Response{
-		CurPage: strconv.Itoa(condition.CurPage),
-		Questions: questions,
-		PageNum: pageNum,
+		CurPage:     strconv.Itoa(condition.CurPage),
+		Questions:   questions,
+		PageNum:     pageNum,
 		QuestionNum: total,
 	}
 
