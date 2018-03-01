@@ -62,6 +62,7 @@ type QueryCondition struct {
 	SearchAnswer bool
 	SearchDynamicMenu bool
 	SearchRelativeQuestion bool
+	SearchAll bool
 	NotShow bool
 	Dimension []DimensionGroup
 	CategoryId int

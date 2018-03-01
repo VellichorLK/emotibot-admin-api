@@ -73,6 +73,7 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 	searchAns := param.FormValue("search_answer")
 	searchDM := param.FormValue("search_dm")
 	searchRQ := param.FormValue("search_rq")
+	searchAll := param.FormValue("search_all")
 	notShowSet := param.FormValue("not_show")
 	dimension := param.FormValue("dimension")
 
@@ -85,6 +86,7 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 		SearchRelativeQuestion: false,
 		SearchQuestion:         false,
 		SearchAnswer:           false,
+		SearchAll:				false,
 		NotShow:                false,
 		CategoryId:             0,
 		Limit:                  10,
@@ -93,6 +95,9 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 
 	time, _ := strconv.ParseBool(timeSet)
 	condition.TimeSet = time
+
+	all, _ := strconv.ParseBool(searchAll)
+	condition.SearchAll = all
 
 	question, _ := strconv.ParseBool(searchStdQ)
 	condition.SearchQuestion = question
