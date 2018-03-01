@@ -10,12 +10,25 @@ tags:
     description: get questions and answers of the questions
   - name: question
     description: get single question and answers of the question
-  - name: categories
-    description: get categories
+  - name: category
+    description: category related api
   - name: operations
     description: 'QA related operation(Import, Export, etc...)'
 components:
   schemas:
+    RFQuestion:
+      type: object
+      description: RemovedFeedback Question, 不顯示解決未解決的標準問
+      properties:
+        id:
+          type: integer
+          description: question id
+        categoryId:
+          $ref: '#/components/schemas/categoryId'
+        content:
+          type: string
+          description: 標準問問題
+        
     categoryId:
       type: integer
       description: questions under which category
@@ -127,6 +140,66 @@ components:
       schema:
         $ref: '#/components/schemas/categoryId'
 paths:
+  /RFQuestions:
+    get:
+      summary: Get RemoveFeedBack Questions
+      responses:
+        '200':
+          description: an array of RFQuestion response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RFQuestion'
+        '500':
+          description: internal server errror
+    post:
+      summary: Set RemoveFeedBack Questions
+      parameters:
+        - name: id
+          description: 要設定的question id 
+          in: query
+          required: true
+          schema:
+            type: array
+            items:
+              type: integer
+      responses:
+        '200':
+          description: set successful
+        '403':
+          description: one of the id already setted
+        '404':
+          description: can not find the input id
+  # temp deprecated this api
+  # /RFQuestions/search:
+  #   get:
+  #     summary: Search RFQuestion Base on condition
+  #     description: |
+  #       搜尋RFQuestions 最少必須要有category或是content其一, 若
+  #     parameters:
+  #       - name: categoryID
+  #         in: query
+  #         description: 尋找該類別底下的所有RFQuestion
+  #         schema:
+  #           type: integer
+  #       - name: content
+  #         in: query
+  #         description: 尋找exactly match 內容的 RFQuestion
+  #         schema:
+  #           type: string
+  #     responses:
+  #       '200':
+  #         description: an array of RFQuestion response
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: array
+  #               items:
+  #                   $ref: '#/components/schemas/RFQuestion'
+  #       '400':
+  #         description: need parameters
+  #       '404':
+  #         description: RFQuestion Not Found
   /questions:
     get:
       tags:
@@ -212,8 +285,12 @@ paths:
                 properties:
                   questionId:
                     type: integer
-          '404':
-            description: question content does not match any question
+                  content:
+                    type: string
+                  categoryId:
+                    type: integer
+        '404':
+          description: question content does not match any question
   '/question/{qid}':
     get:
       tags:
@@ -471,6 +548,35 @@ paths:
           description: the category does not exist
         '500':
           description: 'an error occurred, the operation failed'
+  /category/{categoryId}/questions:
+    get:
+      tags:
+        - category
+      summary: Get questions under category ID
+      description: 取得該分類下的所有問題, 加上參數includeSubCat取得包含子分類的所有問題
+      parameters:
+        - $ref: '#/components/parameters/categoryId'
+        - name: includeSubCat
+          in: query
+          schema:
+            type: boolean
+            description: 加上該參數會取得包含子分類的所有問題
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    questionId:
+                      type: integer
+                    content:
+                      type: string
+                    categoryId:
+                      type: integer
   /qa/questions/operations:
     get:
       tags:

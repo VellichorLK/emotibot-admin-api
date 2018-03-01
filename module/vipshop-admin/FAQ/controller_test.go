@@ -3,10 +3,10 @@ package FAQ
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strings"
 	"testing"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -41,10 +41,14 @@ var errBuff = bytes.NewBuffer(make([]byte, 100))
 
 func TestMain(m *testing.M) {
 
-	util.LogInit(os.Stdout, os.Stdout, os.Stdout, errBuff)
+	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 
 	app = iris.New()
 	app.Post("/question/{qid:string}/similar-questions", handleUpdateSimilarQuestions)
+	app.Get("/RFQuestions", handleGetRFQuestions)
+	app.Post("/RFQuestions", HandleSetRFQuestions)
+	app.Get("/category/{cid:int}/questions", handleCategoryQuestions)
+
 	var err error
 	var db, auditDB *sql.DB
 	db, mockedMainDB, err = sqlmock.New()
@@ -108,15 +112,17 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 	e := httptest.New(t, app)
 	qid := 123
 	util.DefaultMCClient = mockedMCClient{}
-
+	util.LogInit(os.Stdout, os.Stdout, os.Stdout, errBuff)
 	for _, tt := range testCases {
 		t.Run(tt.Scenario, func(t *testing.T) {
 			errBuff.Reset()
 			//設定場景: /LEVEL1/LEVEL2/LEVEL3 之 標準問題1，有相似問題1,4。 更新相似問 2,3,4。
-			qRows := sqlmock.NewRows([]string{"Content", "Category_Id"}).AddRow("标准问题1", "3")
 			cRows := sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(1, "LEVEL1", 0).AddRow(2, "LEVEL2", 1).AddRow(3, "LEVEL3", 2)
 			sRows := sqlmock.NewRows([]string{"Content"}).AddRow("相似问题1").AddRow("相似问题4")
-			mockedMainDB.ExpectQuery("SELECT Content, Category_Id from vipshop_question").WillReturnRows(qRows)
+			expectSelectQuestions(mockedMainDB, []int{qid}, []StdQuestion{StdQuestion{qid, "标准问题1", 3}})
+			//Find Category
+			mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WillReturnRows(sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(3, "LEVEL3", 2))
+			//Category's Full Name
 			mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WillReturnRows(cRows)
 			mockedMainDB.ExpectQuery("SELECT Content FROM vipshop_squestion").WillReturnRows(sRows)
 			mockedMainDB.ExpectBegin()
@@ -135,48 +141,94 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 			}
 		})
 	}
+	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 
 }
 
-func TestGetCategoryFullPath(t *testing.T) {
-	rows := sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(1, "LEVEL1", 0).AddRow(2, "LEVEL2", 1).AddRow(3, "LEVEL3", 2)
-	mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WillReturnRows(rows)
-	name, err := GetCategoryFullPath(3)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expectedPath := "/LEVEL1/LEVEL2/LEVEL3"
-	if name != expectedPath {
-		t.Fatalf("expected %s, but got %s", expectedPath, name)
+func TestHandleGetRFQuestions(t *testing.T) {
+	e := httptest.New(t, app)
+	var expected = []RFQuestion{
+		RFQuestion{1, "測試A"},
+		RFQuestion{2, "測試B"},
 	}
 
-	rows = sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(1, "LEVEL1", 0).AddRow(4, "LEVEL2", 1).AddRow(3, "LEVEL3", 2)
-	mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WillReturnRows(rows)
-	_, err = GetCategoryFullPath(3)
-	if err == nil || !strings.Contains(err.Error(), "invalid parentID") {
-		t.Fatalf("expected error invalid parentID, but got %+v", err)
+	rows := sqlmock.NewRows([]string{"rd.id", " rf.Question_Content"})
+	for _, q := range expected {
+		rows.AddRow(q.ID, q.Content)
+	}
+	mockedMainDB.ExpectQuery("SELECT ").WillReturnRows(rows)
+	resp := e.GET("/RFQuestions").Expect().Body()
+	if mockedMainDB.ExpectationsWereMet() != nil {
+		t.Fatal()
+	}
+	expectedJSON, _ := json.Marshal(expected)
+	resp.Equal(string(expectedJSON))
+}
+
+func TestHandleSetRFQuestions(t *testing.T) {
+	e := httptest.New(t, app)
+	input := []int{1, 2, 3}
+	expected := []StdQuestion{
+		StdQuestion{1, "測試A", 1},
+		StdQuestion{2, "測試B", 1},
+		StdQuestion{3, "測試C", 1},
+	}
+	expectSelectQuestions(mockedMainDB, input, expected)
+	// var contents = []driver.Value{"測試A", "測試B", "測試C"}
+	mockedMainDB.ExpectExec("INSERT INTO vipshop_removeFeedbackQuestion").WillReturnResult(sqlmock.NewResult(4, 4))
+
+	request := e.POST("/RFQuestions").WithHeader("Authorization", "vipshop")
+	for _, i := range input {
+		request.WithQuery("id", i)
+	}
+	request.Expect().Status(200)
+	if err := mockedMainDB.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func TestSelectQuestion(t *testing.T) {
-	var qid = 1
-	rows := sqlmock.NewRows([]string{"Content", "Category_Id"}).AddRow("Test", 1)
-	mockedMainDB.ExpectQuery("SELECT Content, Category_Id from vipshop_question").WillReturnRows(rows)
-	mockedMainDB.ExpectQuery("SELECT Content, Category_Id from vipshop_question").WillReturnError(sql.ErrNoRows)
-	stdQ, err := selectQuestion(qid, "vipshop")
-	if err != nil {
-		t.Fatal(err)
+func TestGetQuestionsByCategoryId(t *testing.T) {
+	type input struct {
+		categoryID    int
+		includeSubCat bool
 	}
-	if stdQ.Content != "Test" {
-		t.Fatalf("std Question should be Test, but got %s", stdQ.Content)
-	}
-	if stdQ.CategoryID != 1 {
-		t.Fatalf("std Question CategoryId should be 1, but got %d", stdQ.CategoryID)
-	}
-	stdQ, err = selectQuestion(-1, "vipshop")
-	if err != sql.ErrNoRows {
-		t.Fatalf("Should return sql.ErrNoRows, but got %v", err)
+	type testCase struct {
+		input    input
+		expected []StdQuestion
 	}
 
+	testCases := map[string]testCase{
+		"一般": testCase{
+			input{
+				1,
+				true,
+			},
+			[]StdQuestion{
+				StdQuestion{1, "123", 1},
+			},
+		},
+	}
+
+	for name, tt := range testCases {
+		t.Run(name, func(t *testing.T) {
+			e := httptest.New(t, app)
+			request := e.GET("/category/{cid:int}/questions", tt.input.categoryID).WithQuery("includeSubCat", true)
+			//Select the Category
+			rows := sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(tt.input.categoryID, "Test", 0)
+			mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WithArgs(tt.input.categoryID).WillReturnRows(rows)
+			//Select SubCategory
+			// rows = sqlmock.NewRows([]string{"CategoryId", "CategoryName"})
+			// mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName FROM vipshop_categories").WillReturnRows(rows)
+			//Select Questions
+			rows = sqlmock.NewRows([]string{"Question_id", "Content", "CategoryId"})
+			for _, q := range tt.expected {
+				rows.AddRow(q.QuestionID, q.Content, q.CategoryID)
+			}
+			mockedMainDB.ExpectQuery("SELECT Question_id, Content, CategoryId FROM vipshop_question WHERE CategoryId IN ").WillReturnRows(rows)
+			response := request.Expect().Status(200).Body()
+			expectedResponse, _ := json.Marshal(tt.expected)
+			response.Equal(string(expectedResponse))
+		})
+	}
 }
 

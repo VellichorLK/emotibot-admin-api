@@ -1,7 +1,6 @@
 package FAQ
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"sort"
@@ -11,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 
+	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
 
@@ -28,6 +28,7 @@ func init() {
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
+			util.NewEntryPoint("GET", "RFQuestion", []string{"view"}, handleGetRFQuestions),
 		},
 	}
 }
@@ -47,20 +48,25 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 
-	question, err := selectQuestion(qid, appid)
-	if err == sql.ErrNoRows {
-		ctx.StatusCode(http.StatusNotFound)
-		return
-	} else if err != nil {
+	questions, err := selectQuestions([]int{qid}, appid)
+	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
+	} else if len(questions) == 0 {
+		ctx.StatusCode(http.StatusNotFound)
+		return
 	}
-	questionCategory, err := GetCategoryFullPath(question.CategoryID)
+	var question = questions[0]
+	questionCategory, err := GetCategory(question.CategoryID)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
-	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", questionCategory, question.Content)
+	categoryName, err := questionCategory.FullName()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+	}
+	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", categoryName, question.Content)
 	// select origin Similarity Questions for audit log
 	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
@@ -140,6 +146,90 @@ func handleSearchQuestion(ctx context.Context) {
 
 }
 
+
+func handleGetRFQuestions(ctx iris.Context) {
+	questions, err := GetRFQuestions()
+	if err != nil {
+		util.LogError.Printf("Get RFQuestions failed, %v\n", err)
+	}
+	ctx.JSON(questions)
+}
+
+func HandleSetRFQuestions(ctx iris.Context) {
+	value := ctx.Request().URL.Query()
+	if _, ok := value["id"]; !ok {
+
+	var groupID = make([]int, len(value["id"]))
+	for i, id := range value["id"] {
+		var err error
+		groupID[i], err = strconv.Atoi(id)
+		if err != nil {
+			util.LogError.Printf("id %s parse failed, %v \n", id, err)
+			ctx.StatusCode(http.StatusBadRequest)
+			return
+		}
+	}
+	appID := util.GetAppID(ctx)
+	questions, err := selectQuestions(groupID, appID)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	if len(questions) == 0 {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	}
+	var contents = make([]string, len(questions))
+	for i, q := range questions {
+		contents[i] = q.Content
+	}
+	if err = InsertRFQuestions(contents); err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+}
+
+func handleCategoryQuestions(ctx iris.Context) {
+	id, err := ctx.Params().GetInt("cid")
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	category, err := GetCategory(id)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	includeSub, err := ctx.Params().GetBool("")
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	var categories []Category
+	if includeSub {
+		categories, err = category.SubCats()
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			util.LogError.Println(err)
+			return
+		}
+
+	}
+	//Add category itself into total
+	categories = append(categories, category)
+	questions, err := GetQuestionsByCategories(categories)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+
+	ctx.JSON(questions)
+}
+
 func handleQuestionFilter(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
@@ -149,7 +239,6 @@ func handleQuestionFilter(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-
 	// fetch question ids and total row number
 	qids, aids, err := DoFilter(condition, appid)
 	
