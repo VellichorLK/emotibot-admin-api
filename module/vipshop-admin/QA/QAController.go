@@ -121,8 +121,6 @@ func exportExcel(ctx context.Context) {
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
 	var appid = util.GetAppID(ctx)
-	var status = 0 // 0 == failed, 1 == success
-	var auditMessage = "全量导出"
 
 	// check if we need should do any db query
 	condition, err := FAQ.ParseCondition(ctx)
