@@ -7,6 +7,7 @@ import os
 import subprocess
 import argparse
 import copy
+import traceback
 
 # worker-voice-emotion-analysis => w-v-emotion
 VOICE_EMOTION_MINIMAL = ['mysql', 'rabbitmq', 'api-voice-emotion',
@@ -217,14 +218,14 @@ def main():
 
     # add service of group if not give
     if not args.service:
-        if args.service_group == 'voice-emotion-min':
+        if (args.service_group == 'voice-emotion-asr') or (getBoolFromEnvFile('WORKER_ENV_KEY_ASR_ENABLE', False) is True):
+            args.service.extend(VOICE_EMOTION_ASR)
+        elif args.service_group == 'voice-emotion-min':
             args.service.extend(VOICE_EMOTION_MINIMAL)
         elif args.service_group == 'bf-ubt-apigw':
             args.service.extend(BF_UBT_APIGW)
         elif args.service_group == 'voice-emotion-full':
             args.service.extend(VOICE_EMOTION_FULL)
-        elif args.service_group == 'voice-emotion-asr':
-            args.service.extend(VOICE_EMOTION_ASR)
 
     # do action
     if args.save:
@@ -250,6 +251,20 @@ def main():
         do_list(args.compose_file)
     else:
         parser.print_help()
+
+
+def getBoolFromEnvFile(keyname, defaultValue):
+    with open('.env', 'r') as fd:
+        for line in fd:
+            try:
+                if line.find(keyname) != -1:
+                    if line.split('=')[-1].strip(' \t\n\r').lower() in ['true', 't', '1']:
+                        return True
+                    else:
+                        return False
+            except:
+                print(traceback.format_exc())
+    return defaultValue
 
 
 if __name__ == '__main__':
