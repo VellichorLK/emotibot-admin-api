@@ -269,7 +269,7 @@ paths:
     get:
       tags:
         - question
-      summary: 搜尋標準問
+      summary: 搜寻标准问
       parameters:
         - name: content
           in: query
@@ -581,7 +581,7 @@ paths:
     get:
       tags:
         - operations
-      summary: 取得最近num筆的該使用者問答庫行為記錄
+      summary: 取得最近num笔的该使用者问答库行为记录
       operationId: getOperations
       parameters:
         - name: num
@@ -589,12 +589,12 @@ paths:
           schema:
             type: integer
           required: true
-          description: 取得最多num筆行為記錄
+          description: 取得最多num笔行为记录
         - name: UserID
           in: query
           schema:
             type: string
-            description: '使用者ID, 若無則為所有使用者'
+            description: '使用者ID, 若无则为所有使用者'
         - name: status
           in: query
           schema:
@@ -603,7 +603,7 @@ paths:
               - success
               - fail
               - running
-            description: 狀態，若無則為所有狀態
+            description: 状态，若无则为所有状态
         - name: action
           in: query
           schema:
@@ -612,7 +612,7 @@ paths:
               - full_import
               - incre_import
               - export
-          description: 行為種類，若無則為所有種類
+          description: 行为种类，若无则为所有种类
       responses:
         '200':
           description: successful operation
@@ -623,22 +623,22 @@ paths:
                 properties:
                   records:
                     type: array
-                    description: 使用者最近n天的行為紀錄(從新到舊排序）
+                    description: 使用者最近n天的行为纪录(从新到旧排序）
                     items:
                       type: object
                       properties:
                         state_id:
-                          description: 行為id
+                          description: 行为id
                           type: integer
                         action:
-                          description: 行為的模式(全量、批量導入、全量導出）
+                          description: 行为的模式(全量、批量导入、全量导出）
                           type: string
                           enum:
                             - full_import
                             - incr_import
                             - export
                         status:
-                          description: 行為的狀態(成功、失敗、運行中）
+                          description: 行为的状态(成功、失败、运行中）
                           type: string
                           enum:
                             - success
@@ -646,26 +646,26 @@ paths:
                             - running
                         created_time:
                           type: integer
-                          description: 行為時間 (Unix Mill Sec)
+                          description: 行为时间 (Unix Mill Sec)
                         updated_time:
                           type: integer
-                          description: 行為最後更新時間(Unix Mill Sec)
+                          description: 行为最后更新时间(Unix Mill Sec)
                         extra_info:
-                          description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
+                          description: '行为额外讯息(ex:导入失败的错误讯息）'
                           type: string
   '/qa/questions/operations/{id}/progress':
     get:
       tags:
         - operations
-      summary: 查詢匯入匯出進度
-      description: 查詢
+      summary: 查询汇入汇出进度
+      description: 查询
       parameters:
         - name: id
           in: path
           schema:
             type: string
           required: true
-          description: '使用匯入匯出API成功時所取得的唯一id來查詢目前進度, 若無則可使用/qa/questions/operations API取得該ID'
+          description: '使用汇入汇出API成功时所取得的唯一id来查询目前进度, 若无则可使用/qa/questions/operations API取得该ID'
       responses:
         '200':
           description: successful operation
@@ -676,35 +676,35 @@ paths:
                 properties:
                   state_id:
                     type: string
-                    description: 傳入的查詢ID
+                    description: 传入的查询ID
                   status:
                     type: string
                     enum:
                       - running
                       - fail
                       - success
-                    description: 任務執行狀態
+                    description: 任务执行状态
                   created_time:
                     type: integer
-                    description: 上傳/下載開始時間(Unix Mill Sec)
+                    description: 上传/下载开始时间(Unix Mill Sec)
                   extra_info:
                     type: string
-                    description: '行為額外訊息(ex:導入失敗的錯誤訊息）'
+                    description: '行为额外讯息(ex:导入失败的错误讯息）'
         '404':
           description: cant found the operation in DB
   /qa/questions/operations/{id}/download:
     get:
       tags:
         - operations
-      summary: 取得檔案
-      description: 查詢
+      summary: 取得档案
+      description: 查询
       parameters:
         - name: id
           in: path
           schema:
             type: string
           required: true
-          description: '使用匯入匯出API成功時所取得的唯一id來查詢目前進度, 若無則可使用/qa/questions/operations API取得該ID'
+          description: '使用汇入汇出API成功时所取得的唯一id来查询目前进度, 若无则可使用/qa/questions/operations API取得该ID'
       responses:
         '200':
           description: successful operation
@@ -740,7 +740,7 @@ paths:
       tags:
         - operations
       summary: import questions
-      description: '匯入xlsx格式的資料檔案, 會鎖定問答庫匯入匯出'
+      description: '汇入xlsx格式的资料档案, 会锁定问答库汇入汇出'
       operationId: importQuestions
       requestBody:
         content:
@@ -748,7 +748,7 @@ paths:
             schema:
               properties:
                 mode:
-                  description: 增量或全量導入
+                  description: 增量或全量导入
                   type: string
                   enum:
                     - incre
@@ -768,7 +768,7 @@ paths:
                     type: string
                     description: ID for querying progress
         '400':
-          description: 'parameters error, 可能是檔案副檔名錯誤或是模式參數非規定項目'
+          description: 'parameters error, 可能是档案副档名错误或是模式参数非规定项目'
           content:
             application/json:
               schema:
@@ -788,7 +788,7 @@ paths:
                     type: string
                     description: error message
         '503':
-          description: 'Lock Error, Multicustomer 無法取得匯入權限'
+          description: 'Lock Error, Multicustomer 无法取得汇入权限'
           content:
             application/json:
               schema:
@@ -824,11 +824,11 @@ paths:
                 properties:
                   state_id:
                     type: string
-                    description: 傳入的查詢ID
+                    description: 传入的查询ID
                   created_time:
                     type: string
                     format: date
-                    description: 上傳開始時間
+                    description: 上传开始时间
         '500':
           description: Internal Server Error
           content:
@@ -855,3 +855,4 @@ paths:
                   userID:
                     type: string
                     description: user who are using the lock right now
+    
