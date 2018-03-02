@@ -500,7 +500,11 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 			return query, err
 		}
 		category := categoryMap[condition.CategoryId]
-		idStr := GenIdStr(category.Children)
+		idStr := strconv.Itoa(condition.CategoryId)
+		if len(category.Children) >0 {
+			idStr += fmt.Sprintf(",%s", GenIdStr(category.Children))
+		}
+
 		categoryCondition := fmt.Sprintf(" and vipshop_question.CategoryId in(%s)", idStr)
 		query = strings.Replace(query, "#CATEGORY_CONDITION#", categoryCondition, -1)
 	}
