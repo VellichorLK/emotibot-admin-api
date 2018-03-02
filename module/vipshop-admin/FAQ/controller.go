@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
-
+	consul "github.com/hashicorp/consul/api"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
@@ -17,6 +17,8 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
+	//consulClient is needed for communicate with consul
+	consulClient *consul.Client
 )
 
 func init() {
@@ -30,7 +32,7 @@ func init() {
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
-			util.NewEntryPoint("GET", "category/{cid:int}/questions", []string{"view"}, handleCategoryQuestions),
+			util.NewEntryPoint("GET", "category/{cid:string}/questions", []string{"view"}, handleCategoryQuestions),
 		},
 	}
 }
@@ -148,55 +150,51 @@ func handleSearchQuestion(ctx context.Context) {
 
 }
 
+//Retrun JSON Formatted RFQuestion array, if question is invalid, id & categoryId will be 0
 func handleGetRFQuestions(ctx iris.Context) {
 	questions, err := GetRFQuestions()
 	if err != nil {
 		util.LogError.Printf("Get RFQuestions failed, %v\n", err)
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 	ctx.JSON(questions)
 }
 
 func handleSetRFQuestions(ctx iris.Context) {
-	value := ctx.Request().URL.Query()
-	if _, ok := value["id"]; !ok {
+	var args UpdateRFQuestionsArgs
+	err := ctx.ReadJSON(&args)
+	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 
-	var groupID = make([]int, len(value["id"]))
-	for i, id := range value["id"] {
-		var err error
-		groupID[i], err = strconv.Atoi(id)
-		if err != nil {
-			util.LogError.Printf("id %s parse failed, %v \n", id, err)
-			ctx.StatusCode(http.StatusBadRequest)
-			return
-		}
-	}
 	appID := util.GetAppID(ctx)
-	questions, err := selectQuestions(groupID, appID)
+	questions, err := selectQuestions(args.GroupID, appID)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
 	if len(questions) == 0 {
-		ctx.StatusCode(http.StatusNotFound)
+		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 	var contents = make([]string, len(questions))
 	for i, q := range questions {
 		contents[i] = q.Content
 	}
-	if err = InsertRFQuestions(contents); err != nil {
+	if err = SetRFQuestions(contents); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
+
 }
 
 func handleCategoryQuestions(ctx iris.Context) {
-	id, err := ctx.Params().GetInt("cid")
+	cid := ctx.Params().Get("cid")
+	id, err := strconv.Atoi(cid)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
