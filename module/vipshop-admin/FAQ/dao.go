@@ -384,8 +384,8 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	var sqlParams []interface{}
 	db := util.GetMainDB()
 
-	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, a.Begin_Time, a.End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
-	query = fmt.Sprintf(query, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
+	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
+	query = fmt.Sprintf(query, "%Y/%m/%d %H:%i:%s", "%Y/%m/%d %H:%i:%s", SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
 
 	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
 	if err != nil {
@@ -402,7 +402,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	}
 	query += fmt.Sprintf(" left join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL)
 	query += " group by a.Answer_Id order by q.Question_Id desc, a.Answer_Id"
-
+	
 	// fetch
 	rows, err := db.Query(query)
 	if err != nil {
