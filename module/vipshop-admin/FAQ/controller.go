@@ -202,13 +202,9 @@ func handleCategoryQuestions(ctx iris.Context) {
 		util.LogError.Println(err)
 		return
 	}
-	includeSub, err := ctx.Params().GetBool("")
-	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		return
-	}
+	includeSub := ctx.Request().URL.Query().Get("includeSubCat")
 	var categories []Category
-	if includeSub {
+	if includeSub == "true" {
 		categories, err = category.SubCats()
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)

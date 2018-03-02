@@ -89,7 +89,7 @@ type RFQuestion struct {
 	ID         int    `json:"id"`
 	Content    string `json:"content"`
 	CategoryID int    `json:"categoryId"`
-	isValid    bool   `json:"isValid"`
+	IsValid    bool   `json:"isValid"`
 }
 
 //UpdateRFQUestionsArgs are Post API JSON arguments

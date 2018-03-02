@@ -194,7 +194,7 @@ func GetRFQuestions() ([]RFQuestion, error) {
 		var id sql.NullInt64
 		rows.Scan(&id, &q.Content, &q.CategoryID)
 		if id.Valid {
-			q.isValid = true
+			q.IsValid = true
 			q.ID = int(id.Int64)
 		} else {
 			q.ID = 0
@@ -549,7 +549,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 		}
 		category := categoryMap[condition.CategoryId]
 		idStr := strconv.Itoa(condition.CategoryId)
-		if len(category.Children) >0 {
+		if len(category.Children) > 0 {
 			idStr += fmt.Sprintf(",%s", GenIdStr(category.Children))
 		}
 
