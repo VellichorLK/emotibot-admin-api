@@ -1,9 +1,11 @@
 package imagesManager
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -15,6 +17,7 @@ var (
 	Envs       map[string]string
 	LocalID    uint64
 	Volume     string
+	db         *sql.DB
 )
 
 func init() {
@@ -35,15 +38,16 @@ func InitDB() {
 	url := util.GetEnviroment(Envs, "MYSQL_URL")
 	user := util.GetEnviroment(Envs, "MYSQL_USER")
 	pass := util.GetEnviroment(Envs, "MYSQL_PASS")
-	db := util.GetEnviroment(Envs, "MYSQL_DB")
-	dao, err := util.InitDB(url, user, pass, db)
+	dbName := util.GetEnviroment(Envs, "MYSQL_DB")
+	dao, err := util.InitDB(url, user, pass, dbName)
 	if err != nil {
-		util.LogError.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		util.LogError.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, dbName, err.Error())
 		return
 	}
 	util.SetDB(ModuleInfo.ModuleName, dao)
+	db = dao
 
-	mediaLocal := filepath.Clean(util.GetEnviroment(Envs, "LOCATION"))
+	mediaLocal := strings.Trim(util.GetEnviroment(Envs, "LOCATION"), "/")
 	Volume = filepath.Clean(util.GetEnviroment(Envs, "VOLUME"))
 	LocalID, _ = getLocationID(mediaLocal)
 }
@@ -70,6 +74,7 @@ func receiveImage(ctx context.Context) {
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
 			return
 		}
 	}
@@ -84,6 +89,17 @@ func handleImageList(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 		return
 	}
-	ctx.JSON(listArgs)
+
+	list, err := getImageList(listArgs)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+
+	}
+	ctx.StatusCode(http.StatusOK)
+	ctx.JSON(list)
+	return
 
 }

@@ -13,7 +13,7 @@ import (
 
 func storeImage(fileName string, content []byte) error {
 
-	id, fileName, err := insertNewReord(fileName, len(content))
+	id, fileName, err := newImageRecord(fileName, len(content))
 	if err != nil {
 		return err
 	}
@@ -42,19 +42,38 @@ func getImageList(args *getImagesArg) (*imageList, error) {
 		return nil, err
 	}
 
+	tagMap, err := getTagMap()
+	if err != nil {
+		return nil, err
+	}
+
+	categoriesMap, err := GetCategories()
+	if err != nil {
+		return nil, err
+	}
+
+	questionInfoMap, err := getAnswerRef(list.answerIDs, tagMap, categoriesMap)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, image := range list.Images {
-		questionInfo, err := getAnswerRef(image.answerID)
-		if err != nil {
-			return nil, err
+		image.Refs = make([]*questionInfo, 0)
+		for _, id := range image.answerID {
+			qInfo, ok := questionInfoMap[id]
+			if !ok {
+				return nil, errors.New("No answerID " + strconv.Itoa(id))
+			}
+			image.Refs = append(image.Refs, qInfo)
 		}
-		image.Refs = questionInfo
+
 	}
 
 	return list, nil
 }
 
-//insert record would return the real file name which is inserted into db and its id
-func insertNewReord(name string, size int) (uint64, string, error) {
+//newImageRecord would return the real file name which is inserted into db and its id
+func newImageRecord(name string, size int) (uint64, string, error) {
 
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {

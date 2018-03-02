@@ -41,7 +41,7 @@ func Save(image Image) (int64, error) {
 
 func getLocationID(location string) (uint64, error) {
 	sql := "insert into " + locationTable + "(" + attrLocation + ")" + " values(?)"
-	res, err := SqlExec(util.GetDB(ModuleInfo.ModuleName), sql, location)
+	res, err := SqlExec(db, sql, location)
 	if err != nil {
 		if driverErr, ok := err.(*mysql.MySQLError); ok { // Now the error number is accessible directly
 			if driverErr.Number == ErDupEntry {
@@ -57,7 +57,7 @@ func getLocationID(location string) (uint64, error) {
 
 func getExistLocationID(location string) (uint64, error) {
 	sql := "select " + attrID + " from " + locationTable + " where " + attrLocation + "=?"
-	rows, err := SqlQuery(util.GetDB(ModuleInfo.ModuleName), sql, location)
+	rows, err := SqlQuery(db, sql, location)
 	if err != nil {
 		return 0, nil
 	}
@@ -81,8 +81,8 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	var condition string
 	var params []interface{}
 	if args.Keyword != "" {
-		condition += "where " + attrFileName + " like %?% "
-		params = append(params, args.Keyword)
+		condition += "where " + attrFileName + " like ? "
+		params = append(params, "%"+args.Keyword+"%")
 	}
 	condition += "order by " + args.Order + " desc "
 	condition += "limit " + strconv.FormatInt(args.Limit, 10)
@@ -92,13 +92,14 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	sqlString += " from (select * from " + imageTable + " " + condition + ") as a left join " + relationTable + " as b on " +
 		"a." + attrID + "=b." + attrImageID
 
-	rows, err := SqlQuery(util.GetDB(ModuleInfo.ModuleName), sqlString, params...)
+	rows, err := SqlQuery(db, sqlString, params...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	il := &imageList{CurPage: uint64(args.Page)}
+	il.Images = make([]*imageInfo, 0)
 
 	var counter uint64
 	var ii *imageInfo
@@ -109,13 +110,13 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 		var fileName string
 		var createTime, updateTime time.Time
 		var answerID sql.NullInt64
-
 		err := rows.Scan(&id, &fileName, &size, &locationID, &createTime, &updateTime, &answerID)
 		if err != nil {
 			return nil, err
 		}
 		if lastID != id {
 			counter++
+			lastID = id
 			ii = &imageInfo{ImageID: id, Title: fileName, Size: size,
 				CreateTime: uint64(createTime.Unix()), LastModified: uint64(updateTime.Unix()),
 				URL: locations[locationID],
@@ -123,7 +124,8 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 			il.Images = append(il.Images, ii)
 		}
 		if answerID.Valid {
-			ii.answerID = append(ii.answerID, uint64(answerID.Int64))
+			ii.answerID = append(ii.answerID, int(answerID.Int64))
+			il.answerIDs = append(il.answerIDs, answerID.Int64)
 		}
 	}
 
@@ -133,25 +135,21 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	return il, nil
 }
 
-func getAnswerRef(answerID []interface{}) ([]*questionInfo, error) {
+func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap map[int]*Category) (map[int]*questionInfo, error) {
 
-	tagMap, err := getTagMap()
-	if err != nil {
-		return nil, err
-	}
-
-	qis := make([]*questionInfo, 0)
+	qis := make(map[int]*questionInfo, 0)
 
 	if len(answerID) > 0 {
-		db := util.GetMainDB()
+
+		mainDB := util.GetMainDB()
 
 		// select a.Question_Id,a.Answer_Id,Tag_Id,c.Content,CategoryId from vipshop_answer as a left join vipshop_answertag as b on a.Answer_Id = b.Answer_Id left join vipshop_question as c on a.Question_Id=c.Question_Id where a.Answer_Id in (9733365,9733366,9733367);
 
 		sqlTags := "select a." + attrQID + "," + "a." + attrAnsID + "," + attrTagID + ",c." + attrContent + "," + attrCategoryID +
-			" from " + VIPAnswerTable + " as a left join" + VIPAnswerTagTable + " as b on a." + attrAnswerID + "=b." + attrAnswerID +
+			" from " + VIPAnswerTable + " as a left join " + VIPAnswerTagTable + " as b on a." + attrAnswerID + "=b." + attrAnswerID +
 			" left join " + VIPQuestionTable + " as c on a." + attrQID + "=c." + attrQID
 		sqlTags += " where a." + attrAnsID + " in (?" + strings.Repeat(",?", len(answerID)-1) + ")"
-		rows, err := SqlQuery(db, sqlTags, answerID...)
+		rows, err := SqlQuery(mainDB, sqlTags, answerID...)
 		if err != nil {
 			return nil, err
 		}
@@ -176,16 +174,19 @@ func getAnswerRef(answerID []interface{}) ([]*questionInfo, error) {
 			}
 
 			if lastAnswerID != answerID || qID != lastQID {
+				lastAnswerID = answerID
 				qi = &questionInfo{QuestionID: qID}
-				qis = append(qis, qi)
+				//qis = append(qis, qi)
+				qis[answerID] = qi
 				if qID == lastQID {
 					qi.Info = lastQIDCategoryAndQ
 				} else {
 					lastQID = qID
-					categories, err := GetCategory(categoryID)
+					categories, err := GetFullCategory(categoriesMap, categoryID)
 					if err != nil {
 						return nil, err
 					}
+
 					for i := 0; i < 2 && i < len(categories); i++ {
 						qi.Info += categories[i] + "/"
 					}
@@ -210,7 +211,7 @@ func getAnswerRef(answerID []interface{}) ([]*questionInfo, error) {
 
 func getLocationMap() (map[uint64]string, error) {
 	sqlString := "select " + attrID + "," + attrLocation + " from " + locationTable
-	rows, err := SqlQuery(util.GetDB(ModuleInfo.ModuleName), sqlString)
+	rows, err := SqlQuery(db, sqlString)
 	if err != nil {
 		return nil, err
 	}
@@ -255,29 +256,30 @@ func getTagMap() (map[int]string, error) {
 
 }
 
-func GetCategory(categoryID int) ([]string, error) {
-	//maximum level
-	const MAXLEVEL = 5
+func GetCategories() (map[int]*Category, error) {
+
+	sqlString := "select " + attrCategoryID + "," + attrCategoryName + "," + attrParentID + " from " + VIPCategoryTable
+
+	rows, err := SqlQuery(util.GetMainDB(), sqlString)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	categories := make(map[int]*Category)
+
+	var categoryID, parentID int
 	var categoryName string
-	levels := make([]string, MAXLEVEL, MAXLEVEL)
-	sqlString := "select " + attrCategoryName + "," + attrParentID + " from " + VIPCategoryTable + " where " + attrCategoryID + "=?"
-	for i := 0; i < MAXLEVEL; i++ {
-		rows, err := SqlQuery(util.GetMainDB(), sqlString, categoryID)
+	for rows.Next() {
+		err := rows.Scan(&categoryID, &categoryName, &parentID)
 		if err != nil {
 			return nil, err
 		}
-		rows.Scan(&categoryName, &categoryID)
-
-		if categoryID == 0 {
-			levels[i] = categoryName
-			break
-		}
+		category := &Category{Name: categoryName, ParentID: parentID}
+		categories[categoryID] = category
 	}
 
-	levels = levels[:len(levels)]
-	reverseSlice(levels)
-
-	return levels, nil
+	return categories, nil
 }
 
 func SqlQuery(db *sql.DB, sql string, params ...interface{}) (*sql.Rows, error) {

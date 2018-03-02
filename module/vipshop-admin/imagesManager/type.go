@@ -25,9 +25,10 @@ type getImagesArg struct {
 }
 
 type imageList struct {
-	Total   uint64       `json:"total"`
-	CurPage uint64       `json:"curPage"`
-	Images  []*imageInfo `json:"Images"`
+	Total     uint64       `json:"total"`
+	CurPage   uint64       `json:"curPage"`
+	Images    []*imageInfo `json:"Images"`
+	answerIDs []interface{}
 }
 
 type imageInfo struct {
@@ -38,7 +39,7 @@ type imageInfo struct {
 	LastModified uint64          `json:"lastModified"`
 	Refs         []*questionInfo `json:"refs"`
 	URL          string          `json:"url"`
-	answerID     []interface{}
+	answerID     []int
 }
 
 type questionInfo struct {
@@ -109,3 +110,9 @@ const (
 const (
 	ErDupEntry = 1062
 )
+
+//Category record category name and its parent id
+type Category struct {
+	Name     string
+	ParentID int
+}

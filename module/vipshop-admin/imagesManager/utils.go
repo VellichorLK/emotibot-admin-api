@@ -26,7 +26,7 @@ func getImagesParams(params map[string]string) (*getImagesArg, error) {
 			case valTime:
 				listArgs.Order = attrLatestUpdate
 			default:
-				return nil, errors.New("Unknown parameter " + k)
+				return nil, errors.New("Unknown parameter value " + v)
 			}
 		case PAGE:
 			page, err := strconv.ParseInt(v, 10, 64)
@@ -48,4 +48,29 @@ func getImagesParams(params map[string]string) (*getImagesArg, error) {
 	}
 
 	return listArgs, nil
+}
+
+func GetFullCategory(categories map[int]*Category, categoryID int) ([]string, error) {
+
+	if categories == nil {
+		return nil, errors.New("categories map is nil")
+	}
+
+	const MAXLEVEL = 5
+	levels := make([]string, 0, MAXLEVEL)
+	for i := 0; i < MAXLEVEL; i++ {
+		c, ok := categories[categoryID]
+		if !ok {
+			return nil, errors.New("No categoryID " + strconv.Itoa(categoryID))
+		}
+		levels = append(levels, c.Name)
+		if c.ParentID == 0 {
+			break
+		}
+		categoryID = c.ParentID
+	}
+
+	levels = levels[:len(levels)]
+	reverseSlice(levels)
+	return levels, nil
 }
