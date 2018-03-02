@@ -157,14 +157,14 @@ paths:
     post:
       summary: Set RemoveFeedBack Questions
       parameters:
-        - name: id
-          description: 要設定的question id 
+        - name: contents
+          description: 要設定的標準問內容 
           in: query
           required: true
           schema:
             type: array
             items:
-              type: integer
+              type: string
       responses:
         '200':
           description: set successful

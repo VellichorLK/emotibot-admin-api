@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"net/http"
@@ -165,23 +166,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-
-	appID := util.GetAppID(ctx)
-	questions, err := selectQuestions(args.GroupID, appID)
-	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		util.LogError.Println(err)
-		return
-	}
-	if len(questions) == 0 {
-		ctx.StatusCode(http.StatusBadRequest)
-		return
-	}
-	var contents = make([]string, len(questions))
-	for i, q := range questions {
-		contents[i] = q.Content
-	}
-	if err = SetRFQuestions(contents); err != nil {
+	if err = SetRFQuestions(args.Contents); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
@@ -197,18 +182,17 @@ func handleCategoryQuestions(ctx iris.Context) {
 		return
 	}
 	category, err := GetCategory(id)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	} else if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
-	includeSub, err := ctx.Params().GetBool("")
-	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		return
-	}
+	includeSub := ctx.Request().URL.Query().Get("includeSubCat")
 	var categories []Category
-	if includeSub {
+	if includeSub == "true" {
 		categories, err = category.SubCats()
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)

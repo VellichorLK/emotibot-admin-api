@@ -194,7 +194,7 @@ func GetRFQuestions() ([]RFQuestion, error) {
 		var id sql.NullInt64
 		rows.Scan(&id, &q.Content, &q.CategoryID)
 		if id.Valid {
-			q.isValid = true
+			q.IsValid = true
 			q.ID = int(id.Int64)
 		} else {
 			q.ID = 0
@@ -211,9 +211,7 @@ func GetRFQuestions() ([]RFQuestion, error) {
 // SetRFQuestions will reset RFQuestion table and save given content as RFQuestion.
 // It will try to Update consul as well, if failed, table will be rolled back.
 func SetRFQuestions(contents []string) error {
-	if len(contents) == 0 {
-		return fmt.Errorf("an empty slice is passed in")
-	}
+
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
@@ -233,20 +231,21 @@ func SetRFQuestions(contents []string) error {
 	if err != nil {
 		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
 	}
-	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents)-1)
-	var parameters = make([]interface{}, len(contents))
-	for i, c := range contents {
-		parameters[i] = c
-	}
-	_, err = tx.Exec(rawQuery, parameters...)
-	if err != nil {
-		return fmt.Errorf("insert failed, %v", err)
+	if len(contents) > 0 {
+		rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents)-1)
+		var parameters = make([]interface{}, len(contents))
+		for i, c := range contents {
+			parameters[i] = c
+		}
+		_, err = tx.Exec(rawQuery, parameters...)
+		if err != nil {
+			return fmt.Errorf("insert failed, %v", err)
+		}
 	}
 
 	unixTime := time.Now().UnixNano() / 1000000
 	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("consul update failed, %v", err)
 	}
 	err = tx.Commit()
@@ -552,7 +551,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 		}
 		category := categoryMap[condition.CategoryId]
 		idStr := strconv.Itoa(condition.CategoryId)
-		if len(category.Children) >0 {
+		if len(category.Children) > 0 {
 			idStr += fmt.Sprintf(",%s", GenIdStr(category.Children))
 		}
 

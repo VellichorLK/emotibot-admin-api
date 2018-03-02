@@ -3,6 +3,7 @@ package FAQ
 import (
 	"bytes"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
@@ -168,23 +169,18 @@ func TestHandleGetRFQuestions(t *testing.T) {
 func TestHandleSetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
 	input := UpdateRFQuestionsArgs{
-		[]int{1, 2, 3},
+		[]string{"測試A", "測試B", "測試C"},
 	}
-	expected := []StdQuestion{
-		StdQuestion{1, "測試A", 1},
-		StdQuestion{2, "測試B", 1},
-		StdQuestion{3, "測試C", 1},
+	var args = make([]driver.Value, len(input.Contents))
+	for i, str := range input.Contents {
+		args[i] = str
 	}
-	expectSelectQuestions(mockedMainDB, input.GroupID, expected)
 	// var contents = []driver.Value{"測試A", "測試B", "測試C"}
 	mockedMainDB.ExpectBegin()
 	mockedMainDB.ExpectExec("TRUNCATE vipshop_removeFeedbackQuestion").WillReturnResult(sqlmock.NewResult(0, 0))
-	mockedMainDB.ExpectExec("INSERT INTO vipshop_removeFeedbackQuestion").WillReturnResult(sqlmock.NewResult(4, 4))
+	mockedMainDB.ExpectExec("INSERT INTO vipshop_removeFeedbackQuestion").WithArgs(args...).WillReturnResult(sqlmock.NewResult(4, 4))
 	mockedMainDB.ExpectCommit()
 	request := e.POST("/RFQuestions").WithHeader("Authorization", "vipshop").WithJSON(input)
-	for _, i := range input.GroupID {
-		request.WithQuery("id", i)
-	}
 	request.Expect().Status(200)
 	if err := mockedMainDB.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
