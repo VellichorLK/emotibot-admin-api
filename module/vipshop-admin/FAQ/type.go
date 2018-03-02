@@ -94,7 +94,7 @@ type RFQuestion struct {
 
 //UpdateRFQUestionsArgs are Post API JSON arguments
 type UpdateRFQuestionsArgs struct {
-	GroupID []int `json:"id"`
+	Contents []string `json:"contents"`
 }
 
 //SubCat will recursivily retrive the sub Category of the Category

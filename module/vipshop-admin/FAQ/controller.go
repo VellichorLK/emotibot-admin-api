@@ -166,23 +166,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-
-	appID := util.GetAppID(ctx)
-	questions, err := selectQuestions(args.GroupID, appID)
-	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		util.LogError.Println(err)
-		return
-	}
-	if len(questions) == 0 {
-		ctx.StatusCode(http.StatusBadRequest)
-		return
-	}
-	var contents = make([]string, len(questions))
-	for i, q := range questions {
-		contents[i] = q.Content
-	}
-	if err = SetRFQuestions(contents); err != nil {
+	if err = SetRFQuestions(args.Contents); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
