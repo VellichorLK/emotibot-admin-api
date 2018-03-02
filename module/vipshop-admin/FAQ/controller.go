@@ -191,7 +191,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 		return
 	}
 	unixTime := time.Now().UnixNano() / 1000000
-	_, err = util.ConsulUpdateVal("vipshopdata/vipshopRF", unixTime)
+	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
