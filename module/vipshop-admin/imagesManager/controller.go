@@ -22,6 +22,7 @@ func init() {
 		ModuleName: "mediabase",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "images", []string{}, receiveImage),
+			util.NewEntryPoint("GET", "images", []string{}, handleImageList),
 		},
 	}
 }
@@ -61,7 +62,7 @@ func receiveImage(ctx context.Context) {
 		content, err := base64.StdEncoding.DecodeString(file.Content)
 		if err != nil {
 			ctx.StatusCode(http.StatusBadRequest)
-			ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+			ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 			return
 		}
 
@@ -72,4 +73,17 @@ func receiveImage(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func handleImageList(ctx context.Context) {
+	params := ctx.URLParams()
+
+	listArgs, err := getImagesParams(params)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
+		return
+	}
+	ctx.JSON(listArgs)
+
 }

@@ -13,7 +13,7 @@ import (
 
 func storeImage(fileName string, content []byte) error {
 
-	id, fileName, err := getUniqueName(fileName)
+	id, fileName, err := insertNewReord(fileName, len(content))
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func storeImage(fileName string, content []byte) error {
 	defer func() {
 		if id != 0 {
 			sql := "delete from " + imageTable + " where " + attrID + "=?"
-			SqlExec(sql, id)
+			SqlExec(util.GetDB(ModuleInfo.ModuleName), sql, id)
 		}
 	}()
 
@@ -35,7 +35,26 @@ func storeImage(fileName string, content []byte) error {
 	return nil
 }
 
-func getUniqueName(name string) (uint64, string, error) {
+func getImageList(args *getImagesArg) (*imageList, error) {
+
+	list, err := getImageRef(args)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, image := range list.Images {
+		questionInfo, err := getAnswerRef(image.answerID)
+		if err != nil {
+			return nil, err
+		}
+		image.Refs = questionInfo
+	}
+
+	return list, nil
+}
+
+//insert record would return the real file name which is inserted into db and its id
+func insertNewReord(name string, size int) (uint64, string, error) {
 
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
@@ -49,12 +68,12 @@ func getUniqueName(name string) (uint64, string, error) {
 	baseName := name[:len(name)-len(ext)]
 	counter := 0
 	fileName := name
-	sql := "insert into " + imageTable + " (" + attrFileName + "," + attrLocationID + ") values (?,?)"
+	sql := "insert into " + imageTable + " (" + attrFileName + "," + attrLocationID + "," + attrSize + ") values (?,?,?)"
 
 	for {
-		res, err = SqlExec(sql, fileName, LocalID)
+		res, err = SqlExec(util.GetDB(ModuleInfo.ModuleName), sql, fileName, LocalID, size)
 		if err != nil {
-			if driverErr, ok := err.(*mysql.MySQLError); ok { // Now the error number is accessible directly
+			if driverErr, ok := err.(*mysql.MySQLError); ok {
 				if driverErr.Number != ErDupEntry {
 					return 0, "", err
 				}

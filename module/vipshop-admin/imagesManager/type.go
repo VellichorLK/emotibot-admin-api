@@ -17,17 +17,47 @@ type uploadArg struct {
 	Content  string `json:"content"`
 }
 
+type getImagesArg struct {
+	Order   string
+	Page    int64
+	Limit   int64
+	Keyword string
+}
+
+type imageList struct {
+	Total   uint64       `json:"total"`
+	CurPage uint64       `json:"curPage"`
+	Images  []*imageInfo `json:"Images"`
+}
+
+type imageInfo struct {
+	ImageID      uint64          `json:"id"`
+	Title        string          `json:"title"`
+	Size         int             `json:"size"`
+	CreateTime   uint64          `json:"createTime"`
+	LastModified uint64          `json:"lastModified"`
+	Refs         []*questionInfo `json:"refs"`
+	URL          string          `json:"url"`
+	answerID     []interface{}
+}
+
+type questionInfo struct {
+	QuestionID int    `json:"questionId"`
+	Info       string `json:"info"`
+}
+
 //table name of meida base center
 const (
 	imageTable    = "images"
 	locationTable = "image_location"
-	relationTable = "image_question"
+	relationTable = "image_answer"
 )
 
 //field name of each table
 const (
 	attrID           = "id"
 	attrFileName     = "fileName"
+	attrSize         = "size"
 	attrLocationID   = "locationId"
 	attrCreateTime   = "createdTime"
 	attrLatestUpdate = "lastModified"
@@ -35,10 +65,45 @@ const (
 	attrLocation   = "location"
 	attrImageID    = "image_id"
 	attrQuestionID = "question_id"
+	attrAnswerID   = "answer_id"
+)
+
+//vipshop table attribute
+const (
+	attrQID          = "Question_Id"
+	attrTag          = "Tags"
+	attrTagID        = "Tag_Id"
+	attrTagName      = "Tag_Name"
+	attrAnsID        = "Answer_Id"
+	attrContent      = "Content"
+	attrCategoryID   = "CategoryId"
+	attrCategoryName = "CategoryName"
+	attrParentID     = "ParentId"
+)
+
+//vipsho table name
+const (
+	VIPAnswerTable    = "vipshop_answer"
+	VIPAnswerTagTable = "vipshop_answertag"
+	VIPCategoryTable  = "vipshop_categories"
+	VIPQuestionTable  = "vipshop_question"
+	VIPTagTable       = "vipshop_tag"
 )
 
 //request parameter name
-const ()
+const (
+	ORDER   = "order"
+	PAGE    = "page"
+	LIMIT   = "limit"
+	KEYWORD = "keyword"
+)
+
+//request parameter value
+const (
+	valID   = "id"
+	valName = "name"
+	valTime = "time"
+)
 
 //error number of mysql
 const (
