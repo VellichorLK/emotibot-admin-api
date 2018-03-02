@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -40,9 +41,10 @@ func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 	return contents, nil
 }
 
-//selectQuestion will return StdQuestion struct of the qid, if not found will return sql.ErrNoRows
+// selectQuestion will return StdQuestion struct of the qid.
+// if some input are missed it will return error, if no rows are found it will return sql.ErrNoRows.
 func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
-	var questions []StdQuestion
+	var questions = make([]StdQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("Main DB has not init")
@@ -64,6 +66,14 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 	}
 	if err := result.Err(); err != nil {
 		return nil, err
+	}
+
+	size := len(questions)
+	if size == 0 {
+		return nil, sql.ErrNoRows
+	}
+	if size != len(groupID) {
+		return nil, fmt.Errorf("query can not found some of id that passed in")
 	}
 
 	return questions, nil
@@ -166,14 +176,14 @@ func GetCategory(ID int) (Category, error) {
 }
 
 // GetRFQuestions return RemoveFeedbackQuestions.
-// It need to joined with StdQuestions table, because there is no way to make sure data consistency.
+// It need to joined with StdQuestions table, because it need to validate the data.
 func GetRFQuestions() ([]RFQuestion, error) {
 	var questions = make([]RFQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "SELECT rf.id, rf.Question_Content FROM vipshop_question AS stdQ INNER JOIN vipshop_removeFeedbackQuestion AS rf ON stdQ.Content = rf.Content"
+	rawQuery := "SELECT stdQ.Question_Id, rf.Question_Content, stdQ.CategoryId  FROM vipshop_removeFeedbackQuestion AS rf LEFT JOIN vipshop_question AS stdQ ON stdQ.Content = rf.Question_Content"
 	rows, err := db.Query(rawQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query %s failed, %v", rawQuery, err)
@@ -181,7 +191,15 @@ func GetRFQuestions() ([]RFQuestion, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var q RFQuestion
-		rows.Scan(&q.ID, &q.Content)
+		var id sql.NullInt64
+		rows.Scan(&id, &q.Content, &q.CategoryID)
+		if id.Valid {
+			q.isValid = true
+			q.ID = int(id.Int64)
+		} else {
+			q.ID = 0
+			q.CategoryID = 0
+		}
 		questions = append(questions, q)
 	}
 	if err = rows.Err(); err != nil {
@@ -190,20 +208,50 @@ func GetRFQuestions() ([]RFQuestion, error) {
 	return questions, nil
 }
 
-//InsertRFQuestions will save content as RFQuestion into DB.
-func InsertRFQuestions(contents []string) error {
+// SetRFQuestions will reset RFQuestion table and save given content as RFQuestion.
+// It will try to Update consul as well, if failed, table will be rolled back.
+func SetRFQuestions(contents []string) error {
+	if len(contents) == 0 {
+		return fmt.Errorf("an empty slice is passed in")
+	}
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) " + strings.Repeat("VALUES(?) ", len(contents))
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("transaction start failed, %v", err)
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+	_, err = tx.Exec("TRUNCATE vipshop_removeFeedbackQuestion")
+	if err != nil {
+		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
+	}
+	rawQuery := "INSERT INTO vipshop_removeFeedbackQuestion(Question_Content) VALUES(?)" + strings.Repeat(",(?)", len(contents)-1)
 	var parameters = make([]interface{}, len(contents))
 	for i, c := range contents {
 		parameters[i] = c
 	}
-	_, err := db.Exec(rawQuery, parameters...)
+	_, err = tx.Exec(rawQuery, parameters...)
 	if err != nil {
 		return fmt.Errorf("insert failed, %v", err)
+	}
+
+	unixTime := time.Now().UnixNano() / 1000000
+	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("consul update failed, %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("db commit failed, %v", err)
 	}
 
 	return nil
@@ -225,7 +273,7 @@ func GetQuestionsByCategories(categories []Category) ([]StdQuestion, error) {
 		return nil, fmt.Errorf("query question failed, %v", err)
 	}
 	defer rows.Close()
-	var questions []StdQuestion
+	var questions = make([]StdQuestion, 0)
 	for rows.Next() {
 		var q StdQuestion
 		rows.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
@@ -257,13 +305,13 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		var aids [][]string
 		query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
 
-		dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu" 
+		dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu"
 		dmCondition = fmt.Sprintf(dmCondition, appid)
-		if condition.SearchDynamicMenu  {
+		if condition.SearchDynamicMenu {
 			if condition.Keyword != "" {
 				dmCondition += " where DynamicMenu like ?"
 				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
-			} 
+			}
 			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		} else if condition.SearchAll {
 			query += fmt.Sprintf(" left join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
@@ -271,7 +319,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 		rqCondition := "select Answer_Id, RelatedQuestion from %s_related_question"
 		rqCondition = fmt.Sprintf(rqCondition, appid)
-		if condition.SearchRelativeQuestion{
+		if condition.SearchRelativeQuestion {
 			if condition.Keyword != "" {
 				rqCondition += " where RelatedQuestion like ?"
 				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
@@ -291,7 +339,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 		if condition.SearchAll && condition.Keyword != "" {
 			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
-			param := "%"+condition.Keyword+"%"
+			param := "%" + condition.Keyword + "%"
 			sqlParams = append(sqlParams, param, param, param, param)
 		}
 
@@ -495,7 +543,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 	} else {
 		// fectch parent categorires & replace category condition here
 		categoryMap, err := GenCagtegoryMap(appid)
-		
+
 		if err != nil {
 			return query, err
 		}

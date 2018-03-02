@@ -31,47 +31,47 @@ type Category struct {
 }
 
 type Question struct {
-	QuestionId int `json:"questionId"`
-	SQuestionConunt int `json:"sQuesCount"`
-	Content string `json:"questionContent"`
-	CategoryName string `json:"categoryName"`
-	CategoryId int `json:"categoryId"`
-	Answers []Answer `json:"answerItem"`
+	QuestionId      int      `json:"questionId"`
+	SQuestionConunt int      `json:"sQuesCount"`
+	Content         string   `json:"questionContent"`
+	CategoryName    string   `json:"categoryName"`
+	CategoryId      int      `json:"categoryId"`
+	Answers         []Answer `json:"answerItem"`
 }
 
 type Answer struct {
-	QuestionId int `json:"Question_Id"`
-	AnswerId int `json:"Answer_Id"`
-	Content string `json:"Content_String"`
-	RelatedQuestion string `json:"RelatedQuestion"`
-	DynamicMenu string `json:"DynamicMenu"`
-	NotShow int `json:"Not_Show_In_Relative_Q"`
-	BeginTime string `json:"Begin_Time"`
-	EndTime string `json:"End_Time"`
-	AnswerCmd string `json:"Answer_CMD"`
-	AnswerCmdMsg string `json:"Answer_CMD_Msg"`
-	Dimension []string `json:"dimension"`
+	QuestionId      int      `json:"Question_Id"`
+	AnswerId        int      `json:"Answer_Id"`
+	Content         string   `json:"Content_String"`
+	RelatedQuestion string   `json:"RelatedQuestion"`
+	DynamicMenu     string   `json:"DynamicMenu"`
+	NotShow         int      `json:"Not_Show_In_Relative_Q"`
+	BeginTime       string   `json:"Begin_Time"`
+	EndTime         string   `json:"End_Time"`
+	AnswerCmd       string   `json:"Answer_CMD"`
+	AnswerCmdMsg    string   `json:"Answer_CMD_Msg"`
+	Dimension       []string `json:"dimension"`
 }
 
 type QueryCondition struct {
-	TimeSet bool
-	BeginTime string
-	EndTime string
-	Keyword string
-	SearchQuestion bool
-	SearchAnswer bool
-	SearchDynamicMenu bool
+	TimeSet                bool
+	BeginTime              string
+	EndTime                string
+	Keyword                string
+	SearchQuestion         bool
+	SearchAnswer           bool
+	SearchDynamicMenu      bool
 	SearchRelativeQuestion bool
-	SearchAll bool
-	NotShow bool
-	Dimension []DimensionGroup
-	CategoryId int
-	Limit int
-	CurPage int
+	SearchAll              bool
+	NotShow                bool
+	Dimension              []DimensionGroup
+	CategoryId             int
+	Limit                  int
+	CurPage                int
 }
 
 type DimensionGroup struct {
-	TypeId int `json:"typeId"`
+	TypeId  int    `json:"typeId"`
 	Content string `json:"tagContent"`
 }
 
@@ -80,14 +80,21 @@ type Parameter interface {
 }
 
 type Tag struct {
-	Type int
+	Type    int
 	Content string
 }
 
 //RFQuestion is removed Feedback question(移除解決未解決的問題)
 type RFQuestion struct {
-	ID      int
-	Content string
+	ID         int    `json:"id"`
+	Content    string `json:"content"`
+	CategoryID int    `json:"categoryId"`
+	isValid    bool   `json:"isValid"`
+}
+
+//UpdateRFQUestionsArgs are Post API JSON arguments
+type UpdateRFQuestionsArgs struct {
+	GroupID []int `json:"id"`
 }
 
 //SubCat will recursivily retrive the sub Category of the Category
