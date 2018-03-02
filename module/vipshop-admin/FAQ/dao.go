@@ -222,6 +222,13 @@ func SetRFQuestions(contents []string) error {
 	if err != nil {
 		return fmt.Errorf("transaction start failed, %v", err)
 	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
 	_, err = tx.Exec("TRUNCATE vipshop_removeFeedbackQuestion")
 	if err != nil {
 		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
@@ -246,6 +253,7 @@ func SetRFQuestions(contents []string) error {
 	if err != nil {
 		return fmt.Errorf("db commit failed, %v", err)
 	}
+
 	return nil
 }
 
