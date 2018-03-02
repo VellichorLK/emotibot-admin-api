@@ -442,12 +442,15 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		answer.DynamicMenu = dm.String
 
 		if currentQuestion == nil || currentQuestion.QuestionId != question.QuestionId {
-			question.Answers = append(question.Answers, answer)
-			questions = append(questions, question)
+			if currentQuestion != nil {
+				questions = append(questions, *currentQuestion)
+			}
 			currentQuestion = &question
-		} else {
-			currentQuestion.Answers = append(currentQuestion.Answers, answer)
-		}
+		} 
+		currentQuestion.Answers = append(currentQuestion.Answers, answer)
+	}
+	if currentQuestion != nil {
+		questions = append(questions, *currentQuestion)
 	}
 
 	return questions, nil
