@@ -4,7 +4,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # The name of the container, should use the name of the repo is possible
 CONTAINER=vipshop-admin-api
 #TAG="$(git rev-parse --short HEAD)"
-LAST_RELEASE_TAG="20180112-1f53547"
+LAST_RELEASE_TAG="latest"
 
 TAG=$2
 if [ "$TAG" == "" ]; then
@@ -12,10 +12,12 @@ if [ "$TAG" == "" ]; then
 fi
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
+if [ ${USER} == "deployer" ]; then
 globalConf="
     -v /etc/localtime:/etc/localtime \
     --restart always \
 "
+fi
 moduleConf="
     -p 8181:8181
     --env-file $1

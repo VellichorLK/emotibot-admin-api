@@ -27,3 +27,6 @@ cmd="docker build \
   -f $DIR/Dockerfile $BUILDROOT"
 echo $cmd
 eval $cmd
+cmd="docker tag $DOCKER_IMAGE $REPO/$CONTAINER:latest"
+echo $cmd
+eval $cmd
