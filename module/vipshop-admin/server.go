@@ -166,4 +166,5 @@ func initDB() {
 
 	SelfLearning.InitDB()
 	imagesManager.InitDB()
+	imagesManager.InitDaemon()
 }

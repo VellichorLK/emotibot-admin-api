@@ -1,0 +1,12 @@
+FROM golang:1.8-alpine AS buildEnv
+
+WORKDIR /go/src/mol
+ADD ./ /go/src/mol
+RUN go build -o mol
+
+FROM alpine:3.5
+WORKDIR /usr/bin/
+RUN apk add --no-cache tzdata
+COPY --from=buildEnv /go/src/mol/mol /usr/bin/mol
+
+ENTRYPOINT [ "./mol" ]

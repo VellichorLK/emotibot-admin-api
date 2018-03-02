@@ -11,7 +11,7 @@ import (
 type Image struct {
 	ID               int64
 	FileName         string
-	Location         string
+	LocationID       int64
 	CreatedTime      util.JSONUnixTime
 	LastModifiedTime util.JSONUnixTime
 }
