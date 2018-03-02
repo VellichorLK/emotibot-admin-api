@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
-	consul "github.com/hashicorp/consul/api"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
@@ -17,8 +16,6 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
-	//consulClient is needed for communicate with consul
-	consulClient *consul.Client
 )
 
 func init() {
