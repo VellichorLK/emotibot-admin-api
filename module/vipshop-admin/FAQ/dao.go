@@ -40,9 +40,10 @@ func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 	return contents, nil
 }
 
-//selectQuestion will return StdQuestion struct of the qid, if not found will return sql.ErrNoRows
+// selectQuestion will return StdQuestion struct of the qid.
+// if some input are missed it will return error, if no rows are found it will return sql.ErrNoRows.
 func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
-	var questions []StdQuestion
+	var questions = make([]StdQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("Main DB has not init")
@@ -64,6 +65,14 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 	}
 	if err := result.Err(); err != nil {
 		return nil, err
+	}
+
+	size := len(questions)
+	if size == 0 {
+		return nil, sql.ErrNoRows
+	}
+	if size != len(groupID) {
+		return nil, fmt.Errorf("query can not found some of id that passed in")
 	}
 
 	return questions, nil
@@ -166,22 +175,30 @@ func GetCategory(ID int) (Category, error) {
 }
 
 // GetRFQuestions return RemoveFeedbackQuestions.
-// It need to joined with StdQuestions table, because there is no way to make sure data consistency.
-func GetRFQuestions() ([]StdQuestion, error) {
-	var questions = make([]StdQuestion, 0)
+// It need to joined with StdQuestions table, because it need to validate the data.
+func GetRFQuestions() ([]RFQuestion, error) {
+	var questions = make([]RFQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "SELECT rf.id, rf.Question_Content, stdQ.CategoryId FROM vipshop_question AS stdQ INNER JOIN vipshop_removeFeedbackQuestion AS rf ON stdQ.Content = rf.Question_Content"
+	rawQuery := "SELECT stdQ.Question_Id, rf.Question_Content, stdQ.CategoryId  FROM vipshop_removeFeedbackQuestion AS rf LEFT JOIN vipshop_question AS stdQ ON stdQ.Content = rf.Question_Content"
 	rows, err := db.Query(rawQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query %s failed, %v", rawQuery, err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var q StdQuestion
-		rows.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
+		var q RFQuestion
+		var id sql.NullInt64
+		rows.Scan(&id, &q.Content, &q.CategoryID)
+		if id.Valid {
+			q.isValid = true
+			q.ID = int(id.Int64)
+		} else {
+			q.ID = 0
+			q.CategoryID = 0
+		}
 		questions = append(questions, q)
 	}
 	if err = rows.Err(); err != nil {

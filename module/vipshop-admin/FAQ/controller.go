@@ -7,9 +7,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
-
+	consul "github.com/hashicorp/consul/api"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
@@ -17,6 +18,8 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
+	//consulClient is needed for communicate with consul
+	consulClient *consul.Client
 )
 
 func init() {
@@ -148,6 +151,7 @@ func handleSearchQuestion(ctx context.Context) {
 
 }
 
+//Retrun JSON Formatted RFQuestion array, if question is invalid, id & categoryId will be 0
 func handleGetRFQuestions(ctx iris.Context) {
 	questions, err := GetRFQuestions()
 	if err != nil {
@@ -182,6 +186,13 @@ func handleSetRFQuestions(ctx iris.Context) {
 		contents[i] = q.Content
 	}
 	if err = SetRFQuestions(contents); err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	unixTime := time.Now().UnixNano() / 1000000
+	_, err = util.ConsulUpdateVal("vipshopRF", unixTime)
+	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return

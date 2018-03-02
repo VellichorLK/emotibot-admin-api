@@ -18,7 +18,7 @@ components:
   schemas:
     RFQuestion:
       type: object
-      description: RemovedFeedback Question, 不顯示解決未解決的標準問
+      description: RemovedFeedback Question, 不顯示解決未解決的標準問, 如果問題為失效問題, id & categoryId 為0
       properties:
         id:
           type: integer
@@ -28,7 +28,9 @@ components:
         content:
           type: string
           description: 標準問問題
-        
+        isValid:
+          type: boolean
+          description: 是否已失效, 如果解决未解决页面的标准问已经不在问答库中存在，则状态为“已失效”。
     categoryId:
       type: integer
       description: questions under which category
