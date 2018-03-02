@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -208,6 +209,7 @@ func GetRFQuestions() ([]RFQuestion, error) {
 }
 
 // SetRFQuestions will reset RFQuestion table and save given content as RFQuestion.
+// It will try to Update consul as well, if failed, table will be rolled back.
 func SetRFQuestions(contents []string) error {
 	if len(contents) == 0 {
 		return fmt.Errorf("an empty slice is passed in")
@@ -216,7 +218,11 @@ func SetRFQuestions(contents []string) error {
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
 	}
-	_, err := db.Exec("TRUNCATE vipshop_removeFeedbackQuestion")
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("transaction start failed, %v", err)
+	}
+	_, err = tx.Exec("TRUNCATE vipshop_removeFeedbackQuestion")
 	if err != nil {
 		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
 	}
@@ -225,11 +231,21 @@ func SetRFQuestions(contents []string) error {
 	for i, c := range contents {
 		parameters[i] = c
 	}
-	_, err = db.Exec(rawQuery, parameters...)
+	_, err = tx.Exec(rawQuery, parameters...)
 	if err != nil {
 		return fmt.Errorf("insert failed, %v", err)
 	}
 
+	unixTime := time.Now().UnixNano() / 1000000
+	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("consul update failed, %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("db commit failed, %v", err)
+	}
 	return nil
 }
 
@@ -281,13 +297,13 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		var aids [][]string
 		query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
 
-		dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu" 
+		dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu"
 		dmCondition = fmt.Sprintf(dmCondition, appid)
-		if condition.SearchDynamicMenu  {
+		if condition.SearchDynamicMenu {
 			if condition.Keyword != "" {
 				dmCondition += " where DynamicMenu like ?"
 				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
-			} 
+			}
 			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		} else if condition.SearchAll {
 			query += fmt.Sprintf(" left join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
@@ -295,7 +311,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 		rqCondition := "select Answer_Id, RelatedQuestion from %s_related_question"
 		rqCondition = fmt.Sprintf(rqCondition, appid)
-		if condition.SearchRelativeQuestion{
+		if condition.SearchRelativeQuestion {
 			if condition.Keyword != "" {
 				rqCondition += " where RelatedQuestion like ?"
 				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
@@ -315,7 +331,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 		if condition.SearchAll && condition.Keyword != "" {
 			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
-			param := "%"+condition.Keyword+"%"
+			param := "%" + condition.Keyword + "%"
 			sqlParams = append(sqlParams, param, param, param, param)
 		}
 

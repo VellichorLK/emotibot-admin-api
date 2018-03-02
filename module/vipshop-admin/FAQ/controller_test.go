@@ -147,14 +147,14 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 
 func TestHandleGetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
-	var expected = []StdQuestion{
-		StdQuestion{1, "測試A", 1},
-		StdQuestion{2, "測試B", 1},
+	var expected = []RFQuestion{
+		RFQuestion{0, "測試A", 0, true},
+		RFQuestion{2, "測試B", 1, false},
 	}
 
-	rows := sqlmock.NewRows([]string{"rd.id", " rf.Question_Content", "StdQ.CategoryId"})
+	rows := sqlmock.NewRows([]string{"stdQ.id", " rf.Question_Content", "stdQ.CategoryId"})
 	for _, q := range expected {
-		rows.AddRow(q.QuestionID, q.Content, q.CategoryID)
+		rows.AddRow(q.ID, q.Content, q.CategoryID)
 	}
 	mockedMainDB.ExpectQuery("SELECT ").WillReturnRows(rows)
 	resp := e.GET("/RFQuestions").Expect().Body()
@@ -177,9 +177,10 @@ func TestHandleSetRFQuestions(t *testing.T) {
 	}
 	expectSelectQuestions(mockedMainDB, input.GroupID, expected)
 	// var contents = []driver.Value{"測試A", "測試B", "測試C"}
+	mockedMainDB.ExpectBegin()
 	mockedMainDB.ExpectExec("TRUNCATE vipshop_removeFeedbackQuestion").WillReturnResult(sqlmock.NewResult(0, 0))
 	mockedMainDB.ExpectExec("INSERT INTO vipshop_removeFeedbackQuestion").WillReturnResult(sqlmock.NewResult(4, 4))
-
+	mockedMainDB.ExpectCommit()
 	request := e.POST("/RFQuestions").WithHeader("Authorization", "vipshop").WithJSON(input)
 	for _, i := range input.GroupID {
 		request.WithQuery("id", i)

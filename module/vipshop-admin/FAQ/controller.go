@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	consul "github.com/hashicorp/consul/api"
@@ -190,13 +189,7 @@ func handleSetRFQuestions(ctx iris.Context) {
 		util.LogError.Println(err)
 		return
 	}
-	unixTime := time.Now().UnixNano() / 1000000
-	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
-	if err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-		util.LogError.Println(err)
-		return
-	}
+
 }
 
 func handleCategoryQuestions(ctx iris.Context) {
