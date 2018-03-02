@@ -281,24 +281,28 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		var aids [][]string
 		query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
 
-		if condition.SearchDynamicMenu {
-			dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu"
-			dmCondition = fmt.Sprintf(dmCondition, appid)
+		dmCondition := "select Answer_Id, DynamicMenu from %s_dynamic_menu" 
+		dmCondition = fmt.Sprintf(dmCondition, appid)
+		if condition.SearchDynamicMenu  {
 			if condition.Keyword != "" {
-				dmCondition += " where DynamicMenu like \"%" + condition.Keyword + "%\""
-			}
-
+				dmCondition += " where DynamicMenu like ?"
+				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
+			} 
 			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
+		} else if condition.SearchAll {
+			query += fmt.Sprintf(" left join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		}
 
-		if condition.SearchRelativeQuestion {
-			rqCondition := "select Answer_Id, RelatedQuestion from %s_related_question"
-			rqCondition = fmt.Sprintf(rqCondition, appid)
+		rqCondition := "select Answer_Id, RelatedQuestion from %s_related_question"
+		rqCondition = fmt.Sprintf(rqCondition, appid)
+		if condition.SearchRelativeQuestion{
 			if condition.Keyword != "" {
-				rqCondition += " where RelatedQuestion like \"%" + condition.Keyword + "%\""
+				rqCondition += " where RelatedQuestion like ?"
+				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
 			}
-
 			query += fmt.Sprintf(" inner join (%s) as rq on rq.Answer_Id = a.Answer_Id", rqCondition)
+		} else if condition.SearchAll {
+			query += fmt.Sprintf(" left join (%s) as rq on rq.Answer_Id = a.Answer_Id", rqCondition)
 		}
 
 		if len(condition.Dimension) != 0 {
@@ -307,6 +311,12 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 				return qids, aidMap, err
 			}
 			query += fmt.Sprintf(" inner join (%s) as tag on tag.a_id = a.Answer_Id", sqlStr)
+		}
+
+		if condition.SearchAll && condition.Keyword != "" {
+			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
+			param := "%"+condition.Keyword+"%"
+			sqlParams = append(sqlParams, param, param, param, param)
 		}
 
 		query += " group by q.Question_Id order by q.Question_Id desc"
@@ -337,7 +347,8 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 }
 
 func HasCondition(condition QueryCondition) bool {
-	searchKeyword := condition.SearchAnswer || condition.SearchDynamicMenu || condition.SearchRelativeQuestion || condition.SearchQuestion
+	searchKeyword := condition.SearchAnswer || condition.SearchDynamicMenu || condition.SearchRelativeQuestion || condition.SearchQuestion || condition.SearchAll
+
 	if !condition.NotShow && !searchKeyword && !condition.TimeSet && condition.CategoryId == 0 && len(condition.Dimension) == 0 {
 		return false
 	} else {

@@ -41,6 +41,8 @@ func (m *paramMock) FormValue(key string) string {
 		return "false"
 	case "search_answer":
 		return "true"
+	case "search_all":
+		return "false"
 	default:
 		return ""
 	}
@@ -58,6 +60,7 @@ func TestFilterQuestion(t *testing.T) {
 		SearchAnswer:           true,
 		SearchQuestion:         false,
 		SearchDynamicMenu:      false,
+		SearchAll:              false,
 		SearchRelativeQuestion: true,
 		NotShow:                false,
 		Dimension:              make([]DimensionGroup, 0),
@@ -71,6 +74,7 @@ func TestFilterQuestion(t *testing.T) {
 	assert.Equal(t, condition.BeginTime, targetCondition.BeginTime, "BeginTime should be false")
 	assert.Equal(t, condition.EndTime, targetCondition.EndTime, "EndTime should be false")
 	assert.Equal(t, condition.Keyword, targetCondition.Keyword, "Keyword should be false")
+	assert.Equal(t, condition.SearchRelativeQuestion, targetCondition.SearchRelativeQuestion, "SearchAll should be false")
 	assert.Equal(t, condition.SearchDynamicMenu, targetCondition.SearchDynamicMenu, "DynamicMenu should be false")
 	assert.Equal(t, condition.SearchRelativeQuestion, targetCondition.SearchRelativeQuestion, "RelativeQuestion should be false")
 	assert.Equal(t, condition.SearchQuestion, targetCondition.SearchQuestion, "question should be false")
