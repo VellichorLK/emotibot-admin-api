@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"net/http"
@@ -197,7 +198,10 @@ func handleCategoryQuestions(ctx iris.Context) {
 		return
 	}
 	category, err := GetCategory(id)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	} else if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return

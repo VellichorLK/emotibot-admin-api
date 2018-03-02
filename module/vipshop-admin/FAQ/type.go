@@ -113,15 +113,15 @@ func (c Category) SubCats() ([]Category, error) {
 	for rows.Next() {
 		var subCat Category
 		subCat.ParentID = c.ID
-		rows.Scan(&subCat.ID, &subCat.Name)
+		if err := rows.Scan(&subCat.ID, &subCat.Name); err != nil {
+			return nil, fmt.Errorf("scan failed, %v", err)
+		}
+		categories = append(categories, subCat)
 		subSubCats, err := subCat.SubCats() //子類別的子類別
 		if err != nil {
 			return nil, fmt.Errorf("sub category %s query failed, %v", subCat.Name, err)
 		}
 		categories = append(categories, subSubCats...)
-	}
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("scan failed, %v", err)
 	}
 
 	return categories, nil
