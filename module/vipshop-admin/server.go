@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/Dictionary"
 	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
@@ -29,6 +31,17 @@ var serverConfig map[string]string
 
 func main() {
 	app := iris.New()
+	//Init Consul Client
+	serverEnvs := util.GetEnvOf("server")
+	consulAddr, ok := serverEnvs["CONSUL_URL"]
+	if !ok {
+		util.LogError.Printf("Can not init without server env:'CONSUL_URL env'")
+		os.Exit(-1)
+	}
+	customHTTPClient := &http.Client{
+		Timeout: time.Duration(5) * time.Second,
+	}
+	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(consulAddr, customHTTPClient)
 
 	// util.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr)
