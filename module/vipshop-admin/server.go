@@ -29,6 +29,18 @@ var constant = map[string]interface{}{
 
 var serverConfig map[string]string
 
+func init() {
+	// util.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
+	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr)
+	if len(os.Args) > 1 {
+		err := util.LoadConfigFromFile(os.Args[1])
+		if err != nil {
+			util.LogError.Printf(err.Error())
+			os.Exit(-1)
+		}
+	}
+}
+
 func main() {
 	app := iris.New()
 	//Init Consul Client
@@ -42,16 +54,6 @@ func main() {
 		Timeout: time.Duration(5) * time.Second,
 	}
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(consulAddr, customHTTPClient)
-
-	// util.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr)
-	if len(os.Args) > 1 {
-		err := util.LoadConfigFromFile(os.Args[1])
-		if err != nil {
-			util.LogError.Printf(err.Error())
-			os.Exit(-1)
-		}
-	}
 
 	setRoute(app)
 	initDB()
