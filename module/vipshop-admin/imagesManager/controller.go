@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
@@ -26,6 +27,7 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "images", []string{}, receiveImage),
 			util.NewEntryPoint("GET", "images", []string{}, handleImageList),
+			util.NewEntryPoint("DELETE", "images/{id:int}", []string{}, handleDeleteImage),
 		},
 	}
 }
@@ -102,4 +104,21 @@ func handleImageList(ctx context.Context) {
 	ctx.JSON(list)
 	return
 
+}
+
+func handleDeleteImage(ctx context.Context) {
+	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	if err != nil || imageID <= 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
+		return
+	}
+
+	_, err = deleteImages([]interface{}{imageID})
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
 }

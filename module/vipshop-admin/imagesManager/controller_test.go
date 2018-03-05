@@ -41,7 +41,7 @@ func TestReceiveImage(t *testing.T) {
 	if err != nil {
 		t.Fatal()
 	}
-	file2 := &uploadArg{FileName: "controller_test22.bb", Content: base64.StdEncoding.EncodeToString(data2)}
+	file2 := &uploadArg{FileName: "controller_test22.jpg", Content: base64.StdEncoding.EncodeToString(data2)}
 
 	files := make([]*uploadArg, 2, 2)
 	files[0] = file1

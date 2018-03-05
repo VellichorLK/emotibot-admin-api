@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path"
 	"strconv"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/go-sql-driver/mysql"
@@ -66,16 +67,14 @@ func getImageList(args *getImagesArg) (*imageList, error) {
 			}
 			image.Refs = append(image.Refs, qInfo)
 		}
-
 	}
-
 	return list, nil
 }
 
 //newImageRecord would return the real file name which is inserted into db and its id
 func newImageRecord(name string, size int) (uint64, string, error) {
 
-	db := util.GetDB(ModuleInfo.ModuleName)
+	//db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		return 0, "", errors.New("No module(" + ModuleInfo.ModuleName + ") db connection")
 	}
@@ -90,7 +89,7 @@ func newImageRecord(name string, size int) (uint64, string, error) {
 	sql := "insert into " + imageTable + " (" + attrFileName + "," + attrLocationID + "," + attrSize + ") values (?,?,?)"
 
 	for {
-		res, err = SqlExec(util.GetDB(ModuleInfo.ModuleName), sql, fileName, LocalID, size)
+		res, err = SqlExec(db, sql, fileName, LocalID, size)
 		if err != nil {
 			if driverErr, ok := err.(*mysql.MySQLError); ok {
 				if driverErr.Number != ErDupEntry {
@@ -108,4 +107,78 @@ func newImageRecord(name string, size int) (uint64, string, error) {
 	}
 
 	return uint64(id), fileName, err
+}
+
+func deleteImages(imageIDs []interface{}) (int64, error) {
+
+	var err error
+
+	fileList, err := getFileNameByImageID(imageIDs)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(fileList) != len(imageIDs) {
+		return 0, errors.New("Some assigned id doesn't exist")
+	}
+
+	tx, err := GetTx(db)
+	if err != nil {
+		return 0, nil
+	}
+
+	defer tx.Rollback()
+
+	sqlString := "delete from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+	stmt, err := tx.Prepare(sqlString)
+	if err != nil {
+		return 0, err
+	}
+
+	res, err := ExecStmt(stmt, imageIDs...)
+	if err != nil {
+		return 0, err
+	}
+
+	delRowCount, err := res.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	length := 10
+
+	folerName, err := createBackupFolder(length, Volume)
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = copyFiles(Volume, Volume+"/"+folerName, fileList)
+	if err != nil {
+		return 0, err
+	}
+
+	defer func() {
+		if err != nil {
+			copyFiles(Volume+"/"+folerName, Volume, fileList)
+		}
+		deleteFiles([]string{Volume + "/" + folerName})
+
+	}()
+
+	var delFileCount int64
+
+	delFileCount, err = deleteFiles(fileList)
+	if err != nil {
+		return 0, err
+	}
+	if delRowCount != delFileCount {
+		util.LogWarn.Printf("delete images count from db(%v) is not the same from file(%v)\n", delRowCount, delFileCount)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return 0, err
+	}
+
+	return res.RowsAffected()
 }

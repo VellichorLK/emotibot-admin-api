@@ -27,7 +27,7 @@ type getImagesArg struct {
 type imageList struct {
 	Total     uint64       `json:"total"`
 	CurPage   uint64       `json:"curPage"`
-	Images    []*imageInfo `json:"Images"`
+	Images    []*imageInfo `json:"images"`
 	answerIDs []interface{}
 }
 
@@ -97,6 +97,8 @@ const (
 	PAGE    = "page"
 	LIMIT   = "limit"
 	KEYWORD = "keyword"
+	TITLE   = "title"
+	IMAGE   = "image"
 )
 
 //request parameter value

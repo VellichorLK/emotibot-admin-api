@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -280,6 +282,100 @@ func GetCategories() (map[int]*Category, error) {
 	}
 
 	return categories, nil
+}
+
+func getFileNameByImageID(imageIDs []interface{}) ([]string, error) {
+	sqlString := "select " + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+
+	rows, err := SqlQuery(db, sqlString, imageIDs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	fileNameList := make([]string, 0)
+	var fileName string
+	for rows.Next() {
+		err := rows.Scan(&fileName)
+		if err != nil {
+			return nil, err
+		}
+		fileNameList = append(fileNameList, fileName)
+	}
+	return fileNameList, nil
+}
+
+func createBackupFolder(n int, path string) (string, error) {
+	folderName := GetUniqueString(n)
+	err := os.Mkdir(path+"/"+folderName, 0755)
+	if err != nil {
+		return "", err
+	}
+	return folderName, nil
+}
+
+func copyFiles(from string, to string, fileName []string) (int, error) {
+	var count int
+	for i := 0; i < len(fileName); i++ {
+
+		src := from + "/" + fileName[i]
+		dst := to + "/" + fileName[i]
+
+		if _, err := os.Stat(dst); os.IsNotExist(err) {
+			err := copy(src, dst)
+			if err != nil {
+				//if the file doesn't exist, assusme it is deleted somehow.
+				if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
+					util.LogWarn.Printf("opening file %s failed. File not exist.\n", from+"/"+fileName[i])
+					continue
+				}
+				util.LogError.Printf("opening file %s failed. %s\n", fileName[i], err.Error())
+				return count, err
+			}
+			count++
+		} else {
+			fmt.Println(err)
+		}
+	}
+
+	return count, nil
+}
+
+func copy(from string, to string) error {
+	srcFile, err := os.Open(from)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.OpenFile(to, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func deleteFiles(fileName []string) (int64, error) {
+	var count int64
+	for _, name := range fileName {
+		err := os.RemoveAll(name)
+		if err != nil {
+			//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
+			if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
+				util.LogWarn.Printf("remove file %s failed. File not exist.\n", name)
+				continue
+			}
+			util.LogError.Printf("remove file %s failed! %s", name, err.Error())
+			return count, errors.New("remove file " + name + " failed." + err.Error())
+		}
+		count++
+	}
+	return count, nil
 }
 
 func SqlQuery(db *sql.DB, sql string, params ...interface{}) (*sql.Rows, error) {
