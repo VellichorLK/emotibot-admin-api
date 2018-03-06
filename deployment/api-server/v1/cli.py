@@ -129,11 +129,11 @@ def do_run(compose_file, env_file, services, depends, number, number_asr):
             no_deps = '--no-deps '
         for s in services:
             if s == 'w-v-emotion':
-                scaleList.append('--scale %s=%s' % (s, number))
+                scaleList.append('--scale %s=%s ' % (s, number))
             elif s == 'w-v-asr':
-                scaleList.append('--scale %s=%s' % (s, number_asr))
+                scaleList.append('--scale %s=%s ' % (s, number_asr))
 
-    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s-d %s %s' % (
+    cmd = 'docker-compose -f %s up --force-recreate --remove-orphans %s%s-d %s' % (
         compose_file,
         no_deps,
         ' '.join(n for n in scaleList) if scaleList else '',
