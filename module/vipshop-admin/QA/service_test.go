@@ -23,20 +23,20 @@ func TestParseDatetimeStr(t *testing.T) {
 func TestParseKeywordType(t *testing.T) {
 	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition{SearchAll: true}
 	result := parseKeywordType(&mockCondition)
-	target := "全部"
+	target := ""
 
 	assert.Equal(t, result, target, "should parse correctly")
 }
 
 func TestGenDimensionStr(t *testing.T) {
-	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition {
-		Dimension: []FAQ.DimensionGroup {
-			FAQ.DimensionGroup {
-				TypeId: 1,
+	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition{
+		Dimension: []FAQ.DimensionGroup{
+			FAQ.DimensionGroup{
+				TypeId:  1,
 				Content: "#aaa#",
 			},
-			FAQ.DimensionGroup {
-				TypeId: 2,
+			FAQ.DimensionGroup{
+				TypeId:  2,
 				Content: "#bbb#",
 			},
 		},
@@ -55,7 +55,7 @@ func TestGenCategroyStr(t *testing.T) {
 
 	mainDBMock.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WillReturnRows(rows)
 
-	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition {
+	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition{
 		CategoryId: 3,
 	}
 	result, err := genCategoryStr(&mockCondition)
@@ -66,23 +66,23 @@ func TestGenCategroyStr(t *testing.T) {
 }
 
 func TestGenQAExportAuditLog(t *testing.T) {
-	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition {
+	var mockCondition FAQ.QueryCondition = FAQ.QueryCondition{
 		CategoryId: 3,
-		Dimension: []FAQ.DimensionGroup {
-			FAQ.DimensionGroup {
-				TypeId: 1,
+		Dimension: []FAQ.DimensionGroup{
+			FAQ.DimensionGroup{
+				TypeId:  1,
 				Content: "#aaa#",
 			},
-			FAQ.DimensionGroup {
-				TypeId: 2,
+			FAQ.DimensionGroup{
+				TypeId:  2,
 				Content: "#bbb#",
 			},
 		},
 		SearchAll: true,
-		Keyword: "哈哈",
-		TimeSet: true,
+		Keyword:   "哈哈",
+		TimeSet:   true,
 		BeginTime: "2011-12-01 12:35:00",
-		EndTime: "2012-12-01 12:35:00",
+		EndTime:   "2012-12-01 12:35:00",
 	}
 	var mockTaskID int = 5
 
