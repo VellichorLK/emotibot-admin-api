@@ -210,6 +210,8 @@ func dailyAvgEmotion(_t1 uint64, _t2 uint64, appid string) ([]*AvgEmotion, error
 	var createdTime int64
 	var lastID uint64
 
+	t2 := AddTimeUnit(int64(_t2), Day)
+
 	avgEmotions := make([]*AvgEmotion, 0)
 
 	for rows.Next() {
@@ -223,7 +225,7 @@ func dailyAvgEmotion(_t1 uint64, _t2 uint64, appid string) ([]*AvgEmotion, error
 			return nil, err
 		}
 
-		if createdTime >= nextDay {
+		for createdTime >= nextDay {
 			ae := genAvgEmotion(nextDay-1, totalCount, sumDuration, count1, score1, count2, score2)
 
 			avgEmotions = append(avgEmotions, ae)
@@ -253,8 +255,14 @@ func dailyAvgEmotion(_t1 uint64, _t2 uint64, appid string) ([]*AvgEmotion, error
 		}
 	}
 
-	ae := genAvgEmotion(nextDay-1, totalCount, sumDuration, count1, score1, count2, score2)
-	avgEmotions = append(avgEmotions, ae)
+	for nextDay <= t2 {
+		ae := genAvgEmotion(nextDay-1, totalCount, sumDuration, count1, score1, count2, score2)
+		avgEmotions = append(avgEmotions, ae)
+		nextDay = AddTimeUnit(nextDay, Day)
+		totalCount, sumDuration = 0, 0
+		count1, count2 = 0, 0
+		score1, score2 = 0, 0
+	}
 
 	return avgEmotions, nil
 }

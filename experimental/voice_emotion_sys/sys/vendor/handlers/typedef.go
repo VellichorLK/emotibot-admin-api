@@ -103,6 +103,11 @@ type VadResult struct {
 	SegEndTime   float64                `json:"segment_end_time"`
 	ScoreList    []*EmtionScore         `json:"scores_result"`
 	ExtraInfo    map[string]interface{} `json:"extra_info"`
+	Text         string                 `json:"text"`
+}
+
+type vadInfo struct {
+	Text string
 }
 
 //EmotionMap mapping the emotion_type to its name
@@ -238,9 +243,12 @@ const EmotionTable = "emotionInformation"
 const AnalysisTable = "analysisInformation"
 const ChannelTable = "channelScore"
 const EmotionMapTable = "emotionMap"
+const VadInfoTable = "asr_analysisInformation"
 
 const DEFAULTPRIORITY = 0
 const LIMITTAGLEN = 128
+const NVADRESULT = "result"
+const NVADFILEID = "fileInformation_id"
 
 //column name of main table
 const NID = "id"

@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"math/rand"
@@ -92,7 +93,7 @@ const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NRDURATION + "," +
 	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
-	" from " + MainTable + ") as a left join ( select b." + NID + ",b." + NSEGST + ",b." + NSEGET +
+	" from " + MainTable + ") as a left join ( select b." + NSEGID + ",b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 	",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
 	AnalysisTable + " where " + NID + "=(select " + NID + " from " + MainTable + " where " +
 	NAPPID + "=? and " + NFILEID + "=?)) as b left join " + EmotionTable + " as c " +
@@ -201,8 +202,6 @@ func DeleteUsrColumField(id string) error {
 }
 */
 
-
-
 func ComputeSilence(eb *EmotionBlock) error {
 
 	if (nil == eb) || (nil == eb.Segments) || (0 == len(eb.Segments)) {
@@ -242,23 +241,23 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 	sort.Sort(ComparatorOfVoiceSegment(eb.Segments))
 
 	// 2. merge
-	var voiceLength float64 = float64(eb.RDuration) / 1000		//ms -> seconds
+	var voiceLength float64 = float64(eb.RDuration) / 1000 //ms -> seconds
 	mergedList := make([]VoiceSegment, 0, len(eb.Segments))
 	for _, segmentInterval := range eb.Segments {
 		if 0 == len(mergedList) || mergedList[len(mergedList)-1].SegEndTime < segmentInterval.SegStartTime {
 			// non-overlap, must fit 0 <= startTime < endTime <= voiceLength
-			if segmentInterval.SegStartTime <= segmentInterval.SegEndTime {		// err check, most of cases start <= end
-				mergedList = append(mergedList, VoiceSegment {
+			if segmentInterval.SegStartTime <= segmentInterval.SegEndTime { // err check, most of cases start <= end
+				mergedList = append(mergedList, VoiceSegment{
 					segmentInterval.Status,
 					segmentInterval.Channel,
 					math.Max(0, segmentInterval.SegStartTime),
 					math.Min(segmentInterval.SegEndTime, voiceLength),
 					nil,
-					nil })
+					nil})
 			}
 		} else {
 			//overlap
-			mergedList[len(mergedList)-1].SegEndTime = math.Max(mergedList[len(mergedList)-1].SegEndTime, segmentInterval.SegEndTime);
+			mergedList[len(mergedList)-1].SegEndTime = math.Max(mergedList[len(mergedList)-1].SegEndTime, segmentInterval.SegEndTime)
 		}
 	}
 
@@ -266,28 +265,27 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 	const CHANNEL_SILENCE int = 0
 
 	// 3. append the last one.
-	mergedList = append(mergedList, VoiceSegment {
+	mergedList = append(mergedList, VoiceSegment{
 		STATUS_SILENCE,
 		CHANNEL_SILENCE,
 		voiceLength,
 		voiceLength,
 		nil,
-		nil })
+		nil})
 
 	// 4. use the merged list, the reverse part is the empty part.
-	for index:=len(mergedList)-1; index >= 0; index-- {
+	for index := len(mergedList) - 1; index >= 0; index-- {
 		mergedList[index].Channel = CHANNEL_SILENCE
 		mergedList[index].SegEndTime = mergedList[index].SegStartTime
 		if index != 0 {
 			mergedList[index].SegStartTime = mergedList[index-1].SegEndTime
-		} else {	// first item
+		} else { // first item
 			mergedList[index].SegStartTime = 0
 		}
 	}
 
 	return mergedList
 }
-
 
 // sort interface.
 type ComparatorOfVoiceSegment []VoiceSegment
@@ -301,7 +299,6 @@ func (voiceSegmentlist ComparatorOfVoiceSegment) Swap(i, j int) {
 func (voiceSegmentlist ComparatorOfVoiceSegment) Less(i, j int) bool {
 	return voiceSegmentlist[i].SegStartTime < voiceSegmentlist[j].SegStartTime
 }
-
 
 func InsertAnalysisRecord(eb *EmotionBlock) error {
 	stmt, err := db.Prepare(InsertAnalysisSQL)
@@ -583,6 +580,12 @@ func QueryUnfinished(fileID string, appid string) ([]byte, int, error) {
 }
 */
 func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int, error) {
+
+	vads, err := getVadInfo(fileID)
+	if err != nil {
+		log.Println(err)
+		return http.StatusInternalServerError, err
+	}
 	//debug.FreeOSMemory()
 	drb.Channels = make([]*DetailChannelResult, 0)
 
@@ -604,12 +607,12 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		count++
 		var ch, status, emType sql.NullInt64
 		var st, ed, score sql.NullFloat64
-		var file sql.NullInt64
+		var file, segID sql.NullInt64
 		var blob []uint8
 
 		err := rows.Scan(&id, &drb.FileID, &drb.FileName, &drb.FileType, &drb.Duration,
 			&drb.CreateTime, &drb.Checksum, &drb.Tag, &drb.Tag2, &drb.Priority, &drb.Size, &drb.AnalysisResult, &drb.UploadTime,
-			&file, &st, &ed, &ch, &status, &blob, &emType, &score)
+			&segID, &file, &st, &ed, &ch, &status, &blob, &emType, &score)
 
 		if err != nil {
 			log.Println(err)
@@ -642,6 +645,10 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 				vr.Status = int(status.Int64)
 				vr.SegStartTime = st.Float64
 				vr.SegEndTime = ed.Float64
+
+				if vadInfo, ok := vads[uint64(segID.Int64)]; ok {
+					vr.Text = vadInfo.Text
+				}
 
 				if blob != nil {
 					var v map[string]interface{}
@@ -696,6 +703,37 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 	drb.UsrColumn = cvs
 
 	return http.StatusOK, nil
+}
+
+func getVadInfo(fileID string) (map[uint64]*vadInfo, error) {
+	sqlString := "select " + NSEGID + "," + NVADRESULT + " from " + VadInfoTable +
+		" where " + NVADFILEID + "=(select " + NID + " from " + MainTable + " where " + NFILEID + "=?)" +
+		" and " + NPRIORITY + "=0 and " + NSTATUS + "=1"
+
+	rows, err := db.Query(sqlString, fileID)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(sqlString)
+	fmt.Println(fileID)
+
+	vads := make(map[uint64]*vadInfo)
+
+	for rows.Next() {
+		info := &vadInfo{}
+		var segID uint64
+		var result string
+		err = rows.Scan(&segID, &result)
+		if err != nil {
+			return nil, err
+		}
+		info.Text = result
+		vads[segID] = info
+		//fmt.Printf("segID:%v, result:%s\n", segID, result)
+	}
+
+	return vads, nil
 }
 
 /*
