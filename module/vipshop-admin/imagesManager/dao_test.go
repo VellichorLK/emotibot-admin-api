@@ -9,7 +9,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	//
+	os.Setenv("SYNC_PERIOD_BY_SECONDS", "100")
 	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	retCode := m.Run()
 	os.Exit(retCode)

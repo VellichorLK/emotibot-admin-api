@@ -51,12 +51,12 @@ func (d *Daemon) Sync() {
 			util.LogError.Printf("find image tag in answer failed, %v\n", err)
 			continue
 		}
-		err = LinkImagesForAnswer(answers)
+		count, err := LinkImagesForAnswer(answers)
 		if err != nil {
 			util.LogError.Printf("Link image for answers failed, %v. \n", err)
 			continue
 		}
-
+		util.LogTrace.Printf("daemon sync finished, num of %d inserted.\n", count)
 	}
 
 }
@@ -136,12 +136,15 @@ func (d *Daemon) FindImages() (answers map[int][]int, err error) {
 
 }
 
-//LinkImagesForAnswer will insert rows into middle table of image and answer.
-//It have to clean up image_answer table first, because it is no way to sync the old info.
-func LinkImagesForAnswer(answerImages map[int][]int) error {
+// LinkImagesForAnswer will insert rows into middle table of image and answer.
+// It have to clean up image_answer table first, because it is no way to sync the old info.
+// Return count num of rows it have insert into image_answer table.
+func LinkImagesForAnswer(answerImages map[int][]int) (int, error) {
+	//count is a counter for how many rows we totally write.
+	var count = 0
 	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("get transaction failed, %v", err)
+		return 0, fmt.Errorf("get transaction failed, %v", err)
 	}
 	defer func() {
 		if err != nil {
@@ -152,18 +155,19 @@ func LinkImagesForAnswer(answerImages map[int][]int) error {
 	}()
 	_, err = tx.Exec("DELETE FROM image_answer")
 	if err != nil {
-		return fmt.Errorf("clean up image_answer table failed, %v", err)
+		return 0, fmt.Errorf("clean up image_answer table failed, %v", err)
 	}
 	stmt, err := tx.Prepare("INSERT INTO image_answer (answer_id, image_id) VALUES (?, ?)")
 	if err != nil {
-		return fmt.Errorf("sql prepare failed, %v", err)
+		return 0, fmt.Errorf("sql prepare failed, %v", err)
 	}
 	for ansID, imgID := range answerImages {
 		_, err := stmt.Exec(ansID, imgID)
 		if err != nil {
-			return fmt.Errorf("sql insert failed, %v", err)
+			return 0, fmt.Errorf("sql insert failed, %v", err)
 		}
+		count++
 	}
 
-	return nil
+	return count, nil
 }
