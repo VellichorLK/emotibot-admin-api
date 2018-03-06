@@ -3,7 +3,9 @@ package imagesManager
 import (
 	"database/sql"
 	"encoding/base64"
+	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -28,6 +30,8 @@ func init() {
 			util.NewEntryPoint("POST", "images", []string{}, receiveImage),
 			util.NewEntryPoint("GET", "images", []string{}, handleImageList),
 			util.NewEntryPoint("DELETE", "images/{id:int}", []string{}, handleDeleteImage),
+			util.NewEntryPoint("POST", "images/{id:int}", []string{}, updateImage),
+			util.NewEntryPoint("POST", "images/delete", []string{}, handleDeleteImages),
 		},
 	}
 }
@@ -114,11 +118,121 @@ func handleDeleteImage(ctx context.Context) {
 		return
 	}
 
-	_, err = deleteImages([]interface{}{imageID})
+	deleteImagesByID(ctx, []interface{}{imageID})
+
+}
+
+func handleDeleteImages(ctx context.Context) {
+	ids := make([]interface{}, 0)
+	err := ctx.ReadJSON(&ids)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+		return
+	}
+
+	deleteImagesByID(ctx, ids)
+
+}
+
+func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
+	_, err := deleteImages(imageIDs)
+	if err != nil {
+		if err == errImageNotExist {
+			ctx.StatusCode(http.StatusBadRequest)
+		} else {
+			ctx.StatusCode(http.StatusInternalServerError)
+			util.LogError.Println(err)
+		}
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		return
+	}
+}
+
+func updateImage(ctx context.Context) {
+	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	if err != nil || imageID <= 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
+		return
+	}
+
+	files, err := getFileNameByImageID([]interface{}{imageID})
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
 		return
 	}
+
+	if len(files) == 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "No such id"))
+		return
+	}
+
+	fileName := files[0]
+	title := ctx.FormValue(TITLE)
+	var tx *sql.Tx
+	if title != "" && title != files[0] {
+		tx, err = db.Begin()
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+		defer tx.Rollback()
+		sqlString := "update " + imageTable + " set " + attrFileName + "=? where " + attrID + "=?"
+		_, _, fileName, err = inputUniqueFileName(tx, sqlString, title, []interface{}{title, imageID})
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+	}
+
+	file, fileHeader, err := ctx.FormFile(IMAGE)
+	if fileHeader != nil {
+
+		if fileName != files[0] {
+			_, err = deleteFiles(Volume, []string{files[0]})
+			if err != nil {
+				ctx.StatusCode(http.StatusInternalServerError)
+				ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+				util.LogError.Println(err)
+				return
+			}
+		}
+
+		dstFile, err := os.Create(Volume + "/" + fileName)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+
+		_, err = io.Copy(dstFile, file)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+	} else if fileName != files[0] {
+		err = os.Rename(Volume+"/"+files[0], Volume+"/"+fileName)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+	}
+
+	if tx != nil {
+		tx.Commit()
+	}
+
 }

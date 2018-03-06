@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -360,10 +361,15 @@ func copy(from string, to string) error {
 	return nil
 }
 
-func deleteFiles(fileName []string) (int64, error) {
+func deleteFiles(prefix string, fileName []string) (int64, error) {
 	var count int64
+
+	if prefix != "" {
+		prefix += "/"
+	}
+
 	for _, name := range fileName {
-		err := os.RemoveAll(name)
+		err := os.RemoveAll(prefix + name)
 		if err != nil {
 			//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
 			if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
@@ -376,6 +382,46 @@ func deleteFiles(fileName []string) (int64, error) {
 		count++
 	}
 	return count, nil
+}
+
+//return value: insert row id, rows affected, insert file name, error
+//this function tries to insert the assigned filename. If it's duplicate, try to make new one and insert
+func inputUniqueFileName(tx *sql.Tx, sql string, name string, params []interface{}) (int64, int64, string, error) {
+	var id int64
+	var counter int
+	var affected int64
+
+	ext := path.Ext(name)
+	baseName := name[:len(name)-len(ext)]
+	fileName := name
+
+	stmt, err := tx.Prepare(sql)
+	if err != nil {
+		return 0, 0, "", err
+	}
+	defer stmt.Close()
+
+	for {
+		res, err := stmt.Exec(params...)
+		if err != nil {
+			if driverErr, ok := err.(*mysql.MySQLError); ok {
+				if driverErr.Number != ErDupEntry {
+					return 0, 0, "", err
+				}
+			} else {
+				return 0, 0, "", err
+			}
+		} else {
+			id, err = res.LastInsertId()
+			affected, err = res.RowsAffected()
+			break
+		}
+		counter++
+		fileName = baseName + "(" + strconv.Itoa(counter) + ")" + ext
+		params[0] = fileName
+	}
+
+	return id, affected, fileName, nil
 }
 
 func SqlQuery(db *sql.DB, sql string, params ...interface{}) (*sql.Rows, error) {

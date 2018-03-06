@@ -73,7 +73,7 @@ func TestBackupFilesFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = deleteFiles([]string{path + "/" + folerName})
+	_, err = deleteFiles("", []string{path + "/" + folerName})
 	if err != nil {
 		t.Fatal(err)
 	}

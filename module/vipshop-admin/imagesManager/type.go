@@ -1,6 +1,10 @@
 package imagesManager
 
-import "emotibot.com/emotigo/module/vipshop-admin/util"
+import (
+	"errors"
+
+	"emotibot.com/emotigo/module/vipshop-admin/util"
+)
 
 //Image represent sql schema of the table image
 //Note: It does not contain bytes stream of image, instead it should be read from the location
@@ -59,9 +63,9 @@ const (
 	attrID           = "id"
 	attrFileName     = "fileName"
 	attrSize         = "size"
-	attrLocationID   = "locationId"
-	attrCreateTime   = "createdTime"
-	attrLatestUpdate = "lastModified"
+	attrLocationID   = "location_id"
+	attrCreateTime   = "create_time"
+	attrLatestUpdate = "last_update_time"
 
 	attrLocation   = "location"
 	attrImageID    = "image_id"
@@ -118,3 +122,7 @@ type Category struct {
 	Name     string
 	ParentID int
 }
+
+var (
+	errImageNotExist = errors.New("Some assigned id doesn't exist")
+)
