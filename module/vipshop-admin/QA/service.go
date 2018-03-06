@@ -1,6 +1,7 @@
 package QA
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
 )
 
 func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
@@ -307,4 +309,159 @@ func genRandomUUIDSameAsOpenAPI() string {
 		now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000,
 		randomNum)
 	return ret
+}
+
+func genQAExportAuditLog(condition *FAQ.QueryCondition, taskID int) (string, error) {
+	var content string
+	if FAQ.HasCondition(*condition) {
+		// rule
+		// [部分导出]：[生效时间][全部/问题/答案/指定动态菜单/指定相关问/不在推荐问内显示：关键字][维度][分类路径]：文件名
+		var timeCondition string
+		var keywordCondition string
+		var dimensionCondition string
+		var categoryCondition string
+
+		if condition.TimeSet {
+			timeCondition = "[时间段：%s%s%s%s%s-%s%s%s%s%s]"
+			startTimeSlices, err := parseDatetimeStr(condition.BeginTime)
+			endTimeSlices, err := parseDatetimeStr(condition.EndTime)
+
+			if err != nil {
+				return "", err
+			}
+			
+			timeCondition = fmt.Sprintf(
+				timeCondition, 
+				startTimeSlices[0], 
+				startTimeSlices[1], 
+				startTimeSlices[2], 
+				startTimeSlices[3],
+				startTimeSlices[4],
+				endTimeSlices[0], 
+				endTimeSlices[1], 
+				endTimeSlices[2], 
+				endTimeSlices[3],
+				endTimeSlices[4],
+			)
+		}
+
+		keywordType := parseKeywordType(condition)
+		if keywordType != "" {
+			keywordCondition = fmt.Sprintf("[%s：%s]", keywordType, condition.Keyword)
+		}
+
+		if len(condition.Dimension) > 0 {
+			dimensionStr := genDimensionStr(condition)
+			dimensionCondition = fmt.Sprintf("[维度：%s]", dimensionStr)
+		}
+
+		if condition.CategoryId != 0 {
+			categoryStr, err := genCategoryStr(condition)
+			if err != nil {
+				return content, err
+			}
+			categoryCondition = fmt.Sprintf("[%s]", categoryStr)
+		}
+
+		content = "[部分导出]：%s%s%s%s：other_%d.xlsx"
+		content = fmt.Sprintf(content, timeCondition, keywordCondition, dimensionCondition, categoryCondition, taskID)
+	} else {
+		content = fmt.Sprintf("[全量导出]：other_%d.xlsx", taskID)
+	}
+	return content, nil
+}
+
+func parseDatetimeStr(datetime string) ([]string, error) {
+	// expect format yyyy-MM-dd hh:mm:ss
+	var dateAndTime []string = make([]string, 5)
+	datetimeSlice := strings.Split(datetime, " ")
+	
+	if len(datetimeSlice) != 2 {
+		return dateAndTime, fmt.Errorf("datetime format incorrect")
+	}
+
+	dateString := datetimeSlice[0]
+	timeString := datetimeSlice[1]
+
+	dateSlice := strings.Split(dateString, "-")
+	if len(dateSlice) != 3 {
+		return dateAndTime, fmt.Errorf("datetime format incorrect 2")
+	}
+	dateAndTime[0] = dateSlice[0]
+	dateAndTime[1] = dateSlice[1]
+	dateAndTime[2] = dateSlice[2]
+
+	timeSlice := strings.Split(timeString, ":")
+	if len(dateSlice) != 3 {
+		return dateAndTime, fmt.Errorf("datetime format incorrect 3")
+	}
+	dateAndTime[3] = timeSlice[0]
+	dateAndTime[4] = timeSlice[1]
+
+	return dateAndTime, nil
+}
+
+func parseKeywordType(condition *FAQ.QueryCondition) string {
+	var keywordType string
+
+	if condition.SearchAll && condition.Keyword != "" {
+		keywordType = "全部"
+	} else if condition.SearchQuestion && condition.Keyword  != "" {
+		keywordType = "问题"
+	} else if condition.SearchAnswer && condition.Keyword != "" {
+		keywordType = "答案"
+	} else if (condition.SearchDynamicMenu) {
+		keywordType = "指定动态菜单"
+	} else if (condition.SearchRelativeQuestion) {
+		keywordType = "指定相关问"
+	} else if (condition.NotShow) {
+		keywordType = "不在推荐问内显示"
+	}
+
+	return keywordType
+}
+
+func genDimensionStr(condition *FAQ.QueryCondition) string {
+	var dimensionStr bytes.Buffer
+	for index, dimension := range condition.Dimension {
+		cleanContent := strings.Replace(dimension.Content, "#", "", -1)
+		if index == 0 {
+			dimensionStr.WriteString(cleanContent)
+		} else {
+			dimensionStr.WriteString(",")
+			dimensionStr.WriteString(cleanContent)
+		}
+	}
+
+	return dimensionStr.String()
+}
+
+func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
+	var categoryPath string
+	var err error
+	switch condition.CategoryId {
+	case 0:
+		categoryPath = ""
+	case -1:
+		categoryPath = "暂无分类"
+	default:
+		category := FAQ.Category{
+			ID: condition.CategoryId,
+		}
+
+		categoryPath, err = category.FullName()
+		if err != nil {
+			fmt.Printf("error: ", err.Error())
+			return categoryPath, err
+		}
+		categorySlice := strings.Split(categoryPath, "/")
+
+		if len(categorySlice) > 2 {
+			categoryPath = fmt.Sprintf("%s/%s", categorySlice[1], categorySlice[2])
+		} else {
+			categoryPath = categorySlice[1]
+		}
+	 }
+	 
+	return categoryPath, err
 }

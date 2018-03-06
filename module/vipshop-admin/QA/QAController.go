@@ -130,9 +130,7 @@ func exportExcel(ctx context.Context) {
 		return
 	}
 
-	// TODO: change audit log format
 	var answerIDs []string
-	// var answerIDs []string = make([]string, 0)
 	if FAQ.HasCondition(condition) {
 		_, aids, err := FAQ.DoFilter(condition, appid)
 		if err != nil {
@@ -152,6 +150,11 @@ func exportExcel(ctx context.Context) {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
 		ctx.JSON(successJSON{StateID: mcResponse.SyncInfo.StatID})
+		auditLogContent, err := genQAExportAuditLog(&condition, mcResponse.SyncInfo.StatID)
+		if err != nil {
+			util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditLogContent, 1)
 	case util.ErrorMCLock: //503 MCError
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(errorJSON{err.Error(), mcResponse.SyncInfo.UserID})
@@ -180,8 +183,8 @@ func download(ctx context.Context) {
 	}
 	defer rows.Close()
 
-	var userID = util.GetUserID(ctx)
-	var userIP = util.GetUserIP(ctx)
+	// var userID = util.GetUserID(ctx)
+	// var userIP = util.GetUserIP(ctx)
 	var content []byte
 	var status string
 
@@ -191,8 +194,6 @@ func download(ctx context.Context) {
 	}
 	rows.Scan(&content, &status)
 	if strings.Compare(status, "success") == 0 || strings.Compare(status, "fail") == 0 {
-		var auditMessage = "[全量导出]:" + "other_" + id + ".xlsx"
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditMessage, 1) // 0 == failed, 1 == success
 		ctx.Header("Content-Disposition", "attachment; filename=other_"+id+".xlsx")
 		ctx.Header("Cache-Control", "public")
 		ctx.Binary(content)

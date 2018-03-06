@@ -382,10 +382,11 @@ func HasCondition(condition QueryCondition) bool {
 func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid string) ([]Question, error) {
 	var questions []Question
 	var sqlParams []interface{}
+	var timeFormat string = "%Y-%m-%d %H:%i:%s"
 	db := util.GetMainDB()
 
 	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
-	query = fmt.Sprintf(query, "%Y/%m/%d %H:%i:%s", "%Y/%m/%d %H:%i:%s", SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
+	query = fmt.Sprintf(query, timeFormat, timeFormat, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
 
 	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
 	if err != nil {

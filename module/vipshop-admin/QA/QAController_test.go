@@ -57,6 +57,7 @@ var app *iris.Application
 var mHeader = map[string]string{
 	"X-UserID":  "userX",
 	"X-Real-IP": "0.0.0.0",
+	"Authorization": "vipshop",
 }
 var mainDBMock, auditDBMock sqlmock.Sqlmock
 
@@ -66,6 +67,7 @@ func TestMain(m *testing.M) {
 	util.LogInit(buf, buf, buf, buf)
 
 	apiClient = mockMCClient{}
+
 	app = iris.New()
 	app.Post("/test/import", importExcel)
 	app.Post("/test/export", exportExcel)
@@ -107,26 +109,21 @@ func TestExportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 
 	var expectedResponse = "{\"state_id\":123}"
-	var mockDimension = []DimensionGroup{
-		DimensionGroup{
-			TypeId: 1,
-			Content: "#weixin#",
-		},
-		DimensionGroup{
-			TypeId: 2,
-			Content: "#特卖会APP#",
-		},
-		DimensionGroup{
-			TypeId: 3,
-			Content: "#男#",
-		},
-	}
-	dimensionJson, _ := json.Marshal(mockDimension)
 	var form = map[string]string {
-		"category_id": "1",
-		"permanent": "1",
-		"dimension": string(dimensionJson),
+		"category_id": "0",
+		"timeset": "false",
+		"search_question": "false",
+		"search_answer": "false",
+		"search_dm": "false",
+		"search_rq": "false",
+		"key_word": "",
+		"not_show": "false",
+		"page_limit": "10",
+		"cur_page": "0",
+		"search_all": "false",
+		"dimension": "",
 	}
+	
 	body := e.POST("/test/export").WithMultipart().WithForm(form).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	if t.Failed() {
 		fmt.Println("Logging Error message")
