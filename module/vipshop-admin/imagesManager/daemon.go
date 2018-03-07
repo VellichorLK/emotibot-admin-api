@@ -17,7 +17,7 @@ func InitDaemon() {
 	if err != nil {
 		// panic("Env SYNC_PERIOD_BY_SECONDS parsing error" + err.Error())
 	}
-	DefaultDaemon = NewDaemon(period, util.GetMainDB(), db)
+	DefaultDaemon = NewDaemon(period, db, util.GetMainDB())
 	go DefaultDaemon.Sync()
 }
 
@@ -44,6 +44,7 @@ func NewDaemon(updatePeriod int, pictureDB, questionDB *sql.DB) *Daemon {
 func (d *Daemon) Sync() {
 	for {
 		//TODO: Calibrate sleeping behavior at first time.
+		util.LogTrace.Printf("sleep %s", d.UpdatePeriod.String())
 		time.Sleep(d.UpdatePeriod)
 		util.LogTrace.Println("Start daemon syncing...")
 		answers, err := d.FindImages()
@@ -64,6 +65,12 @@ func (d *Daemon) Sync() {
 // FindImages scan answer's content and match the image tag in it
 // Return Empty map if none of given image's file name is matched
 func (d *Daemon) FindImages() (answers map[int][]int, err error) {
+	//catch panic, so it wont break daemon.
+	defer func() {
+		if err := recover(); err != nil {
+			util.LogError.Println(err)
+		}
+	}()
 	rows, err := d.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
 	if err != nil {
 		return nil, fmt.Errorf("Query answer failed, %v", err)
@@ -87,13 +94,7 @@ func (d *Daemon) FindImages() (answers map[int][]int, err error) {
 		}
 
 		var imageGroup = make([]int, 0)
-		defer func() {
-			if err := recover(); err != nil {
-				fmt.Println(err)
-				fmt.Println(strings.Index(content, "<img"))
-				fmt.Println(content)
-			}
-		}()
+
 		//Find img tag and trim the content
 		for currentIndex := strings.Index(content, "<img"); currentIndex >= 0; currentIndex = strings.Index(content, "<img") {
 			content = content[currentIndex+4:]
@@ -161,12 +162,15 @@ func LinkImagesForAnswer(answerImages map[int][]int) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("sql prepare failed, %v", err)
 	}
-	for ansID, imgID := range answerImages {
-		_, err := stmt.Exec(ansID, imgID)
-		if err != nil {
-			return 0, fmt.Errorf("sql insert failed, %v", err)
+	for ansID, images := range answerImages {
+		for _, imgID := range images {
+			_, err := stmt.Exec(ansID, imgID)
+			if err != nil {
+				return 0, fmt.Errorf("sql insert failed, %v", err)
+			}
+			count++
 		}
-		count++
+
 	}
 
 	return count, nil

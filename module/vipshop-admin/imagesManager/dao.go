@@ -25,8 +25,8 @@ func getLocationID(location string) (uint64, error) {
 			if driverErr.Number == ErDupEntry {
 				return getExistLocationID(location)
 			}
-			return 0, err
 		}
+		return 0, err
 	}
 	id, err := res.LastInsertId()
 	return uint64(id), err
