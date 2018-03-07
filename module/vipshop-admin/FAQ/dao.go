@@ -552,7 +552,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 		}
 		category := categoryMap[condition.CategoryId]
 		idStr := strconv.Itoa(condition.CategoryId)
-		if len(category.Children) > 0 {
+		if category != nil && len(category.Children) > 0 {
 			idStr += fmt.Sprintf(",%s", GenIdStr(category.Children))
 		}
 
@@ -723,7 +723,9 @@ func dimensionSQL(condition QueryCondition, appid string) (string, error) {
 	for _, dimensionGroup := range condition.Dimension {
 		dimensions := strings.Split(dimensionGroup.Content, ",")
 		for _, dimension := range dimensions {
-			tagIDs = append(tagIDs, dimensionToIdMAP[dimension])
+			if id, ok := dimensionToIdMAP[dimension]; ok {
+				tagIDs = append(tagIDs, id)
+			}
 		}
 	}
 	tagIDstr := GenIdStr(tagIDs)
