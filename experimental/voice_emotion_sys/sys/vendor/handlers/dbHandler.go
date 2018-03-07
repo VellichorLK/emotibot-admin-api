@@ -93,7 +93,7 @@ const QueryFileInfoAndChanScoreSQL2 = " as a left join " + ChannelTable + " as b
 
 const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NFILENAME + "," + NFILETYPE + "," + NRDURATION + "," +
 	NFILET + "," + NCHECKSUM + "," + NTAG + "," + NTAG2 + "," + NPRIORITY + "," + NSIZE + "," + NANARES + "," + NUPT +
-	" from " + MainTable + ") as a left join ( select b." + NSEGID + ",b." + NID + ",b." + NSEGST + ",b." + NSEGET +
+	" from " + MainTable + " where " + NAPPID + "=?" + ") as a left join ( select b." + NSEGID + ",b." + NID + ",b." + NSEGST + ",b." + NSEGET +
 	",b." + NCHANNEL + ",b." + NSTATUS + ",b." + NEXTAINFO + ",c." + NEMOTYPE + ",c." + NSCORE + " from ( select * from " +
 	AnalysisTable + " where " + NID + "=(select " + NID + " from " + MainTable + " where " +
 	NAPPID + "=? and " + NFILEID + "=?)) as b left join " + EmotionTable + " as c " +
@@ -591,7 +591,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 
 	query := QueryDetailSQL
 
-	rows, err := db.Query(query, appid, fileID, fileID)
+	rows, err := db.Query(query, appid, appid, fileID, fileID)
 	if err != nil {
 		log.Println(err)
 		return http.StatusInternalServerError, errors.New("Internal server error")
@@ -677,7 +677,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 
 	var cr []*ChannelResult
 
-	err = QueryChannelScore(id, &cr)
+	err = QueryChannelScore(id, appid, &cr)
 	if err != nil {
 		log.Println(err)
 		return http.StatusInternalServerError, errors.New("Internal server error")
@@ -887,12 +887,12 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 
 }
 
-func QueryChannelScore(id uint64, chs *[]*ChannelResult) error {
+func QueryChannelScore(id uint64, appid string, chs *[]*ChannelResult) error {
 	//query the channelScore table
 	query := QueryChannelScoreSQL
-	query += " where " + NID + "=?" + " order by " + NCHANNEL
+	query += " where " + NID + "= (select " + NID + " from " + MainTable + " where " + NFILEID + "=?)" + " order by " + NCHANNEL
 
-	rows, err := db.Query(query, id)
+	rows, err := db.Query(query, appid)
 	if err != nil {
 		log.Println(err)
 		return err
