@@ -58,10 +58,25 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 
 	var condition string
 	var params []interface{}
+	var totalCount uint64
 	if args.Keyword != "" {
 		condition += "where " + attrFileName + " like ? "
 		params = append(params, "%"+args.Keyword+"%")
 	}
+
+	countSQL := "select count(*) from " + imageTable + " " + condition
+	rows, err := db.Query(countSQL, params...)
+	if err != nil {
+		return nil, err
+	}
+	if rows.Next() {
+		err := rows.Scan(&totalCount)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rows.Close()
+
 	condition += "order by " + args.Order + " desc "
 	condition += "limit " + strconv.FormatInt(args.Limit, 10)
 	condition += " offset " + strconv.FormatInt(args.Page, 10)
@@ -70,7 +85,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	sqlString += " from (select * from " + imageTable + " " + condition + ") as a left join " + relationTable + " as b on " +
 		"a." + attrID + "=b." + attrImageID
 
-	rows, err := SqlQuery(db, sqlString, params...)
+	rows, err = SqlQuery(db, sqlString, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +122,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 		}
 	}
 
-	il.Total = counter
+	il.Total = totalCount
 	il.CurPage = uint64(args.Page)
 
 	return il, nil
