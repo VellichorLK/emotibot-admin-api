@@ -1,6 +1,8 @@
 package SelfLearning
 
 import (
+	"context"
+	"net/http"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -252,4 +254,80 @@ func doCluster(vectors []model.Vector, topN int) [][]int {
 
 func storeClusterData(sc StoreCluster, clusters *clusteringResult) error {
 	return sc.Store(clusters)
+}
+
+func getRecommand(sentence []string) ([]string, error) {
+	pool := 4
+	num := len(sentence)
+	if num < pool {
+		pool = num
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel() // cancel when we are finished consuming integers
+	stringChannel := make(chan string)
+	responseChannel := make(chan *rresponse, pool)
+
+	for i := 0; i < num; i++ {
+		go func(ctx context.Context) {
+			var s string
+			timeout := time.Duration(2 * time.Second)
+			response := &responseClient{URL: responseURL, client: &http.Client{Timeout: timeout}}
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case s = <-stringChannel:
+					r, err := response.Post(s)
+					if err != nil {
+						util.LogError.Println(err)
+					}
+
+					select {
+					case responseChannel <- r:
+					case <-ctx.Done():
+						return
+					}
+
+				}
+			}
+		}(ctx)
+	}
+
+	var receiveCount int
+	stdQs := make(map[string]float64)
+
+	go func() {
+		for i := 0; i < len(sentence); i++ {
+			stringChannel <- sentence[i]
+		}
+	}()
+
+	for {
+		r := <-responseChannel
+		receiveCount++
+		if r != nil && r.OtherInfo != nil &&
+			r.OtherInfo.Custom != nil && r.OtherInfo.Custom.RelatedQ != nil {
+			for i := 0; i < len(r.OtherInfo.Custom.RelatedQ); i++ {
+				if s, ok := stdQs[r.OtherInfo.Custom.RelatedQ[i].StdQ]; ok {
+					if s < r.OtherInfo.Custom.RelatedQ[i].Score {
+						stdQs[r.OtherInfo.Custom.RelatedQ[i].StdQ] = r.OtherInfo.Custom.RelatedQ[i].Score
+					}
+				} else {
+					stdQs[r.OtherInfo.Custom.RelatedQ[i].StdQ] = r.OtherInfo.Custom.RelatedQ[i].Score
+				}
+			}
+		}
+
+		if receiveCount >= num {
+			break
+		}
+	}
+
+	sorter := &sortMapKey{mapData: stdQs}
+	sorter.keyToSlice()
+	sort.Sort(sorter)
+
+	return sorter.sliceData, nil
 }

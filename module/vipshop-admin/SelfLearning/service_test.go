@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -243,4 +245,96 @@ hits:
 		}
 	}
 	return float64(hit) / float64(len(sentences))
+}
+
+func TestGetRecommand(t *testing.T) {
+
+	testData := make(map[string]*rresponse)
+	inputString := make([]string, 3)
+	inputString[0] = "how can i do?"
+	inputString[1] = "nothing you can do!"
+	inputString[2] = "do you fully prepare"
+	answers := make([]string, 5)
+	answers[0] = "the hell is waiting for you."
+	answers[1] = "nothing you can do!"
+	answers[2] = "No. Loser!"
+	answers[3] = "yes. well you will loose."
+	answers[4] = "yes. you should wait for the end of world"
+
+	r := &rresponse{}
+	r.OtherInfo = &responseInfo{}
+	r.OtherInfo.Custom = &responseCustom{}
+	r.OtherInfo.Custom.RelatedQ = make([]*relatedQ, 0)
+	q00 := &relatedQ{UserQ: inputString[0], StdQ: answers[0], Score: 99.91}
+	q01 := &relatedQ{UserQ: inputString[0], StdQ: answers[1], Score: 91.4}
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q00)
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q01)
+	testData[inputString[0]] = r
+
+	r = &rresponse{}
+	r.OtherInfo = &responseInfo{}
+	r.OtherInfo.Custom = &responseCustom{}
+	r.OtherInfo.Custom.RelatedQ = make([]*relatedQ, 0)
+	q00 = &relatedQ{UserQ: inputString[1], StdQ: answers[0], Score: 21.91}
+	q01 = &relatedQ{UserQ: inputString[1], StdQ: answers[4], Score: 33.4}
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q00)
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q01)
+	testData[inputString[1]] = r
+
+	r = &rresponse{}
+	r.OtherInfo = &responseInfo{}
+	r.OtherInfo.Custom = &responseCustom{}
+	r.OtherInfo.Custom.RelatedQ = make([]*relatedQ, 0)
+	q00 = &relatedQ{UserQ: inputString[2], StdQ: answers[0], Score: 33.91}
+	q01 = &relatedQ{UserQ: inputString[2], StdQ: answers[2], Score: 87.87}
+	q02 := &relatedQ{UserQ: inputString[2], StdQ: answers[3], Score: 61.87}
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q00)
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q01)
+	r.OtherInfo.Custom.RelatedQ = append(r.OtherInfo.Custom.RelatedQ, q02)
+	testData[inputString[2]] = r
+
+	th := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		args := &responseArg{}
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		err = json.Unmarshal(b, args)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		resp, err := json.Marshal(testData[args.Text0])
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-type:", "application/json")
+		w.Write(resp)
+
+	}
+	ts := httptest.NewServer(http.HandlerFunc(th))
+	defer ts.Close()
+	responseURL = ts.URL
+
+	recommands, err := getRecommand(inputString)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(recommands) != len(answers) {
+		t.Fatalf("recommand num is not equals.\n %v", recommands)
+	}
+	for i := 0; i < len(recommands); i++ {
+		if recommands[i] != answers[i] {
+			t.Fatalf("recommands are not correct.!\n recommands:\n %v\n answers:\n%v\n", recommands, answers)
+		}
+	}
 }

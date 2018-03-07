@@ -5,8 +5,6 @@ info:
   title: Self-learn
   contact:
     email: deansu@emotibot.com
-servers:
-  - url: http://127.0.0.1:8182/api/v1/selfLearn/
 components:
   schemas:
     report:
@@ -239,5 +237,29 @@ paths:
           description: "OK"
         404:
           description: "userQuestion not found"
+        500:
+          description: "Internal server error"
+  /recommend:
+    post:
+      summary: "為我推薦, 透過提出的問題找出其相似問"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 20
+                description: "勾選詢問的問句"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
         500:
           description: "Internal server error"

@@ -18,6 +18,7 @@ var (
 	Envs map[string]string
 
 	NluURL             string
+	responseURL        string
 	EarlyStopThreshold int
 	MinSizeCluster     int
 	MaxNumToCluster    int
@@ -38,6 +39,7 @@ func init() {
 			util.NewEntryPoint("GET", "userQuestions/{id:int}", []string{}, handleGetUserQuestion),
 			util.NewEntryPoint("POST", "userQuestions/{id:int}", []string{}, handleUpdateUserQuestion),
 			util.NewEntryPoint("POST", "userQuestions/{id:int}/revoke", []string{}, handleRevokeQuestion),
+			util.NewEntryPoint("POST", "recommend", []string{}, handleRecommend),
 		},
 	}
 }
@@ -71,10 +73,15 @@ func checkNeedEnvs() {
 
 	NluURL = util.GetEnviroment(Envs, "NLU_URL")
 	if NluURL == "" {
-		util.LogError.Println(err)
+		util.LogError.Println("cant found NLU_URL, use local NLU URL")
 		NluURL = "http://172.17.0.1:13901"
 	}
 
+	responseURL = util.GetEnviroment(Envs, "RESPONSE_URL")
+	if responseURL == "" {
+		util.LogError.Println("cant found RESPONSE_URL")
+
+	}
 }
 
 //InitDB init the database connection
@@ -87,6 +94,7 @@ func InitDB() {
 	user := util.GetEnviroment(Envs, "MYSQL_USER")
 	pass := util.GetEnviroment(Envs, "MYSQL_PASS")
 	db := util.GetEnviroment(Envs, "MYSQL_DB")
+
 	dao, err := initSelfLearningDB(url, user, pass, db)
 	if err != nil {
 		util.LogError.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
@@ -410,4 +418,34 @@ func handleDeleteReport(ctx context.Context) {
 	}
 
 	ctx.StatusCode(http.StatusOK)
+}
+
+func handleRecommend(ctx context.Context) {
+	sentence := make([]string, 0)
+	err := ctx.ReadJSON(&sentence)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("%s\n", err)
+		return
+	}
+
+	num := len(sentence)
+
+	if num > 30 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("assigned sentence is over limit 30\n", err)
+		return
+	}
+
+	if num > 0 {
+		recommand, err := getRecommand(sentence)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.Writef("%s\n", err)
+			return
+		}
+		ctx.StatusCode(http.StatusOK)
+		ctx.JSON(recommand)
+	}
+
 }
