@@ -121,6 +121,12 @@ func GetUserColumn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err := LoadUsrField()
+	if err != nil {
+		http.Error(w, "internal server error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	ucbs := make([]*UsrColumBlock, 0)
 	dvs, ok := DefaulUsrField.DefaultValue[appid]
 	if ok {

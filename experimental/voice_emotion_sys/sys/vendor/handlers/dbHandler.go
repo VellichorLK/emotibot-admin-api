@@ -695,7 +695,7 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 	}
 
 	cvs := make([]*ColumnValue, 0)
-	err = QueryUsrFieldValue(id, &cvs)
+	err = QueryUsrFieldValue(id, appid, &cvs)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -934,7 +934,13 @@ func QueryChannelScore(id uint64, appid string, chs *[]*ChannelResult) error {
 	return nil
 }
 
-func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
+func QueryUsrFieldValue(id uint64, appid string, cvs *[]*ColumnValue) error {
+
+	nameMap, err := getUsrColumNameMap(appid)
+	if err != nil {
+		return err
+	}
+
 	sql := "select " + NCOLID + "," + NCOLVAL + " from " + UsrColValTable + " where " + NID + "=?"
 	rows, err := db.Query(sql, id)
 	if err != nil {
@@ -951,7 +957,11 @@ func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
 			return err
 		}
 
-		name, ok := DefaulUsrField.FieldNameMap[colID]
+		colIDuint64, err := strconv.ParseUint(colID, 10, 64)
+		if err != nil {
+			return err
+		}
+		name, ok := nameMap[colIDuint64]
 		if !ok {
 			return errors.New("No col_id " + colID + " name")
 		}
@@ -966,6 +976,27 @@ func QueryUsrFieldValue(id uint64, cvs *[]*ColumnValue) error {
 	}
 
 	return nil
+
+}
+
+func getUsrColumNameMap(appid string) (map[uint64]string, error) {
+	sqlString := "select " + NCOLID + "," + NCOLNAME + " from " + UsrColTable + " where " + NAPPID + "=?"
+	rows, err := db.Query(sqlString, appid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	nameMap := make(map[uint64]string)
+	var name string
+	var colID uint64
+	for rows.Next() {
+		err := rows.Scan(&colID, &name)
+		if err != nil {
+			return nil, err
+		}
+		nameMap[colID] = name
+	}
+	return nameMap, nil
 
 }
 
