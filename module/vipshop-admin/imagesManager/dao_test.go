@@ -1,9 +1,10 @@
 package imagesManager
 
 import (
-	"fmt"
 	"os"
 	"testing"
+
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -16,25 +17,24 @@ func TestMain(m *testing.M) {
 
 }
 func TestGetLocationID(t *testing.T) {
-
-	dao, err := util.InitDB("172.16.101.47:3306", "root", "password", "emotibot")
+	var mockedImg sqlmock.Sqlmock
+	db, mockedImg, _ = sqlmock.New()
+	input := "http://vipshop/basemedia"
+	stmt := mockedImg.ExpectPrepare("insert into")
+	stmt.ExpectExec().WithArgs(input).WillReturnResult(sqlmock.NewResult(1, 1))
+	id, err := getLocationID(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	util.SetDB(ModuleInfo.ModuleName, dao)
-
-	id, err := getLocationID("http://vipshop/basemedia")
-	if err != nil {
-		t.Fatal(t)
+	if id != 1 {
+		t.Errorf("expect id = 1, but got %v\n", id)
 	}
-	fmt.Printf("id:%v\n", id)
 
 }
 
 func TestCreateBackupFolder(t *testing.T) {
 	length := 10
-	path := "."
+	path := "./testdata"
 	folder, err := createBackupFolder(length, path)
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +57,7 @@ func TestCreateBackupFolder(t *testing.T) {
 	if file.Name() != folder {
 		t.Fatalf("created foler %s is not assigned name %s\n", file.Name(), folder)
 	}
+	tearDownFiles(path + "/" + folder)
 
 }
 
