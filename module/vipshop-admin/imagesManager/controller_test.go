@@ -1,10 +1,13 @@
 package imagesManager
 
 import (
+	"crypto/md5"
 	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
@@ -13,41 +16,47 @@ import (
 
 func TestReceiveImage(t *testing.T) {
 	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
-	url := "172.16.101.47:3306"
-	user := "root"
-	pass := "password"
-	dbName := "emotibot"
-
-	dao, err := util.InitDB(url, user, pass, dbName)
+	var err error
+	Volume, err = ioutil.TempDir("./testdata/", "image")
 	if err != nil {
-		util.LogError.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, dbName, err.Error())
-		return
+		t.Fatalf("Init failed, %v", err)
 	}
-	//util.SetDB(ModuleInfo.ModuleName, dao)
-	db = dao
-	Volume = "./"
+	Volume += "/"
 	LocalID = 1
+
+	testFiles := []string{"golang.jpg", "test.txt"}
+	fileArgs := make([]*uploadArg, len(testFiles))
+	expectData := make([][]byte, len(testFiles))
+
+	var mockedPic sqlmock.Sqlmock
+	db, mockedPic, err = sqlmock.New()
+	mockedPic.ExpectBegin()
+	for i, f := range testFiles {
+		data, err := ioutil.ReadFile("./testdata/" + f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		arg := &uploadArg{FileName: f, Content: base64.StdEncoding.EncodeToString(data)}
+		fileArgs[i] = arg
+		expectData[i] = data
+		stmt := mockedPic.ExpectPrepare("insert into images")
+		stmt.ExpectExec().WillReturnResult(sqlmock.NewResult(int64(i), 1))
+	}
+	mockedPic.ExpectCommit()
 
 	app := iris.New()
 	app.Post("/test", receiveImage)
 	e := httptest.New(t, app)
+	e.POST("/test").WithJSON(fileArgs).Expect().Status(200)
+	defer tearDownFiles(Volume)
 
-	data1, err := ioutil.ReadFile("./testdata/golang.jpg")
-	if err != nil {
-		t.Fatal()
+	for i, f := range testFiles {
+		d, err := ioutil.ReadFile(Volume + f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if md5.Sum(expectData[i]) != md5.Sum(d) {
+			t.Error("Expect file %s should be the same after uploaded", f)
+		}
 	}
-	file1 := &uploadArg{FileName: "myfile1.jpg", Content: base64.StdEncoding.EncodeToString(data1)}
-
-	data2, err := ioutil.ReadFile("./controller_test.go")
-	if err != nil {
-		t.Fatal()
-	}
-	file2 := &uploadArg{FileName: "controller_test22.go", Content: base64.StdEncoding.EncodeToString(data2)}
-
-	files := make([]*uploadArg, 2, 2)
-	files[0] = file1
-	files[1] = file2
-
-	e.POST("/test").WithJSON(files).Expect().Status(200)
-
 }

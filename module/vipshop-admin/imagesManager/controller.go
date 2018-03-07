@@ -66,6 +66,14 @@ func receiveImage(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
 		return
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+	defer tx.Rollback()
 
 	for _, file := range args {
 
@@ -76,13 +84,20 @@ func receiveImage(ctx context.Context) {
 			return
 		}
 
-		err = storeImage(file.FileName, content)
+		err = storeImage(tx, file.FileName, content)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
 			return
 		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
 	}
 }
 

@@ -10,14 +10,8 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-func storeImage(fileName string, content []byte) error {
-
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func storeImage(tx *sql.Tx, fileName string, content []byte) error {
+	var err error
 	_, fileName, err = newImageRecord(tx, fileName, len(content))
 	if err != nil {
 		return err
@@ -28,7 +22,6 @@ func storeImage(fileName string, content []byte) error {
 		return err
 	}
 
-	tx.Commit()
 	return nil
 }
 
