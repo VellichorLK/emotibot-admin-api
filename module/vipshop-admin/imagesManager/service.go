@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -52,10 +51,10 @@ func getImageList(args *getImagesArg) (*imageList, error) {
 		image.Refs = make([]*questionInfo, 0)
 		for _, id := range image.answerID {
 			qInfo, ok := questionInfoMap[id]
-			if !ok {
-				return nil, errors.New("No answerID " + strconv.Itoa(id))
+			if ok {
+				image.Refs = append(image.Refs, qInfo)
 			}
-			image.Refs = append(image.Refs, qInfo)
+
 		}
 	}
 	return list, nil
