@@ -136,6 +136,7 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 
 	}()
 
+	//delete files
 	var delFileCount int64
 
 	delFileCount, err = deleteFiles(Volume, fileList)
@@ -146,12 +147,23 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		util.LogWarn.Printf("delete images count from db(%v) is not the same from file(%v)\n", delRowCount, delFileCount)
 	}
 
+	//delete relation
+	sqlString = "delete from " + relationTable + " where " + attrImageID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+	stmt, err = tx.Prepare(sqlString)
+	if err != nil {
+		return 0, err
+	}
+	_, err = ExecStmt(stmt, imageIDs...)
+	if err != nil {
+		return 0, err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return 0, err
 	}
 
-	return res.RowsAffected()
+	return delRowCount, nil
 }
 
 func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
