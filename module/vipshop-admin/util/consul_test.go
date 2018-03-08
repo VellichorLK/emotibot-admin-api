@@ -6,9 +6,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/hashicorp/consul/api"
 )
 
 func TestMain(m *testing.M) {
@@ -80,7 +85,11 @@ func TestConsulUpdateVal(t *testing.T) {
 			}
 			ts := httptest.NewServer(http.HandlerFunc(th))
 			defer ts.Close()
-			DefaultConsulClient.Address = ts.URL
+			u, err := url.Parse(ts.URL)
+			if err != nil {
+				t.Fatal(err)
+			}
+			DefaultConsulClient.Address = u
 			ConsulUpdateVal(tt.key, tt.val)
 		})
 	}
@@ -96,7 +105,11 @@ func TestConsulUpdateTaskEngine(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(th))
 	defer ts.Close()
-	DefaultConsulClient.Address = ts.URL
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	DefaultConsulClient.Address = u
 	ConsulUpdateTaskEngine("", true)
 }
 
@@ -111,6 +124,42 @@ func TestConsulUpdateRobotChat(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(th))
 	defer ts.Close()
-	DefaultConsulClient.Address = ts.URL
+	u, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	DefaultConsulClient.Address = u
 	ConsulUpdateRobotChat(appid)
+}
+
+//TODO: create a fake LockHandler
+//Simulate multiple client trying to acquire the lock.
+func TestLock(t *testing.T) {
+	//lock creation is not thread-safe for now.
+	lock, err := DefaultConsulClient.Lock("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			signal := make(chan struct{})
+			stop, err := lock.Lock(signal)
+			if err == api.ErrLockHeld {
+				return
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			defer lock.Unlock()
+			go func() {
+				<-stop
+				t.Fatal("stopped")
+			}()
+			time.Sleep(time.Duration(1) * time.Second)
+		}()
+	}
+	wg.Wait()
+
 }

@@ -176,17 +176,17 @@ func TestHandleGetRFQuestions(t *testing.T) {
 	resp.Equal(string(expectedJSON))
 }
 
-type mockedConsul int
-
-func (m mockedConsul) ConsulUpdateVal(key string, val interface{}) (int, error) {
-	return int(m), nil
+func NewMockedUpdateHandler() util.ConsulUpdateHandler {
+	return func(key string, val interface{}) (int, error) {
+		return ApiError.SUCCESS, nil
+	}
 }
 func TestHandleSetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
 	input := UpdateRFQuestionsArgs{
 		[]string{"測試A", "測試B", "測試C"},
 	}
-	util.DefaultConsulClient = mockedConsul(ApiError.SUCCESS)
+	util.DefaultConsulClient.SetUpdateHandler(NewMockedUpdateHandler())
 	var args = make([]driver.Value, len(input.Contents))
 	for i, str := range input.Contents {
 		args[i] = str
