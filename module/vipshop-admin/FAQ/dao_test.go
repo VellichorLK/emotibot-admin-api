@@ -1,12 +1,14 @@
 package FAQ
 
 import (
-	"fmt"
-	"testing"
-	"github.com/stretchr/testify/assert"
+	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"reflect"
 	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -48,7 +50,7 @@ func TestSelectQuestions(t *testing.T) {
 				StdQuestion{2, "測試標準問B", 1},
 			},
 		},
-		"找不到": testCase{
+		"sql.ErrNoRows": testCase{
 			[]int{-1},
 			[]StdQuestion{},
 		},
@@ -58,11 +60,14 @@ func TestSelectQuestions(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			expectSelectQuestions(mockedMainDB, tt.input, tt.expected)
 			questions, err := selectQuestions(tt.input, "vipshop")
-			if err != nil {
-				t.Fatal(err)
+			if len(tt.expected) == 0 && err != sql.ErrNoRows {
+				t.Errorf("if expect is zero, then return should be sql.ErrNoRows, but got %v", err)
+			}
+			if len(tt.expected) != 0 && err != nil {
+				t.Fatalf("select question err, %v", err)
 			}
 			if size := len(questions); size != len(tt.expected) {
-				t.Fatalf("select expect size of 1 but got %d", size)
+				t.Fatalf("select expect size of %d but got %d", len(tt.expected), size)
 			}
 			for i, q := range tt.expected {
 				stdQ := questions[i]
@@ -105,18 +110,18 @@ func TestEscape(t *testing.T) {
 func fakeTagMapFactory() map[string]Tag {
 	tagMap := make(map[string]Tag)
 
-	tag1 := Tag {
-		Type: 1,
+	tag1 := Tag{
+		Type:    1,
 		Content: "tag1",
 	}
 
-	tag2 := Tag {
-		Type: 2,
+	tag2 := Tag{
+		Type:    2,
 		Content: "tag2",
 	}
 
-	tag3 := Tag {
-		Type: 4,
+	tag3 := Tag{
+		Type:    4,
 		Content: "tag3",
 	}
 
@@ -127,8 +132,8 @@ func fakeTagMapFactory() map[string]Tag {
 }
 
 func TestFormDimension(t *testing.T) {
-	source := []string {"1", "2", "3"}
-	target := []string {"tag1", "tag2", "", "tag3", ""}
+	source := []string{"1", "2", "3"}
+	target := []string{"tag1", "tag2", "", "tag3", ""}
 	tagMap := fakeTagMapFactory()
 	result := FormDimension(source, tagMap)
 

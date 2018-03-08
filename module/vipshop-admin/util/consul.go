@@ -32,7 +32,7 @@ type ConsulClient struct {
 }
 
 // DefaultConsulClient is a used for convenient function packed in package.
-var DefaultConsulClient = &ConsulClient{
+var DefaultConsulClient ConsulAPI = &ConsulClient{
 	Address: "127.0.0.1",
 	client:  http.DefaultClient,
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/httptest"
@@ -149,15 +150,24 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 func TestHandleGetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
 	var expected = []RFQuestion{
-		RFQuestion{0, "測試A", 0, true},
-		RFQuestion{2, "測試B", 1, false},
+		RFQuestion{1, "測試A", 0, true},
+		RFQuestion{2, "測試B", 1, true},
 	}
+	// type output struct {
+	// 	ID         *int
+	// 	Content    string
+	// 	CategoryID *int
+	// }
+	// var mockedOutput = []output{
+	// 	output{nil, "測試A", nil},
+	// 	output{&expected[1].ID, "測試B", &expected[1].CategoryID},
+	// }
 
-	rows := sqlmock.NewRows([]string{"stdQ.id", " rf.Question_Content", "stdQ.CategoryId"})
+	rows := sqlmock.NewRows([]string{"stdQ.Question_Id", " rf.Question_Content", "stdQ.CategoryId"})
 	for _, q := range expected {
 		rows.AddRow(q.ID, q.Content, q.CategoryID)
 	}
-	mockedMainDB.ExpectQuery("SELECT ").WillReturnRows(rows)
+	mockedMainDB.ExpectQuery("SELECT stdQ.Question_Id, rf.Question_Content, stdQ.CategoryId ").WillReturnRows(rows)
 	resp := e.GET("/RFQuestions").Expect().Body()
 	if mockedMainDB.ExpectationsWereMet() != nil {
 		t.Fatal()
@@ -166,11 +176,17 @@ func TestHandleGetRFQuestions(t *testing.T) {
 	resp.Equal(string(expectedJSON))
 }
 
+type mockedConsul int
+
+func (m mockedConsul) ConsulUpdateVal(key string, val interface{}) (int, error) {
+	return int(m), nil
+}
 func TestHandleSetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
 	input := UpdateRFQuestionsArgs{
 		[]string{"測試A", "測試B", "測試C"},
 	}
+	util.DefaultConsulClient = mockedConsul(ApiError.SUCCESS)
 	var args = make([]driver.Value, len(input.Contents))
 	for i, str := range input.Contents {
 		args[i] = str
@@ -212,7 +228,6 @@ func TestGetQuestionsByCategoryId(t *testing.T) {
 	for name, tt := range testCases {
 		t.Run(name, func(t *testing.T) {
 			e := httptest.New(t, app)
-			request := e.GET("/category/{cid:int}/questions", tt.input.categoryID).WithQuery("includeSubCat", true)
 			//Select the Category
 			rows := sqlmock.NewRows([]string{"CategoryId", "CategoryName", "ParentId"}).AddRow(tt.input.categoryID, "Test", 0)
 			mockedMainDB.ExpectQuery("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories").WithArgs(tt.input.categoryID).WillReturnRows(rows)
@@ -225,6 +240,7 @@ func TestGetQuestionsByCategoryId(t *testing.T) {
 				rows.AddRow(q.QuestionID, q.Content, q.CategoryID)
 			}
 			mockedMainDB.ExpectQuery("SELECT Question_id, Content, CategoryId FROM vipshop_question WHERE CategoryId IN ").WillReturnRows(rows)
+			request := e.GET("/category/{cid:int}/questions", tt.input.categoryID)
 			response := request.Expect().Status(200).Body()
 			expectedResponse, _ := json.Marshal(tt.expected)
 			response.Equal(string(expectedResponse))
