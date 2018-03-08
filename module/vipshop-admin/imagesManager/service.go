@@ -1,10 +1,10 @@
 package imagesManager
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -51,10 +51,10 @@ func getImageList(args *getImagesArg) (*imageList, error) {
 		image.Refs = make([]*questionInfo, 0)
 		for _, id := range image.answerID {
 			qInfo, ok := questionInfoMap[id]
-			if !ok {
-				return nil, errors.New("No answerID " + strconv.Itoa(id))
+			if ok {
+				image.Refs = append(image.Refs, qInfo)
 			}
-			image.Refs = append(image.Refs, qInfo)
+
 		}
 	}
 	return list, nil
@@ -78,6 +78,10 @@ func newImageRecord(tx *sql.Tx, name string, size int) (uint64, string, error) {
 func deleteImages(imageIDs []interface{}) (int64, error) {
 
 	var err error
+
+	if len(imageIDs) == 0 {
+		return 0, nil
+	}
 
 	fileList, err := getFileNameByImageID(imageIDs)
 	if err != nil {
@@ -131,6 +135,7 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 
 	}()
 
+	//delete files
 	var delFileCount int64
 
 	delFileCount, err = deleteFiles(Volume, fileList)
@@ -141,10 +146,41 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		util.LogWarn.Printf("delete images count from db(%v) is not the same from file(%v)\n", delRowCount, delFileCount)
 	}
 
+	//delete relation
+	sqlString = "delete from " + relationTable + " where " + attrImageID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+	stmt, err = tx.Prepare(sqlString)
+	if err != nil {
+		return 0, err
+	}
+	_, err = ExecStmt(stmt, imageIDs...)
+	if err != nil {
+		return 0, err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return 0, err
 	}
 
-	return res.RowsAffected()
+	return delRowCount, nil
+}
+
+func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
+	nameList, err := getFileNameByImageID(imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(nameList) != len(imageIDs) {
+		return nil, errImageNotAllGet
+	}
+
+	for i := 0; i < len(nameList); i++ {
+		nameList[i] = Volume + "/" + nameList[i]
+	}
+	var b bytes.Buffer
+	err = ZipFiles(nameList, &b)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }

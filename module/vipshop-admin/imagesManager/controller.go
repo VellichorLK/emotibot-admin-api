@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -31,7 +32,9 @@ func init() {
 			util.NewEntryPoint("GET", "images", []string{}, handleImageList),
 			util.NewEntryPoint("DELETE", "images/{id:int}", []string{}, handleDeleteImage),
 			util.NewEntryPoint("POST", "images/{id:int}", []string{}, updateImage),
+			util.NewEntryPoint("PUT", "images/{id:int}", []string{}, copyImage),
 			util.NewEntryPoint("POST", "images/delete", []string{}, handleDeleteImages),
+			util.NewEntryPoint("POST", "images/download", []string{}, downloadImages),
 		},
 	}
 }
@@ -249,5 +252,93 @@ func updateImage(ctx context.Context) {
 	if tx != nil {
 		tx.Commit()
 	}
+
+}
+
+func copyImage(ctx context.Context) {
+	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	if err != nil || imageID <= 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
+		return
+	}
+
+	title := ctx.FormValue(TITLE)
+	if title == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "No need parameter"))
+		return
+	}
+
+	nameList, err := getFileNameByImageID([]interface{}{imageID})
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+
+	if len(nameList) <= 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "No such id "))
+		return
+	}
+
+	fileName := nameList[0]
+
+	content, err := ioutil.ReadFile(Volume + "/" + fileName)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+	defer tx.Rollback()
+
+	err = storeImage(tx, title, content)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+
+	tx.Commit()
+
+}
+
+func downloadImages(ctx context.Context) {
+	ids := make([]interface{}, 0)
+	err := ctx.ReadJSON(&ids)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+		return
+	}
+	if len(ids) == 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, "No assigned id"))
+		return
+	}
+
+	b, err := packageImages(ids)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+
+	ctx.Header("Content-Disposition", "attachment; filename=download.zip")
+	ctx.Header("Cache-Control", "public")
+	ctx.Binary(b.Bytes())
 
 }
