@@ -1,6 +1,7 @@
 package imagesManager
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"io/ioutil"
@@ -79,6 +80,10 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 
 	var err error
 
+	if len(imageIDs) == 0 {
+		return 0, nil
+	}
+
 	fileList, err := getFileNameByImageID(imageIDs)
 	if err != nil {
 		return 0, err
@@ -147,4 +152,24 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 	}
 
 	return res.RowsAffected()
+}
+
+func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
+	nameList, err := getFileNameByImageID(imageIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(nameList) != len(imageIDs) {
+		return nil, errImageNotAllGet
+	}
+
+	for i := 0; i < len(nameList); i++ {
+		nameList[i] = Volume + "/" + nameList[i]
+	}
+	var b bytes.Buffer
+	err = ZipFiles(nameList, &b)
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
 }

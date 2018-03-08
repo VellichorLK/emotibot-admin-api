@@ -124,5 +124,6 @@ type Category struct {
 }
 
 var (
-	errImageNotExist = errors.New("Some assigned id doesn't exist")
+	errImageNotExist  = errors.New("Some assigned id doesn't exist")
+	errImageNotAllGet = errors.New("Some assigned image is missing")
 )

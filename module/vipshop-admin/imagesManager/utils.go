@@ -1,8 +1,11 @@
 package imagesManager
 
 import (
+	"archive/zip"
 	"errors"
+	"io"
 	"math/rand"
+	"os"
 	"strconv"
 	"time"
 )
@@ -101,4 +104,42 @@ func GetUniqueString(n int) string {
 		remain--
 	}
 	return string(b)
+}
+
+func ZipFiles(files []string, target io.Writer) error {
+
+	zipWriter := zip.NewWriter(target)
+	defer zipWriter.Close()
+
+	for i := 0; i < len(files); i++ {
+		file, err := os.Open(files[i])
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		info, err := file.Stat()
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Method = zip.Deflate
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(writer, file)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
