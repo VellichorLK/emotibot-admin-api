@@ -35,9 +35,11 @@ func InitDaemon() {
 				util.LogError.Printf("acquiring consul lock failed, %v\n", err)
 				continue
 			}
+			defer lock.Unlock()
 			stop, err := lock.Lock(make(chan struct{}))
 			if err != nil {
 				util.LogError.Printf("lock acquiring failed, %v\n", err)
+				continue
 			}
 
 			err = DefaultDaemon.Sync(stop)
@@ -198,7 +200,7 @@ type LinkImageJob struct {
 // It have to clean up image_answer table first, because it is no way to sync the old info.
 // Return count num of rows it have insert into image_answer table.
 func (j *LinkImageJob) Do(signal <-chan struct{}) error {
-
+	j.IsDone = false
 	j.AffecttedRows = 0
 	tx, err := db.Begin()
 	if err != nil {
@@ -237,5 +239,7 @@ func (j *LinkImageJob) Do(signal <-chan struct{}) error {
 		}
 
 	}
+	tx.Commit()
+	j.IsDone = true
 	return nil
 }

@@ -99,45 +99,52 @@ func TestFindImagesJob(t *testing.T) {
 }
 
 func TestLinkImageJob(t *testing.T) {
-	// type testCase struct {
-	// 	input    []string
-	// 	expected map[string]int
-	// }
+	type testCase struct {
+		input    map[int][]int
+		expected bool
+	}
 
-	// testCases := map[string]testCase{
-	// 	"Find 3": testCase{
-	// 		input: []string{"1", "2", "3"},
-	// 		expected: map[string]int{
-	// 			"1": 1,
-	// 			"2": 2,
-	// 			"3": 3,
-	// 		},
-	// 	},
-	// }
-	// for name, tt := range testCases {
-	// 	t.Run(name, func(t *testing.T) {
-	// 		job := FindImageJob{}
-	// 		var picMocker sqlmock.Sqlmock
-	// 		job.picDB, picMocker, _ = sqlmock.New()
-	// 		job.questionDB,
-	// 		stmt := picMocker.ExpectPrepare("SELECT id FROM images")
-	// 		for _, str := range tt.input {
-	// 			row := sqlmock.NewRows([]string{"id"}).AddRow(tt.expected[str])
-	// 			stmt.ExpectQuery().WithArgs(str).WillReturnRows(row)
-	// 		}
-	// 		imgs, err := FindImageIDByContent(tt.input)
-	// 		if err != nil {
-	// 			t.Fatal(err)
-	// 		}
-	// 		for content, id := range tt.expected {
-	// 			imageID, ok := imgs[content]
-	// 			if !ok {
-	// 				t.Fatalf("expect map contains %s, but cant find", content)
-	// 			}
-	// 			if imageID != id {
-	// 				t.Fatalf("expect image ID be %d, but got %d", id, imageID)
-	// 			}
-	// 		}
-	// 	})
-	// }
+	testCases := map[string]testCase{
+		"Normal": testCase{
+			input: map[int][]int{
+				1: []int{1, 2},
+				2: []int{1, 3},
+			},
+			expected: true,
+		},
+	}
+	var picMocker sqlmock.Sqlmock
+	db, picMocker, _ = sqlmock.New()
+	for name, tt := range testCases {
+		t.Run(name, func(t *testing.T) {
+			job := LinkImageJob{
+				input: tt.input,
+			}
+			var size int
+			picMocker.ExpectBegin()
+			picMocker.ExpectExec("DELETE FROM image_answer").WillReturnResult(sqlmock.NewResult(int64(0), 0))
+			stmt := picMocker.ExpectPrepare("INSERT INTO image_answer")
+			picMocker.MatchExpectationsInOrder(false)
+			for key, values := range tt.input {
+				size += len(values)
+				for _, v := range values {
+					stmt.ExpectExec().WithArgs(key, v).WillReturnResult(sqlmock.NewResult(int64(key), 1))
+				}
+			}
+			err := job.Do(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = picMocker.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
+			}
+
+			if job.AffecttedRows != size {
+				t.Errorf("expect job insert %d of rows, but got %v", size, job.AffecttedRows)
+			}
+			if job.IsDone != tt.expected {
+				t.Errorf("expect job IsDone is %v, but got %v", tt.expected, job.IsDone)
+			}
+		})
+	}
 }

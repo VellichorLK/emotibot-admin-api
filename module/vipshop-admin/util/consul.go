@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
@@ -26,12 +27,19 @@ type ConsulAPI interface {
 	update(key string, val interface{}) (int, error)
 }
 
+type Locker interface {
+	Lock(stopCh <-chan struct{}) (<-chan struct{}, error)
+	// Unlock released the lock. It is an error to call this
+	// if the lock is not currently held.
+	Unlock() error
+}
+
 // ConsulLockHandler should returns a handle to a lock struct which can be used
 // to acquire and release the mutex. The key used must have
 // write permissions.
 // It use the definition of consul/api.LockOpts,
 // so it should return api.ErrLockHeld if it can't acquiring lock.
-type ConsulLockHandler func(key string) (*api.Lock, error)
+type ConsulLockHandler func(key string) (Locker, error)
 
 // ConsulUpdateHandler should handle update kv store in consul.
 // val should be json encoded and return int as ApiError defined for backword compability.
@@ -40,7 +48,7 @@ type ConsulUpdateHandler func(key string, val interface{}) (int, error)
 // ConsulClient is an adapter used for communicate with Consul API.
 type ConsulClient struct {
 	lockHandler   ConsulLockHandler
-	updateHandler func(key string, val interface{}) (int, error)
+	updateHandler ConsulUpdateHandler
 	Address       *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
 	client        *http.Client
 }
@@ -69,7 +77,7 @@ func NewConsulClientWithCustomHTTP(address *url.URL, client *http.Client) *Consu
 }
 
 //SetLockHandler set the handler function for the func Lock in this ConsulClient.
-func (c *ConsulClient) SetLockHandler(handler func(key string) (*api.Lock, error)) {
+func (c *ConsulClient) SetLockHandler(handler func(key string) (Locker, error)) {
 	c.lockHandler = handler
 }
 
@@ -80,7 +88,8 @@ func (c *ConsulClient) SetUpdateHandler(handler func(key string, val interface{}
 
 func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 	return func(key string, val interface{}) (int, error) {
-		k, _ := url.Parse("/" + key)
+		key = strings.TrimPrefix(key, "/")
+		k, _ := url.Parse(key)
 		u = u.ResolveReference(k)
 		body, err := json.Marshal(val)
 		request, err := http.NewRequest(http.MethodPut, u.String(), bytes.NewReader(body))
@@ -109,12 +118,12 @@ func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler
 	})
 	if err != nil {
 		//Return a no-op handler
-		return func(key string) (*api.Lock, error) {
+		return func(key string) (Locker, error) {
 			return nil, err
 		}
 	}
 
-	return func(key string) (*api.Lock, error) {
+	return func(key string) (Locker, error) {
 		opt := &api.LockOptions{
 			Key: key,
 		}
@@ -123,7 +132,7 @@ func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler
 }
 
 // Lock will call the client's lockHandler which handle the implemented work.
-func (c *ConsulClient) Lock(key string) (*api.Lock, error) {
+func (c *ConsulClient) Lock(key string) (Locker, error) {
 	return c.lockHandler(key)
 }
 

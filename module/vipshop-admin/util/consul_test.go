@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -17,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	LogInit(bytes.NewBuffer([]byte{}), os.Stdout, os.Stdout, os.Stdout)
 	retCode := m.Run()
 	os.Exit(retCode)
 }
@@ -41,6 +42,7 @@ func TestConsulUpdateVal(t *testing.T) {
 			A: "Hello", B: false,
 		}},
 	}
+	defaultPath := "/v1/kv/idc/"
 	for name, tt := range tables {
 		t.Run(name, func(t *testing.T) {
 			th := func(w http.ResponseWriter, r *http.Request) {
@@ -48,9 +50,10 @@ func TestConsulUpdateVal(t *testing.T) {
 					t.Fatalf("Expect HTTP Method be PUT, but got %v", r.Method)
 					return
 				}
-				if uri := r.URL.RequestURI(); uri != "/"+tt.key {
+				if uri := r.URL.RequestURI(); uri != defaultPath+tt.key {
 					t.Fatalf("Expect URI to be /%s, but got %s", tt.key, uri)
 				}
+				fmt.Println(r.URL.RequestURI())
 				data, err := ioutil.ReadAll(r.Body)
 				defer r.Body.Close()
 				if err != nil {
@@ -89,6 +92,7 @@ func TestConsulUpdateVal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			u.Path = defaultPath
 			DefaultConsulClient.Address = u
 			ConsulUpdateVal(tt.key, tt.val)
 		})
@@ -132,9 +136,41 @@ func TestConsulUpdateRobotChat(t *testing.T) {
 	ConsulUpdateRobotChat(appid)
 }
 
+type mockedLocker struct {
+	c     chan struct{}
+	mutex sync.Mutex
+}
+
+// Unlock released the lock. It is an error to call this
+// if the lock is not currently held.
+
+func (m *mockedLocker) Lock(stopCh <-chan struct{}) (<-chan struct{}, error) {
+	m.mutex.Lock()
+	if m.c == nil {
+		m.c = make(chan struct{})
+	} else {
+		return nil, api.ErrLockHeld
+	}
+	m.mutex.Unlock()
+
+	return m.c, nil
+}
+func (m *mockedLocker) Unlock() error {
+	close(m.c)
+	m.c = nil
+	return nil
+}
+
 //TODO: create a fake LockHandler
 //Simulate multiple client trying to acquire the lock.
 func TestLock(t *testing.T) {
+	if _, err := http.Get(DefaultConsulClient.Address.String()); err != nil {
+		t.Skipf("Test need DefaultConsulClient reachable, but got %v", err)
+	}
+	// var m mockedLocker
+	// DefaultConsulClient.SetLockHandler(func(key string) (Locker, error) {
+	// 	return &m, nil
+	// })
 	//lock creation is not thread-safe for now.
 	lock, err := DefaultConsulClient.Lock("test")
 	if err != nil {
