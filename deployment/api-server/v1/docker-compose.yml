@@ -196,6 +196,7 @@ services:
             ENV_KEY_ASR_DATABASE_PORT:              ${MYSQL_PORT}
             ENV_KEY_ASR_DATABASE_USER_NAME:         ${MYSQL_MAIN_USER}
             ENV_KEY_ASR_DATABASE_PWD:               ${MYSQL_MAIN_PASS}
+            ENV_KEY_CALL_DIALOGUE_ANALYSIS_URL:     ${WORKER_ENV_KEY_CALL_DIALOGUE_ANALYSIS_URL}
 
         volumes:
             - ${WORKER_VOICE_ASR_DATA_PATH}:/usr/src/app/main/output           # logs output path
