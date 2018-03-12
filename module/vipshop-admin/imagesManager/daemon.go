@@ -35,10 +35,10 @@ func InitDaemon() {
 				util.LogError.Printf("acquiring consul lock failed, %v\n", err)
 				continue
 			}
-			defer lock.Unlock()
 			stop, err := lock.Lock(make(chan struct{}))
 			if err != nil {
 				util.LogError.Printf("lock acquiring failed, %v\n", err)
+				lock.Unlock()
 				continue
 			}
 
@@ -46,6 +46,7 @@ func InitDaemon() {
 			if err != nil {
 				util.LogError.Println("sync failed, " + err.Error())
 			}
+			lock.Unlock()
 		}
 	}()
 }
