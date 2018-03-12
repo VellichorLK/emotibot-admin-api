@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -51,10 +52,14 @@ func main() {
 		util.LogError.Printf("Can not init without server env:'CONSUL_URL env'")
 		os.Exit(-1)
 	}
+	u, err := url.Parse(consulAddr)
+	if err != nil {
+		util.LogError.Printf("env parsing as URL failed, %v", err)
+	}
 	customHTTPClient := &http.Client{
 		Timeout: time.Duration(5) * time.Second,
 	}
-	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(consulAddr, customHTTPClient)
+	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
 
 	setRoute(app)
 	initDB()
