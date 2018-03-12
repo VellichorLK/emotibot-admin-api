@@ -17,7 +17,8 @@ func InitDaemon() {
 	periodStr := util.GetEnviroment(Envs, "SYNC_PERIOD_BY_SECONDS")
 	period, err := strconv.Atoi(periodStr)
 	if err != nil {
-		// panic("Env SYNC_PERIOD_BY_SECONDS parsing error" + err.Error())
+		util.LogError.Println("Env " + ModuleInfo.ModuleName + "_SYNC_PERIOD_BY_SECONDS parsing error" + err.Error())
+		period = 43200 // 12hr (12*60*60)
 	}
 	DefaultDaemon = NewDaemon(period, db, util.GetMainDB())
 	go func() {
@@ -61,6 +62,7 @@ type Daemon struct {
 	UpdatePeriod time.Duration
 }
 
+//NewDaemon Create a daemon
 func NewDaemon(updatePeriod int, pictureDB, questionDB *sql.DB) *Daemon {
 	return &Daemon{
 		picDB:        pictureDB,
@@ -70,7 +72,8 @@ func NewDaemon(updatePeriod int, pictureDB, questionDB *sql.DB) *Daemon {
 
 }
 
-//Sync will make sure imageDB and questionDB have data consistency every UpdatePeriod seconds.
+//Sync Execute the FindImageJob and use the result as input of LinkImageJob.
+//stop channel should be pass in, if you want
 func (d *Daemon) Sync(stop <-chan struct{}) error {
 	util.LogTrace.Println("Start daemon syncing...")
 	findJob := &FindImageJob{
@@ -127,53 +130,58 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 	}
 	j.Result = make(map[int][]int)
 	for rows.Next() {
-		var (
-			id      int
-			content string
-		)
-		err = rows.Scan(&id, &content)
-		if err != nil {
-			return fmt.Errorf("scan failed, %v", err)
-		}
-
-		var imageGroup = make([]int, 0)
-
-		//Find img tag and trim the content
-		for currentIndex := strings.Index(content, "<img"); currentIndex >= 0; currentIndex = strings.Index(content, "<img") {
-			content = content[currentIndex+4:]
-			//Find src attribute
-			var start, end int
-			start = strings.Index(content, "src=\"") + 5
-			if start == -1 || len(content) < start {
-				//Skip the bad formatted img tag to avoid runtime error
-				continue
+		select {
+		case <-signal:
+			j.Result = nil
+			return ErrInterruptted
+		default:
+			var (
+				id      int
+				content string
+			)
+			err = rows.Scan(&id, &content)
+			if err != nil {
+				return fmt.Errorf("scan failed, %v", err)
 			}
-			for i, char := range content[start:] {
-				if char == '"' {
-					end = start + i
-					break
+
+			var imageGroup = make([]int, 0)
+
+			//Find img tag and trim the content
+			for currentIndex := strings.Index(content, "<img"); currentIndex >= 0; currentIndex = strings.Index(content, "<img") {
+				content = content[currentIndex+4:]
+				//Find src attribute
+				var start, end int
+				start = strings.Index(content, "src=\"") + 5
+				if start == -1 || len(content) < start {
+					//Skip the bad formatted img tag to avoid runtime error
+					continue
 				}
-			}
-			//Find image's ID
-			srcContent := strings.TrimPrefix(content[start:end], "http://")
-			names := strings.Split(srcContent, "/")
-			name := names[len(names)-1]
-			var id int
-			err := stmt.QueryRow(name).Scan(&id)
-			if err == sql.ErrNoRows {
-				//Skip the unknown img tag
-				continue
-			} else if err != nil {
-				return fmt.Errorf("sql queryRow failed, %v", err)
-			}
+				for i, char := range content[start:] {
+					if char == '"' {
+						end = start + i
+						break
+					}
+				}
+				//Find image's ID
+				srcContent := strings.TrimPrefix(content[start:end], "http://")
+				names := strings.Split(srcContent, "/")
+				name := names[len(names)-1]
+				var id int
+				err := stmt.QueryRow(name).Scan(&id)
+				if err == sql.ErrNoRows {
+					//Skip the unknown img tag
+					continue
+				} else if err != nil {
+					return fmt.Errorf("sql queryRow failed, %v", err)
+				}
 
-			imageGroup = append(imageGroup, id)
+				imageGroup = append(imageGroup, id)
+			}
+			//Only the answers with images should be added to result
+			if len(imageGroup) > 0 {
+				j.Result[id] = imageGroup
+			}
 		}
-		//Only the answers with images will be added to map
-		if len(imageGroup) > 0 {
-			j.Result[id] = imageGroup
-		}
-
 	}
 
 	return nil
@@ -203,21 +211,29 @@ func (j *LinkImageJob) Do(signal <-chan struct{}) error {
 			tx.Commit()
 		}
 	}()
+
 	_, err = tx.Exec("DELETE FROM image_answer")
 	if err != nil {
 		return fmt.Errorf("clean up image_answer table failed, %v", err)
 	}
+
 	stmt, err := tx.Prepare("INSERT INTO image_answer (answer_id, image_id) VALUES (?, ?)")
 	if err != nil {
 		return fmt.Errorf("sql prepare failed, %v", err)
 	}
 	for ansID, images := range j.input {
-		for _, imgID := range images {
-			_, err := stmt.Exec(ansID, imgID)
-			if err != nil {
-				return fmt.Errorf("sql insert failed, %v", err)
+		select {
+		case <-signal:
+			tx.Rollback()
+			return ErrInterruptted
+		default:
+			for _, imgID := range images {
+				_, err := stmt.Exec(ansID, imgID)
+				if err != nil {
+					return fmt.Errorf("sql insert failed, %v", err)
+				}
+				j.AffecttedRows++
 			}
-			j.AffecttedRows++
 		}
 
 	}
