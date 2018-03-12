@@ -256,7 +256,7 @@ func storeClusterData(sc StoreCluster, clusters *clusteringResult) error {
 	return sc.Store(clusters)
 }
 
-func getRecommand(sentence []string) ([]string, error) {
+func getRecommend(sentence []string) ([]string, error) {
 	pool := 4
 	num := len(sentence)
 	if num < pool {

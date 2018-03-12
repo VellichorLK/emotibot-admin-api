@@ -438,14 +438,14 @@ func handleRecommend(ctx context.Context) {
 	}
 
 	if num > 0 {
-		recommand, err := getRecommand(sentence)
+		recommend, err := getRecommend(sentence)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.Writef("%s\n", err)
 			return
 		}
 		ctx.StatusCode(http.StatusOK)
-		ctx.JSON(recommand)
+		ctx.JSON(recommend)
 	}
 
 }

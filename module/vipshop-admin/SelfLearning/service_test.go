@@ -247,7 +247,7 @@ hits:
 	return float64(hit) / float64(len(sentences))
 }
 
-func TestGetRecommand(t *testing.T) {
+func TestGetRecommend(t *testing.T) {
 
 	testData := make(map[string]*rresponse)
 	inputString := make([]string, 3)
@@ -324,17 +324,17 @@ func TestGetRecommand(t *testing.T) {
 	defer ts.Close()
 	responseURL = ts.URL
 
-	recommands, err := getRecommand(inputString)
+	recommends, err := getRecommend(inputString)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if len(recommands) != len(answers) {
-		t.Fatalf("recommand num is not equals.\n %v", recommands)
+	if len(recommends) != len(answers) {
+		t.Fatalf("recommend num is not equals.\n %v", recommends)
 	}
-	for i := 0; i < len(recommands); i++ {
-		if recommands[i] != answers[i] {
-			t.Fatalf("recommands are not correct.!\n recommands:\n %v\n answers:\n%v\n", recommands, answers)
+	for i := 0; i < len(recommends); i++ {
+		if recommends[i] != answers[i] {
+			t.Fatalf("recommends are not correct.!\n recommends:\n %v\n answers:\n%v\n", recommends, answers)
 		}
 	}
 }
