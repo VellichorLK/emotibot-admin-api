@@ -373,7 +373,7 @@ func DeleteReport(id int) error {
 
 //GetQuestionIDByContent get question id from db by question content
 func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
-	db := util.GetDB(ModuleInfo.ModuleName)
+	db := util.GetMainDB()
 	if db == nil {
 		return nil, errors.New("could not get the Self learn DB pool")
 	}
