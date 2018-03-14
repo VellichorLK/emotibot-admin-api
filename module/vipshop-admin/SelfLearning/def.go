@@ -93,6 +93,12 @@ type UserQuestion struct {
 	UpdatedTime time.Time `json:"updated_time"`
 }
 
+//RecommendQ recommend struct
+type RecommendQ struct {
+	QID     int    `json:"questionId"`
+	Content string `json:"content"`
+}
+
 type clusteringResult struct {
 	numClustered int
 	clusters     []clustering
@@ -127,3 +133,10 @@ func (r ranker) Less(i, j int) bool {
 type StoreCluster interface {
 	Store(cr *clusteringResult) error
 }
+
+//column name of vipshop_question
+const (
+	NQuestionID   = "Question_Id"
+	NContent      = "Content"
+	QuestionTable = "vipshop_question"
+)

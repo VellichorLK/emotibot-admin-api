@@ -17,6 +17,7 @@ import (
 
 	"emotibot.com/emotigo/module/vipshop-admin/SelfLearning/internal/data"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 func TestMain(m *testing.M) {
@@ -125,6 +126,8 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer f.Close()
+
+	fmt.Printf("number of cluster:%v, num of tag:%v\n", len(results.clusters), len(results.clusters[0].tags))
 	var clusters = make([]struct {
 		ID        int      `json:"clusterID"`
 		Questions []string `json:"questions"`
@@ -132,10 +135,10 @@ func TestWholeFileGetClusteringResult(t *testing.T) {
 		HitRate   float64  `json:"hitrate"`
 	}, 0)
 	for i, c := range results.clusters {
-
 		var texts []string
 		for _, id := range c.feedbackID {
 			texts = append(texts, feedbacks[id])
+			fmt.Printf("%s\n", feedbacks[id])
 		}
 		var cluster = struct {
 			ID        int      `json:"clusterID"`
@@ -323,6 +326,10 @@ func TestGetRecommend(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(th))
 	defer ts.Close()
 	responseURL = ts.URL
+	db, mock, _ := sqlmock.New()
+	util.SetDB(ModuleInfo.ModuleName, db)
+	rows := sqlmock.NewRows([]string{"Question_Id", "Content"}).AddRow(1, answers[0]).AddRow(2, answers[1]).AddRow(3, answers[2]).AddRow(4, answers[3]).AddRow(5, answers[4])
+	mock.ExpectQuery("select Question_Id,Content from vipshop_question where Content ").WithArgs(answers[0], answers[1], answers[2], answers[3], answers[4]).WillReturnRows(rows)
 
 	recommends, err := getRecommend(inputString)
 	if err != nil {
@@ -333,8 +340,8 @@ func TestGetRecommend(t *testing.T) {
 		t.Fatalf("recommend num is not equals.\n %v", recommends)
 	}
 	for i := 0; i < len(recommends); i++ {
-		if recommends[i] != answers[i] {
-			t.Fatalf("recommends are not correct.!\n recommends:\n %v\n answers:\n%v\n", recommends, answers)
+		if recommends[i].Content != answers[i] && recommends[i].QID == i+1 {
+			t.Fatalf("recommends are not correct.!\n recommends:%v\n,id:%v\nanswers:%v, id:%v\n", recommends, recommends[i].QID, answers, i+1)
 		}
 	}
 }

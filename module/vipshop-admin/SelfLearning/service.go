@@ -256,7 +256,7 @@ func storeClusterData(sc StoreCluster, clusters *clusteringResult) error {
 	return sc.Store(clusters)
 }
 
-func getRecommend(sentence []string) ([]string, error) {
+func getRecommend(sentence []string) ([]*RecommendQ, error) {
 	pool := 4
 	num := len(sentence)
 	if num < pool {
@@ -329,5 +329,21 @@ func getRecommend(sentence []string) ([]string, error) {
 	sorter.keyToSlice()
 	sort.Sort(sorter)
 
-	return sorter.sliceData, nil
+	questionIDMap, err := GetQuestionIDByContent(sorter.sliceData)
+	if err != nil {
+		return nil, err
+	}
+
+	recommend := make([]*RecommendQ, 0, len(sorter.sliceData))
+
+	for i := 0; i < len(sorter.sliceData); i++ {
+		if id, ok := questionIDMap[sorter.sliceData[i].(string)]; ok {
+			rQ := &RecommendQ{QID: id, Content: sorter.sliceData[i].(string)}
+			recommend = append(recommend, rQ)
+		} else {
+			util.LogWarn.Printf("[SelfLearn][Recommend] has %s question but doesn't have id\n", sorter.sliceData[i].(string))
+		}
+	}
+
+	return recommend, nil
 }
