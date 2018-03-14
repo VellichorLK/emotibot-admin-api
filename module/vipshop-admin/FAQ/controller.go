@@ -31,8 +31,148 @@ func init() {
 			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
 			util.NewEntryPoint("GET", "category/{cid:string}/questions", []string{"view"}, handleCategoryQuestions),
+			util.NewEntryPoint("GET", "categories", []string{"view"}, handleGetCategories),
+			util.NewEntryPoint("POST", "category/{id:int}", []string{"edit"}, handleUpdateCategories),
+			util.NewEntryPoint("PUT", "category", []string{"edit"}, handleAddCategory),
+			util.NewEntryPoint("DELETE", "category/{id:int}", []string{"edit"}, handleDeleteCategory),
 		},
 	}
+}
+
+func handleAddCategory(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	name := ctx.FormValue("categoryname")
+	parentID, err := strconv.Atoi(ctx.FormValue("parentid"))
+	if err != nil || name == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+
+	parentCategory, err := GetAPICategory(appid, parentID)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
+	}
+
+	var newCatetory *APICategory
+	var path string
+	if parentCategory == nil {
+		newCatetory, err = AddApiCategory(appid, name, 0, 1)
+		path = name
+	} else {
+		newCatetory, err = AddApiCategory(appid, name, parentID, parentCategory.Level+1)
+		paths := strings.Split(parentCategory.Path, "/")
+		path = strings.Join(append(paths[1:], name), "/")
+	}
+	auditMessage := fmt.Sprintf("[%s]:%s", util.Msg["Category"], path)
+	auditRet := 1
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		auditRet = 0
+	} else {
+		ctx.StatusCode(http.StatusOK)
+		ctx.JSON(newCatetory)
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+}
+
+func handleDeleteCategory(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	categoryID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef(err.Error())
+	}
+
+	origCategory, err := GetAPICategory(appid, categoryID)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
+	} else if origCategory == nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	paths := strings.Split(origCategory.Path, "/")
+	path := strings.Join(paths[1:], "/")
+
+	count, err := GetCategoryQuestionCount(appid, origCategory)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
+	}
+	err = DeleteAPICategory(appid, origCategory)
+	fmtStr := "[%s]:%s，" + util.Msg["DeleteCategoryDesc"]
+	auditMessage := fmt.Sprintf(fmtStr, util.Msg["Category"], path, count)
+	auditRet := 1
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		auditRet = 0
+	} else {
+		ctx.StatusCode(http.StatusOK)
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+}
+
+func handleUpdateCategories(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	categoryID, err := ctx.Params().GetInt("id")
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef(err.Error())
+	}
+
+	newName := ctx.FormValue("categoryname")
+	if newName == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	origCategory, err := GetAPICategory(appid, categoryID)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
+	} else if origCategory == nil {
+		ctx.StatusCode(http.StatusBadRequest)
+	}
+	origCategory.Name = newName
+	err = UpdateAPICategoryName(appid, categoryID, newName)
+
+	origPaths := strings.Split(origCategory.Path, "/")
+	origPath := strings.Join(origPaths[1:], "/")
+	newPath := strings.Join(append(origPaths[1:len(origPaths)-1], newName), "/")
+
+	auditMessage := fmt.Sprintf("[%s]:%s=>%s", util.Msg["Category"], origPath, newPath)
+	auditRet := 1
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		auditRet = 0
+	} else {
+		ctx.StatusCode(http.StatusOK)
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+}
+
+func handleGetCategories(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	categories, err := GetAPICategories(appid)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+	}
+	ctx.JSON(categories)
 }
 
 func handleQuerySimilarQuestions(ctx context.Context) {

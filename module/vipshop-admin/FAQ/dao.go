@@ -2,6 +2,7 @@ package FAQ
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -15,6 +16,137 @@ const SEPARATOR = "#SEPARATE_TOKEN#"
 
 //errorNotFound represent SQL select query fetch zero item
 // var errorNotFound = errors.New("items not found")
+
+func addApiCategory(appid string, name string, parentID int, level int) (int, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return 0, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("INSERT INTO %s_categories (CategoryName, ParentId, Status, level, ParentPath, SelfPath) VALUES(?, ?, 1, ?, '', '')", appid)
+	res, err := mySQL.Exec(queryStr, name, parentID, level)
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	return int(id), nil
+}
+
+func getQuestionCountInCategories(appid string, IDs []int) (int, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return 0, errors.New("DB not init")
+	} else if len(IDs) == 0 {
+		return 0, nil
+	}
+
+	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM %s_question WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
+	args := make([]interface{}, len(IDs))
+	for idx := range IDs {
+		args[idx] = IDs[idx]
+	}
+	rows := mySQL.QueryRow(queryStr, args...)
+	count := 0
+	err := rows.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func getCategories(appid string) (map[int]*APICategory, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("SELECT CategoryId, CategoryName, ParentId FROM `%s_categories` where CategoryId > 0 order by CategoryId", appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ret []*APICategory
+	for rows.Next() {
+		temp := APICategory{}
+		err = rows.Scan(&temp.ID, &temp.Name, &temp.ParentID)
+		temp.Children = make([]*APICategory, 0)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, &temp)
+	}
+
+	categoryMap := make(map[int]*APICategory)
+	for _, category := range ret {
+		categoryMap[category.ID] = category
+	}
+
+	return categoryMap, nil
+}
+
+func deleteCategories(appid string, IDs []int) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	} else if len(IDs) == 0 {
+		return nil
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM %s_categories WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
+	args := make([]interface{}, len(IDs))
+	for idx := range IDs {
+		args[idx] = IDs[idx]
+	}
+	_, err := mySQL.Exec(queryStr, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func disableQuestionInCategories(appid string, IDs []int) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	} else if len(IDs) == 0 {
+		return nil
+	}
+
+	queryStr := fmt.Sprintf("UPDATE %s_question SET Status = -1 WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
+	args := make([]interface{}, len(IDs))
+	for idx := range IDs {
+		args[idx] = IDs[idx]
+	}
+	_, err := mySQL.Exec(queryStr, args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateCategoryName(appid string, categoryID int, name string) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("UPDATE %s_categories SET CategoryName = ? where CategoryId = ?", appid)
+	_, err := mySQL.Exec(queryStr, name, categoryID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 	query := fmt.Sprintf("SELECT Content FROM %s_squestion WHERE Question_Id = ?", appID)

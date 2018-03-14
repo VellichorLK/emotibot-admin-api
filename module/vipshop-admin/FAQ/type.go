@@ -6,6 +6,15 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
+type APICategory struct {
+	ParentID int            `json:"fid"`
+	ID       int            `json:"id"`
+	Level    int            `json:"level"`
+	Path     string         `json:"filepath"`
+	Name     string         `json:"text"`
+	Children []*APICategory `json:"children"`
+}
+
 type SimilarQuestion struct {
 	Content string `json:"content"`
 	Id      string `json:sqid`

@@ -29,6 +29,7 @@ var (
 		"Question":     "问题",
 		"Origin":       "原始",
 		"Updated":      "更新后",
+		"Category":     "分类",
 
 		// Used in Switch
 		"Name":     "名称",
@@ -45,6 +46,9 @@ var (
 		"function_storymodule":       "讲故事模块",
 		"function_riddlemodule":      "猜谜语模块",
 		"function_chengyumodule":     "成语模块",
+
+		// Used in FAQ
+		"DeleteCategoryDesc": "一并删除分类内 %d 个标准问题",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",
