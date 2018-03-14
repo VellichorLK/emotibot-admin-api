@@ -193,7 +193,7 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 			if tagID.Valid {
 				qi.Info += delimiter + tagMap[int(tagID.Int64)]
 			} else {
-				qi.Info += delimiter + "全部"
+				qi.Info += delimiter + "所有維度"
 			}
 
 		}
