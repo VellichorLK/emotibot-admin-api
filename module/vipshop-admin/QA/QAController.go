@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
-	
 )
 
 // ModuleInfo is web info of questions entrypoints
@@ -53,6 +52,7 @@ func importExcel(ctx context.Context) {
 	var jsonResponse returnJSON
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
+	var appid = util.GetAppID(ctx)
 	var status = 0 // 0 == failed, 1 == success
 
 	_, fileHeader, err := ctx.FormFile("file")
@@ -84,7 +84,7 @@ func importExcel(ctx context.Context) {
 		ctx.JSON(jsonResponse)
 		return
 	}
-	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode)
+	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode, appid)
 
 	switch err {
 	case util.ErrorMCLock: //503
@@ -146,7 +146,7 @@ func exportExcel(ctx context.Context) {
 		}
 	}
 
-	mcResponse, err := apiClient.McExportExcel(userID, userIP, answerIDs)
+	mcResponse, err := apiClient.McExportExcel(userID, userIP, answerIDs, appid)
 	switch err {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
@@ -166,7 +166,6 @@ func exportExcel(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 服务器不正常", 0)
 	}
 }
-
 
 func download(ctx context.Context) {
 	id := ctx.Params().Get("id")

@@ -22,8 +22,8 @@ const (
 var DefaultMCClient MultiCustomerClient = MultiCustomerHttpClient{}
 
 type MultiCustomerClient interface {
-	McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string) (MCResponse, error)
-	McExportExcel(UserID string, UserIP string, AnswerIDs []string) (MCResponse, error)
+	McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string, appid string) (MCResponse, error)
+	McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string) (MCResponse, error)
 	McManualBusiness(appid string) (int, error)
 }
 
@@ -115,7 +115,7 @@ func logMCError(err error) {
 }
 
 // McImportExcel is a REST API of Multicustomer module, response for importing xlsx
-func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, userID string, userIP string, mode string) (MCResponse, error) {
+func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, userID string, userIP string, mode string, appid string) (MCResponse, error) {
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	w := &bytes.Buffer{}
 	writer := multipart.NewWriter(w)
@@ -128,12 +128,12 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 	}
 	writer.Close()
 	queryString := url.Values{}
-	queryString.Set("app_id", "vipshop")
+	queryString.Set("app_id", appid)
 	queryString.Set("type", "other")
 	queryString.Set("userid", userID)
 	queryString.Set("userip", userIP)
 	queryString.Set("module", mode)
-	
+
 	reqURL := fmt.Sprintf("%s/business?%s", mcURL, queryString.Encode())
 	req, err := http.NewRequest("POST", reqURL, w)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -170,18 +170,18 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 }
 
 // MCExportExcel
-func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string) (MCResponse, error) {
+func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string, appid string) (MCResponse, error) {
 	var mcResponse MCResponse
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	type requestJSON struct {
-		AppID string `json:"app_id"`
-		UserID string `json:"userid"`
-		UserIP string `json:"userip"`
-		Module string `json:"module"`
+		AppID     string   `json:"app_id"`
+		UserID    string   `json:"userid"`
+		UserIP    string   `json:"userip"`
+		Module    string   `json:"module"`
 		AnswerIDs []string `json:"answerid"`
 	}
 	reqBody := requestJSON{}
-	reqBody.AppID = "vipshop"
+	reqBody.AppID = appid
 	reqBody.UserID = userID
 	reqBody.UserIP = userIP
 	reqBody.Module = "business"

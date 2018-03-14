@@ -240,7 +240,6 @@ func handleQuestionFilter(ctx context.Context) {
 	end := start + condition.Limit
 
 	// fetch returned question and answers
-	// questions, err := FetchQuestions(qids[start:end], aids, "vipshop")
 	type Response struct {
 		CurPage     string     `json:"CurPage"`
 		Questions   []Question `json:"QueryResult"`
