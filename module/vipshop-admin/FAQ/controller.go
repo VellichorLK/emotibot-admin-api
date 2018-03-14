@@ -60,7 +60,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		return
 	}
 	var question = questions[0]
-	questionCategory, err := GetCategory(question.CategoryID)
+	questionCategory, err := GetCategory(question.CategoryID, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
@@ -134,7 +134,8 @@ func handleDeleteSimilarQuestions(ctx context.Context) {
 // search question by exactly matching content
 func handleSearchQuestion(ctx context.Context) {
 	content := ctx.FormValue("content")
-	question, err := searchQuestionByContent(content)
+	appid := util.GetAppID(ctx)
+	question, err := searchQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
 		ctx.StatusCode(http.StatusNotFound)
 		return
@@ -150,7 +151,8 @@ func handleSearchQuestion(ctx context.Context) {
 
 //Retrun JSON Formatted RFQuestion array, if question is invalid, id & categoryId will be 0
 func handleGetRFQuestions(ctx iris.Context) {
-	questions, err := GetRFQuestions()
+	appid := util.GetAppID(ctx)
+	questions, err := GetRFQuestions(appid)
 	if err != nil {
 		util.LogError.Printf("Get RFQuestions failed, %v\n", err)
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -161,12 +163,13 @@ func handleGetRFQuestions(ctx iris.Context) {
 
 func handleSetRFQuestions(ctx iris.Context) {
 	var args UpdateRFQuestionsArgs
+	appid := util.GetAppID(ctx)
 	err := ctx.ReadJSON(&args)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	if err = SetRFQuestions(args.Contents); err != nil {
+	if err = SetRFQuestions(args.Contents, appid); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
@@ -176,12 +179,13 @@ func handleSetRFQuestions(ctx iris.Context) {
 
 func handleCategoryQuestions(ctx iris.Context) {
 	cid := ctx.Params().Get("cid")
+	appid := util.GetAppID(ctx)
 	id, err := strconv.Atoi(cid)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	category, err := GetCategory(id)
+	category, err := GetCategory(id, appid)
 	if err == sql.ErrNoRows {
 		ctx.StatusCode(http.StatusNotFound)
 		return
@@ -203,7 +207,7 @@ func handleCategoryQuestions(ctx iris.Context) {
 	}
 	//Add category itself into total
 	categories = append(categories, category)
-	questions, err := GetQuestionsByCategories(categories)
+	questions, err := GetQuestionsByCategories(categories, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
