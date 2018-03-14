@@ -327,7 +327,7 @@ func TestGetRecommend(t *testing.T) {
 	defer ts.Close()
 	responseURL = ts.URL
 	db, mock, _ := sqlmock.New()
-	util.SetDB(ModuleInfo.ModuleName, db)
+	util.SetDB("main", db)
 	rows := sqlmock.NewRows([]string{"Question_Id", "Content"}).AddRow(1, answers[0]).AddRow(2, answers[1]).AddRow(3, answers[2]).AddRow(4, answers[3]).AddRow(5, answers[4])
 	mock.ExpectQuery("select Question_Id,Content from vipshop_question where Content ").WithArgs(answers[0], answers[1], answers[2], answers[3], answers[4]).WillReturnRows(rows)
 
