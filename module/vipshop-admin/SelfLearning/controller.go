@@ -1,6 +1,7 @@
 package SelfLearning
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -150,7 +151,14 @@ func handleClustering(ctx context.Context) {
 	et := time.Unix(e, 0)
 	ctx.StatusCode(http.StatusOK)
 
-	isDup, reportID, err = isDuplicate(st, et, appid)
+	pType, err := getQuestionType(ctx)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, err.Error()))
+		return
+	}
+
+	isDup, reportID, err = isDuplicate(st, et, appid, pType)
 
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -159,15 +167,14 @@ func handleClustering(ctx context.Context) {
 	}
 
 	if !isDup {
-
-		reportID, err = createOneReport(st, et, appid)
+		reportID, err = createOneReport(st, et, appid, pType)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(status, err.Error()))
 			return
 		}
 
-		go doClustering(st, et, reportID, &dbStore{}, appid)
+		go doClustering(st, et, reportID, &dbStore{}, appid, pType)
 	}
 
 	respone.ReportID = reportID
@@ -175,14 +182,41 @@ func handleClustering(ctx context.Context) {
 	return
 }
 
+func getQuestionType(ctx context.Context) (int, error) {
+	pType, err := ctx.URLParamInt(PType)
+	if err != nil {
+		return 0, err
+	}
+	if !isValidType(pType) {
+		return 0, errors.New("wrong value of type")
+	}
+	return pType, nil
+}
+
 func handleGetReports(ctx context.Context) {
+
+	status := -999
+	appid := ctx.GetHeader("Authorization")
+	if appid == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, "No permission"))
+		return
+	}
+
+	pType, err := getQuestionType(ctx)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, err.Error()))
+		return
+	}
+
 	reports := []Report{}
 	limit, err := strconv.Atoi(ctx.FormValue("limit"))
 	if err != nil || limit > 10 {
 		limit = 10
 	}
 
-	reports, err = GetReports("", limit)
+	reports, err = GetReports("", limit, appid, pType)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Printf("%s\n", err)
@@ -200,7 +234,15 @@ func handleGetReport(ctx context.Context) {
 		return
 	}
 
-	reports, err := GetReports(reportID, 1)
+	status := -999
+	appid := ctx.GetHeader("Authorization")
+	if appid == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, "No permission"))
+		return
+	}
+
+	reports, err := GetReports(reportID, 1, appid, -1)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Printf("%s\n", err)
@@ -221,7 +263,16 @@ func handleGetClusters(ctx context.Context) {
 		ctx.Writef("id should not be empty")
 		return
 	}
-	reports, err := GetReports(reportID, 1)
+
+	status := -999
+	appid := ctx.GetHeader("Authorization")
+	if appid == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, "No permission"))
+		return
+	}
+
+	reports, err := GetReports(reportID, 1, appid, -1)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
@@ -407,7 +458,16 @@ func handleDeleteReport(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	err = DeleteReport(id)
+
+	status := -999
+	appid := ctx.GetHeader("Authorization")
+	if appid == "" {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(status, "No permission"))
+		return
+	}
+
+	err = DeleteReport(id, appid)
 	if err == ErrRowNotFound {
 		ctx.StatusCode(http.StatusNotFound)
 		return

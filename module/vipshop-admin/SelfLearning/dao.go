@@ -51,7 +51,7 @@ func execStmt(stmt *sql.Stmt, params ...interface{}) (sql.Result, error) {
 
 // GetReports search db for report based on id or limit, if id is empty then search all reports until given limit.
 // If id is given then only one report will return
-func GetReports(id string, limit int) (reports []Report, err error) {
+func GetReports(id string, limit int, appid string, rType int) (reports []Report, err error) {
 	reports = []Report{}
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
@@ -67,7 +67,13 @@ func GetReports(id string, limit int) (reports []Report, err error) {
 		parameters = append(parameters, id)
 	} else { //Only Successful ones
 		wherePart = fmt.Sprintf("WHERE %s = 1", REPORT.status)
+		if rType > 0 {
+			wherePart += " and " + TableProps.feedback.qType + "=?"
+			parameters = append(parameters, rType)
+		}
 	}
+	wherePart += " and " + TableProps.feedback.appid + "=?"
+	parameters = append(parameters, appid)
 
 	rawQuery := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s %s ORDER BY %s LIMIT %d",
 		REPORT.id, REPORT.startTime, REPORT.endTime, REPORT.status,
@@ -347,15 +353,15 @@ func RevokeUserQuestion(id int) error {
 
 }
 
-func DeleteReport(id int) error {
+func DeleteReport(id int, appid string) error {
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		return fmt.Errorf("could not get the Self learn DB pool")
 	}
 
-	rawQuery := fmt.Sprintf("SELECT count(%s) FROM %s WHERE %s = ?", TableProps.report.id, TableProps.report.name, TableProps.report.id)
+	rawQuery := fmt.Sprintf("SELECT count(%s) FROM %s WHERE %s = ? and %s = ?", TableProps.report.id, TableProps.report.name, TableProps.report.id, TableProps.report.appid)
 	var num int
-	err := db.QueryRow(rawQuery, id).Scan(&num)
+	err := db.QueryRow(rawQuery, id, appid).Scan(&num)
 	if err != nil {
 		return fmt.Errorf("query %s failed, %v", rawQuery, err)
 	}
@@ -363,7 +369,7 @@ func DeleteReport(id int) error {
 		return ErrRowNotFound
 	}
 
-	rawQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = ?", TableProps.report.name, TableProps.report.id)
+	rawQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = ? and %s = ?", TableProps.report.name, TableProps.report.id, TableProps.report.appid)
 	_, err = db.Exec(rawQuery, id)
 	if err != nil {
 		return fmt.Errorf("delete query %s failed, %v", rawQuery, err)

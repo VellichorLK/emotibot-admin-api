@@ -13,7 +13,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string) error {
+func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string, qType int) error {
 
 	status := S_SUCCESS
 	//update the status
@@ -26,7 +26,7 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster,
 		sqlExec(sql, status, reportID)
 	}()
 
-	feedbackQs, feedbackQID, err := getFeedbackQ(s, e, appid)
+	feedbackQs, feedbackQID, err := getFeedbackQ(s, e, appid, qType)
 	if err != nil {
 		status = S_PANIC
 		util.LogError.Println(err)
@@ -56,9 +56,9 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster,
 	return err
 }
 
-func createOneReport(s time.Time, e time.Time, appid string) (uint64, error) {
-	sql := "insert into " + TableProps.report.name + " (" + TableProps.report.startTime + "," + TableProps.report.endTime + "," + TableProps.report.appid + ") values (?,?,?)"
-	result, err := sqlExec(sql, s, e, appid)
+func createOneReport(s time.Time, e time.Time, appid string, rType int) (uint64, error) {
+	sql := "insert into " + TableProps.report.name + " (" + TableProps.report.startTime + "," + TableProps.report.endTime + "," + TableProps.report.appid + "," + TableProps.report.rType + ") values (?,?,?,?)"
+	result, err := sqlExec(sql, s, e, appid, rType)
 	if err != nil {
 		util.LogError.Println(err)
 		return 0, err
@@ -71,12 +71,12 @@ func createOneReport(s time.Time, e time.Time, appid string) (uint64, error) {
 	return uint64(reportID), nil
 }
 
-func isDuplicate(s time.Time, e time.Time, appid string) (bool, uint64, error) {
+func isDuplicate(s time.Time, e time.Time, appid string, pType int) (bool, uint64, error) {
 
 	sql := "select " + TableProps.report.id + " from " + TableProps.report.name + " where " + TableProps.report.startTime + "=?" +
-		" and " + TableProps.report.endTime + "=?" + " and " + TableProps.report.appid + "=?"
+		" and " + TableProps.report.endTime + "=?" + " and " + TableProps.report.appid + "=?" + " and " + TableProps.report.rType + "=?"
 
-	rows, err := sqlQuery(sql, s, e, appid)
+	rows, err := sqlQuery(sql, s, e, appid, pType)
 	if err != nil {
 		return false, 0, err
 	}
@@ -96,17 +96,17 @@ func isDuplicate(s time.Time, e time.Time, appid string) (bool, uint64, error) {
 }
 
 //return parameters, questions, id of questions in database, error
-func getFeedbackQ(s time.Time, e time.Time, appid string) ([]string, []uint64, error) {
+func getFeedbackQ(s time.Time, e time.Time, appid string, qType int) ([]string, []uint64, error) {
 
 	sql := "select max(" + TableProps.feedback.id + ")," + TableProps.feedback.question + " from " + TableProps.feedback.name +
 		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " +
-		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) and " + TableProps.feedback.appid + "=? " +
+		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) and " + TableProps.feedback.appid + "=? " + " and " + TableProps.feedback.qType + "=?" +
 		"group by " + TableProps.feedback.question + " limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
 
 	feedbackQs := make([]string, 0, MaxNumToCluster)
 	feedbackQID := make([]uint64, 0, MaxNumToCluster)
 
-	rows, err := sqlQuery(sql, s.Unix(), e.Unix(), appid)
+	rows, err := sqlQuery(sql, s.Unix(), e.Unix(), appid, qType)
 	if err != nil {
 		return nil, nil, err
 	}
