@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -368,4 +369,36 @@ func DeleteReport(id int) error {
 		return fmt.Errorf("delete query %s failed, %v", rawQuery, err)
 	}
 	return nil
+}
+
+//GetQuestionIDByContent get question id from db by question content
+func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return nil, errors.New("could not get the Self learn DB pool")
+	}
+	if len(content) == 0 {
+		return make(map[string]int), nil
+	}
+	querySQL := "select " + NQuestionID + "," + NContent + " from " + QuestionTable +
+		" where " + NContent + " in(?" + strings.Repeat(",?", len(content)) + ")"
+
+	rows, err := db.Query(querySQL, content...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	questionIDMap := make(map[string]int)
+
+	var question string
+	var id int
+	for rows.Next() {
+		err := rows.Scan(&id, &question)
+		if err != nil {
+			return nil, err
+		}
+		questionIDMap[question] = id
+	}
+	return questionIDMap, nil
 }

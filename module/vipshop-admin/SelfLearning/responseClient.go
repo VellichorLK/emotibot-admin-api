@@ -53,13 +53,13 @@ type customInfo struct {
 
 type sortMapKey struct {
 	mapData   map[string]float64
-	sliceData []string
+	sliceData []interface{}
 }
 
 func (mk *sortMapKey) keyToSlice() {
 	if mk.mapData != nil {
 		size := len(mk.mapData)
-		mk.sliceData = make([]string, size, size)
+		mk.sliceData = make([]interface{}, size, size)
 		counter := 0
 		for key := range mk.mapData {
 			mk.sliceData[counter] = key
@@ -72,7 +72,7 @@ func (mk *sortMapKey) Len() int {
 	return len(mk.sliceData)
 }
 func (mk *sortMapKey) Less(i, j int) bool {
-	return mk.mapData[mk.sliceData[i]] > mk.mapData[mk.sliceData[j]]
+	return mk.mapData[mk.sliceData[i].(string)] > mk.mapData[mk.sliceData[j].(string)]
 }
 func (mk *sortMapKey) Swap(i, j int) {
 	mk.sliceData[i], mk.sliceData[j] = mk.sliceData[j], mk.sliceData[i]

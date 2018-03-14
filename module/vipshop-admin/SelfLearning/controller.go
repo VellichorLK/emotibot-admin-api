@@ -431,7 +431,7 @@ func handleRecommend(ctx context.Context) {
 
 	num := len(sentence)
 
-	if num > 30 {
+	if num > 20 {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.Writef("assigned sentence is over limit 30\n", err)
 		return
