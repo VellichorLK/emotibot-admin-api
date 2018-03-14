@@ -260,6 +260,12 @@ paths:
               schema:
                 type: array
                 items:
-                  type: string
+                  properties:
+                    content:
+                      type: string
+                      description: "標準問內容"
+                    questionId:
+                      type: integer
+                      format: int64
         500:
           description: "Internal server error"
