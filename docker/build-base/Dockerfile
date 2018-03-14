@@ -7,3 +7,4 @@ RUN go get github.com/kataras/golog
 RUN go get github.com/kataras/pio
 RUN go get github.com/tealeg/xlsx
 RUN go get github.com/hashicorp/go-version
+RUN go get github.com/hashicorp/consul
