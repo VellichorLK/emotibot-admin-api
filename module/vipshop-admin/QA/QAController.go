@@ -132,6 +132,7 @@ func exportExcel(ctx context.Context) {
 
 	var answerIDs []string
 	if FAQ.HasCondition(condition) {
+		answerIDs = []string{}
 		_, aids, err := FAQ.DoFilter(condition, appid)
 		if err != nil {
 			util.LogError.Printf("Error happened while fetch question ids & answer ids: %s", err.Error())
