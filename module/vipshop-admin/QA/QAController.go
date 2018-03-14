@@ -54,23 +54,8 @@ func importExcel(ctx context.Context) {
 	var userIP = util.GetUserIP(ctx)
 	var appid = util.GetAppID(ctx)
 	var status = 0 // 0 == failed, 1 == success
+	var fileName, reason string
 
-	_, fileHeader, err := ctx.FormFile("file")
-	if err != nil {
-		jsonResponse.Message = "请上传档案"
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.JSON(jsonResponse)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, "导入檔案传送失败", status)
-		return
-	}
-	ext := filepath.Ext(fileHeader.Filename)
-	if strings.Compare(ext, ".xlsx") != 0 {
-		jsonResponse.Message = "[" + fileHeader.Filename + "] 后缀名为" + ext + " 请上传后缀名为.xlsx的文件!"
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.JSON(jsonResponse)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, "导入檔案传送失败", status)
-		return
-	}
 	var method string
 	mode := ctx.FormValue("mode")
 	switch mode {
@@ -84,6 +69,30 @@ func importExcel(ctx context.Context) {
 		ctx.JSON(jsonResponse)
 		return
 	}
+
+	_, fileHeader, err := ctx.FormFile("file")
+	if err != nil {
+		jsonResponse.Message = "无上传档案"
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(jsonResponse)
+		fileName = "无"
+		reason = jsonResponse.Message
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		return
+	}
+	ext := filepath.Ext(fileHeader.Filename)
+	if strings.Compare(ext, ".xlsx") != 0 {
+		jsonResponse.Message = "[" + fileHeader.Filename + "] 后缀名为" + ext + " 请上传后缀名为.xlsx的文件!"
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(jsonResponse)
+		fileName = fileHeader.Filename
+		reason = jsonResponse.Message
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
+		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		return
+	}
+	fileName = fileHeader.Filename
 	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode, appid)
 
 	switch err {
@@ -93,8 +102,8 @@ func importExcel(ctx context.Context) {
 		jsonResponse.Action = response.SyncInfo.Action
 		ctx.StatusCode(http.StatusServiceUnavailable)
 		ctx.JSON(jsonResponse)
-		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileHeader.Filename, "导入正在执行中")
-
+		reason = "导入正在执行中"
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	case nil: //200
 		status = 1
@@ -104,7 +113,8 @@ func importExcel(ctx context.Context) {
 		jsonResponse.Message = "服务器不正常, " + err.Error()
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(jsonResponse)
-		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileHeader.Filename, "服务器不正常")
+		reason = "服务器不正常"
+		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	}
 
