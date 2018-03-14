@@ -1,14 +1,129 @@
 package FAQ
 
 import (
-	"strings"
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	// "strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
+
+func AddAPICategory(appid string, name string, parentID int, level int) (*APICategory, error) {
+	newID, err := addApiCategory(appid, name, parentID, level)
+	if err != nil {
+		return nil, err
+	}
+	newCategory, err := GetAPICategory(appid, newID)
+	if err != nil {
+		return nil, err
+	}
+	return newCategory, nil
+}
+
+func GetAPICategories(appid string) ([]*APICategory, error) {
+	categoriesMap, err := getCategories(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []*APICategory
+	for _, category := range categoriesMap {
+		if parent, ok := categoriesMap[category.ParentID]; ok {
+			parent.Children = append(parent.Children, category)
+		} else if category.ParentID == 0 {
+			ret = append(ret, category)
+		}
+	}
+	for _, category := range ret {
+		fillCategoryInfo(category, "", 1)
+	}
+
+	return ret, nil
+}
+
+func GetAPICategory(appid string, categoryID int) (*APICategory, error) {
+	categoriesMap, err := getCategories(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := categoriesMap[categoryID]; !ok {
+		return nil, nil
+	}
+
+	var ret []*APICategory
+	for _, category := range categoriesMap {
+		if parent, ok := categoriesMap[category.ParentID]; ok {
+			parent.Children = append(parent.Children, category)
+		} else if category.ParentID == 0 {
+			ret = append(ret, category)
+		}
+	}
+	for _, category := range ret {
+		fillCategoryInfo(category, "", 1)
+	}
+
+	return categoriesMap[categoryID], nil
+}
+
+func GetCategoryQuestionCount(appid string, origCategory *APICategory) (int, error) {
+	if origCategory == nil {
+		return 0, fmt.Errorf("Parameter error")
+	}
+	// str, _ := json.Marshal(origCategory)
+	categoryIDs := getCategoryIDs(origCategory)
+	count, err := getQuestionCountInCategories(appid, categoryIDs)
+	return count, err
+}
+
+func getCategoryIDs(category *APICategory) []int {
+	if category == nil {
+		return []int{}
+	}
+	ret := []int{category.ID}
+	for _, child := range category.Children {
+		ret = append(ret, getCategoryIDs(child)...)
+	}
+	return ret
+}
+
+func DeleteAPICategory(appid string, category *APICategory) error {
+	IDs := getCategoryIDs(category)
+	db := util.GetMainDB()
+	t, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("can't aquire transaction lock, %s", err)
+	}
+	defer t.Commit()
+
+	err = deleteCategories(appid, IDs)
+	if err != nil {
+		t.Rollback()
+		return err
+	}
+	err = disableQuestionInCategories(appid, IDs)
+	if err != nil {
+		t.Rollback()
+		return err
+	}
+
+	return err
+}
+
+func UpdateAPICategoryName(appid string, categoryID int, newName string) error {
+	err := updateCategoryName(appid, categoryID, newName)
+	return err
+}
+
+func fillCategoryInfo(category *APICategory, parentPath string, level int) {
+	category.Path = fmt.Sprintf("%s/%s", parentPath, category.Name)
+	category.Level = level
+	for _, child := range category.Children {
+		fillCategoryInfo(child, category.Path, level+1)
+	}
+}
 
 func updateSimilarQuestions(qid int, appid string, user string, sqs []SimilarQuestion) error {
 	var err error
@@ -88,7 +203,7 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 		SearchRelativeQuestion: false,
 		SearchQuestion:         false,
 		SearchAnswer:           false,
-		SearchAll:				false,
+		SearchAll:              false,
 		NotShow:                false,
 		CategoryId:             0,
 		Limit:                  10,

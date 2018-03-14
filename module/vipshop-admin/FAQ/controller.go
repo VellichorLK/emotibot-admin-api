@@ -61,10 +61,10 @@ func handleAddCategory(ctx context.Context) {
 	var newCatetory *APICategory
 	var path string
 	if parentCategory == nil {
-		newCatetory, err = AddApiCategory(appid, name, 0, 1)
+		newCatetory, err = AddAPICategory(appid, name, 0, 1)
 		path = name
 	} else {
-		newCatetory, err = AddApiCategory(appid, name, parentID, parentCategory.Level+1)
+		newCatetory, err = AddAPICategory(appid, name, parentID, parentCategory.Level+1)
 		paths := strings.Split(parentCategory.Path, "/")
 		path = strings.Join(append(paths[1:], name), "/")
 	}
