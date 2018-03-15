@@ -381,7 +381,7 @@ func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
 		return make(map[string]int), nil
 	}
 	querySQL := "select " + NQuestionID + "," + NContent + " from " + QuestionTable +
-		" where " + NContent + " in(?" + strings.Repeat(",?", len(content)) + ")"
+		" where " + NContent + " in(?" + strings.Repeat(",?", len(content)-1) + ")"
 
 	rows, err := db.Query(querySQL, content...)
 	if err != nil {
