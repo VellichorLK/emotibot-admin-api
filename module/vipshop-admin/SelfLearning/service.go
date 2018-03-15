@@ -100,7 +100,7 @@ func getFeedbackQ(s time.Time, e time.Time, appid string, qType int) ([]string, 
 
 	sql := "select max(" + TableProps.feedback.id + ")," + TableProps.feedback.question + " from " + TableProps.feedback.name +
 		" where " + TableProps.feedback.createdTime + ">=FROM_UNIXTIME(?) and " +
-		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) and " + TableProps.feedback.appid + "=? " + " and " + TableProps.feedback.qType + "=?" +
+		TableProps.feedback.createdTime + " <=FROM_UNIXTIME(?) and " + TableProps.feedback.appid + "=? " + " and " + TableProps.feedback.qType + "=? " +
 		"group by " + TableProps.feedback.question + " limit " + util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER")
 
 	feedbackQs := make([]string, 0, MaxNumToCluster)
