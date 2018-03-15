@@ -10,9 +10,72 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
-	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/FAQ"
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
+
+func DoChatRequestWithController(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
+	controllerURL := getControllerURL()
+	if len(controllerURL) == 0 {
+		return nil, ApiError.REQUEST_ERROR, nil
+	}
+
+	// Prepare for DC input
+	input := make(map[string]interface{})
+	input["uniqueId"] = genRandomUUIDSameAsOpenAPI()
+	input["question"] = inputData.UserInput
+	input["robotId"] = appid
+	input["userId"] = user
+
+	customHeader := make(map[string]string)
+	customHeader["X-Lb-Uid"] = user
+
+	response, err := util.HTTPPostJSONWithHeader(controllerURL, input, 10, customHeader)
+	if err != nil {
+		return nil, ApiError.OPENAPI_URL_ERROR, err
+	}
+	util.LogTrace.Printf("Raw response from Controller: %s", response)
+
+	controllerRet := ControllerResponse{}
+	err = json.Unmarshal([]byte(response), &controllerRet)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+
+	ret := RetData{}
+	ret.Emotion = controllerRet.Emotion
+	ret.Intent = controllerRet.Intent
+
+	// Parse for multi answer in format [ans1],[ans2],[[CMD]:{something}]
+	if strings.Trim(controllerRet.Answer, " ") != "" {
+		answers := strings.Split(controllerRet.Answer, "],[")
+		ret.Answers = []*string{}
+		if len(answers) == 1 {
+			answer := strings.Replace(controllerRet.Answer, "[CMD]:", "", 1)
+			ret.Answers = append(ret.Answers, &answer)
+		} else {
+			lastIdx := len(answers) - 1
+			answers[0] = strings.TrimLeft(answers[0], "[")
+			answers[lastIdx] = strings.TrimRight(answers[lastIdx], "]")
+			for idx := range answers {
+				answer := strings.Replace(answers[idx], "[CMD]:", "", 1)
+				ret.Answers = append(ret.Answers, &answer)
+			}
+		}
+	} else {
+		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
+	}
+
+	ret.Tokens = controllerRet.Tokens
+	ret.SimilarQuestion = make([]*QuestionInfo, len(controllerRet.RelatedQuestion))
+	for idx, q := range controllerRet.RelatedQuestion {
+		ret.SimilarQuestion[idx] = &QuestionInfo{inputData.UserInput, q.Question, q.Score}
+	}
+	ret.OpenAPIReturn = controllerRet.Status
+	ret.Tokens = controllerRet.Tokens
+
+	return &ret, ApiError.SUCCESS, nil
+}
 
 func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
 	openAPIURL := getTestURL()
@@ -329,17 +392,17 @@ func genQAExportAuditLog(condition *FAQ.QueryCondition, taskID int) (string, err
 			if err != nil {
 				return "", err
 			}
-			
+
 			timeCondition = fmt.Sprintf(
-				timeCondition, 
-				startTimeSlices[0], 
-				startTimeSlices[1], 
-				startTimeSlices[2], 
+				timeCondition,
+				startTimeSlices[0],
+				startTimeSlices[1],
+				startTimeSlices[2],
 				startTimeSlices[3],
 				startTimeSlices[4],
-				endTimeSlices[0], 
-				endTimeSlices[1], 
-				endTimeSlices[2], 
+				endTimeSlices[0],
+				endTimeSlices[1],
+				endTimeSlices[2],
 				endTimeSlices[3],
 				endTimeSlices[4],
 			)
@@ -375,7 +438,7 @@ func parseDatetimeStr(datetime string) ([]string, error) {
 	// expect format yyyy-MM-dd hh:mm:ss
 	var dateAndTime []string = make([]string, 5)
 	datetimeSlice := strings.Split(datetime, " ")
-	
+
 	if len(datetimeSlice) != 2 {
 		return dateAndTime, fmt.Errorf("datetime format incorrect")
 	}
@@ -406,15 +469,15 @@ func parseKeywordType(condition *FAQ.QueryCondition) string {
 
 	if condition.SearchAll && condition.Keyword != "" {
 		keywordType = "全部"
-	} else if condition.SearchQuestion && condition.Keyword  != "" {
+	} else if condition.SearchQuestion && condition.Keyword != "" {
 		keywordType = "问题"
 	} else if condition.SearchAnswer && condition.Keyword != "" {
 		keywordType = "答案"
-	} else if (condition.SearchDynamicMenu) {
+	} else if condition.SearchDynamicMenu {
 		keywordType = "指定动态菜单"
-	} else if (condition.SearchRelativeQuestion) {
+	} else if condition.SearchRelativeQuestion {
 		keywordType = "指定相关问"
-	} else if (condition.NotShow) {
+	} else if condition.NotShow {
 		keywordType = "不在推荐问内显示"
 	}
 
@@ -461,7 +524,7 @@ func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
 		} else {
 			categoryPath = categorySlice[1]
 		}
-	 }
-	 
+	}
+
 	return categoryPath, err
 }

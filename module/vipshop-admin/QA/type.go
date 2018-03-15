@@ -68,3 +68,18 @@ type DCResponse struct {
 
 	CustomReturn map[string]interface{} `json:"customReturn"`
 }
+
+type ControllerScoreRet struct {
+	Question string  `json:"question"`
+	Score    float64 `json:"score"`
+}
+
+type ControllerResponse struct {
+	Question        string               `json:"question"`
+	Answer          string               `json:"answer"`
+	Status          int                  `json:"status"`
+	Emotion         string               `json:"emotion"`
+	Intent          string               `json:"intent"`
+	RelatedQuestion []ControllerScoreRet `json:""`
+	Tokens          []*string            `json:"tokens"`
+}

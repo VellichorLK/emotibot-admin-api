@@ -10,6 +10,7 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	TestModuleInfo util.ModuleInfo
+	HandleFuncMap  map[string]func(appid string, user string, input *QATestInput) (*RetData, int, error)
 )
 
 const (
@@ -22,6 +23,11 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "chat-test", []string{"view"}, hadleChatTest),
 		},
+	}
+	HandleFuncMap = map[string]func(appid string, user string, input *QATestInput) (*RetData, int, error){
+		"DC":         DoChatRequestWithDC,
+		"OPENAPI":    DoChatRequestWithOpenAPI,
+		"CONTROLLER": DoChatRequestWithController,
 	}
 }
 
@@ -58,8 +64,15 @@ func hadleChatTest(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
 		return
 	}
+	var ret *RetData
+	var errCode int
 
-	ret, errCode, err := DoChatRequestWithDC(appid, user, input)
+	if handleFunc, ok := HandleFuncMap[getQATestType()]; ok {
+		ret, errCode, err = handleFunc(appid, user, input)
+	} else {
+		// default use dc
+		ret, errCode, err = DoChatRequestWithDC(appid, user, input)
+	}
 	if err != nil {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
 	} else {
@@ -82,4 +95,12 @@ func getOpenAPIURL() string {
 
 func getTestURL() string {
 	return getEnvironment("TEST_URL")
+}
+
+func getControllerURL() string {
+	return getEnvironment("CONTROLLER_URL")
+}
+
+func getQATestType() string {
+	return getEnvironment("TEST_TYPE")
 }
