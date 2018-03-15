@@ -2,6 +2,7 @@ package Dictionary
 
 import (
 	"fmt"
+	"net/http"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -22,6 +23,7 @@ func init() {
 			util.NewEntryPoint("GET", "download-meta", []string{"view"}, handleDownloadMeta),
 			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
 			util.NewEntryPoint("GET", "full-check", []string{"view"}, handleFullFileCheck),
+			util.NewEntryPoint("GET", "wordbanks", []string{"view"}, handleGetWordbanks),
 		},
 	}
 }
@@ -48,6 +50,18 @@ func getGlobalEnv(key string) string {
 		}
 	}
 	return ""
+}
+
+func handleGetWordbanks(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+
+	wordbanks, err := GetEntities(appid)
+	if err != nil {
+		util.LogInfo.Printf("Error when get entities: %s\n", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+	}
+	ctx.JSON(wordbanks)
 }
 
 // handleFileCheck will call api to check if uploaded dictionary is finished

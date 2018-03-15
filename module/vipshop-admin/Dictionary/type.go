@@ -21,3 +21,12 @@ type DownloadMeta struct {
 	UploadTime time.Time `json:"time"`
 	UploadFile string    `json:"filename"`
 }
+
+type WordBank struct {
+	Name string `json:"name"`
+	// 0: directory, 1:wordbank
+	Type         int         `json:"type"`
+	Children     []*WordBank `json:"children"`
+	SimilarWords string      `json:"similar_words,omitempty"`
+	Answer       string      `json:"answer,omitempty"`
+}

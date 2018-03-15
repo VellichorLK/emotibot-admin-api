@@ -1,14 +1,16 @@
 package Dictionary
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
-// GetProcessStatus will get status of latest wordbank process
-func GetProcessStatus(appid string) (string, error) {
+// getProcessStatus will get status of latest wordbank process
+func getProcessStatus(appid string) (string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return "", errors.New("DB not init")
@@ -32,8 +34,8 @@ func GetProcessStatus(appid string) (string, error) {
 	return status, nil
 }
 
-// GetFullProcessStatus will get more status info from latest wordbank process
-func GetFullProcessStatus(appid string) (*StatusInfo, error) {
+// getFullProcessStatus will get more status info from latest wordbank process
+func getFullProcessStatus(appid string) (*StatusInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
@@ -64,8 +66,8 @@ func GetFullProcessStatus(appid string) (*StatusInfo, error) {
 	return &status, nil
 }
 
-// GetLastTwoSuccess will return last two record which status is success, order by time
-func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
+// getLastTwoSuccess will return last two record which status is success, order by time
+func getLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
@@ -93,8 +95,8 @@ func GetLastTwoSuccess(appid string) ([]*DownloadMeta, error) {
 	return ret, nil
 }
 
-// InsertNewProcess will create a file record into process_status, which status is running
-func InsertProcess(appid string, status Status, filename string, message string) error {
+// insertProcess will create a file record into process_status, which status is running
+func insertProcess(appid string, status Status, filename string, message string) error {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return errors.New("DB not init")
@@ -106,4 +108,79 @@ func InsertProcess(appid string, status Status, filename string, message string)
 	}
 
 	return nil
+}
+
+func getEntities(appid string) ([]*WordBank, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("SELECT level1, level2, level3, level4, entity_name, similar_words, answer from %s_entity where status_flag = 1", appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	cache := make(map[int](map[string]*WordBank))
+	for idx := 0; idx < 4; idx++ {
+		cache[idx] = make(map[string]*WordBank)
+	}
+	for rows.Next() {
+		categories := make([]sql.NullString, 4)
+		var entityName sql.NullString
+		var similarWord sql.NullString
+		var answer sql.NullString
+
+		args := make([]interface{}, 7)
+		for i, category := range categories {
+			args[i] = &category
+		}
+		args[4] = &entityName
+		args[5] = &similarWord
+		args[6] = &answer
+
+		if err := rows.Scan(&categories[0], &categories[1], &categories[2], &categories[3], &entityName, &similarWord, &answer); err != nil {
+			//if err := rows.Scan(args...); err != nil {
+			return nil, err
+		}
+
+		var lastCategory *WordBank
+		for idx, category := range categories {
+			if !category.Valid || category.String == "" {
+				break
+			}
+
+			if _, ok := cache[idx][category.String]; !ok {
+				newWordBank := &WordBank{category.String, 0, make([]*WordBank, 0), "", ""}
+				cache[idx][category.String] = newWordBank
+				if lastCategory != nil {
+					lastCategory.Children = append(lastCategory.Children, newWordBank)
+				}
+			}
+			lastCategory = cache[idx][category.String]
+		}
+		if lastCategory == nil {
+			util.LogError.Printf("Level 1 should not be empty in wordbank, skip it")
+			continue
+		}
+		if entityName.Valid && entityName.String != "" {
+			newWordBank := &WordBank{entityName.String, 1, make([]*WordBank, 0), "", ""}
+			if similarWord.Valid && similarWord.String != "" {
+				newWordBank.SimilarWords = similarWord.String
+			}
+			if answer.Valid && answer.String != "" {
+				newWordBank.Answer = answer.String
+			}
+			lastCategory.Children = append(lastCategory.Children, newWordBank)
+		}
+	}
+
+	ret := []*WordBank{}
+	for _, wordbank := range cache[0] {
+		ret = append(ret, wordbank)
+	}
+
+	return ret, nil
 }
