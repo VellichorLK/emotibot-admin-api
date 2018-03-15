@@ -80,6 +80,6 @@ type ControllerResponse struct {
 	Status          int                  `json:"status"`
 	Emotion         string               `json:"emotion"`
 	Intent          string               `json:"intent"`
-	RelatedQuestion []ControllerScoreRet `json:""`
+	RelatedQuestion []ControllerScoreRet `json:"relatedQuestions"`
 	Tokens          []*string            `json:"tokens"`
 }
