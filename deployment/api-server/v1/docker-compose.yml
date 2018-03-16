@@ -209,6 +209,21 @@ services:
                 condition: service_healthy
 
 
+    # ========== Call Dialogue Analysis
+    call-analysis:
+        image: ${WORKER_ENV_KEY_CALL_DIALOGUE_ANALYSIS_IMAGE}:${WORKER_ENV_KEY_CALL_DIALOGUE_ANALYSIS_TAG}
+        container_name: ${WORKER_ENV_KEY_CALL_DIALOGUE_ANALYSIS_CONTAINER_NAME}
+        ports:
+            - "10001:8080"
+        mem_limit: 1024m
+        logging:
+            options:
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+        volumes:
+            - /etc/localtime:/etc/localtime
+        restart: always
+
 
 
 

@@ -20,8 +20,6 @@ VOICE_EMOTION_FULL = copy.deepcopy(VOICE_EMOTION_MINIMAL)
 VOICE_EMOTION_FULL.extend(['netdata', 'phpmyadmin', 'kibana', 'elastic-closer', 'logstash', 'elasticsearch', 'kibana'])
 BF_UBT_APIGW = ['nginx', 'bf-ubt-apigw']
 
-VOICE_EMOTION_ASR = copy.deepcopy(VOICE_EMOTION_FULL)
-VOICE_EMOTION_ASR.append('w-v-asr')
 
 def _create_folder(folder):
     # real_path = os.path.realpath(output_folder)
@@ -199,7 +197,6 @@ def main():
     parser.add_argument('-g', '--service_group',
                         choices=['voice-emotion-full',
                                  'voice-emotion-min',
-                                 'voice-emotion-asr',
                                  'bf-ubt-apigw'],
                         default='voice-emotion-full')
     parser.add_argument('-o', '--image_folder', default='/tmp/api_srv_images')
@@ -221,8 +218,12 @@ def main():
 
     # add service of group if not give
     if not args.service:
-        if (args.service_group == 'voice-emotion-asr') or (getBoolFromEnvFile('WORKER_ENV_KEY_ASR_ENABLE', False) is True):
-            args.service.extend(VOICE_EMOTION_ASR)
+        if getBoolFromEnvFile('WORKER_ENV_KEY_ASR_ENABLE', False) is True:
+            args.service.extend(VOICE_EMOTION_FULL)
+            args.service.append('w-v-asr')
+            if getBoolFromEnvFile('WORKER_ENV_KEY_CALL_DIALOGUE_ANALYSIS_ENABLE', False) is True:
+                args.service.append('call-analysis')
+
         elif args.service_group == 'voice-emotion-min':
             args.service.extend(VOICE_EMOTION_MINIMAL)
         elif args.service_group == 'bf-ubt-apigw':
