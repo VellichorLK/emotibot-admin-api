@@ -165,11 +165,11 @@ func (c Category) FullName() (string, error) {
 		case 0:
 			fallthrough
 		case -1:
-			return "/" + c.Name, nil
+			return c.Name, nil
 		}
 		var fullPath string
 		for ; ok; c, ok = categories[c.ParentID] {
-			fullPath = "/" + c.Name + fullPath
+			fullPath = c.Name + "/" + fullPath
 			if c.ParentID == 0 {
 				break
 			}
