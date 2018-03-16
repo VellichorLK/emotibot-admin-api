@@ -2,6 +2,7 @@ package SelfLearning
 
 import (
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -275,6 +276,7 @@ func handleGetClusters(ctx context.Context) {
 	reports, err := GetReports(reportID, 1, appid, -1)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 	if len(reports) == 0 {
@@ -284,6 +286,7 @@ func handleGetClusters(ctx context.Context) {
 	clusters, err := GetClusters(reports[0])
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 	ctx.StatusCode(http.StatusOK)

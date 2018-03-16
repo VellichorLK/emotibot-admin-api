@@ -67,7 +67,7 @@ func GetReports(id string, limit int, appid string, rType int) (reports []Report
 		parameters = append(parameters, id)
 	} else { //Only Successful ones
 		wherePart = fmt.Sprintf("WHERE %s = 1", REPORT.status)
-		if rType > 0 {
+		if rType >= 0 {
 			wherePart += " and " + TableProps.feedback.qType + "=?"
 			parameters = append(parameters, rType)
 		}
