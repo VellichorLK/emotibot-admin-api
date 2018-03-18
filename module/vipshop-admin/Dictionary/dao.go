@@ -4,10 +4,76 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
+
+func addWordbankDir(appid string, paths []string) error {
+	wb := &WordBank{}
+	addWordbank(appid, paths, wb)
+	return nil
+}
+
+func addWordbank(appid string, paths []string, wordbank *WordBank) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+	vals := make([]interface{}, len(paths))
+	for idx := range paths {
+		vals[idx] = paths[idx]
+	}
+
+	vals = append(vals, wordbank.Name, wordbank.SimilarWords, wordbank.Answer)
+
+	sqlStr := fmt.Sprintf(`INSERT INTO %s_entity
+		(level1, level2, level3, level4, status_flag, entity_name, similar_words, answer)
+		VALUES (?, ?, ?, ?, 1, ?, ?, ?)`, appid)
+
+	_, err := mySQL.Exec(sqlStr, vals...)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkDirExist(appid string, paths []string) (bool, error) {
+	return checkWordbankExist(appid, paths, "")
+}
+
+func checkWordbankExist(appid string, paths []string, name string) (bool, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return false, errors.New("DB not init")
+	}
+
+	conditions := []string{}
+	vals := []interface{}{}
+	for idx := range paths {
+		if paths[idx] == "" {
+			break
+		}
+		conditions = append(conditions, fmt.Sprintf("level%d = ?", idx+1))
+		vals = append(vals, paths[idx])
+	}
+
+	if name != "" {
+		// conditionStr += "entity_name = ?"
+		conditions = append(conditions, "entity_name = ?")
+		vals = append(vals, name)
+	}
+
+	sqlStr := fmt.Sprintf(`SELECT COUNT(*) from %s_entity WHERE %s`, appid, strings.Join(conditions, " and "))
+	rows := mySQL.QueryRow(sqlStr, vals...)
+	count := 0
+	err := rows.Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
 
 // getProcessStatus will get status of latest wordbank process
 func getProcessStatus(appid string) (string, error) {

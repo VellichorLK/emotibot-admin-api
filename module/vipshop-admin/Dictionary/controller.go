@@ -3,6 +3,8 @@ package Dictionary
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -11,7 +13,8 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	ModuleInfo  util.ModuleInfo
+	maxDirDepth int
 )
 
 func init() {
@@ -24,8 +27,11 @@ func init() {
 			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
 			util.NewEntryPoint("GET", "full-check", []string{"view"}, handleFullFileCheck),
 			util.NewEntryPoint("GET", "wordbanks", []string{"view"}, handleGetWordbanks),
+
+			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
 		},
 	}
+	maxDirDepth = 4
 }
 
 func getEnvironments() map[string]string {
@@ -50,6 +56,94 @@ func getGlobalEnv(key string) string {
 		}
 	}
 	return ""
+}
+
+func handlePutWordbank(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	paths, newWordBank, err := getWordbankFromReq(ctx)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef(err.Error())
+		return
+	}
+
+	retCode, err := AddWordbank(appid, paths, newWordBank)
+	auditMessage := ""
+	logPath := []string{}
+	for idx := range paths {
+		if paths[idx] == "" {
+			break
+		}
+		logPath = append(logPath, paths[idx])
+	}
+	if newWordBank == nil {
+		auditMessage = fmt.Sprintf("%s: %s/",
+			util.Msg["Add"],
+			strings.Join(logPath, "/"))
+	} else {
+		auditMessage = fmt.Sprintf("%s: %s/%s",
+			util.Msg["Add"],
+			strings.Join(logPath, "/"), newWordBank.Name)
+	}
+	auditRet := 1
+	if err != nil {
+		if retCode == ApiError.REQUEST_ERROR {
+			ctx.StatusCode(http.StatusBadRequest)
+		} else {
+			ctx.StatusCode(http.StatusInternalServerError)
+		}
+		ctx.Writef(err.Error())
+		auditRet = 0
+	} else {
+		ctx.StatusCode(http.StatusOK)
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
+}
+
+func checkLevel1Valid(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if dir == "敏感词库" || dir == "专有词库" {
+		return true
+	}
+	return false
+}
+
+func getWordbankFromReq(ctx context.Context) ([]string, *WordBank, error) {
+	paths := make([]string, maxDirDepth)
+	for idx := 0; idx < maxDirDepth; idx++ {
+		paths[idx] = ctx.FormValue(fmt.Sprintf("level%d", idx+1))
+		if paths[idx] == "" {
+			break
+		}
+	}
+	if !checkLevel1Valid(paths[0]) {
+		return paths, nil, fmt.Errorf("path error")
+	}
+
+	ret := &WordBank{}
+	nodeType, err := strconv.Atoi(ctx.FormValue("type"))
+	if err != nil || nodeType > 1 {
+		ret.Type = 0
+	}
+	ret.Type = nodeType
+
+	if ret.Type == 0 {
+		return paths, nil, nil
+	}
+
+	ret.Name = ctx.FormValue("name")
+	if ret.Name == "" {
+		return paths, nil, fmt.Errorf("name cannot be empty")
+	}
+
+	ret.Answer = ctx.FormValue("answer")
+	ret.SimilarWords = ctx.FormValue("similar_words")
+	return paths, ret, nil
 }
 
 func handleGetWordbanks(ctx context.Context) {

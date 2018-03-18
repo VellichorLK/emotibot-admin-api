@@ -14,6 +14,36 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
+// AddWordbank will add a category if wordbank is nil, or add wordbank
+func AddWordbank(appid string, paths []string, newWordBank *WordBank) (int, error) {
+	if newWordBank == nil {
+		// Add dir
+		exist, err := checkDirExist(appid, paths)
+		if err != nil {
+			return ApiError.DB_ERROR, err
+		} else if exist {
+			return ApiError.REQUEST_ERROR, fmt.Errorf("dir existed")
+		}
+		err = addWordbankDir(appid, paths)
+		if err != nil {
+			return ApiError.DB_ERROR, err
+		}
+	} else {
+		// Add wordbank
+		exist, err := checkWordbankExist(appid, paths, newWordBank.Name)
+		if err != nil {
+			return ApiError.DB_ERROR, err
+		} else if exist {
+			return ApiError.REQUEST_ERROR, fmt.Errorf("wordbank existed")
+		}
+		err = addWordbank(appid, paths, newWordBank)
+		if err != nil {
+			return ApiError.DB_ERROR, err
+		}
+	}
+	return ApiError.SUCCESS, nil
+}
+
 // CheckProcessStatus will Check wordbank status
 func CheckProcessStatus(appid string) (string, error) {
 	status, err := getProcessStatus(appid)
