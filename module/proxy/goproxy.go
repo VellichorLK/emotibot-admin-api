@@ -24,9 +24,12 @@ var AppidChan chan *trafficStats.AppidIP
 var trafficManager *trafficStats.TrafficManager
 
 var k8sRedirectList = make(map[string]bool, 0)
+var logLevel string = "production"
 
 func GoProxy(w http.ResponseWriter, r *http.Request) {
-
+	if logLevel == "dev" {
+		log.Printf("%+v\n", r)
+	}
 	buf, _ := ioutil.ReadAll(r.Body)
 
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
@@ -102,7 +105,12 @@ func checkerr(err error, who string) {
 }
 
 func main() {
-
+	var loaded bool
+	logLevel, loaded = os.LookupEnv("log_level")
+	if !loaded {
+		logLevel = "production"
+	}
+	
 	duration, err := strconv.Atoi(os.Getenv("DURATION"))
 	checkerr(err, "DURATION")
 	maxLimit, err := strconv.Atoi(os.Getenv("MAXREQUESTS"))

@@ -1,7 +1,7 @@
 #!/bin/bash
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=goproxy-uid
-TAG=20180319001
+TAG=20180319003
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # Define the environment, e.g.,
