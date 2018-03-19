@@ -589,7 +589,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 }
 
 func Escape(target string) string {
-	re := regexp.MustCompile("<img(.*)src=\"([^\"]+)\"[^>]*>")
+	re := regexp.MustCompile("<img src=\"([^\"]+)\"[^>]*>")
 	return re.ReplaceAllString(target, "[图片]")
 }
 
