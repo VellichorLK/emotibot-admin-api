@@ -75,7 +75,7 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
 	}
 
-	if k8sRedirectList[userid] {
+	if k8sRedirectList[appid] {
 		r.Header.Set("X-Lb-K8s", "k8suser")
 	} else if trafficManager.CheckOverFlowed(userid) {
 		userid = userid + strconv.Itoa(rand.Intn(1000))
