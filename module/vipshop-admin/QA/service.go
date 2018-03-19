@@ -407,13 +407,11 @@ func genQAExportAuditLog(condition *FAQ.QueryCondition, taskID int) (string, err
 			dimensionCondition = fmt.Sprintf("[维度：%s]", dimensionStr)
 		}
 
-		if condition.CategoryId != 0 {
-			categoryStr, err := genCategoryStr(condition)
-			if err != nil {
-				return content, err
-			}
-			categoryCondition = fmt.Sprintf("[%s]", categoryStr)
+		categoryStr, err := genCategoryStr(condition)
+		if err != nil {
+			return content, err
 		}
+		categoryCondition = fmt.Sprintf("[%s]", categoryStr)
 
 		content = "[部分导出]：%s%s%s%s：other_%d.xlsx"
 		content = fmt.Sprintf(content, timeCondition, keywordCondition, dimensionCondition, categoryCondition, taskID)
@@ -493,7 +491,7 @@ func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
 	var err error
 	switch condition.CategoryId {
 	case 0:
-		categoryPath = ""
+		categoryPath = "全部分类"
 	case -1:
 		categoryPath = "暂无分类"
 	default:
@@ -509,9 +507,9 @@ func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
 		categorySlice := strings.Split(categoryPath, "/")
 
 		if len(categorySlice) > 2 {
-			categoryPath = fmt.Sprintf("%s/%s", categorySlice[1], categorySlice[2])
+			categoryPath = fmt.Sprintf("%s/%s", categorySlice[0], categorySlice[1])
 		} else {
-			categoryPath = categorySlice[1]
+			categoryPath = categorySlice[0]
 		}
 	}
 
