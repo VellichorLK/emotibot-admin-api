@@ -26,6 +26,8 @@ func InitDatabaseCon(ip string, port string, username string, password string, d
 	if db == nil {
 		src := username + ":" + password + "@tcp(" + ip + ":" + port + ")/" + database
 
+		log.Println(src)
+
 		var err error
 		db, err = sql.Open("mysql", src)
 		if err != nil {
@@ -253,7 +255,7 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 					math.Max(0, segmentInterval.SegStartTime),
 					math.Min(segmentInterval.SegEndTime, voiceLength),
 					nil,
-					nil})
+					nil, 0, segmentInterval.ID, ""})
 			}
 		} else {
 			//overlap
@@ -271,7 +273,7 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 		voiceLength,
 		voiceLength,
 		nil,
-		nil})
+		nil, 0, "", ""})
 
 	// 4. use the merged list, the reverse part is the empty part.
 	for index := len(mergedList) - 1; index >= 0; index-- {
@@ -308,7 +310,7 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 	}
 	defer stmt.Close()
 
-	for _, d := range eb.Segments {
+	for i, d := range eb.Segments {
 
 		enc, err := json.Marshal(d.ExtraInfo)
 		if err != nil {
@@ -327,6 +329,9 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 			log.Println(err)
 			return err
 		}
+
+		eb.Segments[i].SegmentID = lastID
+
 		for _, s := range d.ScoreList {
 			label, ok := s.Label.(float64)
 			if !ok {

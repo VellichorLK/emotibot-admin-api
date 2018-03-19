@@ -125,7 +125,6 @@ func StartSendTaskService(host string, port int, user string, pwd string, taskRe
 			queueName := taskInfo.QueueN
 		*/
 		task, corrID, queueName, priority := taskReceive()
-		//log.Println("task:"+task, " , file_id:"+corrID, ", queueName:"+queueName, ", priority:"+priority)
 		//log.Printf("task:%s, corrID:%s, queueName:%s, priority:%v\n ", task, corrID, queueName, priority)
 
 		err = ch.Publish(

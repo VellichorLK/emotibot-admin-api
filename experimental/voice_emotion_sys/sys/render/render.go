@@ -5,12 +5,17 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"handlers"
 )
 
 var envs = make(map[string]string)
 var variableLists = [...]string{"RABBITMQ_HOST", "RABBITMQ_PORT", "DB_HOST", "DB_PORT", "DB_USER", "DB_PWD", "RABBITMQ_USER", "RABBITMQ_PWD"}
+
+var asrTaskQ = make(chan *handlers.EmotionBlock)
+
+var asrQueName = "asr_tasks_queue"
 
 func parseEnv() {
 	for _, v := range variableLists {
@@ -35,7 +40,31 @@ func startService() {
 		log.Fatalf("Can't conver  RABBITMQ_PORT(%s) to int!!!", envs["RABBITMQ_PORT"])
 	}
 
+	queue, ok := handlers.QUEUEMAP["asrTaskQueue"]
+	if ok {
+		asrQueName = queue.Name
+	}
+
+	go handlers.StartSendTaskService(envs["RABBITMQ_HOST"], port, envs["RABBITMQ_USER"], envs["RABBITMQ_PWD"], taskReceive)
+
 	handlers.StartReceiveTaskService(envs["RABBITMQ_HOST"], port, envs["RABBITMQ_USER"], envs["RABBITMQ_PWD"], handlers.QUEUEMAP["resultQueue"].Name, recordData)
+
+}
+
+//taskReceive return finished channel,task as string, fileID, queueName, priority
+func taskReceive() (string, string, string, uint8) {
+
+	for {
+		taskInfo := <-asrTaskQ
+
+		b, err := json.Marshal(taskInfo)
+		if err != nil {
+			log.Println(err)
+			log.Printf("skip one task %v\n", taskInfo)
+			continue
+		}
+		return string(b), taskInfo.ID, asrQueName, 0
+	}
 
 }
 
@@ -66,9 +95,26 @@ func recordData(task string) (string, string) {
 	}
 	eb.IDUint64 = idInt64
 
-	handlers.InsertAnalysisRecord(eb)
+	err = handlers.InsertAnalysisRecord(eb)
+	if err != nil {
+		log.Println(err)
+		return "", ""
+	}
 	handlers.ComputeChannelScore(eb)
 	handlers.UpdateResult(eb)
+
+	var asrPush bool
+
+	asrTaskQ <- eb
+	asrPush = <-handlers.RelyQueue
+
+	//max retry
+	for i := 0; i < 3 && !asrPush; i++ {
+		time.Sleep(2 * time.Second)
+		asrTaskQ <- eb
+		asrPush = <-handlers.RelyQueue
+	}
+
 	if true == getEnvAsBoolean("ENABLE_SILENCE_COMPUTING", false) {
 		handlers.ComputeSilence(eb)
 	}
@@ -94,27 +140,17 @@ func fakeEnv() {
 	envs["DB_HOST"] = "127.0.0.1"
 	envs["DB_PORT"] = "3306"
 	envs["DB_USER"] = "root"
-	envs["DB_PWD"] = "tyler"
+	envs["DB_PWD"] = "password"
 	envs["FILE_PREFIX"] = "/Users/public/Documents"
 	envs["LISTEN_PORT"] = ":8080"
-	envs["RABBITMQ_USER"] = "root"
-	envs["RABBITMQ_PWD"] = "tyler"
+	envs["RABBITMQ_USER"] = "guest"
+	envs["RABBITMQ_PWD"] = "guest"
 }
 
 func main() {
-	/*
-		b1 := new(bytes.Buffer)
-		f, _ := os.Open("test2.json")
-		io.Copy(b1, f)
-		f.Close()
 
-		task := string(b1.Bytes())
-
-		fakeEnv()
-	*/
-
-	parseEnv()
-	//fakeEnv()
+	//parseEnv()
+	fakeEnv()
 	handlers.InitDatabaseCon(envs["DB_HOST"], envs["DB_PORT"], envs["DB_USER"], envs["DB_PWD"], "voice_emotion")
 	//handlers.QueryBlob()
 	//recordData(task)

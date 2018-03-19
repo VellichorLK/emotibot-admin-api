@@ -177,15 +177,19 @@ type EmotionBlock struct {
 	ID            string         `json:"src_primary_key"`
 	IDUint64      uint64         `json:"-"`
 	RDuration     uint64         `json:"src_voice_length"`
+	AsrIdentity   string         `json:"asr_missionIdentity"`
 }
 
 type VoiceSegment struct {
-	Status       int                    `json:"status"`
-	Channel      int                    `json:"channel"`
-	SegStartTime float64                `json:"segment_start_time"`
-	SegEndTime   float64                `json:"segment_end_time"`
-	ScoreList    []EmtionScore          `json:"scores_result"`
-	ExtraInfo    map[string]interface{} `json:"extra_info"`
+	Status          int                    `json:"status"`
+	Channel         int                    `json:"channel"`
+	SegStartTime    float64                `json:"segment_start_time"`
+	SegEndTime      float64                `json:"segment_end_time"`
+	ScoreList       []EmtionScore          `json:"scores_result"`
+	ExtraInfo       map[string]interface{} `json:"extra_info"`
+	SegmentID       int64                  `json:"segment_id"`
+	ID              string                 `json:"src_primary_key"`
+	AsrFileLocation string                 `json:"asr_vad_relative_file_location"`
 }
 type EmtionScore struct {
 	Label interface{} `json:"label"`
@@ -227,8 +231,9 @@ type ReportRow struct {
 }
 
 var QUEUEMAP = map[string]Queue{
-	"fakeappid":   {Name: "ecovacasQueue", HasPriority: true},
-	"resultQueue": {Name: "voiceResultQueue", HasPriority: false},
+	"fakeappid":    {Name: "ecovacasQueue", HasPriority: true},
+	"resultQueue":  {Name: "voiceResultQueue", HasPriority: false},
+	"asrTaskQueue": {Name: "asr_tasks_queue", HasPriority: false},
 }
 
 //TaskQueue used for communicate between sender and new request
