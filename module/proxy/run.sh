@@ -8,7 +8,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 # <EDIT_ME>
 CONTAINER=goproxy-uid
 # </EDIT_ME>
-TAG=20170728006
+TAG=20180319001
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # Check if docker image exists (locally or on the registry)
@@ -42,7 +42,9 @@ fi
 # - restart = always
 globalConf="
   --restart always \
+  -v /etc/localtime:/etc/localtime \
 "
+
 # <EDIT_ME>
 moduleConf="
   -p 9000:9000\
