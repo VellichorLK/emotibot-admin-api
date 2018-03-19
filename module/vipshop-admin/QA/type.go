@@ -76,7 +76,7 @@ type ControllerScoreRet struct {
 
 type ControllerResponse struct {
 	Question        string               `json:"question"`
-	Answer          string               `json:"answer"`
+	Answer          []interface{}        `json:"data"`
 	Status          int                  `json:"status"`
 	Emotion         string               `json:"emotion"`
 	Intent          string               `json:"intent"`

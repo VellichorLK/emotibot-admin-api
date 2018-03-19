@@ -20,7 +20,6 @@ func DoChatRequestWithController(appid string, user string, inputData *QATestInp
 		return nil, ApiError.REQUEST_ERROR, nil
 	}
 
-	// Prepare for DC input
 	input := make(map[string]interface{})
 	input["uniqueId"] = genRandomUUIDSameAsOpenAPI()
 	input["question"] = inputData.UserInput
@@ -46,24 +45,14 @@ func DoChatRequestWithController(appid string, user string, inputData *QATestInp
 	ret.Emotion = controllerRet.Emotion
 	ret.Intent = controllerRet.Intent
 
-	// Parse for multi answer in format [ans1],[ans2],[[CMD]:{something}]
-	if strings.Trim(controllerRet.Answer, " ") != "" {
-		answers := strings.Split(controllerRet.Answer, "],[")
-		ret.Answers = []*string{}
-		if len(answers) == 1 {
-			answer := strings.Replace(controllerRet.Answer, "[CMD]:", "", 1)
-			ret.Answers = append(ret.Answers, &answer)
-		} else {
-			lastIdx := len(answers) - 1
-			answers[0] = strings.TrimLeft(answers[0], "[")
-			answers[lastIdx] = strings.TrimRight(answers[lastIdx], "]")
-			for idx := range answers {
-				answer := strings.Replace(answers[idx], "[CMD]:", "", 1)
-				ret.Answers = append(ret.Answers, &answer)
-			}
+	ret.Answers = make([]*string, len(controllerRet.Answer))
+	for idx, controllerAns := range controllerRet.Answer {
+		temp, err := json.Marshal(controllerAns)
+		if err != nil || string(temp) == "" {
+			continue
 		}
-	} else {
-		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
+		str := string(temp)
+		ret.Answers[idx] = &str
 	}
 
 	ret.Tokens = controllerRet.Tokens
