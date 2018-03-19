@@ -8,16 +8,13 @@ DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 # DIR=/home/wmyao/workspaces/emotigo/module/proxy
 # BUILDROOT=/home/wmyao/workspaces/emotigo/module/proxy/../../
 # PROJECT=module/proxy
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BUILDROOT=$DIR/../../        #buildroot = root of emotigo repo
-PROJECT=${DIR#*emotigo/}     #project = module/proxy
+BUILDROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 echo "BUILDROOT=$BUILDROOT"
-echo "PROJECT=$PROJECT"
+
 
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \
-  --build-arg PROJECT=$PROJECT \
-  -f $DIR/Dockerfile $BUILDROOT"
+  -f $BUILDROOT/Dockerfile $BUILDROOT"
 echo $cmd
 eval $cmd

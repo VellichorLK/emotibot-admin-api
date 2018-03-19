@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "0Wny2oC77TqXIrxuqERTQYaOfDM=",
+			"path": "github.com/DataDog/datadog-go/statsd",
+			"revision": "9487d3a9d3be5bf3cf60b86ae810b97926964515",
+			"revisionTime": "2018-01-29T10:51:49Z"
+		}
+	],
+	"rootPath": "emotibot.com/emotigo/module/proxy"
+}

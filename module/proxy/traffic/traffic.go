@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
 	"github.com/paulbellamy/ratecounter"
 )
 
+//RouteMap is a singleton struct represnting every blacklist users and the time of this list created.
 type RouteMap struct {
-	GoRoute      map[string]string
+	GoRoute      map[string]bool
 	DefaultRoute *url.URL
 	timestamp    int64
 }
@@ -29,12 +31,18 @@ type AppidCount struct {
 }
 
 var stats map[string]*ratecounter.RateCounter
+
+//duration RateCounter計算的時間長度
 var duration int
+
+//maxCon 代表counter生成時要以多少為最大強制分流值
 var maxCon int64
+
 var banPeriod int64
+
 var newestRoute int64
 
-var ReadTrafficChan chan string
+// WriteRouteChan MakeNewRoute的資料來源
 var WriteRouteChan chan *RouteMap
 var UpdateRouteChan chan *RouteMap
 var AppidChan chan *AppidIP
@@ -44,119 +52,56 @@ var MonitorAppid = map[string]bool{
 
 }
 
-func Init(dur int, max_con int, ban_period int64, logPeriod int, readTrafficChan chan string, writeRouteChan chan *RouteMap, appidChan chan *AppidIP, statsdURL string) {
-	stats = make(map[string]*ratecounter.RateCounter)
-	duration = dur
-	maxCon = int64(max_con)
-	banPeriod = ban_period
-
-	ReadTrafficChan = readTrafficChan
-	WriteRouteChan = writeRouteChan
-	UpdateRouteChan = make(chan *RouteMap, 1)
-	AppidChan = appidChan
-
-	go UpdateTraffic()
-	go PushRouteMap()
-	go AppidCounter(logPeriod, statsdURL)
+//TrafficManager is a manager to determine which user is overload.
+type TrafficManager struct {
+	Stats          *sync.Map
+	BufferDuration time.Duration
+	Route          url.URL
+	maxConnection  int64
+	banPeriod      int64
 }
 
-func DefaultRoute() *RouteMap {
-	routeMap := new(RouteMap)
-	routeMap.GoRoute = make(map[string]string)
-	u, _ := url.Parse("http://172.17.0.1:9001")
-	routeMap.DefaultRoute = u
-	routeMap.timestamp = time.Now().UnixNano()
-	newestRoute = routeMap.timestamp
-	return routeMap
+//LogManager DO NOT USE IT! not implement yet.
+type LogManager struct {
+	LogPeriod    int64
+	AgentAddress string
+	AppidChan    chan *AppidIP
 }
 
-func PushRouteMap() {
-	route := DefaultRoute()
-
-	for {
-		select {
-		case route = <-UpdateRouteChan:
-		case WriteRouteChan <- route:
-		}
+//NewTrafficManager init a new TrafficManager by setting
+func NewTrafficManager(duration int, maxConnection, banPeriod int64, route url.URL) *TrafficManager {
+	return &TrafficManager{
+		Stats:          new(sync.Map),
+		BufferDuration: time.Duration(duration),
+		Route:          route,
+		maxConnection:  maxConnection,
+		banPeriod:      banPeriod,
 	}
 }
 
-func MakeNewRoute(uid string) *RouteMap {
-	curRoute := <-WriteRouteChan
-
-	if curRoute.timestamp < newestRoute {
-		return nil
-	}
-
-	_, ok := curRoute.GoRoute[uid]
-	if ok {
-		return nil
-	}
-	nr := DefaultRoute()
-	//copy the map
-	for k, v := range curRoute.GoRoute {
-		nr.GoRoute[k] = v
-	}
-	log.Println("Sets", uid, "redirect")
-	log.Println(uid, " has ", maxCon, " requests in ", duration, " seconds")
-	nr.GoRoute[uid] = "go"
-	return nr
-}
-
-func MakeNewCounter(uid string, dur int) *ratecounter.RateCounter {
-	stat := ratecounter.NewRateCounter(time.Duration(dur) * time.Second)
-	stats[uid] = stat
-	return stat
-}
-
-func UpdateTraffic() bool {
-
-	var uid string
-	var newRoute *RouteMap
-	var lastTimestamp, curTimestamp int64
-
-	lastTimestamp = time.Now().Unix()
-
-	for {
-		uid = <-ReadTrafficChan
-
-		curTimestamp = time.Now().Unix()
-
-		if curTimestamp-lastTimestamp >= banPeriod {
-			newRoute = DefaultRoute()
-			lastTimestamp = curTimestamp
-		} else {
-
-			stat, ok := stats[uid]
-
-			if ok {
-
-			} else {
-				stat = MakeNewCounter(uid, duration)
-
-			}
-			stat.Incr(1)
-
-			if stat.Rate() > maxCon {
-				tmpRoute := MakeNewRoute(uid)
-				if tmpRoute != nil {
-					newRoute = tmpRoute
-				}
-				MakeNewCounter(uid, duration)
-			}
-		}
-
-		if newRoute != nil {
-			select {
-			case UpdateRouteChan <- newRoute:
-				newRoute = nil
-			default:
-			}
-
-		}
+//NewLogManager init a new LogManager with parameters setting
+func NewLogManager(logPeriod int64, channel chan *AppidIP) *LogManager {
+	return &LogManager{
+		LogPeriod: logPeriod,
+		AppidChan: channel,
 	}
 }
 
+//DefaultRoutingURL 定義了導向的LB網址
+var DefaultRoutingURL = "http://172.17.0.1:9001"
+
+//CheckOverFlowed 檢查該使用者是否已經超過流量
+func (m *TrafficManager) CheckOverFlowed(uid string) bool {
+	stat, _ := m.Stats.LoadOrStore(uid, ratecounter.NewRateCounter(m.BufferDuration*time.Second))
+	counter := stat.(*ratecounter.RateCounter)
+	//FIXME: counter must be incre and evalue at the same line(or use mutext) or there might have some out of sync issue.
+	if counter.Incr(1); counter.Rate() > m.maxConnection {
+		return true
+	}
+	return false
+}
+
+//計算datadog資訊
 func AppidCounter(period int, statsdURL string) {
 	var appip *AppidIP
 
