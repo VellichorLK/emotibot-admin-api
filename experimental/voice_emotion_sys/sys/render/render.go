@@ -149,8 +149,8 @@ func fakeEnv() {
 
 func main() {
 
-	//parseEnv()
-	fakeEnv()
+	parseEnv()
+	//fakeEnv()
 	handlers.InitDatabaseCon(envs["DB_HOST"], envs["DB_PORT"], envs["DB_USER"], envs["DB_PWD"], "voice_emotion")
 	//handlers.QueryBlob()
 	//recordData(task)
