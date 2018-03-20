@@ -136,7 +136,10 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 
 		mainDB := util.GetMainDB()
 
-		// select a.Question_Id,a.Answer_Id,Tag_Id,c.Content,CategoryId from vipshop_answer as a left join vipshop_answertag as b on a.Answer_Id = b.Answer_Id left join vipshop_question as c on a.Question_Id=c.Question_Id where a.Answer_Id in (9733365,9733366,9733367);
+		// select a.Question_Id,a.Answer_Id,Tag_Id,c.Content,CategoryId from vipshop_answer as a
+		// left join vipshop_answertag as b on a.Answer_Id   = b.Answer_Id
+		// left join vipshop_question  as c on a.Question_Id = c.Question_Id
+		// where a.Answer_Id in (9733365,9733366,9733367);
 
 		sqlTags := "select a." + attrQID + "," + "a." + attrAnsID + "," + attrTagID + ",c." + attrContent + "," + attrCategoryID +
 			" from " + VIPAnswerTable + " as a left join " + VIPAnswerTagTable + " as b on a." + attrAnswerID + "=b." + attrAnswerID +
@@ -149,8 +152,10 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 		defer rows.Close()
 
 		var lastAnswerID int
+		//Speedup same question ID's answer
 		var lastQID int
 		var lastQIDCategoryAndQ string
+
 		var qi *questionInfo
 
 		for rows.Next() {
@@ -169,23 +174,22 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 			if lastAnswerID != answerID || qID != lastQID {
 				lastAnswerID = answerID
 				qi = &questionInfo{QuestionID: qID}
-				//qis = append(qis, qi)
-				qis[answerID] = qi
 				if qID == lastQID {
 					qi.Info = lastQIDCategoryAndQ
 				} else {
-					lastQID = qID
 					categories, err := GetFullCategory(categoriesMap, categoryID)
 					if err != nil {
-						return nil, err
+						util.LogError.Printf("Category %d has error %v\n", categoryID, err)
+						continue
 					}
-
+					lastQID = qID
 					for i := 0; i < 2 && i < len(categories); i++ {
 						qi.Info += categories[i] + "/"
 					}
 					qi.Info += content + "/"
 					lastQIDCategoryAndQ = qi.Info
 				}
+				qis[answerID] = qi
 			} else {
 				delimiter = ","
 			}
