@@ -29,10 +29,10 @@ var mockedAuditDB sqlmock.Sqlmock
 
 type mockedMCClient struct{}
 
-func (mockedMCClient) McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string) (util.MCResponse, error) {
+func (mockedMCClient) McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string, appid string) (util.MCResponse, error) {
 	panic("function is not impelmented")
 }
-func (mockedMCClient) McExportExcel(UserID string, UserIP string, answerIDs []string) (util.MCResponse, error) {
+func (mockedMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string) (util.MCResponse, error) {
 	panic("function is not impelmented")
 }
 func (mockedMCClient) McManualBusiness(appid string) (int, error) {

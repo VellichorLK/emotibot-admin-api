@@ -24,7 +24,7 @@ func TestCategoryFullName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectedPath := "/LEVEL1/LEVEL2/LEVEL3"
+	expectedPath := "LEVEL1/LEVEL2/LEVEL3"
 	if name != expectedPath {
 		t.Fatalf("expected %s, but got %s", expectedPath, name)
 	}
