@@ -11,6 +11,18 @@ import (
 	"github.com/kataras/iris/context"
 )
 
+func handleChatInfoList(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	errCode := ApiError.SUCCESS
+
+	chatList, errCode, err := GetRobotChatInfoList(appid)
+	if errCode != ApiError.SUCCESS {
+		ctx.JSON(util.GenRetObj(errCode, err.Error()))
+		return
+	}
+	ctx.JSON(util.GenRetObj(errCode, chatList))
+}
+
 func handleChatList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	errCode := ApiError.SUCCESS

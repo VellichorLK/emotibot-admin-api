@@ -465,6 +465,48 @@ func getRobotChatList(appid string) ([]*ChatInfo, error) {
 			Contents: contents,
 		})
 	}
+
+	return ret, nil
+}
+
+func getRobotChatInfoList(appid string) ([]*ChatDescription, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	nameMap := make(map[int]string)
+	commentMap := make(map[int]string)
+	queryStr := fmt.Sprintf("SELECT type, name, comment FROM %s_robotwords_type", appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		chatType := 0
+		name := ""
+		comment := ""
+		err = rows.Scan(&chatType, &name, &comment)
+		if err != nil {
+			return nil, err
+		}
+		nameMap[chatType] = name
+		commentMap[chatType] = comment
+	}
+
+	ret := []*ChatDescription{}
+	for key, name := range nameMap {
+		comment, _ := commentMap[key]
+
+		ret = append(ret, &ChatDescription{
+			Type:    key,
+			Name:    name,
+			Comment: comment,
+		})
+	}
+
 	return ret, nil
 }
 

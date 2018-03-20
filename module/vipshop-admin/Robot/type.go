@@ -31,6 +31,12 @@ type ChatInfo struct {
 	Contents []string `json:"contents"`
 }
 
+type ChatDescription struct {
+	Type    int    `json:"type"`
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+}
+
 // ChatInfoInput is used when update robot chat setting
 type ChatInfoInput struct {
 	Type     int      `json:"type"`
