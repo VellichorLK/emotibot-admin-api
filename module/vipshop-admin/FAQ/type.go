@@ -138,7 +138,7 @@ func (c Category) SubCats() ([]Category, error) {
 
 // FullName will return complete name of category.
 // the start prefix and seperator is slash
-// ex: a->b->c, Category c's FullName will be /a/b/c
+// ex: a->b->c, Category c's FullName will be a/b/c
 func (c Category) FullName() (string, error) {
 	db := util.GetMainDB()
 	if db == nil {
@@ -159,25 +159,28 @@ func (c Category) FullName() (string, error) {
 	if err = rows.Err(); err != nil {
 		return "", fmt.Errorf("Rows scaning failed, %v", err)
 	}
-
-	if c, ok := categories[c.ID]; ok {
-		switch c.ParentID {
-		case 0:
-			fallthrough
-		case -1:
-			return c.Name, nil
-		}
-		var fullPath string
-		for ; ok; c, ok = categories[c.ParentID] {
-			fullPath = c.Name + "/" + fullPath
-			if c.ParentID == 0 {
-				break
-			}
-		}
-		if !ok {
-			return "", fmt.Errorf("category id %d has invalid parentID %d", c.ID, c.ParentID)
-		}
-		return fullPath, nil
+	var fullPath string
+	c, ok := categories[c.ID]
+	if !ok {
+		return "", fmt.Errorf("Cant find category id %d in db", c.ID)
 	}
-	return "", fmt.Errorf("Cant find category id %d in db", c.ID)
+	switch c.ParentID {
+	case 0:
+		fallthrough
+	case -1:
+		return c.Name, nil
+	default:
+		fullPath = c.Name
+	}
+	for c, ok = categories[c.ParentID]; ok; c, ok = categories[c.ParentID] {
+		fullPath = c.Name + "/" + fullPath
+		if c.ParentID == 0 {
+			break
+		}
+	}
+
+	if !ok {
+		return "", fmt.Errorf("category id %d has invalid parentID %d", c.ID, c.ParentID)
+	}
+	return fullPath, nil
 }
