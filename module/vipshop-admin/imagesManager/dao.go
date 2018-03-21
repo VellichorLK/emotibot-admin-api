@@ -299,6 +299,63 @@ func getFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 	return fileNameList, nil
 }
 
+func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
+	imageRelations := make([]*imageRelation, 0)
+	num := len(answerIDs)
+	if num > 0 {
+
+		locationMap, err := getLocationMap()
+		if err != nil {
+			return nil, err
+		}
+
+		answerIDMap := make(map[uint64]*imageRelation)
+		for i := 0; i < num; i++ {
+			relation := &imageRelation{}
+			relation.Info = make([]*simpleImageInfo, 0)
+			switch answerID := answerIDs[i].(type) {
+			case uint64:
+				relation.AnswerID = answerID
+				answerIDMap[answerID] = relation
+				imageRelations = append(imageRelations, relation)
+			default:
+				util.LogWarn.Printf("answerID has type %T instead of uint64\n", answerID)
+			}
+		}
+
+		query := fmt.Sprintf("select a.%s, a.%s, a.%s, b.%s from %s as a left join %s as b on a.%s=b.%s where b.%s in (?%s) order by b.%s",
+			attrID, attrFileName, attrLocationID, attrAnswerID, imageTable, relationTable, attrID, attrImageID, attrAnswerID, strings.Repeat(",?", num-1), attrAnswerID)
+
+		rows, err := SqlQuery(db, query, answerIDs...)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var imageID, locationID, answerID uint64
+		var fileName string
+
+		for rows.Next() {
+			err = rows.Scan(&imageID, &fileName, &locationID, &answerID)
+			if err != nil {
+				return nil, err
+			}
+
+			if relation, ok := answerIDMap[answerID]; ok {
+				if locationURL, ok := locationMap[locationID]; ok {
+					imageInfo := &simpleImageInfo{ImageID: imageID, URL: strings.Trim(locationURL, "/") + "/" + fileName}
+					relation.Info = append(relation.Info, imageInfo)
+				} else {
+					util.LogWarn.Printf("location ID %v is not found\n", locationID)
+				}
+			}
+		}
+
+	}
+	return imageRelations, nil
+
+}
+
 func createBackupFolder(n int, path string) (string, error) {
 	folderName := GetUniqueString(n)
 	err := os.Mkdir(path+"/"+folderName, 0755)

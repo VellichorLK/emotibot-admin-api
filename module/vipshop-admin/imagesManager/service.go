@@ -184,3 +184,11 @@ func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
 	}
 	return &b, nil
 }
+
+func getAnswerImage(answerIDs []uint64) ([]*imageRelation, error) {
+	ids := make([]interface{}, len(answerIDs))
+	for i := 0; i < len(answerIDs); i++ {
+		ids[i] = answerIDs[i]
+	}
+	return getImageByAnswerID(ids)
+}
