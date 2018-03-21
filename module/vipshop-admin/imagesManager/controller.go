@@ -35,6 +35,7 @@ func init() {
 			util.NewEntryPoint("PUT", "images/{id:int}", []string{}, copyImage),
 			util.NewEntryPoint("POST", "images/delete", []string{}, handleDeleteImages),
 			util.NewEntryPoint("POST", "images/download", []string{}, downloadImages),
+			util.NewEntryPoint("POST", "images/search", []string{}, searchImageHandler),
 		},
 	}
 }
@@ -340,5 +341,38 @@ func downloadImages(ctx context.Context) {
 	ctx.Header("Content-Disposition", "attachment; filename=download.zip")
 	ctx.Header("Cache-Control", "public")
 	ctx.Binary(b.Bytes())
+
+}
+
+func searchImageHandler(ctx context.Context) {
+
+	var inputArgs = struct {
+		AnswerIDs []uint64 `json:"answers"`
+	}{}
+
+	err := ctx.ReadJSON(&inputArgs)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+		return
+	}
+
+	if len(inputArgs.AnswerIDs) == 0 {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, "No assigned id"))
+		return
+	}
+
+	answerImages, err := getAnswerImage(inputArgs.AnswerIDs)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, "Internal server error"))
+		util.LogError.Println(err)
+		return
+	}
+
+	ctx.StatusCode(http.StatusOK)
+	ctx.JSON(answerImages)
+	return
 
 }
