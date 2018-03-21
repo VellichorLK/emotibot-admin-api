@@ -90,15 +90,15 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 	return func(key string, val interface{}) (int, error) {
 		key = strings.TrimPrefix(key, "/")
 		k, _ := url.Parse(key)
-		u = u.ResolveReference(k)
+		temp := u.ResolveReference(k)
 		body, err := json.Marshal(val)
-		request, err := http.NewRequest(http.MethodPut, u.String(), bytes.NewReader(body))
+		request, err := http.NewRequest(http.MethodPut, temp.String(), bytes.NewReader(body))
 		if err != nil {
 			//TODO: should Logging behavior be done at Controller level or API level?
 			logConsulError(err)
 			return ApiError.REQUEST_ERROR, err
 		}
-		logTraceConsul("update", u.String())
+		logTraceConsul("update", temp.String())
 		_, err = c.Do(request)
 		if err != nil {
 			logConsulError(err)
