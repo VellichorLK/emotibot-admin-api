@@ -19,7 +19,6 @@ import (
 )
 
 var AddTrafficChan chan string
-var ReadDestChan chan *trafficStats.RouteMap
 var AppidChan chan *trafficStats.AppidIP
 var trafficManager *trafficStats.TrafficManager
 
@@ -27,9 +26,6 @@ var k8sRedirectList = make(map[string]bool, 0)
 var logLevel string = "production"
 
 func GoProxy(w http.ResponseWriter, r *http.Request) {
-	if logLevel == "dev" {
-		log.Printf("%+v\n", r)
-	}
 	buf, _ := ioutil.ReadAll(r.Body)
 
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
@@ -77,10 +73,14 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 	} else {
 		log.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
 	}
-
+	if logLevel == "dev" {
+		log.Printf("%+v\n", r)
+		log.Printf("appid:%s, userid:%s, onk8sList:%v\n", appid, userid, k8sRedirectList[appid])
+	}
 	if k8sRedirectList[appid] {
 		r.Header.Set("X-Lb-K8s", "k8suser")
 	} else if trafficManager.CheckOverFlowed(userid) {
+		log.Printf("userid:%s is overflowed\n", userid)
 		userid = userid + strconv.Itoa(rand.Intn(1000))
 	}
 
@@ -110,7 +110,7 @@ func main() {
 	if !loaded {
 		logLevel = "production"
 	}
-	
+
 	duration, err := strconv.Atoi(os.Getenv("DURATION"))
 	checkerr(err, "DURATION")
 	maxLimit, err := strconv.Atoi(os.Getenv("MAXREQUESTS"))
@@ -133,18 +133,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("read ./k8slist failed, %v", err)
 	}
-	k8sRedirectList, err := ReadList(f)
+	k8sRedirectList, err = ReadList(f)
 	if err != nil {
 		log.Fatalf("ReadList failed, %v", err)
 	}
 	log.Printf("K8S List readed:\n%+v\n", k8sRedirectList)
 	//make the channel
 	AddTrafficChan = make(chan string)
-	ReadDestChan = make(chan *trafficStats.RouteMap)
 	AppidChan = make(chan *trafficStats.AppidIP, 1024)
 	u, _ := url.Parse("http://172.17.0.1:9001")
 	trafficManager = trafficStats.NewTrafficManager(duration, int64(maxLimit), int64(banPeriod), *u)
-	go trafficStats.AppidCounter(logPeriod, statsdHost+":"+statsdPort)
+	go trafficStats.AppidCounter(AppidChan, logPeriod, statsdHost+":"+statsdPort)
 	http.HandleFunc("/", GoProxy)
 	http.HandleFunc("/_health_check", HealthCheck)
 	log.Fatal(http.ListenAndServe(":9000", nil))

@@ -42,11 +42,6 @@ var banPeriod int64
 
 var newestRoute int64
 
-// WriteRouteChan MakeNewRoute的資料來源
-var WriteRouteChan chan *RouteMap
-var UpdateRouteChan chan *RouteMap
-var AppidChan chan *AppidIP
-
 var MonitorAppid = map[string]bool{
 	"c385e97b0cdce3bdbbee59083ec3b0d0": true, //ecovacs appid
 
@@ -102,7 +97,7 @@ func (m *TrafficManager) CheckOverFlowed(uid string) bool {
 }
 
 //計算datadog資訊
-func AppidCounter(period int, statsdURL string) {
+func AppidCounter(appipChan <-chan *AppidIP, period int, statsdURL string) {
 	var appip *AppidIP
 
 	c, err := statsd.New(statsdURL)
@@ -116,7 +111,7 @@ func AppidCounter(period int, statsdURL string) {
 	timeCh := time.After(time.Duration(period) * time.Second)
 	for {
 		select {
-		case appip = <-AppidChan:
+		case appip = <-appipChan:
 			ac, ok := flowCount[appip.Appid]
 			if !ok {
 				ac = new(AppidCount)
