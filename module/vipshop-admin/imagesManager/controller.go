@@ -59,7 +59,10 @@ func InitDB() {
 
 	mediaLocal := strings.Trim(util.GetEnviroment(Envs, "LOCATION"), "/")
 	Volume = filepath.Clean(util.GetEnviroment(Envs, "VOLUME"))
-	LocalID, _ = getLocationID(mediaLocal)
+	LocalID, err = getLocationID(mediaLocal)
+	if err != nil {
+		util.LogError.Println(err)
+	}
 }
 
 func receiveImage(ctx context.Context) {
