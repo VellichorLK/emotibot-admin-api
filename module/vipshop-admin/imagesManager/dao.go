@@ -81,7 +81,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	condition += "limit " + strconv.FormatInt(args.Limit, 10)
 	condition += " offset " + strconv.FormatInt(args.Page*args.Limit, 10)
 
-	sqlString := "select " + attrID + "," + attrFileName + "," + attrSize + "," + attrLocationID + "," + attrCreateTime + "," + attrLatestUpdate + "," + attrAnswerID
+	sqlString := "select a." + attrID + ",a." + attrFileName + ",a." + attrSize + ",a." + attrLocationID + ",a." + attrCreateTime + ",a." + attrLatestUpdate + ",a." + attrAnswerID
 	sqlString += " from (select * from " + imageTable + " " + condition + ") as a left join " + relationTable + " as b on " +
 		"a." + attrID + "=b." + attrImageID
 
