@@ -589,7 +589,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 }
 
 func Escape(target string) string {
-	re := regexp.MustCompile("<img src=\"([^\"]+)\"[^>]*>")
+	re := regexp.MustCompile("<img.*?>")
 	return re.ReplaceAllString(target, "[图片]")
 }
 
@@ -784,6 +784,7 @@ func answerSQL(condition QueryCondition, aids [][]string, sqlParam *[]interface{
 	if condition.TimeSet && condition.BeginTime != "" && condition.EndTime != "" {
 		// replace time condition
 		var timeCondition string
+
 		if hasWhere {
 			timeCondition = fmt.Sprintf(" and tmp_a.Begin_Time >= '%s' and tmp_a.End_Time <= '%s'", condition.BeginTime, condition.EndTime)
 		} else {
