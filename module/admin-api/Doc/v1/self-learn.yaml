@@ -1,0 +1,271 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for Self-learn RestAPIs
+  version: 1.0.0
+  title: Self-learn
+  contact:
+    email: deansu@emotibot.com
+components:
+  schemas:
+    report:
+      type: object
+      description: "唯品會聚類工作結果"
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: "週報的唯一ID"
+        start_time:
+          type: string
+          format: date-time
+          description: "週報開始日期"
+        end_time:
+          type: string
+          format: date-time
+          description: "周報結束日期"
+        clusterSize:
+          type: integer
+          description: "在工作內的群集數量"
+        userQuestionSize:
+          type: integer
+          description: "在群集內的未解決問題數量"
+        status:
+          type: integer
+          description: "週報的執行狀態(0:執行中, 1:成功, -1: 失敗)"
+    cluster:
+      type: object
+      description: "未解決使用者問題的群集"
+      properties:
+        id:
+          type: integer
+          format: int64
+        userQuestionSize:
+          type: integer
+          description: "在群集內的未解決問題數量"
+        tags:
+          type: array
+          description: "群集的標籤"
+          items: 
+            type: string
+    userQuestion:
+      type: object
+      description: "使用者的未解決問題"
+      properties:
+        id:
+          type: integer
+          format: int64
+        question:
+          type: string
+          description: "使用者問題內容"
+        std_question:
+          type: string
+          description: "客服將未解決問題配對到的標準問內容本身"
+        created_time:
+          type: string
+          format: date-time
+        updated_time: 
+          type: string
+          format: date-time
+paths:
+  /reports:
+    get:
+      summary: "取得所有週報時間及負反饋對話數"
+      description: "用於週報列表"
+      parameters:
+        - name: limit
+          in: query
+          description: "限制最多n筆, 目前至多存在10筆週報"
+          schema:
+            type: integer
+            default: 10
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/report'
+        500:
+          description: "Internal server error"
+  /reports/{id}:
+    get:
+      summary: "取得週報的詳細資料"
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+          description: "週報ID"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/report'
+        404:
+          description: "resource not found"
+        500:
+          description: "Internal server error"
+  /reports/{id}/clusters:
+    get:
+      summary: "取得某週報的全部分組"
+      description: "對話分組列表"
+      parameters:
+        - name: id
+          in: path
+          schema:
+            type: string
+          required: true
+          description: "週報ID"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/cluster'
+        404:
+          description: "resource not found"
+        500:
+          description: "Internal server error"
+  /userQuestions:
+    get:
+      summary: "取得使用者對話"
+      parameters: 
+        - name: reportID
+          in: query
+          schema:
+            type: integer
+          required: true
+          description: "週報ID"
+        - name: clusterID
+          in: query
+          schema:
+            type: integer
+          description: "群集ID"
+        - name: limit
+          in: query
+          description: "一頁多少筆資料"
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: "第幾頁"
+          schema:
+            type: integer
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/userQuestion'
+        500:
+          description: "Internal server error"
+    post:
+      summary: "批次將使用者問題設為已匹配"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                std_question:
+                  type: string
+                  description: "已匹配的標準問內容"
+                feebacks:
+                  type: array
+                  items:
+                    type: string
+                    description: "使用者問題ID"
+      responses:
+        200:
+          description: "OK"
+        404:
+          description: "resource not found"
+        409:
+          description: "conflicted, Already match the std question of the userQuestions"
+        500:
+          description: "Internal server error"
+  /userQuestions/{id}:
+    get:
+      summary: "取得使用者未解決對話"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/userQuestion'
+        404:
+          description: "resource not found"
+        500:
+          description: "Internal server error"
+    post:
+      summary: "將使用者問題設為已匹配"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                std_question:
+                  type: string
+                  description: "已匹配的標準問內容"
+      responses:
+        200:
+          description: "OK"
+        404:
+          description: "resource not found"
+        409:
+          description: "conflicted, Already match the std question of the userQuestions"
+        500:
+          description: "Internal server error"
+  /userQuestions/{id}/revoke:
+    post:
+      summary: "撤銷使用者問題的已匹配狀態"
+      responses:
+        200: 
+          description: "OK"
+        404:
+          description: "userQuestion not found"
+        500:
+          description: "Internal server error"
+  /recommend:
+    post:
+      summary: "為我推薦, 透過提出的問題找出其相似問"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                minLength: 1
+                maxLength: 20
+                description: "勾選詢問的問句"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  properties:
+                    content:
+                      type: string
+                      description: "標準問內容"
+                    questionId:
+                      type: integer
+                      format: int64
+        500:
+          description: "Internal server error"

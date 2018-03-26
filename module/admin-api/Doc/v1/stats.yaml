@@ -1,0 +1,135 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for stat RestAPIs
+  version: 1.0.0
+  title: 统计功能相关API
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v1/statistic/
+components:
+  schemas:
+    operation:
+      type: string
+      enum: [
+        "0", # 新增
+        "1", # 修改
+        "2", # 删除
+        "3", # 导入
+        "4", # 导出
+        "6", # 登入
+      ]
+      description: 操作动作代号
+    module:
+      type: string
+      enum: [
+        "0", # 话术设置
+        "1", # 技能设置
+        "2", # 问答库
+        "3", # 形象设置
+        "4", # 开关管理
+        "5", # 词库管理
+        "6", # 数据管理
+        "7", # 用户管理
+        "8", # 角色管理
+      ]
+      description: 操作模块ID
+    question:
+      type: object
+      description: 话术开关内容
+      properties:
+        question:
+          type: string
+          description: 用户问题
+          example:  "Question string"
+        std_q:
+          type: string
+          description: 开用户问句对应之标准问题
+        answer:
+          type: string
+          example: "Answer string"
+        score:
+          type: integer
+          description: 开问答对应分数
+          example: 120
+        count: 
+          type: integer
+          example: 3
+    filter:
+      type: object
+      properties:
+        start_time:
+          type: integer
+        end_time:
+          type: integer
+        filters:
+          type: object
+          properties:
+            module:
+              $ref: '#/components/schemas/module'
+            operation:
+              $ref: '#/components/schemas/operation'
+    audit-log:
+      type: object
+      properties:
+        module:
+          $ref: '#/components/schemas/module'
+        operation:
+          $ref: '#/components/schemas/operation'
+        result:
+          type: integer
+          enum: [0, 1]
+          description: 成功(1)或失败(0)
+        user_id:
+          type: string
+        user_ip:
+          type: string
+        created_time:
+          type: string
+        content:
+          type: string
+          description: 纪录内容
+paths:
+  /question:
+    get:
+      summary: "取得不同统计项用户问句最多之20句"
+      parameters:
+        - name: days
+          in: query
+          description: 取得时间范围为几天内
+          required: true
+          schema:
+            type: integer
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: ["unsolved"]
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/question'
+        500:
+          description: "Internal server error"
+  /audit:
+    post:
+      summary: 显示操作 log
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              $ref: '#/components/schemas/filter'
+      responses:
+        200:
+          description: temp
+        400:
+          description: "缺乏参数"
+        500:
+          description: "Internal server error"

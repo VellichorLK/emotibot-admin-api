@@ -1,0 +1,71 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for QATest RestAPIs
+  version: 1.0.0
+  title: 对话测试API
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v1/ui/
+paths:
+  /chat-test:
+    post:
+      summary: "进行对话测试"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qtype:
+                  type: string
+                  enum: ["debug"]
+                text:
+                  type: string
+                  example: 用户问句 
+                top:
+                  type: integer
+                  example: 2
+                  description: 列出几条相似问
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answers:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - answer-line1
+                      - answer-line2
+                  emotion:
+                    type: string
+                    example: 中性
+                  intent:
+                    type: string
+                    example: ""
+                  openapi_return:
+                    type: integer
+                    description: 侦错用回传结果
+                  similar_question:
+                    type: array
+                    items:
+                      type: string
+                    description: 可能相似之问题
+                    example:
+                      - similar-question1
+                      - similar-question2
+                  tokens:
+                    type: array
+                    items:
+                      type: string
+                    description: 分词结果
+                    example:
+                      - test/nx
+
+        500:
+          description: "Internal server error"
