@@ -440,8 +440,8 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		dmCondition = fmt.Sprintf(dmCondition, appid)
 		if condition.SearchDynamicMenu {
 			if condition.Keyword != "" {
-				dmCondition += " where DynamicMenu like ?"
-				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
+				dmCondition += " where DynamicMenu REGEXP ?"
+				sqlParams = append(sqlParams, ".*?("+regexp.QuoteMeta(condition.Keyword)+").*")
 			}
 			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		} else if condition.SearchAll {
@@ -452,8 +452,8 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		rqCondition = fmt.Sprintf(rqCondition, appid)
 		if condition.SearchRelativeQuestion {
 			if condition.Keyword != "" {
-				rqCondition += " where RelatedQuestion like ?"
-				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
+				rqCondition += " where RelatedQuestion REGEXP ?"
+				sqlParams = append(sqlParams, ".*?("+regexp.QuoteMeta(condition.Keyword)+").*")
 			}
 			query += fmt.Sprintf(" inner join (%s) as rq on rq.Answer_Id = a.Answer_Id", rqCondition)
 		} else if condition.SearchAll {
@@ -469,8 +469,8 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		}
 
 		if condition.SearchAll && condition.Keyword != "" {
-			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
-			param := "%" + condition.Keyword + "%"
+			query += " where q.Content REGEXP ? or a.Content REGEXP ? or rq.RelatedQuestion REGEXP ? or dm.DynamicMenu REGEXP ?"
+			param := ".*?("+regexp.QuoteMeta(condition.Keyword)+").*"
 			sqlParams = append(sqlParams, param, param, param, param)
 		}
 
@@ -694,8 +694,8 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 
 	if condition.SearchQuestion && condition.Keyword != "" {
 		// replace keyword condition
-		keywordCondition := fmt.Sprintf(" and %s_question.content like ?", appid)
-		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		keywordCondition := fmt.Sprintf(" and %s_question.content REGEXP ?", appid)
+		newParam := append(*sqlParam, ".*?("+regexp.QuoteMeta(condition.Keyword)+").*")
 		*sqlParam = newParam
 		query = strings.Replace(query, "#KEYWORD_CONDITION#", keywordCondition, -1)
 	} else {
@@ -800,13 +800,13 @@ func answerSQL(condition QueryCondition, aids [][]string, sqlParam *[]interface{
 		// replace keword condition
 		var keywordCondition string
 		if hasWhere {
-			keywordCondition = " and tmp_a.Content_String like ?"
+			keywordCondition = " and tmp_a.Content_String REGEXP ?"
 		} else {
 			hasWhere = true
-			keywordCondition = " where tmp_a.Content_String like ?"
+			keywordCondition = " where tmp_a.Content_String REGEXP ?"
 		}
 		query = strings.Replace(query, "#KEYWORD_CONDTION#", keywordCondition, -1)
-		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		newParam := append(*sqlParam, ".*?("+regexp.QuoteMeta(condition.Keyword)+").*")
 		*sqlParam = newParam
 	} else {
 		query = strings.Replace(query, "#KEYWORD_CONDTION#", "", -1)
