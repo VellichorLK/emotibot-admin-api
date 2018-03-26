@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"strconv"
 	"net/http"
 	"net/url"
 
@@ -23,7 +24,7 @@ var DefaultMCClient MultiCustomerClient = MultiCustomerHttpClient{}
 
 type MultiCustomerClient interface {
 	McImportExcel(fileHeader multipart.FileHeader, UserID string, UserIP string, mode string, appid string) (MCResponse, error)
-	McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string) (MCResponse, error)
+	McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string, categoryID int) (MCResponse, error)
 	McManualBusiness(appid string) (int, error)
 }
 
@@ -170,7 +171,7 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 }
 
 // MCExportExcel
-func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string, appid string) (MCResponse, error) {
+func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, answerIDs []string, appid string, categoryId int) (MCResponse, error) {
 	var mcResponse MCResponse
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	type requestJSON struct {
@@ -179,6 +180,7 @@ func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, ans
 		UserIP    string   `json:"userip"`
 		Module    string   `json:"module"`
 		AnswerIDs []string `json:"answerid"`
+		CategroyID string `json:"categoryId"`
 	}
 	reqBody := requestJSON{}
 	reqBody.AppID = appid
@@ -186,6 +188,9 @@ func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, ans
 	reqBody.UserIP = userIP
 	reqBody.Module = "business"
 	reqBody.AnswerIDs = answerIDs
+	if categoryId > -2 {
+		reqBody.CategroyID = strconv.Itoa(categoryId)
+	}
 
 	bodyStr, err := json.Marshal(reqBody)
 	if err != nil {
