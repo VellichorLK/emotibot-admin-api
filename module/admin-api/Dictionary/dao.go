@@ -16,6 +16,21 @@ func addWordbankDir(appid string, paths []string) error {
 	return nil
 }
 
+func updateWordbank(appid string, wordbank *WordBank) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	sqlStr := fmt.Sprintf(`UPDATE %s_entity SET similar_words = ?, answer = ? WHERE id = ?`, appid)
+
+	_, err := mySQL.Exec(sqlStr, wordbank.SimilarWords, wordbank.Answer, wordbank.ID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func addWordbank(appid string, paths []string, wordbank *WordBank) error {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
@@ -182,7 +197,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	queryStr := fmt.Sprintf("SELECT level1, level2, level3, level4, entity_name, similar_words, answer from %s_entity where status_flag = 1", appid)
+	queryStr := fmt.Sprintf("SELECT level1, level2, level3, level4, entity_name, similar_words, answer, id from %s_entity where status_flag = 1", appid)
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return nil, err
@@ -198,17 +213,9 @@ func getEntities(appid string) ([]*WordBank, error) {
 		var entityName sql.NullString
 		var similarWord sql.NullString
 		var answer sql.NullString
+		var id int
 
-		args := make([]interface{}, 7)
-		for i, category := range categories {
-			args[i] = &category
-		}
-		args[4] = &entityName
-		args[5] = &similarWord
-		args[6] = &answer
-
-		if err := rows.Scan(&categories[0], &categories[1], &categories[2], &categories[3], &entityName, &similarWord, &answer); err != nil {
-			//if err := rows.Scan(args...); err != nil {
+		if err := rows.Scan(&categories[0], &categories[1], &categories[2], &categories[3], &entityName, &similarWord, &answer, &id); err != nil {
 			return nil, err
 		}
 
@@ -219,7 +226,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 			}
 
 			if _, ok := cache[idx][category.String]; !ok {
-				newWordBank := &WordBank{category.String, 0, make([]*WordBank, 0), "", ""}
+				newWordBank := &WordBank{id, category.String, 0, make([]*WordBank, 0), "", ""}
 				cache[idx][category.String] = newWordBank
 				if lastCategory != nil {
 					lastCategory.Children = append(lastCategory.Children, newWordBank)
@@ -232,7 +239,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 			continue
 		}
 		if entityName.Valid && entityName.String != "" {
-			newWordBank := &WordBank{entityName.String, 1, make([]*WordBank, 0), "", ""}
+			newWordBank := &WordBank{id, entityName.String, 1, make([]*WordBank, 0), "", ""}
 			if similarWord.Valid && similarWord.String != "" {
 				newWordBank.SimilarWords = similarWord.String
 			}

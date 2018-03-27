@@ -29,6 +29,7 @@ func init() {
 			util.NewEntryPoint("GET", "wordbanks", []string{"view"}, handleGetWordbanks),
 
 			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
+			util.NewEntryPoint("POST", "wordbank", []string{"edit"}, handleUpdateWordbank),
 		},
 	}
 	maxDirDepth = 4
@@ -56,6 +57,36 @@ func getGlobalEnv(key string) string {
 		}
 	}
 	return ""
+}
+
+func handleUpdateWordbank(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	updatedWordbank := &WordBank{}
+	err := ctx.ReadJSON(updatedWordbank)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef(err.Error())
+		return
+	}
+
+	retCode, err := UpdateWordbank(appid, updatedWordbank)
+	auditMessage := ""
+	auditRet := 1
+	if err != nil {
+		if retCode == ApiError.REQUEST_ERROR {
+			ctx.StatusCode(http.StatusBadRequest)
+		} else {
+			ctx.StatusCode(http.StatusInternalServerError)
+		}
+		ctx.Writef(err.Error())
+		auditRet = 0
+	} else {
+		ctx.StatusCode(http.StatusOK)
+	}
+	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
 }
 
 func handlePutWordbank(ctx context.Context) {

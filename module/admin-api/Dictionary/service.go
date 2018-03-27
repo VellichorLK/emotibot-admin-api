@@ -14,6 +14,15 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+// Update will add a update if wordbank is nil, or add wordbank
+func UpdateWordbank(appid string, newWordBank *WordBank) (int, error) {
+	err := updateWordbank(appid, newWordBank)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}
+
 // AddWordbank will add a category if wordbank is nil, or add wordbank
 func AddWordbank(appid string, paths []string, newWordBank *WordBank) (int, error) {
 	if newWordBank == nil {
