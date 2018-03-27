@@ -20,7 +20,7 @@ import (
 
 type mockMCClient http.Client
 
-func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, UserIP string, mode string) (util.MCResponse, error) {
+func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, UserIP string, mode string, appid string) (util.MCResponse, error) {
 
 	var mResp = util.MCResponse{
 		SyncInfo: struct {
@@ -35,7 +35,7 @@ func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, Us
 	}
 	return mResp, nil
 }
-func (m mockMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string) (util.MCResponse, error) {
+func (m mockMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string, CategoryId int) (util.MCResponse, error) {
 	return util.MCResponse{
 		SyncInfo: struct {
 			StatID int    `json:"stateID"`

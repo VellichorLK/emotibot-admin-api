@@ -128,6 +128,7 @@ func exportExcel(ctx context.Context) {
 		Message string `json:"message"`
 		UserID  string `json:"user_id,omitempty"`
 	}
+	var err error
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
 	var appid = util.GetAppID(ctx)
@@ -141,8 +142,13 @@ func exportExcel(ctx context.Context) {
 	}
 
 	var answerIDs []string
+	var mcResponse util.MCResponse
+
+	originCategoryId := condition.CategoryId
+	condition.CategoryId = 0
 	if FAQ.HasCondition(condition) {
 		answerIDs = []string{}
+		condition.CategoryId = originCategoryId
 		_, aids, err := FAQ.DoFilter(condition, appid)
 		if err != nil {
 			util.LogError.Printf("Error happened while fetch question ids & answer ids: %s", err.Error())
@@ -154,9 +160,15 @@ func exportExcel(ctx context.Context) {
 				answerIDs = append(answerIDs, aid)
 			}
 		}
+		mcResponse, err = apiClient.McExportExcel(userID, userIP, answerIDs, appid, -2)
+	} else {
+		if originCategoryId != 0 {
+			mcResponse, err = apiClient.McExportExcel(userID, userIP, answerIDs, appid, originCategoryId)
+		} else {
+			mcResponse, err = apiClient.McExportExcel(userID, userIP, answerIDs, appid, -2)
+		}
 	}
 
-	mcResponse, err := apiClient.McExportExcel(userID, userIP, answerIDs, appid)
 	switch err {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
