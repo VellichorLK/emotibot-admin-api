@@ -197,8 +197,6 @@ func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, ans
 		return mcResponse, err
 	}
 
-	LogError.Printf("%s", string(bodyStr))
-
 	reqURL := fmt.Sprintf("%s/download", mcURL)
 	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBuffer(bodyStr))
 	req.Header.Set("Content-Type", "application/json")
