@@ -433,6 +433,38 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 	return nil
 }
 
+func getRobotChat(appid string, id int) (*ChatInfo, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("SELECT content FROM %s_robot_setting where type = ?", appid)
+
+	rows, err := mySQL.Query(queryStr, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	contents := []string{}
+	for rows.Next() {
+		content := ""
+		err = rows.Scan(&content)
+		if err != nil {
+			return nil, err
+		}
+		contents = append(contents, content)
+	}
+
+	ret := &ChatInfo{
+		Type:     id,
+		Contents: contents,
+	}
+
+	return ret, nil
+}
+
 func getRobotChatList(appid string) ([]*ChatInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {

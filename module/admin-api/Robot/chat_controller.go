@@ -23,6 +23,23 @@ func handleChatInfoList(ctx context.Context) {
 	ctx.JSON(util.GenRetObj(errCode, chatList))
 }
 
+func handleGetChat(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	errCode := ApiError.SUCCESS
+	id, err := ctx.Params().GetInt("id")
+	if err != nil || id <= 0 {
+		ctx.StatusCode(iris.StatusBadRequest)
+		return
+	}
+
+	chat, errCode, err := GetRobotChat(appid, id)
+	if errCode != ApiError.SUCCESS {
+		ctx.JSON(util.GenRetObj(errCode, err.Error()))
+		return
+	}
+	ctx.JSON(util.GenRetObj(errCode, chat))
+}
+
 func handleChatList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	errCode := ApiError.SUCCESS

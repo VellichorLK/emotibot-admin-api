@@ -105,6 +105,15 @@ func GetRobotChatInfoList(appid string) ([]*ChatDescription, int, error) {
 	return ret, ApiError.SUCCESS, nil
 }
 
+func GetRobotChat(appid string, id int) (*ChatInfo, int, error) {
+	ret, err := getRobotChat(appid, id)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+
+	return ret, ApiError.SUCCESS, nil
+}
+
 func GetRobotChatList(appid string) ([]*ChatInfo, int, error) {
 	ret, err := getRobotChatList(appid)
 	if err != nil {

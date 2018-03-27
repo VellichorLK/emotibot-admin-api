@@ -25,6 +25,7 @@ func init() {
 			util.NewEntryPoint("POST", "qa/{id:int}", []string{"edit"}, handleUpdateRobotQA),
 
 			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
+			util.NewEntryPoint("GET", "chat/{id:int}", []string{"view"}, handleGetChat),
 			util.NewEntryPoint("POST", "chats", []string{"edit"}, handleMultiChatModify),
 			util.NewEntryPoint("GET", "chat-info", []string{"view"}, handleChatInfoList),
 		},
