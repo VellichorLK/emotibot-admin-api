@@ -8,10 +8,6 @@ RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper download && 
 
 FROM alpine:3.5
 
-ENV SELF_RESOURCES http://192.168.3.251:8181/selfLearnResources.tar.gz
-RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz 
-RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
-
 ARG PROJECT
 ENV GOPREFIX /go/src/emotibot.com
 RUN apk add --no-cache tzdata
