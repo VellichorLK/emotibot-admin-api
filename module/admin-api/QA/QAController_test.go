@@ -15,12 +15,11 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/httptest"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 type mockMCClient http.Client
 
-func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, UserIP string, mode string) (util.MCResponse, error) {
+func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, UserIP string, mode string, appid string) (util.MCResponse, error) {
 
 	var mResp = util.MCResponse{
 		SyncInfo: struct {
@@ -35,7 +34,7 @@ func (m mockMCClient) McImportExcel(file multipart.FileHeader, UserID string, Us
 	}
 	return mResp, nil
 }
-func (m mockMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string) (util.MCResponse, error) {
+func (m mockMCClient) McExportExcel(UserID string, UserIP string, AnswerIDs []string, appid string, CategoryId int) (util.MCResponse, error) {
 	return util.MCResponse{
 		SyncInfo: struct {
 			StatID int    `json:"stateID"`
@@ -55,8 +54,8 @@ func (m mockMCClient) McManualBusiness(appid string) (int, error) {
 
 var app *iris.Application
 var mHeader = map[string]string{
-	"X-UserID":  "userX",
-	"X-Real-IP": "0.0.0.0",
+	"X-UserID":      "userX",
+	"X-Real-IP":     "0.0.0.0",
 	"Authorization": "vipshop",
 }
 var mainDBMock, auditDBMock sqlmock.Sqlmock
@@ -109,21 +108,21 @@ func TestExportExcel(t *testing.T) {
 	e := httptest.New(t, app)
 
 	var expectedResponse = "{\"state_id\":123}"
-	var form = map[string]string {
-		"category_id": "0",
-		"timeset": "false",
+	var form = map[string]string{
+		"category_id":     "0",
+		"timeset":         "false",
 		"search_question": "false",
-		"search_answer": "false",
-		"search_dm": "false",
-		"search_rq": "false",
-		"key_word": "",
-		"not_show": "false",
-		"page_limit": "10",
-		"cur_page": "0",
-		"search_all": "false",
-		"dimension": "",
+		"search_answer":   "false",
+		"search_dm":       "false",
+		"search_rq":       "false",
+		"key_word":        "",
+		"not_show":        "false",
+		"page_limit":      "10",
+		"cur_page":        "0",
+		"search_all":      "false",
+		"dimension":       "",
 	}
-	
+
 	body := e.POST("/test/export").WithMultipart().WithForm(form).WithHeaders(mHeader).Expect().Status(200).Body().Equal(expectedResponse)
 	if t.Failed() {
 		fmt.Println("Logging Error message")
