@@ -180,7 +180,7 @@ func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, ans
 		UserIP    string   `json:"userip"`
 		Module    string   `json:"module"`
 		AnswerIDs []string `json:"answerid"`
-		CategroyID string `json:"categoryId"`
+		CategroyID string `json:"categoryid"`
 	}
 	reqBody := requestJSON{}
 	reqBody.AppID = appid
@@ -196,6 +196,8 @@ func (m MultiCustomerHttpClient) McExportExcel(userID string, userIP string, ans
 	if err != nil {
 		return mcResponse, err
 	}
+
+	LogError.Printf("%s", string(bodyStr))
 
 	reqURL := fmt.Sprintf("%s/download", mcURL)
 	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBuffer(bodyStr))
