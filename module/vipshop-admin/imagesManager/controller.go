@@ -3,6 +3,7 @@ package imagesManager
 import (
 	"database/sql"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -196,6 +197,7 @@ func updateImage(ctx context.Context) {
 	fileName := files[0]
 	title := ctx.FormValue(TITLE)
 	var tx *sql.Tx
+
 	if title != "" && title != files[0] {
 		tx, err = db.Begin()
 		if err != nil {
@@ -217,7 +219,6 @@ func updateImage(ctx context.Context) {
 
 	file, fileHeader, err := ctx.FormFile(IMAGE)
 	if fileHeader != nil {
-
 		if fileName != files[0] {
 			_, err = deleteFiles(Volume, []string{files[0]})
 			if err != nil {
@@ -244,13 +245,29 @@ func updateImage(ctx context.Context) {
 			return
 		}
 	} else if fileName != files[0] {
-		err = os.Rename(Volume+"/"+files[0], Volume+"/"+fileName)
+		err = os.Link(Volume+"/"+files[0], Volume+"/"+fileName)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
 			return
 		}
+		cpLog, err := os.OpenFile(Volume+"/"+"transfer_cp_log.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, "internal server error"))
+			util.LogError.Println(err)
+			return
+		}
+		cpLog.WriteString(fmt.Sprintf("%v %s %s\n", imageID, Volume+"/"+files[0], Volume+"/"+fileName))
+		cpLog.Close()
+
+		backupFolder := "update_backup_file"
+		if _, err := os.Stat(Volume + "/" + backupFolder); os.IsNotExist(err) {
+			os.Mkdir(Volume+"/"+backupFolder, 0755)
+		}
+		os.Link(Volume+"/"+fileName, Volume+"/"+backupFolder+"/"+fileName)
+
 	}
 
 	if tx != nil {
