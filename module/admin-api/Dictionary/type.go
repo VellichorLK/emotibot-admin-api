@@ -23,7 +23,7 @@ type DownloadMeta struct {
 }
 
 type WordBank struct {
-	ID   int    `json:"id"`
+	ID   *int   `json:"id,omitempty"`
 	Name string `json:"name"`
 	// 0: directory, 1:wordbank
 	Type         int         `json:"type"`

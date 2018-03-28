@@ -243,7 +243,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 			}
 
 			if _, ok := cache[idx][category.String]; !ok {
-				newWordBank := &WordBank{id, category.String, 0, make([]*WordBank, 0), "", ""}
+				newWordBank := &WordBank{nil, category.String, 0, make([]*WordBank, 0), "", ""}
 				cache[idx][category.String] = newWordBank
 				if lastCategory != nil {
 					lastCategory.Children = append(lastCategory.Children, newWordBank)
@@ -256,7 +256,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 			continue
 		}
 		if entityName.Valid && entityName.String != "" {
-			newWordBank := &WordBank{id, entityName.String, 1, make([]*WordBank, 0), "", ""}
+			newWordBank := &WordBank{&id, entityName.String, 1, make([]*WordBank, 0), "", ""}
 			if similarWord.Valid && similarWord.String != "" {
 				newWordBank.SimilarWords = similarWord.String
 			}

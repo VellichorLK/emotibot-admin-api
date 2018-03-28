@@ -91,7 +91,7 @@ func handleUpdateWordbank(ctx context.Context) {
 		return
 	}
 
-	origWordbank, err := GetWordbank(appid, updatedWordbank.ID)
+	origWordbank, err := GetWordbank(appid, *updatedWordbank.ID)
 	retCode, err := UpdateWordbank(appid, updatedWordbank)
 	auditRet := 1
 	if err != nil {
