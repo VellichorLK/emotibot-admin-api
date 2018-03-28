@@ -20,6 +20,7 @@ func getWordbank(appid string, id int) (*WordBank, error) {
 	queryStr := fmt.Sprintf("SELECT entity_name, similar_words, answer from %s_entity where id = 1", appid)
 	row := mySQL.QueryRow(queryStr)
 	err := row.Scan(&ret.Name, &ret.SimilarWords, &ret.Answer)
+	ret.ID = &id
 	if err != nil {
 		return nil, err
 	}
