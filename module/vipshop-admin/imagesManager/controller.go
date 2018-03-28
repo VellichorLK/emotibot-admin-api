@@ -159,7 +159,20 @@ func handleDeleteImages(ctx context.Context) {
 }
 
 func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
-	_, err := deleteImages(imageIDs)
+
+	relationMap, err := getRelationByID(imageIDs)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Println(err)
+		return
+	}
+	if len(relationMap) > 0 {
+		ctx.StatusCode(http.StatusConflict)
+		return
+	}
+
+	_, err = deleteImages(imageIDs)
+
 	if err != nil {
 		if err == errImageNotExist {
 			ctx.StatusCode(http.StatusBadRequest)

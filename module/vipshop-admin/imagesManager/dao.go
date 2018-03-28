@@ -392,6 +392,26 @@ func copyFiles(from string, to string, fileName []string) (int, error) {
 	return count, nil
 }
 
+func getRelationByID(ids []interface{}) (map[uint64][]uint64, error) {
+
+	sqlString := fmt.Sprintf("select %s,%s from %s where %s in(?%s)", attrImageID, attrAnswerID, relationTable, attrImageID, strings.Repeat(",?", len(ids)-1))
+	rows, err := db.Query(sqlString, ids...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var imageID, answerID uint64
+	relationMap := make(map[uint64][]uint64)
+	for rows.Next() {
+		err := rows.Scan(&imageID, &answerID)
+		if err != nil {
+			return nil, err
+		}
+		relationMap[imageID] = append(relationMap[imageID], answerID)
+	}
+	return relationMap, nil
+}
+
 func copy(from string, to string) error {
 	srcFile, err := os.Open(from)
 	if err != nil {
