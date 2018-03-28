@@ -25,7 +25,7 @@ func BenchmarkFindImagesJOb(b *testing.B) {
 }
 func TestFindImagesJob(t *testing.T) {
 	var images = map[int]string{
-		1: "1.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
+		3: "1.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
 		2: "2.png", // 2=>c81e728d9d4c2f636f067f89cc14862c
 	}
 	type testCase struct {
@@ -39,7 +39,7 @@ func TestFindImagesJob(t *testing.T) {
 		},
 		"Normal": testCase{
 			"Test<img src=\"http://vip.api.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>",
-			[]int{1},
+			[]int{3},
 		},
 		"EmptySrc": testCase{
 			"Test<img src=\"\" formatted wrong",
@@ -47,7 +47,7 @@ func TestFindImagesJob(t *testing.T) {
 		},
 		"MultipleSrc": testCase{
 			"Test1<img src=\"http://google.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>Test2<img src=\"c81e728d9d4c2f636f067f89cc14862c.png\"/>",
-			[]int{1, 2},
+			[]int{3, 2},
 		},
 	}
 	questionDB, questionMock, err := sqlmock.New()

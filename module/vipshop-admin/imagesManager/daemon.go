@@ -3,6 +3,7 @@ package imagesManager
 import (
 	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -137,7 +138,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 			h := md5.New()
 			fmt.Fprint(h, id)
 			key := h.Sum(nil)
-			images[string(key)] = id
+			images[hex.EncodeToString(key)] = id
 		}
 	}
 	rows, err = j.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
