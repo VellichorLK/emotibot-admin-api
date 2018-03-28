@@ -786,10 +786,10 @@ func answerSQL(condition QueryCondition, aids [][]string, sqlParam *[]interface{
 		// replace time condition
 		var timeCondition string
 		if hasWhere {
-			timeCondition = fmt.Sprintf(" and tmp_a.Begin_Time >= '%s' and tmp_a.End_Time <= '%s'", condition.BeginTime, condition.EndTime)
+			timeCondition = fmt.Sprintf(" and tmp_a.Begin_Time <= '%s' and tmp_a.End_Time >= '%s'", condition.EndTime, condition.BeginTime)
 		} else {
 			hasWhere = true
-			timeCondition = fmt.Sprintf(" where tmp_a.Begin_Time >= '%s' and tmp_a.End_Time <= '%s'", condition.BeginTime, condition.EndTime)
+			timeCondition = fmt.Sprintf(" where tmp_a.Begin_Time <= '%s' and tmp_a.End_Time >= '%s'", condition.EndTime, condition.BeginTime)
 		}
 		query = strings.Replace(query, "#TIME_CONDITION#", timeCondition, -1)
 	} else {
