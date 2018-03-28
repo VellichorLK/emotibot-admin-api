@@ -112,7 +112,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 			lastID = id
 			ii = &imageInfo{ImageID: id, Title: fileName, Size: size,
 				CreateTime: uint64(createTime.Unix()), LastModified: uint64(updateTime.Unix()),
-				URL: locations[locationID],
+				URL: locations[locationID] + "/" + getImageName(id, fileName),
 			}
 			il.Images = append(il.Images, ii)
 		}
@@ -223,7 +223,7 @@ func getLocationMap() (map[uint64]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		locationMap[id] = location
+		locationMap[id] = strings.Trim(location, "/")
 	}
 
 	return locationMap, nil
@@ -279,24 +279,68 @@ func GetCategories() (map[int]*Category, error) {
 	return categories, nil
 }
 
-func getFileNameByImageID(imageIDs []interface{}) ([]string, error) {
-	sqlString := "select " + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
+
+	sqlString := "select " + attrID + "," + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
 
 	rows, err := SqlQuery(db, sqlString, imageIDs...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	fileNameList := make([]string, 0)
+	fileMap := make(map[uint64]string)
 	var fileName string
+	var id uint64
 	for rows.Next() {
-		err := rows.Scan(&fileName)
+		err := rows.Scan(&id, &fileName)
 		if err != nil {
 			return nil, err
 		}
-		fileNameList = append(fileNameList, fileName)
+		fileMap[id] = fileName
+	}
+
+	if len(fileMap) != len(imageIDs) {
+		return nil, errors.New("file name num doesn't match file map")
+	}
+
+	fileNameList := make([]string, 0)
+
+	for i := 0; i < len(imageIDs); i++ {
+		switch id := imageIDs[i].(type) {
+		case uint64:
+
+			if name, ok := fileMap[id]; ok {
+				fileNameList = append(fileNameList, getImageName(id, name))
+			} else {
+				return nil, fmt.Errorf("image id %v has no file name", id)
+			}
+		default:
+			return nil, fmt.Errorf("image id %v(%T) type is not uint64", id, id)
+		}
+
 	}
 	return fileNameList, nil
+}
+
+func getFileNameByImageID(imageIDs []interface{}) (map[uint64]string, error) {
+	sqlString := "select " + attrID + "," + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+
+	rows, err := SqlQuery(db, sqlString, imageIDs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	fileNameMap := make(map[uint64]string, 0)
+	var fileName string
+	var id uint64
+	for rows.Next() {
+		err := rows.Scan(&id, &fileName)
+		if err != nil {
+			return nil, err
+		}
+		fileNameMap[id] = fileName
+	}
+	return fileNameMap, nil
 }
 
 func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
@@ -343,7 +387,7 @@ func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
 
 			if relation, ok := answerIDMap[answerID]; ok {
 				if locationURL, ok := locationMap[locationID]; ok {
-					imageInfo := &simpleImageInfo{ImageID: imageID, URL: strings.Trim(locationURL, "/") + "/" + fileName}
+					imageInfo := &simpleImageInfo{ImageID: imageID, URL: strings.Trim(locationURL, "/") + "/" + getImageName(imageID, fileName)}
 					relation.Info = append(relation.Info, imageInfo)
 				} else {
 					util.LogWarn.Printf("location ID %v is not found\n", locationID)

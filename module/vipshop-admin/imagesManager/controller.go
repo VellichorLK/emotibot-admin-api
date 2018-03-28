@@ -3,11 +3,12 @@ package imagesManager
 import (
 	"database/sql"
 	"encoding/base64"
-	"fmt"
+	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -134,7 +135,7 @@ func handleImageList(ctx context.Context) {
 }
 
 func handleDeleteImage(ctx context.Context) {
-	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	imageID, err := strconv.ParseUint(ctx.Params().GetEscape("id"), 10, 64)
 	if err != nil || imageID <= 0 {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
@@ -146,7 +147,7 @@ func handleDeleteImage(ctx context.Context) {
 }
 
 func handleDeleteImages(ctx context.Context) {
-	ids := make([]interface{}, 0)
+	ids := make([]uint64, 0)
 	err := ctx.ReadJSON(&ids)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -154,7 +155,12 @@ func handleDeleteImages(ctx context.Context) {
 		return
 	}
 
-	deleteImagesByID(ctx, ids)
+	imageIDs := make([]interface{}, len(ids))
+	for i := 0; i < len(ids); i++ {
+		imageIDs[i] = ids[i]
+	}
+
+	deleteImagesByID(ctx, imageIDs)
 
 }
 
@@ -186,7 +192,7 @@ func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
 }
 
 func updateImage(ctx context.Context) {
-	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	imageID, err := strconv.ParseUint(ctx.Params().GetEscape("id"), 10, 64)
 	if err != nil || imageID <= 0 {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
@@ -201,17 +207,26 @@ func updateImage(ctx context.Context) {
 		return
 	}
 
-	if len(files) == 0 {
+	if _, ok := files[imageID]; !ok {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "No such id"))
 		return
 	}
 
-	fileName := files[0]
+	fileName := files[imageID]
 	title := ctx.FormValue(TITLE)
 	var tx *sql.Tx
 
-	if title != "" && title != files[0] {
+	if title != "" && title != files[imageID] {
+
+		orgExt := path.Ext(files[imageID])
+		newExt := path.Ext(title)
+		if orgExt != newExt {
+			ctx.StatusCode(http.StatusConflict)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, errors.New("extension can't not be changed")))
+			return
+		}
+
 		tx, err = db.Begin()
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
@@ -232,17 +247,8 @@ func updateImage(ctx context.Context) {
 
 	file, fileHeader, err := ctx.FormFile(IMAGE)
 	if fileHeader != nil {
-		if fileName != files[0] {
-			_, err = deleteFiles(Volume, []string{files[0]})
-			if err != nil {
-				ctx.StatusCode(http.StatusInternalServerError)
-				ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
-				util.LogError.Println(err)
-				return
-			}
-		}
 
-		dstFile, err := os.Create(Volume + "/" + fileName)
+		dstFile, err := os.Create(Volume + "/" + getImageName(imageID, fileName))
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
@@ -257,30 +263,6 @@ func updateImage(ctx context.Context) {
 			util.LogError.Println(err)
 			return
 		}
-	} else if fileName != files[0] {
-		err = os.Link(Volume+"/"+files[0], Volume+"/"+fileName)
-		if err != nil {
-			ctx.StatusCode(http.StatusInternalServerError)
-			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
-			util.LogError.Println(err)
-			return
-		}
-		cpLog, err := os.OpenFile(Volume+"/"+"transfer_cp_log.txt", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-		if err != nil {
-			ctx.StatusCode(http.StatusInternalServerError)
-			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, "internal server error"))
-			util.LogError.Println(err)
-			return
-		}
-		cpLog.WriteString(fmt.Sprintf("%v %s %s\n", imageID, Volume+"/"+files[0], Volume+"/"+fileName))
-		cpLog.Close()
-
-		backupFolder := "update_backup_file"
-		if _, err := os.Stat(Volume + "/" + backupFolder); os.IsNotExist(err) {
-			os.Mkdir(Volume+"/"+backupFolder, 0755)
-		}
-		os.Link(Volume+"/"+fileName, Volume+"/"+backupFolder+"/"+fileName)
-
 	}
 
 	if tx != nil {
@@ -290,7 +272,7 @@ func updateImage(ctx context.Context) {
 }
 
 func copyImage(ctx context.Context) {
-	imageID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	imageID, err := strconv.ParseUint(ctx.Params().GetEscape("id"), 10, 64)
 	if err != nil || imageID <= 0 {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
@@ -304,7 +286,7 @@ func copyImage(ctx context.Context) {
 		return
 	}
 
-	nameList, err := getFileNameByImageID([]interface{}{imageID})
+	nameList, err := getRealFileNameByImageID([]interface{}{imageID})
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
@@ -350,7 +332,7 @@ func copyImage(ctx context.Context) {
 }
 
 func downloadImages(ctx context.Context) {
-	ids := make([]interface{}, 0)
+	ids := make([]uint64, 0)
 	err := ctx.ReadJSON(&ids)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -363,7 +345,12 @@ func downloadImages(ctx context.Context) {
 		return
 	}
 
-	b, err := packageImages(ids)
+	imageIDs := make([]interface{}, len(ids))
+	for i := 0; i < len(ids); i++ {
+		imageIDs[i] = ids[i]
+	}
+
+	b, err := packageImages(imageIDs)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
