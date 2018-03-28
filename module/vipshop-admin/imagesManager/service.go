@@ -105,6 +105,8 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		return 0, err
 	}
 
+	defer stmt.Close()
+
 	res, err := ExecStmt(stmt, imageIDs...)
 	if err != nil {
 		return 0, err
@@ -114,7 +116,6 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-
 	length := 10
 
 	folerName, err := createBackupFolder(length, Volume)
@@ -144,17 +145,6 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 	}
 	if delRowCount != delFileCount {
 		util.LogWarn.Printf("delete images count from db(%v) is not the same from file(%v)\n", delRowCount, delFileCount)
-	}
-
-	//delete relation
-	sqlString = "delete from " + relationTable + " where " + attrImageID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
-	stmt, err = tx.Prepare(sqlString)
-	if err != nil {
-		return 0, err
-	}
-	_, err = ExecStmt(stmt, imageIDs...)
-	if err != nil {
-		return 0, err
 	}
 
 	err = tx.Commit()
