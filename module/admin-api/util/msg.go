@@ -49,6 +49,11 @@ var (
 
 		// Used in FAQ
 		"DeleteCategoryDesc": "一并删除分类内 %d 个标准问题",
+
+		// Wordbank
+		"Wordbank":    "词库",
+		"SimilarWord": "相似词",
+		"Answer":      "答案",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

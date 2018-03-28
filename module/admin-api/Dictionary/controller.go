@@ -1,6 +1,7 @@
 package Dictionary
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -30,6 +31,7 @@ func init() {
 
 			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
 			util.NewEntryPoint("POST", "wordbank", []string{"edit"}, handleUpdateWordbank),
+			util.NewEntryPoint("GET", "wordbank/{id:int}", []string{"view"}, handleGetWordbank),
 		},
 	}
 	maxDirDepth = 4
@@ -59,6 +61,23 @@ func getGlobalEnv(key string) string {
 	return ""
 }
 
+func handleGetWordbank(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	id, err := ctx.Params().GetInt("id")
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef("Error: %s", err.Error())
+	}
+
+	wordbank, err := GetWordbank(appid, id)
+	if err != nil {
+		util.LogInfo.Printf("Error when get wordbank: %s\n", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+	}
+	ctx.JSON(wordbank)
+}
+
 func handleUpdateWordbank(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	userID := util.GetUserID(ctx)
@@ -72,8 +91,8 @@ func handleUpdateWordbank(ctx context.Context) {
 		return
 	}
 
+	origWordbank, err := GetWordbank(appid, updatedWordbank.ID)
 	retCode, err := UpdateWordbank(appid, updatedWordbank)
-	auditMessage := ""
 	auditRet := 1
 	if err != nil {
 		if retCode == ApiError.REQUEST_ERROR {
@@ -86,7 +105,18 @@ func handleUpdateWordbank(ctx context.Context) {
 	} else {
 		ctx.StatusCode(http.StatusOK)
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
+
+	var buffer bytes.Buffer
+	buffer.WriteString(fmt.Sprintf("%s%s: %s", util.Msg["Modify"], util.Msg["Wordbank"], origWordbank.Name))
+	if origWordbank.SimilarWords != updatedWordbank.SimilarWords {
+		buffer.WriteString(fmt.Sprintf("\n%s: '%s' => '%s'", util.Msg["SimilarWord"], origWordbank.SimilarWords, updatedWordbank.SimilarWords))
+	}
+	if origWordbank.Answer != updatedWordbank.Answer {
+		buffer.WriteString(fmt.Sprintf("\n%s: '%s' => '%s'", util.Msg["Answer"], origWordbank.Answer, updatedWordbank.Answer))
+	}
+
+	auditMessage := buffer.String()
+	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handlePutWordbank(ctx context.Context) {

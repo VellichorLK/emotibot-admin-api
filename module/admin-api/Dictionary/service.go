@@ -14,6 +14,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+func GetWordbank(appid string, id int) (*WordBank, error) {
+	return getWordbank(appid, id)
+}
+
 // Update will add a update if wordbank is nil, or add wordbank
 func UpdateWordbank(appid string, newWordBank *WordBank) (int, error) {
 	err := updateWordbank(appid, newWordBank)

@@ -10,6 +10,23 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+func getWordbank(appid string, id int) (*WordBank, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	ret := &WordBank{}
+	queryStr := fmt.Sprintf("SELECT entity_name, similar_words, answer from %s_entity where id = 1", appid)
+	row := mySQL.QueryRow(queryStr)
+	err := row.Scan(&ret.Name, &ret.SimilarWords, &ret.Answer)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func addWordbankDir(appid string, paths []string) error {
 	wb := &WordBank{}
 	addWordbank(appid, paths, wb)
