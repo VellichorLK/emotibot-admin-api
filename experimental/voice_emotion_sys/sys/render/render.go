@@ -87,6 +87,8 @@ func recordData(task string) (string, string) {
 		log.Println(err)
 		return "", ""
 	}
+	startTime := time.Now()
+	log.Println(" >>> recordData start, eb.ID = ", eb.ID, ", startTime   = ", startTime)
 
 	idInt64, err := strconv.ParseUint(eb.ID, 10, 64)
 	if err != nil {
@@ -119,6 +121,7 @@ func recordData(task string) (string, string) {
 		handlers.ComputeSilence(eb)
 	}
 
+	log.Println(">>> recordData   end, eb.ID = ", eb.ID, ", elapsedTime = ", time.Now().Sub(startTime))
 	return "", ""
 }
 

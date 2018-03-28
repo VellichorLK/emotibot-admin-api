@@ -239,6 +239,14 @@ func ComputeSilence(eb *EmotionBlock) error {
 }
 
 func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
+
+	// 0. create silence list and do err check.
+	silenceList := make([]VoiceSegment, 0)
+
+	if eb == nil || eb.Segments == nil || len(eb.Segments) <= 0 {
+		return silenceList
+	}
+
 	// 1. sort
 	sort.Sort(ComparatorOfVoiceSegment(eb.Segments))
 
@@ -266,27 +274,54 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 	const STATUS_SILENCE int = 1
 	const CHANNEL_SILENCE int = 0
 
-	// 3. append the last one.
-	mergedList = append(mergedList, VoiceSegment{
-		STATUS_SILENCE,
-		CHANNEL_SILENCE,
-		voiceLength,
-		voiceLength,
-		nil,
-		nil, 0, "", ""})
-
-	// 4. use the merged list, the reverse part is the empty part.
-	for index := len(mergedList) - 1; index >= 0; index-- {
-		mergedList[index].Channel = CHANNEL_SILENCE
-		mergedList[index].SegEndTime = mergedList[index].SegStartTime
-		if index != 0 {
-			mergedList[index].SegStartTime = mergedList[index-1].SegEndTime
-		} else { // first item
-			mergedList[index].SegStartTime = 0
-		}
+	// 3. caculate silence, overall - merged = silence
+	// 3.1 the voice is silence
+	if len(mergedList) <= 0 {
+		// after merged, the merged list is empty which means the overall voice is silence
+		silenceList = append(silenceList, VoiceSegment{
+			STATUS_SILENCE,
+			CHANNEL_SILENCE,
+			0,
+			voiceLength,
+			nil,
+			nil, 0, "", ""})
+		return silenceList
 	}
 
-	return mergedList
+	// 3.2 for each items in mergedList, caculate the silence part.
+	for index := 0; index < len(mergedList); index++ {
+		if (index == 0) && (mergedList[index].SegStartTime != 0) {
+			// 3.2.1 first items in mergedList is not start from 0 then add silence part.
+			silenceList = append(silenceList, VoiceSegment{
+				STATUS_SILENCE,
+				CHANNEL_SILENCE,
+				0,
+				mergedList[index].SegStartTime,
+				nil,
+				nil, 0, "", ""})
+		} else if (0 < index) && (index < len(mergedList)) {
+			// 3.2.3 others, Not first and last item
+			silenceList = append(silenceList, VoiceSegment{
+				STATUS_SILENCE,
+				CHANNEL_SILENCE,
+				mergedList[index-1].SegEndTime,
+				mergedList[index].SegStartTime,
+				nil,
+				nil, 0, "", ""})
+		}
+	} //end for loop
+	// 3.3 add the last silence
+	if mergedList[len(mergedList)-1].SegEndTime != voiceLength {
+		silenceList = append(silenceList, VoiceSegment{
+			STATUS_SILENCE,
+			CHANNEL_SILENCE,
+			mergedList[len(mergedList)-1].SegEndTime,
+			voiceLength,
+			nil,
+			nil, 0, "", ""})
+	}
+
+	return silenceList
 }
 
 // sort interface.
