@@ -25,8 +25,8 @@ func BenchmarkFindImagesJOb(b *testing.B) {
 }
 func TestFindImagesJob(t *testing.T) {
 	var images = map[int]string{
-		1: "sdfs.jpg",
-		2: "gopher.png",
+		3: "1.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
+		2: "2.png", // 2=>c81e728d9d4c2f636f067f89cc14862c
 	}
 	type testCase struct {
 		input    string
@@ -38,16 +38,16 @@ func TestFindImagesJob(t *testing.T) {
 			[]int{},
 		},
 		"Normal": testCase{
-			"Test<img src=\"emotibot.com\"/>",
-			[]int{0},
+			"Test<img src=\"http://vip.api.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>",
+			[]int{3},
 		},
 		"EmptySrc": testCase{
 			"Test<img src=\"\" formatted wrong",
-			[]int{0},
+			[]int{},
 		},
 		"MultipleSrc": testCase{
-			"Test1<img src=\"http://google.com/sdfs.jpg\"/>Test2<img src=\"gopher.png\"/>",
-			[]int{1, 2},
+			"Test1<img src=\"http://google.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>Test2<img src=\"c81e728d9d4c2f636f067f89cc14862c.png\"/>",
+			[]int{3, 2},
 		},
 	}
 	questionDB, questionMock, err := sqlmock.New()
@@ -61,36 +61,32 @@ func TestFindImagesJob(t *testing.T) {
 				questionDB: questionDB,
 				picDB:      picDB,
 			}
-			rows := sqlmock.NewRows([]string{"Answer_id", "Content"}).AddRow(1, tt.input)
-			questionMock.ExpectQuery("SELECT Answer_Id, Content ").WillReturnRows(rows)
-			stmt := picMock.ExpectPrepare("SELECT id FROM images ")
-			for _, expectImgID := range tt.expected {
-				rows = sqlmock.NewRows([]string{"id"})
-				img, ok := images[expectImgID]
-				if ok {
-					rows.AddRow(expectImgID)
-					stmt.ExpectQuery().WithArgs(img).WillReturnRows(rows)
-				} else {
-					stmt.ExpectQuery().WillReturnRows(rows)
-				}
+			stmt := picMock.ExpectQuery("SELECT id FROM images ")
+			rows := sqlmock.NewRows([]string{"id"})
+			for id := range images {
+				rows.AddRow(id)
 			}
+			stmt.WillReturnRows(rows)
+
+			rows = sqlmock.NewRows([]string{"Answer_id", "Content"}).AddRow(1, tt.input)
+			questionMock.ExpectQuery("SELECT Answer_Id, Content ").WillReturnRows(rows)
 
 			err := j.Do(nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			answers := j.Result
-			for i, id := range tt.expected {
-				if id == 0 {
-					continue
+			if len(tt.expected) == 0 {
+				if len(answers) != 0 {
+					t.Fatalf("expect")
 				}
-				gotImgID := answers[1][i]
-				_, ok := images[gotImgID]
+				return
+			}
+			expectedImgIDGroup := answers[1]
+			for _, expectedImgID := range expectedImgIDGroup {
+				_, ok := images[expectedImgID]
 				if !ok {
-					t.Fatal("expect id %d in images", gotImgID)
-				}
-				if gotImgID != id {
-					t.Fatalf("expect extract got image No.%d but got %d", id, gotImgID)
+					t.Fatalf("expect id %d extracted from answer %v", expectedImgID, tt.input)
 				}
 			}
 		})

@@ -1,7 +1,9 @@
 package imagesManager
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -120,17 +122,30 @@ type FindImageJob struct {
 // Do FindImagesJob will scan answer's content and match the image tag in it
 // Return Empty map if none of given image's file name is matched
 func (j *FindImageJob) Do(signal <-chan struct{}) error {
-	rows, err := j.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
+	rows, err := j.picDB.Query("SELECT id FROM images")
+	if err != nil {
+		return fmt.Errorf("query pic db failed, %v", err)
+	}
+	var images = make(map[string]int, 0)
+	for rows.Next() {
+		select {
+		case <-signal:
+			j.Result = nil
+			return ErrInterruptted
+		default:
+			var id int
+			rows.Scan(&id)
+			h := md5.New()
+			fmt.Fprint(h, id)
+			key := h.Sum(nil)
+			images[hex.EncodeToString(key)] = id
+		}
+	}
+	rows, err = j.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
 	if err != nil {
 		return fmt.Errorf("Query answer failed, %v", err)
 	}
 	defer rows.Close()
-	rawQuery := "SELECT id FROM images WHERE fileName = ?"
-	stmt, err := j.picDB.Prepare(rawQuery)
-	defer stmt.Close()
-	if err != nil {
-		return fmt.Errorf("sql prepared failed, %v", err)
-	}
 	j.Result = make(map[int][]int)
 	for rows.Next() {
 		select {
@@ -139,10 +154,10 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 			return ErrInterruptted
 		default:
 			var (
-				id      int
+				ansID   int
 				content string
 			)
-			err = rows.Scan(&id, &content)
+			err = rows.Scan(&ansID, &content)
 			if err != nil {
 				return fmt.Errorf("scan failed, %v", err)
 			}
@@ -167,22 +182,22 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 				}
 				//Find image's ID
 				srcContent := strings.TrimPrefix(content[start:end], "http://")
-				names := strings.Split(srcContent, "/")
-				name := names[len(names)-1]
-				var id int
-				err := stmt.QueryRow(name).Scan(&id)
-				if err == sql.ErrNoRows {
-					//Skip the unknown img tag
+				baseNames := strings.Split(srcContent, "/")
+				baseNames = strings.Split(baseNames[len(baseNames)-1], ".")
+				if len(baseNames) <= 1 {
+					//bad formatted name
 					continue
-				} else if err != nil {
-					return fmt.Errorf("sql queryRow failed, %v", err)
 				}
-
+				encodedID := strings.Join(baseNames[0:len(baseNames)-2], "")
+				id, ok := images[encodedID]
+				if !ok {
+					continue
+				}
 				imageGroup = append(imageGroup, id)
 			}
 			//Only the answers with images should be added to result
 			if len(imageGroup) > 0 {
-				j.Result[id] = imageGroup
+				j.Result[ansID] = imageGroup
 			}
 		}
 	}
