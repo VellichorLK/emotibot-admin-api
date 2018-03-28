@@ -30,6 +30,7 @@ func TestReceiveImage(t *testing.T) {
 
 	var mockedPic sqlmock.Sqlmock
 	db, mockedPic, err = sqlmock.New()
+
 	mockedPic.ExpectBegin()
 	for i, f := range testFiles {
 		data, err := ioutil.ReadFile("./testdata/" + f)
@@ -50,7 +51,8 @@ func TestReceiveImage(t *testing.T) {
 	e.POST("/test").WithJSON(fileArgs).Expect().Status(200)
 	defer tearDownFiles(Volume)
 
-	for i, f := range testFiles {
+	expectFile := []string{"cfcd208495d565ef66e7dff9f98764da.jpg", "c4ca4238a0b923820dcc509a6f75849b.txt"}
+	for i, f := range expectFile {
 		d, err := ioutil.ReadFile(Volume + f)
 		if err != nil {
 			t.Fatal(err)

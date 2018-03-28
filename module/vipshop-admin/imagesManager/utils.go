@@ -2,10 +2,14 @@ package imagesManager
 
 import (
 	"archive/zip"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
+	"path"
 	"strconv"
 	"time"
 )
@@ -106,13 +110,23 @@ func GetUniqueString(n int) string {
 	return string(b)
 }
 
-func ZipFiles(files []string, target io.Writer) error {
+type mockedInfo struct {
+	real os.FileInfo
+}
+
+// underlying data source (can return nil)
+func (m mockedInfo) Sys() interface{} {
+	return m.real.Sys()
+}
+
+//ZipFiles files is the real name store in the disk, fileName is the output file name you want
+func ZipFiles(files []string, fileName []string, target io.Writer) error {
 
 	zipWriter := zip.NewWriter(target)
 	defer zipWriter.Close()
 
-	for i := 0; i < len(files); i++ {
-		file, err := os.Open(files[i])
+	for i := 0; i < len(fileName); i++ {
+		file, err := os.Open(fileName[i])
 		if err != nil {
 			return err
 		}
@@ -127,6 +141,7 @@ func ZipFiles(files []string, target io.Writer) error {
 		if err != nil {
 			return err
 		}
+		header.Name = files[i]
 
 		header.Method = zip.Deflate
 
@@ -142,4 +157,16 @@ func ZipFiles(files []string, target io.Writer) error {
 	}
 
 	return nil
+}
+
+//Md5Uint64 do md5sum with uint64 input
+func Md5Uint64(id uint64) string {
+	h := md5.New()
+	fmt.Fprint(h, id)
+	encode := h.Sum(nil)
+	return hex.EncodeToString(encode)
+}
+func getImageName(id uint64, fileName string) string {
+	ext := path.Ext(fileName)
+	return Md5Uint64(id) + ext
 }

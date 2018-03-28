@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 
@@ -12,12 +13,14 @@ import (
 
 func storeImage(tx *sql.Tx, fileName string, content []byte) error {
 	var err error
-	_, fileName, err = newImageRecord(tx, fileName, len(content))
+	var imageID uint64
+	imageID, fileName, err = newImageRecord(tx, fileName, len(content))
 	if err != nil {
 		return err
 	}
+	encodeFileName := getImageName(imageID, fileName)
 
-	err = ioutil.WriteFile(Volume+"/"+fileName, content, 0666)
+	err = ioutil.WriteFile(Volume+"/"+encodeFileName, content, 0644)
 	if err != nil {
 		return err
 	}
@@ -83,7 +86,7 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		return 0, nil
 	}
 
-	fileList, err := getFileNameByImageID(imageIDs)
+	fileList, err := getRealFileNameByImageID(imageIDs)
 	if err != nil {
 		return 0, err
 	}
@@ -156,19 +159,32 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 }
 
 func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
-	nameList, err := getFileNameByImageID(imageIDs)
+	nameMap, err := getFileNameByImageID(imageIDs)
 	if err != nil {
 		return nil, err
 	}
-	if len(nameList) != len(imageIDs) {
+	if len(nameMap) != len(imageIDs) {
 		return nil, errImageNotAllGet
 	}
+	realFileLocation := make([]string, len(imageIDs))
+	nameList := make([]string, len(imageIDs))
 
-	for i := 0; i < len(nameList); i++ {
-		nameList[i] = Volume + "/" + nameList[i]
+	for i := 0; i < len(imageIDs); i++ {
+		switch id := imageIDs[i].(type) {
+		case uint64:
+			if file, ok := nameMap[id]; ok {
+				realFileLocation[i] = Volume + "/" + getImageName(id, file)
+				nameList[i] = file
+			} else {
+				return nil, fmt.Errorf("image id %v has no file name", id)
+			}
+
+		default:
+			return nil, fmt.Errorf("image id %v(%T) type doesn't match", id, id)
+		}
 	}
 	var b bytes.Buffer
-	err = ZipFiles(nameList, &b)
+	err = ZipFiles(nameList, realFileLocation, &b)
 	if err != nil {
 		return nil, err
 	}
