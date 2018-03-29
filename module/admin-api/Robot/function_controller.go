@@ -77,6 +77,10 @@ func handleUpdateFunction(ctx context.Context) {
 		util.McUpdateFunction(appid)
 	}
 	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	consulRet, err := util.ConsulUpdateRobotChat(appid)
+	if err != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
+	}
 }
 
 func handleUpdateAllFunction(ctx context.Context) {
@@ -126,7 +130,7 @@ func handleUpdateAllFunction(ctx context.Context) {
 			util.Msg["Modify"], util.Msg["Error"], errMsg, buffer.String())
 	} else {
 		// http request to multicustomer
-		// NOTE: no matter multicustomer return, return success
+		// NOTE: no matter what multicustomer return, always return success
 		// Terriable flow in old houta
 		ctx.JSON(util.GenSimpleRetObj(errCode))
 		auditLog = fmt.Sprintf("%s%s:\n%s",
@@ -135,6 +139,10 @@ func handleUpdateAllFunction(ctx context.Context) {
 		util.McUpdateFunction(appid)
 	}
 	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	ret, err := util.ConsulUpdateRobotChat(appid)
+	if err != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+	}
 }
 
 func loadFunctionFromContext(ctx context.Context) *FunctionInfo {

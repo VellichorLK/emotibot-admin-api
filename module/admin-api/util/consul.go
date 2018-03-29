@@ -19,6 +19,8 @@ const (
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	// vipshopdata will be modified, change it back for demo day
 	ConsulRCKey = "vipshopdata/%s"
+	// ConsulRCKey is a helper value used in ConsulUpdateFunctionStatus
+	ConsulFunctionKey = "function/%s"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -147,6 +149,13 @@ func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error)
 func ConsulUpdateTaskEngine(appid string, val bool) (int, error) {
 	//contains no appid, becaues this can be use in vipshop for now
 	return ConsulUpdateVal(ConsulTEKey, val)
+}
+
+//ConsulUpdateFunctionStatus is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateFunctionStatus(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulFunctionKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
 }
 
 //ConsulUpdateRobotChat is a convenient function for updating Robot Chat's Consul Key
