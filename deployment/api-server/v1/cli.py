@@ -106,10 +106,16 @@ def do_run(compose_file, env_file, services, depends, number, number_asr):
 
     # compose command: pull images
     # cmd = 'docker-compose -f %s pull --parallel %s' % (
-    cmd = 'docker-compose -f %s pull %s' % (
-        compose_file, ' '.join(n for n in services) if services else '')
-    print '### exec cmd: [%s]' % cmd.strip()
-    subprocess.check_call(cmd.strip().split(" "))
+    try:
+        cmd = 'docker-compose -f %s pull %s' % (
+            compose_file, ' '.join(n for n in services) if services else '')
+        print '### exec cmd: [%s]' % cmd.strip()
+        subprocess.check_call(cmd.strip().split(" "))
+    except:
+        print(traceback.format_exc())
+        print("##############################################################")
+        print("#  Docker pull fail, use local images to start the services  #")
+        print("##############################################################\n\n\n")
 
     # compose command: remove previous service
     cmd = 'docker-compose -f %s rm -sf %s' % (
