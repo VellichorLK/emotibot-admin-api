@@ -363,7 +363,7 @@ func genRandomUUIDSameAsOpenAPI() string {
 	return ret
 }
 
-func genQAExportAuditLog(condition *FAQ.QueryCondition, taskID int) (string, error) {
+func genQAExportAuditLog(appid string, condition *FAQ.QueryCondition, taskID int) (string, error) {
 	var content string
 	if FAQ.HasCondition(*condition) {
 		// rule
@@ -407,7 +407,7 @@ func genQAExportAuditLog(condition *FAQ.QueryCondition, taskID int) (string, err
 			dimensionCondition = fmt.Sprintf("[维度：%s]", dimensionStr)
 		}
 
-		categoryStr, err := genCategoryStr(condition)
+		categoryStr, err := genCategoryStr(appid, condition)
 		if err != nil {
 			return content, err
 		}
@@ -486,7 +486,7 @@ func genDimensionStr(condition *FAQ.QueryCondition) string {
 	return dimensionStr.String()
 }
 
-func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
+func genCategoryStr(appid string, condition *FAQ.QueryCondition) (string, error) {
 	var categoryPath string
 	var err error
 	switch condition.CategoryId {
@@ -499,7 +499,7 @@ func genCategoryStr(condition *FAQ.QueryCondition) (string, error) {
 			ID: condition.CategoryId,
 		}
 
-		categoryPath, err = category.FullName()
+		categoryPath, err = category.FullName(appid)
 		if err != nil {
 			fmt.Printf("error: ", err.Error())
 			return categoryPath, err

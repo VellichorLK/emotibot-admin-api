@@ -173,7 +173,7 @@ func exportExcel(ctx context.Context) {
 	case nil: // 200
 		ctx.StatusCode(http.StatusOK)
 		ctx.JSON(successJSON{StateID: mcResponse.SyncInfo.StatID})
-		auditLogContent, err := genQAExportAuditLog(&condition, mcResponse.SyncInfo.StatID)
+		auditLogContent, err := genQAExportAuditLog(appid, &condition, mcResponse.SyncInfo.StatID)
 		if err != nil {
 			util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
 		}

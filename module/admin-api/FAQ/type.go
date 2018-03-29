@@ -139,12 +139,12 @@ func (c Category) SubCats() ([]Category, error) {
 // FullName will return complete name of category.
 // the start prefix and seperator is slash
 // ex: a->b->c, Category c's FullName will be /a/b/c
-func (c Category) FullName() (string, error) {
+func (c Category) FullName(appid string) (string, error) {
 	db := util.GetMainDB()
 	if db == nil {
 		return "", fmt.Errorf("main db connection pool is nil")
 	}
-	rows, err := db.Query("SELECT CategoryId, CategoryName, ParentId FROM vipshop_categories")
+	rows, err := db.Query(fmt.Sprintf("SELECT CategoryId, CategoryName, ParentId FROM %s_categories", appid))
 	if err != nil {
 		return "", fmt.Errorf("query category table failed, %v", err)
 	}

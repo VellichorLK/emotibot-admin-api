@@ -193,7 +193,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	questions, err := selectQuestions([]int{qid}, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
-		util.LogError.Println(err)
+		ctx.Writef(err.Error())
 		return
 	} else if len(questions) == 0 {
 		ctx.StatusCode(http.StatusNotFound)
@@ -203,19 +203,24 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	questionCategory, err := GetCategory(question.CategoryID, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
 	}
-	categoryName, err := questionCategory.FullName()
+	categoryName, err := questionCategory.FullName(appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.Writef(err.Error())
+		return
 	}
 	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", categoryName, question.Content)
 	// select origin Similarity Questions for audit log
 	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
-		util.LogError.Println(err)
+		ctx.Writef(err.Error())
 		return
 	}
+	fmt.Print("\n\nhere5\n\n")
 	body := SimilarQuestionReqBody{}
 	if err = ctx.ReadJSON(&body); err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
