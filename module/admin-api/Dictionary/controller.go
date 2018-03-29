@@ -75,6 +75,11 @@ func handleGetWordbank(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.Writef(err.Error())
 	}
+
+	if wordbank == nil {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	}
 	ctx.JSON(wordbank)
 }
 
@@ -92,6 +97,11 @@ func handleUpdateWordbank(ctx context.Context) {
 	}
 
 	origWordbank, err := GetWordbank(appid, *updatedWordbank.ID)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		ctx.Writef(err.Error())
+		return
+	}
 	retCode, err := UpdateWordbank(appid, updatedWordbank)
 	auditRet := 1
 	if err != nil {
@@ -160,6 +170,9 @@ func handlePutWordbank(ctx context.Context) {
 		auditRet = 0
 	} else {
 		ctx.StatusCode(http.StatusOK)
+	}
+	if newWordBank != nil {
+		ctx.JSON(newWordBank)
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
 }

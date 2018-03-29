@@ -22,6 +22,9 @@ func getWordbank(appid string, id int) (*WordBank, error) {
 	err := row.Scan(&ret.Name, &ret.SimilarWords, &ret.Answer)
 	ret.ID = &id
 	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -65,10 +68,18 @@ func addWordbank(appid string, paths []string, wordbank *WordBank) error {
 		(level1, level2, level3, level4, status_flag, entity_name, similar_words, answer)
 		VALUES (?, ?, ?, ?, 1, ?, ?, ?)`, appid)
 
-	_, err := mySQL.Exec(sqlStr, vals...)
+	res, err := mySQL.Exec(sqlStr, vals...)
 	if err != nil {
 		return err
 	}
+	if wordbank.Name != "" {
+		id, _ := res.LastInsertId()
+		intID := int(id)
+		wordbank.ID = &intID
+	} else {
+		wordbank.ID = nil
+	}
+
 	return nil
 }
 
