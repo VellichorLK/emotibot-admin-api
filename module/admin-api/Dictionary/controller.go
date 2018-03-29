@@ -272,7 +272,7 @@ func handleUpload(ctx context.Context) {
 	}
 
 	// 2. http request to multicustomer
-	errCode, err = util.UpdateWordBank(appid, userID, userIP, retFile)
+	errCode, err = util.McUpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
 		ctx.JSON(util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)

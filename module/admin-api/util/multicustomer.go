@@ -30,7 +30,7 @@ type MultiCustomerClient interface {
 
 type MultiCustomerHttpClient http.Client
 
-func UpdateWordBank(appid string, userID string, userIP string, retFile string) (int, error) {
+func McUpdateWordBank(appid string, userID string, userIP string, retFile string) (int, error) {
 	mcURL := getGlobalEnv(MulticustomerURLKey)
 	// http://172.16.101.47:14501/entity?
 	// app_id, userip, userid, file_name

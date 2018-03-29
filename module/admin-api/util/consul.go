@@ -16,8 +16,9 @@ import (
 const (
 	//ConsulTEKey is a helper value used in ConsulUpdateTaskEngine
 	ConsulTEKey = "te/enabled"
-	//ConsulRCKey is a helper value used in ConsulUpdateRobotChat
-	ConsulRCKey = "%sdata/%s"
+	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
+	// vipshopdata will be modified, change it back for demo day
+	ConsulRCKey = "vipshopdata/%s"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
