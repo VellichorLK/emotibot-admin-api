@@ -1,0 +1,12 @@
+FROM golang:1.8-alpine AS buildEnv
+
+ADD ./ /go/src/RFImporter
+RUN go build -o RFImporter
+
+FROM alpine:3.5
+WORKDIR /usr/bin/
+RUN apk add --no-cache tzdata
+COPY ./data.csv .
+COPY --from=buildEnv /go/src/RFImporter/RFImporter /usr/bin/RFImporter
+
+ENTRYPOINT [ "./RFImporter" ]
