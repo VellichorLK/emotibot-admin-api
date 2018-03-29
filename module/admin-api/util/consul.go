@@ -151,7 +151,7 @@ func ConsulUpdateTaskEngine(appid string, val bool) (int, error) {
 
 //ConsulUpdateRobotChat is a convenient function for updating Robot Chat's Consul Key
 func ConsulUpdateRobotChat(appid string) (int, error) {
-	key := fmt.Sprintf(ConsulRCKey, appid, appid)
+	key := fmt.Sprintf(ConsulRCKey, appid)
 	now := time.Now().Unix()
 	return ConsulUpdateVal(key, now)
 }
