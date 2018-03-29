@@ -188,7 +188,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 					//bad formatted name
 					continue
 				}
-				encodedID := strings.Join(baseNames[0:len(baseNames)-2], "")
+				encodedID := strings.Join(baseNames[0:len(baseNames)-1], "")
 				id, ok := images[encodedID]
 				if !ok {
 					continue

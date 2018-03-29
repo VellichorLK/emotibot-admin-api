@@ -1,6 +1,7 @@
 package imagesManager
 
 import (
+	"fmt"
 	"testing"
 
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -25,8 +26,8 @@ func BenchmarkFindImagesJOb(b *testing.B) {
 }
 func TestFindImagesJob(t *testing.T) {
 	var images = map[int]string{
-		3: "1.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
-		2: "2.png", // 2=>c81e728d9d4c2f636f067f89cc14862c
+		1: "1c4ca4238a0b923820dcc509a6f75849b.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
+		2: "c81e728d9d4c2f636f067f89cc14862c.png",  // 2=>c81e728d9d4c2f636f067f89cc14862c
 	}
 	type testCase struct {
 		input    string
@@ -39,10 +40,14 @@ func TestFindImagesJob(t *testing.T) {
 		},
 		"Normal": testCase{
 			"Test<img src=\"http://vip.api.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>",
-			[]int{3},
+			[]int{1},
 		},
 		"EmptySrc": testCase{
 			"Test<img src=\"\" formatted wrong",
+			[]int{},
+		},
+		"WithoutExt": testCase{
+			"Test<img src=\"http://vip.api.com/12345678\"/>",
 			[]int{},
 		},
 		"MultipleSrc": testCase{
@@ -67,8 +72,8 @@ func TestFindImagesJob(t *testing.T) {
 				rows.AddRow(id)
 			}
 			stmt.WillReturnRows(rows)
-
-			rows = sqlmock.NewRows([]string{"Answer_id", "Content"}).AddRow(1, tt.input)
+			var mockedAnswerID = 1
+			rows = sqlmock.NewRows([]string{"Answer_id", "Content"}).AddRow(mockedAnswerID, tt.input)
 			questionMock.ExpectQuery("SELECT Answer_Id, Content ").WillReturnRows(rows)
 
 			err := j.Do(nil)
@@ -76,13 +81,19 @@ func TestFindImagesJob(t *testing.T) {
 				t.Fatal(err)
 			}
 			answers := j.Result
+			fmt.Printf("%v\n", answers)
+
 			if len(tt.expected) == 0 {
 				if len(answers) != 0 {
 					t.Fatalf("expect")
 				}
 				return
 			}
-			expectedImgIDGroup := answers[1]
+
+			expectedImgIDGroup := answers[mockedAnswerID]
+			if len(expectedImgIDGroup) == 0 {
+				t.Fatal("expect got at least one images id, but no images in result.")
+			}
 			for _, expectedImgID := range expectedImgIDGroup {
 				_, ok := images[expectedImgID]
 				if !ok {
