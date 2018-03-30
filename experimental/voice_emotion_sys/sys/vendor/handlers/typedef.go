@@ -89,25 +89,33 @@ type ChannelResult struct {
 
 type DetailReturnBlock struct {
 	BasicInfo
-	Channels  []*DetailChannelResult `json:"channels"`
-	UsrColumn []*ColumnValue         `json:"user_column,omitempty"`
+	Channels      []*DetailChannelResult `json:"channels"`
+	UsrColumn     []*ColumnValue         `json:"user_column,omitempty"`
+	SilencePeriod []*SilencePeriod       `json:"silence_period,omitempty"`
 }
 type DetailChannelResult struct {
 	ChannelResult
 	VadResults []*VadResult `json:"vad_result"`
 }
 
+type SilencePeriod struct {
+	SegStartTime float64 `json:"segment_start_time"`
+	SegEndTime   float64 `json:"segment_end_time"`
+	Period       float64 `json:"period"`
+}
 type VadResult struct {
 	Status       int                    `json:"status"`
 	SegStartTime float64                `json:"segment_start_time"`
 	SegEndTime   float64                `json:"segment_end_time"`
 	ScoreList    []*EmtionScore         `json:"scores_result"`
 	ExtraInfo    map[string]interface{} `json:"extra_info"`
-	Text         string                 `json:"text"`
+	VadInfo
 }
 
-type vadInfo struct {
-	Text string
+type VadInfo struct {
+	Text     string  `json:"text"`
+	Prohibit string  `json:"prohibit_word,omitempty"`
+	Speed    float64 `json:"speed_per_min,omitempty"`
 }
 
 //EmotionMap mapping the emotion_type to its name
@@ -249,11 +257,15 @@ const AnalysisTable = "analysisInformation"
 const ChannelTable = "channelScore"
 const EmotionMapTable = "emotionMap"
 const VadInfoTable = "asr_analysisInformation"
+const ProhibitedTable = "prohibited_words"
 
 const DEFAULTPRIORITY = 0
 const LIMITTAGLEN = 128
 const NVADRESULT = "result"
 const NVADFILEID = "fileInformation_id"
+const NPROHIBITID = "prohibited_words_id"
+const NPROHIBIT = "prohibited_words"
+const NSPEECHSPEED = "speech_speed_per_min"
 
 //column name of main table
 const NID = "id"
@@ -271,6 +283,7 @@ const NTAG2 = "tag2"
 const NPRIORITY = "priority"
 const NAPPID = "appid"
 const NUAPPID = "X-Appid"
+const NJAPPID = "app_id"
 const NASYST = "analysis_time"
 const NSCOREANG1 = "ch1_anger_score"
 const NSCOREANG2 = "ch2_anger_score"
