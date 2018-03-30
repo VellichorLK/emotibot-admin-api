@@ -3,7 +3,7 @@
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 VERSION=`cat $DIR/VERSION`
 PORT=$1
-
+# docker pull docker-reg.emotibot.com.cn:55688/systex-controller:$VERSION
 docker rm -f Systex-controller
 
 docker run -d --name Systex-controller \

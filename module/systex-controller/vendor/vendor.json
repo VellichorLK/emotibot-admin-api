@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "NXEmcNGmp2wfrc5RUf73TbwWsaw=",
+			"path": "github.com/siongui/gojianfan",
+			"revision": "32795bb4bbc71a0a3a6c62907b1322355c2d49ae",
+			"revisionTime": "2017-04-16T23:47:37Z"
+		}
+	],
+	"rootPath": "emotibot.com/emotigo/module/systex-controller"
+}
