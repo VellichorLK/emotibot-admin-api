@@ -18,7 +18,7 @@ const (
 	ConsulTEKey = "te/enabled"
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	// vipshopdata will be modified, change it back for demo day
-	ConsulRCKey = "vipshopdata/%s"
+	ConsulRCKey = "chat/%s"
 	// ConsulRCKey is a helper value used in ConsulUpdateFunctionStatus
 	ConsulFunctionKey = "function/%s"
 )
