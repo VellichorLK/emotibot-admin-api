@@ -8,8 +8,8 @@ import (
 )
 
 func getFilter(url string) string {
-	filter := strings.SplitN(url, "/", MaxSlash)
-	return filter[MaxSlash-1]
+	filter := strings.SplitN(url, "/", MaxSlash+1)
+	return filter[MaxSlash]
 }
 
 func GroupAverageEmotion(w http.ResponseWriter, r *http.Request) {
@@ -107,6 +107,63 @@ func CallAverageEmotion(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp)
+	} else {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func AverageDuration(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		appid := r.Header.Get(NUAPPID)
+		if appid == "" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		filter := getFilter(r.URL.Path)
+
+		switch filter {
+		case NTAG:
+		case NTAG2:
+		default:
+			http.Error(w, "Bad Request: wrong filter assigned", http.StatusBadRequest)
+			return
+		}
+
+		params := r.URL.Query()
+		_t1 := params.Get(NT1)
+		_t2 := params.Get(NT2)
+
+		t1, t2, days, err := ParseTime(_t1, _t2)
+		if err != nil {
+			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		avgDurMap, err := groupAvgDuration(t1, t2, appid, filter)
+		if err != nil {
+			http.Error(w, "Internal server error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		gr := genGroupDurationReport(avgDurMap)
+		gr.Total = days
+
+		sort.Sort(GroupsDuration(gr.Group))
+
+		resp, err := json.Marshal(gr)
+		if err != nil {
+			http.Error(w, "Internal server error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		contentType := "application/json; charset=utf-8"
+
+		w.Header().Set("Content-Type", contentType)
+		w.WriteHeader(http.StatusOK)
+		w.Write(resp)
+
 	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
