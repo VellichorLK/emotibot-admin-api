@@ -1,0 +1,12 @@
+FROM golang:1.8-alpine AS buildEnv
+
+ADD ./ /go/src/emotibot.com/emotigo/module/systex-controller
+WORKDIR /go/src/emotibot.com/emotigo/module/systex-controller
+RUN go build -o systex-controller
+
+FROM alpine:3.5
+WORKDIR /usr/bin/
+RUN apk add --no-cache tzdata
+COPY --from=buildEnv /go/src/emotibot.com/emotigo/module/systex-controller/systex-controller /usr/bin/systex-controller
+
+ENTRYPOINT [ "./systex-controller" ]
