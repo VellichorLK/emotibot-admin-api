@@ -274,7 +274,7 @@ func GetSilenceList(eb *EmotionBlock) []VoiceSegment {
 	const STATUS_SILENCE int = 1
 	const CHANNEL_SILENCE int = 0
 
-	// 3. caculate silence, overall - merged = silence
+	// 3. caculate silence, overall merged = silence
 	// 3.1 the voice is silence
 	if len(mergedList) <= 0 {
 		// after merged, the merged list is empty which means the overall voice is silence
@@ -621,16 +621,18 @@ func QueryUnfinished(fileID string, appid string) ([]byte, int, error) {
 */
 func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int, error) {
 
-	vads, err := getVadInfo(fileID)
+	//get vad information, prohibited words, text
+	vads, err := getVadInfo(fileID, appid)
 	if err != nil {
 		log.Println(err)
 		return http.StatusInternalServerError, err
 	}
-	//debug.FreeOSMemory()
+
 	drb.Channels = make([]*DetailChannelResult, 0)
 
 	query := QueryDetailSQL
 
+	//get every segment of file
 	rows, err := db.Query(query, appid, appid, fileID, fileID)
 	if err != nil {
 		log.Println(err)
@@ -670,7 +672,10 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 				dcr.Result = make([]*EmtionScore, 0)
 				channelMapping[chInt] = dcr
 				dcr.ChannelID = chInt
-				drb.Channels = append(drb.Channels, dcr)
+				//because jason use channel 0 as silence period
+				if chInt > 0 {
+					drb.Channels = append(drb.Channels, dcr)
+				}
 			}
 
 			vadKey := strconv.Itoa(chInt) + strconv.FormatFloat(st.Float64, 'E', -1, 64) + strconv.FormatFloat(ed.Float64, 'E', -1, 64)
@@ -688,6 +693,8 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 
 				if vadInfo, ok := vads[uint64(segID.Int64)]; ok {
 					vr.Text = vadInfo.Text
+					vr.Prohibit = vadInfo.Prohibit
+					vr.Speed = GetFloatPrecesion(vadInfo.Speed, 2)
 				}
 
 				if blob != nil {
@@ -715,9 +722,24 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 		return http.StatusBadRequest, errors.New("No file_id " + fileID)
 	}
 
+	//add silence period, jason use channel 0 as silence period
+	if dcr, ok := channelMapping[0]; ok {
+		num := len(dcr.VadResults)
+		if num > 0 {
+			drb.SilencePeriod = make([]*SilencePeriod, num)
+		}
+		for i := 0; i < num; i++ {
+			sp := &SilencePeriod{}
+			sp.SegStartTime = GetFloatPrecesion(dcr.VadResults[i].SegStartTime, 2)
+			sp.SegEndTime = GetFloatPrecesion(dcr.VadResults[i].SegEndTime, 2)
+			sp.Period = GetFloatPrecesion(sp.SegEndTime-sp.SegStartTime, 2)
+			drb.SilencePeriod[i] = sp
+		}
+	}
+	//query channel summary score
 	var cr []*ChannelResult
 
-	err = QueryChannelScore(id, appid, &cr)
+	err = QueryChannelScore(fileID, appid, &cr)
 	if err != nil {
 		log.Println(err)
 		return http.StatusInternalServerError, errors.New("Internal server error")
@@ -725,55 +747,83 @@ func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int
 
 	for _, res := range cr {
 		dcr, ok := channelMapping[res.ChannelID]
-		if !ok {
-			dcr = new(DetailChannelResult)
-			channelMapping[res.ChannelID] = dcr
-			drb.Channels = append(drb.Channels, dcr)
-			dcr.ChannelID = res.ChannelID
+		if ok {
+			dcr.ChannelResult.Result = res.Result
 		}
-		dcr.Result = res.Result
 	}
 
+	//add user defined colum value
 	cvs := make([]*ColumnValue, 0)
 	err = QueryUsrFieldValue(id, appid, &cvs)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
-
 	drb.UsrColumn = cvs
 
 	return http.StatusOK, nil
 }
 
-func getVadInfo(fileID string) (map[uint64]*vadInfo, error) {
-	sqlString := "select " + NSEGID + "," + NVADRESULT + " from " + VadInfoTable +
-		" where " + NVADFILEID + "=(select " + NID + " from " + MainTable + " where " + NFILEID + "=?)" +
-		" and " + NPRIORITY + "=0 and " + NSTATUS + "=1"
+func getVadInfo(fileID string, appid string) (map[uint64]*VadInfo, error) {
 
-	rows, err := db.Query(sqlString, fileID)
+	wordsMap, err := getProhitbitWords(appid)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(sqlString)
-	fmt.Println(fileID)
+	sqlString := "select " + NSEGID + "," + NVADRESULT + "," + NPROHIBITID + "," + NSPEECHSPEED + " from " + VadInfoTable +
+		" where " + NVADFILEID + "=(select " + NID + " from " + MainTable + " where " + NFILEID + "=? and " + NAPPID + "=?" + ")" +
+		" and " + NPRIORITY + "=0 and " + NSTATUS + "=1"
 
-	vads := make(map[uint64]*vadInfo)
+	rows, err := db.Query(sqlString, fileID, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	vads := make(map[uint64]*VadInfo)
 
 	for rows.Next() {
-		info := &vadInfo{}
-		var segID uint64
+
+		var segID, prohibitID uint64
 		var result string
-		err = rows.Scan(&segID, &result)
+		var speechSpeed float64
+		err = rows.Scan(&segID, &result, &prohibitID, &speechSpeed)
 		if err != nil {
 			return nil, err
 		}
-		info.Text = result
+		info := &VadInfo{Text: result, Speed: speechSpeed}
 		vads[segID] = info
-		//fmt.Printf("segID:%v, result:%s\n", segID, result)
+		if prohibitID > 0 {
+			if words, ok := wordsMap[prohibitID]; ok {
+				info.Prohibit = words
+			} else {
+				log.Printf("[Warning] fileID:%s appid:%s segmentID:%v has prohibited ID:%v, but cannot find its words\n", fileID, appid, segID, prohibitID)
+			}
+		}
+
 	}
 
 	return vads, nil
+}
+
+func getProhitbitWords(appid string) (map[uint64]string, error) {
+	querySQL := fmt.Sprintf("select %s,%s from %s where %s=?", NID, NPROHIBIT, ProhibitedTable, NJAPPID)
+	rows, err := db.Query(querySQL, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+	prohibitedMap := make(map[uint64]string)
+	var id uint64
+	var words string
+	for rows.Next() {
+		rows.Scan(&id, &words)
+		prohibitedMap[id] = words
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return prohibitedMap, nil
 }
 
 /*
@@ -927,12 +977,12 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 
 }
 
-func QueryChannelScore(id uint64, appid string, chs *[]*ChannelResult) error {
+func QueryChannelScore(id string, appid string, chs *[]*ChannelResult) error {
 	//query the channelScore table
 	query := QueryChannelScoreSQL
-	query += " where " + NID + "= (select " + NID + " from " + MainTable + " where " + NFILEID + "=?)" + " order by " + NCHANNEL
+	query += " where " + NID + "= (select " + NID + " from " + MainTable + " where " + NFILEID + "=? and " + NAPPID + "=?)" + " order by " + NCHANNEL
 
-	rows, err := db.Query(query, appid)
+	rows, err := db.Query(query, id, appid)
 	if err != nil {
 		log.Println(err)
 		return err
