@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"math"
 	"strconv"
 	"time"
 )
@@ -16,7 +17,7 @@ const (
 )
 
 func GetFloatPrecesion(v float64, precesion int) float64 {
-	t := 10 * precesion
+	t := math.Pow(10, float64(precesion))
 	return float64(int(v*float64(t))) / float64(t)
 }
 
@@ -90,14 +91,39 @@ func CheckAndRoundTime(t1 time.Time, t2 time.Time) (uint64, uint64, int, error) 
 	if t1.Unix() > t2.Unix() {
 		return 0, 0, 0, errors.New("t1 >= t2")
 	}
+	/*
+		now := time.Now()
 
-	now := time.Now()
 
-	if t2.Unix() > now.Unix() {
-		return 0, 0, 0, errors.New("t2 > now. don't do future time. time traveler")
-	}
+			if t2.Unix() > now.Unix() {
+				return 0, 0, 0, errors.New("t2 > now. don't do future time. time traveler")
+			}
+	*/
 
 	days := int(t2.Sub(t1).Hours()/24) + 1
 
 	return uint64(t1.Unix()), uint64(t2.Unix()), days, nil
+}
+
+//StdDev computes the standard deviation
+func StdDev(nums []float64) float64 {
+	var sum float64
+	length := len(nums)
+
+	if length <= 1 {
+		return 0
+	}
+
+	for i := 0; i < length; i++ {
+		sum += nums[i]
+	}
+	mean := sum / float64(length)
+	var std float64
+	for i := 0; i < length; i++ {
+		std += math.Pow(nums[i]-mean, 2)
+	}
+
+	std = math.Sqrt(std / float64(length-1))
+
+	return std
 }

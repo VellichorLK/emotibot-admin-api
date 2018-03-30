@@ -350,12 +350,23 @@ type AvgEmotion struct {
 	AvgCh2Anger float64 `json:"avg_ch2_angry"`
 }
 
+/*
 type GroupReport struct {
 	Total int                `json:"total"`
 	Group []*GroupAvgEmotion `json:"group"`
 }
+*/
 
-type GroupsEmotion []*GroupAvgEmotion
+type GroupReport struct {
+	Total int             `json:"total"`
+	Group []*GroupAvgData `json:"group"`
+}
+
+type GroupDurationReport struct {
+	Total int                 `json:"total"`
+	Group []*GroupAvgDuration `json:"group"`
+}
+type GroupsEmotion []*GroupAvgData
 
 func (s GroupsEmotion) Len() int {
 	return len(s)
@@ -367,21 +378,57 @@ func (s GroupsEmotion) Less(i, j int) bool {
 	return s[i].Tag < s[j].Tag
 }
 
+type GroupsDuration []*GroupAvgDuration
+
+func (s GroupsDuration) Len() int {
+	return len(s)
+}
+func (s GroupsDuration) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+func (s GroupsDuration) Less(i, j int) bool {
+	return s[i].Tag < s[j].Tag
+}
+
+type GroupAvgData struct {
+	Tag         string              `json:"tag_value"`
+	AvgCh1Anger float64             `json:"avg_ch1_angry"`
+	Ch1AngerR   float64             `json:"ch1_anger_r"`
+	AvgCh2Anger float64             `json:"avg_ch2_angry"`
+	Ch2AngerR   float64             `json:"ch2_anger_r"`
+	Data        []*SimpleAvgEmotion `json:"data"`
+}
+type GroupAvgDuration struct {
+	Tag         string               `json:"tag_value"`
+	AvgDuration int                  `json:"avg_duration"`
+	AvgDurR     float64              `json:"duration_r"`
+	Data        []*SimpleAvgDuration `json:"data"`
+}
+
+/*
 type GroupAvgEmotion struct {
 	Tag  string              `json:"tag_value"`
 	Data []*SimpleAvgEmotion `json:"data"`
 }
+*/
 type SimpleAvgEmotion struct {
 	Date        string  `json:"date_str"`
 	AvgCh1Anger float64 `json:"avg_ch1_angry"`
 	AvgCh2Anger float64 `json:"avg_ch2_angry"`
 }
 
+type SimpleAvgDuration struct {
+	Date        string `json:"date_str"`
+	AvgDuration int    `json:"avg_duration"`
+}
+
 type ScoreCount struct {
-	score1 float64
-	count1 uint64
-	score2 float64
-	count2 uint64
+	score1  float64
+	count1  uint64
+	scores1 []float64
+	score2  float64
+	count2  uint64
+	scores2 []float64
 }
 
 type WhereStates struct {
