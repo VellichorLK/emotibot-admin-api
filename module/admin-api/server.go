@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
+	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/util"
 
@@ -129,6 +130,7 @@ func setRoute(app *iris.Application) {
 		QA.ModuleInfo,
 		FAQ.ModuleInfo,
 		QA.TestModuleInfo,
+		Task.ModuleInfo,
 	}
 
 	for _, module := range modules {

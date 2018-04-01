@@ -267,3 +267,45 @@ func HTTPPut(url string, data interface{}, timeout int) (string, error) {
 
 	return string(body), nil
 }
+
+func HTTPPutForm(requestURL string, data map[string]string, timeout int) (string, error) {
+	if requestURL == "" {
+		return "", errors.New("Invalid url")
+	}
+
+	var client *http.Client
+	input := url.Values{}
+
+	for key, value := range data {
+		input.Add(key, value)
+	}
+
+	if timeout > 0 {
+		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
+		client = &http.Client{
+			Timeout: getTimeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	req, err := http.NewRequest("PUT", requestURL, bytes.NewBufferString(input.Encode()))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Content-Length", strconv.Itoa(len(input.Encode())))
+
+	response, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(body), nil
+}
