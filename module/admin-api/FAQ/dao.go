@@ -590,7 +590,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 }
 
 func Escape(target string) string {
-	re := regexp.MustCompile("<img src=\"([^\"]+)\"[^>]*>")
+	re := regexp.MustCompile("<img.*?>")
 	return re.ReplaceAllString(target, "[图片]")
 }
 
@@ -839,6 +839,8 @@ func dimensionSQL(condition QueryCondition, appid string) (string, error) {
 		return fmt.Sprintf(query, appids...), nil
 	}
 
+	// this sql cannot used in ONLY_FULL_GROUP_BY mysql.
+	// note: SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
 	query = `select Answer_Id as a_id, tag_ids from (
 		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) as tag_ids from (SELECT answer_id, Tag_Type, anst.Tag_Id
 		FROM   %s_answertag as anst, %s_tag as tag

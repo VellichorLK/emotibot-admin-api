@@ -26,6 +26,12 @@ func DoChatRequestWithController(appid string, user string, inputData *QATestInp
 	input["robotId"] = appid
 	input["userId"] = user
 
+	customInfo := map[string]string{
+		"platform": inputData.Platform,
+		"brand":    inputData.Brand,
+	}
+	input["customInfo"] = customInfo
+
 	customHeader := make(map[string]string)
 	customHeader["X-Lb-Uid"] = user
 
