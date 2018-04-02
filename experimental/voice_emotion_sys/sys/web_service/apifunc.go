@@ -22,6 +22,8 @@ var v1api = apiFunc{
 	v1basePath + "/report/emotion/":   handlers.GroupAverageEmotion,
 	v1basePath + "/user_column":       handlers.GetUserColumn,
 	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
+	v1basePath + "/prohibited":        handlers.ManipulateProhibitedWords,
+	v1basePath + "/prohibited/":       handlers.ModifyProhibitedWords,
 }
 
 var services = [...]apiFunc{
