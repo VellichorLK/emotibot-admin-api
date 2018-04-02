@@ -1,9 +1,11 @@
 package Task
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -24,11 +26,70 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "apps", []string{}, handleGetApps),
 			util.NewEntryPoint("POST", "apps", []string{"edit"}, handleUpdateApp),
+
+			util.NewEntryPoint("POST", "scenarios-upload", []string{"import"}, handleUploadScenarios),
+			util.NewEntryPoint("POST", "scenario-upload", []string{"import"}, handleUploadScenario),
 			util.NewEntryPoint("GET", "scenarios", []string{}, handleGetScenarios),
 			util.NewEntryPoint("PUT", "scenarios", []string{"create"}, handlePutScenarios),
 			util.NewEntryPoint("POST", "scenarios", []string{"edit"}, handlePostScenarios),
 		},
 	}
+}
+
+func handleUploadScenario(w http.ResponseWriter, r *http.Request) {
+}
+
+func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	useNewID := r.FormValue("useNewId") == "true"
+	file, info, err := r.FormFile("scenario_json")
+
+	ext := path.Ext(info.Filename)
+	if ext != ".json" {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, "file ext should be json"),
+			http.StatusBadRequest)
+		return
+	}
+	content, err := ReadUploadJSON(file)
+	if err != nil {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, "read file fail: "+err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+	taskEngineJSON := &map[string]interface{}{}
+	multiTaskEngineJSON := &[]interface{}{}
+	err = json.Unmarshal([]byte(content), taskEngineJSON)
+	err2 := json.Unmarshal([]byte(content), multiTaskEngineJSON)
+	if err != nil && err2 != nil {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("invalid json: %s, %s", err.Error(), err2.Error())),
+			http.StatusBadRequest)
+		return
+	}
+	// ret := map[string]interface{}{
+	// 	"return": 0,
+	// 	"error":  "",
+	// }
+	var ret map[string]interface{}
+	if err == nil {
+		ImportScenario(appid, useNewID, taskEngineJSON)
+		ret = map[string]interface{}{
+			"a":    appid,
+			"new":  fmt.Sprintf("%t", useNewID),
+			"file": taskEngineJSON,
+		}
+	} else {
+		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
+		ret = map[string]interface{}{
+			"a":    appid,
+			"new":  fmt.Sprintf("%t", useNewID),
+			"file": multiTaskEngineJSON,
+		}
+	}
+	util.LogInfo.Printf("info: %+v\n", ret)
+	util.WriteJSON(w, ret)
 }
 
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +133,7 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	delete := r.FormValue("delete")
 	publish := r.FormValue("publish")
 
-	params := map[string]string{
+	params := map[string]interface{}{
 		"appid":  appid,
 		"userid": userID,
 	}
@@ -81,12 +142,12 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 		params["content"] = content
 		params["layout"] = layout
 	} else if delete != "" {
-		params["delete"] = "true"
+		params["delete"] = true
 	} else if publish != "" {
-		params["publish"] = "true"
+		params["publish"] = true
 	}
 	url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	util.LogTrace.Printf("Put scenarios: %s", url)
+	util.LogTrace.Printf("Put scenarios: %s with params: %#v", url, params)
 	content, err := util.HTTPPutForm(url, params, 0)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))

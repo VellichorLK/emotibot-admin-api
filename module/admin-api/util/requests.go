@@ -268,7 +268,7 @@ func HTTPPut(url string, data interface{}, timeout int) (string, error) {
 	return string(body), nil
 }
 
-func HTTPPutForm(requestURL string, data map[string]string, timeout int) (string, error) {
+func HTTPPutForm(requestURL string, data map[string]interface{}, timeout int) (string, error) {
 	if requestURL == "" {
 		return "", errors.New("Invalid url")
 	}
@@ -277,7 +277,8 @@ func HTTPPutForm(requestURL string, data map[string]string, timeout int) (string
 	input := url.Values{}
 
 	for key, value := range data {
-		input.Add(key, value)
+		text, _ := json.Marshal(value)
+		input.Add(key, string(text))
 	}
 
 	if timeout > 0 {
