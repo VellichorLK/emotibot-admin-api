@@ -31,7 +31,6 @@ func LoadConfigFromFile(path string) error {
 		}
 
 		params := strings.Split(line, "=")
-		LogTrace.Printf("Params: %+v\n", params)
 
 		// skip error format
 		if len(params) < 2 {

@@ -3,13 +3,12 @@ package Switch
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"reflect"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
 )
 
 var (
@@ -55,46 +54,46 @@ func getGlobalEnv(key string) string {
 }
 
 // handleList will show onoff list in database
-func handleList(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleList(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
 	list, errCode, err := GetSwitches(appid)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, list))
+		util.WriteJSON(w, util.GenRetObj(errCode, list))
 	}
 }
 
-func handleSwitch(ctx context.Context) {
-	id, _ := ctx.Params().GetInt("id")
-	appid := util.GetAppID(ctx)
+func handleSwitch(w http.ResponseWriter, r *http.Request) {
+	id, _ := util.GetParamInt(r, "id")
+	appid := util.GetAppID(r)
 
 	ret, errCode, err := GetSwitch(appid, id)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, ret))
+		util.WriteJSON(w, util.GenRetObj(errCode, ret))
 	}
 }
 
-func handleNewSwitch(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleNewSwitch(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
-	input := loadSwitchFromContext(ctx)
+	input := loadSwitchFromContext(w, r)
 	if input == nil {
-		ctx.StatusCode(iris.StatusBadRequest)
+		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
 	errCode, err := InsertSwitch(appid, input)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		addAudit(r, util.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, input))
-		addAudit(ctx, util.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
+		util.WriteJSON(w, util.GenRetObj(errCode, input))
+		addAudit(r, util.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
 	}
 }
 
@@ -114,31 +113,31 @@ func diffSwitchInfo(switchA *SwitchInfo, switchB *SwitchInfo) string {
 	return buf.String()
 }
 
-func handleUpdateSwitch(ctx context.Context) {
-	id, _ := ctx.Params().GetInt("id")
-	appid := util.GetAppID(ctx)
+func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
+	id, _ := util.GetParamInt(r, "id")
+	appid := util.GetAppID(r)
 
-	input := loadSwitchFromContext(ctx)
+	input := loadSwitchFromContext(w, r)
 	if input == nil {
-		ctx.StatusCode(iris.StatusBadRequest)
+		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
 	orig, errCode, err := GetSwitch(appid, id)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		return
 	}
 
 	errCode, err = UpdateSwitch(appid, id, input)
 	errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		addAudit(r, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
 			util.Msg["Modify"], util.Msg["Error"], input.Code, errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, input))
+		util.WriteJSON(w, util.GenRetObj(errCode, input))
 		diffMsg := diffSwitchInfo(orig, input)
 		var msg string
 
@@ -151,7 +150,7 @@ func handleUpdateSwitch(ctx context.Context) {
 				"%s%s code[%s]",
 				util.Msg["Modify"], util.Msg["Success"], input.Code)
 		}
-		addAudit(ctx, util.AuditOperationEdit, msg, 1)
+		addAudit(r, util.AuditOperationEdit, msg, 1)
 	}
 
 	var ret int
@@ -167,24 +166,24 @@ func handleUpdateSwitch(ctx context.Context) {
 	}
 }
 
-func handleDeleteSwitch(ctx context.Context) {
-	id, _ := ctx.Params().GetInt("id")
-	appid := util.GetAppID(ctx)
+func handleDeleteSwitch(w http.ResponseWriter, r *http.Request) {
+	id, _ := util.GetParamInt(r, "id")
+	appid := util.GetAppID(r)
 
 	errCode, err := DeleteSwitch(appid, id)
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		addAudit(r, util.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, nil))
-		addAudit(ctx, util.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
+		util.WriteJSON(w, util.GenRetObj(errCode, nil))
+		addAudit(r, util.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
 	}
 }
 
-func loadSwitchFromContext(ctx context.Context) *SwitchInfo {
+func loadSwitchFromContext(w http.ResponseWriter, r *http.Request) *SwitchInfo {
 	input := &SwitchInfo{}
-	err := ctx.ReadJSON(input)
+	err := util.ReadJSON(r, input)
 	if err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
@@ -193,9 +192,9 @@ func loadSwitchFromContext(ctx context.Context) *SwitchInfo {
 	return input
 }
 
-func addAudit(ctx context.Context, operation string, msg string, result int) {
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func addAudit(r *http.Request, operation string, msg string, result int) {
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
 	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
 }

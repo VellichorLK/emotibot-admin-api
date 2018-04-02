@@ -2,10 +2,7 @@ package UI
 
 import (
 	"fmt"
-
-	"github.com/kataras/iris"
-
-	"github.com/kataras/iris/context"
+	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -26,17 +23,20 @@ func init() {
 	}
 }
 
-func handleDumpUISetting(ctx context.Context) {
+func handleDumpUISetting(w http.ResponseWriter, r *http.Request) {
+	util.LogTrace.Println("Run: handleDumpUISetting")
 	envs := getEnvironments()
-	ctx.JSON(util.GenRetObj(ApiError.SUCCESS, envs))
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, envs))
+	return
 }
 
-func handleExportAuditLog(ctx context.Context) {
-	module := ctx.FormValue("module")
-	fileName := ctx.FormValue("filename")
-	extMsg := ctx.FormValue("info")
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
+	util.LogTrace.Println("Run: handleExportAuditLog")
+	module := r.FormValue("module")
+	fileName := r.FormValue("filename")
+	extMsg := r.FormValue("info")
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
 	moduleID := ""
 	switch module {
@@ -58,7 +58,7 @@ func handleExportAuditLog(ctx context.Context) {
 	}
 
 	if moduleID == "" || fileName == "" {
-		ctx.StatusCode(iris.StatusBadRequest)
+		http.Error(w, "", http.StatusBadRequest)
 		util.LogInfo.Printf("Bad request: module:[%s] file:[%s]", moduleID, fileName)
 		return
 	}
@@ -67,10 +67,11 @@ func handleExportAuditLog(ctx context.Context) {
 	log := fmt.Sprintf("%s%s %s: %s", util.Msg["DownloadFile"], moduleName, fileName, extMsg)
 	err := util.AddAuditLog(userID, userIP, moduleID, util.AuditOperationExport, log, 1)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		ctx.JSON(util.GenSimpleRetObj(ApiError.SUCCESS))
+		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
 	}
+	return
 }
 
 func getEnvironments() map[string]string {

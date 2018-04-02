@@ -21,6 +21,7 @@ const (
 	ConsulRCKey = "chat/%s"
 	// ConsulRCKey is a helper value used in ConsulUpdateFunctionStatus
 	ConsulFunctionKey = "function/%s"
+	ConsulFAQKey      = "faq/%s"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -143,6 +144,13 @@ func (c *ConsulClient) Lock(key string) (Locker, error) {
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
 func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error) {
 	return c.updateHandler(key, val)
+}
+
+//ConsulUpdateFAQ is a convenient function for updating Task Engine's Consul Key
+func ConsulUpdateFAQ(appid string) (int, error) {
+	//contains no appid, becaues this can be use in vipshop for now
+	now := time.Now().Unix()
+	return ConsulUpdateVal(ConsulFAQKey, now)
 }
 
 //ConsulUpdateTaskEngine is a convenient function for updating Task Engine's Consul Key

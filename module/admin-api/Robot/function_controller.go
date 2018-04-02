@@ -3,29 +3,27 @@ package Robot
 import (
 	"bytes"
 	"fmt"
-
-	"github.com/kataras/iris"
+	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/kataras/iris/context"
 )
 
 // handleList will show robot function list and it's status
-func handleFunctionList(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleFunctionList(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
 	ret, errCode, err := GetFunctions(appid)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, ret))
+		util.WriteJSON(w, util.GenRetObj(errCode, ret))
 	}
 }
 
-func handleUpdateFunction(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	function := ctx.Params().GetEscape("name")
+func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	function := r.URL.Query().Get("name")
 	result := 0
 
 	funcName, ok := util.Msg[function]
@@ -35,18 +33,18 @@ func handleUpdateFunction(ctx context.Context) {
 
 	ret, errCode, err := GetFunctions(appid)
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
-		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
 			errMsg, result)
 	}
 
 	origInfo := ret[function]
-	newInfo := loadFunctionFromContext(ctx)
+	newInfo := loadFunctionFromContext(r)
 	if newInfo == nil {
 		errMsg := fmt.Sprintf("%s%s", util.Msg["Request"], util.Msg["Error"])
-		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
-		ctx.StatusCode(iris.StatusBadRequest)
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
@@ -62,7 +60,7 @@ func handleUpdateFunction(ctx context.Context) {
 	auditLog := ""
 
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := ApiError.GetErrorMsg(errCode)
 		auditLog = fmt.Sprintf("%s%s, %s: [%s]->[%s] (%s)",
 			util.Msg["Modify"], util.Msg["Error"], funcName, origStatus, newStatus, errMsg)
@@ -70,35 +68,35 @@ func handleUpdateFunction(ctx context.Context) {
 		// http request to multicustomer
 		// NOTE: no matter multicustomer return, return success
 		// Terriable flow in old houta
-		ctx.JSON(util.GenSimpleRetObj(errCode))
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
 		auditLog = fmt.Sprintf("%s%s, %s: [%s]->[%s]",
 			util.Msg["Modify"], util.Msg["Success"], funcName, origStatus, newStatus)
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateRobotChat(appid)
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
 	}
 }
 
-func handleUpdateAllFunction(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleUpdateAllFunction(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	result := 0
 
 	origInfos, errCode, err := GetFunctions(appid)
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
-		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
 		return
 	}
 
-	newInfos := loadFunctionsFromContext(ctx)
+	newInfos := loadFunctionsFromContext(r)
 	if newInfos == nil {
-		addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
-		ctx.StatusCode(iris.StatusBadRequest)
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
+		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
@@ -124,7 +122,7 @@ func handleUpdateAllFunction(ctx context.Context) {
 	errCode, err = UpdateFunctions(appid, newInfos)
 	auditLog := ""
 	if errCode != ApiError.SUCCESS {
-		ctx.JSON(util.GenRetObj(errCode, err))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := ApiError.GetErrorMsg(errCode)
 		auditLog = fmt.Sprintf("%s%s: (%s)\n%s",
 			util.Msg["Modify"], util.Msg["Error"], errMsg, buffer.String())
@@ -132,22 +130,22 @@ func handleUpdateAllFunction(ctx context.Context) {
 		// http request to multicustomer
 		// NOTE: no matter what multicustomer return, always return success
 		// Terriable flow in old houta
-		ctx.JSON(util.GenSimpleRetObj(errCode))
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
 		auditLog = fmt.Sprintf("%s%s:\n%s",
 			util.Msg["Modify"], util.Msg["Success"], buffer.String())
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(ctx, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateRobotChat(appid)
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
 	}
 }
 
-func loadFunctionFromContext(ctx context.Context) *FunctionInfo {
+func loadFunctionFromContext(r *http.Request) *FunctionInfo {
 	input := &FunctionInfo{}
-	err := ctx.ReadJSON(input)
+	err := util.ReadJSON(r, input)
 	if err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
@@ -156,9 +154,9 @@ func loadFunctionFromContext(ctx context.Context) *FunctionInfo {
 	return input
 }
 
-func loadFunctionsFromContext(ctx context.Context) map[string]*FunctionInfo {
+func loadFunctionsFromContext(r *http.Request) map[string]*FunctionInfo {
 	input := make(map[string]*FunctionInfo)
-	err := ctx.ReadJSON(&input)
+	err := util.ReadJSON(r, &input)
 	if err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
 		return nil

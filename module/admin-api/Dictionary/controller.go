@@ -9,7 +9,6 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/kataras/iris/context"
 )
 
 var (
@@ -31,7 +30,7 @@ func init() {
 
 			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
 			util.NewEntryPoint("POST", "wordbank", []string{"edit"}, handleUpdateWordbank),
-			util.NewEntryPoint("GET", "wordbank/{id:int}", []string{"view"}, handleGetWordbank),
+			util.NewEntryPoint("GET", "wordbank/{id}", []string{"view"}, handleGetWordbank),
 		},
 	}
 	maxDirDepth = 4
@@ -61,59 +60,54 @@ func getGlobalEnv(key string) string {
 	return ""
 }
 
-func handleGetWordbank(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	id, err := ctx.Params().GetInt("id")
+func handleGetWordbank(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.Writef("Error: %s", err.Error())
+		http.Error(w, fmt.Sprintf("Error: %s", err.Error()), http.StatusBadRequest)
 	}
 
 	wordbank, err := GetWordbank(appid, id)
 	if err != nil {
 		util.LogInfo.Printf("Error when get wordbank: %s\n", err.Error())
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Writef(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if wordbank == nil {
-		ctx.StatusCode(http.StatusNotFound)
+		http.Error(w, "", http.StatusNotFound)
 		return
 	}
-	ctx.JSON(wordbank)
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
 }
 
-func handleUpdateWordbank(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
 	updatedWordbank := &WordBank{}
-	err := ctx.ReadJSON(updatedWordbank)
+	err := util.ReadJSON(r, updatedWordbank)
 	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.Writef(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	origWordbank, err := GetWordbank(appid, *updatedWordbank.ID)
 	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.Writef(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	retCode, err := UpdateWordbank(appid, updatedWordbank)
 	auditRet := 1
 	if err != nil {
 		if retCode == ApiError.REQUEST_ERROR {
-			ctx.StatusCode(http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			ctx.StatusCode(http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		ctx.Writef(err.Error())
 		auditRet = 0
 	} else {
-		ctx.StatusCode(http.StatusOK)
+		http.Error(w, "", http.StatusOK)
 	}
 
 	var buffer bytes.Buffer
@@ -129,15 +123,14 @@ func handleUpdateWordbank(ctx context.Context) {
 	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationEdit, auditMessage, auditRet)
 }
 
-func handlePutWordbank(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
-	paths, newWordBank, err := getWordbankFromReq(ctx)
+	paths, newWordBank, err := getWordbankFromReq(r)
 	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		ctx.Writef(err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -162,17 +155,16 @@ func handlePutWordbank(ctx context.Context) {
 	auditRet := 1
 	if err != nil {
 		if retCode == ApiError.REQUEST_ERROR {
-			ctx.StatusCode(http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			ctx.StatusCode(http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		ctx.Writef(err.Error())
 		auditRet = 0
 	} else {
-		ctx.StatusCode(http.StatusOK)
+		http.Error(w, "", http.StatusOK)
 	}
 	if newWordBank != nil {
-		ctx.JSON(newWordBank)
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, newWordBank))
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
 }
@@ -187,10 +179,10 @@ func checkLevel1Valid(dir string) bool {
 	return false
 }
 
-func getWordbankFromReq(ctx context.Context) ([]string, *WordBank, error) {
+func getWordbankFromReq(r *http.Request) ([]string, *WordBank, error) {
 	paths := make([]string, maxDirDepth)
 	for idx := 0; idx < maxDirDepth; idx++ {
-		paths[idx] = ctx.FormValue(fmt.Sprintf("level%d", idx+1))
+		paths[idx] = r.FormValue(fmt.Sprintf("level%d", idx+1))
 		if paths[idx] == "" {
 			break
 		}
@@ -200,7 +192,7 @@ func getWordbankFromReq(ctx context.Context) ([]string, *WordBank, error) {
 	}
 
 	ret := &WordBank{}
-	nodeType, err := strconv.Atoi(ctx.FormValue("type"))
+	nodeType, err := strconv.Atoi(r.FormValue("type"))
 	if err != nil || nodeType > 1 {
 		ret.Type = 0
 	}
@@ -210,62 +202,61 @@ func getWordbankFromReq(ctx context.Context) ([]string, *WordBank, error) {
 		return paths, nil, nil
 	}
 
-	ret.Name = ctx.FormValue("name")
+	ret.Name = r.FormValue("name")
 	if ret.Name == "" {
 		return paths, nil, fmt.Errorf("name cannot be empty")
 	}
 
-	ret.Answer = ctx.FormValue("answer")
-	ret.SimilarWords = ctx.FormValue("similar_words")
+	ret.Answer = r.FormValue("answer")
+	ret.SimilarWords = r.FormValue("similar_words")
 	return paths, ret, nil
 }
 
-func handleGetWordbanks(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleGetWordbanks(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
 	wordbanks, err := GetEntities(appid)
 	if err != nil {
 		util.LogInfo.Printf("Error when get entities: %s\n", err.Error())
-		ctx.StatusCode(http.StatusInternalServerError)
-		ctx.Writef(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	ctx.JSON(wordbanks)
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
 }
 
 // handleFileCheck will call api to check if uploaded dictionary is finished
-func handleFileCheck(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleFileCheck(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
 	util.LogTrace.Printf("Check dictionary info from [%s]", appid)
 
 	ret, err := CheckProcessStatus(appid)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }
 
 // handleFileCheck will call api to check if uploaded dictionary is finished
-func handleFullFileCheck(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleFullFileCheck(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 
 	util.LogTrace.Printf("Check dictionary full info from [%s]", appid)
 
 	ret, err := CheckFullProcessStatus(appid)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }
 
-func handleUpload(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func handleUpload(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
-	file, info, err := ctx.FormFile("file")
+	file, info, err := r.FormFile("file")
 	defer file.Close()
 	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
 	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
@@ -274,12 +265,12 @@ func handleUpload(ctx context.Context) {
 	retFile, errCode, err := CheckUploadFile(appid, file, info)
 	if err != nil {
 		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenRetObj(errCode, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	} else if errCode != ApiError.SUCCESS {
 		errMsg := ApiError.GetErrorMsg(errCode)
-		ctx.JSON(util.GenSimpleRetObj(errCode))
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	}
@@ -287,36 +278,37 @@ func handleUpload(ctx context.Context) {
 	// 2. http request to multicustomer
 	errCode, err = util.McUpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(errCode, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
 		util.LogError.Printf("update wordbank with multicustomer error: %s", err.Error())
 	} else {
 		errCode = ApiError.SUCCESS
-		ctx.JSON(util.GenSimpleRetObj(errCode))
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
 		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
 	}
 }
 
-func handleDownload(ctx context.Context) {
+func handleDownload(w http.ResponseWriter, r *http.Request) {
 	d := map[string]interface{}{
 		"result": true,
 		"entry":  "download",
 	}
 
+	// TODO: WIP
 	// 1. get file from input version
 	// 2. output raw
 
-	ctx.JSON(d)
+	util.WriteJSON(w, d)
 }
 
-func handleDownloadMeta(ctx context.Context) {
+func handleDownloadMeta(w http.ResponseWriter, r *http.Request) {
 	// 1. select from db last two row
 	// 2. return response
-	appid := util.GetAppID(ctx)
+	appid := util.GetAppID(r)
 	ret, err := GetDownloadMeta(appid)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {
-		ctx.JSON(util.GenRetObj(ApiError.SUCCESS, ret))
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }

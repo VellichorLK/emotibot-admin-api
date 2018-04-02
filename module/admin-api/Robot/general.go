@@ -1,7 +1,7 @@
 package Robot
 
 import (
-	"github.com/kataras/iris/context"
+	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -56,9 +56,9 @@ func getGlobalEnv(key string) string {
 	return ""
 }
 
-func addAudit(ctx context.Context, module string, operation string, msg string, result int) {
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
+func addAudit(r *http.Request, module string, operation string, msg string, result int) {
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 
 	util.AddAuditLog(userID, userIP, module, operation, msg, result)
 }

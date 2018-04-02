@@ -1,8 +1,6 @@
 package util
 
-import (
-	"github.com/kataras/iris/context"
-)
+import "net/http"
 
 const (
 	// ConstAuthorizationHeaderKey is header used for auth, content will be appid only
@@ -16,18 +14,18 @@ const (
 )
 
 // GetAppID will get AppID from http header
-func GetAppID(ctx context.Context) string {
-	return ctx.GetHeader(ConstAuthorizationHeaderKey)
+func GetAppID(r *http.Request) string {
+	return r.Header.Get(ConstAuthorizationHeaderKey)
 }
 
 // GetUserID will get UserID from http header
-func GetUserID(ctx context.Context) string {
-	return ctx.GetHeader(ConstUserIDHeaderKey)
+func GetUserID(r *http.Request) string {
+	return r.Header.Get(ConstUserIDHeaderKey)
 }
 
 // GetUserIP will get User addr from http header
-func GetUserIP(ctx context.Context) string {
-	return ctx.GetHeader(ConstUserIPHeaderKey)
+func GetUserIP(r *http.Request) string {
+	return r.Header.Get(ConstUserIPHeaderKey)
 }
 
 // Contains will check if str is in arr or not
@@ -38,4 +36,17 @@ func Contains(arr []string, str string) bool {
 		}
 	}
 	return false
+}
+
+func IsValidAppID(id string) bool {
+	return len(id) > 0 && HasOnlyNumEng(id)
+}
+
+func HasOnlyNumEng(input string) bool {
+	for _, c := range input {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') {
+			return false
+		}
+	}
+	return true
 }

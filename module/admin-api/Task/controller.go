@@ -2,11 +2,12 @@ package Task
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/kataras/iris/context"
 )
 
 var (
@@ -30,18 +31,18 @@ func init() {
 	}
 }
 
-func handleGetScenarios(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
-	scenarioid := ctx.Params().GetEscape("scenarioid")
-	public := ctx.Params().GetEscape("public")
+	scenarioid := r.URL.Query().Get("scenarioid")
+	public := r.URL.Query().Get("public")
 
 	if scenarioid == "" {
-		scenarioid = ctx.FormValue("scenarioid")
+		scenarioid = r.FormValue("scenarioid")
 	}
 	if public == "" {
-		public = ctx.FormValue("public")
+		public = r.FormValue("public")
 	}
 
 	params := []string{fmt.Sprintf("appid=%s", appid)}
@@ -55,22 +56,21 @@ func handleGetScenarios(ctx context.Context) {
 	util.LogTrace.Printf("Get Scenario URL: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-		ctx.Writef(err.Error())
+		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
-		ctx.Writef(content)
+		io.WriteString(w, content)
 	}
 }
 
-func handlePutScenarios(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
-	scenarioid := ctx.FormValue("scenarioid")
-	layout := ctx.FormValue("layout")
-	content := ctx.FormValue("content")
-	delete := ctx.FormValue("delete")
-	publish := ctx.FormValue("publish")
+	scenarioid := r.FormValue("scenarioid")
+	layout := r.FormValue("layout")
+	content := r.FormValue("content")
+	delete := r.FormValue("delete")
+	publish := r.FormValue("publish")
 
 	params := map[string]string{
 		"appid":  appid,
@@ -89,27 +89,26 @@ func handlePutScenarios(ctx context.Context) {
 	util.LogTrace.Printf("Put scenarios: %s", url)
 	content, err := util.HTTPPutForm(url, params, 0)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-		ctx.Writef(err.Error())
+		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
-		ctx.Writef(content)
+		io.WriteString(w, content)
 	}
 }
-func handlePostScenarios(ctx context.Context) {
-	method := ctx.FormValue("method")
+func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
+	method := r.FormValue("method")
 
 	if method == "GET" {
-		handleGetScenarios(ctx)
+		handleGetScenarios(w, r)
 		return
 	} else if method == "PUT" {
-		handlePutScenarios(ctx)
+		handlePutScenarios(w, r)
 		return
 	}
 
-	appid := util.GetAppID(ctx)
+	appid := util.GetAppID(r)
 	userID := appid
-	template := ctx.FormValue("template")
-	scenarioName := ctx.FormValue("scenarioName")
+	template := r.FormValue("template")
+	scenarioName := r.FormValue("scenarioName")
 	if scenarioName == "" {
 		scenarioName = "New Scenario"
 	}
@@ -126,18 +125,17 @@ func handlePostScenarios(ctx context.Context) {
 	util.LogTrace.Printf("Post scenarios: %s", url)
 	content, err := util.HTTPPostForm(url, params, 0)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-		ctx.Writef(err.Error())
+		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
-		ctx.Writef(content)
+		io.WriteString(w, content)
 	}
 }
 
-func handleUpdateApp(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	userID := appid
-	enable := ctx.FormValue("enable")
-	scenarioID := ctx.FormValue("scenarioid")
+	enable := r.FormValue("enable")
+	scenarioID := r.FormValue("scenarioid")
 	taskURL := getEnvironment("SERVER_URL")
 
 	url := fmt.Sprintf("%s/%s", taskURL, taskAppEntry)
@@ -150,11 +148,10 @@ func handleUpdateApp(ctx context.Context) {
 
 	content, err := util.HTTPPostForm(url, params, 0)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
-		ctx.Header("Content-type", "application/json; charset=utf-8")
-		// ctx.Header("Content-type", "text/plain; charset=utf-8")
-		ctx.Writef(content)
+		r.Header.Set("Content-type", "application/json; charset=utf-8")
+		io.WriteString(w, content)
 	}
 
 	if scenarioID == "all" {
@@ -172,8 +169,8 @@ func handleUpdateApp(ctx context.Context) {
 	}
 }
 
-func handleGetApps(ctx context.Context) {
-	appid := util.GetAppID(ctx)
+func handleGetApps(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	// userID := util.GetUserID(ctx)
 	taskURL := getEnvironment("SERVER_URL")
 
@@ -182,12 +179,12 @@ func handleGetApps(ctx context.Context) {
 	util.LogTrace.Printf("Get apps: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
-		ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
 		// Cannot use json, or ui will has error...
-		// ctx.Header("Content-type", "application/json; charset=utf-8")
-		ctx.Header("Content-type", "text/plain; charset=utf-8")
-		ctx.Writef(content)
+		// r.Header.Set("Content-type", "application/json; charset=utf-8")
+		r.Header.Set("Content-type", "text/plain; charset=utf-8")
+		io.WriteString(w, content)
 	}
 }
 

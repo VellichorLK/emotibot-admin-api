@@ -2,24 +2,23 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
-	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/util"
-
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
 )
 
 // constant define all const used in server
@@ -42,12 +41,22 @@ func init() {
 	}
 }
 
+func logAvailablePath(router *mux.Router) {
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		methods, _ := route.GetMethods()
+		pathTemplate, _ := route.GetPathTemplate()
+		if len(methods) == 0 {
+			methods = []string{"ANY"}
+		}
+		util.LogInfo.Printf("%6s ROUTE: %s\n", methods, pathTemplate)
+
+		return nil
+	})
+}
+
 func main() {
-	app := iris.New()
 	//Init Consul Client
 	serverEnvs := util.GetEnvOf("server")
-	util.LogTrace.Printf("Env: %v\n", serverEnvs)
-
 	consulAddr, ok := serverEnvs["CONSUL_URL"]
 	if !ok {
 		util.LogError.Printf("Can not init without server env:'CONSUL_URL env\n'")
@@ -62,38 +71,35 @@ func main() {
 	}
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
 
-	setRoute(app)
+	router := setRoute()
 	initDB()
-	app.StaticWeb("/Files", util.GetMountDir())
+	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
-		app.Run(iris.Addr(":"+port), iris.WithoutVersionChecker)
+		http.ListenAndServe(":"+port, router)
 	} else {
-		app.Run(iris.Addr(":8181"), iris.WithoutVersionChecker)
+		http.ListenAndServe(":8181", router)
 	}
 
 }
 
 // checkPrivilege will call auth api to check user's privilege of this API
-func checkPrivilege(ctx context.Context) {
-	paths := strings.Split(ctx.Path(), "/")
+func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
+	paths := strings.Split(r.URL.Path, "/")
 	module := paths[3]
 	cmd := paths[4]
 
-	appid := ctx.GetHeader("Authorization")
-	userid := ctx.GetHeader("X-UserID")
+	appid := r.Header.Get("Authorization")
+	userid := r.Header.Get("X-UserID")
 
-	if len(appid) == 0 || len(userid) == 0 {
+	util.LogInfo.Printf("appid: %s, userid: %s\n", appid, userid)
+	if len(userid) == 0 || !util.IsValidAppID(appid) {
 		util.LogTrace.Printf("Unauthorized appid:[%s] userid:[%s]", appid, userid)
-		ctx.StatusCode(iris.StatusUnauthorized)
-		ctx.Skip()
+		return false
 	}
 
-	if checkPrivilegeWithAPI(module, cmd, appid, userid) {
-		ctx.Next()
-	}
-	ctx.Skip()
+	return checkPrivilegeWithAPI(module, cmd, appid, userid)
 }
 
 func checkPrivilegeWithAPI(module string, cmd string, appid string, userid string) bool {
@@ -117,16 +123,16 @@ func checkPrivilegeWithAPI(module string, cmd string, appid string, userid strin
 	return true
 }
 
-func clientNoStoreCache(ctx context.Context) {
-	ctx.Header("Cache-Control", "no-store, private")
+func clientNoStoreCache(w http.ResponseWriter) {
+	w.Header().Add("Cache-Control", "no-store, private")
 }
 
-func setRoute(app *iris.Application) {
+func setRoute() *mux.Router {
+	router := mux.NewRouter().StrictSlash(true)
 	modules := []interface{}{
 		Dictionary.ModuleInfo,
 		Switch.ModuleInfo,
 		Robot.ModuleInfo,
-		Stats.ModuleInfo,
 		QA.ModuleInfo,
 		FAQ.ModuleInfo,
 		QA.TestModuleInfo,
@@ -135,28 +141,48 @@ func setRoute(app *iris.Application) {
 
 	for _, module := range modules {
 		info := module.(util.ModuleInfo)
-		for _, entrypoint := range info.EntryPoints {
+		for idx := range info.EntryPoints {
+			entrypoint := info.EntryPoints[idx]
 			// entry will be api/v_/<module>/<entry>
-			entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
-			if app.Handle(entrypoint.AllowMethod, entryPath, checkPrivilege, entrypoint.Callback, clientNoStoreCache) == nil {
-				util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
-			} else {
-				util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
-			}
+			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
+			router.
+				Methods(entrypoint.AllowMethod).
+				Path(entryPath).
+				Name(entrypoint.EntryPath).
+				HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					clientNoStoreCache(w)
+					if checkPrivilege(r, entrypoint) {
+						entrypoint.Callback(w, r)
+					} else {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					}
+				})
 		}
 	}
 
-	// Entry for ui setting do not has to check privilege
+	// Entry for routes has not to check privilege
 	info := UI.ModuleInfo
-	for _, entrypoint := range info.EntryPoints {
+	for idx := range info.EntryPoints {
+		entrypoint := info.EntryPoints[idx]
 		// entry will be api/v_/<module>/<entry>
-		entryPath := fmt.Sprintf("%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
-		if app.Handle(entrypoint.AllowMethod, entryPath, entrypoint.Callback) == nil {
-			util.LogInfo.Printf("Add route for %s (%s) fail", entryPath, entrypoint.AllowMethod)
-		} else {
-			util.LogInfo.Printf("Add route for %s (%s) success", entryPath, entrypoint.AllowMethod)
-		}
+		entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
+		router.
+			Path(entryPath).
+			Methods(entrypoint.AllowMethod).
+			Name(entrypoint.EntryPath).
+			HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				clientNoStoreCache(w)
+				entrypoint.Callback(w, r)
+			})
 	}
+	router.PathPrefix("/Files/").Handler(http.StripPrefix("Files", http.FileServer(http.Dir(util.GetMountDir()))))
+	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
+		// A very simple health check.
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, "ok")
+	})
+	return router
 }
 
 func getServerEnv(key string) string {
@@ -182,5 +208,5 @@ func initDB() {
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	util.InitAuditDB(url, user, pass, db)
 
-	Stats.InitDB()
+	// Stats.InitDB()
 }

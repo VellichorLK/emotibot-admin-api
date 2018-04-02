@@ -15,11 +15,6 @@
 
 ## Contribution
 
-### How to use iris framework
-
-http 的 Request&Response 方法都在 iris.context package 內
-
-[官方教學](https://iris-go.com/v8/recipe)
 
 ### How to Add a module
 

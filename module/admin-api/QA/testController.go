@@ -1,10 +1,10 @@
 package QA
 
 import (
+	"net/http"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/kataras/iris"
-	"github.com/kataras/iris/context"
 )
 
 var (
@@ -55,13 +55,12 @@ func getGlobalEnv(key string) string {
 	return ""
 }
 
-func hadleChatTest(ctx context.Context) {
-	appid := util.GetAppID(ctx)
-	user := util.GetUserID(ctx)
-	input, err := loadQATestInput(ctx)
+func hadleChatTest(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	user := util.GetUserID(r)
+	input, err := loadQATestInput(r)
 	if err != nil {
-		ctx.StatusCode(iris.StatusBadRequest)
-		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 	var ret *RetData
@@ -74,15 +73,15 @@ func hadleChatTest(ctx context.Context) {
 		ret, errCode, err = DoChatRequestWithDC(appid, user, input)
 	}
 	if err != nil {
-		ctx.JSON(util.GenRetObj(errCode, err.Error()))
+		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
 	} else {
-		ctx.JSON(util.GenRetObj(errCode, ret))
+		util.WriteJSON(w, util.GenRetObj(errCode, ret))
 	}
 }
 
-func loadQATestInput(ctx context.Context) (*QATestInput, error) {
+func loadQATestInput(r *http.Request) (*QATestInput, error) {
 	input := &QATestInput{}
-	err := ctx.ReadJSON(input)
+	err := util.ReadJSON(r, input)
 	if err != nil {
 		return nil, err
 	}

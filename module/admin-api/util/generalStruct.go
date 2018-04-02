@@ -1,21 +1,22 @@
 package util
 
 import (
+	"net/http"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"github.com/kataras/iris/context"
 )
 
 // EntryPoint is used in every module define
 type EntryPoint struct {
 	AllowMethod string
 	EntryPath   string
-	Callback    func(ctx context.Context)
+	Callback    func(w http.ResponseWriter, r *http.Request)
 	Version     int
 	Command     []string
 }
 
 // NewEntryPoint create new instance of EntryPoint with version 1
-func NewEntryPoint(method string, path string, cmd []string, callback func(ctx context.Context)) EntryPoint {
+func NewEntryPoint(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request)) EntryPoint {
 	entrypoint := EntryPoint{}
 	entrypoint.AllowMethod = method
 	entrypoint.EntryPath = path
@@ -26,7 +27,7 @@ func NewEntryPoint(method string, path string, cmd []string, callback func(ctx c
 }
 
 // NewEntryPointWithVer create new instance of EntryPoint with version 1
-func NewEntryPointWithVer(method string, path string, cmd []string, callback func(ctx context.Context), version int) EntryPoint {
+func NewEntryPointWithVer(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), version int) EntryPoint {
 	entrypoint := EntryPoint{}
 	entrypoint.AllowMethod = method
 	entrypoint.EntryPath = path
