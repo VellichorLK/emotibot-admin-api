@@ -161,6 +161,10 @@ func parseActivityFromRequest(r *http.Request) (*Activity, error) {
 		}
 	}
 
+	if (ret.StartTime == nil && ret.EndTime != nil) || (ret.StartTime != nil && ret.EndTime == nil) {
+		return nil, errors.New("Invalid time format, both nil or both set")
+	}
+
 	status := r.FormValue("publish")
 	ret.Status = (status == "1" || status == "true")
 
