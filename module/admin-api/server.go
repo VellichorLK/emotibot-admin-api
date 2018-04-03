@@ -137,6 +137,7 @@ func setRoute() *mux.Router {
 		FAQ.ModuleInfo,
 		QA.TestModuleInfo,
 		Task.ModuleInfo,
+		Stat.ModuleInfo,
 	}
 
 	for _, module := range modules {

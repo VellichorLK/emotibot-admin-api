@@ -21,9 +21,9 @@ func init() {
 		ModuleName: "switch-manage",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "switches", []string{"view"}, handleList),
-			util.NewEntryPoint("GET", "switch/{id:int}", []string{"view"}, handleSwitch),
-			util.NewEntryPoint("POST", "switch/{id:int}", []string{"edit"}, handleUpdateSwitch),
-			util.NewEntryPoint("DELETE", "switch/{id:int}", []string{"delete"}, handleDeleteSwitch),
+			util.NewEntryPoint("GET", "switch/{id}", []string{"view"}, handleSwitch),
+			util.NewEntryPoint("POST", "switch/{id}", []string{"edit"}, handleUpdateSwitch),
+			util.NewEntryPoint("DELETE", "switch/{id}", []string{"delete"}, handleDeleteSwitch),
 			util.NewEntryPoint("PUT", "switch/create", []string{"create"}, handleNewSwitch),
 		},
 	}

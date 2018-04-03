@@ -17,15 +17,15 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "functions", []string{"view"}, handleFunctionList),
 			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllFunction),
-			util.NewEntryPoint("POST", "function/{name:string}", []string{"edit"}, handleUpdateFunction),
+			util.NewEntryPoint("POST", "function/{name}", []string{"edit"}, handleUpdateFunction),
 
 			util.NewEntryPoint("GET", "qas", []string{"view"}, handleRobotQAList),
 			util.NewEntryPoint("POST", "qabuild", []string{"edit"}, handleRobotQAModelRebuild),
-			util.NewEntryPoint("GET", "qa/{id:int}", []string{"view"}, handleRobotQA),
-			util.NewEntryPoint("POST", "qa/{id:int}", []string{"edit"}, handleUpdateRobotQA),
+			util.NewEntryPoint("GET", "qa/{id}", []string{"view"}, handleRobotQA),
+			util.NewEntryPoint("POST", "qa/{id}", []string{"edit"}, handleUpdateRobotQA),
 
 			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
-			util.NewEntryPoint("GET", "chat/{id:int}", []string{"view"}, handleGetChat),
+			util.NewEntryPoint("GET", "chat/{id}", []string{"view"}, handleGetChat),
 			util.NewEntryPoint("POST", "chats", []string{"edit"}, handleMultiChatModify),
 			util.NewEntryPoint("GET", "chat-info", []string{"view"}, handleChatInfoList),
 		},
