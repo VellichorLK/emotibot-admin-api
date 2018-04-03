@@ -2,6 +2,7 @@ package FAQ
 
 import (
 	"fmt"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -88,9 +89,28 @@ type Parameter interface {
 	FormValue(name string) string
 }
 
+// Tag means dimension in UI
 type Tag struct {
 	Type    int
 	Content string
+}
+
+// Label means activity tag in UI
+type Label struct {
+	ID            int    `json:"id"`
+	Name          string `json:"tag_name"`
+	ActivityCount int    `json:"activity_count"`
+}
+
+// Activity is used with label
+type Activity struct {
+	ID        int        `json:"id"`
+	Name      string     `json:"name"`
+	Content   string     `json:"content"`
+	StartTime *time.Time `json:"start_time"`
+	EndTime   *time.Time `json:"end_time"`
+	Status    bool       `json:"publish_status"`
+	LinkTag   *int       `json:"tag"`
 }
 
 //RFQuestion is removed Feedback question(移除解決未解決的問題)

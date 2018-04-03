@@ -36,16 +36,19 @@ func init() {
 			util.NewEntryPoint("PUT", "category", []string{"edit"}, handleAddCategory),
 			util.NewEntryPoint("DELETE", "category/{id}", []string{"edit"}, handleDeleteCategory),
 
-			util.NewEntryPoint("GET", "tags", []string{"view"}, handleGetTags),
-			// util.NewEntryPoint("POST", "tag/{id:int}", []string{"view"}, handleUpdateTag),
-			// util.NewEntryPoint("PUT", "tag", []string{"view"}, handleAddTag),
-			// util.NewEntryPoint("DELETE", "tag/{id:int}", []string{"view"}, handleDeleteTag),
+			util.NewEntryPoint("GET", "tags", []string{"view"}, handleGetLabels),
+			util.NewEntryPoint("GET", "tag/{id}/activity", []string{"view"}, handleGetActivityOfLabel),
+			util.NewEntryPoint("POST", "tag/{id}", []string{"view"}, handleUpdateLabel),
+			util.NewEntryPoint("PUT", "tag", []string{"view"}, handleAddLabel),
+			util.NewEntryPoint("DELETE", "tag/{id}", []string{"view"}, handleDeleteLabel),
+
+			util.NewEntryPoint("GET", "activities", []string{"view"}, handleGetActivities),
+			util.NewEntryPoint("POST", "activity/{id}/publish", []string{"edit"}, handleUpdateActivityPublish),
+			util.NewEntryPoint("POST", "activity/{id}", []string{"edit"}, handleUpdateActivity),
+			util.NewEntryPoint("PUT", "activity", []string{"create"}, handleAddActivity),
+			util.NewEntryPoint("DELETE", "activity/{id}", []string{"view"}, handleDeleteActivity),
 		},
 	}
-}
-
-func handleGetTags(w http.ResponseWriter, r *http.Request) {
-
 }
 
 func handleAddCategory(w http.ResponseWriter, r *http.Request) {

@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -33,6 +34,10 @@ func GetMuxVar(r *http.Request, key string) string {
 
 func GetMuxIntVar(r *http.Request, key string) (int, error) {
 	vars := mux.Vars(r)
+	strVal := vars[key]
+	if strVal == "" {
+		return 0, fmt.Errorf("Invalid key %s", key)
+	}
 	return strconv.Atoi(vars[key])
 }
 
