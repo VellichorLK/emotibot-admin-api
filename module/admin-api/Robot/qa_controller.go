@@ -17,7 +17,7 @@ const (
 func handleRobotQA(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	id, err := util.GetParamInt(r, "id")
+	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil || id <= 0 {
 		http.Error(w, "", http.StatusBadRequest)
 		return
@@ -38,7 +38,7 @@ func handleRobotQAList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.LogInfo.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
-		return	
+		return
 	}
 	listPerPage, err := util.GetParamInt(r, "per_page")
 	if err != nil {
@@ -102,7 +102,7 @@ func handleUpdateRobotQA(w http.ResponseWriter, r *http.Request) {
 	successMsg := fmt.Sprintf("%s%s%s",
 		util.Msg["Modify"], util.Msg["RobotProfile"], util.Msg["Success"])
 
-	id, err := util.GetParamInt(r, "id")
+	id, err := util.GetMuxIntVar(r, "id")
 	info := loadQAInfoFromContext(r)
 	if err != nil || id <= 0 || info == nil {
 		http.Error(w, "", http.StatusBadRequest)

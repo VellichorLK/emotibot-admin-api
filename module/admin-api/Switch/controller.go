@@ -66,7 +66,7 @@ func handleList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSwitch(w http.ResponseWriter, r *http.Request) {
-	id, _ := util.GetParamInt(r, "id")
+	id, _ := util.GetMuxIntVar(r, "id")
 	appid := util.GetAppID(r)
 
 	ret, errCode, err := GetSwitch(appid, id)
@@ -114,7 +114,7 @@ func diffSwitchInfo(switchA *SwitchInfo, switchB *SwitchInfo) string {
 }
 
 func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
-	id, _ := util.GetParamInt(r, "id")
+	id, _ := util.GetMuxIntVar(r, "id")
 	appid := util.GetAppID(r)
 
 	input := loadSwitchFromContext(w, r)
@@ -167,7 +167,7 @@ func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteSwitch(w http.ResponseWriter, r *http.Request) {
-	id, _ := util.GetParamInt(r, "id")
+	id, _ := util.GetMuxIntVar(r, "id")
 	appid := util.GetAppID(r)
 
 	errCode, err := DeleteSwitch(appid, id)

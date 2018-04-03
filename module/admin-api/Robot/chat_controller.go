@@ -25,7 +25,7 @@ func handleChatInfoList(w http.ResponseWriter, r *http.Request) {
 func handleGetChat(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	errCode := ApiError.SUCCESS
-	id, err := util.GetParamInt(r, "id")
+	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil || id <= 0 {
 		http.Error(w, "", http.StatusBadRequest)
 		return

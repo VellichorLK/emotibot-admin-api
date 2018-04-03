@@ -23,7 +23,7 @@ func handleFunctionList(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
-	function := r.URL.Query().Get("name")
+	function := util.GetMuxVar(r, "name")
 	result := 0
 
 	funcName, ok := util.Msg[function]
