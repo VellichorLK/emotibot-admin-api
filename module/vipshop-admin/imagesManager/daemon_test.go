@@ -2,6 +2,7 @@ package imagesManager
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -24,10 +25,37 @@ func BenchmarkFindImagesJOb(b *testing.B) {
 		}
 	}
 }
+
+func TestDoFetchImagesJob(t *testing.T) {
+	db, mocker, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var j = FetchDBJob{
+		PicDB: db,
+	}
+	var expectedRows = map[string]uint64{
+		"c4ca4238a0b923820dcc509a6f75849b.jpg": 1,
+		"c81e728d9d4c2f636f067f89cc14862c.png": 2,
+	}
+
+	rows := sqlmock.NewRows([]string{"id", "raw_file_name"})
+	for fileName, id := range expectedRows {
+		rows.AddRow(id, fileName)
+	}
+	mocker.ExpectQuery("SELECT id, raw_file_name FROM images").WillReturnRows(rows)
+	err = j.Do(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(expectedRows, j.Output) {
+		t.Error("expect output is equal to input.")
+	}
+}
 func TestFindImagesJob(t *testing.T) {
-	var images = map[int]string{
-		1: "1c4ca4238a0b923820dcc509a6f75849b.jpg", // 1=>c4ca4238a0b923820dcc509a6f75849b
-		2: "c81e728d9d4c2f636f067f89cc14862c.png",  // 2=>c81e728d9d4c2f636f067f89cc14862c
+	var images = map[string]uint64{
+		"c4ca4238a0b923820dcc509a6f75849b.jpg": 1,
+		"c81e728d9d4c2f636f067f89cc14862c.png": 2,
 	}
 	type testCase struct {
 		input    string
@@ -63,8 +91,9 @@ func TestFindImagesJob(t *testing.T) {
 	for name, tt := range testCases {
 		t.Run(name, func(t *testing.T) {
 			j := FindImageJob{
-				questionDB: questionDB,
-				picDB:      picDB,
+				LookUpImages: images,
+				questionDB:   questionDB,
+				picDB:        picDB,
 			}
 			stmt := picMock.ExpectQuery("SELECT id FROM images ")
 			rows := sqlmock.NewRows([]string{"id"})
@@ -72,7 +101,7 @@ func TestFindImagesJob(t *testing.T) {
 				rows.AddRow(id)
 			}
 			stmt.WillReturnRows(rows)
-			var mockedAnswerID = 1
+			var mockedAnswerID uint64 = 1
 			rows = sqlmock.NewRows([]string{"Answer_id", "Content"}).AddRow(mockedAnswerID, tt.input)
 			questionMock.ExpectQuery("SELECT Answer_Id, Content ").WillReturnRows(rows)
 
@@ -95,10 +124,16 @@ func TestFindImagesJob(t *testing.T) {
 				t.Fatal("expect got at least one images id, but no images in result.")
 			}
 			for _, expectedImgID := range expectedImgIDGroup {
-				_, ok := images[expectedImgID]
-				if !ok {
+				var found bool
+				for _, id := range images {
+					if id == expectedImgID {
+						found = true
+					}
+				}
+				if !found {
 					t.Fatalf("expect id %d extracted from answer %v", expectedImgID, tt.input)
 				}
+
 			}
 		})
 	}
@@ -107,15 +142,15 @@ func TestFindImagesJob(t *testing.T) {
 
 func TestLinkImageJob(t *testing.T) {
 	type testCase struct {
-		input    map[int][]int
+		input    map[uint64][]uint64
 		expected bool
 	}
 
 	testCases := map[string]testCase{
 		"Normal": testCase{
-			input: map[int][]int{
-				1: []int{1, 2},
-				2: []int{1, 3},
+			input: map[uint64][]uint64{
+				1: []uint64{1, 2},
+				2: []uint64{1, 3},
 			},
 			expected: true,
 		},
