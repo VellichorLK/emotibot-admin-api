@@ -164,6 +164,9 @@ func getLabelActivityCount(appid string, tagID int) (int, error) {
 	var count int
 	err := row.Scan(&count)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		util.LogError.Printf("Error when parse row: %s", err.Error())
 		return 0, err
 	}

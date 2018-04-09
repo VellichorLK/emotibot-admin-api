@@ -165,7 +165,7 @@ func parseActivityFromRequest(r *http.Request) (*Activity, error) {
 		return nil, errors.New("Invalid time format, both nil or both set")
 	}
 
-	status := r.FormValue("publish")
+	status := r.FormValue("publish_status")
 	ret.Status = (status == "1" || status == "true")
 
 	activityStr, _ := json.MarshalIndent(ret, "", "  ")
@@ -291,7 +291,7 @@ func handleUpdateActivityPublish(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	appid := util.GetAppID(r)
-	statusStr := r.FormValue("publish")
+	statusStr := r.FormValue("publish_status")
 	activityStatus := (statusStr == "1" || statusStr == "true")
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
