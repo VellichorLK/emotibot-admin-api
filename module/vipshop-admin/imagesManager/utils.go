@@ -3,13 +3,13 @@ package imagesManager
 import (
 	"archive/zip"
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
-	"path"
 	"strconv"
 	"time"
 )
@@ -166,7 +166,21 @@ func Md5Uint64(id uint64) string {
 	encode := h.Sum(nil)
 	return hex.EncodeToString(encode)
 }
-func getImageName(id uint64, fileName string) string {
-	ext := path.Ext(fileName)
-	return Md5Uint64(id) + ext
+
+//get the image name store in the disk by id
+func getImageName(id uint64) (string, error) {
+
+	getImageNameSQL := fmt.Sprintf("select %s from %s where %s=?", attrRawFileName, imageTable, attrID)
+
+	var fileName sql.NullString
+	err := db.QueryRow(getImageNameSQL, id).Scan(&fileName)
+	if err != nil {
+		return "", err
+	}
+
+	if !fileName.Valid {
+		return "", errors.New("file name is null")
+	}
+
+	return fileName.String, nil
 }
