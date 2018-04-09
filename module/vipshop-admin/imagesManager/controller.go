@@ -213,7 +213,6 @@ func updateImage(ctx context.Context) {
 		return
 	}
 
-	fileName := files[imageID]
 	title := ctx.FormValue(TITLE)
 	var tx *sql.Tx
 
@@ -236,7 +235,7 @@ func updateImage(ctx context.Context) {
 		}
 		defer tx.Rollback()
 		sqlString := "update " + imageTable + " set " + attrFileName + "=? where " + attrID + "=?"
-		_, _, fileName, err = inputUniqueFileName(tx, sqlString, title, []interface{}{title, imageID})
+		_, _, _, err = inputUniqueFileName(tx, sqlString, title, []interface{}{title, imageID})
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
@@ -248,7 +247,15 @@ func updateImage(ctx context.Context) {
 	file, fileHeader, err := ctx.FormFile(IMAGE)
 	if fileHeader != nil {
 
-		dstFile, err := os.Create(Volume + "/" + getImageName(imageID, fileName))
+		rawFileName, err := getImageName(imageID)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+			util.LogError.Println(err)
+			return
+		}
+
+		dstFile, err := os.Create(Volume + "/" + rawFileName)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))

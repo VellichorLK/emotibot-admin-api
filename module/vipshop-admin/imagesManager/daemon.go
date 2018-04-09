@@ -1,9 +1,7 @@
 package imagesManager
 
 import (
-	"crypto/md5"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -81,12 +79,21 @@ func NewDaemon(updatePeriod int, pictureDB, questionDB *sql.DB) *Daemon {
 //stop channel should be pass in, if you want
 func (d *Daemon) Sync(stop <-chan struct{}) error {
 	util.LogTrace.Println("Start daemon syncing...")
-	findJob := &FindImageJob{
-		questionDB: d.questionDB,
-		picDB:      d.picDB,
+	fetchJob := &FetchDBJob{
+		PicDB: d.picDB,
+	}
+	err := fetchJob.Do(stop)
+	if err != nil {
+		return fmt.Errorf("Fetch image db failed, %v", err)
 	}
 
-	err := findJob.Do(stop)
+	findJob := &FindImageJob{
+		LookUpImages: fetchJob.Output,
+		questionDB:   d.questionDB,
+		picDB:        d.picDB,
+	}
+
+	err = findJob.Do(stop)
 	if err != nil {
 		return fmt.Errorf("find image tag in answer failed, %v", err)
 	}
@@ -112,41 +119,59 @@ type interruptableJob interface {
 //ErrInterruptted should be return when interruptableJob are interruptted
 var ErrInterruptted = errors.New("interruptted error")
 
+// FetchDBJob will save all the image ID into memory for lookup later in FindImageJob.
+type FetchDBJob struct {
+	Output map[string]uint64
+	PicDB  *sql.DB
+}
+
+// Do FetchDBJob
+func (j *FetchDBJob) Do(signal <-chan struct{}) error {
+	rows, err := j.PicDB.Query("SELECT id, raw_file_name FROM images")
+	if err != nil {
+		return fmt.Errorf("query pic db failed, %v", err)
+	}
+	defer rows.Close()
+	j.Output = make(map[string]uint64)
+	for rows.Next() {
+		select {
+		case <-signal:
+			j.Output = nil
+			return ErrInterruptted
+		default:
+			var id uint64
+			var rawFileName sql.NullString
+			err := rows.Scan(&id, &rawFileName)
+			if err != nil {
+				return fmt.Errorf("scan db failed, %v", err)
+			}
+			if !rawFileName.Valid {
+				continue
+			}
+			j.Output[rawFileName.String] = id
+		}
+	}
+
+	return nil
+}
+
 // FindImagesJob is the job unitwill scan answer's content and match the image tag in it
 type FindImageJob struct {
-	Result     map[int][]int
-	questionDB *sql.DB
-	picDB      *sql.DB
+	LookUpImages map[string]uint64
+	Result       map[uint64][]uint64
+	questionDB   *sql.DB
+	picDB        *sql.DB
 }
 
 // Do FindImagesJob will scan answer's content and match the image tag in it
 // Return Empty map if none of given image's file name is matched
 func (j *FindImageJob) Do(signal <-chan struct{}) error {
-	rows, err := j.picDB.Query("SELECT id FROM images")
-	if err != nil {
-		return fmt.Errorf("query pic db failed, %v", err)
-	}
-	var images = make(map[string]int, 0)
-	for rows.Next() {
-		select {
-		case <-signal:
-			j.Result = nil
-			return ErrInterruptted
-		default:
-			var id int
-			rows.Scan(&id)
-			h := md5.New()
-			fmt.Fprint(h, id)
-			key := h.Sum(nil)
-			images[hex.EncodeToString(key)] = id
-		}
-	}
-	rows, err = j.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
+	rows, err := j.questionDB.Query("SELECT Answer_Id, Content FROM vipshop_answer WHERE Status = 1")
 	if err != nil {
 		return fmt.Errorf("Query answer failed, %v", err)
 	}
 	defer rows.Close()
-	j.Result = make(map[int][]int)
+	j.Result = make(map[uint64][]uint64)
 	for rows.Next() {
 		select {
 		case <-signal:
@@ -154,7 +179,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 			return ErrInterruptted
 		default:
 			var (
-				ansID   int
+				ansID   uint64
 				content string
 			)
 			err = rows.Scan(&ansID, &content)
@@ -162,7 +187,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 				return fmt.Errorf("scan failed, %v", err)
 			}
 
-			var imageGroup = make([]int, 0)
+			var imageGroup = make([]uint64, 0)
 
 			//Find img tag and trim the content
 			for currentIndex := strings.Index(content, "<img"); currentIndex >= 0; currentIndex = strings.Index(content, "<img") {
@@ -183,13 +208,8 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 				//Find image's ID
 				srcContent := strings.TrimPrefix(content[start:end], "http://")
 				baseNames := strings.Split(srcContent, "/")
-				baseNames = strings.Split(baseNames[len(baseNames)-1], ".")
-				if len(baseNames) <= 1 {
-					//bad formatted name
-					continue
-				}
-				encodedID := strings.Join(baseNames[0:len(baseNames)-1], "")
-				id, ok := images[encodedID]
+				rawFileName := baseNames[len(baseNames)-1]
+				id, ok := j.LookUpImages[rawFileName]
 				if !ok {
 					continue
 				}
@@ -209,7 +229,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 type LinkImageJob struct {
 	IsDone        bool
 	AffecttedRows int //AffecttedRows count how many rows we totally write.
-	input         map[int][]int
+	input         map[uint64][]uint64
 }
 
 // Do LinkImageJob will insert rows into middle table of image and answer.

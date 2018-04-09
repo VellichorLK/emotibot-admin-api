@@ -3,24 +3,34 @@ package imagesManager
 import (
 	"bytes"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"path"
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"github.com/satori/go.uuid"
 )
 
 func storeImage(tx *sql.Tx, fileName string, content []byte) error {
 	var err error
-	var imageID uint64
-	imageID, fileName, err = newImageRecord(tx, fileName, len(content))
+
+	u1, err := uuid.NewV4()
 	if err != nil {
 		return err
 	}
-	encodeFileName := getImageName(imageID, fileName)
 
-	err = ioutil.WriteFile(Volume+"/"+encodeFileName, content, 0644)
+	//image name store in the disk
+	rawFileName := hex.EncodeToString(u1[:]) + path.Ext(fileName)
+
+	_, fileName, err = newImageRecord(tx, fileName, len(content), rawFileName)
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(Volume+"/"+rawFileName, content, 0644)
 	if err != nil {
 		return err
 	}
@@ -64,16 +74,15 @@ func getImageList(args *getImagesArg) (*imageList, error) {
 }
 
 //newImageRecord would return the real file name which is inserted into db and its id
-func newImageRecord(tx *sql.Tx, name string, size int) (uint64, string, error) {
+func newImageRecord(tx *sql.Tx, name string, size int, rawFileName string) (uint64, string, error) {
 
-	//db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		return 0, "", errors.New("No module(" + ModuleInfo.ModuleName + ") db connection")
 	}
 
-	sql := "insert into " + imageTable + " (" + attrFileName + "," + attrLocationID + "," + attrSize + ") values (?,?,?)"
+	insertSQL := fmt.Sprintf("insert into %s (%s,%s,%s,%s) values (?,?,?,?)", imageTable, attrFileName, attrLocationID, attrSize, attrRawFileName)
 
-	id, _, fileName, err := inputUniqueFileName(tx, sql, name, []interface{}{name, LocalID, size})
+	id, _, fileName, err := inputUniqueFileName(tx, insertSQL, name, []interface{}{name, LocalID, size, rawFileName})
 
 	return uint64(id), fileName, err
 }
@@ -163,7 +172,13 @@ func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(nameMap) != len(imageIDs) {
+
+	rawFileName, err := getRealFileNameByImageID(imageIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nameMap) != len(imageIDs) || len(rawFileName) != len(imageIDs) {
 		return nil, errImageNotAllGet
 	}
 	realFileLocation := make([]string, len(imageIDs))
@@ -173,7 +188,7 @@ func packageImages(imageIDs []interface{}) (*bytes.Buffer, error) {
 		switch id := imageIDs[i].(type) {
 		case uint64:
 			if file, ok := nameMap[id]; ok {
-				realFileLocation[i] = Volume + "/" + getImageName(id, file)
+				realFileLocation[i] = Volume + "/" + rawFileName[i]
 				nameList[i] = file
 			} else {
 				return nil, fmt.Errorf("image id %v has no file name", id)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -81,7 +82,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	condition += "limit " + strconv.FormatInt(args.Limit, 10)
 	condition += " offset " + strconv.FormatInt(args.Page*args.Limit, 10)
 
-	sqlString := "select a." + attrID + ",a." + attrFileName + ",a." + attrSize + ",a." + attrLocationID + ",a." + attrCreateTime + ",a." + attrLatestUpdate + ",b." + attrAnswerID
+	sqlString := "select a." + attrID + ",a." + attrFileName + ",a." + attrSize + ",a." + attrLocationID + ",a." + attrCreateTime + ",a." + attrLatestUpdate + ",a." + attrRawFileName + ",b." + attrAnswerID
 	sqlString += " from (select * from " + imageTable + " " + condition + ") as a left join " + relationTable + " as b on " +
 		"a." + attrID + "=b." + attrImageID
 
@@ -103,18 +104,29 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 		var fileName string
 		var createTime, updateTime time.Time
 		var answerID sql.NullInt64
-		err := rows.Scan(&id, &fileName, &size, &locationID, &createTime, &updateTime, &answerID)
+		var rawFileName sql.NullString
+		err := rows.Scan(&id, &fileName, &size, &locationID, &createTime, &updateTime, &rawFileName, &answerID)
 		if err != nil {
 			return nil, err
 		}
 		if lastID != id {
 			counter++
 			lastID = id
-			ii = &imageInfo{ImageID: id, Title: fileName, Size: size,
-				CreateTime: uint64(createTime.Unix()), LastModified: uint64(updateTime.Unix()),
-				URL: locations[locationID] + "/" + getImageName(id, fileName),
+			if rawFileName.Valid {
+
+				imageURL, err := url.Parse(locations[locationID] + "/" + rawFileName.String)
+				if err != nil {
+					util.LogWarn.Println(err)
+					continue
+				}
+
+				ii = &imageInfo{
+					ImageID: id, Title: fileName, Size: size,
+					CreateTime: uint64(createTime.Unix()), LastModified: uint64(updateTime.Unix()),
+					URL: imageURL.String(),
+				}
+				il.Images = append(il.Images, ii)
 			}
-			il.Images = append(il.Images, ii)
 		}
 		if answerID.Valid {
 			ii.answerID = append(ii.answerID, int(answerID.Int64))
@@ -279,9 +291,10 @@ func GetCategories() (map[int]*Category, error) {
 	return categories, nil
 }
 
+//get the file name stored in the disk. Keep the order of the imageID to fileName
 func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 
-	sqlString := "select " + attrID + "," + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
+	sqlString := "select " + attrID + "," + attrRawFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
 
 	rows, err := SqlQuery(db, sqlString, imageIDs...)
 	if err != nil {
@@ -310,7 +323,7 @@ func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 		case uint64:
 
 			if name, ok := fileMap[id]; ok {
-				fileNameList = append(fileNameList, getImageName(id, name))
+				fileNameList = append(fileNameList, name)
 			} else {
 				return nil, fmt.Errorf("image id %v has no file name", id)
 			}
@@ -367,8 +380,8 @@ func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
 			}
 		}
 
-		query := fmt.Sprintf("select a.%s, a.%s, a.%s, b.%s from %s as a left join %s as b on a.%s=b.%s where b.%s in (?%s) order by b.%s",
-			attrID, attrFileName, attrLocationID, attrAnswerID, imageTable, relationTable, attrID, attrImageID, attrAnswerID, strings.Repeat(",?", num-1), attrAnswerID)
+		query := fmt.Sprintf("select a.%s, a.%s, a.%s, a.%s, b.%s from %s as a left join %s as b on a.%s=b.%s where b.%s in (?%s) order by b.%s",
+			attrID, attrFileName, attrLocationID, attrRawFileName, attrAnswerID, imageTable, relationTable, attrID, attrImageID, attrAnswerID, strings.Repeat(",?", num-1), attrAnswerID)
 
 		rows, err := SqlQuery(db, query, answerIDs...)
 		if err != nil {
@@ -380,15 +393,26 @@ func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
 		var fileName string
 
 		for rows.Next() {
-			err = rows.Scan(&imageID, &fileName, &locationID, &answerID)
+			var rawFileName sql.NullString
+			err = rows.Scan(&imageID, &fileName, &locationID, &rawFileName, &answerID)
 			if err != nil {
 				return nil, err
 			}
 
 			if relation, ok := answerIDMap[answerID]; ok {
 				if locationURL, ok := locationMap[locationID]; ok {
-					imageInfo := &simpleImageInfo{ImageID: imageID, URL: strings.Trim(locationURL, "/") + "/" + getImageName(imageID, fileName)}
-					relation.Info = append(relation.Info, imageInfo)
+					if rawFileName.Valid {
+						u, err := url.Parse(strings.Trim(locationURL, "/") + "/" + rawFileName.String)
+						if err != nil {
+							util.LogError.Println(err)
+							continue
+						}
+						imageInfo := &simpleImageInfo{ImageID: imageID, URL: u.String()}
+						relation.Info = append(relation.Info, imageInfo)
+					} else {
+						util.LogWarn.Printf("image id %v has no raw file name\n", imageID)
+					}
+
 				} else {
 					util.LogWarn.Printf("location ID %v is not found\n", locationID)
 				}

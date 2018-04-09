@@ -75,6 +75,7 @@ const (
 	attrLocationID   = "location_id"
 	attrCreateTime   = "create_time"
 	attrLatestUpdate = "last_update_time"
+	attrRawFileName  = "raw_file_name"
 
 	attrLocation   = "location"
 	attrImageID    = "image_id"
