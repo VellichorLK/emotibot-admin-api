@@ -518,7 +518,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	var timeFormat string = "%Y-%m-%d %H:%i:%s"
 	db := util.GetMainDB()
 
-	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
+	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, al.Label_Id as label, %s"
 	query = fmt.Sprintf(query, timeFormat, timeFormat, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
 
 	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
@@ -529,6 +529,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	query += fmt.Sprintf(" inner join (%s) as a on q.Question_Id = a.Question_Id", answerSQL(condition, aids, &sqlParams, appid))
 	query += fmt.Sprintf(" left join %s_dynamic_menu as dm on dm.Answer_id = a.Answer_Id", appid)
 	query += fmt.Sprintf(" left join %s_related_question as rq on rq.Answer_id = a.Answer_Id", appid)
+	query += fmt.Sprintf(" left join %s_answerlabel as al on al.Answer_Id = a.Answer_Id", appid)
 
 	dimensionSQL, err := dimensionSQL(condition, appid)
 	if err != nil {
@@ -558,11 +559,13 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		var dm sql.NullString
 		var tagIDs sql.NullString
 		var answerString string
+		var label string
 
-		rows.Scan(&question.QuestionId, &question.CategoryId, &question.Content, &question.SQuestionConunt, &question.CategoryName, &answer.AnswerId, &answer.Content, &answerString, &answer.AnswerCmd, &answer.AnswerCmdMsg, &answer.NotShow, &answer.BeginTime, &answer.EndTime, &rq, &dm, &tagIDs)
+		rows.Scan(&question.QuestionId, &question.CategoryId, &question.Content, &question.SQuestionConunt, &question.CategoryName, &answer.AnswerId, &answer.Content, &answerString, &answer.AnswerCmd, &answer.AnswerCmdMsg, &answer.NotShow, &answer.BeginTime, &answer.EndTime, &rq, &dm, &label, &tagIDs)
 
 		// encode answer content
 		answer.Content = Escape(answer.Content)
+		answer.Label = label
 
 		// transform tag id format
 		if tagIDs.String == "" {

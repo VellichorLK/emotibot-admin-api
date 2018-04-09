@@ -61,6 +61,7 @@ type Answer struct {
 	AnswerCmd       string   `json:"Answer_CMD"`
 	AnswerCmdMsg    string   `json:"Answer_CMD_Msg"`
 	Dimension       []string `json:"dimension"`
+	Label           string   `json:"label"`
 }
 
 type QueryCondition struct {
