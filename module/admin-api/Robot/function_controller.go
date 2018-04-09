@@ -75,7 +75,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 		util.McUpdateFunction(appid)
 	}
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
-	consulRet, err := util.ConsulUpdateRobotChat(appid)
+	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
 	}

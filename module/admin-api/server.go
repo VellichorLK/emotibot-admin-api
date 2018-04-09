@@ -71,6 +71,7 @@ func main() {
 		Timeout: time.Duration(5) * time.Second,
 	}
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
+	util.LogTrace.Printf("Init consul client with url: %#v\n", u)
 
 	router := setRoute()
 	initDB()
