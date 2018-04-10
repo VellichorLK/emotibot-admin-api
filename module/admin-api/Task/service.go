@@ -58,9 +58,17 @@ func ImportScenario(appid string, newID bool, data interface{}) {
 }
 
 func parseJSONData(data interface{}) (string, string, interface{}, interface{}) {
-	taskEngineData := data.(*map[string]interface{})
-	content := (*taskEngineData)["taskScenario"].(map[string]interface{})
-	layout := (*taskEngineData)["taskLayouts"]
+	var content map[string]interface{}
+	var layout interface{}
+	taskEngineData, ok := data.(*map[string]interface{})
+	if ok {
+		content = (*taskEngineData)["taskScenario"].(map[string]interface{})
+		layout = (*taskEngineData)["taskLayouts"]
+	} else {
+		taskEngineData := data.(map[string]interface{})
+		content = taskEngineData["taskScenario"].(map[string]interface{})
+		layout = taskEngineData["taskLayouts"]
+	}
 	metadata := content["metadata"].(map[string]interface{})
 	id := metadata["scenario_id"].(string)
 	name := metadata["scenario_name"].(string)
