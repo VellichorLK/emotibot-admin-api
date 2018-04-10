@@ -114,7 +114,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 			lastID = id
 			if rawFileName.Valid {
 
-				imageURL, err := url.Parse(locations[locationID] + "/" + rawFileName.String)
+				imageURL, err := url.Parse(locations[locationID] + "/" + url.PathEscape(rawFileName.String))
 				if err != nil {
 					util.LogWarn.Println(err)
 					continue
