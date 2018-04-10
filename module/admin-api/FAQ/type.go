@@ -50,18 +50,19 @@ type Question struct {
 }
 
 type Answer struct {
-	QuestionId      int      `json:"Question_Id"`
-	AnswerId        int      `json:"Answer_Id"`
-	Content         string   `json:"Content_String"`
-	RelatedQuestion string   `json:"RelatedQuestion"`
-	DynamicMenu     string   `json:"DynamicMenu"`
-	NotShow         int      `json:"Not_Show_In_Relative_Q"`
-	BeginTime       string   `json:"Begin_Time"`
-	EndTime         string   `json:"End_Time"`
-	AnswerCmd       string   `json:"Answer_CMD"`
-	AnswerCmdMsg    string   `json:"Answer_CMD_Msg"`
-	Dimension       []string `json:"dimension"`
-	Label           string   `json:"label"`
+	QuestionId      int            `json:"Question_Id"`
+	AnswerId        int            `json:"Answer_Id"`
+	Content         string         `json:"Content_String"`
+	RelatedQuestion string         `json:"RelatedQuestion"`
+	DynamicMenu     string         `json:"DynamicMenu"`
+	NotShow         int            `json:"Not_Show_In_Relative_Q"`
+	BeginTime       string         `json:"Begin_Time"`
+	EndTime         string         `json:"End_Time"`
+	AnswerCmd       string         `json:"Answer_CMD"`
+	AnswerCmdMsg    string         `json:"Answer_CMD_Msg"`
+	Dimension       []string       `json:"dimension"`
+	DimensionMap    map[int]string `json:"dimension_map"`
+	Label           string         `json:"label"`
 }
 
 type QueryCondition struct {

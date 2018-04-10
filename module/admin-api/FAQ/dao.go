@@ -573,6 +573,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		} else {
 			answer.Dimension = FormDimension(strings.Split(tagIDs.String, ","), tagMap)
 		}
+		answer.DimensionMap = FormDimensionMap(strings.Split(tagIDs.String, ","), tagMap)
 
 		answer.RelatedQuestion = rq.String
 		answer.DynamicMenu = dm.String
@@ -595,6 +596,27 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 func Escape(target string) string {
 	re := regexp.MustCompile("<img.*?>")
 	return re.ReplaceAllString(target, "[图片]")
+}
+
+func FormDimensionMap(tagIDs []string, tagMap map[string]Tag) map[int]string {
+	ret := map[int]string{}
+	for _, tag := range tagMap {
+		if _, ok := ret[tag.Type]; !ok {
+			ret[tag.Type] = ""
+		}
+	}
+
+	for _, tagID := range tagIDs {
+		if tagID == "" {
+			continue
+		}
+		tag := tagMap[tagID]
+		if _, ok := ret[tag.Type]; !ok {
+			ret[tag.Type] = ""
+		}
+		ret[tag.Type] += fmt.Sprintf(",%s", tag.Content)
+	}
+	return ret
 }
 
 func FormDimension(tagIDs []string, tagMap map[string]Tag) []string {
@@ -644,7 +666,6 @@ func TagMapFactory(appid string) (map[string]Tag, error) {
 
 		tagMap[tagIDstr] = tag
 	}
-
 	return tagMap, nil
 }
 
