@@ -113,7 +113,7 @@ type VadResult struct {
 }
 
 type VadInfo struct {
-	Text     string  `json:"text"`
+	Text     string  `json:"text,omitempty"`
 	Prohibit string  `json:"prohibit_word,omitempty"`
 	Speed    float64 `json:"speed_per_min,omitempty"`
 }
