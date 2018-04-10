@@ -129,6 +129,7 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 		getEnvironment("SERVER_URL"),
 		taskScenarioEntry,
 		id)
+	util.LogTrace.Printf("Call %s to addScenario\n", url)
 	retStr, err = util.HTTPPutForm(url, updateData, 0)
 	return
 }
