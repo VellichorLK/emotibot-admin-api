@@ -113,7 +113,6 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler {
 	a, err := api.NewClient(&api.Config{
 		Address:    addr.Host,
-		Scheme:     addr.Scheme,
 		HttpClient: client,
 	})
 	if err != nil {
@@ -126,6 +125,11 @@ func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler
 	return func(key string) (Locker, error) {
 		opt := &api.LockOptions{
 			Key: key,
+			//shorten LockWaitTime and LockTryOnce to avoid two quick work session become two sequence works.
+			LockTryOnce:  true,
+			LockWaitTime: time.Duration(3) * time.Second,
+			//Add MonitorRetries to avoid network issues.
+			MonitorRetries: 2,
 		}
 		return a.LockOpts(opt)
 	}
