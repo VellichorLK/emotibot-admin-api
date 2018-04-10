@@ -7,7 +7,9 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"errors"
@@ -621,11 +623,19 @@ func QueryUnfinished(fileID string, appid string) ([]byte, int, error) {
 */
 func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int, error) {
 
-	//get vad information, prohibited words, text
-	vads, err := getVadInfo(fileID, appid)
-	if err != nil {
-		log.Println(err)
-		return http.StatusInternalServerError, err
+	enableASR := os.Getenv("ASR_ENABLE")
+	enableASR = strings.ToLower(enableASR)
+
+	var vads map[uint64]*VadInfo
+	var err error
+
+	if enableASR == "true" {
+		//get vad information, prohibited words, text
+		vads, err = getVadInfo(fileID, appid)
+		if err != nil {
+			log.Println(err)
+			return http.StatusInternalServerError, err
+		}
 	}
 
 	drb.Channels = make([]*DetailChannelResult, 0)
