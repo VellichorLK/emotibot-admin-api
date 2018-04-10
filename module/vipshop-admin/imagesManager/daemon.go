@@ -35,9 +35,14 @@ func InitDaemon() {
 				util.LogError.Printf("acquiring consul lock failed, %v\n", err)
 				continue
 			}
-			stop, err := lock.Lock(make(chan struct{}))
+			stop, err := lock.Lock(nil)
 			if err != nil {
 				util.LogError.Printf("lock acquiring failed, %v\n", err)
+				lock.Unlock()
+				continue
+			}
+			if stop == nil {
+				util.LogError.Println("Lock channel is nil, not a good return value.")
 				lock.Unlock()
 				continue
 			}
