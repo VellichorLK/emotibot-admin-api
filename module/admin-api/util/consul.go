@@ -93,7 +93,11 @@ func (c *ConsulClient) SetUpdateHandler(handler func(key string, val interface{}
 func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 	return func(key string, val interface{}) (int, error) {
 		key = strings.TrimPrefix(key, "/")
-		k, _ := url.Parse(key)
+		k, err := url.Parse(key)
+		if err != nil {
+			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			return 0, err
+		}
 		temp := u.ResolveReference(k)
 		body, err := json.Marshal(val)
 		request, err := http.NewRequest(http.MethodPut, temp.String(), bytes.NewReader(body))
@@ -150,7 +154,8 @@ func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error)
 func ConsulUpdateFAQ(appid string) (int, error) {
 	//contains no appid, becaues this can be use in vipshop for now
 	now := time.Now().Unix()
-	return ConsulUpdateVal(ConsulFAQKey, now)
+	key := fmt.Sprintf(ConsulFAQKey, appid)
+	return ConsulUpdateVal(key, now)
 }
 
 //ConsulUpdateTaskEngine is a convenient function for updating Task Engine's Consul Key
