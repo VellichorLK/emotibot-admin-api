@@ -470,9 +470,11 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		}
 
 		if condition.SearchAll && condition.Keyword != "" {
-			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
-			param := "%" + condition.Keyword + "%"
+			query += " where (q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?) and q.Status >= 0"
+			param := "%" + strings.Replace(condition.Keyword, "%", "[%]", -1) + "%"
 			sqlParams = append(sqlParams, param, param, param, param)
+		} else {
+			query += " where q.Status >= 0"
 		}
 
 		query += " group by q.Question_Id order by q.Question_Id desc"
@@ -480,7 +482,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 	} else {
 		// no filter
 		query = fmt.Sprintf(`SELECT q.Question_Id, GROUP_CONCAT(DISTINCT a.Answer_Id) as aids from %s_question as q
-				inner join %s_answer as a on q.Question_Id = a.Question_Id
+				inner join %s_answer as a on q.Question_Id = a.Question_Id and q.Status >= 0
 				group by q.Question_Id
 				order by q.Question_Id desc`, appid, appid)
 	}
@@ -670,7 +672,7 @@ func TagMapFactory(appid string) (map[string]Tag, error) {
 }
 
 func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, appid string) (string, error) {
-	query := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, fullc.CategoryName from (
+	query := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, tmp_q.Status, fullc.CategoryName from (
 		select * from %s_question
 		where %s_question.status >= 0
 		#CATEGORY_CONDITION#
