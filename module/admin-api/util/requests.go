@@ -277,10 +277,13 @@ func HTTPPutForm(requestURL string, data map[string]interface{}, timeout int) (s
 	input := url.Values{}
 
 	for key, value := range data {
-		text, _ := json.Marshal(value)
-		input.Add(key, string(text))
+		if _, ok := value.(string); ok {
+			input.Add(key, value.(string))
+		} else {
+			text, _ := json.Marshal(value)
+			input.Add(key, string(text))
+		}
 	}
-
 	if timeout > 0 {
 		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
 		client = &http.Client{

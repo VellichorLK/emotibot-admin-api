@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"runtime"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -101,7 +102,8 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 	defer func() {
 		// recover from panic if one occured. Set err to nil otherwise.
 		if r, ok := recover().(error); ok {
-			fmt.Println("Recovered in f: ", r)
+			_, file, line, _ := runtime.Caller(1)
+			fmt.Printf("Recovered in %s:%d - %s\n", file, line, r)
 			err = errors.New("Handle add scenario fail")
 		}
 	}()
@@ -113,17 +115,18 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 	}
 	url := fmt.Sprintf("%s/%s", getEnvironment("SERVER_URL"), taskScenarioEntry)
 	retData, err := util.HTTPPostForm(url, postData, 0)
-	if err == nil {
+	if err != nil {
+		util.LogTrace.Printf("Err: %s", err.Error())
 		return "", err
 	}
 	retObj := map[string]interface{}{}
 	err = json.Unmarshal([]byte(retData), &retObj)
-	if err == nil {
+	if err != nil {
+		util.LogTrace.Printf("Err: %s", err.Error())
 		return "", err
 	}
 	id := retObj["scenarioID"].(string)
 	contentObj := content.(map[string]interface{})
-	util.LogInfo.Printf("content: %#v\n", contentObj)
 	metadata := contentObj["metadata"].(map[string]interface{})
 	util.LogInfo.Printf("metadata: %#v\n", metadata)
 	metadata["scenario_id"] = id
