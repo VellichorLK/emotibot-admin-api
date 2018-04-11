@@ -561,13 +561,15 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		var dm sql.NullString
 		var tagIDs sql.NullString
 		var answerString string
-		var label string
+		var label sql.NullString
 
 		rows.Scan(&question.QuestionId, &question.CategoryId, &question.Content, &question.SQuestionConunt, &question.CategoryName, &answer.AnswerId, &answer.Content, &answerString, &answer.AnswerCmd, &answer.AnswerCmdMsg, &answer.NotShow, &answer.BeginTime, &answer.EndTime, &rq, &dm, &label, &tagIDs)
 
 		// encode answer content
 		answer.Content = Escape(answer.Content)
-		answer.Label = label
+		if label.Valid {
+			answer.Label = label.String
+		}
 
 		// transform tag id format
 		if tagIDs.String == "" {
