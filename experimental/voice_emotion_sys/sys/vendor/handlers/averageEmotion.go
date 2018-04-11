@@ -141,6 +141,8 @@ func AverageDuration(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		t2 = uint64(AddTimeUnit(int64(t2), Day) - 1)
+
 		avgDurMap, err := groupAvgDuration(t1, t2, appid, filter)
 		if err != nil {
 			http.Error(w, "Internal server error: "+err.Error(), http.StatusInternalServerError)
