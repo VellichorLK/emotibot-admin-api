@@ -520,7 +520,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	var timeFormat string = "%Y-%m-%d %H:%i:%s"
 	db := util.GetMainDB()
 
-	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, al.Label_Id as label, %s"
+	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, group_concat(DISTINCT al.Label_Id) as label, %s"
 	query = fmt.Sprintf(query, timeFormat, timeFormat, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
 
 	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
@@ -868,10 +868,12 @@ func dimensionSQL(condition QueryCondition, appid string) (string, error) {
 	// this sql cannot used in ONLY_FULL_GROUP_BY mysql.
 	// note: SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
 	query = `select Answer_Id as a_id, tag_ids from (
-		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) as tag_ids from (SELECT answer_id, Tag_Type, anst.Tag_Id
-		FROM   %s_answertag as anst, %s_tag as tag
-		WHERE  anst.tag_id IN ( %s ) and anst.tag_id = tag.Tag_Id
-		GROUP  BY answer_id, Tag_Type) as ans_tag group by answer_id having count(*) = %d
+		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) from (
+			SELECT answer_id, Tag_Type, GROUP_CONCAT(DISTINCT anst.Tag_Id) as tag_ids
+			FROM   %s_answertag as anst, %s_tag as tag
+			WHERE  anst.tag_id IN ( %s ) and anst.tag_id = tag.Tag_Id
+			GROUP  BY answer_id, Tag_Type) as ans_tag
+		group by answer_id having count(*) = %d
 	) as tmp_tags`
 
 	// create tag id string
