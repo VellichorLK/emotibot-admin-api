@@ -1,7 +1,7 @@
 #!/bin/bash
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=voice_emotion_reg
-TAG=2018041000
+TAG=2018041100
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
