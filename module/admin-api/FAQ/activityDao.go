@@ -152,14 +152,14 @@ func getAllLabelActivityCount(appid string) (map[int]int, error) {
 	return ret, nil
 }
 
-func getLabelActivityCount(appid string, tagID int) (int, error) {
+func getLabelActivityCount(appid string, labelID int) (int, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return 0, errors.New("DB not init")
 	}
 
 	queryStr := fmt.Sprintf("SELECT Count(*) FROM %s_activitylabel WHERE Status = 1 and Label_Id = ? group by Label_Id", appid)
-	row := mySQL.QueryRow(queryStr, tagID)
+	row := mySQL.QueryRow(queryStr, labelID)
 
 	var count int
 	err := row.Scan(&count)
@@ -192,8 +192,8 @@ func addActivity(appid string, activity *Activity) (err error) {
 	if err != nil {
 		return
 	}
-	if activity.LinkTag != nil {
-		err = dbLinkActivityLabel(appid, activity.ID, *activity.LinkTag, tx)
+	if activity.LinkLabel != nil {
+		err = dbLinkActivityLabel(appid, activity.ID, *activity.LinkLabel, tx)
 	}
 	if err != nil {
 		return
@@ -220,8 +220,8 @@ func updateActivity(appid string, newActivity *Activity) (err error) {
 	if err != nil {
 		return
 	}
-	if newActivity.LinkTag != nil {
-		err = dbLinkActivityLabel(appid, newActivity.ID, *newActivity.LinkTag, tx)
+	if newActivity.LinkLabel != nil {
+		err = dbLinkActivityLabel(appid, newActivity.ID, *newActivity.LinkLabel, tx)
 	}
 	if err != nil {
 		return
@@ -407,7 +407,7 @@ func getActivityByID(appid string, id int) (*Activity, error) {
 	return &ret, nil
 }
 
-func getActivityTag(appid string) (map[int]int, error) {
+func getActivityLabel(appid string) (map[int]int, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")

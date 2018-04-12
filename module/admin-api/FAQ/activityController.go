@@ -137,7 +137,7 @@ func parseActivityFromRequest(r *http.Request) (*Activity, error) {
 	if tag != "" {
 		val, err := strconv.Atoi(tag)
 		if err == nil {
-			ret.LinkTag = &val
+			ret.LinkLabel = &val
 		}
 	}
 	timeLayout := "2006-01-02T15:04:05.000Z"

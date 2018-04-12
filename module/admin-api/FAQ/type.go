@@ -100,7 +100,7 @@ type Tag struct {
 // Label means activity tag in UI
 type Label struct {
 	ID            int    `json:"id"`
-	Name          string `json:"tag_name"`
+	Name          string `json:"name"`
 	ActivityCount int    `json:"activity_count"`
 }
 
@@ -112,7 +112,7 @@ type Activity struct {
 	StartTime *time.Time `json:"start_time"`
 	EndTime   *time.Time `json:"end_time"`
 	Status    bool       `json:"publish_status"`
-	LinkTag   *int       `json:"tag"`
+	LinkLabel *int       `json:"label"`
 }
 
 //RFQuestion is removed Feedback question(移除解決未解決的問題)

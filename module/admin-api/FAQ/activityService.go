@@ -78,27 +78,27 @@ func GetActivities(appid string) ([]*Activity, error) {
 		return nil, err
 	}
 
-	activityTag, err := getActivityTag(appid)
+	activityLabel, err := getActivityLabel(appid)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, activity := range activities {
-		if tag, ok := activityTag[activity.ID]; ok {
-			tagID := tag
-			activity.LinkTag = &tagID
+		if label, ok := activityLabel[activity.ID]; ok {
+			labelID := label
+			activity.LinkLabel = &labelID
 		}
 	}
 	return activities, nil
 }
 
 func AddActivity(appid string, activity *Activity) (int, error) {
-	// check tag existed first
-	if activity.LinkTag != nil {
-		tag := *activity.LinkTag
-		_, err := getQuestionLabelByID(appid, tag)
+	// check label existed first
+	if activity.LinkLabel != nil {
+		label := *activity.LinkLabel
+		_, err := getQuestionLabelByID(appid, label)
 		if err != nil {
-			return ApiError.REQUEST_ERROR, errors.New("Tag not existed")
+			return ApiError.REQUEST_ERROR, errors.New("Label not existed")
 		}
 	}
 
@@ -111,12 +111,12 @@ func AddActivity(appid string, activity *Activity) (int, error) {
 }
 
 func UpdateActivity(appid string, activity *Activity) (int, error) {
-	// check tag existed first
-	if activity.LinkTag != nil {
-		tag := *activity.LinkTag
-		_, err := getQuestionLabelByID(appid, tag)
+	// check label existed first
+	if activity.LinkLabel != nil {
+		label := *activity.LinkLabel
+		_, err := getQuestionLabelByID(appid, label)
 		if err != nil {
-			return ApiError.REQUEST_ERROR, errors.New("Tag not existed")
+			return ApiError.REQUEST_ERROR, errors.New("Label not existed")
 		}
 	}
 
@@ -154,10 +154,10 @@ func DeleteActivity(appid string, id int) (int, error) {
 }
 
 func GetActivityByLabelID(appid string, lid int) (int, *Activity, error) {
-	// check tag existed first
+	// check label existed first
 	_, err := getQuestionLabelByID(appid, lid)
 	if err != nil {
-		return ApiError.REQUEST_ERROR, nil, errors.New("Tag not existed")
+		return ApiError.REQUEST_ERROR, nil, errors.New("Label not existed")
 	}
 
 	aid, err := getActivityOfLabel(appid, lid)

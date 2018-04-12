@@ -540,6 +540,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	query += fmt.Sprintf(" left join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL)
 	query += " group by a.Answer_Id order by q.Question_Id desc, a.Answer_Id"
 
+	util.LogTrace.Printf("\nSQL query:\n%s\n\n", query)
 	// fetch
 	rows, err := db.Query(query)
 	if err != nil {
@@ -572,6 +573,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		}
 
 		// transform tag id format
+		util.LogTrace.Printf("tagIDs: %#v\n", tagIDs)
 		if tagIDs.String == "" {
 			answer.Dimension = []string{"", "", "", "", ""}
 		} else {
@@ -629,6 +631,8 @@ func FormDimension(tagIDs []string, tagMap map[string]Tag) []string {
 	if len(tagIDs) == 0 {
 		return tags
 	}
+
+	util.LogTrace.Printf("tagIDs: %+v\ntagMap:\n%+v\n\n", tagIDs, tagMap)
 
 	for _, tagID := range tagIDs {
 		tag := tagMap[tagID]
