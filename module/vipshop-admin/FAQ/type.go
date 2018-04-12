@@ -88,6 +88,21 @@ type Parameter interface {
 	FormValue(name string) string
 }
 
+type SimilarQuestionDAO struct {
+	Qid int
+	Content string
+	Sid int
+	Status int
+}
+
+// this dao is used for both dynamic menu and relative question
+type AnswerLabelDAO struct {
+	Id int
+	AnswerId int
+	Content string
+}
+
+
 type Tag struct {
 	Type    int
 	Content string
