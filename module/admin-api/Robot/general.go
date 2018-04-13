@@ -15,9 +15,9 @@ func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "robot",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("GET", "functions", []string{"view"}, handleFunctionList),
-			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllFunction),
-			util.NewEntryPoint("POST", "function/{name}", []string{"edit"}, handleUpdateFunction),
+			util.NewEntryPoint("GET", "functions", []string{"view"}, handleDBFunctionList),
+			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllDBFunction),
+			util.NewEntryPoint("POST", "function/{name}", []string{"edit"}, handleUpdateDBFunction),
 
 			util.NewEntryPoint("GET", "qas", []string{"view"}, handleRobotQAList),
 			util.NewEntryPoint("POST", "qabuild", []string{"edit"}, handleRobotQAModelRebuild),

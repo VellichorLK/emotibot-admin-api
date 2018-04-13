@@ -43,3 +43,11 @@ type ChatInfoInput struct {
 	Contents []string `json:"contents"`
 	Name     string   `json:"name"`
 }
+
+type Function struct {
+	Code   string `json:"code"`
+	Name   string `json:"name"`
+	Active bool   `json:"active"`
+	Remark string `json:"remark"`
+	Intent string `json:"intent"`
+}
