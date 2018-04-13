@@ -13,6 +13,10 @@ import (
 )
 
 const SEPARATOR = "#SEPARATE_TOKEN#"
+const (
+	DynamicMenu = iota
+	RelatedQuestion = iota
+)
 
 //errorNotFound represent SQL select query fetch zero item
 // var errorNotFound = errors.New("items not found")
@@ -888,4 +892,461 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	}
 
 	return dimensionIdMap, nil
+}
+
+func FindQuestions(appid string, targets []Question) (questions []Question, err error) {
+	db := util.GetMainDB()
+
+	if len(targets) == 0 {
+		return
+	}
+
+	var conditions []interface{}
+	appids := []interface{}{appid, appid, appid, appid, appid, appid}
+	sql := fmt.Sprintf(`SELECT Question_Id, Content, CategoryId, categoryname FROM %s_question as q
+		left join (
+			select level5.categoryid as id,concat_ws('/',level1.categoryname, level2.categoryname, level3.categoryname, level4.categoryname, level5.categoryname) AS CategoryName from (
+				select categoryid, categoryname, parentid from %s_categories) as level5
+				left join (select * from %s_categories) as level4 on level4.categoryid = level5.parentid
+				left join (select * from %s_categories) as level3 on level3.categoryid = level4.parentid
+				left join (select * from %s_categories) as level2 on level2.categoryid = level3.parentid
+				left join (select * from %s_categories) as level1 on level1.categoryid = level2.parentid
+		) as fullc on fullc.id = q.CategoryId where`, appids...)
+
+	var shouldOr bool = false
+	for _, dao := range targets { 
+		clause, condition := genQuestionWhereClause(&dao)
+		if len(condition) == 0 {
+			continue
+		}
+		conditions = append(conditions, condition...)
+
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else {
+			sql += fmt.Sprintf(" %s", clause)
+			shouldOr = true
+		}
+	}
+
+	rows, err := db.Query(sql, conditions...)
+	if err != nil {
+		return
+	}
+
+	for rows.Next() {
+		util.LogError.Printf("enter row")
+		question := Question{}
+		rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &question.CategoryName)
+
+		questions = append(questions, question)
+	}
+
+	return
+}
+
+func DeleteQuestions(appid string, targets []Question) (error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return fmt.Errorf("main db connection pool is nil")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("transaction start failed, %v", err)
+	}
+	defer util.ClearTransition(tx)
+
+	err = deleteQuestions(appid, targets, tx)
+	tx.Commit()
+	return err
+}
+
+func deleteQuestions(appid string, targets []Question, tx *sql.Tx) (error) {
+	// what we should de when delete questions
+	// 1. find answers of questions
+	// 2. delete answers
+	// 3. delete quesions
+
+	var targetAnswers []Answer
+	for _, question := range targets {
+		targetAnswer := Answer{
+			QuestionId: question.QuestionId,
+		}
+
+		targetAnswers = append(targetAnswers, targetAnswer)
+	}
+	targetAnswers, err := findAnswers(appid, targetAnswers, tx)
+	
+	var answerIDs []Answer = make([]Answer, len(targetAnswers))
+	for index, answer := range targetAnswers {
+		targetAnswer := Answer{
+			AnswerId: answer.AnswerId,
+		}
+		answerIDs[index] = targetAnswer
+	}
+
+	// delete answers
+	err = deleteAnswers(appid, answerIDs, tx)
+	if err != nil {
+		return err
+	}
+
+	// delete questions
+	sql, conditions := genDeleteQuestionSQL(appid, targets)
+	_, err = tx.Exec(sql, conditions...)
+	return err
+}
+
+func genDeleteQuestionSQL(appid string, targets []Question) (string, []interface{}) {
+	sql := fmt.Sprintf("DELETE FROM %s_question where", appid)
+
+	var shouldOr bool = false
+	var conditions []interface{}
+	for _, dao := range targets {
+		clause, condition := genQuestionWhereClause(&dao)
+		if len(condition) == 0 {
+			continue
+		}
+		conditions = append(conditions, condition...)
+
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else {
+			sql += fmt.Sprintf(" %s", clause)
+			shouldOr = true
+		}
+	}
+
+	return sql, conditions
+}
+
+func genQuestionWhereClause(dao *Question) (string, []interface{}) {
+	var conditions []interface{}
+	var shouldAnd bool = false
+	whereClause := "("
+
+	if dao.QuestionId != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.QuestionId, "Question_Id", &shouldAnd)
+	}
+
+	if dao.Content != "" {
+		appendClauseAndConditions(&whereClause, &conditions, dao.Content, "Content", &shouldAnd)
+	}
+
+	if dao.CategoryId != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.CategoryId, "CategoryId", &shouldAnd)
+	}
+	whereClause += ")"
+
+	if len(conditions) == 0 {
+		return "", conditions
+	}
+
+	return whereClause, conditions
+}
+
+func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
+	sql, conditions := genFindAnswersSQL(appid, targets)
+
+	var answers []Answer
+	rows, err := tx.Query(sql, conditions...)
+	if err != nil {
+		return answers, err
+	}
+
+	for rows.Next() {
+		answer := Answer{}
+		err = rows.Scan(&answer.AnswerId, &answer.QuestionId, &answer.Content, &answer.AnswerCmd, &answer.BeginTime, &answer.EndTime,  &answer.AnswerCmdMsg)
+		if err != nil {
+			return answers, err
+		}
+		answers = append(answers, answer)
+	}
+
+	return answers, nil
+}
+
+func genFindAnswersSQL(appid string, targets []Answer) (string, []interface{}) {
+	var conditions []interface{}
+	
+	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Answer_CMD_Msg FROM %s_answer", appid)
+
+	if len(targets) == 0 {
+		return sql, conditions
+	}
+
+	var shouldOr bool = false
+	for _, dao := range targets {
+		clause, condition := genAnswerWhereClause(&dao)
+		if len(condition) == 0 {
+			continue
+		}
+
+		conditions = append(conditions, condition...)
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else {
+			sql += fmt.Sprintf(" where %s", clause)
+			shouldOr = true
+		}
+	}
+
+	return sql, conditions
+}
+
+func whereDateStringTemplate(start string, end string, shouldAnd *bool){
+	clause := ""
+	if *shouldAnd {
+		clause += "and"
+	}
+
+	*shouldAnd = true
+
+	if start != "" {
+		clause += "Begin_Time > ?"
+	}
+}
+
+func DeleteAnswers(appid string, targets []Answer) (error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return fmt.Errorf("main db connection pool is nil")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("transaction start failed, %v", err)
+	}
+	defer util.ClearTransition(tx)
+
+	err = deleteAnswers(appid, targets, tx)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) (error) {
+	// what we should do when delete an answer
+	// 1. delete relative questions
+	// 2. delete dynamic menu
+	// 3. delete answer
+
+	if len(answers) == 0 {
+		return nil
+	}
+
+	var targetLabels []AnswerLabelDAO
+	var conditions []interface{}
+	var shouldOr bool = false
+	var err error
+	sql := fmt.Sprintf("DELETE FROM %s_answer where", appid)
+	for _, answer := range answers {
+		var targetLabel AnswerLabelDAO = AnswerLabelDAO{
+			AnswerId: answer.AnswerId,
+		}
+		targetLabels = append(targetLabels, targetLabel)
+
+		clause, condition := genAnswerWhereClause(&answer)
+		if len(condition) == 0 {
+			continue
+		}
+		conditions = append(conditions, condition...)
+		
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else{
+			sql += fmt.Sprintf(" %s", clause)
+			shouldOr = true
+		}
+	}
+
+	// delete relative questions
+	if len(targetLabels) != 0 {
+		err = deleteAnswerLabels(appid, RelatedQuestion, tx, targetLabels)
+		if err != nil {
+			return err
+		}
+
+		// delete dynamic menu
+		err = deleteAnswerLabels(appid, DynamicMenu, tx, targetLabels)
+		if err != nil {
+			return err
+		}
+	}
+
+	// delete answer
+	util.LogError.Printf("%s", sql)
+	util.LogError.Printf("%+v", conditions)
+	_, err = tx.Exec(sql, conditions...)
+	return err
+}
+
+func genAnswerWhereClause(dao *Answer) (string, []interface{}) {
+	var conditions []interface{}
+	var shouldAnd bool = false
+	whereClause := "("
+
+	if dao.QuestionId != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.QuestionId, "Question_Id", &shouldAnd)
+	}
+
+	if dao.AnswerId != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.AnswerId, "Answer_Id", &shouldAnd)
+	}
+
+	if dao.Content != "" {
+		appendClauseAndConditions(&whereClause, &conditions, dao.Content, "Content", &shouldAnd)
+	}
+
+	if dao.BeginTime != "" {
+		if shouldAnd {
+			whereClause +=" AND"
+		}
+		shouldAnd = true
+
+		whereClause += " Begin_Time > ?"
+		conditions = append(conditions, dao.BeginTime)
+	}
+
+	if dao.EndTime != "" {
+		if shouldAnd {
+			whereClause += " AND"
+		}
+		shouldAnd = true
+
+		whereClause += " End_Time < ?"
+		conditions = append(conditions, dao.EndTime)
+	}
+	whereClause += ")"
+
+	if len(conditions) == 0 {
+		return "", conditions
+	}
+
+	return whereClause, conditions
+}
+
+func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) (error) {
+	var table string
+	var column string
+
+	if len(targetLabels) == 0 {
+		return nil
+	}
+
+	if labelType == RelatedQuestion {
+		table = fmt.Sprintf("%s_related_question", appid)
+		column = "RelatedQuestion"
+	} else if labelType == DynamicMenu {
+		table = fmt.Sprintf("%s_dynamic_menu", appid)
+		column = "DynamicMenu"
+	} else {
+		return fmt.Errorf("Error Label Type")
+	}
+
+	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
+
+	_, err :=tx.Exec(sql, conditions...)
+	return err
+}
+
+func genDeleteAnswerLabelSQL(table string, column string, targets []AnswerLabelDAO) (string, []interface{}) {
+	var conditions []interface{}
+
+	var shouldOr bool = false
+	sql := fmt.Sprintf("DELETE FROM %s where", table)
+	for _, dao := range targets {
+		clause, condition := genAnswerLableWhereClause(dao, column)
+		if len(condition) == 0 {
+			continue
+		}
+		conditions = append(conditions, condition...)
+
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else {
+			sql += clause
+		}
+
+		shouldOr = true
+	}
+
+	return sql, conditions
+}
+
+func genAnswerLableWhereClause(dao AnswerLabelDAO, column string) (string, []interface{}) {
+	var conditions []interface{}
+	whereClause := "("
+	shouldAnd := false
+
+	if dao.Id != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.Id, "id", &shouldAnd)
+	}
+
+	if dao.AnswerId != 0 {
+		appendClauseAndConditions(&whereClause, &conditions, dao.AnswerId, "Answer_id", &shouldAnd)
+	}
+
+	if dao.Content != "" {
+		appendClauseAndConditions(&whereClause, &conditions, dao.AnswerId, column, &shouldAnd)
+	}
+	whereClause += ")"
+
+	if len(conditions) == 0 {
+		return "", conditions
+	}
+
+	return whereClause, conditions
+}
+
+func genSimilarQuestionWhereClause(dao SimilarQuestionDAO) (string, []interface{}) {
+	var conditions []interface{}
+	whereClause := "("
+	shouldAnd := false
+	if dao.Qid != 0 {
+		conditions = append(conditions, dao.Qid)
+		clause := whereClauseTemplate("Question_Id", &shouldAnd)
+		whereClause += clause
+	}
+
+	if dao.Content != "" {
+		conditions = append(conditions, dao.Content)
+		clause := whereClauseTemplate("Content", &shouldAnd)
+		whereClause += clause
+	}
+
+	if dao.Sid != 0 {
+		conditions = append(conditions, dao.Sid)
+		clause := whereClauseTemplate("SQ_Id", &shouldAnd)
+		whereClause += clause
+	}
+	whereClause += ")"
+
+	if len(conditions) == 0 {
+		return "", conditions
+	}
+
+	return whereClause, conditions
+}
+
+func whereClauseTemplate(column string, shouldAnd *bool) string {
+	clause := ""
+	if *shouldAnd {
+		clause += fmt.Sprintf(" and %s = ?", column)
+	} else {
+		clause += fmt.Sprintf("%s = ?", column)
+		*shouldAnd = true
+	}
+
+	return clause
+}
+
+func appendClauseAndConditions(whereClause *string, conditions *[]interface{}, argument interface{}, column string, shouldAnd *bool) {
+	*conditions = append(*conditions, argument)
+
+	clause := whereClauseTemplate(column, shouldAnd)
+	*whereClause += clause
 }

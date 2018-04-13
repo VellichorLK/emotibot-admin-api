@@ -28,6 +28,7 @@ func init() {
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
+			util.NewEntryPoint("POST", "questions/delete", []string{"edit"}, handleDeleteQuestion),
 			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
 			util.NewEntryPoint("GET", "category/{cid:string}/questions", []string{"view"}, handleCategoryQuestions),
@@ -427,4 +428,59 @@ func handleQuestionFilter(ctx context.Context) {
 	}
 
 	ctx.JSON(response)
+}
+
+func handleDeleteQuestion(ctx context.Context) {
+	// 1. get to be deleted questions
+	// 2. delete questions
+	// 3. write audit log
+
+	type Parameters struct {
+		Qids []int `json:"qids"`
+	}
+
+	appid := util.GetAppID(ctx)
+	parameters := Parameters{}
+
+	err := ctx.ReadJSON(&parameters)
+	if err != nil {
+		util.LogError.Printf("Error happened delete questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	
+	var targetQuestions []Question
+	for _, qid := range parameters.Qids {
+		question := Question{
+			QuestionId: qid,
+		}
+
+		targetQuestions = append(targetQuestions, question)
+	}
+
+	toBeDeletedQuestions, err := FindQuestions(appid, targetQuestions)
+	if err != nil {
+		util.LogError.Printf("Error happened delete questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+	auditMsg := ""
+	auditRet := 1
+	for _, question := range toBeDeletedQuestions {
+		auditMsg += fmt.Sprintf("[标准问题]:[%s]:%s;", question.CategoryName, question.Content)
+	}
+
+	err = DeleteQuestions(appid, targetQuestions)
+	if err != nil {
+		util.LogError.Printf("Error happened delete questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		auditRet = 0
+	}
+
+	// write audit log
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.LogError.Printf("audit message: %s", auditMsg)
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationDelete, auditMsg, auditRet)
 }

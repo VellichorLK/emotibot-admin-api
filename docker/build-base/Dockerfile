@@ -13,3 +13,4 @@ RUN go get github.com/gonum/blas
 RUN go get github.com/gonum/internal/asm/f32
 RUN go get github.com/gonum/internal/asm/f64
 RUN go get github.com/gorilla/mux
+RUN go get github.com/dgrijalva/jwt-go
