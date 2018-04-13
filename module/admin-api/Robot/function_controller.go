@@ -143,7 +143,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 		result = 1
 	}
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
-	ret, err := util.ConsulUpdateRobotChat(appid)
+	ret, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
 	}
