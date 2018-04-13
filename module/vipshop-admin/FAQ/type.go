@@ -39,6 +39,11 @@ type Category struct {
 	Children []int
 }
 
+// TODO: 這裡有兩種question 和 answer的 struct 是因為
+//       php版本的 request和response 結構不一致
+//       這次修改沒有時間統一 (要改的code 太多)
+//       所以留下 TODO by Ken
+
 type Question struct {
 	QuestionId      int      `json:"questionId"`
 	SQuestionConunt int      `json:"sQuesCount"`
@@ -46,6 +51,7 @@ type Question struct {
 	CategoryName    string   `json:"categoryName"`
 	CategoryId      int      `json:"categoryId"`
 	Answers         []Answer `json:"answerItem"`
+	User			string   `json:"createuser"`
 }
 
 type Answer struct {
@@ -60,6 +66,31 @@ type Answer struct {
 	AnswerCmd       string   `json:"Answer_CMD"`
 	AnswerCmdMsg    string   `json:"Answer_CMD_Msg"`
 	Dimension       []string `json:"dimension"`
+	DimensionIDs	[]int
+	RelatedQuestions []string `json:"relatedQ"`
+	DynamicMenus 	[]string `json:"dynamicMenu"`
+}
+
+type AnswerJson struct {
+	ID int `json:"id"`
+	QuestionID int
+	Content string `json:"answer"`
+	DynamicMenu []string `json:"dynamicMenu"`
+	RelatedQuestions []string `json:"relatedQ"`
+	AnswerCMD string `json:"answerCMD"`
+	AnswerCMDMsg string `json:"answerCMDMsg"`
+	NotShow bool `json:"not_show_in_relative_q"`
+	Dimension []int `json:"dimension"`
+	BeginTime string `json:"begin_time"`
+	EndTime string `json:"end_time"`
+}
+
+type QuestionJson struct {
+	Content string `json:"content"`
+	CategoryID int `json:"categoryid"`
+	SimilarQuestions []string `json:"similarQuestions"`
+	Answers []AnswerJson `json:"answer_json"`
+	User string `json:"createuser"`
 }
 
 type QueryCondition struct {
