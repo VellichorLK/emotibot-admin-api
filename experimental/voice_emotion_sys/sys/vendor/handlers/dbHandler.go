@@ -89,7 +89,7 @@ const InsertChannelScoreSQL = "insert into " + ChannelTable + " (" + NID + ", " 
 const UpdateResultSQL = "update " + MainTable + " set " + NANAST + "=? ," + NANAET + "=? ," + NANARES + "=? ," + NRDURATION +
 	"=? where " + NID + "=?"
 
-const QueryFileInfoAndChanScoreSQL = "select a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
+const QueryFileInfoAndChanScoreSQL = "select a." + NID + ",a." + NFILEID + ", a." + NFILENAME + ", a." + NFILETYPE + ", a." + NRDURATION +
 	", a." + NFILET + ", a." + NCHECKSUM + ", a." + NTAG + ", a." + NTAG2 + ", a." + NPRIORITY + ", a." + NSIZE + ", a." + NANARES + ", a." + NUPT +
 	", b." + NCHANNEL + ", b." + NEMOTYPE + ", b." + NSCORE + ", a." + NCOLID + ", a." + NCOLVAL
 
@@ -905,7 +905,12 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	ChannelMap := make(map[string]*ChannelResult)
 	EmotionUsedMap := make(map[string]bool)
 	ColumFieldMap := make(map[string]bool)
+	idList := make([]interface{}, 0)
+	idToFileID := make(map[uint64]string)
 	var count int
+	True := true
+	False := false
+	var id uint64
 	for rows.Next() {
 		nrb := new(ReturnBlock)
 		nrb.Channels = make([]*ChannelResult, 0)
@@ -919,7 +924,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		var colID sql.NullString
 		var colValue sql.NullString
 
-		err := rows.Scan(&nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
+		err := rows.Scan(&id, &nrb.FileID, &nrb.FileName, &nrb.FileType, &nrb.Duration,
 			&nrb.CreateTime, &nrb.Checksum, &nrb.Tag, &nrb.Tag2, &nrb.Priority, &nrb.Size, &nrb.AnalysisResult, &nrb.UploadTime,
 			&channel, &label, &score, &colID, &colValue)
 
@@ -937,6 +942,9 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 			*rbs = append(*rbs, rb)
 			ReturnBlockMap[rb.FileID] = rb
 			count++
+			idList = append(idList, id)
+			idToFileID[id] = nrb.FileID
+			rb.OverSilence = &False
 		}
 
 		if channel.Valid {
@@ -947,6 +955,8 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 				cr.ChannelID = int(channel.Int64)
 				rb.Channels = append(rb.Channels, cr)
 				ChannelMap[key] = cr
+				cr.OverProhitbited = &False
+				cr.OverSpeed = &False
 			} else {
 				cr = ch
 			}
@@ -983,8 +993,147 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		log.Println(err)
 		return 0, http.StatusInternalServerError, errors.New("Internal server error")
 	}
-	return count, http.StatusOK, nil
 
+	//check the over list
+	if len(idList) > 0 {
+
+		//check silence over the limit
+		silenceLimit := 30
+		overSilenceIDs, err := getOverSilence(silenceLimit, idList)
+		if err != nil {
+			log.Println(err)
+			return 0, http.StatusInternalServerError, errors.New("Internal server error")
+		}
+		for _, id := range overSilenceIDs {
+			rb := ReturnBlockMap[idToFileID[id]]
+			rb.OverSilence = &True
+		}
+
+		//check speed, prohitbied words
+
+		//get total count for each channel
+		segCount, err := getSegCount(idList)
+		if err != nil {
+			log.Println(err)
+			return 0, http.StatusInternalServerError, errors.New("Internal server error")
+		}
+
+		//get over speed
+		speedLimit := 300
+		overSpeedSeg, err := getOverSpeed(speedLimit, idList)
+		if err != nil {
+			log.Println(err)
+			return 0, http.StatusInternalServerError, errors.New("Internal server error")
+		}
+		for id, chMap := range overSpeedSeg {
+			for ch, count := range chMap {
+				if float64(count)/float64(segCount[id][ch]) > 0.3 {
+					key := idToFileID[id] + strconv.Itoa(ch)
+					chInfo := ChannelMap[key]
+					chInfo.OverSpeed = &True
+				}
+			}
+		}
+
+		//get over prohibited words
+		prohibitedLimit := 2
+		overProhibitedSeg, err := getOverProhibitedWords(idList)
+		if err != nil {
+			log.Println(err)
+			return 0, http.StatusInternalServerError, errors.New("Internal server error")
+		}
+
+		for id, chMap := range overProhibitedSeg {
+			for ch, count := range chMap {
+				if count > prohibitedLimit {
+					key := idToFileID[id] + strconv.Itoa(ch)
+					chInfo := ChannelMap[key]
+					chInfo.OverProhitbited = &True
+				}
+			}
+		}
+
+	}
+
+	return count, http.StatusOK, nil
+}
+
+func getOverSilence(limitSilence int, ids []interface{}) ([]uint64, error) {
+	silenceSQL := fmt.Sprintf("select %s from %s where %s=0 and %s-%s>=? and %s in (?%s) group by %s",
+		NID, AnalysisTable, NCHANNEL, NSEGET, NSEGST, NID, strings.Repeat(",?", len(ids)-1), NID)
+
+	params := make([]interface{}, 0)
+	params = append(params, limitSilence)
+	params = append(params, ids...)
+
+	rows, err := db.Query(silenceSQL, params...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	overIDs := make([]uint64, 0)
+	var id uint64
+	for rows.Next() {
+		err = rows.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		overIDs = append(overIDs, id)
+	}
+
+	return overIDs, nil
+
+}
+
+func getOverSpeed(limitSpeed int, ids []interface{}) (map[uint64]map[int]int, error) {
+
+	speedSQL := fmt.Sprintf("select b.%s, a.%s, count(b.%s) from %s  as a inner join %s as b on a.%s=b.%s where b.%s>? and b.%s in (?%s) group by a.%s,b.%s",
+		NVADFILEID, NCHANNEL, NVADFILEID, AnalysisTable, VadInfoTable, NSEGID, NSEGID, NSPEECHSPEED, NVADFILEID, strings.Repeat(",?", len(ids)-1), NCHANNEL, NVADFILEID)
+
+	params := make([]interface{}, 0)
+	params = append(params, limitSpeed)
+	params = append(params, ids...)
+
+	return getSegMap(speedSQL, params)
+}
+
+func getOverProhibitedWords(ids []interface{}) (map[uint64]map[int]int, error) {
+	speedSQL := fmt.Sprintf("select b.%s, a.%s, count(b.%s) from %s  as a inner join %s as b on a.%s=b.%s where b.%s>0 and b.%s in (?%s) group by a.%s,b.%s",
+		NVADFILEID, NCHANNEL, NVADFILEID, AnalysisTable, VadInfoTable, NSEGID, NSEGID, NPROHIBITID, NVADFILEID, strings.Repeat(",?", len(ids)-1), NCHANNEL, NVADFILEID)
+
+	return getSegMap(speedSQL, ids)
+}
+
+func getSegCount(ids []interface{}) (map[uint64]map[int]int, error) {
+	segCountSQL := fmt.Sprintf("select b.%s, a.%s, count(b.%s) from %s  as a inner join %s as b on a.%s=b.%s where b.%s in (?%s) group by a.%s,b.%s",
+		NVADFILEID, NCHANNEL, NVADFILEID, AnalysisTable, VadInfoTable, NSEGID, NSEGID, NVADFILEID, strings.Repeat(",?", len(ids)-1), NCHANNEL, NVADFILEID)
+	return getSegMap(segCountSQL, ids)
+}
+
+func getSegMap(querySQL string, params []interface{}) (map[uint64]map[int]int, error) {
+	segChMap := make(map[uint64]map[int]int)
+	rows, err := db.Query(querySQL, params...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var id uint64
+	var ch, total int
+	for rows.Next() {
+		err = rows.Scan(&id, &ch, &total)
+		if err != nil {
+			return nil, err
+		}
+		segCount, ok := segChMap[id]
+		if !ok {
+			segCount = make(map[int]int)
+			segChMap[id] = segCount
+		}
+		segCount[ch] = total
+	}
+
+	return segChMap, nil
 }
 
 func QueryChannelScore(id string, appid string, chs *[]*ChannelResult) error {

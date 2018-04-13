@@ -10,7 +10,15 @@ CONTAINER=voice_emotion_reg
 # </EDIT_ME>
 
 # Get tags from args
-TAG=2018041100
+
+GIT_HEAD="$(git rev-parse --short HEAD)"
+DATE=`date +%Y%m%d`
+TAG=$2
+
+if [ "$TAG" == "" ]; then
+    TAG="$DATE-$GIT_HEAD"
+fi
+
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 echo "# Launching $DOCKER_IMAGE"
 # Check if docker image exists (locally or on the registry)
