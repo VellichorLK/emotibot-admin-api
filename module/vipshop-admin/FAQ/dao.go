@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"crypto/sha256"
+	"encoding/hex"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -894,38 +896,147 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	return dimensionIdMap, nil
 }
 
-func InsertQuestion(appid string, question Question, answers []Answer) (qid int , err error) {
+func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64 , err error) {
 	db := util.GetMainDB()
 	if db == nil {
-		return fmt.Errorf("main db connection pool is nil")
+		err = fmt.Errorf("main db connection pool is nil")
+		return
 	}
 
 	tx, err := db.Begin()
 	if err != nil {
-		return fmt.Errorf("transaction start failed, %v", err)
+		err = fmt.Errorf("transaction start failed, %v", err)
+		return
 	}
 	defer util.ClearTransition(tx)
 
-	insertQuestion(appid, question, answers, tx)
+	qid, err = insertQuestion(appid, question, answers, tx)
+	if err != nil {
+		return
+	}
 
-	
+	err = tx.Commit()
+	return 
+
 }
 
-func insertQuestion(appid string, question Question, answers []Answer, tx *sql.Tx) (qid int, err error) {
-	columValues := []interface{}{question.Content, question.CategoryId, question.User, question.SQuestionConunt}
-	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, now())", appid)
+func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.Tx) (qid int64, err error) {
+	// hash content
+	hash := sha256.New()
+	hash.Write([]byte(question.Content))
+	md := hash.Sum(nil)
+	contentHash := hex.EncodeToString(md)
+
+	columValues := []interface{}{question.Content, question.CategoryId, question.User, contentHash, question.SQuestionConunt}
+	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, ContentHash, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, ?, now())", appid)
 
 	result, err := tx.Exec(sql, columValues...)
 	if err != nil {
 		return 
 	}
-	qid = result.LastInsertId()
+	qid, err = result.LastInsertId()
 
-	sql = fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content)")
+	err = insertAnswers(appid, qid, answers, tx)
+	if err != nil {
+		return
+	}
+	
+	return
+}
+
+func insertAnswers(appid string, qid int64, answers []Answer, tx *sql.Tx) (err error) {
 	for _, answer := range answers {
-		sql = ""
+		_, err = insertAnswer(appid, qid, &answer, tx)
+		if err != nil {
+			return
+		}
 	}
 
+	return
+}
+
+func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID int64, err error) {
+	sqlStr := fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Not_Show_In_Relative_Q, Answer_CMD_Msg, Content_String) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", appid)
+	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmdMsg, answer.BeginTime, answer.EndTime, answer.NotShow, answer.AnswerCmdMsg, answer.Content}
+
+	result, err := tx.Exec(sqlStr, columnValues...)
+	if err != nil {
+		util.LogError.Printf("error: %s", err.Error())
+		return
+	}
+
+	answerID, err = result.LastInsertId()
+	if err != nil {
+		return
+	}
+
+	if len(answer.RelatedQuestions) != 0 {
+		err = insertAnswerLabels(appid, answerID, RelatedQuestion, answer.RelatedQuestions, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(answer.DynamicMenus) != 0 {
+		err = insertAnswerLabels(appid, answerID, DynamicMenu, answer.DynamicMenus, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(answer.DimensionIDs) != 0 {
+		err = insertAnswerDimensions(appid, answerID, answer.DimensionIDs, tx)
+	}
+
+	return
+}
+
+func insertAnswerLabels(appid string, answerID int64, labelType int, labels []string, tx *sql.Tx) (err error) {
+	var table string
+	var column string
+	if labelType == RelatedQuestion {
+		table = fmt.Sprintf("%s_related_question", appid)
+		column = "RelatedQuestion"
+	} else if labelType == DynamicMenu {
+		table = fmt.Sprintf("%s_dynamic_menu", appid)
+		column = "DynamicMenu"
+	} else {
+		return fmt.Errorf("Error Label Type")
+	}
+
+	var values []interface{}
+	sqlStr := fmt.Sprintf("INSERT INTO %s (Answer_id, %s) VALUES", table, column)
+	for index, label := range labels {
+		if index == 0 {
+			sqlStr += " (?, ?)"
+		} else {
+			sqlStr += ", (?, ?)"
+		}
+		values = append(values, answerID)
+		values = append(values, label)
+	}
+	sqlStr += ";"
+
+	_, err = tx.Exec(sqlStr, values...)
+	return
+} 
+
+func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *sql.Tx) (err error) {
+	sqlStr := fmt.Sprintf("INSERT INTO %s_answertag (Answer_Id, Tag_Id, CreatedTime) VALUES", appid)
+
+	var values []interface{}
+	for index, dimension := range dimensions {
+		if index == 0 {
+			sqlStr += " (?, ?, now())"
+		} else {
+			sqlStr += ", (?, ?, now())"
+		}
+		values = append(values, answerID)
+		values = append(values, dimension)
+	}
+	sqlStr += ";"
+
+	_, err = tx.Exec(sqlStr, values...)
 	return
 }
 
@@ -1034,7 +1145,7 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) (error) {
 }
 
 func genDeleteQuestionSQL(appid string, targets []Question) (string, []interface{}) {
-	sql := fmt.Sprintf("UPDATE %s_question SET Status = -1 where", appid)
+	sql := fmt.Sprintf("UPDATE %s_question SET Status = -1, ContentHash = Question_Id where", appid)
 
 	var shouldOr bool = false
 	var conditions []interface{}

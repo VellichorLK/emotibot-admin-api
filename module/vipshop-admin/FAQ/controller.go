@@ -2,6 +2,7 @@ package FAQ
 
 import (
 	"database/sql"
+	"github.com/go-sql-driver/mysql"
 	"fmt"
 	"math"
 	"net/http"
@@ -26,6 +27,7 @@ func init() {
 			util.NewEntryPoint("GET", "question/{qid:string}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
+			util.NewEntryPoint("POST", "question", []string{"edit"}, handleCreateQuestion),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("POST", "questions/delete", []string{"edit"}, handleDeleteQuestion),
@@ -430,6 +432,98 @@ func handleQuestionFilter(ctx context.Context) {
 	ctx.JSON(response)
 }
 
+func handleCreateQuestion(ctx context.Context) {
+	// 1. create question
+	// 2. create answer
+	// 3. write audit log
+
+	appid := util.GetAppID(ctx)
+
+	questionJson := QuestionJson{}
+	err := ctx.ReadJSON(&questionJson)
+	if err != nil {
+		util.LogError.Printf("Error happened create new question %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+	// prepare audit log
+	category := Category{
+		ID: questionJson.CategoryID,
+	}
+	categoryPath, err := category.FullName()
+	if err != nil {
+		util.LogError.Printf("Error happened create new question %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	auditMsg := fmt.Sprintf("[标准问题]:[%s]:%s", categoryPath, questionJson.Content)
+	auditRet := 1
+
+	// transfrom data struct here
+	// QuestionJson => Question
+	// AnswerJson => Answer
+	newQuestion := Question{}
+	var newAnswers []Answer
+	newQuestion.CategoryId = questionJson.CategoryID
+	newQuestion.User = questionJson.User
+	newQuestion.Content = questionJson.Content
+	for _, answerJson := range questionJson.Answers {
+		answer := Answer{}
+		transformaAnswer(&answerJson, &answer)
+		newAnswers = append(newAnswers, answer)
+	}
+
+	// create question
+	qid, err := InsertQuestion(appid, &newQuestion, newAnswers)
+	if err != nil {
+		me, ok := err.(*mysql.MySQLError)
+		if !ok || me.Number != 1062 {
+			util.LogError.Printf("Error happened create new question %s", err.Error())
+			ctx.StatusCode(http.StatusInternalServerError)
+		} else {
+			util.LogError.Printf("Duplicate Question Content: %s", questionJson.Content)
+			ctx.StatusCode(http.StatusConflict)
+		}
+		auditRet = 0
+	}
+
+	// write audit log
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
+
+	// notify FAQ update
+	util.McManualBusiness(appid)
+
+	// response
+	type Response struct {
+		Qid int64 `json:"qid"`
+	}
+	responseJson := Response{
+		Qid: qid,
+	}
+	ctx.JSON(responseJson)
+}
+
+func transformaAnswer(answerJson *AnswerJson, answer *Answer) {
+	if answerJson.ID != 0 {
+		answer.AnswerId = answerJson.ID
+	}
+
+	answer.BeginTime = answerJson.BeginTime
+	answer.EndTime = answerJson.EndTime
+	answer.DynamicMenus = answerJson.DynamicMenu
+	answer.RelatedQuestions = answerJson.RelatedQuestions
+	answer.AnswerCmd = answerJson.AnswerCMD
+	answer.AnswerCmdMsg = answerJson.AnswerCMDMsg
+	answer.DimensionIDs = answerJson.Dimension
+
+	if answerJson.NotShow {
+		answer.NotShow = 1
+	}
+}
+
 func handleDeleteQuestion(ctx context.Context) {
 	// 1. get to be deleted questions
 	// 2. delete questions
@@ -477,6 +571,9 @@ func handleDeleteQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		auditRet = 0
 	}
+
+	// notify FAQ update
+	util.McManualBusiness(appid)
 
 	// write audit log
 	userID := util.GetUserID(ctx)
