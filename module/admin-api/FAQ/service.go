@@ -22,13 +22,13 @@ func AddAPICategory(appid string, name string, parentID int, level int) (*APICat
 	return newCategory, nil
 }
 
-func GetAPICategories(appid string) ([]*APICategory, error) {
+func GetAPICategories(appid string) (ret []*APICategory, err error) {
+	ret = []*APICategory{}
 	categoriesMap, err := getCategories(appid)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	var ret []*APICategory
 	for _, category := range categoriesMap {
 		if parent, ok := categoriesMap[category.ParentID]; ok {
 			parent.Children = append(parent.Children, category)
@@ -40,7 +40,7 @@ func GetAPICategories(appid string) ([]*APICategory, error) {
 		fillCategoryInfo(category, "", 1)
 	}
 
-	return ret, nil
+	return
 }
 
 func GetAPICategory(appid string, categoryID int) (*APICategory, error) {
