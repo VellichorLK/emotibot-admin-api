@@ -72,8 +72,9 @@ type BasicInfo struct {
 //ReturnBlock is used for api /emotion/files/<file_id>
 type ReturnBlock struct {
 	BasicInfo
-	Channels  []*ChannelResult `json:"channels"`
-	UsrColumn []*ColumnValue   `json:"user_column,omitempty"`
+	Channels    []*ChannelResult `json:"channels"`
+	UsrColumn   []*ColumnValue   `json:"user_column,omitempty"`
+	OverSilence *bool            `json:"over_silence,omitempty"`
 }
 
 type ColumnValue struct {
@@ -83,8 +84,10 @@ type ColumnValue struct {
 }
 
 type ChannelResult struct {
-	ChannelID int            `json:"channel_id"`
-	Result    []*EmtionScore `json:"result"`
+	ChannelID       int            `json:"channel_id"`
+	Result          []*EmtionScore `json:"result"`
+	OverSpeed       *bool          `json:"over_speed,omitempty"`
+	OverProhitbited *bool          `json:"over_prohibited_words,omitempty"`
 }
 
 type DetailReturnBlock struct {
