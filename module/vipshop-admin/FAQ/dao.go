@@ -894,6 +894,41 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	return dimensionIdMap, nil
 }
 
+func InsertQuestion(appid string, question Question, answers []Answer) (qid int , err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return fmt.Errorf("main db connection pool is nil")
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("transaction start failed, %v", err)
+	}
+	defer util.ClearTransition(tx)
+
+	insertQuestion(appid, question, answers, tx)
+
+	
+}
+
+func insertQuestion(appid string, question Question, answers []Answer, tx *sql.Tx) (qid int, err error) {
+	columValues := []interface{}{question.Content, question.CategoryId, question.User, question.SQuestionConunt}
+	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, now())", appid)
+
+	result, err := tx.Exec(sql, columValues...)
+	if err != nil {
+		return 
+	}
+	qid = result.LastInsertId()
+
+	sql = fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content)")
+	for _, answer := range answers {
+		sql = ""
+	}
+
+	return
+}
+
 func FindQuestions(appid string, targets []Question) (questions []Question, err error) {
 	db := util.GetMainDB()
 
@@ -999,7 +1034,7 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) (error) {
 }
 
 func genDeleteQuestionSQL(appid string, targets []Question) (string, []interface{}) {
-	sql := fmt.Sprintf("DELETE FROM %s_question where", appid)
+	sql := fmt.Sprintf("UPDATE %s_question SET Status = -1 where", appid)
 
 	var shouldOr bool = false
 	var conditions []interface{}
