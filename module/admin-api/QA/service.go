@@ -29,6 +29,7 @@ func DoChatRequestWithController(appid string, user string, inputData *QATestInp
 	customInfo := map[string]string{
 		"platform": inputData.Platform,
 		"brand":    inputData.Brand,
+		"sex":      inputData.Gender,
 	}
 	input["customInfo"] = customInfo
 
