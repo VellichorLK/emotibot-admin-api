@@ -2,7 +2,6 @@ package Dictionary
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -381,11 +380,6 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		"synonym-md5": md5Synonyms,
 		"timestamp":   now.UnixNano() / 1000000,
 	}
-	jsonStr, err := json.Marshal(consulJSON)
-	if err != nil {
-		util.LogError.Println("Cannot conver data into string to save in consul: ", err.Error())
-		return
-	}
-	util.ConsulUpdateEntity(appid, string(jsonStr))
-	util.LogInfo.Printf("Update to consul:\n%s\n", string(jsonStr))
+	util.ConsulUpdateEntity(appid, consulJSON)
+	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
 }

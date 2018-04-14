@@ -152,7 +152,7 @@ func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error)
 }
 
 //ConsulUpdateEntity is a convenient function for updating Task Engine's Consul Key
-func ConsulUpdateEntity(appid string, value string) (int, error) {
+func ConsulUpdateEntity(appid string, value interface{}) (int, error) {
 	key := fmt.Sprintf(ConsulEntityKey, appid)
 	return ConsulUpdateVal(key, value)
 }
