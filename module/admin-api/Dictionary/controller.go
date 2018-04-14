@@ -2,6 +2,7 @@ package Dictionary
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -27,7 +28,6 @@ func init() {
 		ModuleName: "dictionary",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "upload", []string{"view"}, handleUpload),
-			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
 			util.NewEntryPoint("GET", "download", []string{"export"}, handleDownload),
 			util.NewEntryPoint("GET", "download-meta", []string{"view"}, handleDownloadMeta),
 			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
@@ -37,6 +37,9 @@ func init() {
 			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
 			util.NewEntryPoint("POST", "wordbank", []string{"edit"}, handleUpdateWordbank),
 			util.NewEntryPoint("GET", "wordbank/{id}", []string{"view"}, handleGetWordbank),
+
+			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
+			util.NewEntryPointWithVer("GET", "download/{file}", []string{"view"}, handleDownloadFromMySQL, 2),
 		},
 	}
 	maxDirDepth = 4
@@ -320,14 +323,23 @@ func handleDownloadMeta(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
-	// ret := 0
 	errMsg := ""
 	appid := util.GetAppID(r)
-	// userID := util.GetUserID(r)
-	// userIP := util.GetUserIP(r)
+	now := time.Now()
+	var err error
+	buf := []byte{}
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
 	defer func() {
 		util.LogInfo.Println("Audit: ", errMsg)
-		// util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		ret := 0
+		if err == nil {
+			ret = 1
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+
+		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
+		RecordDictionaryImportProcess(appid, filename, buf, err)
 	}()
 
 	file, info, err := r.FormFile("file")
@@ -338,7 +350,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 
 	// 1. parseFile
 	size := info.Size
-	buf := make([]byte, size)
+	buf = make([]byte, size)
 	_, err = file.Read(buf)
 	if err != nil {
 		errMsg = err.Error()
@@ -358,7 +370,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. save to local file which can be get from url
+	// 3. save to local file which can be get from url
 	err, md5Words, md5Synonyms := SaveWordbankToFile(appid, wordbanks)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -366,13 +378,12 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
 
-	// 3. Update consul key
+	// 4. Update consul key
 	// TODO: use relative to compose the url
 	url := getEnvironment("INTERNAL_URL")
 	if url == "" {
 		url = defaultInternalURL
 	}
-	now := time.Now()
 	consulJSON := map[string]interface{}{
 		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
 		"md5":         md5Words,
@@ -382,4 +393,37 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)
 	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+}
+
+func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
+	ret := 0
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	filename := util.GetMuxVar(r, "file")
+	errMsg := fmt.Sprintf("%s%s: %s", util.Msg["DownloadFile"], util.Msg["Wordbank"], filename)
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+	}()
+
+	if filename == "" {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, "invalid filename"),
+			http.StatusBadRequest)
+		return
+	}
+
+	buf, err := GetWordbankFile(appid, filename)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "", http.StatusNotFound)
+			return
+		}
+		util.WriteJSONWithStatus(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Write(buf)
 }

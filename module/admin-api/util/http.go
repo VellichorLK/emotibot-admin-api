@@ -51,7 +51,7 @@ func WriteJSONWithStatus(w http.ResponseWriter, obj interface{}, status int) err
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusBadRequest)
+	w.WriteHeader(status)
 	w.Write(js)
 	return nil
 }

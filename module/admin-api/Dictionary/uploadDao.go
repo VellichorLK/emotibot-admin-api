@@ -47,3 +47,49 @@ func saveWordbankRows(appid string, wordbanks []*WordBankRow) (err error) {
 	err = t.Commit()
 	return
 }
+
+func insertImportProcess(appid string, filename string, status bool, msg string) (err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+	statusStr := "success"
+	if !status {
+		statusStr = "fail"
+	}
+	queryStr := `INSERT INTO process_status
+		(app_id, module, status, message, entity_file_name)
+		VALUES (?, "wordbank", ?, ?, ?)`
+	_, err = mySQL.Exec(queryStr, appid, statusStr, msg, filename)
+	return err
+}
+
+func insertEntityFile(appid string, filename string, buf []byte) (err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `INSERT INTO entity_files
+		(appid, filename, content)
+		VALUES (?, ?, ?)`
+	_, err = mySQL.Exec(queryStr, appid, filename, buf)
+	return
+}
+
+func getWordbankFile(appid string, filename string) (buf []byte, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `SELECT content FROM entity_files
+		WHERE appid = ? AND filename = ?`
+	row := mySQL.QueryRow(queryStr, appid, filename)
+
+	err = row.Scan(&buf)
+	return
+}

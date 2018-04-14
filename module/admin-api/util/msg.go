@@ -57,6 +57,11 @@ var (
 		"TemplateXLSXName":    "词库模板",
 		"SensitiveWordbank":   "敏感词库",
 		"ProperNounsWordbank": "专有词库",
+		"SheetError":          "获取词库模板资料表错误",
+		"EmptyRows":           "资料表中无资料",
+		"DirectoryError":      "目錄錯誤",
+		"Level1Error":         "第一层目录错误",
+		"BelowRows":           "以下行数",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

@@ -81,27 +81,29 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 
 	sheets := xlsxFile.Sheets
 	if sheets == nil {
-		err = errors.New("Get sheets fail")
+		err = errors.New(util.Msg["SheetError"])
 		return
 	}
 	if len(sheets) != exceptSheetNum {
-		err = errors.New("Sheets num error")
+		err = errors.New(util.Msg["SheetError"])
 		return
 	}
 
 	sheet := sheets[exceptSheetNum-1]
 	if sheet.Name != util.Msg["TemplateXLSXName"] {
-		err = errors.New("Input sheet not found")
+		err = errors.New(util.Msg["SheetError"])
 		return
 	}
 
 	ret = []*WordBankRow{}
 	rows := sheet.Rows
 	if rows == nil {
-		err = errors.New("Get rows fail")
+		err = errors.New(util.Msg["EmptyRows"])
+		return
 	}
 	if len(rows) <= 1 {
-		err = errors.New("Empty wordbank")
+		err = errors.New(util.Msg["EmptyRows"])
+		return
 	}
 
 	for idx, row := range rows {
@@ -211,15 +213,19 @@ func checkWordbanksRowValue(wordbanks []*WordBankRow) (bool, []string) {
 			}
 		}
 	}
+	ret := []string{}
 	if len(pathErrList) > 0 {
-		return false, []string{
-			fmt.Sprintf("Rows with error path: %s", strings.Join(pathErrList, ",")),
-		}
+		ret = append(ret, fmt.Sprintf("%s%s: %s",
+			util.Msg["BelowRows"], util.Msg["DirectoryError"],
+			strings.Join(pathErrList, ",")))
 	}
 	if len(level1ErrList) > 0 {
-		return false, []string{
-			fmt.Sprintf("Rows with level1 name error: %s", strings.Join(level1ErrList, ",")),
-		}
+		ret = append(ret, fmt.Sprintf("%s%s: %s",
+			util.Msg["BelowRows"], util.Msg["Level1Error"],
+			strings.Join(level1ErrList, ",")))
+	}
+	if len(ret) > 0 {
+		return false, ret
 	}
 	return true, nil
 }
@@ -261,4 +267,17 @@ func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, 
 	}
 
 	return nil, md5Words, md5Synonyms
+}
+
+func RecordDictionaryImportProcess(appid string, filename string, buf []byte, importErr error) {
+	message := ""
+	if importErr != nil {
+		message = importErr.Error()
+	}
+	insertImportProcess(appid, filename, importErr == nil, message)
+	insertEntityFile(appid, filename, buf)
+}
+
+func GetWordbankFile(appid string, filename string) ([]byte, error) {
+	return getWordbankFile(appid, filename)
 }
