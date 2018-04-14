@@ -240,6 +240,9 @@ func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, 
 
 	for _, wordbank := range wordbanks {
 		isSensitive := wordbank.Level1 == util.Msg["SensitiveWordbank"]
+		if wordbank.Name == "" {
+			continue
+		}
 
 		words := []string{}
 		similars := strings.Split(wordbank.SimilarWords, ",")
@@ -280,4 +283,30 @@ func RecordDictionaryImportProcess(appid string, filename string, buf []byte, im
 
 func GetWordbankFile(appid string, filename string) ([]byte, error) {
 	return getWordbankFile(appid, filename)
+}
+
+func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow) (err error) {
+	// 1. save to local file which can be get from url
+	err, md5Words, md5Synonyms := SaveWordbankToFile(appid, wordbanks)
+	if err != nil {
+		return
+	}
+
+	// 2. Update consul key
+	// TODO: use relative to compose the url
+	url := getEnvironment("INTERNAL_URL")
+	if url == "" {
+		url = defaultInternalURL
+	}
+	now := time.Now()
+	consulJSON := map[string]interface{}{
+		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
+		"md5":         md5Words,
+		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonyms.txt", url, appid, appid),
+		"synonym-md5": md5Synonyms,
+		"timestamp":   now.UnixNano() / 1000000,
+	}
+	util.ConsulUpdateEntity(appid, consulJSON)
+	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	return
 }

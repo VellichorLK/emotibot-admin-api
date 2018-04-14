@@ -117,6 +117,7 @@ func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
 		auditRet = 0
 	} else {
 		http.Error(w, "", http.StatusOK)
+		SyncWordbank(appid)
 	}
 
 	var buffer bytes.Buffer
@@ -171,6 +172,7 @@ func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
 		auditRet = 0
 	} else {
 		http.Error(w, "", http.StatusOK)
+		SyncWordbank(appid)
 	}
 	if newWordBank != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, newWordBank))
@@ -369,30 +371,8 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-
-	// 3. save to local file which can be get from url
-	err, md5Words, md5Synonyms := SaveWordbankToFile(appid, wordbanks)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
-
-	// 4. Update consul key
-	// TODO: use relative to compose the url
-	url := getEnvironment("INTERNAL_URL")
-	if url == "" {
-		url = defaultInternalURL
-	}
-	consulJSON := map[string]interface{}{
-		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
-		"md5":         md5Words,
-		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonyms.txt", url, appid, appid),
-		"synonym-md5": md5Synonyms,
-		"timestamp":   now.UnixNano() / 1000000,
-	}
-	util.ConsulUpdateEntity(appid, consulJSON)
-	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	TriggerUpdateWordbank(appid, wordbanks)
 }
 
 func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
@@ -403,7 +383,7 @@ func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 	filename := util.GetMuxVar(r, "file")
 	errMsg := fmt.Sprintf("%s%s: %s", util.Msg["DownloadFile"], util.Msg["Wordbank"], filename)
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationExport, errMsg, ret)
 	}()
 
 	if filename == "" {

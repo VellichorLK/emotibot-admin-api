@@ -286,3 +286,33 @@ func getEntities(appid string) ([]*WordBank, error) {
 
 	return ret, nil
 }
+
+func getWordbankRows(appid string) (ret []*WordBankRow, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+	queryStr := fmt.Sprintf(`
+		SELECT level1, level2, level3, level4, entity_name, similar_words, answer
+		FROM %s_entity`, appid)
+
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return
+	}
+
+	ret = []*WordBankRow{}
+	for rows.Next() {
+		temp := WordBankRow{}
+		err = rows.Scan(
+			&temp.Level1, &temp.Level2, &temp.Level3, &temp.Level4,
+			&temp.Name, &temp.SimilarWords, &temp.Answer)
+		if err != nil {
+			return
+		}
+		ret = append(ret, &temp)
+	}
+
+	return
+}

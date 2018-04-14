@@ -96,3 +96,11 @@ func GetEntities(appid string) ([]*WordBank, error) {
 	wordbanks, err := getEntities(appid)
 	return wordbanks, err
 }
+
+func SyncWordbank(appid string) {
+	wordbanks, err := getWordbankRows(appid)
+	if err != nil {
+		return
+	}
+	TriggerUpdateWordbank(appid, wordbanks)
+}
