@@ -135,7 +135,7 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 			case 3:
 				wordbank.Level4 = value
 			case 4:
-				wordbank.Name = value
+				wordbank.Name = strings.TrimSpace(value)
 			case 5:
 				wordbank.SimilarWords = strings.Replace(value, "，", ",", -1)
 			case 6:
@@ -245,9 +245,11 @@ func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, 
 		}
 
 		words := []string{}
-		similars := strings.Split(wordbank.SimilarWords, ",")
-		for _, s := range similars {
-			words = append(words, strings.TrimSpace(s))
+		if wordbank.SimilarWords != "" {
+			similars := strings.Split(wordbank.SimilarWords, ",")
+			for _, s := range similars {
+				words = append(words, strings.TrimSpace(s))
+			}
 		}
 		words = append(words, wordbank.Name)
 		for _, w := range words {
