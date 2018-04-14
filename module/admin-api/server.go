@@ -147,7 +147,7 @@ func setRoute() *mux.Router {
 		for idx := range info.EntryPoints {
 			entrypoint := info.EntryPoints[idx]
 			// entry will be api/v_/<module>/<entry>
-			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
+			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
 			router.
 				Methods(entrypoint.AllowMethod).
 				Path(entryPath).

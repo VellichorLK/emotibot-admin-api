@@ -2,13 +2,19 @@ package Dictionary
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+)
+
+const (
+	defaultInternalURL = "http://127.17.0.1"
 )
 
 var (
@@ -22,6 +28,7 @@ func init() {
 		ModuleName: "dictionary",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "upload", []string{"view"}, handleUpload),
+			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
 			util.NewEntryPoint("GET", "download", []string{"export"}, handleDownload),
 			util.NewEntryPoint("GET", "download-meta", []string{"view"}, handleDownloadMeta),
 			util.NewEntryPoint("GET", "check", []string{"view"}, handleFileCheck),
@@ -311,4 +318,74 @@ func handleDownloadMeta(w http.ResponseWriter, r *http.Request) {
 	} else {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, ret))
 	}
+}
+
+func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
+	// ret := 0
+	errMsg := ""
+	appid := util.GetAppID(r)
+	// userID := util.GetUserID(r)
+	// userIP := util.GetUserIP(r)
+	defer func() {
+		util.LogInfo.Println("Audit: ", errMsg)
+		// util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+	}()
+
+	file, info, err := r.FormFile("file")
+	defer file.Close()
+	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
+	errMsg = fmt.Sprintf("%s%s: %s", util.Msg["UploadFile"], util.Msg["Wordbank"], info.Filename)
+
+	// 1. parseFile
+	size := info.Size
+	buf := make([]byte, size)
+	_, err = file.Read(buf)
+	if err != nil {
+		errMsg = err.Error()
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	wordbanks, err := parseDictionaryFromXLSX(buf)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// 2. save to mysql
+	err = SaveWordbankRows(appid, wordbanks)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// 2. save to local file which can be get from url
+	err, md5Words, md5Synonyms := SaveWordbankToFile(appid, wordbanks)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
+
+	// 3. Update consul key
+	// TODO: use relative to compose the url
+	url := getEnvironment("INTERNAL_URL")
+	if url == "" {
+		url = defaultInternalURL
+	}
+	now := time.Now()
+	consulJSON := map[string]interface{}{
+		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
+		"md5":         md5Words,
+		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonym.txt", url, appid, appid),
+		"synonym-md5": md5Synonyms,
+		"timestamp":   now.UnixNano() / 1000000,
+	}
+	jsonStr, err := json.Marshal(consulJSON)
+	if err != nil {
+		util.LogError.Println("Cannot conver data into string to save in consul: ", err.Error())
+		return
+	}
+	util.ConsulUpdateEntity(appid, string(jsonStr))
+	util.LogInfo.Printf("Update to consul:\n%s\n", string(jsonStr))
 }

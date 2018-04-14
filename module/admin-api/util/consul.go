@@ -22,6 +22,7 @@ const (
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
 	ConsulFunctionKey = "function/%s"
 	ConsulFAQKey      = "faq/%s"
+	ConsulEntityKey   = "cnlu/%s"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -148,6 +149,12 @@ func (c *ConsulClient) Lock(key string) (Locker, error) {
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
 func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error) {
 	return c.updateHandler(key, val)
+}
+
+//ConsulUpdateEntity is a convenient function for updating Task Engine's Consul Key
+func ConsulUpdateEntity(appid string, value string) (int, error) {
+	key := fmt.Sprintf(ConsulEntityKey, appid)
+	return ConsulUpdateVal(key, value)
 }
 
 //ConsulUpdateFAQ is a convenient function for updating Task Engine's Consul Key

@@ -89,3 +89,10 @@ func GetDB(key string) *sql.DB {
 func SetDB(key string, db *sql.DB) {
 	allDB[key] = db
 }
+
+func ClearTransition(tx *sql.Tx) {
+	rollbackRet := tx.Rollback()
+	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
+		LogError.Printf("Critical db error in rollback: %s", rollbackRet.Error())
+	}
+}
