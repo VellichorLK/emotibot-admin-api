@@ -387,7 +387,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 	consulJSON := map[string]interface{}{
 		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
 		"md5":         md5Words,
-		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonym.txt", url, appid, appid),
+		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonyms.txt", url, appid, appid),
 		"synonym-md5": md5Synonyms,
 		"timestamp":   now.UnixNano() / 1000000,
 	}
