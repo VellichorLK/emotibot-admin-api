@@ -178,7 +178,7 @@ func setRoute() *mux.Router {
 				entrypoint.Callback(w, r)
 			})
 	}
-	router.PathPrefix("/Files/").Handler(http.StripPrefix("Files", http.FileServer(http.Dir(util.GetMountDir()))))
+	router.PathPrefix("/Files/").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
 	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
 		// A very simple health check.
 		w.WriteHeader(http.StatusOK)
