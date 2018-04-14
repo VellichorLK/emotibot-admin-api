@@ -423,6 +423,7 @@ func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ret = 1
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	w.Header().Set("Content-Type", "application/vnd.ms-excel")
 	w.Write(buf)
