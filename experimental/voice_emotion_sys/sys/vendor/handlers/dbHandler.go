@@ -867,7 +867,7 @@ func QuerySingleResult(fileID string, appid string) ([]byte, int, error) {
 
 }
 */
-func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, rbs *[]*ReturnBlock) (int, int, error) {
+func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, checkLimit *CheckLimit, rbs *[]*ReturnBlock) (int, int, error) {
 	//debug.FreeOSMemory()
 
 	tmpRes := "(" + QueryFileInfoAndChanScoreSQL + " from ( select a.*,b." + NCOLID + ",b." + NCOLVAL + " from " + MainTable
@@ -994,19 +994,24 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		return 0, http.StatusInternalServerError, errors.New("Internal server error")
 	}
 
+	enableASR := os.Getenv("ASR_ENABLE")
+	enableASR = strings.ToLower(enableASR)
+
 	//check the over list
-	if len(idList) > 0 {
+	if len(idList) > 0 && enableASR == "true" {
 
 		//check silence over the limit
-		silenceLimit := 30
+		silenceLimit := checkLimit.SilenceLimitDuration
 		overSilenceIDs, err := getOverSilence(silenceLimit, idList)
 		if err != nil {
 			log.Println(err)
 			return 0, http.StatusInternalServerError, errors.New("Internal server error")
 		}
-		for _, id := range overSilenceIDs {
-			rb := ReturnBlockMap[idToFileID[id]]
-			rb.OverSilence = &True
+		for id, count := range overSilenceIDs {
+			if count > checkLimit.SilenceLimitCount {
+				rb := ReturnBlockMap[idToFileID[id]]
+				rb.OverSilence = &True
+			}
 		}
 
 		//check speed, prohitbied words
@@ -1019,7 +1024,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		}
 
 		//get over speed
-		speedLimit := 300
+		speedLimit := checkLimit.SpeedLimit
 		overSpeedSeg, err := getOverSpeed(speedLimit, idList)
 		if err != nil {
 			log.Println(err)
@@ -1027,7 +1032,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		}
 		for id, chMap := range overSpeedSeg {
 			for ch, count := range chMap {
-				if float64(count)/float64(segCount[id][ch]) > 0.3 {
+				if float64(count)/float64(segCount[id][ch]) > float64(checkLimit.SpeedLimitPercent)/100 {
 					key := idToFileID[id] + strconv.Itoa(ch)
 					chInfo := ChannelMap[key]
 					chInfo.OverSpeed = &True
@@ -1036,7 +1041,7 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 		}
 
 		//get over prohibited words
-		prohibitedLimit := 2
+		prohibitedLimit := checkLimit.ProhibitedLimit
 		overProhibitedSeg, err := getOverProhibitedWords(idList)
 		if err != nil {
 			log.Println(err)
@@ -1058,9 +1063,9 @@ func QueryResult(appid string, conditions string, conditions2 string, offset int
 	return count, http.StatusOK, nil
 }
 
-func getOverSilence(limitSilence int, ids []interface{}) ([]uint64, error) {
-	silenceSQL := fmt.Sprintf("select %s from %s where %s=0 and %s-%s>=? and %s in (?%s) group by %s",
-		NID, AnalysisTable, NCHANNEL, NSEGET, NSEGST, NID, strings.Repeat(",?", len(ids)-1), NID)
+func getOverSilence(limitSilence int, ids []interface{}) (map[uint64]int, error) {
+	silenceSQL := fmt.Sprintf("select %s,count(%s) from %s where %s=0 and %s-%s>=? and %s in (?%s) group by %s",
+		NID, NID, AnalysisTable, NCHANNEL, NSEGET, NSEGST, NID, strings.Repeat(",?", len(ids)-1), NID)
 
 	params := make([]interface{}, 0)
 	params = append(params, limitSilence)
@@ -1072,14 +1077,15 @@ func getOverSilence(limitSilence int, ids []interface{}) ([]uint64, error) {
 	}
 	defer rows.Close()
 
-	overIDs := make([]uint64, 0)
+	overIDs := make(map[uint64]int)
 	var id uint64
+	var count int
 	for rows.Next() {
-		err = rows.Scan(&id)
+		err = rows.Scan(&id, &count)
 		if err != nil {
 			return nil, err
 		}
-		overIDs = append(overIDs, id)
+		overIDs[id] = count
 	}
 
 	return overIDs, nil
