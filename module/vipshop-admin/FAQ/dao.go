@@ -957,7 +957,7 @@ func insertAnswers(appid string, qid int64, answers []Answer, tx *sql.Tx) (err e
 
 func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID int64, err error) {
 	sqlStr := fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Not_Show_In_Relative_Q, Answer_CMD_Msg, Content_String) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", appid)
-	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmdMsg, answer.BeginTime, answer.EndTime, answer.NotShow, answer.AnswerCmdMsg, answer.Content}
+	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmd, answer.BeginTime, answer.EndTime, answer.NotShow, answer.AnswerCmdMsg, answer.Content}
 
 	result, err := tx.Exec(sqlStr, columnValues...)
 	if err != nil {

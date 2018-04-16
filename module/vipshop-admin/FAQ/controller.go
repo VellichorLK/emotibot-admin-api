@@ -494,7 +494,9 @@ func handleCreateQuestion(ctx context.Context) {
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
 
 	// notify FAQ update
-	util.McManualBusiness(appid)
+	if err == nil {
+		util.McManualBusiness(appid)
+	}
 
 	// response
 	type Response struct {
@@ -516,8 +518,13 @@ func transformaAnswer(answerJson *AnswerJson, answer *Answer) {
 	answer.DynamicMenus = answerJson.DynamicMenu
 	answer.RelatedQuestions = answerJson.RelatedQuestions
 	answer.AnswerCmd = answerJson.AnswerCMD
-	answer.AnswerCmdMsg = answerJson.AnswerCMDMsg
+
+	if answer.AnswerCmd == "shopping" {
+		answer.AnswerCmdMsg = answerJson.AnswerCMDMsg
+	}
+	
 	answer.DimensionIDs = answerJson.Dimension
+	answer.Content = answerJson.Content
 
 	if answerJson.NotShow {
 		answer.NotShow = 1
