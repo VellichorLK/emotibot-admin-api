@@ -125,7 +125,9 @@ func QueryContinue(w http.ResponseWriter, r *http.Request) {
 }
 
 func Query(appid string, cursor string) ([]byte, int, error) {
-	conditions, conditions2, count, offset, remainCursor := makeCondition(cursor)
+	checkList := &CheckLimit{SilenceLimitCount: DefaultSilenceCount, SilenceLimitDuration: DefaultSilenceSecond,
+		SpeedLimit: DefaultSpeedLimit, SpeedLimitPercent: DefaultSpeedPercent, ProhibitedLimit: DefaultProhibitedCount}
+	conditions, conditions2, count, offset, remainCursor := makeCondition(cursor, checkList)
 	var countInt int
 	var err error
 
@@ -169,7 +171,7 @@ func Query(appid string, cursor string) ([]byte, int, error) {
 	//do paging
 	if countInt > offsetInt+PAGELIMITINT {
 		//query result
-		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, true, &rbs)
+		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, true, checkList, &rbs)
 		if err != nil {
 			return nil, status, err
 		}
@@ -181,7 +183,7 @@ func Query(appid string, cursor string) ([]byte, int, error) {
 		newCursor += "," + strconv.Itoa(offsetInt) + "," + remainCursor
 		rp.Cursor = CreateCursor(newCursor)
 	} else {
-		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, false, &rbs)
+		_, status, err := QueryResult(appid, conditions, conditions2, offsetInt, false, checkList, &rbs)
 		if err != nil {
 			return nil, status, err
 		}
@@ -363,10 +365,61 @@ func parseArgs(qas *QueryArgs, r *http.Request) error {
 	}
 	qas.Ch2Anger = params.Get(NSCOREANG2)
 
+	if params.Get(NSilenceLimitCount) != "" {
+		num, err := strconv.Atoi(params.Get(NSilenceLimitCount))
+		if err != nil {
+			return errors.New(NSilenceLimitCount + " has invalid value")
+		}
+		qas.SilenceLimitCount = num
+	} else {
+		qas.SilenceLimitCount = DefaultSilenceCount
+	}
+
+	if params.Get(NSilenceDuration) != "" {
+		num, err := strconv.Atoi(params.Get(NSilenceDuration))
+		if err != nil {
+			return errors.New(NSilenceDuration + " has invalid value")
+		}
+		qas.SilenceLimitDuration = num
+	} else {
+		qas.SilenceLimitDuration = DefaultSilenceSecond
+	}
+
+	if params.Get(NSpeedLimitPercent) != "" {
+		num, err := strconv.Atoi(params.Get(NSpeedLimitPercent))
+		if err != nil {
+			return errors.New(NSpeedLimitPercent + " has invalid value")
+		}
+		qas.SpeedLimitPercent = num
+	} else {
+		qas.SpeedLimitPercent = DefaultSpeedPercent
+	}
+
+	if params.Get(NSpeedLimit) != "" {
+		num, err := strconv.Atoi(params.Get(NSpeedLimit))
+		if err != nil {
+			return errors.New(NSpeedLimit + " has invalid value")
+		}
+		qas.SpeedLimit = num
+	} else {
+		qas.SpeedLimit = DefaultSpeedLimit
+	}
+
+	if params.Get(NProhibitedLimit) != "" {
+		num, err := strconv.Atoi(params.Get(NProhibitedLimit))
+		if err != nil {
+			return errors.New(NProhibitedLimit + " has invalid value")
+		}
+		qas.ProhibitedLimit = num
+	} else {
+		qas.ProhibitedLimit = DefaultProhibitedCount
+	}
+
 	return nil
 
 }
 
+//count,offset,>=t1,<=t2,%filename%,tag,tag2,done/wait/all,>=ch1Anger,>=ch2Anger,silenceLimit,silenceDuration,speedLimit,speedLimitPercent,prohibitedWordLimit
 func pieceup(qas *QueryArgs) (string, error) {
 	var cursor string
 
@@ -416,7 +469,13 @@ func pieceup(qas *QueryArgs) (string, error) {
 		return "", errors.New("Wrong status: " + qas.Status)
 	}
 
-	//	log.Println("cursor:" + cursor)
+	cursor += "," + strconv.Itoa(qas.SilenceLimitCount)
+	cursor += "," + strconv.Itoa(qas.SilenceLimitDuration)
+	cursor += "," + strconv.Itoa(qas.SpeedLimit)
+	cursor += "," + strconv.Itoa(qas.SpeedLimitPercent)
+	cursor += "," + strconv.Itoa(qas.ProhibitedLimit)
+
+	//log.Println("cursor:" + cursor)
 	//log.Println("encrypt cursor: " + CreateCursor(cursor))
 
 	return cursor, nil
@@ -458,7 +517,7 @@ func parseTime(t string, isStart bool) (string, error) {
 
 //generate the real condition for database query,
 //return condition, conditions2, count, offset and remaining cursor which excludes count and offset
-func makeCondition(cursor string) (string, string, string, string, string) {
+func makeCondition(cursor string, checkList *CheckLimit) (string, string, string, string, string) {
 	cursorValues := strings.Split(cursor, ",")
 	if len(cursorValues) != len(CursorFieldName) {
 		log.Printf("splits: %q doesn't match cursor field\n", cursorValues)
@@ -509,5 +568,37 @@ func makeCondition(cursor string) (string, string, string, string, string) {
 	remainCursor += "," + cursorValues[8]
 	remainCursor += "," + cursorValues[9]
 
+	for i := 10; i < len(cursorValues); i++ {
+		remainCursor += "," + cursorValues[i]
+	}
+
+	if len(cursorValues) > 14 {
+
+		var err error
+		checkList.SilenceLimitCount, err = strconv.Atoi(cursorValues[10])
+		if err != nil {
+			log.Println("[Warning] " + err.Error())
+		}
+
+		checkList.SilenceLimitDuration, err = strconv.Atoi(cursorValues[11])
+		if err != nil {
+			log.Println("[Warning] " + err.Error())
+		}
+
+		checkList.SpeedLimit, err = strconv.Atoi(cursorValues[12])
+		if err != nil {
+			log.Println("[Warning] " + err.Error())
+		}
+
+		checkList.SpeedLimitPercent, err = strconv.Atoi(cursorValues[13])
+		if err != nil {
+			log.Println("[Warning] " + err.Error())
+		}
+
+		checkList.ProhibitedLimit, err = strconv.Atoi(cursorValues[14])
+		if err != nil {
+			log.Println("[Warning] " + err.Error())
+		}
+	}
 	return conditions, conditions2, cursorValues[0], cursorValues[1], remainCursor
 }

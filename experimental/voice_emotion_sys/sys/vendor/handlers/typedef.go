@@ -165,6 +165,29 @@ var CursorFieldName = [...]string{
 	NANARES,    //status, wait analysis_reseult =-1, done analysis_result > 0
 	NSCOREANG1, //min_score for channel one, anger >=
 	NSCOREANG2, //min score for channel two, anger >=
+	NSilenceLimitCount,
+	NSilenceDuration,
+	NSpeedLimitPercent,
+	NSpeedLimit,
+	NProhibitedLimit,
+}
+
+//name of check list arg
+const (
+	NSilenceLimitCount = "silenceLimitCount"
+	NSilenceDuration   = "silenceDuration"
+	NSpeedLimitPercent = "speedLimitPercent"
+	NSpeedLimit        = "speedLimit"
+	NProhibitedLimit   = "prohibitedLimit"
+)
+
+//CheckLimit contains the check list paramter
+type CheckLimit struct {
+	SilenceLimitCount    int
+	SilenceLimitDuration int //second
+	SpeedLimitPercent    int
+	SpeedLimit           int
+	ProhibitedLimit      int
 }
 
 //QueryArgs is used for /emotion/files
@@ -177,6 +200,7 @@ type QueryArgs struct {
 	Tag2     string
 	Ch1Anger string
 	Ch2Anger string
+	CheckLimit
 }
 
 //EmotionBlock is used for decode the data from voice module
@@ -352,6 +376,15 @@ const (
 	NCOLVAL   = "col_value"
 	NSELID    = "sel_id"
 	NSELVAL   = "sel_value"
+)
+
+//default value of check list
+const (
+	DefaultSilenceSecond   = 30
+	DefaultSilenceCount    = 1
+	DefaultSpeedLimit      = 300
+	DefaultSpeedPercent    = 30
+	DefaultProhibitedCount = 2
 )
 
 type DailyReport struct {
