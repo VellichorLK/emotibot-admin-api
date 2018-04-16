@@ -234,7 +234,7 @@ func SaveWordbankRows(appid string, wordbanks []*WordBankRow) error {
 	return saveWordbankRows(appid, wordbanks)
 }
 
-func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, string) {
+func GetWordDataFromWordbanks(wordbanks []*WordBankRow) (error, []string, []string) {
 	wordLines := []string{}
 	synonyms := []string{}
 
@@ -263,10 +263,15 @@ func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, 
 		synonyms = append(synonyms, wordbank.ToString())
 	}
 
-	util.LogTrace.Printf("word files %s.txt\n%s\n", appid, strings.Join(wordLines, "\n"))
-	util.LogTrace.Printf("synonym files %s_synonym.txt\n%s\n", appid, strings.Join(synonyms, "\n"))
+	return nil, wordLines, synonyms
+}
 
-	err, md5Words, md5Synonyms := util.SaveNLUFileFromEntity(appid, wordLines, synonyms)
+func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, string) {
+	err, words, synonyms := GetWordDataFromWordbanks(wordbanks)
+	util.LogTrace.Printf("word files %s.txt\n%s\n", appid, words)
+	util.LogTrace.Printf("synonym files %s_synonym.txt\n%s\n", appid, synonyms)
+
+	err, md5Words, md5Synonyms := util.SaveNLUFileFromEntity(appid, words, synonyms)
 	if err != nil {
 		return err, "", ""
 	}
@@ -302,13 +307,21 @@ func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow) (err error) {
 	}
 	now := time.Now()
 	consulJSON := map[string]interface{}{
-		"url":         fmt.Sprintf("%s/Files/settings/%s/%s.txt", url, appid, appid),
+		"url":         fmt.Sprintf("%s/api/v2/dictionary/words/%s", url, appid),
 		"md5":         md5Words,
-		"synonym-url": fmt.Sprintf("%s/Files/settings/%s/%s_synonyms.txt", url, appid, appid),
+		"synonym-url": fmt.Sprintf("%s/api/v2/dictionary/synonyms/%s", url, appid),
 		"synonym-md5": md5Synonyms,
 		"timestamp":   now.UnixNano() / 1000000,
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)
 	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
 	return
+}
+
+func GetWordData(appid string) (error, []string, []string) {
+	wordbanks, err := getWordbankRows(appid)
+	if err != nil {
+		return err, nil, nil
+	}
+	return GetWordDataFromWordbanks(wordbanks)
 }

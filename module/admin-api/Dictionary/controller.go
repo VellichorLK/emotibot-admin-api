@@ -40,6 +40,9 @@ func init() {
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
 			util.NewEntryPointWithVer("GET", "download/{file}", []string{"view"}, handleDownloadFromMySQL, 2),
+
+			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWord, 2),
+			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonyms, 2),
 		},
 	}
 	maxDirDepth = 4
@@ -407,4 +410,67 @@ func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	w.Header().Set("Content-Type", "application/vnd.ms-excel")
 	w.Write(buf)
+}
+
+func handleGetData(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	typeStr := util.GetMuxVar(r, "type")
+
+	header := w.Header()
+	switch typeStr {
+	case "word":
+	case "synonym":
+		header.Set("Content-Type", "text/plain; charset=utf-8")
+	default:
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid word type"), http.StatusBadRequest)
+		return
+	}
+
+	err, wordLines, synonymLines := GetWordData(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	switch typeStr {
+	case "word":
+		w.Write([]byte(strings.Join(wordLines, "\n") + "\n"))
+		break
+	case "synonym":
+		w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
+		break
+	}
+}
+
+func handleGetWord(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "appid")
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	err, wordLines, _ := GetWordData(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(strings.Join(wordLines, "\n") + "\n"))
+}
+
+func handleGetSynonyms(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "appid")
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	err, _, synonymLines := GetWordData(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
 }

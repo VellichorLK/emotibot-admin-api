@@ -26,7 +26,7 @@ func NewEntryPoint(method string, path string, cmd []string, callback func(w htt
 	return entrypoint
 }
 
-// NewEntryPointWithVer create new instance of EntryPoint with version 1
+// NewEntryPointWithVer create new instance of EntryPoint with custom version
 func NewEntryPointWithVer(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), version int) EntryPoint {
 	entrypoint := EntryPoint{}
 	entrypoint.AllowMethod = method

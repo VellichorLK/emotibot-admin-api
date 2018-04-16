@@ -92,6 +92,11 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	module := paths[3]
 	cmd := paths[4]
 
+	if len(ep.Command) == 0 {
+		util.LogTrace.Printf("Path: %s need no auth check\n", ep.EntryPath)
+		return true
+	}
+
 	appid := r.Header.Get("Authorization")
 	userid := r.Header.Get("X-UserID")
 
