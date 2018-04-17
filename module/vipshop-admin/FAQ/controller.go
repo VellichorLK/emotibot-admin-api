@@ -495,7 +495,7 @@ func handleCreateQuestion(ctx context.Context) {
 
 	// notify FAQ update
 	if err == nil {
-		util.McManualBusiness(appid)
+		go util.McManualBusiness(appid)
 	}
 
 	// response
@@ -580,7 +580,10 @@ func handleDeleteQuestion(ctx context.Context) {
 	}
 
 	// notify FAQ update
-	util.McManualBusiness(appid)
+	if err == nil {
+		go util.McManualBusiness(appid)
+	}
+	
 
 	// write audit log
 	userID := util.GetUserID(ctx)
