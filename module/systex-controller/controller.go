@@ -71,24 +71,18 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	sentence, err := asrClient.Recognize(r.Body)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "recognize api error:"+err.Error())
-		log.Println(err)
+		CustomError(w, "asr api error:"+err.Error())
 		return
 	}
 	sentence, err = csClient.Simplify(sentence)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "cuservice api error:"+err.Error())
-		log.Println(err)
+		CustomError(w, "Cu Service api error:"+err.Error())
 		return
 	}
 
 	resp, err := teClient.ET(userID, sentence)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "Task Engine api error:"+err.Error())
-		log.Println(err)
+		CustomError(w, "task engine error:"+err.Error())
 		return
 	}
 	respStr := string(resp)
@@ -100,4 +94,11 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintln(w, respStr)
 
+}
+
+//Custom
+func CustomError(w http.ResponseWriter, message string) {
+	w.WriteHeader(http.StatusInternalServerError)
+	log.Println(message)
+	fmt.Fprintln(w, message)
 }

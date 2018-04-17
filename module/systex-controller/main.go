@@ -30,12 +30,12 @@ var textLogger *csv.Writer
 var taskEngineLogger *csv.Writer
 
 func main() {
-	csvFile, err := os.Create("./v2Text.csv")
+	csvFile, err := GetStreamingFile("/app/log/v2Text.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer csvFile.Close()
-	csvFile2, err := os.Create("./v2TE.csv")
+	csvFile2, err := GetStreamingFile("/app/log/v2TE.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -91,4 +91,15 @@ func main() {
 	}
 	log.Println("Server starting")
 	log.Fatal(server.ListenAndServe())
+}
+
+func GetStreamingFile(filePath string) (*os.File, error) {
+	logFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0644)
+	if os.IsNotExist(err) {
+		logFile, err = os.Create(filePath)
+	}
+	if err != nil {
+		log.Fatalln(err)
+	}
+	return logFile, nil
 }

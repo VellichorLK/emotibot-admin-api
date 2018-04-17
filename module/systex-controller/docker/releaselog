@@ -1,2 +1,5 @@
 [0.0.3]
 * Add csv logging for APIs.
+[0.0.4]
+* mount log folder for persistence log.
+* log error message in stdOut.

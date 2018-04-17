@@ -8,5 +8,5 @@ FROM alpine:3.5
 WORKDIR /usr/bin/
 RUN apk add --no-cache tzdata
 COPY --from=buildEnv /go/src/emotibot.com/emotigo/module/systex-controller/systex-controller /usr/bin/systex-controller
-
+VOLUME [ "/app/log/" ]
 ENTRYPOINT [ "./systex-controller" ]
