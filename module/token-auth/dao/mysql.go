@@ -121,18 +121,11 @@ func (controller MYSQLController) DeleteEnterprise(enterpriseID string) (bool, e
 	return false, nil
 }
 
-func scanSingleRowToUser(row *sql.Row, withRole bool) (*data.User, error) {
+func scanSingleRowToUser(row *sql.Row) (*data.User, error) {
 	user := data.User{}
 	var err error
-	if withRole {
-		err = row.Scan(&user.ID, &user.DisplayName, &user.UserName, &user.Email, &user.Enterprise, &user.Type, &user.Status, &user.Role)
-	} else {
-		err = row.Scan(&user.ID, &user.DisplayName, &user.UserName, &user.Email, &user.Enterprise, &user.Type, &user.Status)
-	}
+	err = row.Scan(&user.ID, &user.DisplayName, &user.UserName, &user.Email, &user.Enterprise, &user.Type, &user.Status, &user.Role)
 	if err != nil {
-		if err.Error() == "sql: no rows in result set" {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &user, nil
@@ -209,7 +202,7 @@ func (controller MYSQLController) GetUser(enterpriseID string, userID string) (*
 		logDBError(err)
 		return nil, err
 	}
-	user, err := scanSingleRowToUser(row, true)
+	user, err := scanSingleRowToUser(row)
 	if err != nil {
 		logDBError(err)
 		return nil, err
@@ -242,7 +235,7 @@ func (controller MYSQLController) GetAdminUser(enterpriseID string) (*data.User,
 		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
-	user, err := scanSingleRowToUser(row, false)
+	user, err := scanSingleRowToUser(row)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(0)
 		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())

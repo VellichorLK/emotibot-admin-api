@@ -30,8 +30,12 @@ func EnterpriseGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, errMsg := getEnterprise(enterpriseID)
-	returnMsg(w, errMsg, retData)
+	retData, err := getEnterprise(enterpriseID)
+	if err != nil {
+		returnMsg(w, err.Error(), retData)
+	} else {
+		returnMsg(w, "", retData)
+	}
 }
 
 func UsersGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +184,7 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := getUser(enterpriseID, userID)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		returnInternalError(w, err.Error())
 		return
 	} else if user == nil {
