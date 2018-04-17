@@ -30,6 +30,7 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, err)
+		log.Println(err)
 		return
 	}
 	var resp v2TextResponse
@@ -40,6 +41,7 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := json.Marshal(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
 		return
 	}
 
@@ -71,12 +73,14 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "recognize api error:"+err.Error())
+		log.Println(err)
 		return
 	}
 	sentence, err = csClient.Simplify(sentence)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "cuservice api error:"+err.Error())
+		log.Println(err)
 		return
 	}
 
@@ -84,6 +88,7 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, "Task Engine api error:"+err.Error())
+		log.Println(err)
 		return
 	}
 	respStr := string(resp)
