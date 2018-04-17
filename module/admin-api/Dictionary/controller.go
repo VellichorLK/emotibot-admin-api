@@ -514,6 +514,7 @@ func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
 	}
 	ret = 1
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
+	SyncWordbank(appid)
 }
 
 func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
@@ -546,4 +547,5 @@ func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 	errMsg += fmt.Sprintf(": %s %d %s", util.Msg["Delete"], rowCount, util.Msg["Row"])
 	ret = 1
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
+	SyncWordbank(appid)
 }
