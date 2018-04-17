@@ -37,6 +37,8 @@ func init() {
 			util.NewEntryPoint("PUT", "wordbank", []string{"edit"}, handlePutWordbank),
 			util.NewEntryPoint("POST", "wordbank", []string{"edit"}, handleUpdateWordbank),
 			util.NewEntryPoint("GET", "wordbank/{id}", []string{"view"}, handleGetWordbank),
+			util.NewEntryPoint("DELETE", "wordbank/{id}", []string{"delete"}, handleDeleteWordbank),
+			util.NewEntryPoint("DELETE", "wordbank-dir/dir", []string{"delete"}, handleDeleteWordbankDir),
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
 			util.NewEntryPointWithVer("GET", "download/{file}", []string{"view"}, handleDownloadFromMySQL, 2),
@@ -473,4 +475,75 @@ func handleGetSynonyms(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
+}
+
+func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
+	ret := 0
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+	}()
+
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid id"), http.StatusBadRequest)
+		return
+	}
+
+	wordbankRow, err := GetWordbankRow(appid, id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
+		return
+	}
+
+	if wordbankRow != nil {
+		errMsg += fmt.Sprintf(": %s/%s", wordbankRow.GetPath(), wordbankRow.Name)
+	}
+
+	err = DeleteWordbank(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	ret = 1
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
+}
+
+func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	path := r.URL.Query().Get("path")
+	paths := strings.Split(path, "/")
+	errMsg := fmt.Sprintf("%s%s %s", util.Msg["Delete"], util.Msg["WordbankDir"], path)
+	ret := 0
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+	}()
+
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	if len(paths) <= 1 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid path"), http.StatusBadRequest)
+		return
+	}
+
+	rowCount, err := DeleteWordbankDir(appid, paths)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	errMsg += fmt.Sprintf(": %s %d %s", util.Msg["Delete"], rowCount, util.Msg["Row"])
+	ret = 1
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
 }

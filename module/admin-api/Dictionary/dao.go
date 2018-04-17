@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -313,6 +314,129 @@ func getWordbankRows(appid string) (ret []*WordBankRow, err error) {
 		}
 		ret = append(ret, &temp)
 	}
+
+	return
+}
+
+func deleteWordbankDir(appid string, paths []string) (int, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return 0, errors.New("DB not init")
+	}
+
+	if len(paths) <= 1 || len(paths) > 4 {
+		return 0, errors.New("Error path")
+	}
+
+	queryParam := []interface{}{}
+	queryCondition := []string{}
+
+	for idx, path := range paths {
+		queryParam = append(queryParam, path)
+		queryCondition = append(queryCondition, fmt.Sprintf("level%d = ?", idx+1))
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM %s_entity WHERE %s", appid, strings.Join(queryCondition, " and "))
+	result, err := mySQL.Exec(queryStr, queryParam...)
+	if err != nil {
+		return 0, err
+	}
+
+	count, err := result.RowsAffected()
+
+	return int(count), err
+}
+
+func deleteWordbank(appid string, id int) (err error) {
+	defer func() {
+		if err != nil {
+			_, file, line, _ := runtime.Caller(1)
+			util.LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
+		}
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(t)
+
+	// TODO: check if wordbank is last item in directory, if yes, add new row for the directory only
+	queryStr := fmt.Sprintf("SELECT level1, level2, level3, level4 FROM %s_entity WHERE id = ?", appid)
+	row := t.QueryRow(queryStr, id)
+	paths := make([]string, 4)
+	err = row.Scan(&paths[0], &paths[1], &paths[2], &paths[3])
+	if err != nil {
+		return err
+	}
+
+	queryParam := []interface{}{}
+	queryCondition := []string{}
+
+	for idx, path := range paths {
+		if path == "" {
+			break
+		}
+		queryParam = append(queryParam, path)
+		queryCondition = append(queryCondition, fmt.Sprintf("level%d = ?", idx+1))
+	}
+	if len(queryParam) == 0 {
+		return errors.New("Path empty error")
+	}
+
+	count := 0
+	queryStr = fmt.Sprintf("SELECT count(*) from %s_entity WHERE %s", appid, strings.Join(queryCondition, " and "))
+	row = t.QueryRow(queryStr, queryParam...)
+	err = row.Scan(&count)
+	if err != nil {
+		return err
+	}
+
+	if count <= 1 {
+		queryStr = fmt.Sprintf(`
+			UPDATE %s_entity
+			SET entity_name = '', similar_words = '', answer = ''
+			WHERE id = ?`, appid)
+	} else {
+		queryStr = fmt.Sprintf("DELETE FROM %s_entity WHERE id = ?", appid)
+	}
+	_, err = t.Exec(queryStr, id)
+	if err != nil {
+		return err
+	}
+
+	err = t.Commit()
+	return err
+}
+
+func getWordbankRow(appid string, id int) (ret *WordBankRow, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+	queryStr := fmt.Sprintf(`
+		SELECT level1, level2, level3, level4, entity_name, similar_words, answer
+		FROM %s_entity
+		WHERE id = ?`, appid)
+
+	row := mySQL.QueryRow(queryStr, id)
+	if err != nil {
+		return
+	}
+
+	temp := WordBankRow{}
+	err = row.Scan(
+		&temp.Level1, &temp.Level2, &temp.Level3, &temp.Level4,
+		&temp.Name, &temp.SimilarWords, &temp.Answer)
+	if err != nil {
+		return
+	}
+	ret = &temp
 
 	return
 }

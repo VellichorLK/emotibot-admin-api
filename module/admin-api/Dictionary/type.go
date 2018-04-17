@@ -56,3 +56,30 @@ func (row WordBankRow) ToString() string {
 		row.Level1, row.Level2, row.Level3, row.Level4, row.Name,
 		strings.Join(trimSimilars, "\t"))
 }
+
+func (row WordBankRow) GetPath() string {
+	paths := []string{}
+	for true {
+		if row.Level1 == "" {
+			break
+		}
+		paths = append(paths, row.Level1)
+
+		if row.Level2 == "" {
+			break
+		}
+		paths = append(paths, row.Level2)
+
+		if row.Level3 == "" {
+			break
+		}
+		paths = append(paths, row.Level3)
+
+		if row.Level4 == "" {
+			break
+		}
+		paths = append(paths, row.Level4)
+	}
+
+	return strings.Join(paths, "/")
+}

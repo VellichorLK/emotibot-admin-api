@@ -30,6 +30,7 @@ var (
 		"Origin":       "原始",
 		"Updated":      "更新后",
 		"Category":     "分类",
+		"Row":          "列",
 
 		// Used in Switch
 		"Name":     "名称",
@@ -52,6 +53,7 @@ var (
 
 		// Wordbank
 		"Wordbank":            "词库",
+		"WordbankDir":         "词库目录",
 		"SimilarWord":         "相似词",
 		"Answer":              "答案",
 		"TemplateXLSXName":    "词库模板",

@@ -104,3 +104,14 @@ func SyncWordbank(appid string) {
 	}
 	TriggerUpdateWordbank(appid, wordbanks)
 }
+
+func DeleteWordbankDir(appid string, paths []string) (int, error) {
+	return deleteWordbankDir(appid, paths)
+}
+func DeleteWordbank(appid string, id int) error {
+	return deleteWordbank(appid, id)
+}
+
+func GetWordbankRow(appid string, id int) (*WordBankRow, error) {
+	return getWordbankRow(appid, id)
+}

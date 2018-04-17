@@ -285,7 +285,10 @@ func RecordDictionaryImportProcess(appid string, filename string, buf []byte, im
 		message = importErr.Error()
 	}
 	insertImportProcess(appid, filename, importErr == nil, message)
-	insertEntityFile(appid, filename, buf)
+	err := insertEntityFile(appid, filename, buf)
+	if err != nil {
+		util.LogError.Println("Cannot write file into mysql: ", err.Error())
+	}
 }
 
 func GetWordbankFile(appid string, filename string) ([]byte, error) {
