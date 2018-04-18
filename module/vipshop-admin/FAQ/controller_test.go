@@ -150,8 +150,8 @@ func TestUpdateHandlerAuditLog(t *testing.T) {
 func TestHandleGetRFQuestions(t *testing.T) {
 	e := httptest.New(t, app)
 	var expected = []RFQuestion{
-		RFQuestion{1, "測試A", 0, true},
-		RFQuestion{2, "測試B", 1, true},
+		RFQuestion{1, "測試A"},
+		RFQuestion{2, "測試B"},
 	}
 	// type output struct {
 	// 	ID         *int
@@ -165,7 +165,7 @@ func TestHandleGetRFQuestions(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"stdQ.Question_Id", " rf.Question_Content", "stdQ.CategoryId"})
 	for _, q := range expected {
-		rows.AddRow(q.ID, q.Content, q.CategoryID)
+		rows.AddRow(q.ID, q.Content)
 	}
 	mockedMainDB.ExpectQuery("SELECT stdQ.Question_Id, rf.Question_Content, stdQ.CategoryId ").WillReturnRows(rows)
 	resp := e.GET("/RFQuestions").Expect().Body()
