@@ -12,6 +12,7 @@ fi
 docker rm -f Systex-controller 2> /dev/null
 
 docker run -d --name Systex-controller \
+    -e TZ=Asia/Taipei \
     --env-file $DIR/../.env \
     -p $PORT:80 \
     --log-opt max-size=20m \

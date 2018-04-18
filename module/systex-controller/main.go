@@ -53,7 +53,7 @@ func main() {
 	}
 
 	c := &http.Client{
-		Timeout: time.Duration(5) * time.Second,
+		Timeout: time.Duration(15) * time.Second,
 	}
 
 	asrURL, err := url.Parse(env["ASR_URL"])
