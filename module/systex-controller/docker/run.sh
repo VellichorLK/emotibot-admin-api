@@ -4,11 +4,11 @@ DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 VERSION=`cat $DIR/VERSION`
 PORT=$1
 LOG_VOLUME_NAME=systex-log
-VOLUME_EXISXT=`docker volume ls -f name=$LOG_VOLUME_NAME -q | wc -l`
-if [ $VOLUME_EXISXT -eq 0 ]; then
-    docker create volume $LOG_VOLUME_NAME
+VOLUME_EXIST=`docker volume ls -f name=$LOG_VOLUME_NAME -q | wc -l`
+if [ $VOLUME_EXIST -eq 0 ]; then
+    docker volume create $LOG_VOLUME_NAME
 fi
-# docker pull docker-reg.emotibot.com.cn:55688/systex-controller:$VERSION
+docker pull docker-reg.emotibot.com.cn:55688/systex-controller:$VERSION
 docker rm -f Systex-controller 2> /dev/null
 
 docker run -d --name Systex-controller \
