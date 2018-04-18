@@ -552,13 +552,13 @@ func handleRFQValidation(ctx context.Context) {
 	rfQuestions, err := FilterRFQuestions(util.GetAppID(ctx), input.RFQuestions)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
-		fmt.Fprintf(ctx, "JSON unmarshal error, %vs", err)
+		fmt.Fprintf(ctx, "Filter RFQuestions error, %vs", err)
 		return
 	}
 	stdQuestions, err := FilterQuestions(util.GetAppID(ctx), rfQuestions)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
-		fmt.Fprintf(ctx, "JSON unmarshal error, %vs", err)
+		fmt.Fprintf(ctx, "Filter stdQuestions error, %vs", err)
 		return
 	}
 	var response = struct {

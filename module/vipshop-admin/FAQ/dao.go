@@ -221,7 +221,11 @@ func FilterQuestions(appID string, content []string) ([]string, error) {
 	}
 	db := util.GetMainDB()
 	query := fmt.Sprintf("SELECT Content FROM %s_question WHERE Content IN (?%s)", appID, strings.Repeat(", ?", len(content)-1))
-	rows, err := db.Query(query)
+	var parameters = make([]interface{}, len(content))
+	for i, c := range content {
+		parameters[i] = c
+	}
+	rows, err := db.Query(query, parameters...)
 	if err != nil {
 		// Do not show detail query in output error message.
 		util.LogError.Printf("query %s failed", query)
@@ -231,7 +235,7 @@ func FilterQuestions(appID string, content []string) ([]string, error) {
 	var results = make([]string, 0)
 	for rows.Next() {
 		var content string
-		rows.Scan(content)
+		rows.Scan(&content)
 		results = append(results, content)
 	}
 	if err := rows.Err(); err != nil {
@@ -403,12 +407,16 @@ func FilterRFQuestions(appid string, q []string) ([]string, error) {
 		return []string{}, nil
 	}
 
-	query := fmt.Sprintf("SELECT content FROM %s_removeFeedbackQuestion WHERE Question_Content In (?%s)", appid, strings.Repeat(", ?", len(q)-1))
+	query := fmt.Sprintf("SELECT Question_Content FROM %s_removeFeedbackQuestion WHERE Question_Content In (?%s)", appid, strings.Repeat(", ?", len(q)-1))
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db not init")
 	}
-	rows, err := db.Query(query)
+	var parameters = make([]interface{}, len(q))
+	for i, content := range q {
+		parameters[i] = content
+	}
+	rows, err := db.Query(query, parameters...)
 	if err != nil {
 		util.LogError.Printf("query %s failed, %s\n", query, err)
 		return nil, fmt.Errorf("select query failed, %v", err)
