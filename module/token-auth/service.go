@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"log"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/data"
@@ -20,23 +21,28 @@ func getEnterprises() (*data.Enterprises, string) {
 	}
 	return enterprises, ""
 }
-func getEnterprise(enterpriseID string) (*data.Enterprise, string) {
-	enterprise, err := useDB.GetEnterprise(enterpriseID)
+func getEnterprise(enterpriseID string) (ret *data.Enterprise, err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("Error when get enterprise %s: %s\n", enterpriseID, err.Error())
+		}
+	}()
+	ret, err = useDB.GetEnterprise(enterpriseID)
 	if err != nil {
-		return nil, err.Error()
+		return nil, err
 	}
 	apps, err := useDB.GetApps(enterpriseID)
 	if err != nil {
-		return nil, err.Error()
+		return nil, err
 	}
 	adminUser, err := useDB.GetAdminUser(enterpriseID)
 	if err != nil {
-		return nil, err.Error()
+		return nil, err
 	}
 
-	enterprise.Apps = apps
-	enterprise.AdminUser = adminUser
-	return enterprise, ""
+	ret.Apps = apps
+	ret.AdminUser = adminUser
+	return
 }
 func getUsers(enterpriseID string) (*data.Users, error) {
 	users, err := useDB.GetUsers(enterpriseID)

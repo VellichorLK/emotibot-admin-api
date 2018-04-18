@@ -25,6 +25,10 @@ func IsValidString(str *string) bool {
 
 // IsValidUUID will check if string is standard uuid or not
 func IsValidUUID(str string) bool {
+	// Only default csbot can use no standard uuid format...
+	if str == "csbot" {
+		return true
+	}
 	match, _ := regexp.MatchString(UUIDPattern, str)
 	return match
 }

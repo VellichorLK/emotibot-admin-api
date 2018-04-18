@@ -22,6 +22,7 @@ const (
 type Route struct {
 	Name        string
 	Method      string
+	Version     int
 	Pattern     string
 	HandlerFunc http.HandlerFunc
 
@@ -37,32 +38,32 @@ var routes Routes
 
 func setUpRoutes() {
 	routes = Routes{
-		Route{"GetEnterprises", "GET", "/enterprises", EnterprisesGetHandler, []interface{}{0}},
-		Route{"GetEnterprises", "GET", "/enterprise/{enterpriseID}", EnterpriseGetHandler, []interface{}{0, 1, 2}},
-		Route{"GetUsers", "GET", "/enterprise/{enterpriseID}/users", UsersGetHandler, []interface{}{0, 1}},
-		Route{"GetUser", "GET", "/enterprise/{enterpriseID}/user/{userID}", UserGetHandler, []interface{}{0, 1, 2}},
-		Route{"GetApps", "GET", "/enterprise/{enterpriseID}/apps", AppsGetHandler, []interface{}{0, 1, 2}},
-		Route{"GetApp", "GET", "/enterprise/{enterpriseID}/app/{appID}", AppGetHandler, []interface{}{0, 1, 2}},
-		Route{"Login", "POST", "/login", LoginHandler, []interface{}{}},
-		Route{"ValidateToken", "GET", "/token/{token}", ValidateTokenHandler, []interface{}{}},
+		Route{"GetEnterprises", "GET", 2, "enterprises", EnterprisesGetHandler, []interface{}{0}},
+		Route{"GetEnterprise", "GET", 2, "enterprise/{enterpriseID}", EnterpriseGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetUsers", "GET", 2, "enterprise/{enterpriseID}/users", UsersGetHandler, []interface{}{0, 1}},
+		Route{"GetUser", "GET", 2, "enterprise/{enterpriseID}/user/{userID}", UserGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetApps", "GET", 2, "enterprise/{enterpriseID}/apps", AppsGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppGetHandler, []interface{}{0, 1, 2}},
+		Route{"Login", "POST", 2, "login", LoginHandler, []interface{}{}},
+		Route{"ValidateToken", "GET", 2, "token/{token}", ValidateTokenHandler, []interface{}{}},
 
-		Route{"AddUser", "POST", "/enterprise/{enterpriseID}/user", UserAddHandler, []interface{}{0, 1, 2}},
-		Route{"UpdateUser", "PUT", "/enterprise/{enterpriseID}/user/{userID}", UserUpdateHandler, []interface{}{0, 1, 2}},
-		Route{"DeleteUser", "DELETE", "/enterprise/{enterpriseID}/user/{userID}", UserDeleteHandler, []interface{}{0, 1, 2}},
+		Route{"AddUser", "POST", 2, "enterprise/{enterpriseID}/user", UserAddHandler, []interface{}{0, 1, 2}},
+		Route{"UpdateUser", "PUT", 2, "enterprise/{enterpriseID}/user/{userID}", UserUpdateHandler, []interface{}{0, 1, 2}},
+		Route{"DeleteUser", "DELETE", 2, "enterprise/{enterpriseID}/user/{userID}", UserDeleteHandler, []interface{}{0, 1, 2}},
 
-		Route{"GetRoles", "GET", "/enterprise/{enterpriseID}/roles", RolesGetHandler, []interface{}{0, 1, 2}},
-		Route{"GetRole", "GET", "/enterprise/{enterpriseID}/role/{roleID}", RoleGetHandler, []interface{}{0, 1, 2}},
-		Route{"AddRole", "POST", "/enterprise/{enterpriseID}/role", RoleAddHandler, []interface{}{0, 1, 2}},
-		Route{"UpdateRole", "PUT", "/enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandler, []interface{}{0, 1, 2}},
-		Route{"DeleteRole", "DELETE", "/enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandler, []interface{}{0, 1, 2}},
-		Route{"GetModules", "GET", "/enterprise/{enterpriseID}/modules", ModulesGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetRoles", "GET", 2, "enterprise/{enterpriseID}/roles", RolesGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetRole", "GET", 2, "enterprise/{enterpriseID}/role/{roleID}", RoleGetHandler, []interface{}{0, 1, 2}},
+		Route{"AddRole", "POST", 2, "enterprise/{enterpriseID}/role", RoleAddHandler, []interface{}{0, 1, 2}},
+		Route{"UpdateRole", "PUT", 2, "enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandler, []interface{}{0, 1, 2}},
+		Route{"DeleteRole", "DELETE", 2, "enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandler, []interface{}{0, 1, 2}},
+		Route{"GetModules", "GET", 2, "enterprise/{enterpriseID}/modules", ModulesGetHandler, []interface{}{0, 1, 2}},
 
-		// Route{"AddModules", "GET", "/enterprise/{enterpriseID}/module", ModuleAddHandler, []interface{}{0}},
-		// Route{"UpdateModules", "GET", "/enterprise/{enterpriseID}/module/{moduleCode}", ModuleUpdateHandler, []interface{}{0}},
-		// Route{"DeleteModules", "GET", "/enterprise/{enterpriseID}/module/{moduleCode}", ModuleDeleteHandler, []interface{}{0}},
-		// Route{"AddApp", "GET", "/enterprise/{enterpriseID}/app", AppAddHandler, []interface{}{0, 1}},
-		// Route{"UpdateApp", "GET", "/enterprise/{enterpriseID}/app/{appID}", AppUpdateHandler, []interface{}{0, 1}},
-		// Route{"DeleteApp", "GET", "/enterprise/{enterpriseID}/app/{appID}", AppDeleteHandler, []interface{}{0, 1}},
+		// Route{"AddModules", "GET", 2, "enterprise/{enterpriseID}/module", ModuleAddHandler, []interface{}{0}},
+		// Route{"UpdateModules", "GET", 2, "enterprise/{enterpriseID}/module/{moduleCode}", ModuleUpdateHandler, []interface{}{0}},
+		// Route{"DeleteModules", "GET", 2, "enterprise/{enterpriseID}/module/{moduleCode}", ModuleDeleteHandler, []interface{}{0}},
+		// Route{"AddApp", "GET", 2, "enterprise/{enterpriseID}/app", AppAddHandler, []interface{}{0, 1}},
+		// Route{"UpdateApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandler, []interface{}{0, 1}},
+		// Route{"DeleteApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandler, []interface{}{0, 1}},
 	}
 }
 
@@ -130,9 +131,10 @@ func main() {
 
 	for idx := range routes {
 		route := routes[idx]
+		path := fmt.Sprintf("%s/v%d/%s", prefixURL, route.Version, route.Pattern)
 		router.
 			Methods(route.Method).
-			Path(prefixURL + route.Pattern).
+			Path(path).
 			Name(route.Name).
 			HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if checkAuth(r, route) {
@@ -143,7 +145,7 @@ func main() {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				}
 			})
-		log.Printf("Setup for path [%s:%s], %+v", route.Method, prefixURL+route.Pattern, route.GrantType)
+		log.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
 	}
 
 	url, port := util.GetServerConfig()
