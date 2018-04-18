@@ -1,15 +1,15 @@
 package FAQ
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"crypto/sha256"
-	"encoding/hex"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -985,7 +985,7 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	return dimensionIdMap, nil
 }
 
-func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64 , err error) {
+func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64, err error) {
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -1005,7 +1005,7 @@ func InsertQuestion(appid string, question *Question, answers []Answer) (qid int
 	}
 
 	err = tx.Commit()
-	return 
+	return
 
 }
 
@@ -1021,7 +1021,7 @@ func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.
 
 	result, err := tx.Exec(sql, columValues...)
 	if err != nil {
-		return 
+		return
 	}
 	qid, err = result.LastInsertId()
 
@@ -1029,7 +1029,7 @@ func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.
 	if err != nil {
 		return
 	}
-	
+
 	return
 }
 
@@ -1108,7 +1108,7 @@ func insertAnswerLabels(appid string, answerID int64, labelType int, labels []st
 
 	_, err = tx.Exec(sqlStr, values...)
 	return
-} 
+}
 
 func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *sql.Tx) (err error) {
 	sqlStr := fmt.Sprintf("INSERT INTO %s_answertag (Answer_Id, Tag_Id, CreatedTime) VALUES", appid)
@@ -1617,7 +1617,10 @@ func NewCategoryTree(appid string) (*CategoryTree, error) {
 			name     string
 			parentId int64
 		)
-		rows.Scan(&catID, &name, &parentId)
+		err := rows.Scan(&catID, &name, &parentId)
+		if err != nil {
+			return nil, fmt.Errorf("scan io error, %v", err)
+		}
 		c, exists := tree.Index[catID]
 		if !exists {
 			c = &Category{ID: int(catID)}
