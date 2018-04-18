@@ -500,6 +500,7 @@ func handleCategoryRFQuestions(ctx context.Context) {
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		fmt.Fprintln(ctx, "categories tree build failed, "+err.Error())
+		return
 	}
 	categories := catTree.SubCategories(categoryID)
 	var categoryIDGroup []int64
