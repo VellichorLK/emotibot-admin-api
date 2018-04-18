@@ -51,46 +51,46 @@ type Question struct {
 	CategoryName    string   `json:"categoryName"`
 	CategoryId      int      `json:"categoryId"`
 	Answers         []Answer `json:"answerItem"`
-	User			string   `json:"createuser"`
+	User            string   `json:"createuser"`
 }
 
 type Answer struct {
-	QuestionId      int      `json:"Question_Id"`
-	AnswerId        int      `json:"Answer_Id"`
-	Content         string   `json:"Content_String"`
-	RelatedQuestion string   `json:"RelatedQuestion"`
-	DynamicMenu     string   `json:"DynamicMenu"`
-	NotShow         int      `json:"Not_Show_In_Relative_Q"`
-	BeginTime       string   `json:"Begin_Time"`
-	EndTime         string   `json:"End_Time"`
-	AnswerCmd       string   `json:"Answer_CMD"`
-	AnswerCmdMsg    string   `json:"Answer_CMD_Msg"`
-	Dimension       []string `json:"dimension"`
-	DimensionIDs	[]int
+	QuestionId       int      `json:"Question_Id"`
+	AnswerId         int      `json:"Answer_Id"`
+	Content          string   `json:"Content_String"`
+	RelatedQuestion  string   `json:"RelatedQuestion"`
+	DynamicMenu      string   `json:"DynamicMenu"`
+	NotShow          int      `json:"Not_Show_In_Relative_Q"`
+	BeginTime        string   `json:"Begin_Time"`
+	EndTime          string   `json:"End_Time"`
+	AnswerCmd        string   `json:"Answer_CMD"`
+	AnswerCmdMsg     string   `json:"Answer_CMD_Msg"`
+	Dimension        []string `json:"dimension"`
+	DimensionIDs     []int
 	RelatedQuestions []string `json:"relatedQ"`
-	DynamicMenus 	[]string `json:"dynamicMenu"`
+	DynamicMenus     []string `json:"dynamicMenu"`
 }
 
 type AnswerJson struct {
-	ID int `json:"id"`
-	QuestionID int
-	Content string `json:"answer"`
-	DynamicMenu []string `json:"dynamicMenu"`
+	ID               int `json:"id"`
+	QuestionID       int
+	Content          string   `json:"answer"`
+	DynamicMenu      []string `json:"dynamicMenu"`
 	RelatedQuestions []string `json:"relatedQ"`
-	AnswerCMD string `json:"answerCMD"`
-	AnswerCMDMsg string `json:"answerCMDMsg"`
-	NotShow bool `json:"not_show_in_relative_q"`
-	Dimension []int `json:"dimension"`
-	BeginTime string `json:"begin_time"`
-	EndTime string `json:"end_time"`
+	AnswerCMD        string   `json:"answerCMD"`
+	AnswerCMDMsg     string   `json:"answerCMDMsg"`
+	NotShow          bool     `json:"not_show_in_relative_q"`
+	Dimension        []int    `json:"dimension"`
+	BeginTime        string   `json:"begin_time"`
+	EndTime          string   `json:"end_time"`
 }
 
 type QuestionJson struct {
-	Content string `json:"content"`
-	CategoryID int `json:"categoryid"`
-	SimilarQuestions []string `json:"similarQuestions"`
-	Answers []AnswerJson `json:"answer_json"`
-	User string `json:"createuser"`
+	Content          string       `json:"content"`
+	CategoryID       int          `json:"categoryid"`
+	SimilarQuestions []string     `json:"similarQuestions"`
+	Answers          []AnswerJson `json:"answer_json"`
+	User             string       `json:"createuser"`
 }
 
 type QueryCondition struct {
@@ -136,16 +136,6 @@ type AnswerLabelDAO struct {
 type Tag struct {
 	Type    int
 	Content string
-}
-
-//RFQuestion is removed Feedback question(移除解決未解決的問題)
-type RFQuestion struct {
-	Content string `json:"content"`
-}
-
-//UpdateRFQUestionsArgs are Post API JSON arguments
-type UpdateRFQuestionsArgs struct {
-	Contents []string `json:"contents"`
 }
 
 //SubCat will recursivily retrive the sub Category of the Category
