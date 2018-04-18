@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"emotibot.com/emotigo/module/systex-controller/api/taskengine"
+
 	"github.com/siongui/gojianfan"
 )
 
@@ -85,15 +87,36 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 		CustomError(w, "task engine error:"+err.Error())
 		return
 	}
-	respStr := string(resp)
-	respStr = gojianfan.S2T(respStr)
-	log.Printf("v2Task: %s, te result: %s\n", sentence, respStr)
-	taskEngineLogger.Write([]string{time.Now().String(), sentence, respStr})
+	teResp, err := taskengine.ParseETResponse(resp)
+	if err != nil {
+		CustomError(w, "task engine response err:"+err.Error())
+		return
+	}
+	var out = Response{
+		Text:       gojianfan.S2T(teResp.Text),
+		ScenarioID: teResp.ScenarioID,
+		Flag:       teResp.Flag,
+		AsrText:    sentence,
+	}
+	outJSONData, err := json.Marshal(out)
+	if err != nil {
+		CustomError(w, "response json err: "+err.Error())
+		return
+	}
+
+	log.Printf("v2Task: %s, te result: %v\n", sentence, out)
+	taskEngineLogger.Write([]string{time.Now().String(), sentence, string(outJSONData)})
 	taskEngineLogger.Flush()
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintln(w, respStr)
+	w.Write(outJSONData)
+}
 
+type Response struct {
+	Text       string `json:"TTSText"`
+	ScenarioID string `json:"HitScenarioID"`
+	Flag       int    `json:"FinalFlag"`
+	AsrText    string `json:"asr_text"`
 }
 
 //Custom

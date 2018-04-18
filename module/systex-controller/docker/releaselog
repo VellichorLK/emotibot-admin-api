@@ -3,3 +3,5 @@
 [0.0.4]
 * mount log folder for persistence log.
 * log error message in stdOut.
+[0.0.5]
+* Add a asr_text field for output debug.
