@@ -28,9 +28,6 @@ components:
         content:
           type: string
           description: 標準問問題
-        isValid:
-          type: boolean
-          description: 是否已失效, 如果解决未解决页面的标准问已经不在问答库中存在，则状态为“已失效”。
     categoryId:
       type: integer
       description: questions under which category
@@ -172,6 +169,74 @@ paths:
           description: one of the id already setted
         '404':
           description: can not find the input id
+    /category/{categoryId}/RFQuestions:
+      get:
+        summary: 某個類別底下的RFQuestions
+        parameters:
+          - $ref: '#/components/parameters/categoryId'
+        responses:
+          '200':
+            description: an array of RFQuestion response
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      CategoryId:
+                        type: integer
+                      content:
+                        type: string
+          '400':
+            description: bad request, can not found category.
+          '500':
+            description: internal server errror
+    /RFQuestions/validation:
+      post:
+        summary: 檢查RFQuestion 的生效狀態
+        description: | 
+          因為Schema用text當作JOIN Key 的關係，配置會有生效狀態。
+          透過此API可以查詢傳入的配置是否有在標準問資料庫內。
+        requestBody:
+          content: 
+            application/json:
+              schema:
+                type: object
+                properties:
+                RFQuestions:
+                  type: array
+                  description: "配置內容最少一句，最多30句來保證回覆速度"
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 30
+                    description: "傳入的配置內容"
+        responses:
+          '200':
+            description: OK, 找到的配置生效狀態
+            content:
+              application/json:
+                schema:
+                  properties:
+                    type: object
+                    properties:
+                      RFQuestions:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            content:
+                              type: string
+                              description: 傳入內容本身
+                            isValid:
+                              type: boolean
+                              description: 是否已失效, True->生效, False->失效, Null->沒在配置中。
+          '400':
+            description: Bad Request, error message will be printed at its response body.(Like Too many or Too few input elements can trigger this respons)
+          '500':
+            description: Internal server error, error message will be printed as plaintext in response body.
+          
   # temp deprecated this api
   # /RFQuestions/search:
   #   get:

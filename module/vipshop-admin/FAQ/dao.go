@@ -14,7 +14,7 @@ import (
 
 const SEPARATOR = "#SEPARATE_TOKEN#"
 const (
-	DynamicMenu = iota
+	DynamicMenu     = iota
 	RelatedQuestion = iota
 )
 
@@ -215,6 +215,32 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 	return questions, nil
 }
 
+func FilterQuestions(appID string, content []string) ([]string, error) {
+	if len(content) == 0 {
+		return nil, fmt.Errorf("content should be greater than zero")
+	}
+	db := util.GetMainDB()
+	query := fmt.Sprintf("SELECT Content FROM %s_question WHERE Content IN (?%s)", appID, strings.Repeat(", ?", len(content)-1))
+	rows, err := db.Query(query)
+	if err != nil {
+		// Do not show detail query in output error message.
+		util.LogError.Printf("query %s failed", query)
+		return nil, fmt.Errorf("select questions by content query failed, %v", err)
+	}
+	defer rows.Close()
+	var results = make([]string, 0)
+	for rows.Next() {
+		var content string
+		rows.Scan(content)
+		results = append(results, content)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("io failed, %v", err)
+	}
+
+	return results, nil
+}
+
 func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid int, appid string) error {
 	queryStr := fmt.Sprintf("DELETE FROM %s_squestion WHERE Question_Id = ?", appid)
 	_, err := t.Exec(queryStr, qid)
@@ -319,7 +345,7 @@ func GetRFQuestions(appid string) ([]RFQuestion, error) {
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := fmt.Sprintf("SELECT stdQ.Question_Id, rf.Question_Content, stdQ.CategoryId  FROM %s_removeFeedbackQuestion AS rf LEFT JOIN %s_question AS stdQ ON stdQ.Content = rf.Question_Content", appid, appid)
+	rawQuery := fmt.Sprintf("SELECT Question_Content FROM %s_removeFeedbackQuestion ", appid)
 	rows, err := db.Query(rawQuery)
 	if err != nil {
 		return nil, fmt.Errorf("query %s failed, %v", rawQuery, err)
@@ -327,21 +353,77 @@ func GetRFQuestions(appid string) ([]RFQuestion, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var q RFQuestion
-		var id sql.NullInt64
-		rows.Scan(&id, &q.Content, &q.CategoryID)
-		if id.Valid {
-			q.IsValid = true
-			q.ID = int(id.Int64)
-		} else {
-			q.ID = 0
-			q.CategoryID = 0
-		}
+		rows.Scan(&q.Content)
 		questions = append(questions, q)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("scan rows failed, %v", err)
 	}
 	return questions, nil
+}
+
+func GetRFQuestionsByCategoryId(appid string, categories []int64) (map[int64][]string, error) {
+	fmt.Println(categories)
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("main db connection pool is nil")
+	}
+	if len(categories) == 0 {
+		return nil, fmt.Errorf("categories should have at least one element")
+	}
+	var rawQuery = "SELECT rf.Question_Content, stdQ.CategoryId FROM " + appid +
+		"_removeFeedbackQuestion AS rf JOIN " + appid +
+		"_question AS stdQ ON stdQ.CategoryId IN (?" + strings.Repeat(", ?", len(categories)-1) + ") AND stdQ.Content = rf.Question_Content"
+	var parameters = make([]interface{}, len(categories))
+	for i, c := range categories {
+		parameters[i] = c
+	}
+	rows, err := db.Query(rawQuery, parameters...)
+	if err != nil {
+		util.LogError.Println("error query:" + rawQuery)
+		return nil, fmt.Errorf("query failed, %v", err)
+	}
+	var results = make(map[int64][]string, 0)
+	for rows.Next() {
+		var content string
+		var categoryID int64
+		rows.Scan(&content, &categoryID)
+		contents := results[categoryID]
+		contents = append(contents, content)
+		results[categoryID] = contents
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan error, %v", err)
+	}
+	return results, nil
+}
+
+func FilterRFQuestions(appid string, q []string) ([]string, error) {
+	if len(q) == 0 {
+		return []string{}, nil
+	}
+
+	query := fmt.Sprintf("SELECT content FROM %s_removeFeedbackQuestion WHERE Question_Content In (?%s)", appid, strings.Repeat(", ?", len(q)-1))
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("main db not init")
+	}
+	rows, err := db.Query(query)
+	if err != nil {
+		util.LogError.Printf("query %s failed, %s\n", query, err)
+		return nil, fmt.Errorf("select query failed, %v", err)
+	}
+	var results []string
+	for rows.Next() {
+		var content string
+		rows.Scan(&content)
+		results = append(results, content)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan io failed, %v", err)
+	}
+
+	return results, nil
 }
 
 // SetRFQuestions will reset RFQuestion table and save given content as RFQuestion.
@@ -367,18 +449,17 @@ func SetRFQuestions(contents []string, appid string) error {
 	if err != nil {
 		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
 	}
-	if len(contents) > 0 {
-		rawQuery := fmt.Sprintf("INSERT INTO %s_removeFeedbackQuestion(Question_Content) VALUES(?) %s", appid, strings.Repeat(",(?)", len(contents)-1))
-		var parameters = make([]interface{}, len(contents))
-		for i, c := range contents {
-			parameters[i] = c
-		}
-		_, err = tx.Exec(rawQuery, parameters...)
+	insertStmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s_removeFeedbackQuestion(Question_Content) VALUES(?)", appid))
+	if err != nil {
+		return fmt.Errorf("preparing insert remove feedback question query failed, %v", err)
+	}
+	defer insertStmt.Close()
+	for _, c := range contents {
+		_, err := insertStmt.Exec(c)
 		if err != nil {
-			return fmt.Errorf("insert failed, %v", err)
+			return fmt.Errorf("insert %s failed, %v", c, err)
 		}
 	}
-
 	unixTime := time.Now().UnixNano() / 1000000
 	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
 	if err != nil {
@@ -914,7 +995,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 		) as fullc on fullc.id = q.CategoryId where`, appids...)
 
 	var shouldOr bool = false
-	for _, dao := range targets { 
+	for _, dao := range targets {
 		clause, condition := genQuestionWhereClause(&dao)
 		if len(condition) == 0 {
 			continue
@@ -945,7 +1026,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 	return
 }
 
-func DeleteQuestions(appid string, targets []Question) (error) {
+func DeleteQuestions(appid string, targets []Question) error {
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
@@ -962,7 +1043,7 @@ func DeleteQuestions(appid string, targets []Question) (error) {
 	return err
 }
 
-func deleteQuestions(appid string, targets []Question, tx *sql.Tx) (error) {
+func deleteQuestions(appid string, targets []Question, tx *sql.Tx) error {
 	// what we should de when delete questions
 	// 1. find answers of questions
 	// 2. delete answers
@@ -977,7 +1058,7 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) (error) {
 		targetAnswers = append(targetAnswers, targetAnswer)
 	}
 	targetAnswers, err := findAnswers(appid, targetAnswers, tx)
-	
+
 	var answerIDs []Answer = make([]Answer, len(targetAnswers))
 	for index, answer := range targetAnswers {
 		targetAnswer := Answer{
@@ -1057,7 +1138,7 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 
 	for rows.Next() {
 		answer := Answer{}
-		err = rows.Scan(&answer.AnswerId, &answer.QuestionId, &answer.Content, &answer.AnswerCmd, &answer.BeginTime, &answer.EndTime,  &answer.AnswerCmdMsg)
+		err = rows.Scan(&answer.AnswerId, &answer.QuestionId, &answer.Content, &answer.AnswerCmd, &answer.BeginTime, &answer.EndTime, &answer.AnswerCmdMsg)
 		if err != nil {
 			return answers, err
 		}
@@ -1069,7 +1150,7 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 
 func genFindAnswersSQL(appid string, targets []Answer) (string, []interface{}) {
 	var conditions []interface{}
-	
+
 	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Answer_CMD_Msg FROM %s_answer", appid)
 
 	if len(targets) == 0 {
@@ -1095,7 +1176,7 @@ func genFindAnswersSQL(appid string, targets []Answer) (string, []interface{}) {
 	return sql, conditions
 }
 
-func whereDateStringTemplate(start string, end string, shouldAnd *bool){
+func whereDateStringTemplate(start string, end string, shouldAnd *bool) {
 	clause := ""
 	if *shouldAnd {
 		clause += "and"
@@ -1108,7 +1189,7 @@ func whereDateStringTemplate(start string, end string, shouldAnd *bool){
 	}
 }
 
-func DeleteAnswers(appid string, targets []Answer) (error) {
+func DeleteAnswers(appid string, targets []Answer) error {
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
@@ -1128,7 +1209,7 @@ func DeleteAnswers(appid string, targets []Answer) (error) {
 	return tx.Commit()
 }
 
-func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) (error) {
+func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 	// what we should do when delete an answer
 	// 1. delete relative questions
 	// 2. delete dynamic menu
@@ -1154,10 +1235,10 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) (error) {
 			continue
 		}
 		conditions = append(conditions, condition...)
-		
+
 		if shouldOr {
 			sql += fmt.Sprintf(" or %s", clause)
-		} else{
+		} else {
 			sql += fmt.Sprintf(" %s", clause)
 			shouldOr = true
 		}
@@ -1203,7 +1284,7 @@ func genAnswerWhereClause(dao *Answer) (string, []interface{}) {
 
 	if dao.BeginTime != "" {
 		if shouldAnd {
-			whereClause +=" AND"
+			whereClause += " AND"
 		}
 		shouldAnd = true
 
@@ -1229,7 +1310,7 @@ func genAnswerWhereClause(dao *Answer) (string, []interface{}) {
 	return whereClause, conditions
 }
 
-func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) (error) {
+func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) error {
 	var table string
 	var column string
 
@@ -1249,7 +1330,7 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 
 	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
 
-	_, err :=tx.Exec(sql, conditions...)
+	_, err := tx.Exec(sql, conditions...)
 	return err
 }
 
@@ -1349,4 +1430,68 @@ func appendClauseAndConditions(whereClause *string, conditions *[]interface{}, a
 
 	clause := whereClauseTemplate(column, shouldAnd)
 	*whereClause += clause
+}
+
+// CategoryTree is the implement of tree strucure of all Category data.
+// Root category id should always be 0.
+// Index should keep the references of all node to do quick search.
+type CategoryTree struct {
+	Index map[int64]*Category
+	Root  *Category
+}
+
+//NewCategoryTree create a CategoryTree
+func NewCategoryTree(appid string) (*CategoryTree, error) {
+	rawQuery := "SELECT CategoryId, CategoryName, ParentId FROM " + appid + "_categories"
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("main db is not init")
+	}
+	rows, err := db.Query(rawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("query failed, %v", err)
+	}
+	defer rows.Close()
+	var rootCategory = &Category{ID: 0}
+	var tree = &CategoryTree{
+		Index: map[int64]*Category{0: rootCategory},
+		Root:  rootCategory,
+	}
+	for rows.Next() {
+		var (
+			catID    int64
+			name     string
+			parentId int64
+		)
+		rows.Scan(&catID, &name, &parentId)
+		c, exists := tree.Index[catID]
+		if !exists {
+			c = &Category{ID: int(catID)}
+		}
+		c.Name = name
+		c.ParentID = int(parentId)
+		parent, haveParent := tree.Index[parentId]
+		if haveParent {
+			parent.Children = append(parent.Children, int(catID))
+		} else {
+			parent = &Category{
+				ID:       int(parentId),
+				Children: []int{int(catID)},
+			}
+		}
+
+		tree.Index[catID] = c
+	}
+	return tree, nil
+}
+
+func (t *CategoryTree) SubCategories(catID int64) []*Category {
+	r := t.Index[catID]
+	var categories []*Category
+	for _, child := range r.Children {
+		subcats := t.SubCategories(int64(child))
+		categories = append(categories, subcats...)
+	}
+	categories = append(categories, r)
+	return categories
 }

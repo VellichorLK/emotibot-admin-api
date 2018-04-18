@@ -89,19 +89,18 @@ type Parameter interface {
 }
 
 type SimilarQuestionDAO struct {
-	Qid int
+	Qid     int
 	Content string
-	Sid int
-	Status int
+	Sid     int
+	Status  int
 }
 
 // this dao is used for both dynamic menu and relative question
 type AnswerLabelDAO struct {
-	Id int
+	Id       int
 	AnswerId int
-	Content string
+	Content  string
 }
-
 
 type Tag struct {
 	Type    int
@@ -110,10 +109,7 @@ type Tag struct {
 
 //RFQuestion is removed Feedback question(移除解決未解決的問題)
 type RFQuestion struct {
-	ID         int    `json:"id"`
-	Content    string `json:"content"`
-	CategoryID int    `json:"categoryId"`
-	IsValid    bool   `json:"isValid"`
+	Content string `json:"content"`
 }
 
 //UpdateRFQUestionsArgs are Post API JSON arguments
