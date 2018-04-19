@@ -1,6 +1,7 @@
 package util
 
 import (
+	"fmt"
 	"io"
 	"log"
 )
@@ -24,21 +25,21 @@ func LogInit(
 	traceHandle io.Writer,
 	infoHandle io.Writer,
 	warningHandle io.Writer,
-	errorHandle io.Writer) {
+	errorHandle io.Writer, prefix string) {
 
 	LogTrace = log.New(traceHandle,
-		"TRACE: ",
+		fmt.Sprintf("[%s] TRACE: ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogInfo = log.New(infoHandle,
-		"INFO: ",
+		fmt.Sprintf("[%s] INFO: ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogWarn = log.New(warningHandle,
-		"WARNING: ",
+		fmt.Sprintf("[%s] WARNING: ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogError = log.New(errorHandle,
-		"ERROR: ",
+		fmt.Sprintf("[%s] ERROR: ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 }

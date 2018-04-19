@@ -32,7 +32,7 @@ var serverConfig map[string]string
 
 func init() {
 	// util.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr)
+	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr, "ADMIN")
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {

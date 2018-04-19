@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -47,7 +46,7 @@ func ResolveJWTToken(ss string) (interface{}, error) {
 	})
 
 	if err != nil {
-		log.Printf("Resolve fail: %s", err.Error())
+		LogError.Printf("Resolve fail: %s", err.Error())
 		return nil, err
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {

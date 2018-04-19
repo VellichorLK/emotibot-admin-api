@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
@@ -72,34 +72,34 @@ func setUpRoutes() {
 func setUpDB() {
 	db := dao.MYSQLController{}
 	url, port, user, passwd, dbName := util.GetMySQLConfig()
-	log.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitDB(url, port, dbName, user, passwd)
 	setDB(&db)
 }
 
 func checkAuth(r *http.Request, route Route) bool {
-	log.Printf("Access: %s %s", r.Method, r.RequestURI)
+	util.LogInfo.Printf("Access: %s %s", r.Method, r.RequestURI)
 	if len(route.GrantType) == 0 {
-		log.Println("[Auth check] pass: no need")
+		util.LogError.Println("[Auth check] pass: no need")
 		return true
 	}
 
 	authorization := r.Header.Get("Authorization")
 	vals := strings.Split(authorization, " ")
 	if len(vals) < 2 {
-		log.Println("[Auth check] Auth fail: no header")
+		util.LogError.Println("[Auth check] Auth fail: no header")
 		return false
 	}
 
 	userInfo := data.User{}
 	err := userInfo.SetValueWithToken(vals[1])
 	if err != nil {
-		log.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+		util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
 		return false
 	}
 
 	if !util.IsInSlice(userInfo.Type, route.GrantType) {
-		log.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
 		return false
 	}
 
@@ -109,7 +109,7 @@ func checkAuth(r *http.Request, route Route) bool {
 	if userInfo.Type == 1 || userInfo.Type == 2 {
 		enterpriseID := vars["enterpriseID"]
 		if enterpriseID != *userInfo.Enterprise {
-			log.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
 			return false
 		}
 	}
@@ -117,7 +117,7 @@ func checkAuth(r *http.Request, route Route) bool {
 	if userInfo.Type == 2 {
 		userID := vars["userID"]
 		if userID != "" && userID != userInfo.ID {
-			log.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
 			return false
 		}
 	}
@@ -125,9 +125,14 @@ func checkAuth(r *http.Request, route Route) bool {
 	return true
 }
 
+func setUpLog() {
+}
+
 func main() {
+	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr, "AUTH")
 	setUpRoutes()
 	setUpDB()
+	setUpLog()
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -147,13 +152,17 @@ func main() {
 					http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				}
 			})
-		log.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
+		util.LogInfo.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
 	}
 
 	url, port := util.GetServerConfig()
 	serverBind := fmt.Sprintf("%s:%d", url, port)
-	log.Printf("Start auth server on %s\n", serverBind)
-	log.Fatal(http.ListenAndServe(serverBind, router))
+	util.LogInfo.Printf("Start auth server on %s\n", serverBind)
+	err := http.ListenAndServe(serverBind, router)
+	if err != nil {
+		util.LogError.Panicln(err.Error())
+		os.Exit(1)
+	}
 }
 
 func getRequester(r *http.Request) *data.User {

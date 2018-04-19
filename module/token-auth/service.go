@@ -2,10 +2,10 @@ package main
 
 import (
 	"errors"
-	"log"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/data"
+	"emotibot.com/emotigo/module/token-auth/util"
 )
 
 var useDB dao.DB
@@ -24,7 +24,7 @@ func getEnterprises() (*data.Enterprises, string) {
 func getEnterprise(enterpriseID string) (ret *data.Enterprise, err error) {
 	defer func() {
 		if err != nil {
-			log.Printf("Error when get enterprise %s: %s\n", enterpriseID, err.Error())
+			util.LogError.Printf("Error when get enterprise %s: %s\n", enterpriseID, err.Error())
 		}
 	}()
 	ret, err = useDB.GetEnterprise(enterpriseID)

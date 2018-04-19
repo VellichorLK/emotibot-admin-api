@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"runtime"
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/data"
+	"emotibot.com/emotigo/module/token-auth/util"
 )
 
 const (
@@ -36,11 +36,11 @@ func (controller *MYSQLController) InitDB(host string, port int, dbName string, 
 	} else {
 		dbString = fmt.Sprintf("%s:%s@(%s:%d)/%s", account, password, host, port, dbName)
 	}
-	log.Printf("Connect to db [%s]", dbString)
+	util.LogInfo.Printf("Connect to db [%s]\n", dbString)
 	db, err := sql.Open("mysql", dbString)
 
 	if err != nil {
-		log.Printf("Connect to db[%s] fail: [%s]\n", dbString, err.Error())
+		util.LogError.Printf("Connect to db[%s] fail: [%s]\n", dbString, err.Error())
 		return false
 	}
 
@@ -50,7 +50,7 @@ func (controller *MYSQLController) InitDB(host string, port int, dbName string, 
 
 func (controller MYSQLController) checkDB() (bool, error) {
 	if controller.connectDB == nil {
-		log.Fatal("connectDB is nil, db is !initialized properly")
+		util.LogError.Fatalln("connectDB is nil, db is !initialized properly")
 		return false, fmt.Errorf("DB hasn't init")
 	}
 	controller.connectDB.Ping()
@@ -66,7 +66,7 @@ func (controller MYSQLController) GetEnterprises() (*data.Enterprises, error) {
 	rows, err := controller.connectDB.Query(fmt.Sprintf("SELECT uuid,name from %s", enterpriseTable))
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -76,7 +76,7 @@ func (controller MYSQLController) GetEnterprises() (*data.Enterprises, error) {
 		err := rows.Scan(&enterprise.ID, &enterprise.Name)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 		enterprises = append(enterprises, enterprise)
@@ -92,7 +92,7 @@ func (controller MYSQLController) GetEnterprise(enterpriseID string) (*data.Ente
 	rows, err := controller.connectDB.Query(fmt.Sprintf("SELECT uuid,name from %s where uuid = ?", enterpriseTable), enterpriseID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(0)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -102,7 +102,7 @@ func (controller MYSQLController) GetEnterprise(enterpriseID string) (*data.Ente
 		err := rows.Scan(&enterprise.ID, &enterprise.Name)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 		return &enterprise, nil
@@ -168,7 +168,7 @@ func (controller MYSQLController) GetUsers(enterpriseID string) (*data.Users, er
 		getUserColumnList(""), userTable), enterpriseID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -177,7 +177,7 @@ func (controller MYSQLController) GetUsers(enterpriseID string) (*data.Users, er
 		user, err := scanRowToUser(rows)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 
@@ -233,13 +233,13 @@ func (controller MYSQLController) GetAdminUser(enterpriseID string) (*data.User,
 	row := controller.connectDB.QueryRow(queryStr, enterpriseID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	user, err := scanSingleRowToUser(row)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(0)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	return user, nil
@@ -255,7 +255,7 @@ func (controller MYSQLController) GetAuthUser(account string, passwd string) (*d
 	rows, err := controller.connectDB.Query(queryStr, account, account, passwd)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -264,7 +264,7 @@ func (controller MYSQLController) GetAuthUser(account string, passwd string) (*d
 		user, err := scanRowToUser(rows)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 		info, err := controller.getUserInfo(*user.Enterprise, user.ID)
@@ -282,7 +282,7 @@ func (controller MYSQLController) AddUser(enterpriseID string, user *data.User, 
 	defer func() {
 		if err != nil {
 			_, file, line, _ := runtime.Caller(1)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		}
 	}()
 	ok, err := controller.checkDB()
@@ -472,7 +472,7 @@ func (controller MYSQLController) GetApps(enterpriseID string) (*data.Apps, erro
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -482,7 +482,7 @@ func (controller MYSQLController) GetApps(enterpriseID string) (*data.Apps, erro
 		err := rows.Scan(&app.ID, &app.Name, &app.ValidStart, &app.ValidEnd, &app.ValidCount, &app.Status)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 		apps = append(apps, app)
@@ -499,7 +499,7 @@ func (controller MYSQLController) GetApp(enterpriseID string, AppID string) (*da
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID, AppID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -509,7 +509,7 @@ func (controller MYSQLController) GetApp(enterpriseID string, AppID string) (*da
 		err := rows.Scan(&app.ID, &app.Name, &app.ValidStart, &app.ValidEnd, &app.ValidCount, &app.Status)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 		return &app, nil
@@ -540,13 +540,13 @@ func (controller MYSQLController) DeleteApp(enterpriseID string, AppID string) (
 
 func logDBError(err error) {
 	_, file, line, _ := runtime.Caller(1)
-	log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+	util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 }
 
 func clearTransition(tx *sql.Tx) {
 	rollbackRet := tx.Rollback()
 	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
-		log.Printf("Critical db error in rollback: %s", rollbackRet.Error())
+		util.LogError.Printf("Critical db error in rollback: %s\n", rollbackRet.Error())
 	}
 }
 
@@ -704,7 +704,7 @@ func (controller MYSQLController) getRoleUUIDByIdWidthTx(id int, t *sql.Tx) (uui
 
 func (controller MYSQLController) AddRole(enterprise string, role *data.Role) (uuid string, err error) {
 	defer func() {
-		log.Println("Add role ret uuid: ", uuid)
+		util.LogInfo.Println("Add role ret uuid: ", uuid)
 	}()
 	ok, err := controller.checkDB()
 	if !ok {
@@ -775,7 +775,6 @@ func (controller MYSQLController) UpdateRole(enterprise string, roleUUID string,
 	if err != nil {
 		return
 	}
-	log.Println("Update role id = ", roleID)
 
 	queryStr = fmt.Sprintf(`
 		UPDATE %s SET name = ?, discription = ?
@@ -875,7 +874,7 @@ func (controller MYSQLController) GetUsersOfRole(enterpriseID string, roleUUID s
 		getUserColumnList(""), userTable), enterpriseID, roleUUID)
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -884,7 +883,7 @@ func (controller MYSQLController) GetUsersOfRole(enterpriseID string, roleUUID s
 		user, err := scanRowToUser(rows)
 		if err != nil {
 			_, file, line, _ := runtime.Caller(0)
-			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+			util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
 			return nil, err
 		}
 

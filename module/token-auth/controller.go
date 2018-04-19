@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -164,7 +163,7 @@ func UserAddHandler(w http.ResponseWriter, r *http.Request) {
 	if roleID != "" {
 		role, err := getRole(enterpriseID, roleID)
 		if err != nil && err != sql.ErrNoRows {
-			log.Printf("Error when get role %s: %s\n", roleID, err.Error())
+			util.LogError.Printf("Error when get role %s: %s\n", roleID, err.Error())
 			returnInternalError(w, err.Error())
 			return
 		} else if role == nil {
@@ -344,7 +343,6 @@ func RoleAddHandler(w http.ResponseWriter, r *http.Request) {
 		returnInternalError(w, err.Error())
 		return
 	}
-	log.Println("Finish add, get role of ", id)
 	newRole, err := getRole(enterpriseID, id)
 	if err != nil {
 		returnInternalError(w, err.Error())
@@ -415,7 +413,7 @@ func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	userInfo := data.User{}
 	err := userInfo.SetValueWithToken(token)
 	if err != nil {
-		log.Println("Check token fail: ", err.Error())
+		util.LogInfo.Println("Check token fail: ", err.Error())
 		returnBadRequest(w, "token")
 		return
 	}
@@ -433,7 +431,7 @@ func parseRoleFromRequest(r *http.Request) (*data.Role, error) {
 	privileges := map[string][]string{}
 	err := json.Unmarshal([]byte(privilegeStr), &privileges)
 	if err != nil {
-		log.Printf("Cannot decode privilegeStr: %s", err.Error())
+		util.LogError.Printf("Cannot decode privilegeStr: %s\n", err.Error())
 		return nil, err
 	}
 	ret := data.Role{
