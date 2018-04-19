@@ -1,0 +1,14 @@
+FROM docker-reg.emotibot.com.cn:55688/go-build:20180112_b34f7b5
+
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+WORKDIR /go/src/emotibot.com/emotigo/module/${PROJECT}
+RUN apk add --no-cache wget
+
+ENV SELF_RESOURCES http://192.168.3.251:8181/selfLearnResources.tar.gz
+RUN wget ${SELF_RESOURCES} -O ./resouc.tar.gz && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
+
+COPY . /go/src/emotibot.com/emotigo/module
+
+RUN go-wrapper download
