@@ -2,6 +2,7 @@ package dao
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 	"runtime"
@@ -277,32 +278,56 @@ func (controller MYSQLController) GetAuthUser(account string, passwd string) (*d
 
 	return nil, nil
 }
-func (controller MYSQLController) AddUser(enterpriseID string, user *data.User) (string, error) {
+func (controller MYSQLController) AddUser(enterpriseID string, user *data.User, roleID string) (uuid string, err error) {
+	defer func() {
+		if err != nil {
+			_, file, line, _ := runtime.Caller(1)
+			log.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+		}
+	}()
 	ok, err := controller.checkDB()
 	if !ok {
-		return "", err
+		return
 	}
 
-	queryStr := fmt.Sprintf(`
-		INSERT INTO %s
-		(uuid, display_name, user_name, email, enterprise, type, password)
-		VALUES (UUID(), ?, ?, ?, ?, ?, ?)`, userTable)
-	ret, err := controller.connectDB.Exec(queryStr, user.DisplayName, user.UserName, user.Email, enterpriseID, user.Type, user.Password)
+	t, err := controller.connectDB.Begin()
 	if err != nil {
-		return "", err
+		return
+	}
+	defer clearTransition(t)
+
+	count := 0
+	queryStr := fmt.Sprintf("SELECT count(*) FROM %s WHERE user_name = ? OR (email = ? AND email != '')", userTable)
+	row := t.QueryRow(queryStr, user.UserName, user.Email)
+	err = row.Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return
+	}
+	if count > 0 {
+		err = errors.New("Conflict user")
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s
+		(uuid, display_name, user_name, email, enterprise, type, password, role)
+		VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)`, userTable)
+	ret, err := t.Exec(queryStr, user.DisplayName, user.UserName, user.Email, enterpriseID, user.Type, user.Password, roleID)
+	if err != nil {
+		return
 	}
 
 	id, err := ret.LastInsertId()
 	if err != nil {
-		return "", err
+		return
 	}
-
-	uuid, err := controller.getUserUUID(enterpriseID, id)
+	err = t.Commit()
 	if err != nil {
-		return "", err
+		return
 	}
 
-	return uuid, nil
+	uuid, err = controller.getUserUUID(enterpriseID, id)
+	return
 }
 func (controller MYSQLController) getUserUUID(enterpriseID string, userID int64) (string, error) {
 	ok, err := controller.checkDB()
@@ -327,14 +352,14 @@ func (controller MYSQLController) UpdateUser(enterpriseID string, user *data.Use
 	var params []interface{}
 	if user.Password == nil || *user.Password == "" {
 		queryStr = fmt.Sprintf(`UPDATE %s SET
-			display_name = ?, email = ?, type = ?
+			display_name = ?, email = ?, type = ?, role = ?
 			WHERE uuid = ? AND enterprise = ?`, userTable)
-		params = []interface{}{user.DisplayName, user.Email, user.Type, user.ID, user.Enterprise}
+		params = []interface{}{user.DisplayName, user.Email, user.Type, user.Role, user.ID, user.Enterprise}
 	} else {
 		queryStr = fmt.Sprintf(`UPDATE %s SET
-			display_name = ?, email = ?, type = ?,
+			display_name = ?, email = ?, type = ?, role = ?,
 			password = ? WHERE uuid = ? AND enterprise = ?`, userTable)
-		params = []interface{}{user.DisplayName, user.Email, user.Type, user.Password, user.ID, user.Enterprise}
+		params = []interface{}{user.DisplayName, user.Email, user.Type, user.Role, user.Password, user.ID, user.Enterprise}
 	}
 	_, err = controller.connectDB.Exec(queryStr, params...)
 	return err
@@ -540,6 +565,7 @@ func (controller MYSQLController) GetRoles(enterpriseID string) ([]*data.Role, e
 
 	roleIDs := []string{}
 	roleMap := map[int]*data.Role{}
+	roleUUIDMap := map[string]*data.Role{}
 	ret := []*data.Role{}
 	for roleRows.Next() {
 		var id int
@@ -552,10 +578,27 @@ func (controller MYSQLController) GetRoles(enterpriseID string) ([]*data.Role, e
 		ret = append(ret, &temp)
 		roleIDs = append(roleIDs, fmt.Sprintf("%d", id))
 		roleMap[id] = &temp
+		roleUUIDMap[temp.UUID] = &temp
 	}
 
 	if len(roleIDs) == 0 {
 		return ret, nil
+	}
+
+	queryStr = fmt.Sprintf("SELECT role, count(*) FROM %s WHERE enterprise = ? AND role != '' GROUP BY role", userTable)
+	countRows, err := controller.connectDB.Query(queryStr, enterpriseID)
+	if err != nil {
+		return nil, err
+	}
+	defer countRows.Close()
+
+	for countRows.Next() {
+		id := ""
+		count := 0
+		err = countRows.Scan(&id, &count)
+		if role, ok := roleUUIDMap[id]; ok {
+			role.UserCount = count
+		}
 	}
 
 	queryStr = fmt.Sprintf(`
@@ -603,6 +646,13 @@ func (controller MYSQLController) GetRole(enterpriseID string, roleID string) (*
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		return nil, err
+	}
+
+	queryStr = fmt.Sprintf("SELECT count(*) FROM %s WHERE enterprise = ? AND role = ? GROUP BY role", userTable)
+	countRow := controller.connectDB.QueryRow(queryStr, enterpriseID, roleID)
+	err = countRow.Scan(&ret.UserCount)
+	if err != nil {
 		return nil, err
 	}
 

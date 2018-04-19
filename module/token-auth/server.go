@@ -46,6 +46,7 @@ func setUpRoutes() {
 		Route{"GetApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppGetHandler, []interface{}{0, 1, 2}},
 		Route{"Login", "POST", 2, "login", LoginHandler, []interface{}{}},
 		Route{"ValidateToken", "GET", 2, "token/{token}", ValidateTokenHandler, []interface{}{}},
+		Route{"ValidateToken", "GET", 2, "token", ValidateTokenHandler, []interface{}{}},
 
 		Route{"AddUser", "POST", 2, "enterprise/{enterpriseID}/user", UserAddHandler, []interface{}{0, 1, 2}},
 		Route{"UpdateUser", "PUT", 2, "enterprise/{enterpriseID}/user/{userID}", UserUpdateHandler, []interface{}{0, 1, 2}},
@@ -64,6 +65,7 @@ func setUpRoutes() {
 		// Route{"AddApp", "GET", 2, "enterprise/{enterpriseID}/app", AppAddHandler, []interface{}{0, 1}},
 		// Route{"UpdateApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandler, []interface{}{0, 1}},
 		// Route{"DeleteApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandler, []interface{}{0, 1}},
+		// Route{"AddEnterprise", "POST", 2, "enterprise", EnterpriseAddHandler, []interface{}{0}},
 	}
 }
 

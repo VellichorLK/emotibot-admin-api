@@ -12,7 +12,7 @@ type DB interface {
 	GetAdminUser(enterpriseID string) (*data.User, error)
 	GetAuthUser(account string, passwd string) (user *data.User, err error)
 
-	AddUser(enterpriseID string, user *data.User) (userID string, err error)
+	AddUser(enterpriseID string, user *data.User, roleID string) (userID string, err error)
 	UpdateUser(enterpriseID string, user *data.User) error
 	DeleteUser(enterpriseID string, userID string) (bool, error)
 

@@ -5,6 +5,7 @@ type Role struct {
 	Name        string              `json:"name"`
 	Discription string              `json:"description"`
 	Privileges  map[string][]string `json:"privileges"`
+	UserCount   int                 `json:"user_count"`
 }
 
 type Module struct {

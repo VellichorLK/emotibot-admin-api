@@ -93,8 +93,8 @@ func login(account string, passwd string) (*data.Enterprise, *data.User, string)
 	return enterprise, user, ""
 }
 
-func addUser(enterpriseID string, user *data.User) (string, error) {
-	return useDB.AddUser(enterpriseID, user)
+func addUser(enterpriseID string, user *data.User, roleID string) (string, error) {
+	return useDB.AddUser(enterpriseID, user, roleID)
 }
 
 func deleteUser(enterpriseID string, userID string) error {

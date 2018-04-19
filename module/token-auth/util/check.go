@@ -20,7 +20,7 @@ func IsValidString(str *string) bool {
 	if strings.Trim(*str, " ") == "" {
 		return false
 	}
-	return true
+	return true	
 }
 
 // IsValidUUID will check if string is standard uuid or not

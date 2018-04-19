@@ -150,13 +150,29 @@ func UserAddHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
+	roleID := r.FormValue("role")
+	if roleID == "" && user.Type == 2 {
+		returnBadRequest(w, "Role")
+		return
+	}
 
 	if requester.Type > user.Type {
 		returnForbidden(w)
 		return
 	}
 
-	id, err := addUser(enterpriseID, user)
+	if roleID != "" {
+		role, err := getRole(enterpriseID, roleID)
+		if err != nil && err != sql.ErrNoRows {
+			log.Printf("Error when get role %s: %s\n", roleID, err.Error())
+			returnInternalError(w, err.Error())
+			return
+		} else if role == nil {
+			returnBadRequest(w, "Role")
+		}
+	}
+
+	id, err := addUser(enterpriseID, user, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -234,6 +250,7 @@ func UserUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
+	newUser.Type = origUser.Type
 
 	newUser.ID = userID
 	newUser.Enterprise = &enterpriseID
@@ -383,6 +400,13 @@ func ModulesGetHandler(w http.ResponseWriter, r *http.Request) {
 func ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	token := vars["token"]
+
+	if token == "" {
+		params := strings.Split(r.Header.Get("Authorization"), " ")
+		if len(params) >= 2 {
+			token = params[1]
+		}
+	}
 	if token == "" {
 		returnBadRequest(w, "token")
 		return
@@ -446,9 +470,9 @@ func loadUserFromRequest(r *http.Request) *data.User {
 func parseAddUserFromRequest(r *http.Request) (*data.User, error) {
 	user := loadUserFromRequest(r)
 
-	if user.Email == nil || *user.Email == "" {
-		return nil, errors.New("invalid email")
-	}
+	// if user.Email == nil || *user.Email == "" {
+	// 	return nil, errors.New("invalid email")
+	// }
 	if user.Password == nil || *user.Password == "" {
 		return nil, errors.New("invalid password")
 	}
@@ -461,9 +485,9 @@ func parseAddUserFromRequest(r *http.Request) (*data.User, error) {
 func parseUpdateUserFromRequest(r *http.Request) (*data.User, error) {
 	user := loadUserFromRequest(r)
 
-	if user.Email == nil || *user.Email == "" {
-		return nil, errors.New("invalid email")
-	}
+	// if user.Email == nil || *user.Email == "" {
+	// 	return nil, errors.New("invalid email")
+	// }
 
 	return user, nil
 }
