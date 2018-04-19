@@ -540,7 +540,6 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	query += fmt.Sprintf(" left join (%s) as tag on tag.a_id = a.Answer_Id", dimensionSQL)
 	query += " group by a.Answer_Id order by q.Question_Id desc, a.Answer_Id"
 
-	util.LogTrace.Printf("\nSQL query:\n%s\n\n", query)
 	// fetch
 	rows, err := db.Query(query)
 	if err != nil {
@@ -573,7 +572,6 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		}
 
 		// transform tag id format
-		util.LogTrace.Printf("tagIDs: %#v\n", tagIDs)
 		if tagIDs.String == "" {
 			answer.Dimension = []string{"", "", "", "", ""}
 		} else {
