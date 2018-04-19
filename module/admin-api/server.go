@@ -97,7 +97,7 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 		return true
 	}
 
-	appid := r.Header.Get("Authorization")
+	appid := util.GetAppID(r)
 	userid := r.Header.Get("X-UserID")
 
 	util.LogInfo.Printf("appid: %s, userid: %s\n", appid, userid)

@@ -11,11 +11,13 @@ const (
 
 	// ConstUserIPHeaderKey is header record the userip
 	ConstUserIPHeaderKey = "X-Real-IP"
+
+	ConstAppIDHeaderKey = "X-AppID"
 )
 
 // GetAppID will get AppID from http header
 func GetAppID(r *http.Request) string {
-	return r.Header.Get(ConstAuthorizationHeaderKey)
+	return r.Header.Get(ConstAppIDHeaderKey)
 }
 
 // GetUserID will get UserID from http header
