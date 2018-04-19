@@ -1,6 +1,6 @@
 #!/bin/bash
 REPO=docker-reg.emotibot.com.cn:55688
-CONTAINER=admin-api
+CONTAINER=token-auth
 # TAG="$(git rev-parse --short HEAD)"
 LAST_RELEASE_TAG="20171212-2c95de7"
 GIT_HEAD="$(git rev-parse --short HEAD)"
