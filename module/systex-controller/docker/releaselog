@@ -5,3 +5,4 @@
 * log error message in stdOut.
 [0.0.5]
 * Add a asr_text field for output debug.
+* Fix TE client bug.

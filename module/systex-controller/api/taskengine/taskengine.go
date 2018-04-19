@@ -39,9 +39,10 @@ func (c *Client) ET(uid, text string) ([]byte, error) {
 	}
 	path := c.Location.ResolveReference(u)
 	var body = argsET{
-		AppID: c.AppID,
-		CU:    make(map[string]interface{}, 0),
-		Text:  text,
+		AppID:  c.AppID,
+		UserID: uid,
+		CU:     make(map[string]interface{}, 0),
+		Text:   text,
 	}
 	data, err := json.Marshal(body)
 	if err != nil {
