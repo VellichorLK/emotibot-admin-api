@@ -25,13 +25,13 @@ func init() {
 		ModuleName: "task",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "apps", []string{}, handleGetApps),
-			util.NewEntryPoint("POST", "apps", []string{"edit"}, handleUpdateApp),
+			util.NewEntryPoint("POST", "apps", []string{}, handleUpdateApp),
 
-			util.NewEntryPoint("POST", "scenarios-upload", []string{"import"}, handleUploadScenarios),
-			util.NewEntryPoint("POST", "scenario-upload", []string{"import"}, handleUploadScenario),
+			util.NewEntryPoint("POST", "scenarios-upload", []string{}, handleUploadScenarios),
+			util.NewEntryPoint("POST", "scenario-upload", []string{}, handleUploadScenario),
 			util.NewEntryPoint("GET", "scenarios", []string{}, handleGetScenarios),
-			util.NewEntryPoint("PUT", "scenarios", []string{"create"}, handlePutScenarios),
-			util.NewEntryPoint("POST", "scenarios", []string{"edit"}, handlePostScenarios),
+			util.NewEntryPoint("PUT", "scenarios", []string{}, handlePutScenarios),
+			util.NewEntryPoint("POST", "scenarios", []string{}, handlePostScenarios),
 		},
 	}
 }
