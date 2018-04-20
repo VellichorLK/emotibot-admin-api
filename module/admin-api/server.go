@@ -98,18 +98,19 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	}
 
 	appid := util.GetAppID(r)
-	userid := r.Header.Get("X-UserID")
+	userid := util.GetUserID(r)
+	token := util.GetAuthToken(r)
 
 	util.LogInfo.Printf("appid: %s, userid: %s\n", appid, userid)
-	if len(userid) == 0 || !util.IsValidAppID(appid) {
-		util.LogTrace.Printf("Unauthorized appid:[%s] userid:[%s]", appid, userid)
+	if len(userid) == 0 || !util.IsValidAppID(appid) || len(token) == 0 {
+		util.LogTrace.Printf("Unauthorized appid:[%s] userid:[%s] token:[%s]", appid, userid, token)
 		return false
 	}
 
-	return checkPrivilegeWithAPI(module, cmd, appid, userid)
+	return checkPrivilegeWithAPI(module, cmd, token)
 }
 
-func checkPrivilegeWithAPI(module string, cmd string, appid string, userid string) bool {
+func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 	if serverConfig == nil {
 		return true
 	}
@@ -118,11 +119,15 @@ func checkPrivilegeWithAPI(module string, cmd string, appid string, userid strin
 		util.LogTrace.Printf(authURL)
 
 		req := make(map[string]string)
-		req["userid"] = userid
 		req["module"] = module
 		req["cmd"] = cmd
-		util.LogTrace.Printf("Check privilege: %#v", req)
+		// util.LogTrace.Printf("Check privilege: %#v", req)
 		// resp = util.HTTPGet(authURL)
+		resp, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
+		if err != nil {
+			util.LogInfo.Printf("Get content resp:%s\n", err.Error())
+		}
+		util.LogInfo.Printf("%s", resp)
 
 		return true
 	}

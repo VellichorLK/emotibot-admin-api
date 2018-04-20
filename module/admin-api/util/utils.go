@@ -1,6 +1,9 @@
 package util
 
-import "net/http"
+import (
+	"net/http"
+	"strings"
+)
 
 const (
 	// ConstAuthorizationHeaderKey is header used for auth, content will be appid only
@@ -14,6 +17,15 @@ const (
 
 	ConstAppIDHeaderKey = "X-AppID"
 )
+
+func GetAuthToken(r *http.Request) string {
+	header := r.Header.Get(ConstAuthorizationHeaderKey)
+	params := strings.Split(header, " ")
+	if len(params) < 2 {
+		return ""
+	}
+	return params[1]
+}
 
 // GetAppID will get AppID from http header
 func GetAppID(r *http.Request) string {

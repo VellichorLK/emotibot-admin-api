@@ -41,7 +41,7 @@ func init() {
 			util.NewEntryPoint("DELETE", "wordbank-dir/dir", []string{"delete"}, handleDeleteWordbankDir),
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
-			util.NewEntryPointWithVer("GET", "download/{file}", []string{"view"}, handleDownloadFromMySQL, 2),
+			util.NewEntryPointWithVer("GET", "download/{file}", []string{}, handleDownloadFromMySQL, 2),
 
 			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWord, 2),
 			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonyms, 2),

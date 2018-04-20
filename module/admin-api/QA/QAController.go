@@ -23,7 +23,7 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "questions/operations", []string{"view"}, viewOperations),
 			util.NewEntryPoint(http.MethodPost, "questions/operations/import", []string{"import"}, importExcel),
 			util.NewEntryPoint(http.MethodPost, "questions/operations/export", []string{"export"}, exportExcel),
-			util.NewEntryPoint(http.MethodGet, "questions/operations/{id}/download", []string{"view"}, download),
+			util.NewEntryPoint(http.MethodGet, "questions/operations/{id}/download", []string{}, download),
 			util.NewEntryPoint(http.MethodGet, "questions/operations/{id}/progress", []string{"view"}, progress),
 		},
 	}
