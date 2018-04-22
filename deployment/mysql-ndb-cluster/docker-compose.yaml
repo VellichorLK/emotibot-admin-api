@@ -1,0 +1,96 @@
+version: "3.2"
+services:
+  management1:
+    image: mysql/mysql-cluster
+    networks: 
+      mysql:
+        ipv4_address: 10.0.0.2
+    volumes:
+      - type: bind
+        source: ./mysql-cluster.cnf
+        target: /etc/mysql-cluster.cnf
+      - type: bind
+        source: ./my.cnf
+        target: /etc/my.cnf
+    command: ndb_mgmd --ndb-nodeid=1
+  ndb1:
+    image: mysql/mysql-cluster
+    networks: 
+      mysql:
+        ipv4_address: 10.0.0.3
+    volumes:
+      - type: bind
+        source: ./mysql-cluster.cnf
+        target: /etc/mysql-cluster.cnf
+      - type: bind
+        source: ./my.cnf
+        target: /etc/my.cnf
+    depends_on:
+      - management1
+    command: ndbd
+  ndb2:
+    image: mysql/mysql-cluster
+    networks: 
+      mysql:
+        ipv4_address: 10.0.0.4
+    volumes:
+      - type: bind
+        source: ./mysql-cluster.cnf
+        target: /etc/mysql-cluster.cnf
+      - type: bind
+        source: ./my.cnf
+        target: /etc/my.cnf
+    command: ndbd
+    depends_on:
+      - management1
+  mysql1:
+    image: mysql/mysql-cluster
+    networks: 
+      mysql:
+        ipv4_address: 10.0.0.5
+    env_file:
+      - ./mysql.env
+    ports:
+      - 3306:3306
+    volumes:
+      - type: bind
+        source: ./my.cnf
+        target: /etc/my.cnf
+      - type: bind
+        source: ./mysql-cluster.cnf
+        target: /etc/mysql-cluster.cnf
+      # - type: bind
+      #   source: ./users.sql
+      #   target: /etc/mysql/
+    depends_on:
+        - ndb1
+        - ndb2
+    command: mysqld
+  mysql2:
+    image: mysql/mysql-cluster
+    networks: 
+      mysql:
+        ipv4_address: 10.0.0.6  
+    env_file:
+      - ./mysql.env
+    ports:
+      - 3307:3306
+    volumes:
+      - type: bind
+        source: ./my.cnf
+        target: /etc/my.cnf
+      - type: bind
+        source: ./mysql-cluster.cnf
+        target: /etc/mysql-cluster.cnf
+    depends_on:
+        - ndb1
+        - ndb2
+    command: mysqld
+networks: 
+  mysql:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.0.0.0/8
+
