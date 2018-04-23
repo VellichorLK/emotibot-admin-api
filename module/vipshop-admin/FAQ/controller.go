@@ -566,9 +566,6 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 	oldAnswersMap := prepareAnswerMap(oldQuestion.Answers)
 	newAnswersMap := prepareAnswerMap(newQuestion.Answers)
 
-	util.LogError.Printf("oldAnswerMap: %+v", oldAnswersMap)
-	util.LogError.Printf("newAnswerMap: %+v", newAnswersMap)
-
 	var deletedAnswers string
 	var addedAnswers string
 	for answerID, oldAnswer := range oldAnswersMap {
@@ -718,8 +715,6 @@ func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string
 	// [标准答案]：[分类路径][标准问题][维度][修改部分]：原内容 => 新内容
 	// [标准答案]:[暂无分类][testQ2][WAP端][标准答案]:<p>testA223123fdsafasfdafdsafdsaf</p>=><p>testA223123fdsafasfdafdsafdsafffffff</p>;[生效时间]:永久=>2018-04-19 11:11:00-2018-04-20 11:11:00
 
-	util.LogError.Printf("old content: %s", oldAnswer.Content)
-	util.LogError.Printf("NEW content: %s", newAnswer.Content)
 	if oldAnswer.Content != newAnswer.Content {
 		changed = true
 		auditLog = fmt.Sprintf("%s[标准答案]:%s=>%s;", auditLog, oldAnswer.Content, newAnswer.Content)
