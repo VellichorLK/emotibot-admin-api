@@ -1,15 +1,12 @@
 package FAQ
 
 import (
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -904,7 +901,6 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 		if err != nil {
 			return
 		}
-
 		answerIDs = append(answerIDs, answerID)
 	}
 
@@ -913,10 +909,10 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 		if index == 0{
 			targetIDSQL = fmt.Sprintf("Answer_Id != %d", aid)
 		} else {
-			targetIDSQL = fmt.Sprintf(" and Answer_Id != %d", aid)
+			targetIDSQL += fmt.Sprintf(" and Answer_Id != %d", aid)
 		}
 	}
-	sqlStr = fmt.Sprintf("DELETE FROM %s_answer Where (%s) and Question_Id=%d", appid, targetIDSQL, question.QuestionId)
+	sqlStr = fmt.Sprintf("DELETE FROM %s_answer WHERE (%s) and Question_Id=%d", appid, targetIDSQL, question.QuestionId)
 	_, err = tx.Exec(sqlStr)
 	return
 }
@@ -934,7 +930,6 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 		answer.AnswerCmdMsg,
 		answer.AnswerId,
 	}
-	util.LogError.Printf("parameters: %+v", parameters)
 
 	_, err = tx.Exec(sqlStr, parameters...)
 	if err != nil {
@@ -969,7 +964,7 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	}
 
 	if len(answer.RelatedQuestions) > 0 {
-		insertAnswerLabels(appid, int64(answer.AnswerId), RelatedQuestion, answer.RelatedQuestions, tx)
+		err = insertAnswerLabels(appid, int64(answer.AnswerId), RelatedQuestion, answer.RelatedQuestions, tx)
 		if err != nil {
 			return
 		}
@@ -1108,7 +1103,7 @@ func insertAnswerLabels(appid string, answerID int64, labelType int, labels []st
 }
 
 func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *sql.Tx) (err error) {
-	sqlStr := fmt.Sprintf("INSERT INTO %s_answertag (Answer_Id, Tag_Id, CreatedTime) VALUES", appid)
+	sqlStr := fmt.Sprintf("INSERT IGNORE INTO %s_answertag (Answer_Id, Tag_Id, CreatedTime) VALUES", appid)
 
 	var values []interface{}
 	for index, dimension := range dimensions {
@@ -1120,6 +1115,7 @@ func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *
 		values = append(values, answerID)
 		values = append(values, dimension)
 	}
+
 	sqlStr += ";"
 
 	_, err = tx.Exec(sqlStr, values...)
