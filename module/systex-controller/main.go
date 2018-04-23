@@ -85,6 +85,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/V2Task", voiceToTaskHandler)
 	mux.HandleFunc("/v1/V2Text", voiceToTextHandler)
+	mux.Handle("/logging/", http.StripPrefix("/logging", http.FileServer(http.Dir("/app/log"))))
 	server := http.Server{
 		Addr:    ":80",
 		Handler: mux,
