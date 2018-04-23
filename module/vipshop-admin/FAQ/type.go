@@ -153,7 +153,7 @@ func (a *Answer) Fetch() (err error) {
 	return
 }
 type AnswerJson struct {
-	ID int `json:"Answer_Id"`
+	ID int `json:"id"`
 	QuestionID int
 	Content string `json:"answer"`
 	DynamicMenu []string `json:"dynamicMenu"`
