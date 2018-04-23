@@ -19,6 +19,7 @@ const (
 
 //errorNotFound represent SQL select query fetch zero item
 // var errorNotFound = errors.New("items not found")
+var tagMap map[int]string
 
 func addApiCategory(appid string, name string, parentID int, level int) (int, error) {
 	mySQL := util.GetMainDB()
@@ -1742,17 +1743,26 @@ func (t *CategoryTree) SubCategories(catID int64) []*Category {
 	return categories
 }
 
-func LabelMap(appid string) (tagMap map[int]string, err error) {
-	tagMap = make(map[int]string)
+func LabelMap(appid string) (map[int]string, error) {
+	if tagMap != nil {
+		return tagMap, nil
+	}
+
+	tm := make(map[int]string)
+	tagMap = tm
+
 	sqlStr := fmt.Sprintf("SELECT Tag_Id, Tag_Name FROM %s_tag", appid)
 
 	db := util.GetMainDB()
 	if db == nil {
-		err = fmt.Errorf("Unable to get mysql connection")
-		return
+		err := fmt.Errorf("Unable to get mysql connection")
+		return tagMap, err
 	}
 
 	rows, err := db.Query(sqlStr)
+	if err != nil {
+		return tagMap, err
+	}
 	for rows.Next(){
 		var tagID int
 		var tagName string
@@ -1760,5 +1770,5 @@ func LabelMap(appid string) (tagMap map[int]string, err error) {
 		rows.Scan(&tagID, &tagName)
 		tagMap[tagID] = strings.Replace(tagName, "#", "", -1)
 	}
-	return
+	return tagMap, nil
  }
