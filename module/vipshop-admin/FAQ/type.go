@@ -1,9 +1,15 @@
 package FAQ
 
 import (
+	"strings"
 	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+)
+
+const (
+	FOREVER_BEGIN = "1970-01-01 00:00:00"
+	FOREVER_END = "2999-12-31 23:59:00"
 )
 
 type APICategory struct {
@@ -51,9 +57,24 @@ type Question struct {
 	CategoryName    string   `json:"categoryName"`
 	CategoryId      int      `json:"categoryId"`
 	Answers         []Answer `json:"answerItem"`
-	User            string   `json:"createuser"`
+	User			string   `json:"createuser"`
+	AppID			string
 }
 
+func (q *Question) FetchAnswers() (err error) {
+	if q.QuestionId == 0 || q.AppID == "" {
+		err = fmt.Errorf("Has no QuestionId or AppID")
+		return
+	}
+
+	answerDAO := Answer{
+		QuestionId: q.QuestionId,
+	}
+	answerDAOs := []Answer{answerDAO}
+
+	q.Answers, err = FindAnswers(q.AppID, answerDAOs)
+	return
+}
 type Answer struct {
 	QuestionId       int      `json:"Question_Id"`
 	AnswerId         int      `json:"Answer_Id"`
@@ -68,14 +89,74 @@ type Answer struct {
 	Dimension        []string `json:"dimension"`
 	DimensionIDs     []int
 	RelatedQuestions []string `json:"relatedQ"`
-	DynamicMenus     []string `json:"dynamicMenu"`
+	DynamicMenus 	[]string `json:"dynamicMenu"`
+	AppID			string
 }
 
+func (a *Answer) Fetch() (err error) {
+	// fetch dimension, related questions, dynamic menu
+	if a.AnswerId == 0 || a.AppID == "" {
+		err = fmt.Errorf("Has no answer id or appid")
+		return
+	}
+
+	db := util.GetMainDB()
+	if db == nil {
+		err = fmt.Errorf("main db connection pool is nil")
+		return
+	}
+
+	targetLabel := AnswerLabelDAO{
+		AnswerId: a.AnswerId,
+	}
+	targetLabels := []AnswerLabelDAO{targetLabel}
+
+	// fetch related questions
+	labels, err := FindAnswerLabels(a.AppID, RelatedQuestion, targetLabels)
+	if err != nil {
+		return
+	}
+	for _, label := range labels {
+		a.RelatedQuestions = append(a.RelatedQuestions, label.Content)
+	}
+
+	// fetch dynamic menu
+	labels, err = FindAnswerLabels(a.AppID, DynamicMenu, targetLabels)
+	if err != nil {
+		return
+	}
+	for _, label := range labels {
+		a.DynamicMenus = append(a.DynamicMenus, label.Content)
+	}
+
+	// fetch dimension
+	sql := fmt.Sprintf(`SELECT vipshop_tag.Tag_Id, Tag_Name FROM 
+	(
+		select Tag_Id From vipshop_answertag where Answer_Id = %d
+	) as atag
+	left join vipshop_tag on atag.Tag_Id = vipshop_tag.Tag_Id
+	left join vipshop_tag_type on vipshop_tag.Tag_Type = vipshop_tag_type.Type_id`, a.AnswerId)
+
+	rows, err := db.Query(sql)
+	if err != nil {
+		return
+	}
+
+	for rows.Next() {
+		var tagID int
+		var tagName string
+
+		rows.Scan(&tagID, &tagName)
+		a.DimensionIDs = append(a.DimensionIDs, tagID)
+		a.Dimension = append(a.Dimension, strings.Replace(tagName, "#", "", -1))
+	}
+	return
+}
 type AnswerJson struct {
-	ID               int `json:"id"`
-	QuestionID       int
-	Content          string   `json:"answer"`
-	DynamicMenu      []string `json:"dynamicMenu"`
+	ID int `json:"Answer_Id"`
+	QuestionID int
+	Content string `json:"answer"`
+	DynamicMenu []string `json:"dynamicMenu"`
 	RelatedQuestions []string `json:"relatedQ"`
 	AnswerCMD        string   `json:"answerCMD"`
 	AnswerCMDMsg     string   `json:"answerCMDMsg"`

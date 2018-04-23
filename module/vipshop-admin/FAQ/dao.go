@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -848,7 +849,143 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	return dimensionIdMap, nil
 }
 
-func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64, err error) {
+func UpdateQuestion(appid string, question *Question) (err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = fmt.Errorf("main db connection pool is nil")
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	err = updateQuestion(appid, question, tx)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
+	return
+}
+
+func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
+	contentHash := util.HashContent(question.Content)
+	parameters := []interface{}{
+		question.Content,
+		question.CategoryId,
+		contentHash,
+	}
+	sqlStr := fmt.Sprintf("UPDATE `%s_question` SET `Content`=?, `CategoryId`=?, `Status`=1, `ContentHash`=? WHERE Question_Id=%d", appid, question.QuestionId)
+
+	_, err = tx.Exec(sqlStr, parameters...)
+	if err != nil {
+		return
+	}
+
+	var answerIDs []int
+	for _, answer := range question.Answers {
+		answer.QuestionId = question.QuestionId
+		var answerID int
+		if answer.AnswerId != 0 {
+			err = updateAnswer(appid, &answer, tx)
+			answerID = answer.AnswerId
+		} else {
+			aid, tmpErr := insertAnswer(appid, int64(question.QuestionId), &answer, tx)
+			if tmpErr != nil {
+				err = tmpErr
+				return
+			}
+			answerID = int(aid)
+		}
+
+		if err != nil {
+			return
+		}
+
+		answerIDs = append(answerIDs, answerID)
+	}
+
+	var targetIDSQL string
+	for index, aid := range answerIDs {
+		if index == 0{
+			targetIDSQL = fmt.Sprintf("Answer_Id != %d", aid)
+		} else {
+			targetIDSQL = fmt.Sprintf(" and Answer_Id != %d", aid)
+		}
+	}
+	sqlStr = fmt.Sprintf("DELETE FROM %s_answer Where (%s) and Question_Id=%d", appid, targetIDSQL, question.QuestionId)
+	_, err = tx.Exec(sqlStr)
+	return
+}
+
+func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
+	sqlStr := fmt.Sprintf("UPDATE %s_answer SET Question_Id =?, Content=?, Answer_CMD=?, Begin_Time=?, End_Time=?, Status=1, Not_Show_In_Relative_Q=?, Content_String=?, Answer_CMD_Msg=? WHERE Answer_Id=?", appid)
+	parameters := []interface{}{
+		answer.QuestionId,
+		answer.Content,
+		answer.AnswerCmd,
+		answer.BeginTime,
+		answer.EndTime,
+		answer.NotShow,
+		answer.Content,
+		answer.AnswerCmdMsg,
+		answer.AnswerId,
+	}
+	util.LogError.Printf("parameters: %+v", parameters)
+
+	_, err = tx.Exec(sqlStr, parameters...)
+	if err != nil {
+		return
+	}
+
+	// delete old dynamic menu, related questions, dimensions
+	sqlStr = fmt.Sprintf("DELETE FROM %s_dynamic_menu WHERE Answer_id = %d", appid, answer.AnswerId)
+	_, err = tx.Exec(sqlStr)
+	if err != nil {
+		return
+	}
+
+	sqlStr = fmt.Sprintf("DELETE FROM %s_related_question WHERE Answer_id = %d", appid, answer.AnswerId)
+	_, err = tx.Exec(sqlStr)
+	if err != nil {
+		return
+	}
+
+	sqlStr = fmt.Sprintf("DELETE FROM %s_answertag WHERE Answer_Id = %d", appid, answer.AnswerId)
+	_, err = tx.Exec(sqlStr)
+	if err != nil {
+		return
+	}
+
+	// add back
+	if len(answer.DynamicMenus) > 0 {
+		err = insertAnswerLabels(appid, int64(answer.AnswerId), DynamicMenu, answer.DynamicMenus, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(answer.RelatedQuestions) > 0 {
+		insertAnswerLabels(appid, int64(answer.AnswerId), RelatedQuestion, answer.RelatedQuestions, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(answer.DimensionIDs) > 0 {
+		err = insertAnswerDimensions(appid, int64(answer.AnswerId), answer.DimensionIDs, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	return 
+}
+
+func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64 , err error) {
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -874,10 +1011,7 @@ func InsertQuestion(appid string, question *Question, answers []Answer) (qid int
 
 func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.Tx) (qid int64, err error) {
 	// hash content
-	hash := sha256.New()
-	hash.Write([]byte(question.Content))
-	md := hash.Sum(nil)
-	contentHash := hex.EncodeToString(md)
+	contentHash := util.HashContent(question.Content)
 
 	columValues := []interface{}{question.Content, question.CategoryId, question.User, contentHash, question.SQuestionConunt}
 	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, ContentHash, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, ?, now())", appid)
@@ -1033,7 +1167,6 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 	}
 
 	for rows.Next() {
-		util.LogError.Printf("enter row")
 		question := Question{}
 		rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &question.CategoryName)
 
@@ -1144,6 +1277,25 @@ func genQuestionWhereClause(dao *Question) (string, []interface{}) {
 	return whereClause, conditions
 }
 
+func FindAnswers(appid string, targets []Answer) (answers []Answer, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = fmt.Errorf("main db connection pool is nil")
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		err = fmt.Errorf("transaction start failed, %v", err)
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	answers, err = findAnswers(appid, targets, tx)
+	tx.Commit()
+	return
+}
+
 func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 	sql, conditions := genFindAnswersSQL(appid, targets)
 
@@ -1167,8 +1319,8 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 
 func genFindAnswersSQL(appid string, targets []Answer) (string, []interface{}) {
 	var conditions []interface{}
-
-	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Answer_CMD_Msg FROM %s_answer", appid)
+	var timeFormat string = "%Y-%m-%d %H:%i:%s"
+	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, DATE_FORMAT(Begin_Time, '%s'), DATE_FORMAT(End_Time, '%s'), Answer_CMD_Msg FROM %s_answer", timeFormat, timeFormat, appid)
 
 	if len(targets) == 0 {
 		return sql, conditions
@@ -1276,8 +1428,6 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 	}
 
 	// delete answer
-	util.LogError.Printf("%s", sql)
-	util.LogError.Printf("%+v", conditions)
 	_, err = tx.Exec(sql, conditions...)
 	return err
 }
@@ -1327,7 +1477,79 @@ func genAnswerWhereClause(dao *Answer) (string, []interface{}) {
 	return whereClause, conditions
 }
 
-func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) error {
+func FindAnswerLabels(appid string, labelType int, targets []AnswerLabelDAO) (labels []AnswerLabelDAO, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = fmt.Errorf("main db connection pool is nil")
+		return
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		err = fmt.Errorf("transaction start failed, %v", err)
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	labels, err = findAnswerLabels(appid, labelType, tx, targets)
+	if err != nil {
+		return
+	}
+
+	tx.Commit()
+	return
+}
+
+func findAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) (labels []AnswerLabelDAO, err error) {
+	table, column, err := getAnswerLabelTableAndColumn(appid, labelType)
+	if err != nil {
+		return
+	}
+
+	sql, conditions := genFindAnswerLabelSQL(appid, table, column, targetLabels)
+	if len(conditions) == 0 {
+		return
+	}
+
+	rows, err := tx.Query(sql, conditions...)
+	if err != nil {
+		return
+	}
+
+	for rows.Next() {
+		label := AnswerLabelDAO {}
+		
+		err = rows.Scan(&label.Id, &label.AnswerId, &label.Content)
+		if err != nil {
+			return
+		}
+		labels = append(labels, label)
+	}
+	return
+}
+
+func genFindAnswerLabelSQL(appid, table, column string, targets []AnswerLabelDAO) (sql string, conditions []interface{}) {
+	sql = fmt.Sprintf("select id, Answer_id, %s FROM %s WHERE", column, table)
+
+	shouldOr := false
+	for _, dao := range targets {
+		clause, condition := genAnswerLableWhereClause(dao, column)
+		if len(condition) == 0 {
+			continue
+		}
+		conditions = append(conditions, condition...)
+
+		if shouldOr {
+			sql += fmt.Sprintf(" or %s", clause)
+		} else {
+			sql += fmt.Sprintf(" %s", clause)
+		}
+		shouldOr = true
+	}
+	return
+}
+
+func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) (err error) {
 	var table string
 	var column string
 
@@ -1335,6 +1557,18 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 		return nil
 	}
 
+	table, column, err = getAnswerLabelTableAndColumn(appid, labelType)
+	if err != nil {
+		return
+	}
+
+	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
+
+	_, err =tx.Exec(sql, conditions...)
+	return err
+}
+
+func getAnswerLabelTableAndColumn(appid string, labelType int) (table string, column string, err error) {
 	if labelType == RelatedQuestion {
 		table = fmt.Sprintf("%s_related_question", appid)
 		column = "RelatedQuestion"
@@ -1342,13 +1576,9 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 		table = fmt.Sprintf("%s_dynamic_menu", appid)
 		column = "DynamicMenu"
 	} else {
-		return fmt.Errorf("Error Label Type")
+		err = fmt.Errorf("Error Label Type")
 	}
-
-	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
-
-	_, err := tx.Exec(sql, conditions...)
-	return err
+	return
 }
 
 func genDeleteAnswerLabelSQL(table string, column string, targets []AnswerLabelDAO) (string, []interface{}) {
@@ -1515,3 +1745,24 @@ func (t *CategoryTree) SubCategories(catID int64) []*Category {
 	categories = append(categories, r)
 	return categories
 }
+
+func LabelMap(appid string) (tagMap map[int]string, err error) {
+	tagMap = make(map[int]string)
+	sqlStr := fmt.Sprintf("SELECT Tag_Id, Tag_Name FROM %s_tag", appid)
+
+	db := util.GetMainDB()
+	if db == nil {
+		err = fmt.Errorf("Unable to get mysql connection")
+		return
+	}
+
+	rows, err := db.Query(sqlStr)
+	for rows.Next(){
+		var tagID int
+		var tagName string
+
+		rows.Scan(&tagID, &tagName)
+		tagMap[tagID] = strings.Replace(tagName, "#", "", -1)
+	}
+	return
+ }

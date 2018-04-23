@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"crypto/sha256"
+	"encoding/hex"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -95,4 +97,12 @@ func ClearTransition(tx *sql.Tx) {
 	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
 		LogError.Printf("Critical db error in rollback: %s", rollbackRet.Error())
 	}
+}
+
+func HashContent(content string) (contentHash string) {
+	hash := sha256.New()
+	hash.Write([]byte(content))
+	md := hash.Sum(nil)
+	contentHash = hex.EncodeToString(md)
+	return
 }

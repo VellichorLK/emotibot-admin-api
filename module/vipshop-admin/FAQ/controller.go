@@ -27,8 +27,10 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "question/{qid:string}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
+
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("POST", "question", []string{"edit"}, handleCreateQuestion),
+			util.NewEntryPoint("PUT", "question/{qid:int}", []string{"edit"}, handleUpdateQuestion),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("POST", "questions/delete", []string{"edit"}, handleDeleteQuestion),
@@ -415,7 +417,7 @@ func handleCreateQuestion(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 
 	questionJson := QuestionJson{}
-	err := ctx.ReadJSON(&questionJson)
+	newQuestion, newAnswers, err := parseQA(ctx)
 	if err != nil {
 		util.LogError.Printf("Error happened create new question %s", err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -424,7 +426,7 @@ func handleCreateQuestion(ctx context.Context) {
 
 	// prepare audit log
 	category := Category{
-		ID: questionJson.CategoryID,
+		ID: newQuestion.CategoryId,
 	}
 	categoryPath, err := category.FullName()
 	if err != nil {
@@ -434,20 +436,6 @@ func handleCreateQuestion(ctx context.Context) {
 	}
 	auditMsg := fmt.Sprintf("[标准问题]:[%s]:%s", categoryPath, questionJson.Content)
 	auditRet := 1
-
-	// transfrom data struct here
-	// QuestionJson => Question
-	// AnswerJson => Answer
-	newQuestion := Question{}
-	var newAnswers []Answer
-	newQuestion.CategoryId = questionJson.CategoryID
-	newQuestion.User = questionJson.User
-	newQuestion.Content = questionJson.Content
-	for _, answerJson := range questionJson.Answers {
-		answer := Answer{}
-		transformaAnswer(&answerJson, &answer)
-		newAnswers = append(newAnswers, answer)
-	}
 
 	// create question
 	qid, err := InsertQuestion(appid, &newQuestion, newAnswers)
@@ -483,9 +471,224 @@ func handleCreateQuestion(ctx context.Context) {
 	ctx.JSON(responseJson)
 }
 
-func transformaAnswer(answerJson *AnswerJson, answer *Answer) {
+func handleUpdateQuestion(ctx context.Context) {
+	// 1. parse question
+	// 2. parse answer
+	// 3. get old question & answers
+	// 4. prepare audit log
+	// 5. update question & answers
+	// 6. notfiy multicustomer
+	// 7. write audit log
+	qid, err := ctx.Params().GetInt("qid")
+	if err != nil {
+		util.LogError.Printf("Bad question id: %s", err.Error())
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	}
+
+	newQuestion, _, err := parseQA(ctx)
+	newQuestion.QuestionId = qid
+
+	appid := util.GetAppID(ctx)
+
+	// get old question & answers
+	oldQuestion, err := fetchOldQuestion(appid, qid)
+	if err != nil {
+		util.LogError.Printf("error while update question: %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+	auditRet := 1
+	if err != nil {
+		util.LogError.Printf("error while update question: %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+
+	err = UpdateQuestion(appid, &newQuestion)
+	if err != nil {
+		util.LogError.Printf("error while update quesiton: %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		auditRet = 0
+	}
+
+	// write audit log
+	err = writeUpdateAuditLog(ctx, auditRet, &oldQuestion, &newQuestion)
+	if err != nil {
+		util.LogError.Printf("error while update quesiton: %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+}
+
+func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuestion *Question) (err error) {
+	// compare if question content is modified
+	var auditLog string
+	category := Category {
+		ID: newQuestion.CategoryId,
+	}
+	categoryPath, err := category.FullName()
+	if err != nil {
+		return
+	}
+
+	var userID string = util.GetUserID(ctx)
+	var userIP string = util.GetUserIP(ctx) 
+
+	if oldQuestion.CategoryId != newQuestion.CategoryId {
+		// category changed
+		oldCategory := Category {
+			ID: oldQuestion.CategoryId,
+		}
+		oldCategoryPath, categoryError := oldCategory.FullName()
+		if categoryError != nil {
+			err = categoryError
+			return
+		}
+		auditLog = fmt.Sprintf("[标准问题]:[%s]:%s => %s", newQuestion.Content, oldCategoryPath, categoryPath)
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
+	}
+
+	if err != nil {
+		return
+	}
+
+	if oldQuestion.Content != newQuestion.Content {
+		auditLog = fmt.Sprintf("[标准问题]：[%s]：%s => %s", categoryPath, oldQuestion.Content, newQuestion.Content)
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
+		if err != nil {
+			return
+		}
+	}
+
+	oldAnswersMap := prepareAnswerMap(oldQuestion.Answers)
+	newAnswersMap := prepareAnswerMap(newQuestion.Answers)
+
+	util.LogError.Printf("oldAnswerMap: %+v", oldAnswersMap)
+	util.LogError.Printf("newAnswerMap: %+v", newAnswersMap)
+
+	var deletedAnswers string
+	var addedAnswers string
+	for answerID, oldAnswer := range oldAnswersMap {
+		newAnswer, ok := newAnswersMap[answerID]
+		if !ok {
+			// the answer is deleted
+			if deletedAnswers == "" {
+				deletedAnswers = fmt.Sprintf("[标准答案]:[%s][%s]:%s;", categoryPath, newQuestion.Content, strings.Join(oldAnswer.Dimension[:], ","))
+			} else {
+				deletedAnswers += fmt.Sprintf(" %s;", strings.Join(oldAnswer.Dimension[:], ","))
+			}
+		} else {
+			changed, auditLog := answerAuditLog(&oldAnswer, &newAnswer)
+			if changed {
+				auditLog = fmt.Sprintf("[标准答案]:[%s][%s][%s]%s", categoryPath, newQuestion.Content, strings.Join(newAnswer.Dimension[:], ","), auditLog)
+				err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
+				if err != nil {
+					return
+				}
+			}
+		}
+	}
+	if deletedAnswers != "" {
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationDelete, deletedAnswers, result)
+		if err != nil {
+			return
+		}
+	}
+
+	for answerID, newAnswer := range newAnswersMap {
+		_, ok := oldAnswersMap[answerID]
+		if !ok {
+			// a new added answer
+			if addedAnswers == "" {
+				addedAnswers = fmt.Sprintf("[标准答案]:[%s][%s][维度]:%s ；", categoryPath, newQuestion.Content, strings.Join(newAnswer.Dimension[:], ","))
+			} else {
+				addedAnswers = fmt.Sprintf("%s %s", addedAnswers, strings.Join(newAnswer.Dimension, ","))
+			}
+		}
+	}
+	if addedAnswers != "" {
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, addedAnswers, result)
+	}
+	return
+}
+
+func prepareAnswerMap(answers []Answer) (answerMap map[int]Answer) {
+	answerMap = make(map[int]Answer)
+	for _, answer := range answers {
+		answerMap[answer.AnswerId] = answer
+	}
+	return
+} 
+
+func fetchOldQuestion(appid string, qid int) (question Question, err error) {
+
+	targetQuestion := Question{
+		QuestionId: qid,
+	}
+	targetQuestions := []Question{targetQuestion}
+
+	questions, err := FindQuestions(appid, targetQuestions)
+	if err !=nil {
+		return
+	}
+
+	if len(questions) != 1 {
+		err = fmt.Errorf("Bad Question Id: %d", qid)
+		return
+	}
+
+	question = questions[0]
+
+	question.AppID = appid
+	question.FetchAnswers()
+
+	for index, _ := range question.Answers {
+		answer := &question.Answers[index]
+		answer.AppID = appid
+		err = answer.Fetch()
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func parseQA(ctx context.Context) (question Question, answers []Answer, err error) {
+	// transfrom data struct here
+	// QuestionJson => Question
+	// AnswerJson => Answer
+
+	questionJson := QuestionJson{}
+	err = ctx.ReadJSON(&questionJson)
+
+	question.CategoryId = questionJson.CategoryID
+	question.User = questionJson.User
+	question.Content = questionJson.Content
+
+	appid := util.GetAppID(ctx)
+	for _, answerJson := range questionJson.Answers {
+		answer := Answer{}
+		err = transformaAnswer(appid, &answerJson, &answer)
+		if err != nil {
+			return
+		}
+		answers = append(answers, answer)
+	}
+	question.Answers = answers
+	return 
+}
+
+func transformaAnswer(appid string, answerJson *AnswerJson, answer *Answer) (err error) {
 	if answerJson.ID != 0 {
 		answer.AnswerId = answerJson.ID
+	}
+
+	tagMap, err := LabelMap(appid)
+	if err != nil {
+		return
 	}
 
 	answer.BeginTime = answerJson.BeginTime
@@ -493,17 +696,98 @@ func transformaAnswer(answerJson *AnswerJson, answer *Answer) {
 	answer.DynamicMenus = answerJson.DynamicMenu
 	answer.RelatedQuestions = answerJson.RelatedQuestions
 	answer.AnswerCmd = answerJson.AnswerCMD
+	answer.Content = answerJson.Content
 
 	if answer.AnswerCmd == "shopping" {
 		answer.AnswerCmdMsg = answerJson.AnswerCMDMsg
 	}
 
 	answer.DimensionIDs = answerJson.Dimension
-	answer.Content = answerJson.Content
+	for _, tagID := range answer.DimensionIDs {
+		dimenstion := tagMap[tagID]
+		answer.Dimension = append(answer.Dimension, dimenstion)
+	}
 
 	if answerJson.NotShow {
 		answer.NotShow = 1
 	}
+	return
+}
+
+func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string) {
+	// [标准答案]：[分类路径][标准问题][维度][修改部分]：原内容 => 新内容
+	// [标准答案]:[暂无分类][testQ2][WAP端][标准答案]:<p>testA223123fdsafasfdafdsafdsaf</p>=><p>testA223123fdsafasfdafdsafdsafffffff</p>;[生效时间]:永久=>2018-04-19 11:11:00-2018-04-20 11:11:00
+
+	util.LogError.Printf("old content: %s", oldAnswer.Content)
+	util.LogError.Printf("NEW content: %s", newAnswer.Content)
+	if oldAnswer.Content != newAnswer.Content {
+		changed = true
+		auditLog = fmt.Sprintf("%s[标准答案]:%s=>%s;", auditLog, oldAnswer.Content, newAnswer.Content)
+	}
+
+	if oldAnswer.BeginTime != newAnswer.BeginTime || oldAnswer.EndTime != newAnswer.EndTime {
+		changed = true
+		var oldDuration string = durationLog(oldAnswer.BeginTime, oldAnswer.EndTime)
+		var newDuration string = durationLog(newAnswer.BeginTime, newAnswer.EndTime)
+		auditLog = fmt.Sprintf("%s[生效时间]:%s=>%s", auditLog, oldDuration, newDuration)
+	}
+	
+	if oldAnswer.NotShow != newAnswer.NotShow {
+		changed = true
+		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:否=>是", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
+	}
+
+	if oldAnswer.AnswerCmd != newAnswer.AnswerCmd {
+		changed = true
+		auditLog = fmt.Sprintf("%s[指令]:%s=>%s", auditLog, answerCmdLog(oldAnswer.AnswerCmd), answerCmdLog(newAnswer.AnswerCmd))
+	}
+	return
+}
+
+func durationLog(beginTime, endTime string) (duration string) {
+	if beginTime == FOREVER_BEGIN && endTime == FOREVER_END {
+		duration = "永久"
+	} else {
+		duration = fmt.Sprintf("%s-%s", beginTime, endTime)
+	}
+	return
+}
+
+func notShowLog(notShow int) (s string) {
+	if notShow == 1 {
+		s = "是" 
+	} else {
+		s = "否"
+	}
+	return
+}
+
+func answerCmdLog(cmd string) (chineseCmd string) {
+	switch cmd {
+	case "":
+		chineseCmd = "无指令"
+	case "order_track":
+		chineseCmd = "物流信息查询"
+	case "order_info":
+		chineseCmd = "订单信息查询"
+	case "scene_id":
+		chineseCmd = "场景标识"
+	case "cash":
+		chineseCmd = "提现"
+	case "order_cancel":
+		chineseCmd = "取消订单"
+	case "apply_for_return":
+		chineseCmd = "退货申请"
+	case "exchange_goods":
+		chineseCmd = "换货申请"
+	case "vip_finance":
+		chineseCmd = "唯品金融"
+	case "query_refund":
+		chineseCmd = "查询退款"
+	case "shopping":
+		chineseCmd = "购物"
+	}
+	return
 }
 
 func handleDeleteQuestion(ctx context.Context) {
