@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/systex-controller/api/taskengine"
@@ -22,13 +26,14 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Only support POST method.")
 		return
 	}
-
-	if r.Header.Get("content-type") != "audio/x-wav" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "content-type only support audio/x-wav.")
-		return
+	ctx := r.Context()
+	rawBody, ok := ctx.Value(RawBodyKey).([]byte)
+	if !ok || len(rawBody) == 0 {
+		rawBody, _ = ioutil.ReadAll(r.Body)
 	}
-	sentence, err := asrClient.Recognize(r.Body)
+	current := time.Now().UnixNano()
+	sentence, err := asrClient.Recognize(bytes.NewBuffer(rawBody))
+	asrTotalNanoTime := time.Now().UnixNano() - current
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintln(w, err)
@@ -37,8 +42,8 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var resp v2TextResponse
 	log.Printf("v2Text: %s\n", sentence)
-	textLogger.Write([]string{time.Now().String(), sentence})
-	textLogger.Flush()
+	logColumns := []string{sentence, strconv.FormatInt(asrTotalNanoTime, 10)}
+	context.WithValue(ctx, LogBodyKey, logColumns)
 	resp.Text = sentence
 	data, err := json.Marshal(resp)
 	if err != nil {
@@ -46,50 +51,63 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-
+	r = r.WithContext(ctx)
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintln(w, string(data))
 }
 
 func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
+	timer := time.Now().UnixNano()
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		fmt.Fprintln(w, "Only support POST method.")
 		return
 	}
-
-	if r.Header.Get("content-type") != "audio/x-wav" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "content-type only support audio/x-wav.")
-		return
-	}
+	var err error
 	var userID = r.Header.Get("X-UserID")
 	if userID == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "UserID is empty")
 		return
 	}
+	var rawBody []byte
+	aw, ok := w.(*AudioResponseWriter)
+	if !ok {
+		log.Println("no middleware have read the body yet, read it.")
+		rawBody, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			message := "read body failed, " + err.Error()
+			CustomError(aw, message)
+			return
+		}
+	} else {
+		rawBody = aw.AudioFile
+	}
 
-	sentence, err := asrClient.Recognize(r.Body)
+	current := time.Now().UnixNano()
+	sentence, err := asrClient.Recognize(bytes.NewBuffer(rawBody))
 	if err != nil {
-		CustomError(w, "asr api error:"+err.Error())
+		CustomError(aw, "asr api error:"+err.Error())
 		return
 	}
+	asrTotalNanoTime := time.Now().UnixNano() - current
+
 	sentence, err = csClient.Simplify(sentence)
 	if err != nil {
-		CustomError(w, "Cu Service api error:"+err.Error())
+		CustomError(aw, "Cu Service api error:"+err.Error())
 		return
 	}
-
+	current = time.Now().UnixNano()
 	resp, err := teClient.ET(userID, sentence)
 	if err != nil {
-		CustomError(w, "task engine error:"+err.Error())
+		CustomError(aw, "task engine error:"+err.Error())
 		return
 	}
+	teTotalNanoTime := time.Now().UnixNano() - current
 	teResp, err := taskengine.ParseETResponse(resp)
 	if err != nil {
-		CustomError(w, "task engine response err:"+err.Error())
+		CustomError(aw, "task engine response err:"+err.Error())
 		return
 	}
 	var out = Response{
@@ -100,16 +118,17 @@ func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	outJSONData, err := json.Marshal(out)
 	if err != nil {
-		CustomError(w, "response json err: "+err.Error())
+		CustomError(aw, "response json err: "+err.Error())
 		return
 	}
 
 	log.Printf("v2Task: %s, te result: %v\n", sentence, out)
-	taskEngineLogger.Write([]string{time.Now().String(), sentence, string(outJSONData)})
-	taskEngineLogger.Flush()
+
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(outJSONData)
+	totalNanoTime := time.Now().UnixNano() - timer
+	aw.Logs = []string{string(outJSONData), strconv.FormatInt(totalNanoTime, 10), strconv.FormatInt(asrTotalNanoTime, 10), strconv.FormatInt(teTotalNanoTime, 10)}
 }
 
 type Response struct {

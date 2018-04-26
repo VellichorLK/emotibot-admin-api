@@ -8,3 +8,7 @@
 * Fix TE client bug.
 [0.0.6]
 * Add log http file handler
+[0.0.7]
+* refactor middleware handle
+* Save audit file and log detail info
+* format of csv log is now {{timestamp, UniqueID, Payload, TOTAL_TIME, ASR_TIME, TE_TIME}}
