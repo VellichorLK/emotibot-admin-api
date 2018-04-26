@@ -18,6 +18,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/UI"
 	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/websocket"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -64,6 +65,9 @@ func main() {
 	setRoute(app)
 	initDB()
 	app.StaticWeb("/Files", util.GetMountDir())
+
+	// wsEndpoint := fmt.Sprintf("%s/v%d/%s", constant["API_PREFIX"], constant["API_VERSION"], "realtime")
+	// setupWebsocket(wsEndpoint, app)
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
@@ -188,3 +192,24 @@ func initDB() {
 	imagesManager.InitDB()
 	imagesManager.InitDaemon()
 }
+
+func setupWebsocket(endpoint string, app *iris.Application) {
+	ws := websocket.Store()
+
+	setRealtimeEvent(&ws)
+	app.Any(endpoint, ws.Handler())
+}
+
+func setRealtimeEvent(ws *websocket.Server) {
+	modules := []interface{}{
+		FAQ.RealtimeEvents,
+	}
+
+	for _, module := range modules {
+		events := module.([]websocket.RealtimeEvent)
+		for _, event := range events {
+			ws.On(event.Event, event.Handle)
+		}
+	}
+}
+

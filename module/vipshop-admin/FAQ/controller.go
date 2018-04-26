@@ -12,6 +12,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/websocket"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
@@ -19,6 +20,7 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
+	RealtimeEvents []websocket.RealtimeEvent
 )
 
 func init() {
@@ -45,6 +47,14 @@ func init() {
 			util.NewEntryPoint("DELETE", "category/{id:int}", []string{"edit"}, handleDeleteCategory),
 		},
 	}
+
+	RealtimeEvents = []websocket.RealtimeEvent {
+		websocket.EventEntrypoint("AddFaq", test),
+	}
+}
+
+func test(headers websocket.ConnectionHeaders, message []byte) {
+	util.LogTrace.Printf("yes, I am a handler, and I got a message: %s", string(message))
 }
 
 func handleAddCategory(ctx context.Context) {
