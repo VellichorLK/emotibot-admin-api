@@ -1,6 +1,7 @@
 package imagesManager
 
 import (
+	"fmt"
 	"database/sql"
 	"encoding/base64"
 	"errors"
@@ -84,13 +85,21 @@ func receiveImage(ctx context.Context) {
 	}
 	defer tx.Rollback()
 
+	auditLog := "[图片素材]:"
+	auditRet := 1
+	first := true
 	for _, file := range args {
-
+		if first {
+			auditLog = fmt.Sprintf("%s%s", auditLog, file.FileName)
+			first = false
+		} else {
+			auditLog = fmt.Sprintf("%s:%s", auditLog, file.FileName)
+		}
 		content, err := base64.StdEncoding.DecodeString(file.Content)
 		if err != nil {
 			ctx.StatusCode(http.StatusBadRequest)
 			ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
-			return
+			auditRet = 0
 		}
 
 		err = storeImage(tx, file.FileName, content)
@@ -98,16 +107,25 @@ func receiveImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
-			return
+			auditRet = 0
 		}
 	}
+	if auditRet == 0 {
+		return 
+	}
+
+
 	err = tx.Commit()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
-		return
+		auditRet = 0
 	}
+
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 }
 
 func handleImageList(ctx context.Context) {
@@ -142,8 +160,17 @@ func handleDeleteImage(ctx context.Context) {
 		return
 	}
 
-	deleteImagesByID(ctx, []interface{}{imageID})
+	imageIDs := []interface{}{imageID}
 
+	auditRet := 1
+	files, _ := getFileNameByImageID(imageIDs)
+	err = deleteImagesByID(ctx, imageIDs)
+	if err != nil {
+		auditRet = 0
+		ctx.StatusCode(http.StatusInternalServerError)
+	}
+
+	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
 }
 
 func handleDeleteImages(ctx context.Context) {
@@ -160,11 +187,38 @@ func handleDeleteImages(ctx context.Context) {
 		imageIDs[i] = ids[i]
 	}
 
-	deleteImagesByID(ctx, imageIDs)
+	auditRet := 1
+	files, _ := getFileNameByImageID(imageIDs)
+	err = deleteImagesByID(ctx, imageIDs)
+	if err != nil {
+		auditRet = 0
+	}
+
+	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
 
 }
 
-func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
+func writeImageAduitLog(ctx context.Context, files map[uint64]string, result int, operation string) (err error) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	auditLog := "[图片素材]:"
+	first := true
+
+	for _, fileName := range files {
+		if first {
+			auditLog = fmt.Sprintf("%s%s", auditLog, fileName)
+			first = false
+		} else {
+			auditLog = fmt.Sprintf("%s:%s", auditLog, fileName)
+		}
+	}
+
+	err = util.AddAuditLog(userID, userIP, util.AuditModuleMedia, operation, auditLog, result)
+	return
+}
+
+func deleteImagesByID(ctx context.Context, imageIDs []interface{}) (err error) {
 
 	relationMap, err := getRelationByID(imageIDs)
 	if err != nil {
@@ -172,8 +226,10 @@ func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
 		util.LogError.Println(err)
 		return
 	}
+
 	if len(relationMap) > 0 {
 		ctx.StatusCode(http.StatusConflict)
+		err = fmt.Errorf("Conflict")
 		return
 	}
 
@@ -189,6 +245,7 @@ func deleteImagesByID(ctx context.Context, imageIDs []interface{}) {
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		return
 	}
+	return
 }
 
 func updateImage(ctx context.Context) {
@@ -216,6 +273,11 @@ func updateImage(ctx context.Context) {
 	title := ctx.FormValue(TITLE)
 	var tx *sql.Tx
 
+	auditRet := 1
+	auditLog := fmt.Sprintf("[图片素材]:%s => %s", files[imageID], title)
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
 	if title != "" && title != files[imageID] {
 
 		orgExt := path.Ext(files[imageID])
@@ -223,6 +285,8 @@ func updateImage(ctx context.Context) {
 		if orgExt != newExt {
 			ctx.StatusCode(http.StatusConflict)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, errors.New("extension can't not be changed")))
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 
@@ -231,6 +295,8 @@ func updateImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 		defer tx.Rollback()
@@ -240,6 +306,8 @@ func updateImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 	}
@@ -252,6 +320,8 @@ func updateImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 
@@ -260,6 +330,8 @@ func updateImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 
@@ -268,6 +340,8 @@ func updateImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
+			auditRet = 0
+			util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 			return
 		}
 	}
@@ -275,6 +349,8 @@ func updateImage(ctx context.Context) {
 	if tx != nil {
 		tx.Commit()
 	}
+
+	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationEdit, auditLog, auditRet)
 
 }
 
@@ -293,11 +369,21 @@ func copyImage(ctx context.Context) {
 		return
 	}
 
+	auditRet := 1
+	auditLog := fmt.Sprintf("[图片素材]:%s", title)
+
 	nameList, err := getRealFileNameByImageID([]interface{}{imageID})
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
+		auditRet = 0
+	}
+
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
+	if auditRet == 0 {
 		return
 	}
 
@@ -357,11 +443,25 @@ func downloadImages(ctx context.Context) {
 		imageIDs[i] = ids[i]
 	}
 
+	auditRet := 1
+	files, err := getFileNameByImageID(imageIDs)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
+		util.LogError.Println(err)
+		return
+	}
+
 	b, err := packageImages(imageIDs)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
+		auditRet = 0
+	}
+
+	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationExport)
+	if auditRet == 0 {
 		return
 	}
 
