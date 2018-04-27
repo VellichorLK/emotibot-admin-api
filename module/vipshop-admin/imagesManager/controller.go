@@ -210,7 +210,7 @@ func writeImageAduitLog(ctx context.Context, files map[uint64]string, result int
 			auditLog = fmt.Sprintf("%s%s", auditLog, fileName)
 			first = false
 		} else {
-			auditLog = fmt.Sprintf("%s:%s", auditLog, fileName)
+			auditLog = fmt.Sprintf("%s;%s", auditLog, fileName)
 		}
 	}
 
