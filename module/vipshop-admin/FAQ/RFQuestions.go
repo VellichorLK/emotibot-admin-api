@@ -130,9 +130,9 @@ func SetRFQuestions(contents []string, appid string) error {
 			tx.Commit()
 		}
 	}()
-	_, err = tx.Exec(fmt.Sprintf("TRUNCATE %s_removeFeedbackQuestion", appid))
+	_, err = tx.Exec(fmt.Sprintf("DELETE FROM %s_removeFeedbackQuestion", appid))
 	if err != nil {
-		return fmt.Errorf("truncate RFQuestions Table failed, %v", err)
+		return fmt.Errorf("DELETE RFQuestions Table failed, %v", err)
 	}
 	insertStmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s_removeFeedbackQuestion(Question_Content) VALUES(?)", appid))
 	if err != nil {
