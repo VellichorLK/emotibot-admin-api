@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"errors"
 	"net/http"
@@ -483,27 +481,15 @@ func ComputeChannelScore(eb *EmotionBlock) {
 
 				avgProb = avgCountAcc / float64(count)
 
-				if count > 10 && eb.RDuration > (120*1000) {
-					upRate = float64(upRateCount) / float64(lastNSentence)
+				upRate = float64(upRateCount) / float64(lastNSentence)
 
-					primaryScore = 120*avgProb + 7 + 20*upRate
+				primaryScore = 120*avgProb + 7 + 20*upRate
 
-					if primaryScore >= 90 {
-
-						s1 := rand.NewSource(time.Now().UnixNano())
-						r1 := rand.New(s1)
-
-						twoFixedScore = float64(90 + r1.Intn(6))
-						if twoFixedScore < 95 {
-							twoFixedScore += float64(r1.Intn(100)) / 100
-						}
-					} else {
-						twoFixedScore = float64(int(primaryScore*100)) / 100
-					}
-
-				} else {
-					twoFixedScore = float64(int((10+avgProb*10+7)*100)) / 100
+				if primaryScore >= 90 {
+					primaryScore = 30*avgProb + 60 + 10*upRate
 				}
+
+				twoFixedScore = float64(int(primaryScore*100)) / 100
 
 			}
 
