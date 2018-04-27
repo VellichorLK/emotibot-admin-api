@@ -872,8 +872,8 @@ func dimensionSQL(condition QueryCondition, appid string) (string, error) {
 	// this sql cannot used in ONLY_FULL_GROUP_BY mysql.
 	// note: SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
 	query = `select Answer_Id as a_id, tag_ids from (
-		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) from (
-			SELECT answer_id, Tag_Type, GROUP_CONCAT(DISTINCT anst.Tag_Id) as tag_ids
+		SELECT answer_id, GROUP_CONCAT(DISTINCT ans_tag.Tag_Id) as tag_ids from (
+			SELECT answer_id, Tag_Type, GROUP_CONCAT(DISTINCT anst.Tag_Id) as Tag_Id
 			FROM   %s_answertag as anst, %s_tag as tag
 			WHERE  anst.tag_id IN ( %s ) and anst.tag_id = tag.Tag_Id
 			GROUP  BY answer_id, Tag_Type) as ans_tag
