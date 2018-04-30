@@ -123,7 +123,8 @@ func EscapeQuery(sqlStr string) string {
 
 	// the implementation is copied from https://gist.github.com/siddontang/8875771
 	// very appreciate for his working
-	dest := make([]byte, 0, 2*len(sqlStr))
+
+	dest := []byte{}
 	var escape byte
 	for i := 0; i < len(sqlStr); i++ {
 		c := sqlStr[i]
