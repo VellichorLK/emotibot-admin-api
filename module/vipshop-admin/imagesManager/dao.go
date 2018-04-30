@@ -62,7 +62,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 	var totalCount uint64
 	if args.Keyword != "" {
 		condition += "where " + attrFileName + " like ? "
-		params = append(params, "%"+args.Keyword+"%")
+		params = append(params, "%"+util.EscapeQuery(args.Keyword)+"%")
 	}
 
 	countSQL := "select count(*) from " + imageTable + " " + condition
