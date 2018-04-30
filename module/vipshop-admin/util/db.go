@@ -106,3 +106,70 @@ func HashContent(content string) (contentHash string) {
 	contentHash = hex.EncodeToString(md)
 	return
 }
+
+func EscapeQuery(sqlStr string) string {
+	// escape the following characters
+	// \0     An ASCII NUL (0x00) character.
+	// \'     A single quote (“'”) character.
+	// \"     A double quote (“"”) character.
+	// \b     A backspace character.
+	// \n     A newline (linefeed) character.
+	// \r     A carriage return character.
+	// \t     A tab character.
+	// \Z     ASCII 26 (Control-Z). See note following the table.
+	// \\     A backslash (“\”) character.
+	// \%     A “%” character. See note following the table.
+	// \_     A “_” character. See note following the table.
+
+	// the implementation is copied from https://gist.github.com/siddontang/8875771
+	// very appreciate for his working
+	dest := make([]byte, 0, 2*len(sqlStr))
+	var escape byte
+	for i := 0; i < len(sqlStr); i++ {
+		c := sqlStr[i]
+
+		escape = 0
+
+		switch c {
+		case 0: /* Must be escaped for 'mysql' */
+			escape = '0'
+			break
+		case '\n': /* Must be escaped for logs */
+			escape = 'n'
+			break
+		case '\r':
+			escape = 'r'
+			break
+		case '\\':
+			escape = '\\'
+			break
+		case '\'':
+			escape = '\''
+			break
+		case '"': /* Better safe than sorry */
+			escape = '"'
+			break
+		case '%':
+			escape = '%'
+			break
+		case '\b':
+			escape = 'b'
+			break
+		case '\t':
+			escape = 't'
+			break
+		case '_':
+			escape = '_'
+			break
+		case '\032': /* This gives problems on Win32 */
+			escape = 'Z'
+		}
+
+		if escape != 0 {
+			dest = append(dest, '\\', escape)
+		} else {
+			dest = append(dest, c)
+		}
+	}
+	return string(dest)
+}

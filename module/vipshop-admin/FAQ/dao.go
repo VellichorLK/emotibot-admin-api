@@ -398,7 +398,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		if condition.SearchDynamicMenu {
 			if condition.Keyword != "" {
 				dmCondition += " where DynamicMenu like ?"
-				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
+				sqlParams = append(sqlParams, "%"+util.EscapeQuery(condition.Keyword)+"%")
 			}
 			query += fmt.Sprintf(" inner join (%s) as dm on dm.Answer_Id = a.Answer_Id", dmCondition)
 		} else if condition.SearchAll {
@@ -410,7 +410,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		if condition.SearchRelativeQuestion {
 			if condition.Keyword != "" {
 				rqCondition += " where RelatedQuestion like ?"
-				sqlParams = append(sqlParams, "%"+condition.Keyword+"%")
+				sqlParams = append(sqlParams, "%"+util.EscapeQuery(condition.Keyword)+"%")
 			}
 			query += fmt.Sprintf(" inner join (%s) as rq on rq.Answer_Id = a.Answer_Id", rqCondition)
 		} else if condition.SearchAll {
@@ -427,7 +427,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 		if condition.SearchAll && condition.Keyword != "" {
 			query += " where q.Content like ? or a.Content like ? or rq.RelatedQuestion like ? or dm.DynamicMenu like ?"
-			param := "%" + condition.Keyword + "%"
+			param := "%" + util.EscapeQuery(condition.Keyword) + "%"
 			sqlParams = append(sqlParams, param, param, param, param)
 		}
 
@@ -652,7 +652,7 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 	if condition.SearchQuestion && condition.Keyword != "" {
 		// replace keyword condition
 		keywordCondition := fmt.Sprintf(" and %s_question.content like ?", appid)
-		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		newParam := append(*sqlParam, "%"+util.EscapeQuery(condition.Keyword)+"%")
 		*sqlParam = newParam
 		query = strings.Replace(query, "#KEYWORD_CONDITION#", keywordCondition, -1)
 	} else {
@@ -763,7 +763,7 @@ func answerSQL(condition QueryCondition, aids [][]string, sqlParam *[]interface{
 			keywordCondition = " where tmp_a.Content_String like ?"
 		}
 		query = strings.Replace(query, "#KEYWORD_CONDTION#", keywordCondition, -1)
-		newParam := append(*sqlParam, "%"+condition.Keyword+"%")
+		newParam := append(*sqlParam, "%"+util.EscapeQuery(condition.Keyword)+"%")
 		*sqlParam = newParam
 	} else {
 		query = strings.Replace(query, "#KEYWORD_CONDTION#", "", -1)
