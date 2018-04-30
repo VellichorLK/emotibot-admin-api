@@ -870,13 +870,11 @@ func UpdateQuestion(appid string, question *Question) (err error) {
 }
 
 func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
-	contentHash := util.HashContent(question.Content)
 	parameters := []interface{}{
 		question.Content,
 		question.CategoryId,
-		contentHash,
 	}
-	sqlStr := fmt.Sprintf("UPDATE `%s_question` SET `Content`=?, `CategoryId`=?, `Status`=1, `ContentHash`=? WHERE Question_Id=%d", appid, question.QuestionId)
+	sqlStr := fmt.Sprintf("UPDATE `%s_question` SET `Content`=?, `CategoryId`=?, `Status`=1 WHERE Question_Id=%d", appid, question.QuestionId)
 
 	_, err = tx.Exec(sqlStr, parameters...)
 	if err != nil {
@@ -1006,11 +1004,8 @@ func InsertQuestion(appid string, question *Question, answers []Answer) (qid int
 }
 
 func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.Tx) (qid int64, err error) {
-	// hash content
-	contentHash := util.HashContent(question.Content)
-
-	columValues := []interface{}{question.Content, question.CategoryId, question.User, contentHash, question.SQuestionConunt}
-	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, ContentHash, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, ?, now())", appid)
+	columValues := []interface{}{question.Content, question.CategoryId, question.User, question.SQuestionConunt}
+	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, now())", appid)
 
 	result, err := tx.Exec(sql, columValues...)
 	if err != nil {
