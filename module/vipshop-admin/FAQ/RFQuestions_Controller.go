@@ -30,12 +30,80 @@ func handleSetRFQuestions(ctx iris.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
+
+	// select old RFQuestions for audit log
+	oldRFQuestions, err := GetRFQuestions(appid)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+	oldRFQuestionsContent := make([]string, len(oldRFQuestions))
+	for i := range oldRFQuestions {
+		oldRFQuestionsContent[i] = oldRFQuestions[i].Content
+	}
+
+	auditRet := 1
 	if err = SetRFQuestions(args.Contents, appid); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
-		return
+		auditRet = 0
 	}
 
+	// write audit log
+	writeAuditLog(ctx, auditRet, oldRFQuestionsContent, args.Contents)
+}
+
+func writeAuditLog(ctx context.Context, result int, oldRFQuestios, newRFQuestions []string) (err error) {
+	// prepare map
+	var oldRFQuestiosMap map[string]bool = make(map[string]bool)
+	var newRFQuestionMap map[string]bool = make(map[string]bool)
+
+	for i := range oldRFQuestios {
+		oldRFQuestiosMap[oldRFQuestios[i]] = true
+	}
+
+	for i := range newRFQuestions {
+		newRFQuestionMap[newRFQuestions[i]] = true
+	}
+
+	deletedRFQuestionLog := prepareAuditLog(oldRFQuestiosMap, newRFQuestionMap)
+	addedRFQuestionLog := prepareAuditLog(newRFQuestionMap, oldRFQuestiosMap)
+
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+
+	if deletedRFQuestionLog != "" {
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleRFQuestion, util.AuditOperationDelete, deletedRFQuestionLog, result)
+		if err != nil {
+			return
+		}
+	}
+
+	if addedRFQuestionLog != "" {
+		err = util.AddAuditLog(userID, userIP, util.AuditModuleRFQuestion, util.AuditOperationAdd, addedRFQuestionLog, result)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+// diff two map and append the content to create audit log
+func prepareAuditLog(sourceMap, targetMap map[string]bool) (log string) {
+	var first bool = false
+	for key, _ := range sourceMap {
+		_, ok := targetMap[key]
+		if !ok {
+			if !first {
+				log = "[解决/未解决问题]："
+				log = fmt.Sprintf("%s%s", log, key)
+				first = true
+			} else {
+				log = fmt.Sprintf("%s;%s", log, key)
+			}
+		}
+	}
+	return
 }
 
 func handleCategoryRFQuestions(ctx context.Context) {
