@@ -31,6 +31,7 @@ var (
 		"Updated":      "更新后",
 		"Category":     "分类",
 		"Row":          "列",
+		"IDError":      "ID错误",
 
 		// Used in Switch
 		"Name":     "名称",

@@ -115,3 +115,23 @@ func DeleteWordbank(appid string, id int) error {
 func GetWordbankRow(appid string, id int) (*WordBankRow, error) {
 	return getWordbankRow(appid, id)
 }
+
+// GetWordbankV3 will get wordbank from new table
+func GetWordbanksV3(appid string) (*WordBankClassV3, error) {
+	return getWordbanksV3(appid)
+}
+
+func GetWordbankV3(appid string, id int) (*WordBankV3, error) {
+	return getWordbankV3(appid, id)
+}
+
+func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, error) {
+	return getWordbankClassV3(appid, id)
+}
+
+func DeleteWordbankV3(appid string, id int) error {
+	return deleteWordbankV3(appid, id)
+}
+func DeleteWordbankClassV3(appid string, id int) error {
+	return deleteWordbankClassV3(appid, id)
+}

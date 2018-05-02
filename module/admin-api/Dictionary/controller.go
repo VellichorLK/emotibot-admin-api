@@ -42,9 +42,14 @@ func init() {
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQL, 2),
 			util.NewEntryPointWithVer("GET", "download/{file}", []string{}, handleDownloadFromMySQL, 2),
-
 			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWord, 2),
 			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonyms, 2),
+
+			util.NewEntryPointWithVer("GET", "wordbanks", []string{"view"}, handleGetWordbanksV3, 3),
+			util.NewEntryPointWithVer("GET", "wordbank/{id}", []string{"view"}, handleGetWordbankV3, 3),
+			util.NewEntryPointWithVer("GET", "class/{id}", []string{"view"}, handleGetWordbankClassV3, 3),
+			util.NewEntryPointWithVer("DELETE", "wordbank/{id}", []string{"view"}, handleDeleteWordbankV3, 3),
+			util.NewEntryPointWithVer("DELETE", "class/{id}", []string{"view"}, handleDeleteWordbankClassV3, 3),
 		},
 	}
 	maxDirDepth = 4
@@ -548,4 +553,117 @@ func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 	ret = 1
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
 	SyncWordbank(appid)
+}
+
+func handleGetWordbanksV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	wordbanks, err := GetWordbanksV3(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	} else {
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
+	}
+}
+
+func handleGetWordbankV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("Invalid ID: %s", err.Error())),
+			http.StatusBadRequest)
+		return
+	}
+
+	wordbank, err := GetWordbankV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if wordbank == nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Not found"), http.StatusNotFound)
+		return
+	}
+
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
+}
+func handleGetWordbankClassV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w,
+			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("Invalid ID: %s", err.Error())),
+			http.StatusBadRequest)
+		return
+	}
+
+	wordbank, err := GetWordbankClassV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if wordbank == nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Not found"), http.StatusNotFound)
+		return
+	}
+
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
+}
+func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
+	ret := 0
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+	}()
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		errMsg += ": " + util.Msg["IDError"]
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	wordbank, err := GetWordbankV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if wordbank == nil {
+		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+		return
+	}
+
+	err = DeleteWordbankV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	ret = 1
+	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	return
+}
+func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["WordbankDir"])
+	ret := 0
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+	}()
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	err = DeleteWordbankClassV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	return
 }

@@ -1,0 +1,211 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for Wordbank V3
+  version: 3.0.0
+  title: Dictionary
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v3/dictionary/
+components:
+  schemas:
+    wordbank:
+      type: object
+      properties:
+        wid:
+          type: integer
+          description: ID
+        name:
+          type: string
+          description: 詞庫名稱
+        similar_words:
+          description: 所有的相似詞
+          type: array
+          items:
+            type: string
+            example: similary1
+        answer:
+          description: 詞庫對應之答案
+          type: string
+          example: answer-line
+    wordbank-class:
+      type: object
+      properties:
+        cid:
+          type: integer
+          description: ID
+        name:
+          type: string
+          description: 詞庫名稱
+        wordbanks:
+          description: 分類下的所有詞庫
+          type: array
+          items:
+            $ref: '#/components/schemas/wordbank'
+        children:
+          description: 底下的子分類
+          type: array
+          items:
+            $ref: '#/components/schemas/wordbank-class'
+        editable:
+          description: 此分類底下是否可新增/修改分類及詞庫
+          type: boolean
+        ie_flag:
+          description: 該目錄底下的詞庫是否供給intent engine使用
+          type: boolean
+        re_flag:
+          description: 該目錄底下的詞庫是否供給rule engine使用
+          type: boolean
+    ret-wordbank:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          $ref: '#/components/schemas/wordbank'
+    ret-wordbank-class:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: object
+          $ref: '#/components/schemas/wordbank-class'
+    wordbank-input:
+      type: object
+      properties:
+        name:
+          type: string
+        similar_words:
+          description: 所有的相似詞，以逗點分隔多個相似詞
+          type: string
+          example: "sim1,sim2"
+        answer:
+          description: 詞庫對應之答案
+          type: string
+          example: answer-line
+        cid:
+          description: 詞庫所在之分類
+          type: integer
+          example: 1
+    class-input:
+      type: object
+      properties:
+        name:
+          type: string
+        pid:
+          description: 分類之父分類
+          type: integer
+          example: 1
+paths:
+  /wordbanks:
+    get:
+      tags:
+        - Get Data
+      summary: "取得所有詞庫及目錄"
+      description: "用於取得屬於 appid 底下的所有詞庫及分類，回傳的第一層永遠是根目錄"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/ret-wordbank-class'
+        500:
+          description: "Internal server error"
+  /wordbank:
+    post:
+      tags:
+        - Add Data
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              $ref: '#/components/schemas/wordbank-input'
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/ret-wordbank'
+      
+  /wordbank/{id}:
+    get:
+      tags:
+        - Get Data
+      summary: "取得特定詞庫"
+      description: "用於取得特定詞庫，若欲存取之詞庫不屬於該 appid，則會回傳 404 Not found"
+      responses:
+        200: 
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/ret-wordbank'
+        404:
+          description: "Invalid id"
+        500:
+          description: "Internal server error"
+    delete:
+      tags:
+        - Delete Data
+      summary: "刪除特定詞庫"
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal server error"
+  /class:
+    post:
+      tags:
+        - Add Data
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              $ref: '#/components/schemas/class-input'
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/ret-wordbank-class'
+  /class/{id}:
+    get:
+      tags:
+        - Get Data
+      summary: "取得特定詞庫分類"
+      description: "用於取得特定詞庫分類，若欲存取之詞庫分類不屬於該 appid，則會回傳 404 Not found"
+      responses:
+        200: 
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/ret-wordbank-class'
+        404:
+          description: "Invalid id"
+        500:
+          description: "Internal server error"
+    delete:
+      tags:
+        - Delete Data
+      summary: "刪除特定詞庫分類"
+      responses:
+        200:
+          description: "OK"
+        500:
+          description: "Internal server error"
+      

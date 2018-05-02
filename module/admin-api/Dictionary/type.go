@@ -83,3 +83,20 @@ func (row WordBankRow) GetPath() string {
 
 	return strings.Join(paths, "/")
 }
+
+type WordBankClassV3 struct {
+	ID           int                `json:"cid"`
+	Name         string             `json:"name"`
+	Wordbank     []*WordBankV3      `json:"wordbanks"`
+	Children     []*WordBankClassV3 `json:"children"`
+	Editable     bool               `json:"editable"`
+	IntentEngine bool               `json:"ie_flag"`
+	RuleEngine   bool               `json:"re_flag"`
+}
+
+type WordBankV3 struct {
+	ID           int      `json:"wid"`
+	Name         string   `json:"name"`
+	SimilarWords []string `json:"similar_words"`
+	Answer       string   `json:"answer"`
+}

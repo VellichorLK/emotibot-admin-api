@@ -348,12 +348,7 @@ func deleteWordbankDir(appid string, paths []string) (int, error) {
 }
 
 func deleteWordbank(appid string, id int) (err error) {
-	defer func() {
-		if err != nil {
-			_, file, line, _ := runtime.Caller(1)
-			util.LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
-		}
-	}()
+	defer showError(err)
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return errors.New("DB not init")
@@ -439,4 +434,273 @@ func getWordbankRow(appid string, id int) (ret *WordBankRow, err error) {
 	ret = &temp
 
 	return
+}
+
+func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT id, name, pid, editable, intent_engine, rule_engine
+		FROM entity_class
+		WHERE appid = ?`
+	rows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	root := WordBankClassV3{-1, "", []*WordBankV3{}, []*WordBankClassV3{}, false, true, true}
+
+	// classMap is a map from classID to class
+	classMap := map[int]*WordBankClassV3{}
+	// childrenMap is a map from classID to it's children
+	childrenMap := map[int][]*WordBankClassV3{}
+
+	for rows.Next() {
+		temp := &WordBankClassV3{}
+		temp.Children = []*WordBankClassV3{}
+		temp.Wordbank = []*WordBankV3{}
+		var pidPtr *int
+		err = rows.Scan(&temp.ID, &temp.Name, &pidPtr, &temp.Editable, &temp.IntentEngine, &temp.RuleEngine)
+		if err != nil {
+			return
+		}
+		classMap[temp.ID] = temp
+
+		if pidPtr != nil {
+			pid := *pidPtr
+			if _, ok := childrenMap[pid]; !ok {
+				childrenMap[pid] = []*WordBankClassV3{}
+			}
+			childrenMap[pid] = append(childrenMap[pid], temp)
+		} else {
+			root.Children = append(root.Children, temp)
+		}
+	}
+
+	// queryParam is used in next mysql params
+	queryParam := []interface{}{}
+	// quereyQuestion will used to form the question mark in sql query
+	queryQuestion := []string{}
+
+	for id, class := range classMap {
+		class.Children = childrenMap[id]
+		queryParam = append(queryParam, id)
+		queryQuestion = append(queryQuestion, "?")
+	}
+
+	if len(queryParam) <= 0 {
+		ret = &root
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		SELECT id, name, cid, similar_words, answer
+		FROM entities
+		WHERE cid in (%s)`, strings.Join(queryQuestion, ","))
+	entityRows, err := mySQL.Query(queryStr, queryParam...)
+	if err != nil {
+		return
+	}
+	defer entityRows.Close()
+
+	for entityRows.Next() {
+		temp := &WordBankV3{}
+		cid := 0
+		similarWordStr := ""
+		err = entityRows.Scan(&temp.ID, &temp.Name, &cid, &similarWordStr, &temp.Answer)
+		if err != nil {
+			return
+		}
+		temp.SimilarWords = strings.Split(similarWordStr, ",")
+		classMap[cid].Wordbank = append(classMap[cid].Wordbank, temp)
+	}
+
+	ret = &root
+	return
+}
+
+func getWordbankV3(appid string, id int) (ret *WordBankV3, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT e.name, e.similar_words, e.answer
+		FROM entities as e, entity_class as c
+		WHERE e.cid = c.id AND e.id = ? AND c.appid = ?`
+	row := mySQL.QueryRow(queryStr, id, appid)
+	util.LogTrace.Printf("Get wordbank of %d@%s", id, appid)
+
+	ret = &WordBankV3{}
+	similarWordsStr := ""
+	err = row.Scan(&ret.Name, &similarWordsStr, &ret.Answer)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ret = nil
+			err = nil
+		}
+		return
+	}
+
+	ret.SimilarWords = strings.Split(similarWordsStr, ",")
+	ret.ID = id
+	return
+}
+
+func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT name, editable, intent_engine, rule_engine
+		FROM entity_class
+		WHERE id = ? AND appid = ?`
+	row := mySQL.QueryRow(queryStr, id, appid)
+
+	ret = &WordBankClassV3{}
+	editable := 0
+	ie := 0
+	re := 0
+	err = row.Scan(&ret.Name, &editable, &ie, &re)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			ret = nil
+			err = nil
+		}
+		return
+	}
+
+	ret.Editable = editable != 0
+	ret.IntentEngine = ie != 0
+	ret.RuleEngine = re != 0
+	ret.ID = id
+	return
+}
+
+func getWordbankClassParents(appid string, id int) (ret []*WordBankClassV3, err error) {
+	defer showError(err)
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT id, name, editable, intent_engine, rule_engine
+		FROM (
+			SELECT * FROM entity_class ORDER BY id DESC) AS sorted,
+			(SELECT @pv := ?) AS tmp
+		WHERE
+			find_in_set(id, @pv)
+			AND (pid IS NULL OR length(@pv := concat(@pv, ',', pid)))
+			AND appid = ?
+		ORDER BY id
+	`
+	rows, err := mySQL.Query(queryStr, id, appid)
+	if err != nil {
+		return
+	}
+
+	classes := []*WordBankClassV3{}
+	for rows.Next() {
+		temp := &WordBankClassV3{}
+		editable := 0
+		cid := 0
+		ie := 0
+		re := 0
+		err = rows.Scan(&cid, &temp.Name, &editable, &ie, &re)
+		if err != nil {
+			return
+		}
+
+		temp.Editable = editable != 0
+		temp.IntentEngine = ie != 0
+		temp.RuleEngine = re != 0
+		temp.ID = cid
+		classes = append(classes, temp)
+	}
+
+	ret = classes
+	return
+}
+
+func deleteWordbankV3(appid string, id int) (err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+	queryStr := `
+		DELETE e.*
+		FROM entity_class AS c, entities AS e
+		WHERE e.id = ? AND e.cid = c.id AND c.appid = ? AND c.editable > 0`
+	_, err = mySQL.Exec(queryStr, id, appid)
+	return err
+}
+func deleteWordbankClassV3(appid string, id int) (err error) {
+	defer showError(err)
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+	queryStr := `
+		SELECT id
+		FROM (
+			SELECT * FROM entity_class order by id) AS sorted,
+			(select @pv := ?) AS tmp
+		WHERE 
+			find_in_set(pid, @pv)
+			AND appid = ?
+			AND length(@pv := concat(@pv, ',', id))
+	`
+	rows, err := mySQL.Query(queryStr, id, appid)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	ids := []interface{}{}
+
+	for rows.Next() {
+		tmp := 0
+		err = rows.Scan(&tmp)
+		if err != nil {
+			return err
+		}
+		ids = append(ids, tmp)
+	}
+	ids = append(ids, id)
+
+	qmark := make([]string, len(ids))
+	for i := range qmark {
+		qmark[i] = "?"
+	}
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	util.LogTrace.Printf("Delete id: %v\n", ids)
+
+	queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE id in (%s)", strings.Join(qmark, ","))
+	_, err = mySQL.Exec(queryStr, ids...)
+	return err
+}
+
+func showError(err error) {
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		util.LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
+	}
 }
