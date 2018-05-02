@@ -2,6 +2,7 @@ package util
 
 import (
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -29,7 +30,12 @@ func GetAuthToken(r *http.Request) string {
 
 // GetAppID will get AppID from http header
 func GetAppID(r *http.Request) string {
-	return r.Header.Get(ConstAppIDHeaderKey)
+	appid := r.Header.Get(ConstAppIDHeaderKey)
+	match, _ := regexp.MatchString("[a-zA-Z0-9]+", appid)
+	if match {
+		return appid
+	}
+	return ""
 }
 
 // GetUserID will get UserID from http header
