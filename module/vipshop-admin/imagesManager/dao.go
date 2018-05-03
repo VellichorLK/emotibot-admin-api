@@ -594,3 +594,62 @@ func SqlExec(db *sql.DB, sql string, params ...interface{}) (sql.Result, error) 
 func ExecStmt(stmt *sql.Stmt, params ...interface{}) (sql.Result, error) {
 	return stmt.Exec(params...)
 }
+
+func CreateMediaRef(answerID int, images []int) (err error) {
+	tx, err := GetTx(db)
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	// read lock for images to prevent other transaction to do modification on these images
+	readLockSql := fmt.Sprintf("SELECT count(id) FROM images WHERE id in (?%s) LOCK IN SHARE MODE;", strings.Repeat(",?", len(images)-1))
+	var imagesParam []interface{} = make([]interface{}, len(images))
+	for index, value := range images {
+		imagesParam[index] = value
+	}
+	rows, err := tx.Query(readLockSql, imagesParam...)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	var count int
+	for rows.Next() {
+		rows.Scan(&count)
+	}
+
+	if count != len(images) {
+		return fmt.Errorf("Some media might be removed!!")
+	}
+
+	insertSql := "INSERT INTO image_answer (answer_id, image_id) VALUES"
+	for index, value := range images {
+		if index == 0 {
+			insertSql = fmt.Sprintf("%s (%d, %d)", insertSql, answerID, value)
+		} else {
+			insertSql = fmt.Sprintf("%s,(%d, %d)", insertSql, answerID, value)
+		}
+	}
+	insertSql +=";"
+	_, err = tx.Exec(insertSql)
+	if err != nil {
+		return
+	}
+	return tx.Commit()
+}
+
+func DeleteMediaRef(answerID int) (err error) {
+	tx, err := GetTx(db)
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+	
+	sqlStr := fmt.Sprintf("DELETE FROM image_answer WHERE answer_id = %d", answerID)
+	_, err = tx.Exec(sqlStr)
+	if err != nil {
+		return
+	}
+	return tx.Commit()
+}

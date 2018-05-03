@@ -704,6 +704,7 @@ func transformaAnswer(appid string, answerJson *AnswerJson, answer *Answer) (err
 	answer.RelatedQuestions = answerJson.RelatedQuestions
 	answer.AnswerCmd = answerJson.AnswerCMD
 	answer.Content = answerJson.Content
+	answer.Images = answerJson.Images
 
 	if answer.AnswerCmd == "shopping" {
 		answer.AnswerCmdMsg = answerJson.AnswerCMDMsg
