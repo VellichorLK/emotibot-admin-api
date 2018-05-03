@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"runtime"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -94,5 +95,12 @@ func ClearTransition(tx *sql.Tx) {
 	rollbackRet := tx.Rollback()
 	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
 		LogError.Printf("Critical db error in rollback: %s", rollbackRet.Error())
+	}
+}
+
+func ShowError(err error) {
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
 	}
 }

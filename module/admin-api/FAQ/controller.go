@@ -47,6 +47,12 @@ func init() {
 			util.NewEntryPoint("POST", "activity/{id}", []string{"edit"}, handleUpdateActivity),
 			util.NewEntryPoint("PUT", "activity", []string{"create"}, handleAddActivity),
 			util.NewEntryPoint("DELETE", "activity/{id}", []string{"view"}, handleDeleteActivity),
+
+			util.NewEntryPoint("GET", "rules", []string{"view"}, handleGetRules),
+			util.NewEntryPoint("GET", "rule/{id}", []string{"edit"}, handleGetRule),
+			util.NewEntryPoint("PUT", "rule/{id}", []string{"edit"}, handleUpdateRule),
+			util.NewEntryPoint("POST", "rule", []string{"create"}, handleAddRule),
+			util.NewEntryPoint("DELETE", "rule/{id}", []string{"view"}, handleDeleteRule),
 		},
 	}
 }

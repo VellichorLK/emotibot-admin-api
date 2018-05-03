@@ -3,6 +3,7 @@ package FAQ
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -342,4 +343,228 @@ func handleGetActivityOfLabel(w http.ResponseWriter, r *http.Request) {
 		retObj = err.Error()
 		return
 	}
+}
+
+func handleGetRules(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status := http.StatusOK
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+
+	rules, err := GetRules(appid)
+	if err != nil {
+		status = http.StatusInternalServerError
+		retCode = ApiError.DB_ERROR
+		retObj = err.Error()
+	} else {
+		retObj = rules
+	}
+}
+func handleGetRule(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status := http.StatusOK
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		status = http.StatusBadRequest
+		retCode = ApiError.REQUEST_ERROR
+		retObj = err.Error()
+		return
+	}
+
+	rule, err := GetRule(appid, id)
+	if err != nil {
+		status = http.StatusInternalServerError
+		retCode = ApiError.DB_ERROR
+		retObj = err.Error()
+	} else if rule == nil {
+		status = http.StatusNotFound
+		retCode = ApiError.REQUEST_ERROR
+	} else {
+		retObj = rule
+	}
+}
+func handleUpdateRule(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status := http.StatusOK
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
+		return
+	}
+
+	origRule, err := GetRule(appid, id)
+	if err != nil {
+		status, retCode = http.StatusInternalServerError, ApiError.IO_ERROR
+		retObj = err.Error()
+		return
+	}
+	if origRule == nil {
+		status, retCode = http.StatusNotFound, ApiError.REQUEST_ERROR
+		return
+	}
+
+	rule, err := parseRuleFromRequest(r)
+	if err != nil {
+		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
+		return
+	}
+
+	err = UpdateRule(appid, id, rule)
+	if err != nil {
+		status, retCode = http.StatusInternalServerError, ApiError.IO_ERROR
+		retObj = err.Error()
+		return
+	}
+	retObj = rule
+}
+func handleAddRule(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status := http.StatusOK
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+
+	appid := util.GetAppID(r)
+	rule, err := parseRuleFromRequest(r)
+	if err != nil {
+		status = http.StatusBadRequest
+		retCode = ApiError.REQUEST_ERROR
+		retObj = err.Error()
+		return
+	}
+
+	id, err := AddRule(appid, rule)
+	if err != nil {
+		status = http.StatusInternalServerError
+		retCode = ApiError.IO_ERROR
+		retObj = err.Error()
+		return
+	}
+	rule.ID = id
+	retObj = rule
+}
+func handleDeleteRule(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status := http.StatusOK
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		status = http.StatusBadRequest
+		retCode = ApiError.REQUEST_ERROR
+		retObj = err.Error()
+		return
+	}
+
+	err = DeleteRule(appid, id)
+	if err != nil {
+		status = http.StatusInternalServerError
+		retCode = ApiError.DB_ERROR
+	}
+}
+func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
+	err = r.ParseForm()
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err != nil {
+			util.LogInfo.Printf("Parse rule fail: %s\n", err.Error())
+		}
+	}()
+
+	ret := Rule{}
+	ret.Name = r.FormValue("name")
+	ret.Answer = r.FormValue("answer")
+	ret.Status = r.FormValue("status") != "0"
+	begin, err := time.Parse(time.RFC3339, r.FormValue("begin_time"))
+	if err != nil {
+		ret.Begin = nil
+	} else {
+		ret.Begin = &begin
+	}
+	end, err := time.Parse(time.RFC3339, r.FormValue("end_time"))
+	if err != nil {
+		ret.End = nil
+	} else {
+		ret.End = &end
+	}
+
+	target, err := strconv.Atoi(r.FormValue("target"))
+	if err != nil {
+		err = errors.New("Invalid target")
+		return
+	}
+	rtype, err := strconv.Atoi(r.FormValue("response_type"))
+	if err != nil {
+		err = errors.New("Invalid response type")
+		return
+	}
+
+	if target > ret.Target.Max() || target < 0 {
+		err = errors.New("Invalid target")
+		return
+	}
+	if rtype > ret.Type.Max() || rtype < 0 {
+		err = errors.New("Invalid response type")
+		return
+	}
+	ret.Target = RuleTarget(target)
+	ret.Type = ResponseType(rtype)
+
+	ruleStr := r.FormValue("rule")
+	ruleContents := []*RuleContent{}
+	err = json.Unmarshal([]byte(ruleStr), &ruleContents)
+	if err != nil {
+		err = fmt.Errorf("Invalid rule content: %s", err.Error())
+		return
+	}
+	for i, r := range ruleContents {
+		if !r.IsValid() {
+			err = fmt.Errorf("rule content error of rule %d", i+1)
+			return
+		}
+	}
+	ret.Rule = ruleContents
+
+	rule = &ret
+	return
 }

@@ -203,3 +203,50 @@ func (c Category) FullName(appid string) (string, error) {
 	}
 	return "", fmt.Errorf("Cant find category id %d in db", c.ID)
 }
+
+type RuleTarget int
+
+const (
+	TargetStandardQuestion RuleTarget = iota
+	TargetAnswer
+	TargetMax
+)
+
+func (RuleTarget) Max() int {
+	return int(TargetMax) - 1
+}
+
+type ResponseType int
+
+const (
+	TypeReplace ResponseType = iota
+	TypeAppendFront
+	TypeAppendBehind
+	TypeAppendMax
+)
+
+func (ResponseType) Max() int {
+	return int(TypeAppendMax) - 1
+}
+
+type RuleContent struct {
+	// Type only allow keyword or regex
+	Type  string   `json:"type"`
+	Value []string `json:"value"`
+}
+
+type Rule struct {
+	ID     int            `json:"id"`
+	Name   string         `json:"name"`
+	Target RuleTarget     `json:"target"`
+	Rule   []*RuleContent `json:"rule"`
+	Answer string         `json:"answer"`
+	Type   ResponseType   `json:"response_type"`
+	Status bool           `json:"status"`
+	Begin  *time.Time     `json:"begin_time"`
+	End    *time.Time     `json:"end_time"`
+}
+
+func (r RuleContent) IsValid() bool {
+	return (r.Type == "keyword" || r.Type == "regex") && len(r.Value) > 0
+}

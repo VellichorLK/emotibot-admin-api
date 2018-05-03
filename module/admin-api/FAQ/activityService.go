@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"database/sql"
 	"errors"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -170,3 +171,29 @@ func GetActivityByLabelID(appid string, lid int) (int, *Activity, error) {
 	}
 	return ApiError.SUCCESS, activity, nil
 }
+
+func GetRules(appid string) ([]*Rule, error) {
+	return getRules(appid)
+}
+
+func GetRule(appid string, id int) (*Rule, error) {
+	return getRule(appid, id)
+}
+
+func DeleteRule(appid string, id int) error {
+	err := deleteRule(appid, id)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+
+	return err
+}
+
+func AddRule(appid string, rule *Rule) (int, error) {
+	return addRule(appid, rule)
+}
+
+func UpdateRule(appid string, id int, rule *Rule) (error) {
+	return updateRule(appid, id, rule)
+}
+

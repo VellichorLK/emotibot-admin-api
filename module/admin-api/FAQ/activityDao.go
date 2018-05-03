@@ -2,8 +2,10 @@ package FAQ
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -187,7 +189,9 @@ func addActivity(appid string, activity *Activity) (err error) {
 	if err != nil {
 		return err
 	}
-	defer clearTransition(tx)
+	defer func() {
+		util.ClearTransition(tx)
+	}()
 	err = dbAddActivity(appid, activity, tx)
 	if err != nil {
 		return
@@ -211,7 +215,9 @@ func updateActivity(appid string, newActivity *Activity) (err error) {
 	if err != nil {
 		return err
 	}
-	defer clearTransition(tx)
+	defer func() {
+		util.ClearTransition(tx)
+	}()
 	err = dbUpdateActivity(appid, newActivity, tx)
 	if err != nil {
 		return
@@ -239,7 +245,9 @@ func deleteActivity(appid string, id int) (err error) {
 	if err != nil {
 		return err
 	}
-	defer clearTransition(tx)
+	defer func() {
+		util.ClearTransition(tx)
+	}()
 	err = dbDeleteActivity(appid, id, tx)
 	if err != nil {
 		return
@@ -462,9 +470,206 @@ func getActivityOfLabel(appid string, lid int) (int, error) {
 	return aid, nil
 }
 
-func clearTransition(tx *sql.Tx) {
-	rollbackRet := tx.Rollback()
-	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
-		util.LogError.Printf("Critical db error in rollback: %s", rollbackRet.Error())
+// =======================
+// Start of Rule part
+// =======================
+
+func getRules(appid string) ([]*Rule, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return nil, err
 	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT
+			rule_id, name, target, rule, answer,
+			response_type, status, begin_time, end_time
+		FROM %s_rule`, appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	rules := []*Rule{}
+	for rows.Next() {
+		temp := &Rule{}
+		err = scanRowToRule(rows, temp)
+		if err != nil {
+			fmt.Printf("Err: %s\n", err.Error())
+			return nil, err
+		}
+		if temp != nil {
+			rules = append(rules, temp)
+		}
+	}
+
+	return rules, nil
+}
+
+func scanRowToRule(rows *sql.Rows, temp *Rule) error {
+	ruleStr := ""
+	err := rows.Scan(&temp.ID, &temp.Name, &temp.Target, &ruleStr, &temp.Answer,
+		&temp.Type, &temp.Status, &temp.Begin, &temp.End)
+	if err != nil {
+		return err
+	}
+
+	ruleStr = strings.Replace(ruleStr, "\n", "", -1)
+	ruleContents := []*RuleContent{}
+	err = json.Unmarshal([]byte(ruleStr), &ruleContents)
+	if err != nil {
+		fmt.Printf("Error json: \n%s\n\n", ruleStr)
+		return fmt.Errorf("Invalid rule content: %s", err.Error())
+	}
+
+	temp.Rule = ruleContents
+	temp.Answer = strings.Replace(temp.Answer, "\n", "", -1)
+	temp.Answer = strings.Replace(temp.Answer, "\t", "", -1)
+	temp.Answer = strings.Replace(temp.Answer, "\r", "", -1)
+	return err
+}
+
+func getRule(appid string, id int) (*Rule, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT
+			rule_id, name, target, rule, answer,
+			response_type, status, begin_time, end_time
+		FROM %s_rule
+		WHERE rule_id = ?`, appid)
+	rows, err := mySQL.Query(queryStr, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		rule := &Rule{}
+		err = scanRowToRule(rows, rule)
+		if err != nil {
+			fmt.Printf("Err: %s\n", err.Error())
+			return nil, err
+		}
+		return rule, nil
+	}
+
+	return nil, nil
+}
+
+func deleteRule(appid string, id int) error {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return err
+	}
+
+	queryStr := fmt.Sprintf(`
+		DELETE
+		FROM %s_rule
+		WHERE rule_id = ?`, appid)
+	_, err = mySQL.Exec(queryStr, id)
+	return err
+}
+
+func addRule(appid string, rule *Rule) (int, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return -1, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		INSERT INTO %s_rule
+		(name, target, rule, answer, response_type, status, begin_time, end_time)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, appid)
+	ruleStr, _ := json.Marshal(rule.Rule)
+	statusInt := 0
+	if rule.Status {
+		statusInt = 1
+	}
+	queryParams := []interface{}{
+		rule.Name,
+		rule.Target,
+		ruleStr,
+		rule.Answer,
+		rule.Type,
+		statusInt,
+		rule.Begin,
+		rule.End,
+	}
+	result, err := mySQL.Exec(queryStr, queryParams...)
+	if err != nil {
+		return -1, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+	return int(id), err
+}
+
+func updateRule(appid string, id int, rule *Rule) error {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return err
+	}
+
+	queryStr := fmt.Sprintf(`
+		UPDATE %s_rule SET
+		name = ?, target = ?, rule = ?, answer = ?, 
+		response_type = ?, status = ?, begin_time = ?, end_time = ?
+		WHERE rule_id = ?`, appid)
+	ruleStr, _ := json.Marshal(rule.Rule)
+	statusInt := 0
+	if rule.Status {
+		statusInt = 1
+	}
+	queryParams := []interface{}{
+		rule.Name,
+		rule.Target,
+		ruleStr,
+		rule.Answer,
+		rule.Type,
+		statusInt,
+		rule.Begin,
+		rule.End,
+		id,
+	}
+	_, err = mySQL.Exec(queryStr, queryParams...)
+	if err != nil {
+		return err
+	}
+
+	return err
 }
