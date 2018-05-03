@@ -650,10 +650,12 @@ func (controller MYSQLController) GetRole(enterpriseID string, roleID string) (*
 	}
 
 	queryStr = fmt.Sprintf("SELECT count(*) FROM %s WHERE enterprise = ? AND role = ? GROUP BY role", userTable)
-	countRow := controller.connectDB.QueryRow(queryStr, enterpriseID, roleID)
+	countRow := controller.connectDB.QueryRow(queryStr, enterpriseID, id)
 	err = countRow.Scan(&ret.UserCount)
 	if err != nil {
-		return nil, err
+		if err != sql.ErrNoRows {
+			return nil, err
+		}
 	}
 
 	queryStr = fmt.Sprintf(`
@@ -705,6 +707,9 @@ func (controller MYSQLController) getRoleUUIDByIdWidthTx(id int, t *sql.Tx) (uui
 func (controller MYSQLController) AddRole(enterprise string, role *data.Role) (uuid string, err error) {
 	defer func() {
 		util.LogInfo.Println("Add role ret uuid: ", uuid)
+		if err != nil {
+			util.LogInfo.Println("Add role ret: ", err.Error())
+		}
 	}()
 	ok, err := controller.checkDB()
 	if !ok {
