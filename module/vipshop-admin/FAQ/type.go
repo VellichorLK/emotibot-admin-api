@@ -91,6 +91,7 @@ type Answer struct {
 	RelatedQuestions []string `json:"relatedQ"`
 	DynamicMenus 	[]string `json:"dynamicMenu"`
 	AppID			string
+	Images           []int    `json:"images"`
 }
 
 func (a *Answer) Fetch() (err error) {
@@ -164,6 +165,7 @@ type AnswerJson struct {
 	Dimension        []int    `json:"dimension"`
 	BeginTime        string   `json:"begin_time"`
 	EndTime          string   `json:"end_time"`
+	Images			 []int	  `json:"images"`
 }
 
 type QuestionJson struct {

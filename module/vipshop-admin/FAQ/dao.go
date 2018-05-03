@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 )
 
 const SEPARATOR = "#SEPARATE_TOKEN#"
@@ -968,12 +969,19 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 			return
 		}
 	}
-
 	if len(answer.DimensionIDs) > 0 {
 		err = insertAnswerDimensions(appid, int64(answer.AnswerId), answer.DimensionIDs, tx)
 		if err != nil {
 			return
 		}
+	}
+
+	err = imagesManager.DeleteMediaRef(answer.AnswerId)
+	if err != nil {
+		return
+	}
+	if len(answer.Images) > 0 {
+		err = imagesManager.CreateMediaRef(answer.AnswerId, answer.Images)
 	}
 
 	return 
@@ -1063,6 +1071,13 @@ func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID
 
 	if len(answer.DimensionIDs) != 0 {
 		err = insertAnswerDimensions(appid, answerID, answer.DimensionIDs, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	if len(answer.Images) != 0 {
+		err = imagesManager.CreateMediaRef(int(answerID), answer.Images)
 	}
 
 	return
@@ -1222,7 +1237,7 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) error {
 }
 
 func genDeleteQuestionSQL(appid string, targets []Question) (string, []interface{}) {
-	sql := fmt.Sprintf("UPDATE %s_question SET Status = -1, ContentHash = Question_Id where", appid)
+	sql := fmt.Sprintf("UPDATE %s_question SET Status = -1 where", appid)
 
 	var shouldOr bool = false
 	var conditions []interface{}
@@ -1384,7 +1399,7 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 	var conditions []interface{}
 	var shouldOr bool = false
 	var err error
-	sql := fmt.Sprintf("DELETE FROM %s_answer where", appid)
+	sqlStr := fmt.Sprintf("DELETE FROM %s_answer where", appid)
 	for _, answer := range answers {
 		var targetLabel AnswerLabelDAO = AnswerLabelDAO{
 			AnswerId: answer.AnswerId,
@@ -1398,10 +1413,18 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 		conditions = append(conditions, condition...)
 
 		if shouldOr {
-			sql += fmt.Sprintf(" or %s", clause)
+			sqlStr = fmt.Sprintf("%s or %s", sqlStr, clause)
 		} else {
-			sql += fmt.Sprintf(" %s", clause)
+			sqlStr = fmt.Sprintf("%s %s", sqlStr, clause)
 			shouldOr = true
+		}
+
+		// delete image ref
+		if len(answer.Images) > 0 {
+			err = imagesManager.DeleteMediaRef(answer.AnswerId)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1420,7 +1443,7 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 	}
 
 	// delete answer
-	_, err = tx.Exec(sql, conditions...)
+	_, err = tx.Exec(sqlStr, conditions...)
 	return err
 }
 
