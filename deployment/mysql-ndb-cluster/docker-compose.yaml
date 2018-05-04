@@ -19,9 +19,9 @@ services:
       mysql:
         ipv4_address: 10.0.0.3
     volumes:
-      - type: bind
-        source: ./mysql-cluster.cnf
-        target: /etc/mysql-cluster.cnf
+      # - type: bind
+      #   source: ./mysql-cluster.cnf
+        # target: /etc/mysql-cluster.cnf
       - type: bind
         source: ./my.cnf
         target: /etc/my.cnf
@@ -34,9 +34,9 @@ services:
       mysql:
         ipv4_address: 10.0.0.4
     volumes:
-      - type: bind
-        source: ./mysql-cluster.cnf
-        target: /etc/mysql-cluster.cnf
+      # - type: bind
+      #   source: ./mysql-cluster.cnf
+        # target: /etc/mysql-cluster.cnf
       - type: bind
         source: ./my.cnf
         target: /etc/my.cnf
@@ -56,9 +56,9 @@ services:
       - type: bind
         source: ./my.cnf
         target: /etc/my.cnf
-      - type: bind
-        source: ./mysql-cluster.cnf
-        target: /etc/mysql-cluster.cnf
+      # - type: bind
+      #   source: ./mysql-cluster.cnf
+        # target: /etc/mysql-cluster.cnf
       # - type: bind
       #   source: ./users.sql
       #   target: /etc/mysql/
@@ -79,9 +79,9 @@ services:
       - type: bind
         source: ./my.cnf
         target: /etc/my.cnf
-      - type: bind
-        source: ./mysql-cluster.cnf
-        target: /etc/mysql-cluster.cnf
+      # - type: bind
+      #   source: ./mysql-cluster.cnf
+        # target: /etc/mysql-cluster.cnf
     depends_on:
         - ndb1
         - ndb2

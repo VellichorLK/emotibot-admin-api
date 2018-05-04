@@ -1,0 +1,21 @@
+[ndbd default]
+NoOfReplicas=2
+DataMemory=80M
+IndexMemory=18M
+{{range .ManageNodes}}
+[ndb_mgmd]
+NodeId={{.ID}}
+hostname={{.Hostname}}
+datadir=/var/lib/mysql
+{{end}}
+{{range .NDBNodes}}
+[ndbd]
+NodeId={{.ID}}
+hostname={{.Hostname}}
+datadir=/var/lib/mysql
+{{end}}
+{{range .SQLNodes}}
+[mysqld]
+NodeId={{.ID}}
+hostname={{.Hostname}}
+{{end}}
