@@ -1,0 +1,12 @@
+FROM golang:1.8-alpine AS buildEnv
+
+WORKDIR /go/src/sqlbench
+ADD ./ /go/src/sqlbench
+RUN go build -o sqlbench
+
+FROM alpine:3.5
+WORKDIR /usr/bin/
+RUN apk add --no-cache tzdata
+COPY --from=buildEnv /go/src/sqlbench/sqlbench /usr/bin/sqlbench
+
+ENTRYPOINT [ "./sqlbench" ]
