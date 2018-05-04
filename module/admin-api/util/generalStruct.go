@@ -55,7 +55,6 @@ type RetObj struct {
 }
 
 func GenRetObj(status int, result interface{}) RetObj {
-	LogTrace.Printf("status: [%d] msg: [%s] obj: [%+v]", status, ApiError.GetErrorMsg(status), result)
 	return RetObj{
 		Status:  status,
 		Message: ApiError.GetErrorMsg(status),
@@ -64,7 +63,6 @@ func GenRetObj(status int, result interface{}) RetObj {
 }
 
 func GenRetObjWithCustomMsg(status int, message string, result interface{}) RetObj {
-	LogTrace.Printf("status: [%d] msg: [%s] obj: [%+v]", status, message, result)
 	return RetObj{
 		Status:  status,
 		Message: message,
@@ -73,7 +71,6 @@ func GenRetObjWithCustomMsg(status int, message string, result interface{}) RetO
 }
 
 func GenSimpleRetObj(status int) RetObj {
-	LogTrace.Printf("status: [%d] msg: [%s]", status, ApiError.GetErrorMsg(status))
 	return RetObj{
 		Status:  status,
 		Message: ApiError.GetErrorMsg(status),

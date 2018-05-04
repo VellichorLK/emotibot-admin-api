@@ -99,20 +99,9 @@ type Tag struct {
 
 // Label means activity tag in UI
 type Label struct {
-	ID            int    `json:"id"`
-	Name          string `json:"name"`
-	ActivityCount int    `json:"activity_count"`
-}
-
-// Activity is used with label
-type Activity struct {
-	ID        int        `json:"id"`
-	Name      string     `json:"name"`
-	Content   string     `json:"content"`
-	StartTime *time.Time `json:"start_time"`
-	EndTime   *time.Time `json:"end_time"`
-	Status    bool       `json:"publish_status"`
-	LinkLabel *int       `json:"label"`
+	ID        int    `json:"id"`
+	Name      string `json:"name"`
+	RuleCount int    `json:"rule_count"`
 }
 
 //RFQuestion is removed Feedback question(移除解決未解決的問題)
@@ -236,15 +225,16 @@ type RuleContent struct {
 }
 
 type Rule struct {
-	ID     int            `json:"id"`
-	Name   string         `json:"name"`
-	Target RuleTarget     `json:"target"`
-	Rule   []*RuleContent `json:"rule"`
-	Answer string         `json:"answer"`
-	Type   ResponseType   `json:"response_type"`
-	Status bool           `json:"status"`
-	Begin  *time.Time     `json:"begin_time"`
-	End    *time.Time     `json:"end_time"`
+	ID        int            `json:"id"`
+	Name      string         `json:"name"`
+	Target    RuleTarget     `json:"target"`
+	Rule      []*RuleContent `json:"rule"`
+	Answer    string         `json:"answer"`
+	Type      ResponseType   `json:"response_type"`
+	Status    bool           `json:"status"`
+	Begin     *time.Time     `json:"begin_time"`
+	End       *time.Time     `json:"end_time"`
+	LinkLabel []int          `json:"labels"`
 }
 
 func (r RuleContent) IsValid() bool {

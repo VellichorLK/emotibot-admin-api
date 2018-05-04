@@ -36,23 +36,19 @@ func init() {
 			util.NewEntryPoint("PUT", "category", []string{"edit"}, handleAddCategory),
 			util.NewEntryPoint("DELETE", "category/{id}", []string{"edit"}, handleDeleteCategory),
 
-			util.NewEntryPoint("GET", "tags", []string{"view"}, handleGetLabels),
-			util.NewEntryPoint("GET", "tag/{id}/activity", []string{"view"}, handleGetActivityOfLabel),
-			util.NewEntryPoint("POST", "tag/{id}", []string{"view"}, handleUpdateLabel),
-			util.NewEntryPoint("PUT", "tag", []string{"view"}, handleAddLabel),
-			util.NewEntryPoint("DELETE", "tag/{id}", []string{"view"}, handleDeleteLabel),
-
-			util.NewEntryPoint("GET", "activities", []string{"view"}, handleGetActivities),
-			util.NewEntryPoint("POST", "activity/{id}/publish", []string{"edit"}, handleUpdateActivityPublish),
-			util.NewEntryPoint("POST", "activity/{id}", []string{"edit"}, handleUpdateActivity),
-			util.NewEntryPoint("PUT", "activity", []string{"create"}, handleAddActivity),
-			util.NewEntryPoint("DELETE", "activity/{id}", []string{"view"}, handleDeleteActivity),
+			util.NewEntryPoint("GET", "labels", []string{"view"}, handleGetLabels),
+			util.NewEntryPoint("POST", "label/{id}", []string{"view"}, handleUpdateLabel),
+			util.NewEntryPoint("PUT", "label", []string{"view"}, handleAddLabel),
+			util.NewEntryPoint("DELETE", "label/{id}", []string{"view"}, handleDeleteLabel),
 
 			util.NewEntryPoint("GET", "rules", []string{"view"}, handleGetRules),
 			util.NewEntryPoint("GET", "rule/{id}", []string{"edit"}, handleGetRule),
 			util.NewEntryPoint("PUT", "rule/{id}", []string{"edit"}, handleUpdateRule),
 			util.NewEntryPoint("POST", "rule", []string{"create"}, handleAddRule),
 			util.NewEntryPoint("DELETE", "rule/{id}", []string{"view"}, handleDeleteRule),
+
+			util.NewEntryPoint("GET", "label/{id}/rules", []string{"view"}, handleGetRulesOfLabel),
+			util.NewEntryPoint("GET", "rule/{id}/labels", []string{"view"}, handleGetLabelsOfRule),
 		},
 	}
 }

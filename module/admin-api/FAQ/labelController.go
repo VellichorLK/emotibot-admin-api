@@ -123,226 +123,8 @@ func handleGetLabels(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func parseActivityFromRequest(r *http.Request) (*Activity, error) {
-	ret := &Activity{}
-
-	ret.Name = strings.TrimSpace(r.FormValue("name"))
-	if ret.Name == "" {
-		return nil, errors.New("Invalid name")
-	}
-	ret.Content = strings.TrimSpace(r.FormValue("content"))
-	if ret.Content == "" {
-		return nil, errors.New("Invalid content")
-	}
-	tag := r.FormValue("tag")
-	if tag != "" {
-		val, err := strconv.Atoi(tag)
-		if err == nil {
-			ret.LinkLabel = &val
-		}
-	}
-	timeLayout := "2006-01-02T15:04:05.000Z"
-	startTime := r.FormValue("start_time")
-	if startTime != "" {
-		val, err := time.Parse(timeLayout, startTime)
-		if err == nil {
-			ret.StartTime = &val
-		} else {
-			util.LogTrace.Printf("parse time error: %s\n", err.Error())
-		}
-	}
-
-	endTime := r.FormValue("end_time")
-	if endTime != "" {
-		val, err := time.Parse(timeLayout, endTime)
-		if err == nil {
-			ret.EndTime = &val
-		} else {
-			util.LogTrace.Printf("parse time error: %s\n", err.Error())
-		}
-	}
-
-	if (ret.StartTime == nil && ret.EndTime != nil) || (ret.StartTime != nil && ret.EndTime == nil) {
-		return nil, errors.New("Invalid time format, both nil or both set")
-	}
-
-	status := r.FormValue("publish_status")
-	ret.Status = (status == "1" || status == "true")
-
-	activityStr, _ := json.MarshalIndent(ret, "", "  ")
-	util.LogTrace.Printf("Load activity from request: %s\n", activityStr)
-	return ret, nil
-}
-
-func handleGetActivities(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	tags, err := GetActivities(appid)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-	} else {
-		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tags))
-	}
-}
-
-func handleUpdateActivity(w http.ResponseWriter, r *http.Request) {
-	var retObj interface{}
-	status := http.StatusOK
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if status == http.StatusOK {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
-		}
-	}()
-	appid := util.GetAppID(r)
-	activity, err := parseActivityFromRequest(r)
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	id, err := util.GetMuxIntVar(r, "id")
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	activity.ID = id
-	retCode, err = UpdateActivity(appid, activity)
-	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
-			status = http.StatusBadRequest
-		} else {
-			status = http.StatusInternalServerError
-		}
-		retObj = err.Error()
-		return
-	}
-}
-
-func handleAddActivity(w http.ResponseWriter, r *http.Request) {
-	var retObj interface{}
-	status := http.StatusOK
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if status == http.StatusOK {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
-		}
-	}()
-
-	appid := util.GetAppID(r)
-	activity, err := parseActivityFromRequest(r)
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	retCode, err = AddActivity(appid, activity)
-	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
-			status = http.StatusBadRequest
-		} else {
-			status = http.StatusInternalServerError
-		}
-		retObj = err.Error()
-		return
-	}
-	retObj = activity
-}
-
-func handleDeleteActivity(w http.ResponseWriter, r *http.Request) {
-	var retObj interface{}
-	status := http.StatusOK
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if status == http.StatusOK {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
-		}
-	}()
-	appid := util.GetAppID(r)
-	id, err := util.GetMuxIntVar(r, "id")
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	retCode, err = DeleteActivity(appid, id)
-	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
-			status = http.StatusBadRequest
-		} else {
-			status = http.StatusInternalServerError
-		}
-		retObj = err.Error()
-		return
-	}
-}
-
-func handleUpdateActivityPublish(w http.ResponseWriter, r *http.Request) {
-	var retObj interface{}
-	status := http.StatusOK
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if status == http.StatusOK {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
-		}
-	}()
-
-	appid := util.GetAppID(r)
-	statusStr := r.FormValue("publish_status")
-	activityStatus := (statusStr == "1" || statusStr == "true")
-	id, err := util.GetMuxIntVar(r, "id")
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	retCode, err = UpdateActivityStatus(appid, id, activityStatus)
-	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
-			status = http.StatusBadRequest
-		} else {
-			status = http.StatusInternalServerError
-		}
-		retObj = err.Error()
-		return
-	}
-}
-
 func genBadRequestReturn(err error) (int, int, interface{}) {
 	return http.StatusBadRequest, ApiError.REQUEST_ERROR, err.Error()
-}
-
-func handleGetActivityOfLabel(w http.ResponseWriter, r *http.Request) {
-	var retObj interface{}
-	status := http.StatusOK
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if status == http.StatusOK {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
-		}
-	}()
-
-	appid := util.GetAppID(r)
-	id, err := util.GetMuxIntVar(r, "id")
-	if err != nil {
-		status, retCode, retObj = genBadRequestReturn(err)
-		return
-	}
-	retCode, retObj, err = GetActivityByLabelID(appid, id)
-	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
-			status = http.StatusBadRequest
-		} else {
-			status = http.StatusInternalServerError
-		}
-		retObj = err.Error()
-		return
-	}
 }
 
 func handleGetRules(w http.ResponseWriter, r *http.Request) {
@@ -500,6 +282,31 @@ func handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 		retCode = ApiError.DB_ERROR
 	}
 }
+func handleGetRulesOfLabel(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	labelID, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
+		return
+	}
+
+	rules, err := GetRulesOfLabel(appid, labelID)
+	if err != nil {
+		status, retCode = http.StatusInternalServerError, ApiError.DB_ERROR
+		retObj = err.Error()
+	} else {
+		retObj = rules
+	}
+}
 func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
 	err = r.ParseForm()
 	if err != nil {
@@ -567,4 +374,30 @@ func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
 
 	rule = &ret
 	return
+}
+
+func handleGetLabelsOfRule(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	ruleID, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
+		return
+	}
+
+	labels, err := GetLabelsOfRule(appid, ruleID)
+	if err != nil {
+		status, retCode = http.StatusInternalServerError, ApiError.DB_ERROR
+		retObj = err.Error()
+	} else {
+		retObj = labels
+	}
 }
