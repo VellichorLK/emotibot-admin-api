@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path"
-	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -105,15 +105,16 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	if public == "" {
 		public = r.FormValue("public")
 	}
-
-	params := []string{fmt.Sprintf("appid=%s", appid)}
+	params := url.Values{
+		"appid": []string{appid},
+	}
 	if public != "" {
-		params = append(params, fmt.Sprintf("public=%s", public))
+		params.Set("public", public)
 	} else {
-		params = append(params, fmt.Sprintf("userid=%s", userID))
+		params.Set("userid", userID)
 	}
 
-	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, strings.Join(params, "&"))
+	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, params.Encode())
 	util.LogTrace.Printf("Get Scenario URL: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
