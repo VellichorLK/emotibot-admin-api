@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"net/url"
 	"runtime"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -146,11 +147,14 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 }
 
 func checkScenarioExist(appid string, id string) (bool, error) {
-	url := fmt.Sprintf("%s/%s/%s?userid=%s",
+	values := url.Values{
+		"userid": []string{appid},
+	}
+	url := fmt.Sprintf("%s/%s/%s?%s",
 		getEnvironment("SERVER_URL"),
 		taskScenarioEntry,
 		id,
-		appid)
+		values.Encode())
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
 		util.LogInfo.Printf("Check scenario %s existed fail: %s", id, err.Error())
