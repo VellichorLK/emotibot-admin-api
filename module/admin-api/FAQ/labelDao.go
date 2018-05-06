@@ -127,54 +127,6 @@ func deleteQuestionLabel(appid string, id int) error {
 	return nil
 }
 
-func getAllLabelActivityCount(appid string) (map[int]int, error) {
-	mySQL := util.GetMainDB()
-	if mySQL == nil {
-		return nil, errors.New("DB not init")
-	}
-
-	queryStr := fmt.Sprintf("SELECT Label_Id, Count(*) FROM %s_activitylabel WHERE Status = 1 group by Label_Id", appid)
-	rows, err := mySQL.Query(queryStr)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	ret := map[int]int{}
-	for rows.Next() {
-		var id int
-		var count int
-		err := rows.Scan(&id, &count)
-		if err != nil {
-			util.LogError.Printf("Error when parse row: %s", err.Error())
-			return nil, err
-		}
-		ret[id] = count
-	}
-	return ret, nil
-}
-
-func getLabelActivityCount(appid string, labelID int) (int, error) {
-	mySQL := util.GetMainDB()
-	if mySQL == nil {
-		return 0, errors.New("DB not init")
-	}
-
-	queryStr := fmt.Sprintf("SELECT Count(*) FROM %s_activitylabel WHERE Status = 1 and Label_Id = ? group by Label_Id", appid)
-	row := mySQL.QueryRow(queryStr, labelID)
-
-	var count int
-	err := row.Scan(&count)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
-		util.LogError.Printf("Error when parse row: %s", err.Error())
-		return 0, err
-	}
-	return count, nil
-}
-
 // =======================
 // Start of Rule part
 // =======================
@@ -337,6 +289,12 @@ func addRule(appid string, rule *Rule) (int, error) {
 		return -1, err
 	}
 
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return -1, err
+	}
+	defer util.ClearTransition(tx)
+
 	queryStr := fmt.Sprintf(`
 		INSERT INTO %s_rule
 		(name, target, rule, answer, response_type, status, begin_time, end_time)
@@ -356,7 +314,7 @@ func addRule(appid string, rule *Rule) (int, error) {
 		rule.Begin,
 		rule.End,
 	}
-	result, err := mySQL.Exec(queryStr, queryParams...)
+	result, err := tx.Exec(queryStr, queryParams...)
 	if err != nil {
 		return -1, err
 	}
@@ -364,7 +322,18 @@ func addRule(appid string, rule *Rule) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	return int(id), err
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s_rule_label
+		(rule_id, label_id) VALUES (?, ?)`, appid)
+	for _, labelID := range rule.LinkLabel {
+		_, err := tx.Exec(queryStr, id, labelID)
+		if err != nil {
+			return -1, err
+		}
+	}
+
+	return int(id), tx.Commit()
 }
 
 func updateRule(appid string, id int, rule *Rule) error {
@@ -377,6 +346,12 @@ func updateRule(appid string, id int, rule *Rule) error {
 		err = errors.New("DB not init")
 		return err
 	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s_rule SET
@@ -399,12 +374,30 @@ func updateRule(appid string, id int, rule *Rule) error {
 		rule.End,
 		id,
 	}
-	_, err = mySQL.Exec(queryStr, queryParams...)
+	_, err = tx.Exec(queryStr, queryParams...)
 	if err != nil {
 		return err
 	}
 
-	return err
+	queryStr = fmt.Sprintf(`
+		DELETE FROM %s_rule_label
+		WHERE rule_id = ?`, appid)
+	_, err = tx.Exec(queryStr, id)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s_rule_label
+		(rule_id, label_id) VALUES (?, ?)`, appid)
+	for _, labelID := range rule.LinkLabel {
+		_, err := tx.Exec(queryStr, id, labelID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func getRulesOfLabel(appid string, labelID int) ([]*Rule, error) {
@@ -502,4 +495,24 @@ func getRuleCountOfLabels(appid string) (map[int]int, error) {
 		ret[id] = count
 	}
 	return ret, nil
+}
+
+func getLabelRuleCount(appid string, id int) (int, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return 0, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf(
+		`SELECT count(*)
+		FROM %s_rule_label
+		WHERE label_id = ?
+		GROUP BY label_id`, appid)
+	row := mySQL.QueryRow(queryStr, id)
+	count := 0
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }

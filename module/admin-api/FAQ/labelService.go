@@ -49,7 +49,7 @@ func DeleteLabel(appid string, id int) (int, error) {
 	if err != nil {
 		return ApiError.REQUEST_ERROR, errors.New("label not existed")
 	}
-	count, err := getLabelActivityCount(appid, id)
+	count, err := getLabelRuleCount(appid, id)
 	if err != nil {
 		return ApiError.DB_ERROR, err
 	}

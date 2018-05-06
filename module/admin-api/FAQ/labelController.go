@@ -372,6 +372,25 @@ func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
 	}
 	ret.Rule = ruleContents
 
+	labelsStr := r.FormValue("labels")
+	labels := strings.Split(labelsStr, ",")
+	existedLabel := map[int]bool{}
+	for _, labelStr := range labels {
+		str := strings.TrimSpace(labelStr)
+		if str == "" {
+			continue
+		}
+		id := 0
+		id, err = strconv.Atoi(str)
+		if err != nil {
+			return
+		}
+		if _, ok := existedLabel[id]; !ok {
+			ret.LinkLabel = append(ret.LinkLabel, id)
+			existedLabel[id] = true
+		}
+	}
+
 	rule = &ret
 	return
 }
@@ -401,3 +420,16 @@ func handleGetLabelsOfRule(w http.ResponseWriter, r *http.Request) {
 		retObj = labels
 	}
 }
+
+// func handleAddLabelToRule(w http.ResponseWriter, r *http.Request) {
+
+// }
+// func handleDeleteLabelFromRule(w http.ResponseWriter, r *http.Request) {
+
+// }
+// func handleAddRuleToLabel(w http.ResponseWriter, r *http.Request) {
+
+// }
+// func handleDeleteRuleFromLabel(w http.ResponseWriter, r *http.Request) {
+
+// }

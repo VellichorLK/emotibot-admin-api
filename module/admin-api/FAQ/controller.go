@@ -49,6 +49,11 @@ func init() {
 
 			util.NewEntryPoint("GET", "label/{id}/rules", []string{"view"}, handleGetRulesOfLabel),
 			util.NewEntryPoint("GET", "rule/{id}/labels", []string{"view"}, handleGetLabelsOfRule),
+
+			// util.NewEntryPoint("POST", "rule/{id}/label/add", []string{"edit"}, handleAddLabelToRule),
+			// util.NewEntryPoint("DELETE", "rule/{id}/label/{id}", []string{"edit"}, handleDeleteLabelFromRule),
+			// util.NewEntryPoint("POST", "label/{id}/rule/add", []string{"edit"}, handleAddRuleToLabel),
+			// util.NewEntryPoint("DELETE", "label/{id}/rule/{id}", []string{"edit"}, handleDeleteRuleFromLabel),
 		},
 	}
 }
