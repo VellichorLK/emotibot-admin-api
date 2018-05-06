@@ -48,8 +48,17 @@ func init() {
 			util.NewEntryPointWithVer("GET", "wordbanks", []string{"view"}, handleGetWordbanksV3, 3),
 			util.NewEntryPointWithVer("GET", "wordbank/{id}", []string{"view"}, handleGetWordbankV3, 3),
 			util.NewEntryPointWithVer("GET", "class/{id}", []string{"view"}, handleGetWordbankClassV3, 3),
-			util.NewEntryPointWithVer("DELETE", "wordbank/{id}", []string{"view"}, handleDeleteWordbankV3, 3),
-			util.NewEntryPointWithVer("DELETE", "class/{id}", []string{"view"}, handleDeleteWordbankClassV3, 3),
+			util.NewEntryPointWithVer("DELETE", "wordbank/{id}", []string{"delete"}, handleDeleteWordbankV3, 3),
+			util.NewEntryPointWithVer("DELETE", "class/{id}", []string{"delete"}, handleDeleteWordbankClassV3, 3),
+			// util.NewEntryPointWithVer("POST", "wordbank", []string{"create"}, handleAddWordbankV3, 3),
+			// util.NewEntryPointWithVer("POST", "class", []string{"create"}, handleAddWordbankClassV3, 3),
+			// util.NewEntryPointWithVer("PUT", "wordbank/{id}", []string{"edit"}, handleUpdateWordbankV3, 3),
+			// util.NewEntryPointWithVer("PUT", "class/{id}", []string{"edit"}, handleUpdateWordbankClassV3, 3),
+
+			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQLV3, 3),
+			util.NewEntryPointWithVer("GET", "download/{file}", []string{}, handleDownloadFromMySQLV3, 3),
+			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWordV3, 3),
+			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonymsV3, 3),
 		},
 	}
 	maxDirDepth = 4
@@ -127,7 +136,7 @@ func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
 		auditRet = 0
 	} else {
 		http.Error(w, "", http.StatusOK)
-		SyncWordbank(appid)
+		SyncWordbank(appid, 2)
 	}
 
 	var buffer bytes.Buffer
@@ -182,7 +191,7 @@ func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
 		auditRet = 0
 	} else {
 		http.Error(w, "", http.StatusOK)
-		SyncWordbank(appid)
+		SyncWordbank(appid, 2)
 	}
 	if newWordBank != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, newWordBank))
@@ -382,7 +391,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
-	TriggerUpdateWordbank(appid, wordbanks)
+	TriggerUpdateWordbank(appid, wordbanks, 3)
 }
 
 func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
@@ -417,35 +426,6 @@ func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	w.Header().Set("Content-Type", "application/vnd.ms-excel")
 	w.Write(buf)
-}
-
-func handleGetData(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	typeStr := util.GetMuxVar(r, "type")
-
-	header := w.Header()
-	switch typeStr {
-	case "word":
-	case "synonym":
-		header.Set("Content-Type", "text/plain; charset=utf-8")
-	default:
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid word type"), http.StatusBadRequest)
-		return
-	}
-
-	err, wordLines, synonymLines := GetWordData(appid)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-	switch typeStr {
-	case "word":
-		w.Write([]byte(strings.Join(wordLines, "\n") + "\n"))
-		break
-	case "synonym":
-		w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
-		break
-	}
 }
 
 func handleGetWord(w http.ResponseWriter, r *http.Request) {
@@ -519,7 +499,7 @@ func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
 	}
 	ret = 1
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
-	SyncWordbank(appid)
+	SyncWordbank(appid, 2)
 }
 
 func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
@@ -552,7 +532,7 @@ func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 	errMsg += fmt.Sprintf(": %s %d %s", util.Msg["Delete"], rowCount, util.Msg["Row"])
 	ret = 1
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, errMsg))
-	SyncWordbank(appid)
+	SyncWordbank(appid, 2)
 }
 
 func handleGetWordbanksV3(w http.ResponseWriter, r *http.Request) {
@@ -666,4 +646,95 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	}
 	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
 	return
+}
+
+func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
+	errMsg := ""
+	appid := util.GetAppID(r)
+	now := time.Now()
+	var err error
+	buf := []byte{}
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	defer func() {
+		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
+		ret := 0
+		if err == nil {
+			errMsg += " => " + filename
+			ret = 1
+		}
+		util.LogTrace.Println("Audit: ", errMsg)
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+
+		RecordDictionaryImportProcess(appid, filename, buf, err)
+	}()
+
+	file, info, err := r.FormFile("file")
+	defer file.Close()
+	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	errMsg = fmt.Sprintf("%s%s: %s", util.Msg["UploadFile"], util.Msg["Wordbank"], info.Filename)
+
+	// 1. parseFile
+	size := info.Size
+	buf = make([]byte, size)
+	_, err = file.Read(buf)
+	if err != nil {
+		errMsg += fmt.Sprintf(", %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	root, err := parseDictionaryFromXLSXV3(buf)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	// 2. save to mysql
+	err = SaveWordbankV3Rows(appid, root)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, map[string]interface{}{
+		"root": root,
+	}))
+	// TriggerUpdateWordbank(appid, wordbanks)
+}
+
+func handleDownloadFromMySQLV3(w http.ResponseWriter, r *http.Request) {
+	handleDownloadFromMySQL(w, r)
+}
+
+func handleGetWordV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "appid")
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	err, wordLines, _ := GetWordDataV3(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(strings.Join(wordLines, "\n") + "\n"))
+}
+
+func handleGetSynonymsV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "appid")
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	err, _, synonymLines := GetWordDataV3(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
 }

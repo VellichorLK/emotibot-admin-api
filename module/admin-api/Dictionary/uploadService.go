@@ -295,7 +295,7 @@ func GetWordbankFile(appid string, filename string) ([]byte, error) {
 	return getWordbankFile(appid, filename)
 }
 
-func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow) (err error) {
+func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow, version int) (err error) {
 	// 1. save to local file which can be get from url
 	err, md5Words, md5Synonyms := SaveWordbankToFile(appid, wordbanks)
 	if err != nil {
@@ -310,9 +310,9 @@ func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow) (err error) {
 	}
 	now := time.Now()
 	consulJSON := map[string]interface{}{
-		"url":         fmt.Sprintf("%s/api/v2/dictionary/words/%s", url, appid),
+		"url":         fmt.Sprintf("%s/api/v%d/dictionary/words/%s", url, version, appid),
 		"md5":         md5Words,
-		"synonym-url": fmt.Sprintf("%s/api/v2/dictionary/synonyms/%s", url, appid),
+		"synonym-url": fmt.Sprintf("%s/api/v%d/dictionary/synonyms/%s", url, version, appid),
 		"synonym-md5": md5Synonyms,
 		"timestamp":   now.UnixNano() / 1000000,
 	}
@@ -327,4 +327,326 @@ func GetWordData(appid string) (error, []string, []string) {
 		return err, nil, nil
 	}
 	return GetWordDataFromWordbanks(wordbanks)
+}
+
+// below functions is for dictionary V3
+func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
+	defer func() {
+		if err != nil {
+			util.LogError.Println("Parse xlsx fail: ", err.Error())
+		}
+	}()
+
+	exceptSheetNum := 3
+	xlsxFile, err := xlsx.OpenBinary(buf)
+	if err != nil {
+		return
+	}
+
+	sheets := xlsxFile.Sheets
+	if sheets == nil {
+		err = errors.New(util.Msg["SheetError"])
+		return
+	}
+	if len(sheets) != exceptSheetNum {
+		err = errors.New(util.Msg["SheetError"])
+		return
+	}
+
+	sheet := sheets[exceptSheetNum-1]
+	rows := sheet.Rows
+
+	// Check if sheet is correct and format is correct
+	switch {
+	case sheet.Name != util.Msg["TemplateXLSXName"]:
+		err = errors.New(util.Msg["SheetError"])
+		return
+	case rows == nil:
+		err = errors.New(util.Msg["EmptyRows"])
+		return
+	case len(rows) <= 1:
+		err = errors.New(util.Msg["EmptyRows"])
+		return
+	}
+	rows = rows[1:]
+
+	// classReadOny's key is class path
+	classReadOny := map[string]bool{}
+	// classWordbank store wordbanks in each path
+	classWordbank := map[string][]*WordBankV3{}
+	var lastWordbankRow *WordBankRow
+	for idx, row := range rows {
+		if row.Cells == nil {
+			util.LogError.Printf("Cannot get cell from row %d\n", idx)
+			continue
+		}
+		if len(row.Cells) == 0 {
+			continue
+		}
+		rowCellStr := make([]string, len(row.Cells))
+		for cellIdx, cell := range row.Cells {
+			rowCellStr[cellIdx] = strings.TrimSpace(cell.Value)
+		}
+		if strings.Join(rowCellStr, "") == "" {
+			util.LogTrace.Printf("Skip empty row %d\n", idx+1)
+			continue
+		}
+
+		currentWordbankRow := &WordBankRow{}
+		currentWordbankRow.ReadFromRow(rowCellStr)
+		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
+		if err != nil {
+			err = fmt.Errorf("Invalid row %d, %s, %v", idx+1, err.Error(), rowCellStr)
+			return
+		}
+
+		path := currentWordbankRow.GetPath()
+		if _, ok := classReadOny[path]; !ok {
+			isReadOnly := currentWordbankRow.IsReadOnly()
+			classReadOny[path] = isReadOnly
+		}
+
+		if currentWordbankRow.Name != "" {
+			wordbank := &WordBankV3{
+				Name:   currentWordbankRow.Name,
+				Answer: currentWordbankRow.Answer,
+			}
+			if currentWordbankRow.SimilarWords != "" {
+				wordbank.SimilarWords = strings.Split(currentWordbankRow.SimilarWords, ",")
+			}
+
+			if _, ok := classWordbank[path]; !ok {
+				classWordbank[path] = []*WordBankV3{}
+			}
+			classWordbank[path] = append(classWordbank[path], wordbank)
+		}
+
+		lastWordbankRow = currentWordbankRow
+	}
+
+	// log for debug
+	util.LogTrace.Println("classReadOny:")
+	for path, readOnly := range classReadOny {
+		util.LogTrace.Printf("\t%s: %t\n", path, readOnly)
+	}
+	util.LogTrace.Println("classWordbank:")
+	for path, wbs := range classWordbank {
+		util.LogTrace.Printf("\t%s: \n", path)
+		for _, wb := range wbs {
+			util.LogTrace.Printf("\t\t%+v\n", *wb)
+		}
+	}
+
+	root, err = createV3ObjsFromParseContent(classReadOny, classWordbank)
+	return
+}
+
+func fillV3RowWithLast(current *WordBankRow, last *WordBankRow) error {
+	if current == nil {
+		return errors.New("Invalid func param")
+	}
+	// If levelN change, level(N+n) will reset,
+	// not inherit from last row
+	for last != nil {
+		if current.Level1 != "" {
+			break
+		} else {
+			current.Level1 = last.Level1
+		}
+		if current.Level2 != "" {
+			break
+		} else {
+			current.Level2 = last.Level2
+		}
+		if current.Level3 != "" {
+			break
+		} else {
+			current.Level3 = last.Level3
+		}
+		if current.Level4 != "" {
+			break
+		} else {
+			current.Level4 = last.Level4
+		}
+		break
+	}
+
+	// check row's path is valid or not
+	// if LevelN is empty, Level(N+n) must be empty
+	// Level 1 cannot be empty
+	shouldBeBlank := false
+	hasErr := false
+	level := 1
+	for true {
+		if current.Level1 == "" {
+			hasErr = true
+			break
+		}
+
+		level = 2
+		if current.Level2 == "" {
+			shouldBeBlank = true
+		}
+
+		level = 3
+		if shouldBeBlank && (current.Level3 != "") {
+			hasErr = true
+			break
+		} else if current.Level3 == "" {
+			shouldBeBlank = true
+		}
+
+		level = 4
+		if shouldBeBlank && (current.Level4 != "") {
+			hasErr = true
+			break
+		} else if current.Level4 == "" {
+			shouldBeBlank = true
+		}
+		break
+	}
+	if hasErr {
+		util.LogTrace.Printf("Check for %#v\n", current)
+		return fmt.Errorf("Invalid path in level %d", level)
+	}
+
+	return nil
+}
+
+func createV3ObjsFromParseContent(classReadOny map[string]bool, classWordbank map[string][]*WordBankV3) (*WordBankClassV3, error) {
+	root := &WordBankClassV3{
+		ID:           -1,
+		Name:         "",
+		Wordbank:     []*WordBankV3{},
+		Children:     []*WordBankClassV3{},
+		Editable:     false,
+		IntentEngine: true,
+		RuleEngine:   true,
+	}
+	classMap := map[string]*WordBankClassV3{}
+	for classPath := range classReadOny {
+		// Check form root to self
+		names := strings.Split(classPath, "/")
+		currentClass := root
+		for idx, name := range names {
+			selfPath := strings.Join(names[0:idx+1], "/")
+
+			if class, ok := classMap[selfPath]; ok {
+				currentClass = class
+				continue
+			}
+
+			editable := true
+			if val, ok := classReadOny[selfPath]; ok && val {
+				editable = false
+			}
+			newWordbankClass := &WordBankClassV3{
+				Name:         name,
+				Editable:     editable,
+				Wordbank:     []*WordBankV3{},
+				Children:     []*WordBankClassV3{},
+				IntentEngine: true,
+				RuleEngine:   true,
+			}
+			classMap[selfPath] = newWordbankClass
+			currentClass.Children = append(currentClass.Children, newWordbankClass)
+			currentClass = classMap[selfPath]
+		}
+	}
+
+	for classPath, wordbanks := range classWordbank {
+		class, ok := classMap[classPath]
+		if !ok {
+			util.LogError.Printf("Wordbank's class not exist: %s", classPath)
+			continue
+		}
+
+		for _, wordbank := range wordbanks {
+			class.Wordbank = append(class.Wordbank, &WordBankV3{
+				Name:         wordbank.Name,
+				SimilarWords: wordbank.SimilarWords,
+				Answer:       wordbank.Answer,
+			})
+		}
+	}
+
+	return root, nil
+}
+
+func SaveWordbankV3Rows(appid string, root *WordBankClassV3) error {
+	return saveWordbankV3Rows(appid, root)
+}
+
+func GetWordDataV3(appid string) (error, []string, []string) {
+	root, err := getWordbanksV3(appid)
+	if err != nil {
+		return err, nil, nil
+	}
+	return GetWordDataFromWordbanksV3(root)
+}
+
+func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []string) {
+	var getClassData func(class *WordBankClassV3, path []string) (words []string, synonyms []string)
+	getClassData = func(class *WordBankClassV3, path []string) (words []string, synonyms []string) {
+		words = []string{}
+		synonyms = []string{}
+		if class == nil {
+			return
+		}
+
+		util.LogTrace.Printf("Get data of [%s] in [%s]\n", class.Name, strings.Join(path, "/"))
+
+		inSensitive := false
+		if len(path) > 0 && path[0] == util.Msg["SensitiveWordbank"] {
+			inSensitive = true
+		}
+
+		for _, child := range class.Children {
+			var childWords []string
+			var childSynonyms []string
+			if class.ID == -1 {
+				// path didn't need append when current class is virtual root
+				childWords, childSynonyms = getClassData(child, path)
+			} else {
+				childWords, childSynonyms = getClassData(child, append(path, class.Name))
+			}
+			words = append(words, childWords...)
+			synonyms = append(synonyms, childSynonyms...)
+		}
+
+		for _, wordbank := range class.Wordbank {
+			util.LogTrace.Printf("Handle wordbank [%s]\n", wordbank.Name)
+			for _, word := range wordbank.SimilarWords {
+				var w string
+				if inSensitive {
+					w = fmt.Sprintf("%s\tmgc", word)
+				} else {
+					w = word
+				}
+				words = append(words, w)
+			}
+
+			// hack for now, the format need to fix with NLU
+			synonymPaths := make([]string, 4)
+			for idx := range synonymPaths {
+				switch {
+				case idx < len(path):
+					synonymPaths[idx] = path[idx]
+				case idx == len(path):
+					synonymPaths[idx] = class.Name
+				default:
+					break
+				}
+			}
+			synonymLine := fmt.Sprintf("%s\t%s\t%s",
+				strings.Join(synonymPaths, ">"), wordbank.Name,
+				strings.Join(wordbank.SimilarWords, ","))
+			synonyms = append(synonyms, synonymLine)
+		}
+		return
+	}
+
+	words, syonyms := getClassData(root, []string{})
+
+	return nil, words, syonyms
 }
