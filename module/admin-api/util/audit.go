@@ -1,8 +1,6 @@
 package util
 
 import (
-	"errors"
-
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -26,19 +24,45 @@ const (
 	AuditModuleRole           = "8" // "角色管理"
 )
 
+type auditLog struct {
+	UserID    string
+	UserIP    string
+	Module    string
+	Operation string
+	Content   string
+	Result    int
+}
+
+var auditChannel chan auditLog
+
 // AddAuditLog will add audit log to mysql-audit
 func AddAuditLog(userID string, userIP string, module string, operation string, content string, result int) error {
+	if auditChannel == nil {
+		auditChannel = make(chan auditLog)
+		go logRoutine()
+	}
+	log := auditLog{userID, userIP, module, operation, content, result}
+	auditChannel <- log
+	return nil
+}
+
+func logRoutine() {
+	for {
+		log := <-auditChannel
+		addAuditLog(log)
+	}
+}
+
+func addAuditLog(log auditLog) {
 	auditDB := GetAuditDB()
 	if auditDB == nil {
 		LogError.Printf("Audit DB connection hasn't init")
-		return errors.New("DB not init")
+		return
 	}
 
-	_, err := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)", userID, userIP, module, operation, content, result)
+	_, err := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)",
+		log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
 	if err != nil {
 		LogError.Printf("insert audit fail: %s", err.Error())
-		return err
 	}
-
-	return nil
 }

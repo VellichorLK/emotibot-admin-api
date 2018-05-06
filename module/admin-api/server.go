@@ -29,10 +29,10 @@ var constant = map[string]interface{}{
 }
 
 var serverConfig map[string]string
+var logChannel chan util.AccessLog
 
 func init() {
-	// util.LogInit(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
-	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr, "ADMIN")
+	util.LogInit("ADMIN", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {
@@ -73,6 +73,18 @@ func main() {
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
 	util.LogTrace.Printf("Init consul client with url: %#v\n", u)
 
+	logLevel, ok := serverEnvs["LOG_LEVEL"]
+	if !ok {
+		logLevel = "INFO"
+	}
+
+	accessLog := serverEnvs["ACCESS_LOG"]
+	if accessLog == "1" {
+		logChannel = make(chan util.AccessLog)
+		util.InitAccessLog(logChannel)
+	}
+
+	util.SetLogLevel(logLevel)
 	router := setRoute()
 	initDB()
 	logAvailablePath(router)
@@ -116,18 +128,15 @@ func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 	}
 
 	if authURL, ok := serverConfig["AUTH_URL"]; ok {
-		util.LogTrace.Printf(authURL)
-
 		req := make(map[string]string)
 		req["module"] = module
 		req["cmd"] = cmd
-		// util.LogTrace.Printf("Check privilege: %#v", req)
-		// resp = util.HTTPGet(authURL)
+
 		resp, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
 		if err != nil {
-			util.LogInfo.Printf("Get content resp:%s\n", err.Error())
+			util.LogTrace.Printf("Get content resp:%s\n", err.Error())
 		}
-		util.LogInfo.Printf("%s", resp)
+		util.LogTrace.Printf("%s", resp)
 
 		return true
 	}
@@ -163,6 +172,7 @@ func setRoute() *mux.Router {
 				Path(entryPath).
 				Name(entrypoint.EntryPath).
 				HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					defer logHandleRuntime(w, r)()
 					clientNoStoreCache(w)
 					if checkPrivilege(r, entrypoint) {
 						entrypoint.Callback(w, r)
@@ -196,6 +206,22 @@ func setRoute() *mux.Router {
 		io.WriteString(w, "ok")
 	})
 	return router
+}
+
+func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
+	now := time.Now()
+	return func() {
+		util.LogInfo.Printf("REQ: [%s] [%.3fs][%s@%s]",
+			r.RequestURI, time.Since(now).Seconds(), util.GetUserID(r), util.GetAppID(r))
+		if logChannel != nil {
+			logChannel <- util.AccessLog{
+				Path:   r.RequestURI,
+				Time:   time.Since(now).Seconds(),
+				UserID: util.GetUserID(r),
+				AppID:  util.GetAppID(r),
+			}
+		}
+	}
 }
 
 func getServerEnv(key string) string {

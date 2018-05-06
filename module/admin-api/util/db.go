@@ -100,7 +100,7 @@ func ClearTransition(tx *sql.Tx) {
 
 func ShowError(err error) {
 	if err != nil {
-		_, file, line, _ := runtime.Caller(1)
+		_, file, line, _ := runtime.Caller(2)
 		LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
 	}
 }
