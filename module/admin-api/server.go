@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -159,6 +160,7 @@ func setRoute() *mux.Router {
 		QA.TestModuleInfo,
 		Task.ModuleInfo,
 		Stats.ModuleInfo,
+		UI.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -182,23 +184,7 @@ func setRoute() *mux.Router {
 				})
 		}
 	}
-
-	// Entry for routes has not to check privilege
-	info := UI.ModuleInfo
-	for idx := range info.EntryPoints {
-		entrypoint := info.EntryPoints[idx]
-		// entry will be api/v_/<module>/<entry>
-		entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], constant["API_VERSION"], info.ModuleName, entrypoint.EntryPath)
-		router.
-			Path(entryPath).
-			Methods(entrypoint.AllowMethod).
-			Name(entrypoint.EntryPath).
-			HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				clientNoStoreCache(w)
-				entrypoint.Callback(w, r)
-			})
-	}
-	router.PathPrefix("/Files/").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
+	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
 	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
 		// A very simple health check.
 		w.WriteHeader(http.StatusOK)
@@ -211,14 +197,28 @@ func setRoute() *mux.Router {
 func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 	now := time.Now()
 	return func() {
-		util.LogInfo.Printf("REQ: [%s] [%.3fs][%s@%s]",
-			r.RequestURI, time.Since(now).Seconds(), util.GetUserID(r), util.GetAppID(r))
+		code, err := strconv.Atoi(w.Header().Get("X-Status"))
+		if err != nil {
+			// TODO: use custom responseWriter to get return http status
+			// For now, use X-Status in header to do log
+			// if header not set X-Status, default is 200
+			code = http.StatusOK
+		}
+
+		requestIP := r.Header.Get("X-Real-IP")
+		if requestIP == "" {
+			requestIP = r.RemoteAddr
+		}
+		// util.LogInfo.Printf("REQ: [%s][%d] [%.3fs][%s@%s]",
+		// 	r.RequestURI, code, time.Since(now).Seconds(), util.GetUserID(r), util.GetAppID(r))
 		if logChannel != nil {
 			logChannel <- util.AccessLog{
-				Path:   r.RequestURI,
-				Time:   time.Since(now).Seconds(),
-				UserID: util.GetUserID(r),
-				AppID:  util.GetAppID(r),
+				Path:       r.RequestURI,
+				Time:       time.Since(now).Seconds(),
+				UserID:     util.GetUserID(r),
+				UserIP:     requestIP,
+				AppID:      util.GetAppID(r),
+				StatusCode: code,
 			}
 		}
 	}

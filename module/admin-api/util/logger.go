@@ -43,19 +43,19 @@ func LogInit(
 	fmt.Printf("handlers: %+v\n", handler)
 
 	LogTrace = log.New(handler[logLevel["TRACE"]],
-		fmt.Sprintf("[%s] TRACE: ", prefix),
+		fmt.Sprintf("[%s][TRACE] ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogInfo = log.New(handler[logLevel["INFO"]],
-		fmt.Sprintf("[%s] INFO: ", prefix),
+		fmt.Sprintf("[%s][INFO ] ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogWarn = log.New(handler[logLevel["WARN"]],
-		fmt.Sprintf("[%s] WARNING: ", prefix),
+		fmt.Sprintf("[%s][WARN ] ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 
 	LogError = log.New(handler[logLevel["ERROR"]],
-		fmt.Sprintf("[%s] ERROR: ", prefix),
+		fmt.Sprintf("[%s][ERROR] ", prefix),
 		log.Ldate|log.Ltime|log.Lshortfile)
 }
 
