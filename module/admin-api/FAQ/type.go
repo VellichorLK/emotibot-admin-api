@@ -22,7 +22,7 @@ type SimilarQuestion struct {
 }
 
 type SimilarQuestionReqBody struct {
-	SimilarQuestions []SimilarQuestion `json:similarQuestions`
+	SimilarQuestions []SimilarQuestion `json:"similarQuestions"`
 }
 
 //StdQuestion is a Standard Question in FAQ Table
