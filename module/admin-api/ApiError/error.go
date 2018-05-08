@@ -39,6 +39,9 @@ var (
 	// API Request Error
 	WEB_REQUEST_ERROR = -7
 
+	// Resource not found
+	NOT_FOUND_ERROR = -8
+
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101
 	// Dictionary error: extension of uploaded file error

@@ -516,7 +516,11 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		if err != nil {
 			return
 		}
-		temp.SimilarWords = strings.Split(similarWordStr, ",")
+		if similarWordStr == "" {
+			temp.SimilarWords = []string{}
+		} else {
+			temp.SimilarWords = strings.Split(similarWordStr, ",")
+		}
 		classMap[cid].Wordbank = append(classMap[cid].Wordbank, temp)
 	}
 
@@ -703,4 +707,110 @@ func showError(err error) {
 		_, file, line, _ := runtime.Caller(1)
 		util.LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
 	}
+}
+
+func addWordbankClassV3(appid string, className string, pid int) (id int, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	columns := []string{"appid", "name"}
+	params := []interface{}{appid, className}
+	q := []string{"?", "?"}
+	if pid != -1 {
+		columns = append(columns, "pid")
+		params = append(params, pid)
+		q = append(q, "?")
+	}
+
+	queryStr := fmt.Sprintf(
+		"INSERT INTO entity_class (%s) VALUES (%s)",
+		strings.Join(columns, ","),
+		strings.Join(q, ","))
+	result, err := mySQL.Exec(queryStr, params...)
+	if err != nil {
+		return
+	}
+	id64, err := result.LastInsertId()
+	if err != nil {
+		return
+	}
+	id = int(id64)
+
+	return
+}
+
+func updateWordbankClassV3(appid string, id int, className string) (err error) {
+	defer func() {
+		showError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		UPDATE entity_class
+		SET appid = ?, name = ?
+		WHERE id = ?`
+	_, err = mySQL.Exec(queryStr, appid, className, id)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `INSERT INTO entities
+		(name, cid, similar_words, answer)
+		VALUES (?, ?, ?, ?)`
+	result, err := mySQL.Exec(queryStr,
+		wb.Name, cid, strings.Join(wb.SimilarWords, ","), wb.Answer)
+	if err != nil {
+		return
+	}
+	id64, err := result.LastInsertId()
+	if err != nil {
+		return
+	}
+	id = int(id64)
+
+	return
+}
+
+func updateWordbankV3(appid string, id int, wb *WordBankV3) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `UPDATE entities SET
+		name = ?, similar_words = ?, answer = ?
+		WHERE id = ?`
+	_, err = mySQL.Exec(queryStr,
+		wb.Name, strings.Join(wb.SimilarWords, ","), wb.Answer, id)
+	return
 }

@@ -3,6 +3,7 @@ package Dictionary
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -50,12 +51,13 @@ func init() {
 			util.NewEntryPointWithVer("GET", "class/{id}", []string{"view"}, handleGetWordbankClassV3, 3),
 			util.NewEntryPointWithVer("DELETE", "wordbank/{id}", []string{"delete"}, handleDeleteWordbankV3, 3),
 			util.NewEntryPointWithVer("DELETE", "class/{id}", []string{"delete"}, handleDeleteWordbankClassV3, 3),
-			// util.NewEntryPointWithVer("POST", "wordbank", []string{"create"}, handleAddWordbankV3, 3),
-			// util.NewEntryPointWithVer("POST", "class", []string{"create"}, handleAddWordbankClassV3, 3),
-			// util.NewEntryPointWithVer("PUT", "wordbank/{id}", []string{"edit"}, handleUpdateWordbankV3, 3),
-			// util.NewEntryPointWithVer("PUT", "class/{id}", []string{"edit"}, handleUpdateWordbankClassV3, 3),
+			util.NewEntryPointWithVer("POST", "wordbank", []string{"create"}, handleAddWordbankV3, 3),
+			util.NewEntryPointWithVer("POST", "class", []string{"create"}, handleAddWordbankClassV3, 3),
+			util.NewEntryPointWithVer("PUT", "wordbank/{id}", []string{"edit"}, handleUpdateWordbankV3, 3),
+			util.NewEntryPointWithVer("PUT", "class/{id}", []string{"edit"}, handleUpdateWordbankClassV3, 3),
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQLV3, 3),
+			util.NewEntryPointWithVer("GET", "export", []string{}, handleExportFromMySQLV3, 3),
 			util.NewEntryPointWithVer("GET", "download/{file}", []string{}, handleDownloadFromMySQLV3, 3),
 			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWordV3, 3),
 			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonymsV3, 3),
@@ -737,4 +739,314 @@ func handleGetSynonymsV3(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write([]byte(strings.Join(synonymLines, "\n") + "\n"))
+}
+
+func handleExportFromMySQLV3(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	if appid == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
+		return
+	}
+
+	buf, err := ExportWordbankV3(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	now := time.Now()
+	filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Write(buf.Bytes())
+}
+
+func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	retCode := ApiError.SUCCESS
+
+	appid := util.GetAppID(r)
+	var className string
+	defer func() {
+		userID := util.GetUserID(r)
+		userIP := util.GetUserIP(r)
+		ret := 0
+
+		auditMsg := fmt.Sprintf("%s%s %s", util.Msg["Add"], util.Msg["WordbankDir"], className)
+		if err == nil {
+			ret = 1
+			util.WriteJSON(w, util.GenRetObj(retCode, result))
+		} else {
+			switch retCode {
+			case ApiError.REQUEST_ERROR:
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
+			case ApiError.DB_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+			}
+			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+	}()
+	pid, err := strconv.Atoi(r.FormValue("pid"))
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("get pid fail: %s", err.Error())
+		return
+	}
+	if pid != -1 {
+		parentClass, err := GetWordbankClassV3(appid, pid)
+		if err != nil {
+			retCode = ApiError.DB_ERROR
+			return
+		}
+		if parentClass == nil {
+			retCode = ApiError.NOT_FOUND_ERROR
+			result = "Parent not existed"
+			return
+		}
+		if !parentClass.Editable {
+			retCode = ApiError.REQUEST_ERROR
+			result = "Parent not editable"
+			return
+		}
+	}
+
+	className = r.FormValue("name")
+	if strings.TrimSpace(className) == "" {
+		retCode = ApiError.REQUEST_ERROR
+		result = "Class name should not be empty"
+		return
+	}
+
+	class, err := AddWordbankClassV3(appid, className, pid)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
+	} else {
+		result = class
+	}
+}
+func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	retCode := ApiError.SUCCESS
+	var origName string
+	var newName string
+
+	appid := util.GetAppID(r)
+	defer func() {
+		userID := util.GetUserID(r)
+		userIP := util.GetUserIP(r)
+		ret := 0
+
+		auditMsg := fmt.Sprintf("%s%s %s -> %s", util.Msg["Modify"], util.Msg["WordbankDir"], origName, newName)
+		if err == nil {
+			ret = 1
+			util.WriteJSON(w, util.GenRetObj(retCode, result))
+		} else {
+			switch retCode {
+			case ApiError.REQUEST_ERROR:
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
+			case ApiError.DB_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+			case ApiError.NOT_FOUND_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusNotFound)
+			}
+			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+	}()
+
+	newName = r.FormValue("name")
+	if strings.TrimSpace(newName) == "" {
+		retCode = ApiError.REQUEST_ERROR
+		result = errors.New("Class name should not be empty")
+		return
+	}
+
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = err.Error()
+		return
+	}
+	origClass, err := GetWordbankClassV3(appid, id)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
+		return
+	}
+	if origClass == nil {
+		retCode = ApiError.NOT_FOUND_ERROR
+		return
+	}
+
+	err = UpdateWordbankClassV3(appid, id, newName)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
+	}
+}
+
+func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	var wb *WordBankV3
+	retCode := ApiError.SUCCESS
+
+	appid := util.GetAppID(r)
+	defer func() {
+		userID := util.GetUserID(r)
+		userIP := util.GetUserIP(r)
+		ret := 0
+
+		name := ""
+		if wb != nil {
+			name = wb.Name
+		}
+		auditMsg := fmt.Sprintf("%s%s %s", util.Msg["Add"], util.Msg["Wordbank"], name)
+		if err == nil {
+			ret = 1
+			util.WriteJSON(w, util.GenRetObj(retCode, result))
+		} else {
+			switch retCode {
+			case ApiError.REQUEST_ERROR:
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
+			case ApiError.DB_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+			}
+			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+	}()
+
+	cid, err := strconv.Atoi(r.FormValue("cid"))
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		return
+	}
+	if cid != -1 {
+		parentClass, err := GetWordbankClassV3(appid, cid)
+		if err != nil {
+			retCode = ApiError.DB_ERROR
+			return
+		}
+		if parentClass == nil {
+			retCode = ApiError.NOT_FOUND_ERROR
+			result = "Parent not existed"
+			return
+		}
+		if !parentClass.Editable {
+			retCode = ApiError.REQUEST_ERROR
+			result = "Parent not editable"
+			return
+		}
+	}
+
+	wb, err = parseWordbankV3FromRequest(r)
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		return
+	}
+
+	id, err := AddWordbankV3(appid, cid, wb)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
+	} else {
+		wb.ID = id
+		result = wb
+	}
+}
+
+func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	var wb *WordBankV3
+	retCode := ApiError.SUCCESS
+
+	appid := util.GetAppID(r)
+	defer func() {
+		userID := util.GetUserID(r)
+		userIP := util.GetUserIP(r)
+		ret := 0
+
+		name := ""
+		if wb != nil {
+			name = wb.Name
+		}
+		auditMsg := fmt.Sprintf("%s%s %s", util.Msg["Modify"], util.Msg["Wordbank"], name)
+		if err == nil {
+			ret = 1
+			util.WriteJSON(w, util.GenRetObj(retCode, result))
+		} else {
+			switch retCode {
+			case ApiError.REQUEST_ERROR:
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
+			case ApiError.DB_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+			}
+			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+		}
+		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+	}()
+
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("id fail: %s", err.Error())
+		return
+	}
+	origWordbank, err := GetWordbankV3(appid, id)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		return
+	}
+	if origWordbank == nil {
+		retCode = ApiError.NOT_FOUND_ERROR
+		result = "wordbank not existed"
+		return
+	}
+
+	wb, err = parseWordbankV3FromRequest(r)
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		return
+	}
+
+	err = UpdateWordbankV3(appid, id, wb)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
+	} else {
+		wb.ID = id
+		result = wb
+	}
+}
+
+func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
+	if r == nil {
+		return nil, errors.New("Param error")
+	}
+
+	ret := &WordBankV3{}
+	ret.Answer = r.FormValue("answer")
+
+	similarWordStr := strings.TrimSpace(r.FormValue("similar_words"))
+	if similarWordStr == "" {
+		ret.SimilarWords = []string{}
+	} else {
+		ret.SimilarWords = strings.Split(similarWordStr, ",")
+	}
+
+	ret.Name = strings.TrimSpace(r.FormValue("name"))
+
+	if ret.Name == "" {
+		return nil, errors.New("empty name")
+	}
+	return ret, nil
 }

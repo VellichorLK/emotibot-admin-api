@@ -1,6 +1,8 @@
 package Dictionary
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +14,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/tealeg/xlsx"
+)
+
+var (
+	exceptSheetNum = 3
 )
 
 func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHeader) (string, int, error) {
@@ -73,7 +79,6 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 }
 
 func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
-	exceptSheetNum := 3
 	xlsxFile, err := xlsx.OpenBinary(buf)
 	if err != nil {
 		return
@@ -337,35 +342,13 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		}
 	}()
 
-	exceptSheetNum := 3
 	xlsxFile, err := xlsx.OpenBinary(buf)
 	if err != nil {
 		return
 	}
 
-	sheets := xlsxFile.Sheets
-	if sheets == nil {
-		err = errors.New(util.Msg["SheetError"])
-		return
-	}
-	if len(sheets) != exceptSheetNum {
-		err = errors.New(util.Msg["SheetError"])
-		return
-	}
-
-	sheet := sheets[exceptSheetNum-1]
-	rows := sheet.Rows
-
-	// Check if sheet is correct and format is correct
-	switch {
-	case sheet.Name != util.Msg["TemplateXLSXName"]:
-		err = errors.New(util.Msg["SheetError"])
-		return
-	case rows == nil:
-		err = errors.New(util.Msg["EmptyRows"])
-		return
-	case len(rows) <= 1:
-		err = errors.New(util.Msg["EmptyRows"])
+	_, rows, err := getSheetRowsInWordbankXLSX(xlsxFile)
+	if err != nil {
 		return
 	}
 	rows = rows[1:]
@@ -649,4 +632,131 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 	words, syonyms := getClassData(root, []string{})
 
 	return nil, words, syonyms
+}
+
+func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
+	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath())
+	if err != nil {
+		return nil, err
+	}
+
+	root, err := GetWordbanksV3(appid)
+	if err != nil {
+		return nil, err
+	}
+	if root == nil {
+		return nil, errors.New("Wordbank nil error")
+	}
+
+	sheet, rows, err := getSheetRowsInWordbankXLSX(xlsxFile)
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) > 1 {
+		sheet.Rows = rows[0:1]
+	}
+
+	var DFSTravel func(node *WordBankClassV3, level int)
+	DFSTravel = func(node *WordBankClassV3, level int) {
+		if level > maxDirDepth {
+			return
+		}
+
+		row := sheet.AddRow()
+		for i := 1; i <= maxDirDepth; i++ {
+			cell := row.AddCell()
+			if i == level {
+				name := node.Name
+				if !node.Editable {
+					name = "*" + node.Name
+				}
+				cell.SetValue(name)
+			}
+		}
+
+		fillEmptyCell := func(row *xlsx.Row, n int) {
+			for i := 0; i < n; i++ {
+				row.AddCell()
+			}
+		}
+
+		for idx, wb := range node.Wordbank {
+			// write wordbank rows
+			if idx != 0 {
+				row := sheet.AddRow()
+				fillEmptyCell(row, maxDirDepth)
+			}
+			cell := row.AddCell()
+			cell.SetValue(wb.Name)
+			cell = row.AddCell()
+			cell.SetValue(strings.Join(wb.SimilarWords, ","))
+			cell = row.AddCell()
+			cell.SetValue(wb.Answer)
+		}
+
+		// Travel children
+		for _, child := range node.Children {
+			DFSTravel(child, level+1)
+		}
+	}
+	for _, child := range root.Children {
+		DFSTravel(child, 1)
+	}
+
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	err = xlsxFile.Write(writer)
+	return &buf, err
+}
+
+func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File) (sheet *xlsx.Sheet, rows []*xlsx.Row, err error) {
+	sheets := xlsxFile.Sheets
+	if sheets == nil {
+		err = errors.New(util.Msg["SheetError"])
+	}
+	if len(sheets) != exceptSheetNum {
+		err = errors.New(util.Msg["SheetError"])
+	}
+
+	sheet = sheets[exceptSheetNum-1]
+	rows = sheet.Rows
+
+	// Check if sheet is correct and format is correct
+	switch {
+	case sheet.Name != util.Msg["TemplateXLSXName"]:
+		err = errors.New(util.Msg["SheetError"])
+		return
+	case rows == nil:
+		err = errors.New(util.Msg["EmptyRows"])
+		return
+	case len(rows) <= 1:
+		err = errors.New(util.Msg["EmptyRows"])
+		return
+	}
+	return
+}
+
+func AddWordbankClassV3(appid string, className string, pid int) (*WordBankClassV3, error) {
+	id, err := addWordbankClassV3(appid, className, pid)
+	if err != nil {
+		return nil, err
+	}
+
+	class, err := getWordbankClassV3(appid, id)
+	if err != nil {
+		return nil, err
+	}
+	return class, nil
+}
+
+func UpdateWordbankClassV3(appid string, id int, className string) error {
+	return updateWordbankClassV3(appid, id, className)
+}
+
+func AddWordbankV3(appid string, cid int, wb *WordBankV3) (int, error) {
+	return addWordbankV3(appid, cid, wb)
+}
+
+func UpdateWordbankV3(appid string, id int, wb *WordBankV3) error {
+	return updateWordbankV3(appid, id, wb)
 }

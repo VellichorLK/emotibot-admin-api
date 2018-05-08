@@ -11,8 +11,9 @@ import (
 
 const (
 	// ModePerm is 777 for created dir shared with other docker
-	ModePerm        os.FileMode = 0777
-	mountDirPathKey string      = "MOUNT_PATH"
+	ModePerm             os.FileMode = 0777
+	mountDirPathKey      string      = "MOUNT_PATH"
+	wordbankTemplateFile string      = "wordbank_template.xlsx"
 )
 
 // GetFunctionSettingPath will return <appid>.property path of appid
@@ -108,4 +109,9 @@ func SaveNLUFileFromEntity(appid string, wordLines []string, synonyms []string) 
 		return
 	}
 	return
+}
+
+func GetWordbankTemplatePath() string {
+	mountPath := getGlobalEnv(mountDirPathKey)
+	return fmt.Sprintf("%s/%s", mountPath, wordbankTemplateFile)
 }
