@@ -923,3 +923,112 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 
 	return dimensionIdMap, nil
 }
+
+func getTagTypes(appid string) (ret []*TagType, err error) {
+	ret = []*TagType{}
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT
+			type.Type_id,
+			type.Type_name,
+			type.Type_code,
+			tag.Tag_name
+		FROM %s_tag_type as type, %s_tag as tag
+		WHERE type.Type_id = tag.Tag_Type`, appid, appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	typeMap := map[int]*TagType{}
+	for rows.Next() {
+		id := 0
+		name := ""
+		code := ""
+		value := ""
+		err = rows.Scan(&id, &name, &code, &value)
+		if err != nil {
+			return
+		}
+
+		if _, ok := typeMap[id]; !ok {
+			typeMap[id] = &TagType{
+				ID:     id,
+				Name:   name,
+				Code:   code,
+				Values: []string{},
+			}
+			ret = append(ret, typeMap[id])
+		}
+		// Note: format is always #<value>#, so trim the # here
+		if len(value) <= 2 {
+			util.LogError.Println("Strange value in tag value: ", value)
+			continue
+		}
+		value = value[1 : len(value)-1]
+		typeMap[id].Values = append(typeMap[id].Values, value)
+	}
+	return
+}
+
+func getTagType(appid string, id int) (ret *TagType, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT
+			type.Type_id,
+			type.Type_name,
+			type.Type_code,
+			tag.Tag_name
+		FROM %s_tag_type as type, %s_tag as tag
+		WHERE type.Type_id = tag.Tag_Type AND type.Type_id = ?`, appid, appid)
+	rows, err := mySQL.Query(queryStr, id)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		id := 0
+		name := ""
+		code := ""
+		value := ""
+		err = rows.Scan(&id, &name, &code, &value)
+		if err != nil {
+			return
+		}
+
+		if ret == nil {
+			ret = &TagType{
+				ID:     id,
+				Name:   name,
+				Code:   code,
+				Values: []string{},
+			}
+		}
+		// Note: format is always #<value>#, so trim the # here
+		if len(value) <= 2 {
+			util.LogError.Println("Strange value in tag value: ", value)
+			continue
+		}
+		value = value[1 : len(value)-1]
+		ret.Values = append(ret.Values, value)
+	}
+	return
+}

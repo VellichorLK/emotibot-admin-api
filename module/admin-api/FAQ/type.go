@@ -240,3 +240,10 @@ type Rule struct {
 func (r RuleContent) IsValid() bool {
 	return (r.Type == "keyword" || r.Type == "regex") && len(r.Value) > 0
 }
+
+type TagType struct {
+	ID     int      `json:"id"`
+	Name   string   `json:"name"`
+	Code   string   `json:"code"`
+	Values []string `json:"values"`
+}

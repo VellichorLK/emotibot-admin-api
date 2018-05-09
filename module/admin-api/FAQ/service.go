@@ -259,3 +259,10 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 
 	return condition, nil
 }
+
+func GetTagTypes(appid string) ([]*TagType, error) {
+	return getTagTypes(appid)
+}
+func GetTagType(appid string, id int) (*TagType, error) {
+	return getTagType(appid, id)
+}

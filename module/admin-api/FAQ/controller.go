@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -54,6 +55,9 @@ func init() {
 			// util.NewEntryPoint("DELETE", "rule/{id}/label/{id}", []string{"edit"}, handleDeleteLabelFromRule),
 			// util.NewEntryPoint("POST", "label/{id}/rule/add", []string{"edit"}, handleAddRuleToLabel),
 			// util.NewEntryPoint("DELETE", "label/{id}/rule/{id}", []string{"edit"}, handleDeleteRuleFromLabel),
+
+			util.NewEntryPoint("GET", "tag-types", []string{"view"}, handleGetTagTypes),
+			util.NewEntryPoint("GET", "tag-type/{id}", []string{"view"}, handleGetTagType),
 		},
 	}
 }
@@ -429,4 +433,30 @@ func handleQuestionFilter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJSON(w, response)
+}
+
+func handleGetTagTypes(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	tag, err := GetTagTypes(appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	} else {
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tag))
+	}
+}
+func handleGetTagType(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	tag, err := GetTagType(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	} else {
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tag))
+	}
 }
