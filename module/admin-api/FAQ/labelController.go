@@ -45,7 +45,12 @@ func handleDeleteLabel(w http.ResponseWriter, r *http.Request) {
 	retCode, err = DeleteLabel(appid, id)
 	if err != nil {
 		retObj = err.Error()
-		status = http.StatusInternalServerError
+		switch retCode {
+		case ApiError.REQUEST_ERROR:
+			status = http.StatusBadRequest
+		default:
+			status = http.StatusInternalServerError
+		}
 		return
 	}
 	retObj = nil

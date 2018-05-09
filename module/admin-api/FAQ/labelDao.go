@@ -110,6 +110,10 @@ func updateQuestionLabel(appid string, label *Label) error {
 }
 
 func deleteQuestionLabel(appid string, id int) error {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return errors.New("DB not init")
@@ -498,6 +502,10 @@ func getRuleCountOfLabels(appid string) (map[int]int, error) {
 }
 
 func getLabelRuleCount(appid string, id int) (int, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return 0, errors.New("DB not init")
@@ -510,9 +518,43 @@ func getLabelRuleCount(appid string, id int) (int, error) {
 		GROUP BY label_id`, appid)
 	row := mySQL.QueryRow(queryStr, id)
 	count := 0
-	err := row.Scan(&count)
-	if err != nil {
+	err = row.Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
 		return 0, err
 	}
 	return count, nil
+}
+
+func getLabelRuleCountMap(appid string) (map[int]int, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return map[int]int{}, errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf(
+		`SELECT label_id, count(*)
+		FROM %s_rule_label
+		GROUP BY label_id`, appid)
+	rows, err := mySQL.Query(queryStr)
+	if err != nil && err != sql.ErrNoRows {
+		return map[int]int{}, err
+	}
+	defer rows.Close()
+
+	ret := map[int]int{}
+	for rows.Next() {
+		id := 0
+		count := 0
+		err = rows.Scan(&id, &count)
+		if _, ok := ret[id]; !ok {
+			ret[id] = 0
+		}
+		ret[id]++
+	}
+	return ret, nil
 }

@@ -116,7 +116,6 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	userid := util.GetUserID(r)
 	token := util.GetAuthToken(r)
 
-	util.LogInfo.Printf("appid: %s, userid: %s\n", appid, userid)
 	if len(userid) == 0 || !util.IsValidAppID(appid) || len(token) == 0 {
 		util.LogTrace.Printf("Unauthorized path[%s] appid:[%s] userid:[%s] token:[%s]", ep.EntryPath, appid, userid, token)
 		return false

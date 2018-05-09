@@ -38,8 +38,8 @@ func init() {
 			util.NewEntryPoint("DELETE", "category/{id}", []string{"edit"}, handleDeleteCategory),
 
 			util.NewEntryPoint("GET", "labels", []string{"view"}, handleGetLabels),
-			util.NewEntryPoint("POST", "label/{id}", []string{"view"}, handleUpdateLabel),
-			util.NewEntryPoint("PUT", "label", []string{"view"}, handleAddLabel),
+			util.NewEntryPoint("PUT", "label/{id}", []string{"view"}, handleUpdateLabel),
+			util.NewEntryPoint("POST", "label", []string{"view"}, handleAddLabel),
 			util.NewEntryPoint("DELETE", "label/{id}", []string{"view"}, handleDeleteLabel),
 
 			util.NewEntryPoint("GET", "rules", []string{"view"}, handleGetRules),

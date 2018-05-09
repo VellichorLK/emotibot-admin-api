@@ -13,6 +13,17 @@ func GetQuestionLabels(appid string) ([]*Label, error) {
 		return nil, err
 	}
 
+	countMap, err := getLabelRuleCountMap(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, label := range labels {
+		if count, ok := countMap[label.ID]; ok {
+			label.RuleCount = count
+		}
+	}
+
 	return labels, nil
 }
 
@@ -47,6 +58,9 @@ func UpdateLabel(appid string, newLabel *Label) (int, error) {
 func DeleteLabel(appid string, id int) (int, error) {
 	_, err := getQuestionLabelByID(appid, id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return ApiError.SUCCESS, nil
+		}
 		return ApiError.REQUEST_ERROR, errors.New("label not existed")
 	}
 	count, err := getLabelRuleCount(appid, id)
@@ -58,6 +72,9 @@ func DeleteLabel(appid string, id int) (int, error) {
 	}
 	err = deleteQuestionLabel(appid, id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return ApiError.SUCCESS, nil
+		}
 		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
