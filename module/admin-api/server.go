@@ -92,11 +92,13 @@ func main() {
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
-		http.ListenAndServe(":"+port, router)
+		err = http.ListenAndServe(":"+port, router)
 	} else {
-		http.ListenAndServe(":8181", router)
+		err = http.ListenAndServe(":8181", router)
 	}
-
+	if err != nil {
+		util.LogError.Println("Start server fail: ", err.Error())
+	}
 }
 
 // checkPrivilege will call auth api to check user's privilege of this API
@@ -133,11 +135,10 @@ func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 		req["module"] = module
 		req["cmd"] = cmd
 
-		resp, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
+		_, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
 		if err != nil {
 			util.LogTrace.Printf("Get content resp:%s\n", err.Error())
 		}
-		util.LogTrace.Printf("%s", resp)
 
 		return true
 	}
