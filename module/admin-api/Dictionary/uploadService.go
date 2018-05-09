@@ -358,6 +358,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	// classWordbank store wordbanks in each path
 	classWordbank := map[string][]*WordBankV3{}
 	var lastWordbankRow *WordBankRow
+	wordbankRowList := []*WordBankRow{}
 	for idx, row := range rows {
 		if row.Cells == nil {
 			util.LogError.Printf("Cannot get cell from row %d\n", idx)
@@ -377,25 +378,40 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 
 		currentWordbankRow := &WordBankRow{}
 		currentWordbankRow.ReadFromRow(rowCellStr)
+		if currentWordbankRow.IsExtendedRow() {
+			lastWordbankRow.SimilarWords += "," + currentWordbankRow.SimilarWords
+			continue
+		}
+
 		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
 		if err != nil {
 			err = fmt.Errorf("Invalid row %d, %s, %v", idx+1, err.Error(), rowCellStr)
 			return
 		}
+		wordbankRowList = append(wordbankRowList, currentWordbankRow)
+		lastWordbankRow = currentWordbankRow
+	}
 
-		path := currentWordbankRow.GetPath()
+	for _, row := range wordbankRowList {
+		path := row.GetPath()
 		if _, ok := classReadOny[path]; !ok {
-			isReadOnly := currentWordbankRow.IsReadOnly()
+			isReadOnly := row.IsReadOnly()
 			classReadOny[path] = isReadOnly
 		}
 
-		if currentWordbankRow.Name != "" {
+		if row.Name != "" {
 			wordbank := &WordBankV3{
-				Name:   currentWordbankRow.Name,
-				Answer: currentWordbankRow.Answer,
+				Name:   row.Name,
+				Answer: row.Answer,
 			}
-			if currentWordbankRow.SimilarWords != "" {
-				wordbank.SimilarWords = strings.Split(currentWordbankRow.SimilarWords, ",")
+			if wordbank.Name[0] == '*' {
+				wordbank.Name = wordbank.Name[1:]
+				wordbank.Editable = false
+			} else {
+				wordbank.Editable = true
+			}
+			if row.SimilarWords != "" {
+				wordbank.SimilarWords = strings.Split(row.SimilarWords, ",")
 			}
 
 			if _, ok := classWordbank[path]; !ok {
@@ -403,8 +419,6 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			}
 			classWordbank[path] = append(classWordbank[path], wordbank)
 		}
-
-		lastWordbankRow = currentWordbankRow
 	}
 
 	// log for debug

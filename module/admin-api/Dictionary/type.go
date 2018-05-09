@@ -161,6 +161,15 @@ func (row *WordBankRow) ReadFromRow(vals []string) {
 	}
 }
 
+func (row WordBankRow) IsExtendedRow() bool {
+	return row.Level1 == "" &&
+		row.Level2 == "" &&
+		row.Level3 == "" &&
+		row.Level4 == "" &&
+		row.Name == "" &&
+		row.SimilarWords != ""
+}
+
 type WordBankClassV3 struct {
 	ID           int                `json:"cid"`
 	Name         string             `json:"name"`

@@ -683,6 +683,10 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	file, info, err := r.FormFile("file")
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 	defer file.Close()
 	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
 	errMsg = fmt.Sprintf("%s%s: %s", util.Msg["UploadFile"], util.Msg["Wordbank"], info.Filename)

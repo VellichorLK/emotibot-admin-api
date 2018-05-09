@@ -96,6 +96,9 @@ func getWordbankFile(appid string, filename string) (buf []byte, err error) {
 }
 
 func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
@@ -124,7 +127,8 @@ func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
 				SELECT e.id AS id, c.id AS cid
 				FROM entities as e
 				LEFT JOIN entity_class AS c
-				ON e.cid = c.id) AS tmp)`)
+				ON e.cid = c.id) AS tmp
+			WHERE cid IS NULL)`)
 	result, err = t.Exec(queryStr)
 	if err != nil {
 		return
@@ -210,9 +214,13 @@ func insertClassV3WithTransaction(appid string, pid *int, class *WordBankClassV3
 
 func insertWordbankV3WithTransaction(appid string, pid *int, wordbank *WordBankV3, tx *sql.Tx) error {
 	queryStr := `
-		INSERT INTO entities (name, cid, similar_words, answer)
-		VALUES (?, ?, ?, ?)`
+		INSERT INTO entities (name, editable, cid, similar_words, answer)
+		VALUES (?, ?, ?, ?, ?)`
+	editable := 0
+	if wordbank.Editable {
+		editable = 1
+	}
 	_, err := tx.Exec(queryStr,
-		wordbank.Name, pid, strings.Join(wordbank.SimilarWords, ","), wordbank.Answer)
+		wordbank.Name, editable, pid, strings.Join(wordbank.SimilarWords, ","), wordbank.Answer)
 	return err
 }
