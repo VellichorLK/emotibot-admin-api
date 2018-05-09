@@ -16,6 +16,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
+	"emotibot.com/emotigo/module/admin-api/SelfLearning"
 	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
 	"emotibot.com/emotigo/module/admin-api/Task"
@@ -25,8 +26,7 @@ import (
 
 // constant define all const used in server
 var constant = map[string]interface{}{
-	"API_PREFIX":  "api",
-	"API_VERSION": 1,
+	"API_PREFIX": "api",
 }
 
 var serverConfig map[string]string
@@ -162,6 +162,7 @@ func setRoute() *mux.Router {
 		Task.ModuleInfo,
 		Stats.ModuleInfo,
 		UI.ModuleInfo,
+		SelfLearning.ModuleInfo,
 	}
 
 	for _, module := range modules {
@@ -248,5 +249,5 @@ func initDB() {
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	util.InitAuditDB(url, user, pass, db)
 
-	// Stats.InitDB()
+	SelfLearning.InitDB()
 }

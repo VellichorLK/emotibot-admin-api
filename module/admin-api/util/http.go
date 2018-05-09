@@ -56,3 +56,9 @@ func WriteJSONWithStatus(w http.ResponseWriter, obj interface{}, status int) err
 	w.Write(js)
 	return nil
 }
+
+func WriteWithStatus(w http.ResponseWriter, content string, status int) {
+	w.Header().Set("X-Status", fmt.Sprintf("%d", status))
+	w.WriteHeader(status)
+	w.Write([]byte(content))
+}
