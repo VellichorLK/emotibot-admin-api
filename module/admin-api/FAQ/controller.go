@@ -343,7 +343,7 @@ func handleCategoryQuestions(w http.ResponseWriter, r *http.Request) {
 	includeSub := r.URL.Query().Get("includeSubCat")
 	var categories []Category
 	if includeSub == "true" {
-		categories, err = category.SubCats()
+		categories, err = category.SubCats(appid)
 		if err != nil {
 			http.Error(w, "", http.StatusInternalServerError)
 			util.LogError.Println(err)
