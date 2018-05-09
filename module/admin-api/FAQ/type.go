@@ -32,7 +32,7 @@ type StdQuestion struct {
 	CategoryID int    `json:"categoryId"`
 }
 
-//Category represents sql table vipshop_category
+//Category represents sql table <appid>_category
 type Category struct {
 	ID       int
 	Name     string
@@ -118,12 +118,15 @@ type UpdateRFQuestionsArgs struct {
 }
 
 //SubCat will recursivily retrive the sub Category of the Category
-func (c Category) SubCats() ([]Category, error) {
+func (c Category) SubCats(appid string) ([]Category, error) {
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := "SELECT CategoryId, CategoryName FROM vipshop_categories WHERE ParentId = ? AND Status = 1"
+	rawQuery := fmt.Sprintf(`
+		SELECT CategoryId, CategoryName
+		FROM %s_categories
+		WHERE ParentId = ? AND Status = 1`, appid)
 	rows, err := db.Query(rawQuery, c.ID)
 	if err != nil {
 		return nil, fmt.Errorf("sql query %s failed %v", rawQuery, err)
@@ -137,7 +140,7 @@ func (c Category) SubCats() ([]Category, error) {
 			return nil, fmt.Errorf("scan failed, %v", err)
 		}
 		categories = append(categories, subCat)
-		subSubCats, err := subCat.SubCats() //子類別的子類別
+		subSubCats, err := subCat.SubCats(appid) //子類別的子類別
 		if err != nil {
 			return nil, fmt.Errorf("sub category %s query failed, %v", subCat.Name, err)
 		}
