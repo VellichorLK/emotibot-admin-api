@@ -499,7 +499,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	}
 
 	queryStr = fmt.Sprintf(`
-		SELECT id, name, cid, similar_words, answer
+		SELECT id, editable, name, cid, similar_words, answer
 		FROM entities
 		WHERE cid in (%s)`, strings.Join(queryQuestion, ","))
 	entityRows, err := mySQL.Query(queryStr, queryParam...)
@@ -511,8 +511,9 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	for entityRows.Next() {
 		temp := &WordBankV3{}
 		cid := 0
+		var editable *int
 		similarWordStr := ""
-		err = entityRows.Scan(&temp.ID, &temp.Name, &cid, &similarWordStr, &temp.Answer)
+		err = entityRows.Scan(&temp.ID, &editable, &temp.Name, &cid, &similarWordStr, &temp.Answer)
 		if err != nil {
 			return
 		}
@@ -521,6 +522,12 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		} else {
 			temp.SimilarWords = strings.Split(similarWordStr, ",")
 		}
+		if editable != nil {
+			temp.Editable = *editable != 0
+		} else {
+			temp.Editable = classMap[cid].Editable
+		}
+
 		classMap[cid].Wordbank = append(classMap[cid].Wordbank, temp)
 	}
 
@@ -528,7 +535,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	return
 }
 
-func getWordbankV3(appid string, id int) (ret *WordBankV3, err error) {
+func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
@@ -536,7 +543,7 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, err error) {
 	}
 
 	queryStr := `
-		SELECT e.name, e.similar_words, e.answer
+		SELECT e.name, e.editable, e.similar_words, e.answer, c.editable, e.cid
 		FROM entities as e, entity_class as c
 		WHERE e.cid = c.id AND e.id = ? AND c.appid = ?`
 	row := mySQL.QueryRow(queryStr, id, appid)
@@ -544,7 +551,9 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, err error) {
 
 	ret = &WordBankV3{}
 	similarWordsStr := ""
-	err = row.Scan(&ret.Name, &similarWordsStr, &ret.Answer)
+	var editable *int
+	var parentEditable int
+	err = row.Scan(&ret.Name, &editable, &similarWordsStr, &ret.Answer, &parentEditable, &cid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ret = nil
@@ -553,12 +562,22 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, err error) {
 		return
 	}
 
-	ret.SimilarWords = strings.Split(similarWordsStr, ",")
+	if editable != nil {
+		ret.Editable = *editable != 0
+	} else {
+		ret.Editable = parentEditable != 0
+	}
+	similarWordsStr = strings.TrimSpace(similarWordsStr)
+	if similarWordsStr == "" {
+		ret.SimilarWords = []string{}
+	} else {
+		ret.SimilarWords = strings.Split(similarWordsStr, ",")
+	}
 	ret.ID = id
 	return
 }
 
-func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, err error) {
+func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, pid int, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
@@ -566,7 +585,7 @@ func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, err error) 
 	}
 
 	queryStr := `
-		SELECT name, editable, intent_engine, rule_engine
+		SELECT name, editable, intent_engine, rule_engine, pid
 		FROM entity_class
 		WHERE id = ? AND appid = ?`
 	row := mySQL.QueryRow(queryStr, id, appid)
@@ -575,7 +594,7 @@ func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, err error) 
 	editable := 0
 	ie := 0
 	re := 0
-	err = row.Scan(&ret.Name, &editable, &ie, &re)
+	err = row.Scan(&ret.Name, &editable, &ie, &re, &pid)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ret = nil

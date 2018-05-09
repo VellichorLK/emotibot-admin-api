@@ -174,6 +174,7 @@ type WordBankClassV3 struct {
 type WordBankV3 struct {
 	ID           int      `json:"wid"`
 	Name         string   `json:"name"`
+	Editable     bool     `json:"editable"`
 	SimilarWords []string `json:"similar_words"`
 	Answer       string   `json:"answer"`
 }

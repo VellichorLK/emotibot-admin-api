@@ -558,7 +558,7 @@ func handleGetWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wordbank, err := GetWordbankV3(appid, id)
+	wordbank, _, err := GetWordbankV3(appid, id)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
@@ -580,7 +580,7 @@ func handleGetWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wordbank, err := GetWordbankClassV3(appid, id)
+	wordbank, _, err := GetWordbankClassV3(appid, id)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
@@ -608,13 +608,23 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wordbank, err := GetWordbankV3(appid, id)
+	wordbank, cid, err := GetWordbankV3(appid, id)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if wordbank == nil {
 		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+		return
+	}
+
+	class, _, err := GetWordbankClassV3(appid, cid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !class.Editable {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "parent not editable"), http.StatusBadRequest)
 		return
 	}
 
@@ -641,6 +651,7 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
+
 	err = DeleteWordbankClassV3(appid, id)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
@@ -795,7 +806,7 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if pid != -1 {
-		parentClass, err := GetWordbankClassV3(appid, pid)
+		parentClass, _, err := GetWordbankClassV3(appid, pid)
 		if err != nil {
 			retCode = ApiError.DB_ERROR
 			return
@@ -860,32 +871,37 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 
 	newName = r.FormValue("name")
 	if strings.TrimSpace(newName) == "" {
-		retCode = ApiError.REQUEST_ERROR
-		result = errors.New("Class name should not be empty")
+		retCode, result = ApiError.REQUEST_ERROR, errors.New("Class name should not be empty")
 		return
 	}
 
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		retCode = ApiError.REQUEST_ERROR
-		result = err.Error()
+		retCode, result = ApiError.REQUEST_ERROR, err.Error()
 		return
 	}
-	origClass, err := GetWordbankClassV3(appid, id)
+	origClass, pid, err := GetWordbankClassV3(appid, id)
 	if err != nil {
-		retCode = ApiError.DB_ERROR
-		result = err.Error()
+		retCode, result = ApiError.DB_ERROR, err.Error()
 		return
 	}
 	if origClass == nil {
 		retCode = ApiError.NOT_FOUND_ERROR
 		return
 	}
+	parent, _, err := GetWordbankClassV3(appid, pid)
+	if err != nil {
+		retCode, result = ApiError.DB_ERROR, err.Error()
+		return
+	}
+	if !parent.Editable {
+		retCode, result = ApiError.REQUEST_ERROR, "parent not editable"
+		return
+	}
 
 	err = UpdateWordbankClassV3(appid, id, newName)
 	if err != nil {
-		retCode = ApiError.DB_ERROR
-		result = err.Error()
+		retCode, result = ApiError.DB_ERROR, err.Error()
 	}
 }
 
@@ -923,39 +939,37 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	cid, err := strconv.Atoi(r.FormValue("cid"))
 	if err != nil {
-		retCode = ApiError.REQUEST_ERROR
-		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		retCode, result = ApiError.REQUEST_ERROR, fmt.Sprintf("get cid fail: %s", err.Error())
 		return
 	}
 	if cid != -1 {
-		parentClass, err := GetWordbankClassV3(appid, cid)
+		parentClass, _, err := GetWordbankClassV3(appid, cid)
 		if err != nil {
 			retCode = ApiError.DB_ERROR
 			return
 		}
 		if parentClass == nil {
-			retCode = ApiError.NOT_FOUND_ERROR
-			result = "Parent not existed"
+			retCode, result = ApiError.NOT_FOUND_ERROR, "Parent not existed"
 			return
 		}
 		if !parentClass.Editable {
-			retCode = ApiError.REQUEST_ERROR
-			result = "Parent not editable"
+			retCode, result = ApiError.REQUEST_ERROR, "Parent not editable"
 			return
 		}
+	} else {
+		retCode, result = ApiError.REQUEST_ERROR, "Parent cannot be root"
+		return
 	}
 
 	wb, err = parseWordbankV3FromRequest(r)
 	if err != nil {
-		retCode = ApiError.REQUEST_ERROR
-		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		retCode, result = ApiError.REQUEST_ERROR, fmt.Sprintf("get cid fail: %s", err.Error())
 		return
 	}
 
 	id, err := AddWordbankV3(appid, cid, wb)
 	if err != nil {
-		retCode = ApiError.DB_ERROR
-		result = err.Error()
+		retCode, result = ApiError.DB_ERROR, err.Error()
 	} else {
 		wb.ID = id
 		result = wb
@@ -1000,7 +1014,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		result = fmt.Sprintf("id fail: %s", err.Error())
 		return
 	}
-	origWordbank, err := GetWordbankV3(appid, id)
+	origWordbank, cid, err := GetWordbankV3(appid, id)
 	if err != nil {
 		retCode = ApiError.DB_ERROR
 		return
@@ -1009,6 +1023,21 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		retCode = ApiError.NOT_FOUND_ERROR
 		result = "wordbank not existed"
 		return
+	}
+
+	class, _, err := GetWordbankClassV3(appid, cid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !class.Editable {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "parent not editable"), http.StatusBadRequest)
+		return
+	}
+
+	// wordbank is not editable, name cannot be changed
+	if !origWordbank.Editable {
+		wb.Name = origWordbank.Name
 	}
 
 	wb, err = parseWordbankV3FromRequest(r)

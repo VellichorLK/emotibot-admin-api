@@ -742,7 +742,7 @@ func AddWordbankClassV3(appid string, className string, pid int) (*WordBankClass
 		return nil, err
 	}
 
-	class, err := getWordbankClassV3(appid, id)
+	class, _, err := getWordbankClassV3(appid, id)
 	if err != nil {
 		return nil, err
 	}

@@ -121,11 +121,11 @@ func GetWordbanksV3(appid string) (*WordBankClassV3, error) {
 	return getWordbanksV3(appid)
 }
 
-func GetWordbankV3(appid string, id int) (*WordBankV3, error) {
+func GetWordbankV3(appid string, id int) (*WordBankV3, int, error) {
 	return getWordbankV3(appid, id)
 }
 
-func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, error) {
+func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, int, error) {
 	return getWordbankClassV3(appid, id)
 }
 
