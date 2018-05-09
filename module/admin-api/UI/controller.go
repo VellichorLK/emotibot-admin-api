@@ -8,6 +8,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+const (
+	encryptKey = "emotibot"
+)
+
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
@@ -19,8 +23,41 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "envs", []string{}, handleDumpUISetting),
 			util.NewEntryPoint("POST", "export-log", []string{}, handleExportAuditLog),
+
+			util.NewEntryPoint("GET", "encrypt", []string{}, handleEncrypt),
+			util.NewEntryPoint("GET", "decrypt", []string{}, handleDecrypt),
 		},
 	}
+}
+
+func handleEncrypt(w http.ResponseWriter, r *http.Request) {
+	text := r.URL.Query().Get("text")
+	if text == "" {
+		util.WriteWithStatus(w, text, http.StatusBadRequest)
+		return
+	}
+
+	encrypt, err := DesEncrypt([]byte(text), []byte(encryptKey))
+	if err != nil {
+		util.WriteWithStatus(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(encrypt))
+}
+
+func handleDecrypt(w http.ResponseWriter, r *http.Request) {
+	text := r.URL.Query().Get("text")
+	if text == "" {
+		util.WriteWithStatus(w, text, http.StatusBadRequest)
+		return
+	}
+
+	decrypt, err := DesDecrypt(text, []byte(encryptKey))
+	if err != nil {
+		util.WriteWithStatus(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(decrypt))
 }
 
 func handleDumpUISetting(w http.ResponseWriter, r *http.Request) {
