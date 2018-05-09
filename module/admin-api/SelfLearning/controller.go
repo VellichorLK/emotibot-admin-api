@@ -189,7 +189,8 @@ func handleClustering(w http.ResponseWriter, r *http.Request) {
 }
 
 func getQuestionType(r *http.Request) (int, error) {
-	pType, err := util.GetMuxIntVar(r, PType)
+	typeStr := r.URL.Query().Get(PType)
+	pType, err := strconv.Atoi(typeStr)
 	if err != nil {
 		return 0, err
 	}
