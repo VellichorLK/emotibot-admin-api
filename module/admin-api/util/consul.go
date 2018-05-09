@@ -17,7 +17,6 @@ const (
 	//ConsulTEKey is a helper value used in ConsulUpdateTaskEngine
 	ConsulTEKey = "te/enabled"
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
-	// vipshopdata will be modified, change it back for demo day
 	ConsulRCKey = "chat/%s"
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
 	ConsulFunctionKey = "function/%s"
@@ -159,7 +158,6 @@ func ConsulUpdateEntity(appid string, value interface{}) (int, error) {
 
 //ConsulUpdateFAQ is a convenient function for updating Task Engine's Consul Key
 func ConsulUpdateFAQ(appid string) (int, error) {
-	//contains no appid, becaues this can be use in vipshop for now
 	now := time.Now().Unix()
 	key := fmt.Sprintf(ConsulFAQKey, appid)
 	return ConsulUpdateVal(key, now)
