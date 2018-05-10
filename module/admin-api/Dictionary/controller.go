@@ -1031,7 +1031,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	class, _, err := GetWordbankClassV3(appid, cid)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 	if !class.Editable {
@@ -1039,16 +1039,16 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// wordbank is not editable, name cannot be changed
-	if !origWordbank.Editable {
-		wb.Name = origWordbank.Name
-	}
-
 	wb, err = parseWordbankV3FromRequest(r)
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
 		result = fmt.Sprintf("get cid fail: %s", err.Error())
 		return
+	}
+
+	// wordbank is not editable, name cannot be changed
+	if !origWordbank.Editable {
+		wb.Name = origWordbank.Name
 	}
 
 	err = UpdateWordbankV3(appid, id, wb)

@@ -578,6 +578,9 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
 }
 
 func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, pid int, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
@@ -591,10 +594,11 @@ func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, pid int, er
 	row := mySQL.QueryRow(queryStr, id, appid)
 
 	ret = &WordBankClassV3{}
-	editable := 0
+	var pidScan *int
+	var editable *int
 	ie := 0
 	re := 0
-	err = row.Scan(&ret.Name, &editable, &ie, &re, &pid)
+	err = row.Scan(&ret.Name, &editable, &ie, &re, &pidScan)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ret = nil
@@ -603,7 +607,16 @@ func getWordbankClassV3(appid string, id int) (ret *WordBankClassV3, pid int, er
 		return
 	}
 
-	ret.Editable = editable != 0
+	if pidScan == nil {
+		pid = -1
+	} else {
+		pid = *pidScan
+	}
+
+	ret.Editable = false
+	if editable != nil && *editable != 0 {
+		ret.Editable = true
+	}
 	ret.IntentEngine = ie != 0
 	ret.RuleEngine = re != 0
 	ret.ID = id
