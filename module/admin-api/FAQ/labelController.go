@@ -26,17 +26,18 @@ func parseLabelFromRequest(r *http.Request) (*Label, error) {
 
 func handleDeleteLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
 
-	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status, retCode, retObj = genBadRequestReturn(err)
@@ -58,17 +59,18 @@ func handleDeleteLabel(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
 
-	appid := util.GetAppID(r)
 	newLabel, err := parseLabelFromRequest(r)
 	if err != nil {
 		status, retCode, retObj = genBadRequestReturn(err)
@@ -92,17 +94,18 @@ func handleUpdateLabel(w http.ResponseWriter, r *http.Request) {
 
 func handleAddLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
 
-	appid := util.GetAppID(r)
 	newLabel, err := parseLabelFromRequest(r)
 	if err != nil {
 		status, retCode, retObj = genBadRequestReturn(err)
@@ -188,17 +191,18 @@ func handleGetRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleUpdateRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
 
-	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
@@ -232,17 +236,18 @@ func handleUpdateRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleAddRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
 
-	appid := util.GetAppID(r)
 	rule, err := parseRuleFromRequest(r)
 	if err != nil {
 		status = http.StatusBadRequest
@@ -263,16 +268,17 @@ func handleAddRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
+	appid := util.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if status == http.StatusOK {
 			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+			util.ConsulUpdateRule(appid)
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status = http.StatusBadRequest

@@ -739,9 +739,9 @@ func addWordbankClassV3(appid string, className string, pid int) (id int, err er
 		return
 	}
 
-	columns := []string{"appid", "name"}
-	params := []interface{}{appid, className}
-	q := []string{"?", "?"}
+	columns := []string{"appid", "name", "editable"}
+	params := []interface{}{appid, className, 1}
+	q := []string{"?", "?", "?"}
 	if pid != -1 {
 		columns = append(columns, "pid")
 		params = append(params, pid)

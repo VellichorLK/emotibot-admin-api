@@ -22,6 +22,7 @@ const (
 	ConsulFunctionKey = "function/%s"
 	ConsulFAQKey      = "faq/%s"
 	ConsulEntityKey   = "cnlu/%s"
+	ConsulRuleKey     = "rule/%s"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -179,6 +180,13 @@ func ConsulUpdateFunctionStatus(appid string) (int, error) {
 //ConsulUpdateRobotChat is a convenient function for updating Robot Chat's Consul Key
 func ConsulUpdateRobotChat(appid string) (int, error) {
 	key := fmt.Sprintf(ConsulRCKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
+}
+
+//ConsulUpdateRule is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateRule(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulRuleKey, appid)
 	now := time.Now().Unix()
 	return ConsulUpdateVal(key, now)
 }

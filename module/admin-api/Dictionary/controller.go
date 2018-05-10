@@ -949,7 +949,7 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 	if cid != -1 {
 		parentClass, _, err := GetWordbankClassV3(appid, cid)
 		if err != nil {
-			retCode = ApiError.DB_ERROR
+			retCode, result = ApiError.DB_ERROR, fmt.Sprintf("Get parent class error: %s", err.Error())
 			return
 		}
 		if parentClass == nil {
@@ -1081,5 +1081,7 @@ func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
 	if ret.Name == "" {
 		return nil, errors.New("empty name")
 	}
+
+	ret.Editable = true
 	return ret, nil
 }
