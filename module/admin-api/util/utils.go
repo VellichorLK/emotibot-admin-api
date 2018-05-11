@@ -20,6 +20,13 @@ const (
 )
 
 func GetAuthToken(r *http.Request) string {
+	if r.Method == "GET" {
+		token := r.URL.Query().Get("token")
+		if strings.TrimSpace(token) != "" {
+			return token
+		}
+	}
+
 	header := r.Header.Get(ConstAuthorizationHeaderKey)
 	params := strings.Split(header, " ")
 	if len(params) < 2 {
