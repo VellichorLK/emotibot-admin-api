@@ -1,10 +1,10 @@
 package imagesManager
 
 import (
-	"fmt"
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -88,6 +88,13 @@ func receiveImage(ctx context.Context) {
 	auditLog := "[图片素材]:"
 	auditRet := 1
 	first := true
+
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	defer func() {
+		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
+	}()
+
 	for _, file := range args {
 		if first {
 			auditLog = fmt.Sprintf("%s%s", auditLog, file.FileName)
@@ -100,6 +107,7 @@ func receiveImage(ctx context.Context) {
 			ctx.StatusCode(http.StatusBadRequest)
 			ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 			auditRet = 0
+			return
 		}
 
 		err = storeImage(tx, file.FileName, content)
@@ -108,12 +116,9 @@ func receiveImage(ctx context.Context) {
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 			util.LogError.Println(err)
 			auditRet = 0
+			return
 		}
 	}
-	if auditRet == 0 {
-		return 
-	}
-
 
 	err = tx.Commit()
 	if err != nil {
@@ -123,9 +128,6 @@ func receiveImage(ctx context.Context) {
 		auditRet = 0
 	}
 
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
-	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 }
 
 func handleImageList(ctx context.Context) {
@@ -167,7 +169,6 @@ func handleDeleteImage(ctx context.Context) {
 	err = deleteImagesByID(ctx, imageIDs)
 	if err != nil {
 		auditRet = 0
-		ctx.StatusCode(http.StatusInternalServerError)
 	}
 
 	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
