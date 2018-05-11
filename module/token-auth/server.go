@@ -40,7 +40,7 @@ func setUpRoutes() {
 	routes = Routes{
 		Route{"GetEnterprises", "GET", 2, "enterprises", EnterprisesGetHandler, []interface{}{0}},
 		Route{"GetEnterprise", "GET", 2, "enterprise/{enterpriseID}", EnterpriseGetHandler, []interface{}{0, 1, 2}},
-		Route{"GetUsers", "GET", 2, "enterprise/{enterpriseID}/users", UsersGetHandler, []interface{}{0, 1}},
+		Route{"GetUsers", "GET", 2, "enterprise/{enterpriseID}/users", UsersGetHandler, []interface{}{0, 1, 2}},
 		Route{"GetUser", "GET", 2, "enterprise/{enterpriseID}/user/{userID}", UserGetHandler, []interface{}{0, 1, 2}},
 		Route{"GetApps", "GET", 2, "enterprise/{enterpriseID}/apps", AppsGetHandler, []interface{}{0, 1, 2}},
 		Route{"GetApp", "GET", 2, "enterprise/{enterpriseID}/app/{appID}", AppGetHandler, []interface{}{0, 1, 2}},
