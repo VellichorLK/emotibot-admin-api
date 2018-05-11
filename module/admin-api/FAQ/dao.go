@@ -940,7 +940,9 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 			type.Type_id,
 			type.Type_name,
 			type.Type_code,
-			tag.Tag_name
+			tag.Tag_Id,
+			tag.Tag_Name,
+			tag.Tag_Code
 		FROM %s_tag_type as type, %s_tag as tag
 		WHERE type.Type_id = tag.Tag_Type`, appid, appid)
 	rows, err := mySQL.Query(queryStr)
@@ -954,8 +956,10 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 		id := 0
 		name := ""
 		code := ""
+		valueID := 0
 		value := ""
-		err = rows.Scan(&id, &name, &code, &value)
+		valueCode := ""
+		err = rows.Scan(&id, &name, &code, &valueID, &value, &valueCode)
 		if err != nil {
 			return
 		}
@@ -965,7 +969,7 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 				ID:     id,
 				Name:   name,
 				Code:   code,
-				Values: []string{},
+				Values: []*TagValue{},
 			}
 			ret = append(ret, typeMap[id])
 		}
@@ -975,7 +979,12 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 			continue
 		}
 		value = value[1 : len(value)-1]
-		typeMap[id].Values = append(typeMap[id].Values, value)
+		newValue := &TagValue{
+			ID:    valueID,
+			Value: value,
+			Code:  valueCode,
+		}
+		typeMap[id].Values = append(typeMap[id].Values, newValue)
 	}
 	return
 }
@@ -995,7 +1004,9 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 			type.Type_id,
 			type.Type_name,
 			type.Type_code,
-			tag.Tag_name
+			tag.Tag_Id,
+			tag.Tag_name,
+			tag.Tag_Code
 		FROM %s_tag_type as type, %s_tag as tag
 		WHERE type.Type_id = tag.Tag_Type AND type.Type_id = ?`, appid, appid)
 	rows, err := mySQL.Query(queryStr, id)
@@ -1008,8 +1019,10 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 		id := 0
 		name := ""
 		code := ""
+		valueID := 0
 		value := ""
-		err = rows.Scan(&id, &name, &code, &value)
+		valueCode := ""
+		err = rows.Scan(&id, &name, &code, &valueID, &value, &valueCode)
 		if err != nil {
 			return
 		}
@@ -1019,7 +1032,7 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 				ID:     id,
 				Name:   name,
 				Code:   code,
-				Values: []string{},
+				Values: []*TagValue{},
 			}
 		}
 		// Note: format is always #<value>#, so trim the # here
@@ -1028,7 +1041,12 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 			continue
 		}
 		value = value[1 : len(value)-1]
-		ret.Values = append(ret.Values, value)
+		newValue := &TagValue{
+			ID:    valueID,
+			Value: value,
+			Code:  valueCode,
+		}
+		ret.Values = append(ret.Values, newValue)
 	}
 	return
 }

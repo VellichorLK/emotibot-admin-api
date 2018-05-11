@@ -245,8 +245,14 @@ func (r RuleContent) IsValid() bool {
 }
 
 type TagType struct {
-	ID     int      `json:"id"`
-	Name   string   `json:"name"`
-	Code   string   `json:"code"`
-	Values []string `json:"values"`
+	ID     int         `json:"id"`
+	Name   string      `json:"name"`
+	Code   string      `json:"code"`
+	Values []*TagValue `json:"values"`
+}
+
+type TagValue struct {
+	ID    int    `json:"id"`
+	Value string `json:"value"`
+	Code  string `json:"code"`
 }
