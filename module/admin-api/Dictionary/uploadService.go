@@ -83,8 +83,8 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			_, _, line, _ := runtime.Caller(1)
-			err = fmt.Errorf("Panic error: %s", err.Error())
-			util.LogError.Printf("Panic in parse xlsx @%d, %s\n", line, err.Error())
+			err = fmt.Errorf("Panic error: %s", r)
+			util.LogError.Printf("Panic in parse xlsx @%d, %s\n", line, r)
 		}
 	}()
 	xlsxFile, err := xlsx.OpenBinary(buf)
