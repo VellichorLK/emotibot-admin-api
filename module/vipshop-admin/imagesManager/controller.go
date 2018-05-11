@@ -169,7 +169,6 @@ func handleDeleteImage(ctx context.Context) {
 	err = deleteImagesByID(ctx, imageIDs)
 	if err != nil {
 		auditRet = 0
-		ctx.StatusCode(http.StatusInternalServerError)
 	}
 
 	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
