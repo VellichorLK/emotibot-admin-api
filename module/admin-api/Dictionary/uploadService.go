@@ -8,6 +8,7 @@ import (
 	"io"
 	"mime/multipart"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
@@ -79,6 +80,13 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 }
 
 func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			_, _, line, _ := runtime.Caller(1)
+			err = fmt.Errorf("Panic error: %s", err.Error())
+			util.LogError.Printf("Panic in parse xlsx @%d, %s\n", line, err.Error())
+		}
+	}()
 	xlsxFile, err := xlsx.OpenBinary(buf)
 	if err != nil {
 		return
@@ -89,7 +97,7 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 		err = errors.New(util.Msg["SheetError"])
 		return
 	}
-	if len(sheets) != exceptSheetNum {
+	if len(sheets) < exceptSheetNum {
 		err = errors.New(util.Msg["SheetError"])
 		return
 	}
