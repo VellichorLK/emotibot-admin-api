@@ -426,7 +426,6 @@ func handleCreateQuestion(ctx context.Context) {
 
 	appid := util.GetAppID(ctx)
 
-	questionJson := QuestionJson{}
 	newQuestion, newAnswers, err := parseQA(ctx)
 	if err != nil {
 		util.LogError.Printf("Error happened create new question %s", err.Error())
@@ -444,7 +443,7 @@ func handleCreateQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	auditMsg := fmt.Sprintf("[标准问题]:[%s]:%s", categoryPath, questionJson.Content)
+	auditMsg := fmt.Sprintf("[标准问题]:[%s]:%s", categoryPath, newQuestion.Content)
 	auditRet := 1
 
 	// create question
@@ -455,7 +454,7 @@ func handleCreateQuestion(ctx context.Context) {
 			util.LogError.Printf("Error happened create new question %s", err.Error())
 			ctx.StatusCode(http.StatusInternalServerError)
 		} else {
-			util.LogError.Printf("Duplicate Question Content: %s", questionJson.Content)
+			util.LogError.Printf("Duplicate Question Content: %s", newQuestion.Content)
 			ctx.StatusCode(http.StatusConflict)
 		}
 		auditRet = 0
