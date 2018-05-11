@@ -1,10 +1,14 @@
-package UI
+package util
 
 import (
 	"bytes"
 	"crypto/des"
 	"encoding/base64"
 	"errors"
+)
+
+const (
+	DesEncryptKey = "emotibot"
 )
 
 func zeroPadding(ciphertext []byte, blockSize int) []byte {
@@ -65,6 +69,5 @@ func DesDecrypt(input string, key []byte) (string, error) {
 		dst = dst[bs:]
 	}
 	out = zeroUnPadding(out)
-	// out = PKCS5UnPadding(out)
 	return string(out), nil
 }

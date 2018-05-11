@@ -8,10 +8,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
-const (
-	encryptKey = "emotibot"
-)
-
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
@@ -37,7 +33,7 @@ func handleEncrypt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	encrypt, err := DesEncrypt([]byte(text), []byte(encryptKey))
+	encrypt, err := util.DesEncrypt([]byte(text), []byte(util.DesEncryptKey))
 	if err != nil {
 		util.WriteWithStatus(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -52,7 +48,7 @@ func handleDecrypt(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decrypt, err := DesDecrypt(text, []byte(encryptKey))
+	decrypt, err := util.DesDecrypt(text, []byte(util.DesEncryptKey))
 	if err != nil {
 		util.WriteWithStatus(w, err.Error(), http.StatusInternalServerError)
 		return

@@ -2,11 +2,16 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 )
 
 var envs = make(map[string]interface{})
+
+const encryptedSettingKey = "DECRYPTION_SERVICE"
+const sqlPasswordKey = "MYSQL_PASS"
 
 // LoadConfigFromFile will get environment variables from file into envs
 // Format in file:
@@ -17,6 +22,8 @@ func LoadConfigFromFile(path string) error {
 	if err != nil {
 		return err
 	}
+
+	useEntryptedPassword := (strings.TrimSpace(os.Getenv(encryptedSettingKey)) != "")
 
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
@@ -37,7 +44,7 @@ func LoadConfigFromFile(path string) error {
 			continue
 		}
 
-		key, val := strings.TrimSpace(params[0]), strings.TrimSpace(params[1])
+		key, val := strings.TrimSpace(params[0]), strings.TrimSpace(strings.Join(params[1:], "="))
 		keyParts := strings.Split(key, "_")
 
 		//skip error format
@@ -52,11 +59,21 @@ func LoadConfigFromFile(path string) error {
 		}
 
 		moduleEnv := envs[envType].(map[string]string)
-		moduleEnv[newKey] = strings.Trim(val, "\"")
+		setValue := strings.Trim(val, "\"")
+		if useEntryptedPassword && isSQLPasswordKey(newKey) {
+			newSetValue, err := DesDecrypt(setValue, []byte(DesEncryptKey))
+			if err == nil {
+				LogTrace.Printf("Decrypt password %s => %s\n", setValue, newSetValue)
+				setValue = newSetValue
+			} else {
+				LogError.Printf("Decrypt password error %s: %s\n", setValue, err.Error())
+			}
+		}
+		moduleEnv[newKey] = setValue
 	}
 
 	envsStr, err := json.MarshalIndent(envs, "", "  ")
-	LogTrace.Printf("Load config: %s\n", envsStr)
+	LogInfo.Printf("Load config: %s\n", envsStr)
 
 	return nil
 }
@@ -76,4 +93,15 @@ func getGlobalEnv(key string) string {
 		}
 	}
 	return ""
+}
+
+func isSQLPasswordKey(key string) (ret bool) {
+	words := strings.Split(key, "_")
+	l := len(words)
+	if l < 2 {
+		return false
+	}
+
+	ret = (sqlPasswordKey == fmt.Sprintf("%s_%s", words[l-2], words[l-1]))
+	return
 }

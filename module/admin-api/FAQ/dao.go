@@ -1035,7 +1035,7 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 				Values: []*TagValue{},
 			}
 		}
-		// Note: format is always #<value>#, so trim the # here
+		// FIXME: format is always #<value>#, so trim the # here
 		if len(value) <= 2 {
 			util.LogError.Println("Strange value in tag value: ", value)
 			continue
