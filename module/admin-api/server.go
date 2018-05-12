@@ -91,11 +91,13 @@ func main() {
 	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
+	serverURL := "0.0.0.0:8181"
 	if port, ok := serverConfig["PORT"]; ok {
-		err = http.ListenAndServe(":"+port, router)
-	} else {
-		err = http.ListenAndServe(":8181", router)
+		serverURL = "0.0.0.0:" + port
 	}
+
+	util.LogInfo.Println("Start server on", serverURL)
+	err = http.ListenAndServe(serverURL, router)
 	if err != nil {
 		util.LogError.Println("Start server fail: ", err.Error())
 	}
