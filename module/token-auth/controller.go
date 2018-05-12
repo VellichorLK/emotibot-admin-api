@@ -16,6 +16,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var userTryCount map[string]int
+
+const (
+	banRetryTimes = 5
+)
+
 func EnterprisesGetHandler(w http.ResponseWriter, r *http.Request) {
 	retData, errMsg := getEnterprises()
 	returnOKMsg(w, errMsg, retData)
@@ -112,15 +118,32 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, "")
 		return
 	}
+	// if user is banned, return Forbidden
+	if util.UserBanInfos.IsUserBanned(account) {
+		returnForbidden(w)
+		writeErrJSONWithObj(w, "forbidden", util.UserBanInfos[account])
+		return
+	}
 
 	enterprise, user, errMsg := login(account, passwd)
 	if errMsg != "" {
 		returnInternalError(w, errMsg)
 		return
 	} else if enterprise == nil && user == nil {
+		// login fail
+		addUserTryCount(account)
+		fmt.Printf("User %s login fail: %d\n", account, userTryCount[account])
+		// ban user if it's retry time more than 5
+		if getUserTryCount(account) > banRetryTimes {
+			util.UserBanInfos.BanUser(account)
+			resetUserTryCount(account)
+		}
 		returnForbidden(w)
+		writeErrJSONWithObj(w, "forbidden", util.UserBanInfos[account])
 		return
 	}
+	// login success, clear ban info
+	util.UserBanInfos.ClearBanInfo(account)
 
 	token, err := user.GenerateToken()
 	if err != nil {
@@ -527,7 +550,7 @@ func returnUnauthorized(w http.ResponseWriter) {
 }
 
 func returnForbidden(w http.ResponseWriter) {
-	http.Error(w, "Forbidden", http.StatusForbidden)
+	http.Error(w, "", http.StatusForbidden)
 }
 
 func returnInternalError(w http.ResponseWriter, errMsg string) {
@@ -552,7 +575,37 @@ func writeErrJSON(w http.ResponseWriter, errMsg string) {
 	writeResponseJSON(w, &ret)
 }
 
+func writeErrJSONWithObj(w http.ResponseWriter, errMsg string, obj interface{}) {
+	ret := data.Return{
+		ReturnMessage: errMsg,
+		ReturnObj:     obj,
+	}
+	writeResponseJSON(w, &ret)
+}
+
 func writeResponseJSON(w http.ResponseWriter, ret *data.Return) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(&ret)
+}
+
+func addUserTryCount(userID string) {
+	if userTryCount == nil {
+		userTryCount = make(map[string]int)
+	}
+	if _, ok := userTryCount[userID]; ok {
+		userTryCount[userID]++
+	} else {
+		userTryCount[userID] = 1
+	}
+}
+
+func getUserTryCount(userID string) int {
+	if cnt, ok := userTryCount[userID]; ok {
+		return cnt
+	}
+	return 0
+}
+
+func resetUserTryCount(userID string) {
+	userTryCount[userID] = 0
 }
