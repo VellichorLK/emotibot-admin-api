@@ -40,8 +40,5 @@ func main() {
 		fmt.Fprintf(os.Stderr, "%s fail: %s\n", action, err.Error())
 		os.Exit(2)
 	}
-
-	fmt.Fprintf(os.Stderr, "%s %s => %s\n", action, text, result)
-
 	fmt.Printf(result)
 }
