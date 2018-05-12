@@ -15,6 +15,10 @@ ENV GOPREFIX /go/src/emotibot.com
 RUN apk add --no-cache tzdata
 COPY --from=build-env /go/bin /usr/local/bin
 
+ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
+RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz 
+RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
+
 WORKDIR /usr/local/bin
 COPY ${PROJECT}/docker/entrypoint.sh entrypoint.sh
 COPY ${PROJECT}/docker/env.template env.template
