@@ -7,8 +7,9 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
-	"emotibot.com/emotigo/module/token-auth/data"
-	"emotibot.com/emotigo/module/token-auth/util"
+	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/util"
+	"emotibot.com/emotigo/module/token-auth/service"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -74,7 +75,7 @@ func setUpDB() {
 	url, port, user, passwd, dbName := util.GetMySQLConfig()
 	util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitDB(url, port, dbName, user, passwd)
-	setDB(&db)
+	service.SetDB(&db)
 }
 
 func checkAuth(r *http.Request, route Route) bool {

@@ -1,6 +1,8 @@
 package dao
 
-import "emotibot.com/emotigo/module/token-auth/data"
+import (
+	"emotibot.com/emotigo/module/token-auth/internal/data"
+)
 
 // DB define interface for different dao modules
 type DB interface {
@@ -24,16 +26,15 @@ type DB interface {
 	GetUsersOfRole(enterpriseID string, roleID string) (*data.Users, error)
 
 	GetModules(enterpriseID string) ([]*data.Module, error)
+	AddEnterprise(enterprise *data.Enterprise, adminUser *data.User) (string, error)
+	AddApp(enterpriseID string, app *data.App) (string, error)
 
 	// TODO
 	DisableUser(enterpriseID string, userID string) (bool, error)
 
-	AddEnterprise(enterprise *data.Enterprise) (string, error)
 	DeleteEnterprise(enterpriseID string) (bool, error)
-
 	GetApps(enterpriseID string) (*data.Apps, error)
 	GetApp(enterpriseID string, AppID string) (*data.App, error)
-	AddApp(enterpriseID string, app data.App) (*data.App, error)
 	UpdateApp(enterpriseID string, app data.App) (*data.App, error)
 	DisableApp(enterpriseID string, AppID string) (bool, error)
 	DeleteApp(enterpriseID string, AppID string) (bool, error)

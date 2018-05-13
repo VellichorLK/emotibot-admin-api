@@ -10,9 +10,10 @@ import (
 	"strconv"
 	"strings"
 
-	"emotibot.com/emotigo/module/token-auth/data"
-	"emotibot.com/emotigo/module/token-auth/enum"
-	"emotibot.com/emotigo/module/token-auth/util"
+	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/enum"
+	"emotibot.com/emotigo/module/token-auth/internal/util"
+	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
 )
 
@@ -23,8 +24,8 @@ const (
 )
 
 func EnterprisesGetHandler(w http.ResponseWriter, r *http.Request) {
-	retData, errMsg := getEnterprises()
-	returnOKMsg(w, errMsg, retData)
+	retData, err := service.GetEnterprises()
+	returnOKMsg(w, err.Error(), retData)
 }
 
 func EnterpriseGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +36,7 @@ func EnterpriseGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getEnterprise(enterpriseID)
+	retData, err := service.GetEnterprise(enterpriseID)
 	if err != nil {
 		returnMsg(w, err.Error(), retData)
 	} else {
@@ -51,7 +52,7 @@ func UsersGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getUsers(enterpriseID)
+	retData, err := service.GetUsers(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -73,7 +74,7 @@ func UserGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getUser(enterpriseID, userID)
+	retData, err := service.GetUser(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -89,7 +90,7 @@ func AppsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, errMsg := getApps(enterpriseID)
+	retData, errMsg := service.GetApps(enterpriseID)
 	returnMsg(w, errMsg, retData)
 }
 
@@ -106,7 +107,7 @@ func AppGetHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, "appID")
 		return
 	}
-	retData, errMsg := getApp(enterpriseID, appID)
+	retData, errMsg := service.GetApp(enterpriseID, appID)
 	returnMsg(w, errMsg, retData)
 }
 
@@ -125,7 +126,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enterprise, user, errMsg := login(account, passwd)
+	enterprise, user, errMsg := service.Login(account, passwd)
 	if errMsg != "" {
 		returnInternalError(w, errMsg)
 		return
@@ -184,7 +185,7 @@ func UserAddHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if roleID != "" {
-		role, err := getRole(enterpriseID, roleID)
+		role, err := service.GetRole(enterpriseID, roleID)
 		if err != nil && err != sql.ErrNoRows {
 			util.LogError.Printf("Error when get role %s: %s\n", roleID, err.Error())
 			returnInternalError(w, err.Error())
@@ -194,12 +195,12 @@ func UserAddHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	id, err := addUser(enterpriseID, user, roleID)
+	id, err := service.AddUser(enterpriseID, user, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	}
-	newUser, err := getUser(enterpriseID, id)
+	newUser, err := service.GetUser(enterpriseID, id)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -221,7 +222,7 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := getUser(enterpriseID, userID)
+	user, err := service.GetUser(enterpriseID, userID)
 	if err != nil && err != sql.ErrNoRows {
 		returnInternalError(w, err.Error())
 		return
@@ -235,7 +236,7 @@ func UserDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = deleteUser(enterpriseID, userID)
+	err = service.DeleteUser(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -258,7 +259,7 @@ func UserUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	origUser, err := getUser(enterpriseID, userID)
+	origUser, err := service.GetUser(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -276,13 +277,13 @@ func UserUpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	newUser.ID = userID
 	newUser.Enterprise = &enterpriseID
-	err = updateUser(enterpriseID, newUser)
+	err = service.UpdateUser(enterpriseID, newUser)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	}
 
-	updatedUser, err := getUser(enterpriseID, userID)
+	updatedUser, err := service.GetUser(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -298,7 +299,7 @@ func RolesGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getRoles(enterpriseID)
+	retData, err := service.GetRoles(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -318,7 +319,7 @@ func RoleGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getRole(enterpriseID, roleID)
+	retData, err := service.GetRole(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -342,7 +343,7 @@ func RoleDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := deleteRole(enterpriseID, roleID)
+	retData, err := service.DeleteRole(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -361,12 +362,12 @@ func RoleAddHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
-	id, err := addRole(enterpriseID, role)
+	id, err := service.AddRole(enterpriseID, role)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	}
-	newRole, err := getRole(enterpriseID, id)
+	newRole, err := service.GetRole(enterpriseID, id)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -390,7 +391,7 @@ func RoleUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
-	ret, err := updateRole(enterpriseID, roleID, role)
+	ret, err := service.UpdateRole(enterpriseID, roleID, role)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			returnNotFound(w)
@@ -410,7 +411,7 @@ func ModulesGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := getModules(enterpriseID)
+	retData, err := service.GetModules(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {

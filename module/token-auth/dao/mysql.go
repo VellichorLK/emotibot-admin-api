@@ -7,8 +7,8 @@ import (
 	"runtime"
 	"strings"
 
-	"emotibot.com/emotigo/module/token-auth/data"
-	"emotibot.com/emotigo/module/token-auth/util"
+	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
 const (
@@ -110,16 +110,168 @@ func (controller MYSQLController) GetEnterprise(enterpriseID string) (*data.Ente
 
 	return nil, nil
 }
-func (controller MYSQLController) AddEnterprise(enterprise *data.Enterprise) (string, error) {
+func (controller MYSQLController) AddEnterprise(enterprise *data.Enterprise, user *data.User) (enterpriseID string, err error) {
 	ok, err := controller.checkDB()
 	if !ok {
-		return "", err
+		return
 	}
-	return "", nil
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := fmt.Sprintf(`
+		INSERT INTO %s
+		(uuid, display_name, user_name, email, enterprise, type, password, role)
+		VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)`, userTable)
+	ret, err := t.Exec(queryStr, user.DisplayName, user.UserName, user.Email, "", user.Type, user.Password, "")
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	id, err := ret.LastInsertId()
+	if err != nil {
+		return
+	}
+
+	userID, err := getUUIDWithTx(int(id), t, userTable)
+	if err != nil {
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s
+		(uuid, name, admin_user)
+		VALUES (UUID(), ?, ?)
+		`, enterpriseTable)
+	ret, err = t.Exec(queryStr, enterprise.Name, userID)
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	id, err = ret.LastInsertId()
+	if err != nil {
+		return
+	}
+	enterpriseID, err = getUUIDWithTx(int(id), t, enterpriseTable)
+	if err != nil {
+		return
+	}
+	err = updateUserEnterpriseWithTx(userID, enterpriseID, t)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
+	return
 }
 
-func (controller MYSQLController) DeleteEnterprise(enterpriseID string) (bool, error) {
-	return false, nil
+func getUUIDWithTx(id int, tx *sql.Tx, table string) (string, error) {
+	if tx == nil {
+		return "", errors.New("tx is nil")
+	}
+
+	queryStr := fmt.Sprintf("SELECT uuid FROM %s WHERE id = ?", table)
+	row := tx.QueryRow(queryStr, id)
+	uuid := ""
+	err := row.Scan(&uuid)
+	if err != nil {
+		return "", err
+	}
+	return uuid, nil
+}
+
+func updateUserEnterpriseWithTx(userID string, enterpriseID string, tx *sql.Tx) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+
+	queryStr := fmt.Sprintf("UPDATE %s SET enterprise = ? WHERE uuid = ?", userTable)
+	ret, err := tx.Exec(queryStr, enterpriseID, userID)
+	if err != nil {
+		return err
+	}
+
+	cnt, err := ret.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if cnt == 0 {
+		return sql.ErrNoRows
+	}
+
+	return err
+}
+
+func (controller MYSQLController) DeleteEnterprise(enterpriseID string) (ret bool, err error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		return
+	}
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+	defer util.ClearTransition(t)
+
+	err = deleteEnterpriseAppsWithTx(enterpriseID, t)
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	err = deleteEnterpriseWithTx(enterpriseID, t)
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	err = deleteEnterpriseUsersWithTx(enterpriseID, t)
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	err = t.Commit()
+	if err != nil {
+		return
+	}
+	ret = true
+	return
+}
+func deleteEnterpriseAppsWithTx(enterpriseID string, tx *sql.Tx) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM %s WHERE enterprise = ?", appTable)
+	_, err := tx.Exec(queryStr, enterpriseID)
+	return err
+}
+func deleteEnterpriseWithTx(enterpriseID string, tx *sql.Tx) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", enterpriseTable)
+	_, err := tx.Exec(queryStr, enterpriseID)
+	return err
+}
+func deleteEnterpriseUsersWithTx(enterpriseID string, tx *sql.Tx) error {
+	if tx == nil {
+		return errors.New("tx is nil")
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM %s WHERE enterprise = ?", userTable)
+	_, err := tx.Exec(queryStr, enterpriseID)
+	return err
 }
 
 func scanSingleRowToUser(row *sql.Row) (*data.User, error) {
@@ -139,7 +291,6 @@ func scanRowToUser(rows *sql.Rows) (*data.User, error) {
 	}
 	return &user, nil
 }
-
 func getUserColumnList(tableAlias string) string {
 	if tableAlias == "" {
 		return strings.Join(userColumnList, ",")
@@ -159,7 +310,7 @@ func (controller MYSQLController) GetUsers(enterpriseID string) (*data.Users, er
 
 	userInfoMap, err := controller.getUsersInfo(enterpriseID)
 	if err != nil {
-		logDBError(err)
+		util.LogDBError(err)
 		return nil, err
 	}
 
@@ -200,12 +351,12 @@ func (controller MYSQLController) GetUser(enterpriseID string, userID string) (*
 		getUserColumnList(""), userTable)
 	row := controller.connectDB.QueryRow(queryStr, enterpriseID, userID)
 	if err != nil {
-		logDBError(err)
+		util.LogDBError(err)
 		return nil, err
 	}
 	user, err := scanSingleRowToUser(row)
 	if err != nil {
-		logDBError(err)
+		util.LogDBError(err)
 		return nil, err
 	}
 
@@ -215,7 +366,7 @@ func (controller MYSQLController) GetUser(enterpriseID string, userID string) (*
 
 	info, err := controller.getUserInfo(enterpriseID, userID)
 	if err != nil {
-		logDBError(err)
+		util.LogDBError(err)
 		return nil, err
 	}
 	user.CustomInfo = info
@@ -269,7 +420,7 @@ func (controller MYSQLController) GetAuthUser(account string, passwd string) (*d
 		}
 		info, err := controller.getUserInfo(*user.Enterprise, user.ID)
 		if err != nil {
-			logDBError(err)
+			util.LogDBError(err)
 			return nil, err
 		}
 		user.CustomInfo = info
@@ -294,7 +445,7 @@ func (controller MYSQLController) AddUser(enterpriseID string, user *data.User, 
 	if err != nil {
 		return
 	}
-	defer clearTransition(t)
+	defer util.ClearTransition(t)
 
 	count := 0
 	queryStr := fmt.Sprintf("SELECT count(*) FROM %s WHERE user_name = ? OR (email = ? AND email != '')", userTable)
@@ -377,7 +528,7 @@ func (controller MYSQLController) DeleteUser(enterpriseID string, userID string)
 	if err != nil {
 		return false, err
 	}
-	defer clearTransition(t)
+	defer util.ClearTransition(t)
 
 	queryStr := fmt.Sprintf("DELETE FROM %s WHERE user_id = ?", userInfoTable)
 	_, err = t.Exec(queryStr, userID)
@@ -517,12 +668,39 @@ func (controller MYSQLController) GetApp(enterpriseID string, AppID string) (*da
 
 	return nil, nil
 }
-func (controller MYSQLController) AddApp(enterpriseID string, app data.App) (*data.App, error) {
+func (controller MYSQLController) AddApp(enterpriseID string, app *data.App) (string, error) {
 	ok, err := controller.checkDB()
 	if !ok {
-		return nil, err
+		return "", err
 	}
-	return nil, nil
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := fmt.Sprintf(`
+		INSERT INTO %s
+		(uuid, name, start, end, count, enterprise, status)
+		VALUES (UUID(), ?, ?, ?, ?, ?, 1)`, appTable)
+	ret, err := t.Exec(queryStr,
+		app.Name, app.ValidStart, app.ValidEnd, app.ValidCount, enterpriseID)
+	if err != nil {
+		return "", err
+	}
+
+	id, err := ret.LastInsertId()
+	if err != nil {
+		return "", err
+	}
+	uuid, err := getUUIDWithTx(int(id), t, appTable)
+	if err != nil {
+		return "", err
+	}
+
+	err = t.Commit()
+	return uuid, err
 }
 func (controller MYSQLController) UpdateApp(enterpriseID string, app data.App) (*data.App, error) {
 	ok, err := controller.checkDB()
@@ -536,18 +714,6 @@ func (controller MYSQLController) DisableApp(enterpriseID string, AppID string) 
 }
 func (controller MYSQLController) DeleteApp(enterpriseID string, AppID string) (bool, error) {
 	panic("TODO")
-}
-
-func logDBError(err error) {
-	_, file, line, _ := runtime.Caller(1)
-	util.LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
-}
-
-func clearTransition(tx *sql.Tx) {
-	rollbackRet := tx.Rollback()
-	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
-		util.LogError.Printf("Critical db error in rollback: %s\n", rollbackRet.Error())
-	}
 }
 
 func (controller MYSQLController) GetRoles(enterpriseID string) ([]*data.Role, error) {
@@ -720,7 +886,7 @@ func (controller MYSQLController) AddRole(enterprise string, role *data.Role) (u
 	if err != nil {
 		return
 	}
-	defer clearTransition(t)
+	defer util.ClearTransition(t)
 
 	queryStr := fmt.Sprintf("INSERT INTO %s (uuid, name, enterprise, discription) VALUES (UUID(), ?, ?, ?)", roleTable)
 	ret, err := t.Exec(queryStr, role.Name, enterprise, role.Discription)
@@ -771,7 +937,7 @@ func (controller MYSQLController) UpdateRole(enterprise string, roleUUID string,
 	if err != nil {
 		return
 	}
-	defer clearTransition(t)
+	defer util.ClearTransition(t)
 
 	queryStr := fmt.Sprintf("SELECT id FROM %s WHERE uuid = ?", roleTable)
 	row := t.QueryRow(queryStr, roleUUID)
@@ -842,7 +1008,7 @@ func (controller MYSQLController) DeleteRole(enterpriseID string, roleID string)
 	if err != nil {
 		return false, err
 	}
-	defer clearTransition(t)
+	defer util.ClearTransition(t)
 
 	queryStr = fmt.Sprintf("DELETE FROM %s WHERE role = ?", rolePrivilegeTable)
 	_, err = t.Exec(queryStr, id)
@@ -870,7 +1036,7 @@ func (controller MYSQLController) GetUsersOfRole(enterpriseID string, roleUUID s
 
 	userInfoMap, err := controller.getUsersInfo(enterpriseID)
 	if err != nil {
-		logDBError(err)
+		util.LogDBError(err)
 		return nil, err
 	}
 
