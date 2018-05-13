@@ -163,6 +163,7 @@ func (controller MYSQLController) AddEnterprise(enterprise *data.Enterprise, use
 	}
 	err = updateUserEnterpriseWithTx(userID, enterpriseID, t)
 	if err != nil {
+		util.LogDBError(err)
 		return
 	}
 
