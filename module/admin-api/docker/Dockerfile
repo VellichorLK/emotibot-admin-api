@@ -6,7 +6,7 @@ ARG PROJECT
 COPY . /go/src/emotibot.com/emotigo/module
 WORKDIR /go/src/emotibot.com/emotigo/module/${PROJECT}
 RUN go-wrapper download && go-wrapper install
-RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && go-wrapper install; done;
+RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && go-wrapper install && cd ../; done;
 
 FROM alpine:3.5
 
