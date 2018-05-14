@@ -794,34 +794,6 @@ func notShowLog(notShow int) (s string) {
 	return
 }
 
-func answerCmdLog(cmd string) (chineseCmd string) {
-	switch cmd {
-	case "":
-		chineseCmd = "无指令"
-	case "order_track":
-		chineseCmd = "物流信息查询"
-	case "order_info":
-		chineseCmd = "订单信息查询"
-	case "scene_id":
-		chineseCmd = "场景标识"
-	case "cash":
-		chineseCmd = "提现"
-	case "order_cancel":
-		chineseCmd = "取消订单"
-	case "apply_for_return":
-		chineseCmd = "退货申请"
-	case "exchange_goods":
-		chineseCmd = "换货申请"
-	case "vip_finance":
-		chineseCmd = "唯品金融"
-	case "query_refund":
-		chineseCmd = "查询退款"
-	case "shopping":
-		chineseCmd = "购物"
-	}
-	return
-}
-
 func sameStringSlice(s1, s2 []string) bool {
 	if len(s1) != len(s2) {
 		return false

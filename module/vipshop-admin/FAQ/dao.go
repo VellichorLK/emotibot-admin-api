@@ -919,6 +919,8 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 
 func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	sqlStr := fmt.Sprintf("UPDATE %s_answer SET Question_Id =?, Content=?, Answer_CMD=?, Begin_Time=?, End_Time=?, Status=1, Not_Show_In_Relative_Q=?, Content_String=?, Answer_CMD_Msg=? WHERE Answer_Id=?", appid)
+	answerCmdMsg := answerCmd(answer.AnswerCmd)
+	util.LogError.Printf("answerCmdMsg: %s", answerCmdMsg)
 	parameters := []interface{}{
 		answer.QuestionId,
 		answer.Content,
@@ -927,7 +929,7 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 		answer.EndTime,
 		answer.NotShow,
 		answer.Content,
-		answer.AnswerCmdMsg,
+		answerCmdMsg,
 		answer.AnswerId,
 	}
 
@@ -987,6 +989,42 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	return
 }
 
+func answerCmd(cmd string) (cmdMsg string) {
+	if cmd == "" {
+		return
+	}
+
+	return answerCmdLog(cmd)
+}
+
+func answerCmdLog(cmd string) (chineseCmd string) {
+	switch cmd {
+	case "":
+		chineseCmd = "无指令"
+	case "order_track":
+		chineseCmd = "物流信息查询"
+	case "order_info":
+		chineseCmd = "订单信息查询"
+	case "scene_id":
+		chineseCmd = "场景标识"
+	case "cash":
+		chineseCmd = "提现"
+	case "order_cancel":
+		chineseCmd = "取消订单"
+	case "apply_for_return":
+		chineseCmd = "退货申请"
+	case "exchange_goods":
+		chineseCmd = "换货申请"
+	case "vip_finance":
+		chineseCmd = "唯品金融"
+	case "query_refund":
+		chineseCmd = "查询退款"
+	case "shopping":
+		chineseCmd = "购物"
+	}
+	return
+}
+
 func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64, err error) {
 	db := util.GetMainDB()
 	if db == nil {
@@ -1042,7 +1080,8 @@ func insertAnswers(appid string, qid int64, answers []Answer, tx *sql.Tx) (err e
 
 func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID int64, err error) {
 	sqlStr := fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Not_Show_In_Relative_Q, Answer_CMD_Msg, Content_String) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", appid)
-	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmd, answer.BeginTime, answer.EndTime, answer.NotShow, answer.AnswerCmdMsg, answer.Content}
+	answerCMDMsg := answerCmd(answer.AnswerCmd)
+	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmd, answer.BeginTime, answer.EndTime, answer.NotShow, answerCMDMsg, answer.Content}
 
 	result, err := tx.Exec(sqlStr, columnValues...)
 	if err != nil {
