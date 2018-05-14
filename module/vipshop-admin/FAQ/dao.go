@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
 const SEPARATOR = "#SEPARATE_TOKEN#"
@@ -218,10 +218,10 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 
 func FilterQuestions(appID string, content []string) ([]StdQuestion, error) {
 	if len(content) == 0 {
-		return nil, fmt.Errorf("content should be greater than zero")
+		return nil, fmt.Errorf("content should have at least one element")
 	}
 	db := util.GetMainDB()
-	query := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content IN (?%s)", appID, strings.Repeat(", ?", len(content)-1))
+	query := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content IN (?%s) AND status = 0", appID, strings.Repeat(", ?", len(content)-1))
 	var parameters = make([]interface{}, len(content))
 	for i, c := range content {
 		parameters[i] = c
@@ -906,7 +906,7 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 
 	var targetIDSQL string
 	for index, aid := range answerIDs {
-		if index == 0{
+		if index == 0 {
 			targetIDSQL = fmt.Sprintf("Answer_Id != %d", aid)
 		} else {
 			targetIDSQL += fmt.Sprintf(" and Answer_Id != %d", aid)
@@ -984,10 +984,10 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 		err = imagesManager.CreateMediaRef(answer.AnswerId, answer.Images)
 	}
 
-	return 
+	return
 }
 
-func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64 , err error) {
+func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64, err error) {
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -1532,8 +1532,8 @@ func findAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []An
 	}
 
 	for rows.Next() {
-		label := AnswerLabelDAO {}
-		
+		label := AnswerLabelDAO{}
+
 		err = rows.Scan(&label.Id, &label.AnswerId, &label.Content)
 		if err != nil {
 			return
@@ -1579,7 +1579,7 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 
 	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
 
-	_, err =tx.Exec(sql, conditions...)
+	_, err = tx.Exec(sql, conditions...)
 	return err
 }
 
@@ -1781,7 +1781,7 @@ func LabelMap(appid string) (map[int]string, error) {
 	if err != nil {
 		return tagMap, err
 	}
-	for rows.Next(){
+	for rows.Next() {
 		var tagID int
 		var tagName string
 
@@ -1789,4 +1789,4 @@ func LabelMap(appid string) (map[int]string, error) {
 		tagMap[tagID] = strings.Replace(tagName, "#", "", -1)
 	}
 	return tagMap, nil
- }
+}
