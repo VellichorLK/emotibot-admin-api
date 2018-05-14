@@ -1314,7 +1314,7 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 
 	for rows.Next() {
 		answer := Answer{}
-		err = rows.Scan(&answer.AnswerId, &answer.QuestionId, &answer.Content, &answer.AnswerCmd, &answer.BeginTime, &answer.EndTime, &answer.AnswerCmdMsg)
+		err = rows.Scan(&answer.AnswerId, &answer.QuestionId, &answer.Content, &answer.AnswerCmd, &answer.BeginTime, &answer.EndTime, &answer.AnswerCmdMsg, &answer.NotShow)
 		if err != nil {
 			return answers, err
 		}
@@ -1327,7 +1327,7 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 func genFindAnswersSQL(appid string, targets []Answer) (string, []interface{}) {
 	var conditions []interface{}
 	var timeFormat string = "%Y-%m-%d %H:%i:%s"
-	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, DATE_FORMAT(Begin_Time, '%s'), DATE_FORMAT(End_Time, '%s'), Answer_CMD_Msg FROM %s_answer", timeFormat, timeFormat, appid)
+	sql := fmt.Sprintf("SELECT Answer_Id, Question_Id, Content, Answer_CMD, DATE_FORMAT(Begin_Time, '%s'), DATE_FORMAT(End_Time, '%s'), Answer_CMD_Msg, Not_Show_In_Relative_Q FROM %s_answer", timeFormat, timeFormat, appid)
 
 	if len(targets) == 0 {
 		return sql, conditions

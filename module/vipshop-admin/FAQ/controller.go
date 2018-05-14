@@ -556,7 +556,7 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 			err = categoryError
 			return
 		}
-		auditLog = fmt.Sprintf("[标准问题]:[%s]:%s => %s", newQuestion.Content, oldCategoryPath, categoryPath)
+		auditLog = fmt.Sprintf("[标准问题]:[%s][%s]:%s => %s", categoryPath, newQuestion.Content, oldCategoryPath, categoryPath)
 		err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
 	}
 
@@ -577,6 +577,7 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 
 	var deletedAnswers string
 	var addedAnswers string
+
 	for answerID, oldAnswer := range oldAnswersMap {
 		newAnswer, ok := newAnswersMap[answerID]
 		if !ok {
@@ -739,7 +740,7 @@ func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string
 	
 	if oldAnswer.NotShow != newAnswer.NotShow {
 		changed = true
-		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:否=>是", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
+		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:%s=>%s", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
 	}
 
 	if oldAnswer.AnswerCmd != newAnswer.AnswerCmd {
