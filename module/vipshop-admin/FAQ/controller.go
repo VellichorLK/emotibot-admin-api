@@ -588,9 +588,20 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 				deletedAnswers += fmt.Sprintf(" %s;", strings.Join(oldAnswer.Dimension[:], ","))
 			}
 		} else {
+			newAnswerTagStr := answerSliceString(newAnswer.Dimension, "所有维度")
+			if !sameStringSlice(oldAnswer.Dimension, newAnswer.Dimension) {
+				// answer tags chagned
+				// [标准答案]：[分类路径][标准问题][维度]：原维度 => 新维度
+				oldAnswerTagStr := answerSliceString(oldAnswer.Dimension, "所有维度")
+				auditLog = fmt.Sprintf("[标准答案]:[分类路径][标准问题][维度]:%s => %s", oldAnswerTagStr, newAnswerTagStr)
+				err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
+				if err != nil {
+					return
+				}
+			}
 			changed, auditLog := answerAuditLog(&oldAnswer, &newAnswer)
 			if changed {
-				auditLog = fmt.Sprintf("[标准答案]:[%s][%s][%s]%s", categoryPath, newQuestion.Content, strings.Join(newAnswer.Dimension[:], ","), auditLog)
+				auditLog = fmt.Sprintf("[标准答案]:[%s][%s][%s]%s", categoryPath, newQuestion.Content, newAnswerTagStr, auditLog)
 				err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
 				if err != nil {
 					return
@@ -735,18 +746,33 @@ func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string
 		changed = true
 		var oldDuration string = durationLog(oldAnswer.BeginTime, oldAnswer.EndTime)
 		var newDuration string = durationLog(newAnswer.BeginTime, newAnswer.EndTime)
-		auditLog = fmt.Sprintf("%s[生效时间]:%s=>%s", auditLog, oldDuration, newDuration)
+		auditLog = fmt.Sprintf("%s[生效时间]:%s=>%s;", auditLog, oldDuration, newDuration)
 	}
 	
 	if oldAnswer.NotShow != newAnswer.NotShow {
 		changed = true
-		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:%s=>%s", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
+		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:%s=>%s;", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
 	}
 
 	if oldAnswer.AnswerCmd != newAnswer.AnswerCmd {
 		changed = true
-		auditLog = fmt.Sprintf("%s[指令]:%s=>%s", auditLog, answerCmdLog(oldAnswer.AnswerCmd), answerCmdLog(newAnswer.AnswerCmd))
+		auditLog = fmt.Sprintf("%s[指令]:%s=>%s;", auditLog, answerCmdLog(oldAnswer.AnswerCmd), answerCmdLog(newAnswer.AnswerCmd))
 	}
+
+	if !sameStringSlice(oldAnswer.DynamicMenus, newAnswer.DynamicMenus) {
+		changed = true
+		oldDynamicMenuStr := answerSliceString(oldAnswer.DynamicMenus, "无")
+		newDynamicMenuStr := answerSliceString(newAnswer.DynamicMenus, "无")
+		auditLog = fmt.Sprintf("%s[指定动态菜单]:%s => %s;", auditLog, oldDynamicMenuStr, newDynamicMenuStr)
+	}
+
+	if !sameStringSlice(oldAnswer.RelatedQuestions, newAnswer.RelatedQuestions) {
+		changed = true
+		oldRelatedQuestionsStr := answerSliceString(oldAnswer.RelatedQuestions, "无")
+		newRelatedQuestionsStr := answerSliceString(newAnswer.RelatedQuestions, "无")
+		auditLog = fmt.Sprintf("%s[指定相关问]:%s => %s;", auditLog, oldRelatedQuestionsStr, newRelatedQuestionsStr)
+	}
+	
 	return
 }
 
@@ -795,6 +821,24 @@ func answerCmdLog(cmd string) (chineseCmd string) {
 	}
 	return
 }
+
+func sameStringSlice(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	s1String := strings.Join(s1, ",")
+	s2String := strings.Join(s2, ",")
+	return s1String == s2String
+}
+
+func answerSliceString(answerLabels []string, defaultStr string) string {
+	if len(answerLabels) == 0 {
+		return defaultStr
+	}
+	return strings.Join(answerLabels, ",")
+}
+
 
 func handleDeleteQuestion(ctx context.Context) {
 	// 1. get to be deleted questions
