@@ -620,11 +620,12 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 	for answerID, newAnswer := range newAnswersMap {
 		_, ok := oldAnswersMap[answerID]
 		if !ok {
+			newAnswerTagStr := answerSliceString(newAnswer.Dimension, "所有维度")
 			// a new added answer
 			if addedAnswers == "" {
-				addedAnswers = fmt.Sprintf("[标准答案]:[%s][%s][维度]:%s ；", categoryPath, newQuestion.Content, strings.Join(newAnswer.Dimension[:], ","))
+				addedAnswers = fmt.Sprintf("[标准答案]:[%s][%s][维度]:%s", categoryPath, newQuestion.Content, newAnswerTagStr)
 			} else {
-				addedAnswers = fmt.Sprintf("%s %s", addedAnswers, strings.Join(newAnswer.Dimension, ","))
+				addedAnswers = fmt.Sprintf("%s;%s", addedAnswers, newAnswerTagStr)
 			}
 		}
 	}
