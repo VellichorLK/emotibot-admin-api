@@ -288,15 +288,6 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 		}
 	}
 
-	// hack here, because houta use SQuestion_count to store sq count instead of join similar question table
-	// so we have to update SQuestion_count in question table, WTF .....
-	// TODO: rewrite query function and left join squestion table
-	sqlStr := fmt.Sprintf("UPDATE %s_question SET SQuestion_count = %d, Status = 1 WHERE Question_Id = ?", appid, len(sqs))
-	_, err := t.Exec(sqlStr, qid)
-	if err != nil {
-		return fmt.Errorf("SQL Execution err, %s", err)
-	}
-
 	return nil
 }
 
@@ -475,7 +466,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	var timeFormat string = "%Y-%m-%d %H:%i:%s"
 	db := util.GetMainDB()
 
-	query := "select q.Question_Id, q.CategoryId, q.Content, q.SQuestion_count, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
+	query := "select q.Question_Id, q.CategoryId, q.Content, q.sQCount, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
 	query = fmt.Sprintf(query, timeFormat, timeFormat, SEPARATOR, SEPARATOR, "GROUP_CONCAT(DISTINCT tag.Tag_Id) as tag_ids")
 
 	qSQL, err := questionSQL(condition, qids, &sqlParams, appid)
@@ -603,7 +594,7 @@ func TagMapFactory(appid string) (map[string]Tag, error) {
 }
 
 func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, appid string) (string, error) {
-	query := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, fullc.CategoryName from (
+	query := `select tmp_q.Question_Id, tmp_q.CategoryId, tmp_q.Content, tmp_q.SQuestion_count, fullc.CategoryName, count(vipshop_squestion.Content) as sQCount from (
 		select * from %s_question
 		where %s_question.status >= 0
 		#CATEGORY_CONDITION#
@@ -619,7 +610,9 @@ func questionSQL(condition QueryCondition, qids []int, sqlParam *[]interface{}, 
 			left join (select * from %s_categories) as level3 on level3.categoryid = level4.parentid
 			left join (select * from %s_categories) as level2 on level2.categoryid = level3.parentid
 			left join (select * from %s_categories) as level1 on level1.categoryid = level2.parentid
-	) as fullc on fullc.id = tmp_q.CategoryId`
+	) as fullc on fullc.id = tmp_q.CategoryId
+	left join vipshop_squestion on vipshop_squestion.Question_Id = tmp_q.Question_Id
+    group by tmp_q.Question_Id`
 
 	query = fmt.Sprintf(query, appid, appid, appid, appid, appid, appid, appid, appid, appid, appid)
 
