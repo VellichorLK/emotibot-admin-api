@@ -582,10 +582,11 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 		newAnswer, ok := newAnswersMap[answerID]
 		if !ok {
 			// the answer is deleted
+			oldAnswerTagStr := answerSliceString(oldAnswer.Dimension, "所有维度")
 			if deletedAnswers == "" {
-				deletedAnswers = fmt.Sprintf("[标准答案]:[%s][%s]:%s;", categoryPath, newQuestion.Content, strings.Join(oldAnswer.Dimension[:], ","))
+				deletedAnswers = fmt.Sprintf("[标准答案]:[%s][%s]:%s;", categoryPath, newQuestion.Content, oldAnswerTagStr)
 			} else {
-				deletedAnswers += fmt.Sprintf(" %s;", strings.Join(oldAnswer.Dimension[:], ","))
+				deletedAnswers += fmt.Sprintf(" %s;", oldAnswerTagStr)
 			}
 		} else {
 			newAnswerTagStr := answerSliceString(newAnswer.Dimension, "所有维度")
