@@ -913,7 +913,6 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	sqlStr := fmt.Sprintf("UPDATE %s_answer SET Question_Id =?, Content=?, Answer_CMD=?, Begin_Time=?, End_Time=?, Status=1, Not_Show_In_Relative_Q=?, Content_String=?, Answer_CMD_Msg=? WHERE Answer_Id=?", appid)
 	answerCmdMsg := answerCmd(answer.AnswerCmd)
-	util.LogError.Printf("answerCmdMsg: %s", answerCmdMsg)
 	parameters := []interface{}{
 		answer.QuestionId,
 		answer.Content,
