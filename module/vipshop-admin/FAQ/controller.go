@@ -851,7 +851,7 @@ func handleDeleteQuestion(ctx context.Context) {
 	auditMsg := ""
 	auditRet := 1
 	for _, question := range toBeDeletedQuestions {
-		auditMsg += fmt.Sprintf("[标准问题]:[%s]:%s;", question.CategoryName, question.Content)
+		auditMsg += fmt.Sprintf("[标准问题]:[%s]:%s", question.CategoryName, question.Content)
 	}
 
 	err = DeleteQuestions(appid, targetQuestions)
