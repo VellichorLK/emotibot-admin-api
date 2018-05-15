@@ -110,7 +110,7 @@ func receiveImage(ctx context.Context) {
 			return
 		}
 
-		err = storeImage(tx, file.FileName, content)
+		_, err = storeImage(tx, file.FileName, content)
 		if err != nil {
 			ctx.StatusCode(http.StatusInternalServerError)
 			ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
@@ -371,7 +371,9 @@ func copyImage(ctx context.Context) {
 	}
 
 	auditRet := 1
-	auditLog := fmt.Sprintf("[图片素材]:%s", title)
+	var auditLog string = "[图片素材]"
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
 
 	nameList, err := getRealFileNameByImageID([]interface{}{imageID})
 	if err != nil {
@@ -379,13 +381,8 @@ func copyImage(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
 		auditRet = 0
-	}
-
-	userID := util.GetUserID(ctx)
-	userIP := util.GetUserIP(ctx)
-	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
-	if auditRet == 0 {
-		return
+		auditLog = fmt.Sprintf("%s:%s", auditLog, title)
+		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 	}
 
 	if len(nameList) <= 0 {
@@ -401,6 +398,9 @@ func copyImage(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
+		auditRet = 0
+		auditLog = fmt.Sprintf("%s:%s", auditLog, title)
+		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
 
@@ -409,20 +409,28 @@ func copyImage(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
+		auditRet = 0
+		auditLog = fmt.Sprintf("%s:%s", auditLog, title)
+		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
 	defer tx.Rollback()
 
-	err = storeImage(tx, title, content)
+	fileName, err = storeImage(tx, title, content)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()))
 		util.LogError.Println(err)
+		auditRet = 0
+		auditLog = fmt.Sprintf("%s:%s", auditLog, fileName)
+		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
 
 	tx.Commit()
 
+	auditLog = fmt.Sprintf("%s:%s", auditLog, fileName)
+	util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 }
 
 func downloadImages(ctx context.Context) {

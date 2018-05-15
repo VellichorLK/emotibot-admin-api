@@ -14,12 +14,12 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-func storeImage(tx *sql.Tx, fileName string, content []byte) error {
+func storeImage(tx *sql.Tx, fileName string, content []byte) (string, error) {
 	var err error
 
 	u1, err := uuid.NewV4()
 	if err != nil {
-		return err
+		return fileName, err
 	}
 
 	//image name store in the disk
@@ -27,15 +27,15 @@ func storeImage(tx *sql.Tx, fileName string, content []byte) error {
 
 	_, fileName, err = newImageRecord(tx, fileName, len(content), rawFileName)
 	if err != nil {
-		return err
+		return fileName, err
 	}
 
 	err = ioutil.WriteFile(Volume+"/"+rawFileName, content, 0644)
 	if err != nil {
-		return err
+		return fileName, err
 	}
 
-	return nil
+	return fileName, nil
 }
 
 func getImageList(args *getImagesArg) (*imageList, error) {
