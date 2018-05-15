@@ -383,6 +383,7 @@ func copyImage(ctx context.Context) {
 		auditRet = 0
 		auditLog = fmt.Sprintf("%s:%s", auditLog, title)
 		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
+		return
 	}
 
 	if len(nameList) <= 0 {
