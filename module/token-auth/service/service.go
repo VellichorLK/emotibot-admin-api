@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
@@ -158,6 +159,13 @@ func DeleteRole(enterpriseID string, roleID string) (bool, error) {
 	if useDB == nil {
 		return false, errors.New("DB hasn't set")
 	}
+	users, err := useDB.GetUsersOfRole(enterpriseID, roleID)
+	if err != nil && err != sql.ErrNoRows {
+		return false, err
+	}
+	if users != nil && len(*users) > 0 {
+		return false, errors.New("Cannot remove role having user")
+	}
 	ret, err := useDB.DeleteRole(enterpriseID, roleID)
 	if err != nil {
 		return false, err
@@ -175,13 +183,6 @@ func AddRole(enterpriseID string, role *data.Role) (string, error) {
 func UpdateRole(enterpriseID string, roleID string, role *data.Role) (bool, error) {
 	if useDB == nil {
 		return false, errors.New("DB hasn't set")
-	}
-	roles, err := useDB.GetUsersOfRole(enterpriseID, roleID)
-	if err != nil {
-		return false, err
-	}
-	if roles != nil && len(*roles) > 0 {
-		return false, errors.New("Cannot remove role having user")
 	}
 	return useDB.UpdateRole(enterpriseID, roleID, role)
 }

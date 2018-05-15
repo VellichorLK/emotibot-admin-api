@@ -46,7 +46,7 @@ LOCK TABLES `apps` WRITE;
 
 INSERT INTO `apps` (`id`, `uuid`, `name`, `start`, `end`, `count`, `enterprise`, `created_time`, `status`)
 VALUES
-	(1,'0f7b4143-f0ae-11e7-bd86-0242ac120003','example-bot',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
+	(1,'csbot','example-bot',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
 
 /*!40000 ALTER TABLE `apps` ENABLE KEYS */;
 UNLOCK TABLES;

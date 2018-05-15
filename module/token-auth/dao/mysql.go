@@ -1077,7 +1077,7 @@ func (controller MYSQLController) GetModules(enterpriseID string) ([]*data.Modul
 
 	queryStr := fmt.Sprintf(`
 		SELECT id, code, name, cmd_list FROM %s
-		WHERE enterprise = ? or enterprise = ""`, moduleTable)
+		WHERE enterprise = ?`, moduleTable)
 	moduleRows, err := controller.connectDB.Query(queryStr, enterpriseID)
 	if err != nil {
 		return nil, err
