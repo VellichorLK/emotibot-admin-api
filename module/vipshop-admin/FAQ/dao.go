@@ -912,7 +912,7 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 
 func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	sqlStr := fmt.Sprintf("UPDATE %s_answer SET Question_Id =?, Content=?, Answer_CMD=?, Begin_Time=?, End_Time=?, Status=1, Not_Show_In_Relative_Q=?, Content_String=?, Answer_CMD_Msg=? WHERE Answer_Id=?", appid)
-	answerCmdMsg := answerCmd(answer.AnswerCmd)
+	answerCmdMsg := answerCmd(answer.AnswerCmd, answer.AnswerCmdMsg)
 	parameters := []interface{}{
 		answer.QuestionId,
 		answer.Content,
@@ -981,9 +981,11 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	return
 }
 
-func answerCmd(cmd string) (cmdMsg string) {
+func answerCmd(cmd, cmdMsg string)  string {
 	if cmd == "" {
-		return
+		return ""
+	} else if cmd == "shopping" {
+		return cmdMsg
 	}
 
 	return answerCmdLog(cmd)
@@ -1072,7 +1074,7 @@ func insertAnswers(appid string, qid int64, answers []Answer, tx *sql.Tx) (err e
 
 func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID int64, err error) {
 	sqlStr := fmt.Sprintf("INSERT INTO %s_answer (Question_Id, Content, Answer_CMD, Begin_Time, End_Time, Not_Show_In_Relative_Q, Answer_CMD_Msg, Content_String) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", appid)
-	answerCMDMsg := answerCmd(answer.AnswerCmd)
+	answerCMDMsg := answerCmd(answer.AnswerCmd, answer.AnswerCmdMsg)
 	columnValues := []interface{}{qid, answer.Content, answer.AnswerCmd, answer.BeginTime, answer.EndTime, answer.NotShow, answerCMDMsg, answer.Content}
 
 	result, err := tx.Exec(sqlStr, columnValues...)
