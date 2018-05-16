@@ -356,8 +356,8 @@ func getFileNameByImageID(imageIDs []interface{}) (map[uint64]string, error) {
 	return fileNameMap, nil
 }
 
-func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
-	imageRelations := make([]*imageRelation, 0)
+func GetImageByAnswerID(answerIDs []interface{}) ([]*ImageRelation, error) {
+	imageRelations := make([]*ImageRelation, 0)
 	num := len(answerIDs)
 	if num > 0 {
 
@@ -366,10 +366,10 @@ func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
 			return nil, err
 		}
 
-		answerIDMap := make(map[uint64]*imageRelation)
+		answerIDMap := make(map[uint64]*ImageRelation)
 		for i := 0; i < num; i++ {
-			relation := &imageRelation{}
-			relation.Info = make([]*simpleImageInfo, 0)
+			relation := &ImageRelation{}
+			relation.Info = make([]*SimpleImageInfo, 0)
 			switch answerID := answerIDs[i].(type) {
 			case uint64:
 				relation.AnswerID = answerID
@@ -407,7 +407,7 @@ func getImageByAnswerID(answerIDs []interface{}) ([]*imageRelation, error) {
 							util.LogError.Println(err)
 							continue
 						}
-						imageInfo := &simpleImageInfo{ImageID: imageID, URL: u.String()}
+						imageInfo := &SimpleImageInfo{ImageID: imageID, URL: u.String()}
 						relation.Info = append(relation.Info, imageInfo)
 					} else {
 						util.LogWarn.Printf("image id %v has no raw file name\n", imageID)
@@ -654,14 +654,14 @@ func DeleteMediaRef(answerID int) (err error) {
 	return tx.Commit()
 }
 
-func getMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
+func GetMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
 
 	metas := make(map[uint64]*imageMeta)
 	num := len(imageIDs)
 	if num == 0 {
 		return metas, nil
 	}
-	sqlQuery := fmt.Sprintf("select %s, %s from %s where %s in (?%s)", attrID, attrFileName, imageTable, attrID, strings.Repeat(",?", num-1))
+	sqlQuery := fmt.Sprintf("select %s, %s, %s from %s where %s in (?%s)", attrID, attrFileName, attrRawFileName, imageTable, attrID, strings.Repeat(",?", num-1))
 	rows, err := db.Query(sqlQuery, imageIDs...)
 	if err != nil {
 		return nil, err
@@ -669,13 +669,14 @@ func getMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
 	defer rows.Close()
 
 	var fileName string
+	var rawFileName string
 	var id uint64
 	for rows.Next() {
-		err = rows.Scan(&id, &fileName)
+		err = rows.Scan(&id, &fileName, &rawFileName)
 		if err != nil {
 			break
 		}
-		metas[id] = &imageMeta{fileName: fileName}
+		metas[id] = &imageMeta{FileName: fileName, RawFileName: rawFileName}
 	}
 
 	return metas, err

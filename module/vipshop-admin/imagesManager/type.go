@@ -51,17 +51,18 @@ type questionInfo struct {
 	Info       string `json:"info"`
 }
 
-type simpleImageInfo struct {
+type SimpleImageInfo struct {
 	ImageID uint64 `json:"id"`
 	URL     string `json:"url"`
 }
-type imageRelation struct {
+type ImageRelation struct {
 	AnswerID uint64             `json:"answer_id"`
-	Info     []*simpleImageInfo `json:"images"`
+	Info     []*SimpleImageInfo `json:"images"`
 }
 
 type imageMeta struct {
-	fileName string
+	FileName string
+	RawFileName string
 }
 
 //table name of meida base center
