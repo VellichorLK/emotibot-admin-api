@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 )
 
 const (
@@ -131,14 +132,14 @@ func (a *Answer) Fetch() (err error) {
 	}
 
 	// fetch dimension
-	sql := fmt.Sprintf(`SELECT vipshop_tag.Tag_Id, Tag_Name FROM 
+	sqlStr := fmt.Sprintf(`SELECT vipshop_tag.Tag_Id, Tag_Name FROM 
 	(
 		select Tag_Id From vipshop_answertag where Answer_Id = %d
 	) as atag
 	left join vipshop_tag on atag.Tag_Id = vipshop_tag.Tag_Id
 	left join vipshop_tag_type on vipshop_tag.Tag_Type = vipshop_tag_type.Type_id`, a.AnswerId)
 
-	rows, err := db.Query(sql)
+	rows, err := db.Query(sqlStr)
 	if err != nil {
 		return
 	}
@@ -151,6 +152,20 @@ func (a *Answer) Fetch() (err error) {
 		a.DimensionIDs = append(a.DimensionIDs, tagID)
 		a.Dimension = append(a.Dimension, strings.Replace(tagName, "#", "", -1))
 	}
+
+	// fetch images
+	var answerID []interface{} = []interface{}{uint64(a.AnswerId)}
+	relations, err := imagesManager.GetImageByAnswerID(answerID)
+	if err != nil {
+		return
+	}
+	for _, relation := range relations {
+		infos := relation.Info
+		for _, info := range infos {
+			a.Images = append(a.Images, int(info.ImageID))
+		}
+	}
+
 	return
 }
 type AnswerJson struct {

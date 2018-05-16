@@ -8,11 +8,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"regexp"
 
 	"github.com/go-sql-driver/mysql"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/websocket"
+	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
@@ -600,7 +602,12 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 					return
 				}
 			}
-			changed, auditLog := answerAuditLog(&oldAnswer, &newAnswer)
+			changed, auditLog, anserAuditErr := answerAuditLog(&oldAnswer, &newAnswer)
+			if anserAuditErr != nil {
+				auditLog = fmt.Sprintf("[标准答案]:写入安全日志失败")
+				anserAuditErr = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
+				return anserAuditErr
+			}
 			if changed {
 				auditLog = fmt.Sprintf("[标准答案]:[%s][%s][%s]%s", categoryPath, newQuestion.Content, newAnswerTagStr, auditLog)
 				err = util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditLog, result)
@@ -735,13 +742,20 @@ func transformaAnswer(appid string, answerJson *AnswerJson, answer *Answer) (err
 	return
 }
 
-func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string) {
+func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string, err error) {
 	// [标准答案]：[分类路径][标准问题][维度][修改部分]：原内容 => 新内容
 	// [标准答案]:[暂无分类][testQ2][WAP端][标准答案]:<p>testA223123fdsafasfdafdsafdsaf</p>=><p>testA223123fdsafasfdafdsafdsafffffff</p>;[生效时间]:永久=>2018-04-19 11:11:00-2018-04-20 11:11:00
 
 	if oldAnswer.Content != newAnswer.Content {
 		changed = true
-		auditLog = fmt.Sprintf("%s[标准答案]:%s=>%s;", auditLog, oldAnswer.Content, newAnswer.Content)
+		oldAnswerContent, err := transformAnswerContent(oldAnswer)
+		newAnswerContent, err := transformAnswerContent(newAnswer)
+
+		if err != nil {
+			auditLog = fmt.Sprintf("%s[标准答案]:%s=>%s;", auditLog, oldAnswer.Content, newAnswer.Content)
+			return changed, auditLog, err
+		}
+		auditLog = fmt.Sprintf("%s[标准答案]:%s=>%s;", auditLog, oldAnswerContent, newAnswerContent)
 	}
 
 	if oldAnswer.BeginTime != newAnswer.BeginTime || oldAnswer.EndTime != newAnswer.EndTime {
@@ -811,6 +825,41 @@ func answerSliceString(answerLabels []string, defaultStr string) string {
 		return defaultStr
 	}
 	return strings.Join(answerLabels, ",")
+}
+
+func transformAnswerContent(answer *Answer) (transformedContent string, err error) {
+	// transform each image url to [<filename>.<extension>]
+	var imageIds []interface{}
+	util.LogError.Printf("images: %+v", answer.Images)
+	for _, id := range answer.Images {
+		imageIds = append(imageIds, id)
+	}
+	metas, err := imagesManager.GetMetaByImageID(imageIds)
+	if err != nil {
+		return
+	}
+	transformedContent = answer.Content
+
+	re := regexp.MustCompile("<img.*?/>")
+	results := re.FindAllString(answer.Content, -1)
+	var rawFileName string
+	for _, url := range results {
+		rawFileName = extractRawFileName(url)
+		for _, meta := range metas {
+			if rawFileName == meta.RawFileName {
+				replaced := fmt.Sprintf("[%s]", meta.FileName)
+				transformedContent = strings.Replace(transformedContent, url, replaced, -1)
+			}
+		}
+	}
+	return
+}
+
+func extractRawFileName(url string) string {
+	tokens := strings.Split(url, "/")
+	rawFileName := tokens[len(tokens) - 2]
+	rawFileName = strings.Replace(rawFileName, "\"", "", -1)
+	return rawFileName
 }
 
 
