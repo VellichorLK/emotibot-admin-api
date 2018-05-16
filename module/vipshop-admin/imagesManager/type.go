@@ -60,6 +60,10 @@ type imageRelation struct {
 	Info     []*simpleImageInfo `json:"images"`
 }
 
+type imageMeta struct {
+	fileName string
+}
+
 //table name of meida base center
 const (
 	imageTable    = "images"

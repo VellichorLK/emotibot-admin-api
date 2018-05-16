@@ -631,7 +631,7 @@ func CreateMediaRef(answerID int, images []int) (err error) {
 			insertSql = fmt.Sprintf("%s,(%d, %d)", insertSql, answerID, value)
 		}
 	}
-	insertSql +=";"
+	insertSql += ";"
 	_, err = tx.Exec(insertSql)
 	if err != nil {
 		return
@@ -645,11 +645,39 @@ func DeleteMediaRef(answerID int) (err error) {
 		return
 	}
 	defer util.ClearTransition(tx)
-	
+
 	sqlStr := fmt.Sprintf("DELETE FROM image_answer WHERE answer_id = %d", answerID)
 	_, err = tx.Exec(sqlStr)
 	if err != nil {
 		return
 	}
 	return tx.Commit()
+}
+
+func getMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
+
+	metas := make(map[uint64]*imageMeta)
+	num := len(imageIDs)
+	if num == 0 {
+		return metas, nil
+	}
+	sqlQuery := fmt.Sprintf("select %s, %s from %s where %s in (?%s)", attrID, attrFileName, imageTable, attrID, strings.Repeat(",?", num-1))
+	rows, err := db.Query(sqlQuery, imageIDs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var fileName string
+	var id uint64
+	for rows.Next() {
+		err = rows.Scan(&id, &fileName)
+		if err != nil {
+			break
+		}
+		metas[id] = &imageMeta{fileName: fileName}
+	}
+
+	return metas, err
+
 }
