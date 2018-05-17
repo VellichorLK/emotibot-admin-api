@@ -163,7 +163,7 @@ func (j *FetchDBJob) Do(signal <-chan struct{}) error {
 // FindImagesJob is the job unitwill scan answer's content and match the image tag in it
 type FindImageJob struct {
 	LookUpImages map[string]uint64
-	Result       map[uint64][]uint64
+	Result       map[uint64]imageSet
 	questionDB   *sql.DB
 	picDB        *sql.DB
 }
@@ -176,7 +176,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 		return fmt.Errorf("Query answer failed, %v", err)
 	}
 	defer rows.Close()
-	j.Result = make(map[uint64][]uint64)
+	j.Result = make(map[uint64]imageSet)
 	for rows.Next() {
 		select {
 		case <-signal:
@@ -192,7 +192,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 				return fmt.Errorf("scan failed, %v", err)
 			}
 
-			var imageGroup = make([]uint64, 0)
+			var imageGroup = imageSet{}
 
 			//Find img tag and trim the content
 			for currentIndex := strings.Index(content, "<img"); currentIndex >= 0; currentIndex = strings.Index(content, "<img") {
@@ -218,7 +218,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 				if !ok {
 					continue
 				}
-				imageGroup = append(imageGroup, id)
+				imageGroup.Push(id)
 			}
 			//Only the answers with images should be added to result
 			if len(imageGroup) > 0 {
@@ -234,7 +234,7 @@ func (j *FindImageJob) Do(signal <-chan struct{}) error {
 type LinkImageJob struct {
 	IsDone        bool
 	AffecttedRows int //AffecttedRows count how many rows we totally write.
-	input         map[uint64][]uint64
+	input         map[uint64]imageSet
 }
 
 // Do LinkImageJob will insert rows into middle table of image and answer.
@@ -247,13 +247,7 @@ func (j *LinkImageJob) Do(signal <-chan struct{}) error {
 	if err != nil {
 		return fmt.Errorf("get transaction failed, %v", err)
 	}
-	defer func() {
-		if err != nil {
-			tx.Rollback()
-		} else {
-			tx.Commit()
-		}
-	}()
+	defer tx.Rollback()
 
 	_, err = tx.Exec("DELETE FROM image_answer")
 	if err != nil {
@@ -270,8 +264,8 @@ func (j *LinkImageJob) Do(signal <-chan struct{}) error {
 			tx.Rollback()
 			return ErrInterruptted
 		default:
-			for _, imgID := range images {
-				_, err := stmt.Exec(ansID, imgID)
+			for imgID := range images {
+				_, err = stmt.Exec(ansID, imgID)
 				if err != nil {
 					return fmt.Errorf("sql insert failed, %v", err)
 				}
@@ -283,4 +277,20 @@ func (j *LinkImageJob) Do(signal <-chan struct{}) error {
 	tx.Commit()
 	j.IsDone = true
 	return nil
+}
+
+// imageSet contain counts of non-duplicate image ID.
+type imageSet map[uint64]int
+
+// Push will add key into imageSet. If imageSet already have the key in map, add counter by 1.
+// It will return added counter value, It is not concurrency safe yet.
+func (set imageSet) Push(key uint64) int {
+	counter, ok := set[key]
+	if ok {
+		set[key] = counter + 1
+		return counter + 1
+	}
+	counter = 1
+	set[key] = counter
+	return counter
 }
