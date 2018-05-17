@@ -56,6 +56,7 @@ func TestFindImagesJob(t *testing.T) {
 	var images = map[string]uint64{
 		"c4ca4238a0b923820dcc509a6f75849b.jpg": 1,
 		"c81e728d9d4c2f636f067f89cc14862c.png": 2,
+		"9bce2d0f8473453d8a3847bbd807ca55.jpg": 3,
 	}
 	type testCase struct {
 		input    string
@@ -81,6 +82,10 @@ func TestFindImagesJob(t *testing.T) {
 		"MultipleSrc": testCase{
 			"Test1<img src=\"http://google.com/c4ca4238a0b923820dcc509a6f75849b.jpg\"/>Test2<img src=\"c81e728d9d4c2f636f067f89cc14862c.png\"/>",
 			[]int{3, 2},
+		},
+		"Test": testCase{
+			`<p><img src="https://vca.vip.com/img/9bce2d0f8473453d8a3847bbd807ca55.jpg"/><img src="https://vca.vip.com/img/98e12b535c5b43da9d8618ffb0c1851a.png"/></p><p><br/></p><p><img src="https://vca.vip.com/img/9bce2d0f8473453d8a3847bbd807ca55.jpg"/></p>`,
+			[]int{4},
 		},
 	}
 	questionDB, questionMock, err := sqlmock.New()
@@ -123,7 +128,7 @@ func TestFindImagesJob(t *testing.T) {
 			if len(expectedImgIDGroup) == 0 {
 				t.Fatal("expect got at least one images id, but no images in result.")
 			}
-			for _, expectedImgID := range expectedImgIDGroup {
+			for expectedImgID := range expectedImgIDGroup {
 				var found bool
 				for _, id := range images {
 					if id == expectedImgID {
@@ -142,15 +147,15 @@ func TestFindImagesJob(t *testing.T) {
 
 func TestLinkImageJob(t *testing.T) {
 	type testCase struct {
-		input    map[uint64][]uint64
+		input    map[uint64]imageSet
 		expected bool
 	}
 
 	testCases := map[string]testCase{
 		"Normal": testCase{
-			input: map[uint64][]uint64{
-				1: []uint64{1, 2},
-				2: []uint64{1, 3},
+			input: map[uint64]imageSet{
+				1: imageSet{1: 1, 2: 1},
+				2: imageSet{1: 1, 3: 1},
 			},
 			expected: true,
 		},
@@ -169,8 +174,8 @@ func TestLinkImageJob(t *testing.T) {
 			picMocker.MatchExpectationsInOrder(false)
 			for key, values := range tt.input {
 				size += len(values)
-				for _, v := range values {
-					stmt.ExpectExec().WithArgs(key, v).WillReturnResult(sqlmock.NewResult(int64(key), 1))
+				for id := range values {
+					stmt.ExpectExec().WithArgs(key, id).WillReturnResult(sqlmock.NewResult(int64(key), 1))
 				}
 			}
 			err := job.Do(nil)
