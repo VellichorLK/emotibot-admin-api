@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -829,7 +830,6 @@ func answerSliceString(answerLabels []string, defaultStr string) string {
 func transformAnswerContent(answer *Answer) (transformedContent string, err error) {
 	// transform each image url to [<filename>.<extension>]
 	var imageIds []interface{}
-	util.LogError.Printf("images: %+v", answer.Images)
 	for _, id := range answer.Images {
 		imageIds = append(imageIds, id)
 	}
@@ -844,6 +844,12 @@ func transformAnswerContent(answer *Answer) (transformedContent string, err erro
 	var rawFileName string
 	for _, url := range results {
 		rawFileName = extractRawFileName(url)
+		rawFileName, err = url.QueryUnescape(rawFileName)
+		if err != nil {
+			// rollback rawFileName
+			rawFileName = extractRawFileName(url)
+		}
+
 		for _, meta := range metas {
 			if rawFileName == meta.RawFileName {
 				replaced := fmt.Sprintf("[%s]", meta.FileName)
