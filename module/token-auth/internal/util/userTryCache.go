@@ -4,6 +4,8 @@ import (
 	"time"
 )
 
+const defaultBanTime = 30
+
 // BanInfo record ban info of user
 type BanInfo struct {
 	Duration time.Duration `json:"duration"`
@@ -13,9 +15,8 @@ type BanInfo struct {
 // BanMap is a map from userID to ban info
 type BanMap map[string]*BanInfo
 
-// UpdateExpire will set expired to now + duration * 2
+// UpdateExpire will set expired to now + duration
 func (info *BanInfo) UpdateExpire() {
-	info.Duration *= 2
 	info.Expired = time.Now().Add(info.Duration)
 }
 
@@ -41,7 +42,7 @@ func (infos BanMap) BanUser(userID string) {
 	if info, ok := UserBanInfos[userID]; ok {
 		info.UpdateExpire()
 	} else {
-		banTime := time.Second * 30
+		banTime := time.Second * defaultBanTime
 		info = &BanInfo{
 			Duration: banTime,
 			Expired:  time.Now().Add(banTime),
