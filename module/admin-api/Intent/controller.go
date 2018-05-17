@@ -201,14 +201,22 @@ func handleGetTrainStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if retCode == ApiError.REQUEST_ERROR {
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		} else if retCode == ApiError.REQUEST_ERROR {
-			http.Error(w, err.Error(), http.StatusNotFound)
+		} else if retCode == ApiError.NOT_FOUND_ERROR {
+			statusResp := StatusResponse{
+				IntentEngineStatus: NotTrained,
+				RuleEngineStatus: NotTrained,
+			}
+			util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, statusResp))
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	} else if retCode == ApiError.NOT_FOUND_ERROR {
-		w.WriteHeader(http.StatusNotFound)
+		statusResp := StatusResponse{
+			IntentEngineStatus: NotTrained,
+			RuleEngineStatus: NotTrained,
+		}
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, statusResp))
 		return
 	}
 
