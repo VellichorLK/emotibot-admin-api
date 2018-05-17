@@ -85,6 +85,44 @@ func (row WordBankRow) GetPath() string {
 	return strings.Join(paths, "/")
 }
 
+func (row WordBankRow) GetAllPathReadOnlyInfo() map[string]bool {
+	ret := map[string]bool{}
+	paths := []string{}
+	checkStr := ""
+	for true {
+		if row.Level1 == "" {
+			break
+		}
+		checkStr = row.Level1
+		paths = append(paths, strings.TrimLeft(checkStr, "*"))
+		ret[strings.Join(paths, "/")] = (strings.TrimLeft(checkStr, "*") != checkStr)
+
+		if row.Level2 == "" {
+			break
+		}
+		checkStr = row.Level2
+		paths = append(paths, strings.TrimLeft(checkStr, "*"))
+		ret[strings.Join(paths, "/")] = (strings.TrimLeft(checkStr, "*") != checkStr)
+
+		if row.Level3 == "" {
+			break
+		}
+		checkStr = row.Level3
+		paths = append(paths, strings.TrimLeft(checkStr, "*"))
+		ret[strings.Join(paths, "/")] = (strings.TrimLeft(checkStr, "*") != checkStr)
+
+		if row.Level4 == "" {
+			break
+		}
+		checkStr = row.Level4
+		paths = append(paths, strings.TrimLeft(checkStr, "*"))
+		ret[strings.Join(paths, "/")] = (strings.TrimLeft(checkStr, "*") != checkStr)
+		break
+	}
+
+	return ret
+}
+
 func (row WordBankRow) IsReadOnly() bool {
 	checkStr := ""
 	for true {

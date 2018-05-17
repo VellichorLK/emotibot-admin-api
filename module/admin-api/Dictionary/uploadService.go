@@ -361,8 +361,8 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	}
 	rows = rows[1:]
 
-	// classReadOny's key is class path
-	classReadOny := map[string]bool{}
+	// classReadOnly's key is class path
+	classReadOnly := map[string]bool{}
 	// classWordbank store wordbanks in each path
 	classWordbank := map[string][]*WordBankV3{}
 	var lastWordbankRow *WordBankRow
@@ -401,10 +401,11 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	}
 
 	for _, row := range wordbankRowList {
-		path := row.GetPath()
-		if _, ok := classReadOny[path]; !ok {
-			isReadOnly := row.IsReadOnly()
-			classReadOny[path] = isReadOnly
+		pathInfos := row.GetAllPathReadOnlyInfo()
+		for path, val := range pathInfos {
+			if _, ok := classReadOnly[path]; !ok {
+				classReadOnly[path] = val
+			}
 		}
 
 		if row.Name != "" {
@@ -422,6 +423,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 				wordbank.SimilarWords = strings.Split(row.SimilarWords, ",")
 			}
 
+			path := row.GetPath()
 			if _, ok := classWordbank[path]; !ok {
 				classWordbank[path] = []*WordBankV3{}
 			}
@@ -430,8 +432,8 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	}
 
 	// log for debug
-	util.LogTrace.Println("classReadOny:")
-	for path, readOnly := range classReadOny {
+	util.LogTrace.Println("classReadOnly:")
+	for path, readOnly := range classReadOnly {
 		util.LogTrace.Printf("\t%s: %t\n", path, readOnly)
 	}
 	util.LogTrace.Println("classWordbank:")
@@ -442,7 +444,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		}
 	}
 
-	root, err = createV3ObjsFromParseContent(classReadOny, classWordbank)
+	root, err = createV3ObjsFromParseContent(classReadOnly, classWordbank)
 	return
 }
 
@@ -518,7 +520,7 @@ func fillV3RowWithLast(current *WordBankRow, last *WordBankRow) error {
 	return nil
 }
 
-func createV3ObjsFromParseContent(classReadOny map[string]bool, classWordbank map[string][]*WordBankV3) (*WordBankClassV3, error) {
+func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank map[string][]*WordBankV3) (*WordBankClassV3, error) {
 	root := &WordBankClassV3{
 		ID:           -1,
 		Name:         "",
@@ -529,7 +531,7 @@ func createV3ObjsFromParseContent(classReadOny map[string]bool, classWordbank ma
 		RuleEngine:   true,
 	}
 	classMap := map[string]*WordBankClassV3{}
-	for classPath := range classReadOny {
+	for classPath := range classReadOnly {
 		// Check form root to self
 		names := strings.Split(classPath, "/")
 		currentClass := root
@@ -542,7 +544,7 @@ func createV3ObjsFromParseContent(classReadOny map[string]bool, classWordbank ma
 			}
 
 			editable := true
-			if val, ok := classReadOny[selfPath]; ok && val {
+			if val, ok := classReadOnly[selfPath]; ok && val {
 				editable = false
 			}
 			newWordbankClass := &WordBankClassV3{
@@ -571,6 +573,7 @@ func createV3ObjsFromParseContent(classReadOny map[string]bool, classWordbank ma
 				Name:         wordbank.Name,
 				SimilarWords: wordbank.SimilarWords,
 				Answer:       wordbank.Answer,
+				Editable:     wordbank.Editable,
 			})
 		}
 	}
@@ -709,7 +712,11 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 				fillEmptyCell(row, maxDirDepth)
 			}
 			cell := row.AddCell()
-			cell.SetValue(wb.Name)
+			if !wb.Editable {
+				cell.SetValue(fmt.Sprintf("*%s", wb.Name))
+			} else {
+				cell.SetValue(wb.Name)
+			}
 			cell = row.AddCell()
 			cell.SetValue(strings.Join(wb.SimilarWords, ","))
 			cell = row.AddCell()
