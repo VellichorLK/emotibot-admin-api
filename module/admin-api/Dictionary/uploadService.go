@@ -705,7 +705,7 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		for idx, wb := range node.Wordbank {
 			// write wordbank rows
 			if idx != 0 {
-				row := sheet.AddRow()
+				row = sheet.AddRow()
 				fillEmptyCell(row, maxDirDepth)
 			}
 			cell := row.AddCell()
