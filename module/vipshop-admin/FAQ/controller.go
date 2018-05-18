@@ -526,6 +526,11 @@ func handleUpdateQuestion(ctx context.Context) {
 		auditRet = 0
 	}
 
+	// notify multicustomer
+	if err == nil {
+		go util.McManualBusiness(appid)
+	}
+
 	// write audit log
 	err = writeUpdateAuditLog(ctx, auditRet, &oldQuestion, &newQuestion)
 	if err != nil {
