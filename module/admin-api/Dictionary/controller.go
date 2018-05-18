@@ -393,7 +393,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
-	TriggerUpdateWordbank(appid, wordbanks, 3)
+	TriggerUpdateWordbank(appid, wordbanks, 2)
 }
 
 func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
