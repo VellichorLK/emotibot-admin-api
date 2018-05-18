@@ -820,11 +820,6 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 			result = "Parent not existed"
 			return
 		}
-		if !parentClass.Editable {
-			retCode = ApiError.REQUEST_ERROR
-			result = "Parent not editable"
-			return
-		}
 	}
 
 	className = r.FormValue("name")
@@ -954,10 +949,6 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 		}
 		if parentClass == nil {
 			retCode, result = ApiError.NOT_FOUND_ERROR, "Parent not existed"
-			return
-		}
-		if !parentClass.Editable {
-			retCode, result = ApiError.REQUEST_ERROR, "Parent not editable"
 			return
 		}
 	} else {
