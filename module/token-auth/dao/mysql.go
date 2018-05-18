@@ -1070,31 +1070,90 @@ func (controller MYSQLController) GetUsersOfRole(enterpriseID string, roleUUID s
 }
 
 func (controller MYSQLController) GetModules(enterpriseID string) ([]*data.Module, error) {
+	var err error
 	ok, err := controller.checkDB()
 	if !ok {
+		util.LogDBError(err)
 		return nil, err
 	}
 
+	parseModuleRow := func(row *sql.Rows) (*data.Module, error) {
+		temp := &data.Module{}
+		commands := ""
+		status := 0
+		err = row.Scan(&temp.ID, &temp.Code, &temp.Name, &commands, &status)
+		if err != nil {
+			return nil, err
+		}
+		temp.Code = strings.TrimSpace(temp.Code)
+		temp.Name = strings.TrimSpace(temp.Name)
+
+		commands = strings.TrimSpace(commands)
+		if commands != "" {
+			temp.Commands = strings.Split(commands, ",")
+		} else {
+			temp.Commands = []string{}
+		}
+		temp.Status = (status > 0)
+		return temp, nil
+	}
+
+	// if enterprise is empty, that is all system modules
+	// if enterprise is not empty, use status column to check module's status
 	queryStr := fmt.Sprintf(`
-		SELECT id, code, name, cmd_list FROM %s
-		WHERE enterprise = ?`, moduleTable)
-	moduleRows, err := controller.connectDB.Query(queryStr, enterpriseID)
+		SELECT
+			id, code, name, cmd_list, status
+		FROM %s WHERE enterprise = ''`, moduleTable)
+	moduleRows, err := controller.connectDB.Query(queryStr)
 	if err != nil {
+		util.LogDBError(err)
 		return nil, err
 	}
 	defer moduleRows.Close()
 
-	ret := []*data.Module{}
+	moduleMap := map[string]*data.Module{}
 	for moduleRows.Next() {
-		temp := data.Module{}
-		var commands string
-		err := moduleRows.Scan(&temp.ID, &temp.Code, &temp.Name, &commands)
+		temp, err := parseModuleRow(moduleRows)
 		if err != nil {
+			util.LogDBError(err)
 			return nil, err
 		}
-		cmds := strings.Split(commands, ",")
-		temp.Commands = cmds
-		ret = append(ret, &temp)
+		moduleMap[temp.Code] = temp
+	}
+
+	queryStr = fmt.Sprintf(`
+		SELECT
+			id, code, name, cmd_list, status
+		FROM %s WHERE enterprise = ?`, moduleTable)
+	privateRows, err := controller.connectDB.Query(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+	defer privateRows.Close()
+
+	for privateRows.Next() {
+		temp, err := parseModuleRow(privateRows)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		if dftModule, ok := moduleMap[temp.Code]; ok {
+			if temp.Name != "" {
+				dftModule.Name = temp.Name
+			}
+			if len(temp.Commands) != 0 {
+				dftModule.Commands = temp.Commands
+			}
+			dftModule.Status = temp.Status
+		}
+	}
+
+	ret := []*data.Module{}
+	for _, mod := range moduleMap {
+		if mod.Status {
+			ret = append(ret, mod)
+		}
 	}
 
 	return ret, nil

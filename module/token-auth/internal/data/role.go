@@ -13,4 +13,5 @@ type Module struct {
 	Code     string   `json:"code"`
 	Name     string   `json:"name"`
 	Commands []string `json:"commands"`
+	Status   bool     `json:"-"`
 }

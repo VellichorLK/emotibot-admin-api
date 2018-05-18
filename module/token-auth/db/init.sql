@@ -46,7 +46,7 @@ LOCK TABLES `apps` WRITE;
 
 INSERT INTO `apps` (`id`, `uuid`, `name`, `start`, `end`, `count`, `enterprise`, `created_time`, `status`)
 VALUES
-	(1,'csbot','example-bot',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
+	(1,'ctbc','example-bot',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
 
 /*!40000 ALTER TABLE `apps` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -93,23 +93,24 @@ CREATE TABLE `modules` (
   `cmd_list` char(64) NOT NULL,
   `discription` varchar(200) NOT NULL DEFAULT '',
   `created_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `status` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
 
 LOCK TABLES `modules` WRITE;
 /*!40000 ALTER TABLE `modules` DISABLE KEYS */;
 
 INSERT INTO `modules` (`id`, `code`, `name`, `enterprise`, `cmd_list`, `discription`, `created_time`)
 VALUES
-	(2,'statistic_dash','','','view','','2018-04-12 06:47:45'),
-	(3,'statistic_daily','','','view','','2018-04-12 06:47:45'),
-	(4,'statistic_audit','','','view','','2018-04-12 06:47:45'),
-	(5,'qalist','','','view,edit,create,delete,export,import','','2018-04-12 06:47:45'),
-	(6,'qatest','','','view','','2018-04-12 06:47:45'),
-	(7,'qa_chat_skill','','','view,edit','','2018-04-12 06:47:45'),
-	(8,'robot_profile','','','view,edit','','2018-04-12 06:47:45'),
-	(9,'wordbank','','','view,edit,create,delete,export,import','','2018-04-12 06:47:45'),
-	(10,'management','','','edit','','2018-04-12 06:47:45');
+	(1,'statistic_dash','','','view','','2018-04-12 06:47:45'),
+	(2,'statistic_daily','','','view','','2018-04-12 06:47:45'),
+	(3,'statistic_audit','','','view','','2018-04-12 06:47:45'),
+	(4,'qalist','','','view,edit,create,delete,export,import','','2018-04-12 06:47:45'),
+	(5,'qatest','','','view','','2018-04-12 06:47:45'),
+	(6,'qa_chat_skill','','','view,edit','','2018-04-12 06:47:45'),
+	(7,'robot_profile','','','view,edit','','2018-04-12 06:47:45'),
+	(8,'wordbank','','','view,edit,create,delete,export,import','','2018-04-12 06:47:45'),
+	(9,'management','','','edit','','2018-04-12 06:47:45');
 
 /*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 UNLOCK TABLES;
