@@ -39,7 +39,7 @@ CREATE TABLE `apps` (
   UNIQUE KEY `uuid` (`uuid`),
   KEY `enterprise of app` (`enterprise`),
   CONSTRAINT `enterprise of app` FOREIGN KEY (`enterprise`) REFERENCES `enterprises` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `apps` WRITE;
 /*!40000 ALTER TABLE `apps` DISABLE KEYS */;
@@ -67,7 +67,7 @@ CREATE TABLE `enterprises` (
   UNIQUE KEY `uuid` (`uuid`),
   KEY `admin of enterprise` (`admin_user`),
   CONSTRAINT `admin of enterprise` FOREIGN KEY (`admin_user`) REFERENCES `users` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `enterprises` WRITE;
 /*!40000 ALTER TABLE `enterprises` DISABLE KEYS */;
@@ -95,7 +95,7 @@ CREATE TABLE `modules` (
   `created_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `modules` WRITE;
 /*!40000 ALTER TABLE `modules` DISABLE KEYS */;
@@ -132,7 +132,7 @@ CREATE TABLE `privileges` (
   KEY `id of module` (`module`),
   CONSTRAINT `id of module` FOREIGN KEY (`module`) REFERENCES `modules` (`id`),
   CONSTRAINT `id of role` FOREIGN KEY (`role`) REFERENCES `roles` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 
@@ -150,7 +150,7 @@ CREATE TABLE `roles` (
   `created_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `uuid` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
 
@@ -168,7 +168,7 @@ CREATE TABLE `user_column` (
   PRIMARY KEY (`id`),
   KEY `enterprise of custom column` (`enterprise`),
   CONSTRAINT `enterprise of custom column` FOREIGN KEY (`enterprise`) REFERENCES `enterprises` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `user_column` WRITE;
 /*!40000 ALTER TABLE `user_column` DISABLE KEYS */;
@@ -196,7 +196,7 @@ CREATE TABLE `user_info` (
   KEY `column of info` (`column_id`),
   CONSTRAINT `column of info` FOREIGN KEY (`column_id`) REFERENCES `user_column` (`id`),
   CONSTRAINT `user of info` FOREIGN KEY (`user_id`) REFERENCES `users` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `user_info` WRITE;
 /*!40000 ALTER TABLE `user_info` DISABLE KEYS */;
@@ -228,7 +228,7 @@ CREATE TABLE `users` (
   `status` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uuid` (`uuid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
