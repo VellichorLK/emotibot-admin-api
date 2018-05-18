@@ -838,6 +838,7 @@ func transformAnswerContent(answer *Answer) (transformedContent string, err erro
 		return
 	}
 	transformedContent = answer.Content
+	util.LogTrace.Printf("metas: %+v", metas)
 
 	re := regexp.MustCompile("<img.*?/>")
 	results := re.FindAllString(answer.Content, -1)
@@ -850,8 +851,10 @@ func transformAnswerContent(answer *Answer) (transformedContent string, err erro
 			rawFileName = extractRawFileName(imaegTag)
 		}
 
+		util.LogTrace.Printf("rawFileName: %s", rawFileName)
 		for _, meta := range metas {
 			if rawFileName == meta.RawFileName {
+				util.LogTrace.Printf("meta: %+v", meta)
 				replaced := fmt.Sprintf("[%s]", meta.FileName)
 				transformedContent = strings.Replace(transformedContent, imaegTag, replaced, -1)
 			}
@@ -867,7 +870,6 @@ func extractRawFileName(tag string) string {
 	results := re.FindAllString(tag, -1)
 
 	for _, imageUrl := range results {
-		
 		tokens := strings.Split(imageUrl, "/")
 		rawFileName = tokens[len(tokens) - 1]
 		rawFileName = strings.Replace(rawFileName, "\"", "", -1)
