@@ -842,28 +842,37 @@ func transformAnswerContent(answer *Answer) (transformedContent string, err erro
 	re := regexp.MustCompile("<img.*?/>")
 	results := re.FindAllString(answer.Content, -1)
 	var rawFileName string
-	for _, imageUrl := range results {
-		rawFileName = extractRawFileName(imageUrl)
+	for _, imaegTag := range results {
+		rawFileName = extractRawFileName(imaegTag)
 		rawFileName, err = url.QueryUnescape(rawFileName)
 		if err != nil {
 			// rollback rawFileName
-			rawFileName = extractRawFileName(imageUrl)
+			rawFileName = extractRawFileName(imaegTag)
 		}
 
 		for _, meta := range metas {
 			if rawFileName == meta.RawFileName {
 				replaced := fmt.Sprintf("[%s]", meta.FileName)
-				transformedContent = strings.Replace(transformedContent, imageUrl, replaced, -1)
+				transformedContent = strings.Replace(transformedContent, imaegTag, replaced, -1)
 			}
 		}
 	}
 	return
 }
 
-func extractRawFileName(url string) string {
-	tokens := strings.Split(url, "/")
-	rawFileName := tokens[len(tokens) - 2]
-	rawFileName = strings.Replace(rawFileName, "\"", "", -1)
+func extractRawFileName(tag string) string {
+	var rawFileName string
+
+	re := regexp.MustCompile("src=\".+?\"")
+	results := re.FindAllString(tag, -1)
+
+	for _, imageUrl := range results {
+		
+		tokens := strings.Split(imageUrl, "/")
+		rawFileName = tokens[len(tokens) - 1]
+		rawFileName = strings.Replace(rawFileName, "\"", "", -1)
+		break
+	}
 	return rawFileName
 }
 
