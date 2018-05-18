@@ -10,6 +10,7 @@ emotigo/
   docker: Docker and dockerfiles.
   experimental: The playground.
   module: Packages/Services.
+  pkg: shared common code base.
   toolbox: Some handy scripts/tools.
   vendor: All vendor libs. Need to check into git manually.
 ```
