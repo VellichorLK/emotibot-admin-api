@@ -28,6 +28,8 @@ func init() {
 			util.NewEntryPoint("GET", "chat/{id}", []string{"view"}, handleGetChat),
 			util.NewEntryPoint("POST", "chats", []string{"edit"}, handleMultiChatModify),
 			util.NewEntryPoint("GET", "chat-info", []string{"view"}, handleChatInfoList),
+
+			util.NewEntryPoint("GET", "chatQAList", []string{"view"}, handleChatQAList),
 		},
 	}
 }

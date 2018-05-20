@@ -51,3 +51,30 @@ type Function struct {
 	Remark string `json:"remark"`
 	Intent string `json:"intent"`
 }
+
+type ChatQA struct {
+	Question string `json:"question"`
+	Answers []string `json:"answer"`
+}
+
+type ChatQAList struct {
+	TotalQACnt int `json:"totalQACnt"`
+	ChatQAs []ChatQA `json:"chatQAs"`
+}
+ 
+type SolrQueryResponse struct {
+	ResponseHeader SolrResponseHeader `json:"responseHeader"`
+	Response SolrResponse `json:"response"`
+}
+
+type SolrResponseHeader struct {
+	Status int `json:"status"`
+}
+type SolrResponse struct {
+	NumFound int `json:"numFound"`
+	QAs []SolrQA `json:"docs"`
+}
+type SolrQA struct {
+	Question string `json:"sentence_original"`
+	Answers []string `json:"related_sentences"`
+}
