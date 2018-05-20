@@ -449,7 +449,7 @@ func parseRoleFromRequest(r *http.Request) (*data.Role, error) {
 	if name == "" {
 		return nil, errors.New("Invalid name")
 	}
-	discription := r.FormValue("description")
+	description := r.FormValue("description")
 	privilegeStr := r.FormValue("privilege")
 
 	privileges := map[string][]string{}
@@ -460,7 +460,7 @@ func parseRoleFromRequest(r *http.Request) (*data.Role, error) {
 	}
 	ret := data.Role{
 		Name:        name,
-		Discription: discription,
+		Description: description,
 		Privileges:  privileges,
 	}
 	return &ret, nil

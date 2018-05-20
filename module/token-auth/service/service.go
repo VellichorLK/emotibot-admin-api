@@ -159,6 +159,9 @@ func DeleteRole(enterpriseID string, roleID string) (bool, error) {
 	if useDB == nil {
 		return false, errors.New("DB hasn't set")
 	}
+	if enterpriseID == "" || roleID == "" {
+		return false, errors.New("Parameter error, ID cannot be empty")
+	}
 	users, err := useDB.GetUsersOfRole(enterpriseID, roleID)
 	if err != nil && err != sql.ErrNoRows {
 		return false, err

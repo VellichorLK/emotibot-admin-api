@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
@@ -36,7 +37,7 @@ func main() {
 	flag.StringVar(&enterpriseName, "e", "", "name of new enterprise (required)")
 	flag.Parse()
 
-	util.LogInit(os.Stderr, os.Stdout, os.Stdout, os.Stderr, "AUTH")
+	util.LogInit(ioutil.Discard, ioutil.Discard, os.Stdout, os.Stderr, "AUTH")
 	setUpDB()
 
 	if displayName == "" {

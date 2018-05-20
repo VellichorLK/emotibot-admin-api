@@ -36,7 +36,7 @@ func (controller *MYSQLController) InitDB(host string, port int, dbName string, 
 	} else {
 		dbString = fmt.Sprintf("%s:%s@(%s:%d)/%s", account, password, host, port, dbName)
 	}
-	util.LogInfo.Printf("Connect to db [%s]\n", dbString)
+	util.LogTrace.Printf("Connect to db [%s]\n", dbString)
 	db, err := sql.Open("mysql", dbString)
 
 	if err != nil {
@@ -737,7 +737,7 @@ func (controller MYSQLController) GetRoles(enterpriseID string) ([]*data.Role, e
 	for roleRows.Next() {
 		var id int
 		temp := data.Role{}
-		err = roleRows.Scan(&id, &temp.UUID, &temp.Name, &temp.Discription)
+		err = roleRows.Scan(&id, &temp.UUID, &temp.Name, &temp.Description)
 		if err != nil {
 			return nil, err
 		}
@@ -807,7 +807,7 @@ func (controller MYSQLController) GetRole(enterpriseID string, roleID string) (*
 	ret := data.Role{}
 	ret.UUID = roleID
 	var id int
-	err = roleRow.Scan(&id, &ret.Name, &ret.Discription)
+	err = roleRow.Scan(&id, &ret.Name, &ret.Description)
 	ret.Privileges = map[string][]string{}
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -873,9 +873,9 @@ func (controller MYSQLController) getRoleUUIDByIdWidthTx(id int, t *sql.Tx) (uui
 
 func (controller MYSQLController) AddRole(enterprise string, role *data.Role) (uuid string, err error) {
 	defer func() {
-		util.LogInfo.Println("Add role ret uuid: ", uuid)
+		util.LogTrace.Println("Add role ret uuid: ", uuid)
 		if err != nil {
-			util.LogInfo.Println("Add role ret: ", err.Error())
+			util.LogTrace.Println("Add role ret: ", err.Error())
 		}
 	}()
 	ok, err := controller.checkDB()
@@ -890,7 +890,7 @@ func (controller MYSQLController) AddRole(enterprise string, role *data.Role) (u
 	defer util.ClearTransition(t)
 
 	queryStr := fmt.Sprintf("INSERT INTO %s (uuid, name, enterprise, discription) VALUES (UUID(), ?, ?, ?)", roleTable)
-	ret, err := t.Exec(queryStr, role.Name, enterprise, role.Discription)
+	ret, err := t.Exec(queryStr, role.Name, enterprise, role.Description)
 	if err != nil {
 		return
 	}
@@ -951,7 +951,7 @@ func (controller MYSQLController) UpdateRole(enterprise string, roleUUID string,
 	queryStr = fmt.Sprintf(`
 		UPDATE %s SET name = ?, discription = ?
 		WHERE enterprise = ? AND id = ?`, roleTable)
-	_, err = t.Exec(queryStr, role.Name, role.Discription, enterprise, roleID)
+	_, err = t.Exec(queryStr, role.Name, role.Description, enterprise, roleID)
 	if err != nil {
 		return
 	}
