@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"sort"
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
@@ -1155,6 +1156,22 @@ func (controller MYSQLController) GetModules(enterpriseID string) ([]*data.Modul
 			ret = append(ret, mod)
 		}
 	}
+	sort.Sort(ByID(ret))
 
 	return ret, nil
+}
+
+type ByID []*data.Module
+
+func (m ByID) Len() int      { return len(m) }
+func (m ByID) Swap(i, j int) { m[i], m[j] = m[j], m[i] }
+func (m ByID) Less(i, j int) bool {
+	switch {
+	case m[i] == nil:
+		return true
+	case m[j] == nil:
+		return true
+	default:
+		return m[i].ID < m[j].ID
+	}
 }
