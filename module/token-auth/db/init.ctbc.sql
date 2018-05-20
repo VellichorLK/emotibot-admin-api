@@ -37,7 +37,7 @@ LOCK TABLES `apps` WRITE;
 
 INSERT INTO `apps` (`id`, `uuid`, `name`, `start`, `end`, `count`, `enterprise`, `created_time`, `status`)
 VALUES
-	(1,'csbot','csbot',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
+	(1,'ctbc','ctbc',NULL,NULL,NULL,'bb3e3925-f0ad-11e7-bd86-0242ac120003','2018-04-05 15:21:02',1);
 
 /*!40000 ALTER TABLE `apps` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -102,11 +102,24 @@ VALUES
 	('qa_chat_skill','','','view,edit',''),
 	('qa_label','','','view,edit',''),
 	('qa_rule','','','view,edit',''),
-	('robot_function','','','view,edit',''),
+	('intent','','','view,edit',''),
+	('robot_function','','','view,edit,export,import',''),
 	('robot_profile','','','view,edit',''),
 	('wordbank','','','view,edit,create,delete,export,import',''),
 	('task_engine','','','view',''),
 	('management','','','edit','');
+
+INSERT INTO `modules` (`code`, `enterprise`, `cmd_list`, `status`)
+VALUES
+	('statistic_dash','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('statistic_analysis','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('statistic_audit','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('qalist','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('qa_chat_skill','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('qa_label','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('qa_rule','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('robot_function','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0),
+	('robot_profile','bb3e3925-f0ad-11e7-bd86-0242ac120003', '', 0);
 
 /*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -130,7 +143,20 @@ CREATE TABLE `privileges` (
   CONSTRAINT `id of role` FOREIGN KEY (`role`) REFERENCES `roles` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+LOCK TABLES `privileges` WRITE;
+/*!40000 ALTER TABLE `privileges` DISABLE KEYS */;
 
+INSERT INTO `privileges` (`id`, `role`, `module`, `cmd_list`, `created_time`)
+VALUES
+	(1,1,3,'view,export','2018-05-20 17:50:21'),
+	(2,1,6,'view','2018-05-20 17:50:21'),
+	(3,1,10,'view,edit','2018-05-20 17:50:21'),
+	(4,1,13,'view,edit,create,delete,export,import','2018-05-20 17:50:21'),
+	(5,1,14,'view','2018-05-20 17:50:21'),
+	(6,1,15,'edit','2018-05-20 17:50:21');
+
+/*!40000 ALTER TABLE `privileges` ENABLE KEYS */;
+UNLOCK TABLES;
 
 # Dump of table roles
 # ------------------------------------------------------------
@@ -148,7 +174,15 @@ CREATE TABLE `roles` (
   KEY `uuid` (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+LOCK TABLES `roles` WRITE;
+/*!40000 ALTER TABLE `roles` DISABLE KEYS */;
 
+INSERT INTO `roles` (`id`, `uuid`, `name`, `enterprise`, `discription`, `created_time`)
+VALUES
+	(1,'44596f41-5c56-11e8-85ae-0242ac120002','admin','bb3e3925-f0ad-11e7-bd86-0242ac120003','','2018-05-20 17:50:21');
+
+/*!40000 ALTER TABLE `roles` ENABLE KEYS */;
+UNLOCK TABLES;
 
 # Dump of table user_column
 # ------------------------------------------------------------
