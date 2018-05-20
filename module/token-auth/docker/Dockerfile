@@ -13,7 +13,7 @@ FROM alpine:3.5
 ARG PROJECT
 ENV GOPREFIX /go/src/emotibot.com
 RUN apk add --no-cache tzdata
-COPY --from=build-env /go/bin/token-auth /usr/local/bin/token-auth
+COPY --from=build-env /go/bin /usr/local/bin
 
 WORKDIR /usr/local/bin
 CMD ["./token-auth"]
