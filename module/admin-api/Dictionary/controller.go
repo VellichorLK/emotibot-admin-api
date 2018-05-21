@@ -894,6 +894,7 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !parent.Editable {
+		err = errors.New("parent not editable")
 		retCode, result = ApiError.REQUEST_ERROR, "parent not editable"
 		return
 	}
@@ -1026,6 +1027,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !class.Editable {
+		err = errors.New("parent not editable")
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "parent not editable"), http.StatusBadRequest)
 		return
 	}
