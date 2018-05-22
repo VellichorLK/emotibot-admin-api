@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"mime/multipart"
 	"path"
 	"runtime"
@@ -17,8 +18,9 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-var (
-	exceptSheetNum = 3
+const (
+	exceptSheetNum        = 3
+	maxSimilarWordsPerRow = 1000
 )
 
 func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHeader) (string, int, error) {
@@ -706,21 +708,40 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		}
 
 		for idx, wb := range node.Wordbank {
-			// write wordbank rows
-			if idx != 0 {
-				row = sheet.AddRow()
-				fillEmptyCell(row, maxDirDepth)
+			similarWords := wb.SimilarWords
+			outputWordbankName := true
+
+			for {
+				boundary := int(math.Min(float64(len(similarWords)), maxSimilarWordsPerRow))
+				words := similarWords[:boundary]
+				similarWords = similarWords[boundary:]
+
+				// write wordbank rows
+				if idx != 0 {
+					row = sheet.AddRow()
+					fillEmptyCell(row, maxDirDepth)
+				}
+				cell := row.AddCell()
+
+				if outputWordbankName {
+					if !wb.Editable {
+						cell.SetValue(fmt.Sprintf("*%s", wb.Name))
+					} else {
+						cell.SetValue(wb.Name)
+					}
+				}
+
+				cell = row.AddCell()
+				cell.SetValue(strings.Join(words, ","))
+				cell = row.AddCell()
+				cell.SetValue(wb.Answer)
+
+				if len(similarWords) == 0 {
+					break
+				}
+
+				outputWordbankName = false
 			}
-			cell := row.AddCell()
-			if !wb.Editable {
-				cell.SetValue(fmt.Sprintf("*%s", wb.Name))
-			} else {
-				cell.SetValue(wb.Name)
-			}
-			cell = row.AddCell()
-			cell.SetValue(strings.Join(wb.SimilarWords, ","))
-			cell = row.AddCell()
-			cell.SetValue(wb.Answer)
 		}
 
 		// Travel children
