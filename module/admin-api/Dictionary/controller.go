@@ -592,6 +592,7 @@ func handleGetWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
 }
+
 func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	userID := util.GetUserID(r)
@@ -608,7 +609,7 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	wordbank, cid, err := GetWordbankV3(appid, id)
+	wordbank, _, err := GetWordbankV3(appid, id)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
 		return
@@ -617,15 +618,9 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
 		return
 	}
-
-	class, _, err := GetWordbankClassV3(appid, cid)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !class.Editable {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "parent not editable"), http.StatusBadRequest)
-		return
+	if !wordbank.Editable {
+		err = errors.New("Wordbank not editable")
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 	}
 
 	err = DeleteWordbankV3(appid, id)
@@ -648,6 +643,27 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	}()
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	class, err := GetWordbanksWithChildrenV3(appid, id)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if class == nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.NOT_FOUND_ERROR, "Wordbank class not found"), http.StatusNotFound)
+		return
+	}
+	if !class.Editable {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Wordbank class not editable"), http.StatusBadRequest)
+		return
+	}
+
+	// Check all child wordbank classes and wordbanks of the deleted wordbank are editable before deletion
+	if !wordbankClassDeletable(class) {
+		err = errors.New("Wordbank class contains more than one child which is not editable")
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
@@ -879,23 +895,19 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		retCode, result = ApiError.REQUEST_ERROR, err.Error()
 		return
 	}
-	origClass, pid, err := GetWordbankClassV3(appid, id)
+	origClass, _, err := GetWordbankClassV3(appid, id)
 	if err != nil {
 		retCode, result = ApiError.DB_ERROR, err.Error()
 		return
 	}
 	if origClass == nil {
+		err = errors.New("Wordbank class not existed")
 		retCode = ApiError.NOT_FOUND_ERROR
 		return
 	}
-	parent, _, err := GetWordbankClassV3(appid, pid)
-	if err != nil {
-		retCode, result = ApiError.DB_ERROR, err.Error()
-		return
-	}
-	if !parent.Editable {
-		err = errors.New("parent not editable")
-		retCode, result = ApiError.REQUEST_ERROR, "parent not editable"
+	if !origClass.Editable {
+		err = errors.New("Wordbank class not editable")
+		retCode = ApiError.REQUEST_ERROR
 		return
 	}
 
@@ -1010,25 +1022,14 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		result = fmt.Sprintf("id fail: %s", err.Error())
 		return
 	}
-	origWordbank, cid, err := GetWordbankV3(appid, id)
+	origWordbank, _, err := GetWordbankV3(appid, id)
 	if err != nil {
 		retCode = ApiError.DB_ERROR
 		return
 	}
 	if origWordbank == nil {
+		err = errors.New("Wordbank not existed")
 		retCode = ApiError.NOT_FOUND_ERROR
-		result = "wordbank not existed"
-		return
-	}
-
-	class, _, err := GetWordbankClassV3(appid, cid)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if !class.Editable {
-		err = errors.New("parent not editable")
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "parent not editable"), http.StatusBadRequest)
 		return
 	}
 
@@ -1039,9 +1040,13 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// wordbank is not editable, name cannot be changed
 	if !origWordbank.Editable {
-		wb.Name = origWordbank.Name
+		if wb.Name != origWordbank.Name {
+			err = errors.New("Wordbank not editable")
+			result = err.Error()
+			retCode = ApiError.REQUEST_ERROR
+			return
+		}
 	}
 
 	err = UpdateWordbankV3(appid, id, wb)
@@ -1077,4 +1082,30 @@ func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
 
 	ret.Editable = true
 	return ret, nil
+}
+
+func wordbankClassDeletable(wordbanks *WordBankClassV3) bool {
+	if !wordbanks.Editable {
+		return false
+	}
+
+	// Check child wordbank classes
+	if children := wordbanks.Children; children != nil {
+		for _, child := range children {
+			if !wordbankClassDeletable(child) {
+				return false
+			}
+		}
+	}
+
+	// Check child wordbanks
+	if wordbanks := wordbanks.Wordbank; wordbanks != nil {
+		for _, wordbank := range wordbanks {
+			if !wordbank.Editable {
+				return false
+			}
+		}
+	}
+
+	return true
 }

@@ -670,6 +670,103 @@ func getWordbankClassParents(appid string, id int) (ret []*WordBankClassV3, err 
 	return
 }
 
+func getWordbanksWithChildren(appid string, id int) (root *WordBankClassV3, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT name, editable, intent_engine, rule_engine
+		FROM entity_class
+		WHERE id = ? AND appid = ?`
+	row := mySQL.QueryRow(queryStr, id, appid)
+
+	root = &WordBankClassV3{}
+	var editable *int
+	ie := 0
+	re := 0
+	err = row.Scan(&root.Name, &editable, &ie, &re)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			root = nil
+			err = nil
+		}
+		return root, err
+	}
+
+	root.Editable = false
+	if editable != nil && *editable != 0 {
+		root.Editable = true
+	}
+	root.IntentEngine = ie != 0
+	root.RuleEngine = re != 0
+	root.ID = id
+
+	queryStr = `
+		SELECT id, name, editable, intent_engine, rule_engine
+		FROM entity_class
+		WHERE appid = ? AND pid = ?`
+	rows, err := mySQL.Query(queryStr, appid, id)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		temp := &WordBankClassV3{}
+		temp.Children = []*WordBankClassV3{}
+		temp.Wordbank = []*WordBankV3{}
+		err = rows.Scan(&temp.ID, &temp.Name, &temp.Editable, &temp.IntentEngine, &temp.RuleEngine)
+		if err != nil {
+			return
+		}
+		root.Children = append(root.Children, temp)
+	}
+
+	for i, child := range root.Children {
+		root.Children[i], err = getWordbanksWithChildren(appid, child.ID)
+		if err != nil {
+			return
+		}
+	}
+
+	queryStr = `SELECT id, editable, name, cid, similar_words, answer
+		FROM entities
+		WHERE cid = ?`
+	entityRows, err := mySQL.Query(queryStr, id)
+	if err != nil {
+		return
+	}
+	defer entityRows.Close()
+
+	for entityRows.Next() {
+		temp := &WordBankV3{}
+		cid := 0
+		var editable *int
+		similarWordStr := ""
+		err = entityRows.Scan(&temp.ID, &editable, &temp.Name, &cid, &similarWordStr, &temp.Answer)
+		if err != nil {
+			return
+		}
+		if similarWordStr == "" {
+			temp.SimilarWords = []string{}
+		} else {
+			temp.SimilarWords = strings.Split(similarWordStr, ",")
+		}
+		if editable != nil {
+			temp.Editable = *editable != 0
+		} else {
+			temp.Editable = true
+		}
+
+		root.Wordbank = append(root.Wordbank, temp)
+	}
+
+	return
+}
+
 func deleteWordbankV3(appid string, id int) (err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {

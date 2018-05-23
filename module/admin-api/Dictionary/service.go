@@ -129,6 +129,10 @@ func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, int, error) {
 	return getWordbankClassV3(appid, id)
 }
 
+func GetWordbanksWithChildrenV3(appid string, id int) (ret *WordBankClassV3, err error) {
+	return getWordbanksWithChildren(appid, id)
+}
+
 func DeleteWordbankV3(appid string, id int) error {
 	return deleteWordbankV3(appid, id)
 }
