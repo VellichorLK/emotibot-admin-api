@@ -529,7 +529,7 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 		Wordbank:     []*WordBankV3{},
 		Children:     []*WordBankClassV3{},
 		Editable:     false,
-		IntentEngine: true,
+		IntentEngine: false,
 		RuleEngine:   true,
 	}
 	classMap := map[string]*WordBankClassV3{}
@@ -554,7 +554,7 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 				Editable:     editable,
 				Wordbank:     []*WordBankV3{},
 				Children:     []*WordBankClassV3{},
-				IntentEngine: true,
+				IntentEngine: false,
 				RuleEngine:   true,
 			}
 			classMap[selfPath] = newWordbankClass
