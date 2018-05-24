@@ -18,7 +18,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	LogInit(bytes.NewBuffer([]byte{}), os.Stdout, os.Stdout, os.Stdout)
+	LogInit("TEST", bytes.NewBuffer([]byte{}), os.Stdout, os.Stdout, os.Stdout)
 	retCode := m.Run()
 	os.Exit(retCode)
 }
@@ -98,6 +98,10 @@ func TestConsulUpdateVal(t *testing.T) {
 		})
 	}
 
+}
+
+func TestConsulGetVal(t *testing.T) {
+	// FIXME: add test for consul get
 }
 
 func TestConsulUpdateTaskEngine(t *testing.T) {

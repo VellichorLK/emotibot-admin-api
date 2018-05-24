@@ -19,6 +19,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/SelfLearning"
 	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
+	"emotibot.com/emotigo/module/admin-api/System"
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -164,6 +165,7 @@ func setRoute() *mux.Router {
 		Stats.ModuleInfo,
 		UI.ModuleInfo,
 		SelfLearning.ModuleInfo,
+		System.ModuleInfo,
 	}
 
 	for _, module := range modules {

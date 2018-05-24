@@ -42,6 +42,9 @@ var (
 	// Resource not found
 	NOT_FOUND_ERROR = -8
 
+	// Base64 decode error
+	BASE64_PARSE_ERROR = -9
+
 	// Dictionary error: last file still running
 	DICT_STILL_RUNNING = 101
 	// Dictionary error: extension of uploaded file error

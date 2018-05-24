@@ -2,8 +2,10 @@ package util
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,10 +21,11 @@ const (
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	ConsulRCKey = "chat/%s"
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
-	ConsulFunctionKey = "function/%s"
-	ConsulFAQKey      = "faq/%s"
-	ConsulEntityKey   = "cnlu/%s"
-	ConsulRuleKey     = "rule/%s"
+	ConsulFunctionKey          = "function/%s"
+	ConsulFAQKey               = "faq/%s"
+	ConsulEntityKey            = "cnlu/%s"
+	ConsulRuleKey              = "rule/%s"
+	ConsulControllerSettingKey = "setting/controller"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -50,10 +53,14 @@ type ConsulLockHandler func(key string) (Locker, error)
 // val should be json encoded and return int as ApiError defined for backword compability.
 type ConsulUpdateHandler func(key string, val interface{}) (int, error)
 
+// ConsulGetHandler should handle get kv store in consul.
+type ConsulGetHandler func(key string) (string, int, error)
+
 // ConsulClient is an adapter used for communicate with Consul API.
 type ConsulClient struct {
 	lockHandler   ConsulLockHandler
 	updateHandler ConsulUpdateHandler
+	getHandler    ConsulGetHandler
 	Address       *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
 	client        *http.Client
 }
@@ -78,6 +85,7 @@ func NewConsulClientWithCustomHTTP(address *url.URL, client *http.Client) *Consu
 	}
 	c.updateHandler = newDefaultUpdateHandler(client, address)
 	c.lockHandler = newDefaultLockHandler(client, address)
+	c.getHandler = newDefaultGetHandler(client, address)
 	return c
 }
 
@@ -100,7 +108,12 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 			return 0, err
 		}
 		temp := u.ResolveReference(k)
-		body, err := json.Marshal(val)
+		var body []byte
+		if str, ok := val.(string); ok {
+			body = []byte(str)
+		} else {
+			body, err = json.Marshal(val)
+		}
 		request, err := http.NewRequest(http.MethodPut, temp.String(), bytes.NewReader(body))
 		if err != nil {
 			//TODO: should Logging behavior be done at Controller level or API level?
@@ -115,6 +128,53 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 		}
 
 		return ApiError.SUCCESS, nil
+	}
+}
+
+func newDefaultGetHandler(c *http.Client, u *url.URL) ConsulGetHandler {
+	return func(key string) (string, int, error) {
+		key = strings.TrimPrefix(key, "/")
+		k, err := url.Parse(key)
+		if err != nil {
+			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			return "", 0, err
+		}
+		temp := u.ResolveReference(k)
+		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
+		if err != nil {
+			//TODO: should Logging behavior be done at Controller level or API level?
+			logConsulError(err)
+			return "", ApiError.REQUEST_ERROR, err
+		}
+		logTraceConsul("get", temp.String())
+		response, err := c.Do(request)
+		if err != nil {
+			logConsulError(err)
+			return "", ApiError.CONSUL_SERVICE_ERROR, err
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return "", ApiError.IO_ERROR, err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			return "", ApiError.SUCCESS, nil
+		}
+
+		obj := []map[string]interface{}{}
+		err = json.Unmarshal(body, &obj)
+		if len(obj) <= 0 {
+			return "", ApiError.JSON_PARSE_ERROR, err
+		}
+		if b64Val, ok := obj[0]["Value"]; ok {
+			value, err := base64.StdEncoding.DecodeString(b64Val.(string))
+			if err != nil {
+				return "", ApiError.BASE64_PARSE_ERROR, err
+			}
+			return string(value), ApiError.SUCCESS, nil
+		}
+
+		return string(body), ApiError.SUCCESS, nil
 	}
 }
 
@@ -149,6 +209,11 @@ func (c *ConsulClient) Lock(key string) (Locker, error) {
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
 func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error) {
 	return c.updateHandler(key, val)
+}
+
+// ConsulGetVal get Consul KV Store by the given key, return value in string format
+func (c ConsulClient) ConsulGetVal(key string) (string, int, error) {
+	return c.getHandler(key)
 }
 
 //ConsulUpdateEntity is a convenient function for updating Task Engine's Consul Key
@@ -191,12 +256,25 @@ func ConsulUpdateRule(appid string) (int, error) {
 	return ConsulUpdateVal(key, now)
 }
 
+func ConsulGetControllerSetting() (string, int, error) {
+	key := ConsulControllerSettingKey
+	return ConsulGetVal(key)
+}
+func ConsulSetControllerSetting(val string) (int, error) {
+	key := ConsulControllerSettingKey
+	return ConsulUpdateVal(key, val)
+}
+
 // ConsulUpdateVal is a convenient function for updating Consul KV Store.
 // ConsulUpdateVal update Consul KV Store by the given key, value pair.
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
 // It is a wrapper around DefaultConsulClient.ConsulUpdateVal(key, val).
 func ConsulUpdateVal(key string, val interface{}) (int, error) {
 	return DefaultConsulClient.ConsulUpdateVal(key, val)
+}
+
+func ConsulGetVal(key string) (string, int, error) {
+	return DefaultConsulClient.ConsulGetVal(key)
 }
 
 func logTraceConsul(function string, msg string) {
