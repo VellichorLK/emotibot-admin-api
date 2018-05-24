@@ -19,7 +19,7 @@ func init() {
 		ModuleName: "system",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "setting", []string{"view"}, handleGetSetting),
-			util.NewEntryPoint("POST", "setting", []string{"edit"}, handleUpdateSetting),
+			util.NewEntryPoint("PUT", "setting", []string{"edit"}, handleUpdateSetting),
 		},
 	}
 }
