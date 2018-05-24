@@ -253,6 +253,8 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	go util.McManualBusiness(appid)
+
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
 	//contentMatching 邏輯: 移除掉一模一樣的新舊相似問內容, 來寫audit log
@@ -285,7 +287,6 @@ contentMatching:
 
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
-
 }
 
 func handleDeleteSimilarQuestions(ctx context.Context) {

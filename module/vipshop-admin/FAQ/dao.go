@@ -286,6 +286,10 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 		if err != nil {
 			return fmt.Errorf("SQL Execution err, %s", err)
 		}
+
+		// update standard question status
+		sqlStr = fmt.Sprintf("UPDATE %s_question SET status = 1 where Question_Id = %d", appid, qid)
+		t.Exec(sqlStr)
 	}
 
 	return nil
