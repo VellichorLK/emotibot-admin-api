@@ -3,9 +3,9 @@
 DOCKER_IMAGE=nginx:1-alpine
 DOCKER_CONTAINER=nginx-udp-relay
 
-cmd="docker pull ${DOCKER_IMAGE}"
-echo $cmd
-eval $cmd
+#cmd="docker pull ${DOCKER_IMAGE}"
+#echo $cmd
+#eval $cmd
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
