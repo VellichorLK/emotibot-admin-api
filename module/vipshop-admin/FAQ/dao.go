@@ -289,7 +289,7 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 
 		// update standard question status
 		sqlStr = fmt.Sprintf("UPDATE %s_question SET status = 1 where Question_Id = %d", appid, qid)
-		t.Exec(sqlStr)
+		stmt.Exec(sqlStr)
 	}
 
 	return nil
