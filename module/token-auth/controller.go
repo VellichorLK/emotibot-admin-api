@@ -491,11 +491,12 @@ func loadUserFromRequest(r *http.Request) *data.User {
 	if customStr != "" {
 		customInfo := map[string]string{}
 		err = json.Unmarshal([]byte(customStr), &customInfo)
-		if err != nil {
+		if err == nil {
 			user.CustomInfo = &customInfo
+		} else {
+			util.LogTrace.Println("Parse json error: ", err.Error())
 		}
 	}
-
 	return &user
 }
 func parseAddUserFromRequest(r *http.Request) (*data.User, error) {

@@ -517,26 +517,31 @@ func getUserUUIDWithTx(enterpriseID string, userID int64, tx *sql.Tx) (string, e
 	return ret, err
 }
 func insertCustomInfoWithTx(enterpriseID, userID string, customInfo map[string]string, tx *sql.Tx) (err error) {
-	queryStr := fmt.Sprintf(`SELECT id, column FROM %s WHERE enterprise = ?`, userColumnTable)
+	queryStr := fmt.Sprintf(`SELECT id, info.column FROM %s AS info WHERE enterprise = ?`, userColumnTable)
 	colRows, err := tx.Query(queryStr, enterpriseID)
 	if err != nil {
 		return
 	}
 	defer colRows.Close()
 
+	paramList := [][]interface{}{}
+
 	for colRows.Next() {
-		queryStr = fmt.Sprintf(`INSERT INTO %s (user_id, column_id, value) SET (?, ?, ?)`, userInfoTable)
 		colID, colName := 0, ""
 		err = colRows.Scan(&colID, &colName)
 		if err != nil {
 			return
 		}
-
 		if val, ok := customInfo[colName]; ok {
-			_, err = tx.Exec(userID, colID, val)
-			if err != nil {
-				return
-			}
+			paramList = append(paramList, []interface{}{userID, colID, val})
+		}
+	}
+
+	for _, param := range paramList {
+		queryStr = fmt.Sprintf(`INSERT INTO %s (user_id, column_id, value) VALUES (?, ?, ?)`, userInfoTable)
+		_, err = tx.Exec(queryStr, param...)
+		if err != nil {
+			return
 		}
 	}
 	return
@@ -579,8 +584,8 @@ func (controller MYSQLController) UpdateUser(enterpriseID string, user *data.Use
 		return
 	}
 
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE user_id = ? and enterprise_id = ?", userInfoTable)
-	_, err = t.Exec(queryStr, user.ID, enterpriseID)
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE user_id = ?", userInfoTable)
+	_, err = t.Exec(queryStr, user.ID)
 	if err != nil {
 		return
 	}
