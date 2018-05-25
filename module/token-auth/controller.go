@@ -487,6 +487,15 @@ func loadUserFromRequest(r *http.Request) *data.User {
 	}
 	user.Type = userType
 
+	customStr := r.FormValue("custom")
+	if customStr != "" {
+		customInfo := map[string]string{}
+		err = json.Unmarshal([]byte(customStr), &customInfo)
+		if err != nil {
+			user.CustomInfo = &customInfo
+		}
+	}
+
 	return &user
 }
 func parseAddUserFromRequest(r *http.Request) (*data.User, error) {

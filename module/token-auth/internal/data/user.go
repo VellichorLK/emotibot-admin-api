@@ -21,7 +21,7 @@ type User struct {
 	Type        int                 `json:"type"`
 	Password    *string             `json:"-"`
 	Status      *int                `json:"status"`
-	CustomInfo  interface{}         `json:"custom"`
+	CustomInfo  *map[string]string  `json:"custom"`
 	Role        *string             `json:"role"`
 	Privilege   map[string][]string `json:"privileges,omitempty"`
 }

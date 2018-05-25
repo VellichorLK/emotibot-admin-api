@@ -17,6 +17,7 @@ const (
 	userTable          = "users"
 	appTable           = "apps"
 	userInfoTable      = "user_info"
+	userColumnTable    = "user_column"
 	roleTable          = "roles"
 	rolePrivilegeTable = "privileges"
 	moduleTable        = "modules"
@@ -334,8 +335,9 @@ func (controller MYSQLController) GetUsers(enterpriseID string) (*data.Users, er
 			return nil, err
 		}
 
-		if info, ok := userInfoMap[user.ID]; ok {
-			user.CustomInfo = info
+		if _, ok := userInfoMap[user.ID]; ok {
+			info := userInfoMap[user.ID]
+			user.CustomInfo = &info
 		}
 
 		users = append(users, *user)
@@ -474,12 +476,23 @@ func (controller MYSQLController) AddUser(enterpriseID string, user *data.User, 
 	if err != nil {
 		return
 	}
-	err = t.Commit()
+
+	uuid, err = getUserUUIDWithTx(enterpriseID, id, t)
 	if err != nil {
 		return
 	}
 
-	uuid, err = controller.getUserUUID(enterpriseID, id)
+	// if custom info not set, no need to check custom columns
+	if user.CustomInfo == nil {
+		err = t.Commit()
+		return
+	}
+	err = insertCustomInfoWithTx(enterpriseID, uuid, *user.CustomInfo, t)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
 	return
 }
 func (controller MYSQLController) getUserUUID(enterpriseID string, userID int64) (string, error) {
@@ -495,12 +508,54 @@ func (controller MYSQLController) getUserUUID(enterpriseID string, userID int64)
 	err = row.Scan(&ret)
 	return ret, err
 }
+func getUserUUIDWithTx(enterpriseID string, userID int64, tx *sql.Tx) (string, error) {
+	queryStr := fmt.Sprintf("SELECT uuid from %s WHERE enterprise = ? and id = ?", userTable)
+	row := tx.QueryRow(queryStr, enterpriseID, userID)
 
-func (controller MYSQLController) UpdateUser(enterpriseID string, user *data.User) error {
+	ret := ""
+	err := row.Scan(&ret)
+	return ret, err
+}
+func insertCustomInfoWithTx(enterpriseID, userID string, customInfo map[string]string, tx *sql.Tx) (err error) {
+	queryStr := fmt.Sprintf(`SELECT id, column FROM %s WHERE enterprise = ?`, userColumnTable)
+	colRows, err := tx.Query(queryStr, enterpriseID)
+	if err != nil {
+		return
+	}
+	defer colRows.Close()
+
+	for colRows.Next() {
+		queryStr = fmt.Sprintf(`INSERT INTO %s (user_id, column_id, value) SET (?, ?, ?)`, userInfoTable)
+		colID, colName := 0, ""
+		err = colRows.Scan(&colID, &colName)
+		if err != nil {
+			return
+		}
+
+		if val, ok := customInfo[colName]; ok {
+			_, err = tx.Exec(userID, colID, val)
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+func (controller MYSQLController) UpdateUser(enterpriseID string, user *data.User) (err error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		return err
 	}
+	defer func() {
+		util.LogDBError(err)
+	}()
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		return
+	}
+
 	var queryStr string
 	var params []interface{}
 	if user.Password == nil || *user.Password == "" {
@@ -514,7 +569,27 @@ func (controller MYSQLController) UpdateUser(enterpriseID string, user *data.Use
 			password = ? WHERE uuid = ? AND enterprise = ?`, userTable)
 		params = []interface{}{user.DisplayName, user.Email, user.Type, user.Role, user.Password, user.ID, user.Enterprise}
 	}
-	_, err = controller.connectDB.Exec(queryStr, params...)
+	_, err = t.Exec(queryStr, params...)
+	if err != nil {
+		return
+	}
+
+	if user.CustomInfo == nil {
+		err = t.Commit()
+		return
+	}
+
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE user_id = ? and enterprise_id = ?", userInfoTable)
+	_, err = t.Exec(queryStr, user.ID, enterpriseID)
+	if err != nil {
+		return
+	}
+	err = insertCustomInfoWithTx(enterpriseID, user.ID, *user.CustomInfo, t)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
 	return err
 }
 func (controller MYSQLController) DisableUser(enterpriseID string, userID string) (bool, error) {
@@ -558,8 +633,8 @@ func (controller MYSQLController) getUserInfo(enterpriseID string, userID string
 	}
 
 	queryStr := fmt.Sprintf(`SELECT col.column, info.value
-		FROM user_column as col, %s as info
-		WHERE info.column_id = col.id AND info.user_id = ? AND col.enterprise = ?`, userInfoTable)
+		FROM %s as col, %s as info
+		WHERE info.column_id = col.id AND info.user_id = ? AND col.enterprise = ?`, userColumnTable, userInfoTable)
 	rows, err := controller.connectDB.Query(queryStr, userID, enterpriseID)
 	if err != nil {
 		return
@@ -587,8 +662,8 @@ func (controller MYSQLController) getUsersInfo(enterpriseID string) (ret map[str
 	}
 
 	queryStr := fmt.Sprintf(`SELECT info.user_id, col.column, info.value
-		FROM user_column as col, %s as info
-		WHERE info.column_id = col.id AND col.enterprise = ?`, userInfoTable)
+		FROM %s as col, %s as info
+		WHERE info.column_id = col.id AND col.enterprise = ?`, userColumnTable, userInfoTable)
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
 	if err != nil {
 		return
@@ -1060,8 +1135,9 @@ func (controller MYSQLController) GetUsersOfRole(enterpriseID string, roleUUID s
 			return nil, err
 		}
 
-		if info, ok := userInfoMap[user.ID]; ok {
-			user.CustomInfo = info
+		if _, ok := userInfoMap[user.ID]; ok {
+			info := userInfoMap[user.ID]
+			user.CustomInfo = &info
 		}
 
 		users = append(users, *user)

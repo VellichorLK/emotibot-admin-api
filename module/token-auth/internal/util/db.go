@@ -6,8 +6,10 @@ import (
 )
 
 func LogDBError(err error) {
-	_, file, line, _ := runtime.Caller(1)
-	LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		LogError.Printf("Error in [%s:%d] [%s]\n", file, line, err.Error())
+	}
 }
 
 func ClearTransition(tx *sql.Tx) {
