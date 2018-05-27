@@ -43,3 +43,21 @@ type StatRow struct {
 type StatRet struct {
 	Data []*StatRow `json:"data"`
 }
+
+type DialogStatsRet struct {
+    TableHeader    []DialogStatsHeader   `json:"table_header"`
+    Data           []DialogStatsData	`json:"data"`
+}
+
+type DialogStatsHeader struct {
+	Id    string    `json:"id"`
+	Text  string	`json:"text"`
+}
+
+type DialogStatsData struct {
+    Tag 		string		`json:"tag"`
+    UserCnt 	int 		`json:"userCnt"`
+    TotalCnt    int    		`json:"totalCnt"`
+}
+
+

@@ -30,6 +30,8 @@ func init() {
 			util.NewEntryPoint("POST", "audit", []string{"view"}, handleListAudit),
 
 			util.NewEntryPoint("GET", "question", []string{"view"}, handleQuestionStatistic),
+
+			util.NewEntryPoint("GET", "dialogOneDay", []string{"view"}, handleDialogOneDayStatistic),
 		},
 	}
 	cacheTimeout = nil
@@ -92,6 +94,8 @@ func handleListAudit(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenRetObj(errCode, ret))
 	}
 }
+
+
 
 func loadFilter(r *http.Request) (*AuditInput, error) {
 	input := &AuditInput{}
@@ -190,4 +194,19 @@ func getQuestionParam(r *http.Request) (int, string, error) {
 	}
 
 	return day, questionType, nil
+}
+
+func handleDialogOneDayStatistic(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	startTimeStr := r.FormValue("start_time")
+	endTimeStr := r.FormValue("end_time")
+	startTime, _ := strconv.ParseInt(startTimeStr, 10, 64)
+	endTime, _ := strconv.ParseInt(endTimeStr, 10, 64)
+	tagType := r.FormValue("tag_type")
+	ret, errCode, err := GetDialogOneDayStatistic(appid, startTime, endTime, tagType)
+	if err != nil {
+		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
+	} else {
+		util.WriteJSON(w, util.GenRetObj(errCode, ret))
+	}
 }
