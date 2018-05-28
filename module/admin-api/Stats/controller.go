@@ -202,7 +202,7 @@ func handleDialogOneDayStatistic(w http.ResponseWriter, r *http.Request) {
 	endTimeStr := r.FormValue("end_time")
 	startTime, _ := strconv.ParseInt(startTimeStr, 10, 64)
 	endTime, _ := strconv.ParseInt(endTimeStr, 10, 64)
-	tagType := r.FormValue("tag_type")
+	tagType := r.FormValue("type")
 	ret, errCode, err := GetDialogOneDayStatistic(appid, startTime, endTime, tagType)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
