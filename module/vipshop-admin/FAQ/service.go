@@ -146,11 +146,6 @@ func updateSimilarQuestions(qid int, appid string, user string, sqs []SimilarQue
 	}
 	t.Commit()
 
-	// notify multicustomer TODO: update consul directly
-	if _, err = util.McManualBusiness(appid); err != nil {
-		return fmt.Errorf("error in requesting to MultiCustomer module: %s", err)
-	}
-
 	return nil
 }
 
