@@ -2,11 +2,13 @@ package FAQ
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	// "strings"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -265,4 +267,30 @@ func GetTagTypes(appid string) ([]*TagType, error) {
 }
 func GetTagType(appid string, id int) (*TagType, error) {
 	return getTagType(appid, id)
+}
+
+func UpdateQALabel(appid string, questionID, answerID int, labelIDs []int) (errno int, err error) {
+	result, err := isQuestionExist(appid, questionID)
+	if err != nil {
+		errno = ApiError.DB_ERROR
+		return
+	} else if !result {
+		errno, err = ApiError.REQUEST_ERROR, errors.New("Question not found")
+		return
+	}
+	result, err = isAnswerExist(appid, questionID, answerID)
+	if err != nil {
+		errno = ApiError.DB_ERROR
+		return
+	} else if !result {
+		errno, err = ApiError.REQUEST_ERROR, errors.New("Answer not found")
+		return
+	}
+
+	err = updateAnswerLabel(appid, answerID, labelIDs)
+	if err != nil {
+		errno = ApiError.DB_ERROR
+		return
+	}
+	return ApiError.SUCCESS, nil
 }

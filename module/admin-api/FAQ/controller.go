@@ -41,6 +41,7 @@ func init() {
 			util.NewEntryPoint("PUT", "label/{id}", []string{"view"}, handleUpdateLabel),
 			util.NewEntryPoint("POST", "label", []string{"view"}, handleAddLabel),
 			util.NewEntryPoint("DELETE", "label/{id}", []string{"view"}, handleDeleteLabel),
+			util.NewEntryPoint("PUT", "question/{qid}/answer/{aid}/label", []string{"edit"}, handleUpdateQuestionLabel),
 
 			util.NewEntryPoint("GET", "rules", []string{"view"}, handleGetRules),
 			util.NewEntryPoint("GET", "rule/{id}", []string{"edit"}, handleGetRule),
@@ -459,4 +460,53 @@ func handleGetTagType(w http.ResponseWriter, r *http.Request) {
 	} else {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tag))
 	}
+}
+
+func handleUpdateQuestionLabel(w http.ResponseWriter, r *http.Request) {
+	status := http.StatusOK
+	errno := ApiError.SUCCESS
+	var err error
+	var ret interface{}
+	defer func() {
+		if err != nil {
+			ret = err.Error()
+		}
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), status)
+
+		// TODO: add audit log here
+	}()
+
+	appid := util.GetAppID(r)
+	questionID, err := util.GetMuxIntVar(r, "qid")
+	if err != nil {
+		status, errno, ret = http.StatusBadRequest, ApiError.REQUEST_ERROR, "invalid qid"
+		return
+	}
+	answerID, err := util.GetMuxIntVar(r, "aid")
+	if err != nil {
+		status, errno, ret = http.StatusBadRequest, ApiError.REQUEST_ERROR, "invalid aid"
+		return
+	}
+	labelStr := strings.TrimSpace(r.FormValue("labels"))
+	var labelIDs []int
+	if labelStr != "" {
+		labelStrSlice := strings.Split(labelStr, ",")
+		labelIDs = make([]int, len(labelStrSlice))
+		for idx := range labelStrSlice {
+			labelIDs[idx], err = strconv.Atoi(labelStrSlice[idx])
+			if err != nil {
+				status, errno, ret = http.StatusBadRequest, ApiError.REQUEST_ERROR, "invalid label ids"
+				return
+			}
+		}
+	} else {
+		labelIDs = []int{}
+	}
+	util.LogTrace.Printf("Update label of answer [%d] to [%s]", answerID, labelStr)
+
+	errno, err = UpdateQALabel(appid, questionID, answerID, labelIDs)
+	if err != nil {
+		status = http.StatusInternalServerError
+	}
+	return
 }

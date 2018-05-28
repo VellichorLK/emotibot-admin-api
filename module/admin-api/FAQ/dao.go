@@ -630,8 +630,6 @@ func FormDimension(tagIDs []string, tagMap map[string]Tag) []string {
 		return tags
 	}
 
-	util.LogTrace.Printf("tagIDs: %+v\ntagMap:\n%+v\n\n", tagIDs, tagMap)
-
 	for _, tagID := range tagIDs {
 		tag := tagMap[tagID]
 		index := tag.Type - 1
@@ -1048,5 +1046,92 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 		}
 		ret.Values = append(ret.Values, newValue)
 	}
+	return
+}
+
+func isQuestionExist(appid string, questionID int) (ret bool, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf("SELECT count(*) FROM %s_question WHERE Question_Id = ?", appid)
+	row := mySQL.QueryRow(queryStr, questionID)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+			return
+		}
+		return
+	}
+
+	ret = count > 0
+	return
+}
+
+func isAnswerExist(appid string, questionID, answerID int) (ret bool, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf("SELECT count(*) FROM %s_answer WHERE Question_Id = ? AND Answer_Id = ?", appid)
+	row := mySQL.QueryRow(queryStr, questionID, answerID)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+			return
+		}
+		return
+	}
+
+	ret = count > 0
+	return
+}
+
+func updateAnswerLabel(appid string, answerID int, labelIDs []int) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := fmt.Sprintf("DELETE FROM %s_answerlabel WHERE Answer_Id = ?", appid)
+	_, err = t.Exec(queryStr, answerID)
+	if err != nil {
+		return
+	}
+
+	queryStr = fmt.Sprintf("INSERT INTO %s_answerlabel (Answer_Id, Label_Id) VALUES (?, ?)", appid)
+	util.LogTrace.Println(queryStr)
+	util.LogTrace.Println(appid, answerID, labelIDs)
+	for _, id := range labelIDs {
+		_, err = t.Exec(queryStr, answerID, id)
+		if err != nil {
+			return
+		}
+	}
+	err = t.Commit()
 	return
 }
