@@ -89,7 +89,7 @@ func main() {
 	util.SetLogLevel(logLevel)
 	router := setRoute()
 	initDB()
-    Stats.InitDB()
+	Stats.InitDB()
 	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")

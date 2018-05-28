@@ -8,7 +8,7 @@ type AuditInput struct {
 	Filter      *AuditFilter `json:"filters"`
 	Page        int          `json:"page"`
 	ListPerPage int          `json:"limit"`
-	Export		bool		 `json:"export"`
+	Export      bool         `json:"export"`
 }
 
 type AuditFilter struct {
@@ -45,19 +45,17 @@ type StatRet struct {
 }
 
 type DialogStatsRet struct {
-    TableHeader    []DialogStatsHeader   `json:"table_header"`
-    Data           []DialogStatsData	`json:"data"`
+	TableHeader []DialogStatsHeader `json:"table_header"`
+	Data        []DialogStatsData   `json:"data"`
 }
 
 type DialogStatsHeader struct {
-	Id    string    `json:"id"`
-	Text  string	`json:"text"`
+	Id   string `json:"id"`
+	Text string `json:"text"`
 }
 
 type DialogStatsData struct {
-    Tag 		string		`json:"tag"`
-    UserCnt 	int 		`json:"userCnt"`
-    TotalCnt    int    		`json:"totalCnt"`
+	Tag      string `json:"tag"`
+	UserCnt  int    `json:"userCnt"`
+	TotalCnt int    `json:"totalCnt"`
 }
-
-
