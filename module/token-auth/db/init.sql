@@ -98,6 +98,7 @@ VALUES
 	('statistic_daily','','','view,export',''),
 	('statistic_audit','','','view,export',''),
 	('qalist','','','view,edit,create,delete,export,import',''),
+	('qa_greeting','','','view',''),
 	('qatest','','','view',''),
 	('qa_chat_skill','','','view,edit',''),
 	('qa_label','','','view,edit',''),
