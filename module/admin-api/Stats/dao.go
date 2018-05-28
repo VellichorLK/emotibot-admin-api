@@ -11,7 +11,10 @@ import (
 )
 
 const (
+	TAG_TYPE_TABLE_FORMAT = "%s_tag_type"
+	TAG_TABLE_FORMAT = "%s_tag"
 	RECORD_TABLE_FORMAT = "%s_record"
+	RAW_RECORD_TABLE = "chat_record"
 	RECORD_INFO_TABLE   = "static_record_info"
 )
 
@@ -212,4 +215,74 @@ func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*St
 		ret = append(ret, &temp)
 	}
 	return ret, nil
+}
+
+func getDialogCnt(appid string, start int64, end int64, tagType string, tag string)(int, int, error) {
+	statsDB := getStatsDB()
+	if statsDB == nil {
+		return 0, 0, errors.New("statsDB is not inited")
+	}
+	statsTable := fmt.Sprintf(RECORD_TABLE_FORMAT, appid)
+
+	statsTableCntSql := "SELECT user_id" + 
+		" FROM %s" +
+		" WHERE created_time BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d) AND %s = '%s'"
+	statsTableCntSql = fmt.Sprintf(statsTableCntSql, statsTable, start, end, tagType, tag)
+	
+	rawTableCntSql := "SELECT user_id" +
+		" FROM " + RAW_RECORD_TABLE + 
+		" WHERE app_id = '%s' AND created_time BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d)"
+	rawTableCntSql = fmt.Sprintf(rawTableCntSql, appid, start, end)
+	rawTableCntSql += " AND custom_info LIKE '%%\"" + tagType + "\":\"" + tag +"\"%%'"
+
+	querySql := fmt.Sprintf("SELECT COUNT(DISTINCT(user_id)), COUNT(1) FROM (%s UNION ALL %s) tmp", statsTableCntSql, rawTableCntSql)
+	userCntRet := 0
+	totalCntRet := 0
+
+	ansRows, err := statsDB.Query(querySql)
+	if err != nil {
+		return 0, 0, err
+	}
+	if ansRows.Next() {
+		ansRows.Scan(&userCntRet, &totalCntRet)
+	}
+	defer ansRows.Close()
+	return userCntRet, totalCntRet, nil
+}	
+func getDialogOneDayStatistic(appid string, start int64, end int64, tagType string) (string, []DialogStatsData, error) {
+	emotibotDB := util.GetMainDB()
+	if emotibotDB == nil {
+		return "", nil, errors.New("emotibotDB is not inited")
+	}
+	
+	tagTypeTable := fmt.Sprintf(TAG_TYPE_TABLE_FORMAT, appid)
+	tagTable := fmt.Sprintf(TAG_TABLE_FORMAT, appid)
+
+	var typeNameRet string
+	dataRet := []DialogStatsData{} 
+
+	queryTag := "SELECT Tag_Name, Type_Name" + 
+		" FROM %s t1" +
+		" INNER JOIN %s t2 ON t1.Tag_Type = t2.Type_id" + 
+		" WHERE t2.Type_Code = '%s'"
+	queryTagSql := fmt.Sprintf(queryTag, tagTable, tagTypeTable, tagType)
+
+	tagRows, err := emotibotDB.Query(queryTagSql)
+	if err != nil {
+		return "", nil, err
+	}
+
+	for tagRows.Next() {
+		data := DialogStatsData{}
+		tagRows.Scan(&data.Tag, &typeNameRet)
+		data.Tag = strings.Replace(data.Tag, "#", "", -1);
+		
+		data.UserCnt, data.TotalCnt, err = getDialogCnt(appid, start, end, tagType, data.Tag)
+		if err != nil {
+			return "", nil, err
+		}
+		dataRet = append(dataRet, data)
+	}
+	defer tagRows.Close()
+	return typeNameRet, dataRet, nil
 }
