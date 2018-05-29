@@ -145,14 +145,14 @@ func SetRFQuestions(contents []string, appid string) error {
 			return fmt.Errorf("insert %s failed, %v", c, err)
 		}
 	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("db commit failed, %v", err)
+	}
 	unixTime := time.Now().UnixNano() / 1000000
 	_, err = util.ConsulUpdateVal("vipshopdata/RFQuestion", unixTime)
 	if err != nil {
 		return fmt.Errorf("consul update failed, %v", err)
-	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("db commit failed, %v", err)
 	}
 
 	return nil
