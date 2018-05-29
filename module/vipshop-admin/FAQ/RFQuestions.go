@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -134,13 +135,14 @@ func SetRFQuestions(contents []string, appid string) error {
 	if err != nil {
 		return fmt.Errorf("DELETE RFQuestions Table failed, %v", err)
 	}
-	insertStmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s_removeFeedbackQuestion(Question_Content) VALUES(?)", appid))
+	var insertStmt *sql.Stmt
+	insertStmt, err = tx.Prepare(fmt.Sprintf("INSERT INTO %s_removeFeedbackQuestion(Question_Content) VALUES(?)", appid))
 	if err != nil {
 		return fmt.Errorf("preparing insert remove feedback question query failed, %v", err)
 	}
 	defer insertStmt.Close()
 	for _, c := range contents {
-		_, err := insertStmt.Exec(c)
+		_, err = insertStmt.Exec(c)
 		if err != nil {
 			return fmt.Errorf("insert %s failed, %v", c, err)
 		}
