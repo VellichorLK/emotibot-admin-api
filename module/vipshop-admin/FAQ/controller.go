@@ -253,7 +253,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	go util.McManualBusiness(appid)
+	// go util.McManualBusiness(appid)
 
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
@@ -470,9 +470,9 @@ func handleCreateQuestion(ctx context.Context) {
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
 
 	// notify FAQ update
-	if err == nil {
-		go util.McManualBusiness(appid)
-	}
+	// if err == nil {
+	// 	go util.McManualBusiness(appid)
+	// }
 
 	// response
 	type Response struct {
@@ -528,9 +528,9 @@ func handleUpdateQuestion(ctx context.Context) {
 	}
 
 	// notify multicustomer
-	if err == nil {
-		go util.McManualBusiness(appid)
-	}
+	// if err == nil {
+	// 	go util.McManualBusiness(appid)
+	// }
 
 	// write audit log
 	err = writeUpdateAuditLog(ctx, auditRet, &oldQuestion, &newQuestion)
@@ -934,9 +934,9 @@ func handleDeleteQuestion(ctx context.Context) {
 	}
 
 	// notify FAQ update
-	if err == nil {
-		go util.McManualBusiness(appid)
-	}
+	// if err == nil {
+	// 	go util.McManualBusiness(appid)
+	// }
 
 	// write audit log
 	userID := util.GetUserID(ctx)
