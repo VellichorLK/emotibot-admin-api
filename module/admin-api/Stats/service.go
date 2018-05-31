@@ -7,7 +7,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 )
 
-
 func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
 	list, totalCnt, err := getAuditListData(appid, input, input.Page, input.ListPerPage, input.Export)
 	if err != nil {
@@ -49,15 +48,15 @@ func GetQuestionStatisticResult(appid string, day int, qType string) (*StatRet, 
 func GetDialogOneDayStatistic(appid string, startTime int64, endTime int64, tagType string) (*DialogStatsRet, int, error) {
 
 	ret := DialogStatsRet{}
-    typeName, datas, err := getDialogOneDayStatistic(appid, startTime, endTime, tagType)
+	typeName, datas, err := getDialogOneDayStatistic(appid, startTime, endTime, tagType)
 
-    if err != nil {
-    	return nil, ApiError.DB_ERROR, err
-    }
-    if len(typeName) <= 0 {
-    	return &ret, ApiError.REQUEST_ERROR, errors.New("not found tag_type")
-    }
-    header := DialogStatsHeader{}
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	if len(typeName) <= 0 {
+		return &ret, ApiError.REQUEST_ERROR, errors.New("not found tag_type")
+	}
+	header := DialogStatsHeader{}
 	header.Id = "tag"
 	header.Text = typeName
 	ret.TableHeader = append(ret.TableHeader, header)
@@ -76,4 +75,33 @@ func GetDialogOneDayStatistic(appid string, startTime int64, endTime int64, tagT
 	}
 
 	return &ret, ApiError.SUCCESS, nil
+}
+
+type StatResponse struct {
+	Headers []Column   `json:"table_header"`
+	Data    []statsRow `json:"data"`
+}
+
+//GetChatRecords will return records of users
+func GetChatRecords(appID string, start, end time.Time, users ...string) (StatResponse, error) {
+	data, err := getChatRecords(appID, start, end, users...)
+	if err != nil {
+		return StatResponse{}, err
+	}
+	return StatResponse{Headers: ChatRecordTable.Columns, Data: data}, nil
+}
+
+func GetFAQStats(appID string, start, end time.Time, brandName, keyword string) (StatResponse, error) {
+	var keywords = []whereEqual{}
+	if keyword != "" {
+		keywords = append(keywords, whereEqual{"std_question", keyword})
+	}
+	data, err := getFAQStats(appID, start, end, brandName, keywords...)
+	if err != nil {
+		return StatResponse{}, err
+	}
+	return StatResponse{
+		Headers: FAQStatsTable.Columns,
+		Data:    data,
+	}, nil
 }
