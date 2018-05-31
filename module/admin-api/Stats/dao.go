@@ -342,7 +342,6 @@ func getFAQStats(appID string, start, end time.Time, brandName string, eq ...whe
 	if db == nil {
 		return nil, fmt.Errorf("can not get db")
 	}
-	fmt.Println(input)
 	rows, err := db.Query(query, input...)
 	if err != nil {
 		util.LogError.Printf("query: %s\n", query)
@@ -397,6 +396,5 @@ func getTagValue(appID string, typ int) (map[string]string, error) {
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("sql error: %v", err)
 	}
-	fmt.Println(tags)
 	return tags, nil
 }

@@ -164,7 +164,6 @@ func (st StatTable) GetGroupedRows(appID string, typ int, groupColName string, a
 	if db == nil {
 		return nil, fmt.Errorf("can not get db of " + ModuleInfo.ModuleName)
 	}
-	fmt.Println(query)
 	rows, err := db.Query(query, start, end, typ, appID)
 	if err != nil {
 		return nil, fmt.Errorf("query failed, %v\n origin query: %s", err, query)

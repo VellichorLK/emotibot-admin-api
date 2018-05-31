@@ -234,8 +234,6 @@ func handleRobotsTraffic(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	fmt.Println(start)
-	fmt.Println(end)
 	typ, err := getType(r)
 	if err != nil {
 		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
@@ -266,7 +264,6 @@ func handleRobotsResponse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "appid is empty", http.StatusBadRequest)
 		return
 	}
-	fmt.Println(appid)
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		http.Error(w, "get db failed", http.StatusInternalServerError)
