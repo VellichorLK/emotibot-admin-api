@@ -389,14 +389,27 @@ func handleLastVisit(w http.ResponseWriter, r *http.Request) {
 	}
 	//TODO: use phone_number in somewhere search condiction
 	// phone = qs.Get("phone_number")
-	selector := NewStatsSelector(UserContactsTable, "last_chat")
+
+	//It is a quick dirty fix for UserContact
+	//因為最後訪問時間的渠道沒有全部的概念, 但現在在api端寫找出max方法來不及了, 當渠道為all先把name拔掉。
+	var st StatTable
+	if brand == "all" {
+		st = StatTable{
+			Name:    UserContactsTable.Name,
+			Columns: UserContactsTable.Columns[1:],
+		}
+	} else {
+		st = UserContactsTable
+	}
+
+	selector := NewStatsSelector(st, "last_chat")
 	rows, err := selector(appID, start, end, eq...)
 	if err != nil {
 		http.Error(w, "query error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	var output = StatResponse{
-		Headers: UserContactsTable.Columns,
+		Headers: st.Columns,
 		Data:    rows,
 	}
 
