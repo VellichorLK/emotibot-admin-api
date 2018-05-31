@@ -244,10 +244,7 @@ func handleRobotsTraffic(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Get rows failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var output = struct {
-		Headers []Column   `json:"table_header"`
-		Data    []statsRow `json:"data"`
-	}{
+	var output = StatResponse{
 		Headers: RobotTrafficsTable.Columns,
 		Data:    rows,
 	}
@@ -284,10 +281,7 @@ func handleRobotsResponse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Get rows failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var output = struct {
-		Headers []Column   `json:"table_header"`
-		Data    []statsRow `json:"data"`
-	}{
+	var output = StatResponse{
 		Headers: RobotResponseTable.Columns,
 		Data:    rows,
 	}
@@ -348,10 +342,7 @@ func handleMonitor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var output = struct {
-		Headers []Column   `json:"table_header"`
-		Data    []statsRow `json:"data"`
-	}{
+	var output = StatResponse{
 		Headers: st.Columns,
 		Data:    rows,
 	}
@@ -378,6 +369,7 @@ func handleLastVisit(w http.ResponseWriter, r *http.Request) {
 	brand := qs.Get("brand")
 	if brand == "" {
 		http.Error(w, "No brand name is given.", http.StatusBadRequest)
+		return
 	}
 	tags, err := getTagValue(appID, 2)
 	if err != nil {
@@ -403,10 +395,7 @@ func handleLastVisit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "query error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var output = struct {
-		Headers []Column   `json:"table_header"`
-		Data    []statsRow `json:"data"`
-	}{
+	var output = StatResponse{
 		Headers: UserContactsTable.Columns,
 		Data:    rows,
 	}
@@ -433,6 +422,7 @@ func handleRecords(w http.ResponseWriter, r *http.Request) {
 	output, err := GetChatRecords(appID, start, end, userID)
 	if err != nil {
 		http.Error(w, "query failed:"+err.Error(), http.StatusInternalServerError)
+		return
 	}
 	err = util.WriteJSON(w, output)
 	if err != nil {
@@ -458,7 +448,7 @@ func handleFAQStats(w http.ResponseWriter, r *http.Request) {
 	var ok bool
 	brandName, ok = tags[brandName]
 	if !ok {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, "brand is invalid", http.StatusBadRequest)
 		return
 	}
 

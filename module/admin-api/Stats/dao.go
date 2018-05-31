@@ -396,5 +396,8 @@ func getTagValue(appID string, typ int) (map[string]string, error) {
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("sql error: %v", err)
 	}
+	//all is a special concept for stat, because there wont have a tag name all. so we have to add manually.
+	//contact taylor@emotibot.com or deansu@emotibot.com for detail
+	tags["all"] = "all"
 	return tags, nil
 }
