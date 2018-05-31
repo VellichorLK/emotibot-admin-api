@@ -91,21 +91,23 @@ CREATE TABLE `modules` (
 LOCK TABLES `modules` WRITE;
 /*!40000 ALTER TABLE `modules` DISABLE KEYS */;
 
-INSERT INTO `modules` (`code`, `name`, `enterprise`, `cmd_list`, `discription`, `created_time`, `status`)
+INSERT INTO `modules` (`code`, `name`, `enterprise`, `cmd_list`, `discription`)
 VALUES
-	('statistic_dash', '', '', 'view', '', '2018-04-12 14:47:45', 1),
-	('ssm', '', '', 'view,edit', '', '2018-05-15 23:04:37', 1),
-	('qa_label', '', '', 'view,edit', '', '2018-05-15 23:05:01', 1),
-	('task_engine', '', '', 'edit', '', '2018-05-15 22:59:01', 1),
-	('wordbank', '', '', 'view,edit,create,delete,export,import', '', '2018-04-12 14:47:45', 1),
-	('statistic_daily', '', '', 'view,export', '', '2018-04-12 14:47:45', 1),
-	('statistic_analysis', '', '', 'view,export', '', '2018-05-15 23:05:25', 1),
-	('statistic_audit', '', '', 'view,export', '', '2018-04-12 14:47:45', 1),
-	('robot_profile', '', '', 'view,edit', '', '2018-04-12 14:47:45', 1),
-	('robot_chat_skill', '', '', 'view,edit', '', '2018-04-12 14:47:45', 1),
-	('robot_function', '', '', 'view,edit', '', '2018-05-15 23:06:30', 1),
-	('robot_command', '', '', 'view,edit', '', '2018-05-15 23:06:41', 1),
-	('management', '', '', 'edit', '', '2018-04-12 14:47:45', 1);
+	('statistic_dash','','','view',''),
+	('statistic_analysis','','','view,export',''),
+	('statistic_daily','','','view,export',''),
+	('statistic_audit','','','view,export',''),
+	('qalist','','','view,edit,create,delete,export,import',''),
+	('qa_greeting','','','view',''),
+	('qatest','','','view',''),
+	('qa_chat_skill','','','view,edit',''),
+	('qa_label','','','view,edit',''),
+	('qa_rule','','','view,edit',''),
+	('robot_function','','','view,edit',''),
+	('robot_profile','','','view,edit',''),
+	('wordbank','','','view,edit,create,delete,export,import',''),
+	('task_engine','','','view',''),
+	('management','','','edit','');
 
 /*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 UNLOCK TABLES;
