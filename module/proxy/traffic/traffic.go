@@ -19,15 +19,21 @@ type RouteMap struct {
 }
 
 type AppidIP struct {
-	Appid  string
-	IP     string
-	Userid string
+	Appid      string
+	IP         string
+	RequestURI string
+	Userid     string
 }
 
 type AppidCount struct {
 	FromWho  map[string]uint64 //ip -> count
 	FromUser map[string]uint64 //userid -> count
 	Counter  uint64            //counter in assigned period
+}
+
+type RequestCount struct {
+	URI     string
+	Counter uint64
 }
 
 var stats map[string]*ratecounter.RateCounter
@@ -108,6 +114,7 @@ func AppidCounter(appipChan <-chan *AppidIP, period int, statsdURL string) {
 	c.Tags = append(c.Tags, "module:goproxy")
 
 	flowCount := make(map[string]*AppidCount)
+	requestCount := make(map[string]*RequestCount)
 	timeCh := time.After(time.Duration(period) * time.Second)
 	for {
 		select {
@@ -132,15 +139,24 @@ func AppidCounter(appipChan <-chan *AppidIP, period int, statsdURL string) {
 				log.Println(err)
 			}
 
+			req, ok := requestCount[appip.Appid]
+			if !ok {
+				req = new(RequestCount)
+				req.URI = appip.RequestURI
+				requestCount[appip.Appid] = req
+			}
+
+			req.Counter++
 		case <-timeCh:
-			goDatadog(c, flowCount)
+			goDatadog(c, flowCount, requestCount)
 			timeCh = time.After(time.Duration(period) * time.Second)
 		}
 
 	}
 }
 
-func goDatadog(c *statsd.Client, flowCount map[string]*AppidCount) {
+func goDatadog(c *statsd.Client, flowCount map[string]*AppidCount,
+	requestCount map[string]*RequestCount) {
 	for appid, v := range flowCount {
 		numOfIP := len(v.FromWho)
 		v.Counter = 0
@@ -163,4 +179,16 @@ func goDatadog(c *statsd.Client, flowCount map[string]*AppidCount) {
 		}
 	}
 
+	for appid, req := range requestCount {
+		err := c.Gauge("num.uri.request", float64(req.Counter), []string{
+			"appid:" + appid,
+			"uri:" + req.URI,
+		}, 1)
+		if err != nil {
+			log.Println(err)
+		}
+
+		// Reset the counter
+		req.Counter = 0
+	}
 }

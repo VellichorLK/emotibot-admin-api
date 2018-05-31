@@ -61,15 +61,12 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 
 	ipPort := strings.Split(r.RemoteAddr, ":")
 	if len(ipPort) == 2 {
-		do, ok := trafficStats.MonitorAppid[appid]
-		if do && ok {
-			appidIP := new(trafficStats.AppidIP)
-			appidIP.Appid = appid
-			appidIP.IP = ipPort[0]
-			appidIP.Userid = userid
-			AppidChan <- appidIP
-		}
-
+		appidIP := new(trafficStats.AppidIP)
+		appidIP.Appid = appid
+		appidIP.IP = ipPort[0]
+		appidIP.Userid = userid
+		appidIP.RequestURI = r.RequestURI
+		AppidChan <- appidIP
 	} else {
 		log.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
 	}
