@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,10 +13,10 @@ import (
 
 const (
 	TAG_TYPE_TABLE_FORMAT = "%s_tag_type"
-	TAG_TABLE_FORMAT = "%s_tag"
-	RECORD_TABLE_FORMAT = "%s_record"
-	RAW_RECORD_TABLE = "chat_record"
-	RECORD_INFO_TABLE   = "static_record_info"
+	TAG_TABLE_FORMAT      = "%s_tag"
+	RECORD_TABLE_FORMAT   = "%s_record"
+	RAW_RECORD_TABLE      = "chat_record"
+	RECORD_INFO_TABLE     = "static_record_info"
 )
 
 func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
@@ -107,7 +108,6 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 		args = append(args, listPerPage)
 		args = append(args, shift)
 	}
-	
 
 	util.LogTrace.Printf("Query for audit: %s", queryStr)
 	util.LogTrace.Printf("Query param: %#v", args)
@@ -216,54 +216,55 @@ func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*St
 	}
 	return ret, nil
 }
-
-func getDialogCnt(appid string, start int64, end int64, tagType string, tag string)(int, int, error) {
+func getDialogCnt(appid string, start int64, end int64, tagType string, tag string) (int, int, error) {
 	statsDB := getStatsDB()
 	if statsDB == nil {
 		return 0, 0, errors.New("statsDB is not inited")
 	}
 	statsTable := fmt.Sprintf(RECORD_TABLE_FORMAT, appid)
 
-	statsTableCntSql := "SELECT user_id" + 
+	statsTableCntSql := "SELECT user_id" +
 		" FROM %s" +
-		" WHERE created_time BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d) AND %s = '%s'"
-	statsTableCntSql = fmt.Sprintf(statsTableCntSql, statsTable, start, end, tagType, tag)
-	
-	rawTableCntSql := "SELECT user_id" +
-		" FROM " + RAW_RECORD_TABLE + 
-		" WHERE app_id = '%s' AND created_time BETWEEN FROM_UNIXTIME(%d) AND FROM_UNIXTIME(%d)"
-	rawTableCntSql = fmt.Sprintf(rawTableCntSql, appid, start, end)
-	rawTableCntSql += " AND custom_info LIKE '%%\"" + tagType + "\":\"" + tag +"\"%%'"
+		" WHERE created_time BETWEEN FROM_UNIXTIME(?) AND FROM_UNIXTIME(?) AND %s = ? AND app_id = ?"
+	statsTableCntSql = fmt.Sprintf(statsTableCntSql, statsTable, tagType)
 
+	rawTableCntSql := "SELECT user_id" +
+		" FROM " + RAW_RECORD_TABLE +
+		" WHERE app_id = ? AND created_time BETWEEN FROM_UNIXTIME(?) AND FROM_UNIXTIME(?)"
+	rawTableCntSql = fmt.Sprintf(rawTableCntSql)
+	rawTableCntSql += " AND custom_info LIKE ?"
+
+	likeInput := "%%\"" + tagType + "\":\"" + tag + "\"%%"
 	querySql := fmt.Sprintf("SELECT COUNT(DISTINCT(user_id)), COUNT(1) FROM (%s UNION ALL %s) tmp", statsTableCntSql, rawTableCntSql)
 	userCntRet := 0
 	totalCntRet := 0
 
-	ansRows, err := statsDB.Query(querySql)
+	ansRows, err := statsDB.Query(querySql, start, end, tag, appid, appid, start, end, likeInput)
 	if err != nil {
 		return 0, 0, err
 	}
+	defer ansRows.Close()
+
 	if ansRows.Next() {
 		ansRows.Scan(&userCntRet, &totalCntRet)
 	}
-	defer ansRows.Close()
 	return userCntRet, totalCntRet, nil
-}	
+}
 func getDialogOneDayStatistic(appid string, start int64, end int64, tagType string) (string, []DialogStatsData, error) {
 	emotibotDB := util.GetMainDB()
 	if emotibotDB == nil {
 		return "", nil, errors.New("emotibotDB is not inited")
 	}
-	
+
 	tagTypeTable := fmt.Sprintf(TAG_TYPE_TABLE_FORMAT, appid)
 	tagTable := fmt.Sprintf(TAG_TABLE_FORMAT, appid)
 
 	var typeNameRet string
-	dataRet := []DialogStatsData{} 
+	dataRet := []DialogStatsData{}
 
-	queryTag := "SELECT Tag_Name, Type_Name" + 
+	queryTag := "SELECT Tag_Name, Type_Name" +
 		" FROM %s t1" +
-		" INNER JOIN %s t2 ON t1.Tag_Type = t2.Type_id" + 
+		" INNER JOIN %s t2 ON t1.Tag_Type = t2.Type_id" +
 		" WHERE t2.Type_Code = '%s'"
 	queryTagSql := fmt.Sprintf(queryTag, tagTable, tagTypeTable, tagType)
 
@@ -271,18 +272,132 @@ func getDialogOneDayStatistic(appid string, start int64, end int64, tagType stri
 	if err != nil {
 		return "", nil, err
 	}
+	defer tagRows.Close()
 
 	for tagRows.Next() {
 		data := DialogStatsData{}
 		tagRows.Scan(&data.Tag, &typeNameRet)
-		data.Tag = strings.Replace(data.Tag, "#", "", -1);
-		
+		data.Tag = strings.Replace(data.Tag, "#", "", -1)
+
 		data.UserCnt, data.TotalCnt, err = getDialogCnt(appid, start, end, tagType, data.Tag)
 		if err != nil {
 			return "", nil, err
 		}
 		dataRet = append(dataRet, data)
 	}
-	defer tagRows.Close()
+
 	return typeNameRet, dataRet, nil
+}
+
+func getChatRecords(appID string, start, end time.Time, users ...string) ([]statsRow, error) {
+	query := "SELECT user_id, user_q, answer, brand, created_time FROM `" + appID + "_record` WHERE (`created_time` BETWEEN ? AND ?) "
+	var input = []interface{}{start, end}
+	for i, uid := range users {
+		if i == 0 {
+			query += " AND user_id = ? "
+		} else {
+			query += " OR user_id = >"
+		}
+		input = append(input, uid)
+	}
+	query += " ORDER BY created_time DESC"
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return nil, fmt.Errorf("can not get db")
+	}
+	rows, err := db.Query(query, input...)
+	if err != nil {
+		return nil, fmt.Errorf("query failed, %v", err)
+	}
+	defer rows.Close()
+	var tRows = []statsRow{}
+	for rows.Next() {
+		var userID, userQuestion, answer, brand string
+		var createdTime time.Time
+		rows.Scan(&userID, &userQuestion, &answer, &brand, &createdTime)
+		tRows = append(tRows, statsRow{
+			"user_id":           userID,
+			"name":              brand,
+			"input":             userQuestion,
+			"output":            answer,
+			"conversation_time": createdTime,
+		})
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql err: %v", err)
+	}
+	return tRows, nil
+}
+
+func getFAQStats(appID string, start, end time.Time, brandName string, eq ...whereEqual) ([]statsRow, error) {
+	query := "SELECT category, std_question, SUM(count), `name` FROM " + FAQStatsTable.Name + " WHERE (cache_day BETWEEN ? AND ?) AND `name` = ?"
+	var input = []interface{}{start, end, brandName}
+	for _, e := range eq {
+		query += " AND " + e.ColName + " = ? "
+		input = append(input, e.value)
+	}
+	query += " GROUP BY category, std_question, name"
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return nil, fmt.Errorf("can not get db")
+	}
+	rows, err := db.Query(query, input...)
+	if err != nil {
+		util.LogError.Printf("query: %s\n", query)
+		return nil, fmt.Errorf("query failed, %v", err)
+	}
+	defer rows.Close()
+	var sRows = []statsRow{}
+	for rows.Next() {
+		var category, stdQuestion, qBrandName string
+		var total_count int64
+		rows.Scan(&category, &stdQuestion, &total_count, &qBrandName)
+		var categories = make([]string, 5, 5)
+		var r = make(statsRow)
+		copy(categories, strings.Split(category, "/"))
+
+		r["question_name"] = stdQuestion
+		r["brand"] = qBrandName
+		r["total_count"] = total_count
+		r["hit_count"] = total_count
+		r["accuracy"] = 1
+		for i, c := range categories {
+			catKey := "categoryL" + strconv.Itoa(i)
+			r[catKey] = c
+		}
+		sRows = append(sRows, r)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql failed, %v", err)
+	}
+
+	return sRows, nil
+}
+
+//getTagValue create a tag_name & tag_code mapping.
+func getTagValue(appID string, typ int) (map[string]string, error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, fmt.Errorf("can not get db")
+	}
+	rows, err := db.Query("SELECT Tag_Code, Tag_Name FROM "+appID+"_tag WHERE Tag_Type = ?", typ)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %v", err)
+	}
+	defer rows.Close()
+	var tags = make(map[string]string)
+	for rows.Next() {
+		var name, value string
+		rows.Scan(&name, &value)
+		value = strings.Trim(value, "#")
+		tags[name] = value
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql error: %v", err)
+	}
+	//all is a special concept for stat, because there wont have a tag name all. so we have to add manually.
+	//contact taylor@emotibot.com or deansu@emotibot.com for detail
+	tags["all"] = "all"
+	return tags, nil
 }

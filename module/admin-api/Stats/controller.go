@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"github.com/gorilla/mux"
 )
 
 var (
@@ -32,6 +33,12 @@ func init() {
 			util.NewEntryPoint("GET", "question", []string{"view"}, handleQuestionStatistic),
 
 			util.NewEntryPoint("GET", "dialogOneDay", []string{"view"}, handleDialogOneDayStatistic),
+			util.NewEntryPoint("GET", "traffics", []string{"view"}, handleRobotsTraffic),
+			util.NewEntryPoint("GET", "responses", []string{"view"}, handleRobotsResponse),
+			util.NewEntryPoint("GET", "brands/{name}/detail", []string{"view"}, handleMonitor),
+			util.NewEntryPoint("GET", "users/last_visit", []string{"view"}, handleLastVisit),
+			util.NewEntryPoint("GET", "users/{uid}/records", []string{"view"}, handleRecords),
+			util.NewEntryPoint("GET", "faq", []string{"view"}, handleFAQStats),
 		},
 	}
 	cacheTimeout = nil
@@ -94,8 +101,6 @@ func handleListAudit(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenRetObj(errCode, ret))
 	}
 }
-
-
 
 func loadFilter(r *http.Request) (*AuditInput, error) {
 	input := &AuditInput{}
@@ -198,15 +203,277 @@ func getQuestionParam(r *http.Request) (int, string, error) {
 
 func handleDialogOneDayStatistic(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
-	startTimeStr := r.FormValue("start_time")
-	endTimeStr := r.FormValue("end_time")
-	startTime, _ := strconv.ParseInt(startTimeStr, 10, 64)
-	endTime, _ := strconv.ParseInt(endTimeStr, 10, 64)
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	tagType := r.FormValue("type")
-	ret, errCode, err := GetDialogOneDayStatistic(appid, startTime, endTime, tagType)
+	ret, errCode, err := GetDialogOneDayStatistic(appid, start.Unix(), end.Unix(), tagType)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
 	} else {
-		util.WriteJSON(w, util.GenRetObj(errCode, ret))
+		util.WriteJSON(w, ret)
+	}
+}
+
+func handleRobotsTraffic(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	if appid == "" {
+		http.Error(w, "appid is empty", http.StatusBadRequest)
+		return
+	}
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		http.Error(w, "get db failed", http.StatusInternalServerError)
+		return
+	}
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	typ, err := getType(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	rows, err := RobotTrafficsTable.GetGroupedRows(appid, typ, "name", []string{"resolved_rate"}, start, end)
+	if err != nil {
+		http.Error(w, "Get rows failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var output = StatResponse{
+		Headers: RobotTrafficsTable.Columns,
+		Data:    rows,
+	}
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleRobotsResponse(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	if appid == "" {
+		http.Error(w, "appid is empty", http.StatusBadRequest)
+		return
+	}
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		http.Error(w, "get db failed", http.StatusInternalServerError)
+		return
+	}
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	typ, err := getType(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	rows, err := RobotResponseTable.GetGroupedRows(appid, typ, "name", nil, start, end)
+	if err != nil {
+		http.Error(w, "Get rows failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var output = StatResponse{
+		Headers: RobotResponseTable.Columns,
+		Data:    rows,
+	}
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleMonitor(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	if appid == "" {
+		http.Error(w, "appid is empty", http.StatusBadRequest)
+		return
+	}
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		http.Error(w, "get db failed", http.StatusInternalServerError)
+		return
+	}
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	brandName, ok := mux.Vars(r)["name"]
+	if !ok || brandName == "" {
+		http.Error(w, "Bad Request: name should be provided in query string", http.StatusBadRequest)
+		return
+	}
+	tags, err := getTagValue(appid, 2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	brandName, ok = tags[brandName]
+	if !ok {
+		http.Error(w, fmt.Sprintf("%v", tags), http.StatusBadRequest)
+		return
+	}
+
+	var rows []statsRow
+	var st StatTable
+	var selector func(appID string, start, end time.Time, eq ...whereEqual) ([]statsRow, error)
+	if end.Sub(start).Hours() <= 24.0 {
+		st = HourlyMonitortable
+		selector = NewStatsSelector(st, "cache_hour")
+	} else {
+		st = DailyMonitorTable
+		selector = NewStatsSelector(st, "cache_day")
+	}
+
+	rows, err = selector(appid, start, end, whereEqual{"name", brandName}, whereEqual{"type", 2})
+	if err != nil {
+		http.Error(w, "query error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var output = StatResponse{
+		Headers: st.Columns,
+		Data:    rows,
+	}
+
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleLastVisit(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	qs := r.URL.Query()
+	eq := []whereEqual{
+		//type is fixed to 2 now.
+		whereEqual{"type", 2},
+	}
+	brand := qs.Get("brand")
+	if brand == "" {
+		http.Error(w, "No brand name is given.", http.StatusBadRequest)
+		return
+	}
+	tags, err := getTagValue(appID, 2)
+	if err != nil {
+		http.Error(w, "tag not found "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var ok bool
+	brand, ok = tags[brand]
+	if !ok {
+		http.Error(w, "brand is invalid", http.StatusBadRequest)
+		return
+	}
+	eq = append(eq, whereEqual{"name", brand})
+	uid := qs.Get("uid")
+	if uid != "" {
+		eq = append(eq, whereEqual{"user_id", uid})
+	}
+	//TODO: use phone_number in somewhere search condiction
+	// phone = qs.Get("phone_number")
+
+	//It is a quick dirty fix for UserContact
+	//因為最後訪問時間的渠道沒有全部的概念, 但現在在api端寫找出max方法來不及了, 當渠道為all先把name拔掉。
+	var st StatTable
+	if brand == "all" {
+		st = StatTable{
+			Name:    UserContactsTable.Name,
+			Columns: UserContactsTable.Columns[1:],
+		}
+	} else {
+		st = UserContactsTable
+	}
+
+	selector := NewStatsSelector(st, "last_chat")
+	rows, err := selector(appID, start, end, eq...)
+	if err != nil {
+		http.Error(w, "query error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var output = StatResponse{
+		Headers: st.Columns,
+		Data:    rows,
+	}
+
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleRecords(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	userID, ok := mux.Vars(r)["uid"]
+	if !ok {
+		http.Error(w, "uid is not given on path", http.StatusBadRequest)
+		return
+	}
+	output, err := GetChatRecords(appID, start, end, userID)
+	if err != nil {
+		http.Error(w, "query failed:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleFAQStats(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	start, end, err := getInputTime(r)
+	if err != nil {
+		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	qs := r.URL.Query()
+	brandName := qs.Get("brand")
+	tags, err := getTagValue(appID, 2)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var ok bool
+	brandName, ok = tags[brandName]
+	if !ok {
+		http.Error(w, "brand is invalid", http.StatusBadRequest)
+		return
+	}
+
+	keyword := qs.Get("keyword")
+	output, err := GetFAQStats(appID, start, end, brandName, keyword)
+	if err != nil {
+		http.Error(w, "query failed:"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = util.WriteJSON(w, output)
+	if err != nil {
+		http.Error(w, "io failed, "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
