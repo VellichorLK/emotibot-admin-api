@@ -6,23 +6,23 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-	"regexp"
 
 	"github.com/go-sql-driver/mysql"
 
+	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/websocket"
-	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
 )
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	ModuleInfo     util.ModuleInfo
 	RealtimeEvents []websocket.RealtimeEvent
 )
 
@@ -51,7 +51,7 @@ func init() {
 		},
 	}
 
-	RealtimeEvents = []websocket.RealtimeEvent {
+	RealtimeEvents = []websocket.RealtimeEvent{
 		websocket.EventEntrypoint("AddFaq", test),
 	}
 }
@@ -224,10 +224,12 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	questionCategory, err := GetCategory(question.CategoryID, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 	categoryName, err := questionCategory.FullName()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", categoryName, question.Content)
 	// select origin Similarity Questions for audit log
@@ -253,7 +255,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	// go util.McManualBusiness(appid)
+	util.McManualBusiness(appid)
 
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
@@ -470,9 +472,9 @@ func handleCreateQuestion(ctx context.Context) {
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
 
 	// notify FAQ update
-	// if err == nil {
-	// 	go util.McManualBusiness(appid)
-	// }
+	if err == nil {
+		util.McManualBusiness(appid)
+	}
 
 	// response
 	type Response struct {
@@ -519,7 +521,6 @@ func handleUpdateQuestion(ctx context.Context) {
 		return
 	}
 
-
 	err = UpdateQuestion(appid, &newQuestion)
 	if err != nil {
 		util.LogError.Printf("error while update quesiton: %s", err.Error())
@@ -528,9 +529,9 @@ func handleUpdateQuestion(ctx context.Context) {
 	}
 
 	// notify multicustomer
-	// if err == nil {
-	// 	go util.McManualBusiness(appid)
-	// }
+	if err == nil {
+		util.McManualBusiness(appid)
+	}
 
 	// write audit log
 	err = writeUpdateAuditLog(ctx, auditRet, &oldQuestion, &newQuestion)
@@ -541,10 +542,10 @@ func handleUpdateQuestion(ctx context.Context) {
 	}
 }
 
-func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuestion *Question) (err error) {
+func writeUpdateAuditLog(ctx context.Context, result int, oldQuestion, newQuestion *Question) (err error) {
 	// compare if question content is modified
 	var auditLog string
-	category := Category {
+	category := Category{
 		ID: newQuestion.CategoryId,
 	}
 	categoryPath, err := category.FullName()
@@ -553,11 +554,11 @@ func writeUpdateAuditLog(ctx context.Context, result int,  oldQuestion, newQuest
 	}
 
 	var userID string = util.GetUserID(ctx)
-	var userIP string = util.GetUserIP(ctx) 
+	var userIP string = util.GetUserIP(ctx)
 
 	if oldQuestion.CategoryId != newQuestion.CategoryId {
 		// category changed
-		oldCategory := Category {
+		oldCategory := Category{
 			ID: oldQuestion.CategoryId,
 		}
 		oldCategoryPath, categoryError := oldCategory.FullName()
@@ -654,7 +655,7 @@ func prepareAnswerMap(answers []Answer) (answerMap map[int]Answer) {
 		answerMap[answer.AnswerId] = answer
 	}
 	return
-} 
+}
 
 func fetchOldQuestion(appid string, qid int) (question Question, err error) {
 
@@ -664,7 +665,7 @@ func fetchOldQuestion(appid string, qid int) (question Question, err error) {
 	targetQuestions := []Question{targetQuestion}
 
 	questions, err := FindQuestions(appid, targetQuestions)
-	if err !=nil {
+	if err != nil {
 		return
 	}
 
@@ -711,7 +712,7 @@ func parseQA(ctx context.Context) (question Question, answers []Answer, err erro
 		answers = append(answers, answer)
 	}
 	question.Answers = answers
-	return 
+	return
 }
 
 func transformaAnswer(appid string, answerJson *AnswerJson, answer *Answer) (err error) {
@@ -770,7 +771,7 @@ func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string
 		var newDuration string = durationLog(newAnswer.BeginTime, newAnswer.EndTime)
 		auditLog = fmt.Sprintf("%s[生效时间]:%s=>%s;", auditLog, oldDuration, newDuration)
 	}
-	
+
 	if oldAnswer.NotShow != newAnswer.NotShow {
 		changed = true
 		auditLog = fmt.Sprintf("%s[不在推荐问内显示]:%s=>%s;", auditLog, notShowLog(oldAnswer.NotShow), notShowLog(newAnswer.NotShow))
@@ -794,7 +795,7 @@ func answerAuditLog(oldAnswer, newAnswer *Answer) (changed bool, auditLog string
 		newRelatedQuestionsStr := answerSliceString(newAnswer.RelatedQuestions, "无")
 		auditLog = fmt.Sprintf("%s[指定相关问]:%s => %s;", auditLog, oldRelatedQuestionsStr, newRelatedQuestionsStr)
 	}
-	
+
 	return
 }
 
@@ -809,7 +810,7 @@ func durationLog(beginTime, endTime string) (duration string) {
 
 func notShowLog(notShow int) (s string) {
 	if notShow == 1 {
-		s = "是" 
+		s = "是"
 	} else {
 		s = "否"
 	}
@@ -877,13 +878,12 @@ func extractRawFileName(tag string) string {
 
 	for _, imageUrl := range results {
 		tokens := strings.Split(imageUrl, "/")
-		rawFileName = tokens[len(tokens) - 1]
+		rawFileName = tokens[len(tokens)-1]
 		rawFileName = strings.Replace(rawFileName, "\"", "", -1)
 		break
 	}
 	return rawFileName
 }
-
 
 func handleDeleteQuestion(ctx context.Context) {
 	// 1. get to be deleted questions
@@ -934,9 +934,9 @@ func handleDeleteQuestion(ctx context.Context) {
 	}
 
 	// notify FAQ update
-	// if err == nil {
-	// 	go util.McManualBusiness(appid)
-	// }
+	if err == nil {
+		util.McManualBusiness(appid)
+	}
 
 	// write audit log
 	userID := util.GetUserID(ctx)

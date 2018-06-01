@@ -196,6 +196,7 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 	if err != nil {
 		return nil, fmt.Errorf("SQL query %s error: %s", rawQuery, err)
 	}
+	defer result.Close()
 	for result.Next() {
 		var q StdQuestion
 		result.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
@@ -994,7 +995,7 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	return
 }
 
-func answerCmd(cmd, cmdMsg string)  string {
+func answerCmd(cmd, cmdMsg string) string {
 	if cmd == "" {
 		return ""
 	} else if cmd == "shopping" {
