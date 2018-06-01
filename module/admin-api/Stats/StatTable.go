@@ -24,32 +24,32 @@ var typDict = map[string]int{
 var RobotTrafficsTable = StatTable{
 	Name: "robot_traffic_stats",
 	Columns: []Column{
-		Column{ID: "name", Text: "名稱", typ: str},
+		Column{ID: "name", Text: "名称", typ: str},
 		Column{ID: "unique_users", Text: "接入客户量", typ: integer},
 		Column{ID: "effective_users", Text: "有效处理客户量", typ: integer},
 		Column{ID: "total_messages", Text: "接入消息量", typ: integer},
-		Column{ID: "resolved_messages", Text: "有效處理消息量", typ: integer},
-		Column{ID: "unresolved_messages", Text: "轉人工量", typ: integer},
-		Column{ID: "resolved_rate", Text: "成功解決率", typ: flt},
+		Column{ID: "resolved_messages", Text: "有效处理消息量", typ: integer},
+		Column{ID: "unresolved_messages", Text: "转人工量", typ: integer},
+		Column{ID: "resolved_rate", Text: "成功解决率", typ: flt},
 	},
 }
 
 var RobotResponseTable = StatTable{
 	Name: "robot_response_stats",
 	Columns: []Column{
-		Column{ID: "name", Text: "名稱", typ: str},
-		Column{ID: "precision_match", Text: "精確匹配", typ: integer},
+		Column{ID: "name", Text: "名称", typ: str},
+		Column{ID: "precision_match", Text: "精确匹配", typ: integer},
 		Column{ID: "fuzzy_match", Text: "模糊匹配", typ: integer},
-		Column{ID: "default_match", Text: "默認回覆", typ: integer},
-		Column{ID: "system_errors", Text: "系統異常", typ: integer},
-		Column{ID: "sensitive_match", Text: "敏感詞", typ: integer},
-		Column{ID: "business_default_match", Text: "業務默認回覆", typ: integer},
+		Column{ID: "default_match", Text: "默认回复", typ: integer},
+		Column{ID: "system_errors", Text: "系统异常", typ: integer},
+		Column{ID: "sensitive_match", Text: "敏感词", typ: integer},
+		Column{ID: "business_default_match", Text: "业务默认回复", typ: integer},
 		Column{ID: "chat_module", Text: "寒暄", typ: integer},
-		Column{ID: "on_list_match", Text: "列表回覆", typ: integer},
-		Column{ID: "title_match", Text: "標題提問", typ: integer},
-		Column{ID: "meaningless_responses", Text: "無意義回覆", typ: integer},
+		Column{ID: "on_list_match", Text: "列表回复", typ: integer},
+		Column{ID: "title_match", Text: "标题提问", typ: integer},
+		Column{ID: "meaningless_responses", Text: "无意义回复", typ: integer},
 		Column{ID: "common_responses", Text: "通用句式", typ: integer},
-		Column{ID: "direction_responses", Text: "引導用句", typ: integer},
+		Column{ID: "direction_responses", Text: "引导用句", typ: integer},
 		Column{ID: "unknown_responses", Text: "未知回答", typ: integer},
 	},
 }
@@ -60,21 +60,21 @@ var HourlyMonitortable = StatTable{
 		Column{ID: "cache_hour", Text: "时间", typ: datetime},
 		Column{ID: "manually_users", Text: "人工接入客户量", typ: integer},
 		Column{ID: "manually_messages", Text: "人工接入会话量", typ: integer},
-		Column{ID: "unique_users", Text: "機器人接入客户量", typ: integer},
-		Column{ID: "total_messages", Text: "機器人接入會話量", typ: integer},
-		Column{ID: "unresolved_rate", Text: "轉人工率", typ: flt},
+		Column{ID: "unique_users", Text: "机器人接入客户量", typ: integer},
+		Column{ID: "total_messages", Text: "机器人接入会话量", typ: integer},
+		Column{ID: "unresolved_rate", Text: "转人工率", typ: flt},
 	},
 }
 
 var DailyMonitorTable = StatTable{
 	Name: "monitor_daily",
 	Columns: []Column{
-		Column{ID: "cache_day", Text: "時間", typ: datetime},
+		Column{ID: "cache_day", Text: "时间", typ: datetime},
 		Column{ID: "manually_users", Text: "人工接入客户量", typ: integer},
 		Column{ID: "manually_messages", Text: "人工接入会话量", typ: integer},
-		Column{ID: "unique_users", Text: "機器人接入客户量", typ: integer},
-		Column{ID: "total_messages", Text: "機器人接入會話量", typ: integer},
-		Column{ID: "unresolved_rate", Text: "轉人工率", typ: flt},
+		Column{ID: "unique_users", Text: "机器人接入客户量", typ: integer},
+		Column{ID: "total_messages", Text: "机器人接入会话量", typ: integer},
+		Column{ID: "unresolved_rate", Text: "转人工率", typ: flt},
 	},
 }
 
@@ -82,8 +82,8 @@ var UserContactsTable = StatTable{
 	Name: "user_contacts",
 	Columns: []Column{
 		Column{ID: "name", Text: "渠道", typ: str},
-		Column{ID: "user_id", Text: "用戶ID", typ: str},
-		Column{ID: "last_chat", Text: "最後訪問時間", typ: datetime},
+		Column{ID: "user_id", Text: "用户ID", typ: str},
+		Column{ID: "last_chat", Text: "最后访问时间", typ: datetime},
 	},
 }
 
@@ -106,11 +106,11 @@ var FAQStatsTable = StatTable{
 var ChatRecordTable = StatTable{
 	Name: "record",
 	Columns: []Column{
-		Column{ID: "user_id", Text: "用戶ID"},
+		Column{ID: "user_id", Text: "用户ID"},
 		Column{ID: "name", Text: "渠道"},
-		Column{ID: "input", Text: "用戶問"},
-		Column{ID: "output", Text: "機器人答"},
-		Column{ID: "conversation_time", Text: "對話時間"},
+		Column{ID: "input", Text: "用户问"},
+		Column{ID: "output", Text: "机器人答"},
+		Column{ID: "conversation_time", Text: "对话时间"},
 	},
 }
 
