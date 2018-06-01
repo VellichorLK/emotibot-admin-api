@@ -19,6 +19,7 @@ type RetData struct {
 	OpenAPIReturn   int             `json:"openapi_return"`
 	Answers         []*string       `json:"answers"`
 	Tokens          []*string       `json:"tokens"`
+	Module          string          `json:"module"`
 }
 
 type QuestionInfo struct {
