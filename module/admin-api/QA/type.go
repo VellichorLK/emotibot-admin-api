@@ -1,14 +1,15 @@
 package QA
 
 type QATestInput struct {
-	QuestionType string `json:"qtype"`
-	Top          int    `json:"top"`
-	Platform     string `json:"platform"`
-	Brand        string `json:"brand"`
-	Gender       string `json:"sex"`
-	Age          string `json:"age"`
-	Hobbies      string `json:"hobbies"`
-	UserInput    string `json:"text"`
+	QuestionType string            `json:"qtype"`
+	Top          int               `json:"top"`
+	Platform     string            `json:"platform"`
+	Brand        string            `json:"brand"`
+	Gender       string            `json:"sex"`
+	Age          string            `json:"age"`
+	Hobbies      string            `json:"hobbies"`
+	UserInput    string            `json:"text"`
+	Info         map[string]string `json:"info"`
 }
 
 type RetData struct {
@@ -82,4 +83,20 @@ type ControllerResponse struct {
 	Intent          string               `json:"intent"`
 	RelatedQuestion []ControllerScoreRet `json:"relatedQuestions"`
 	Tokens          []*string            `json:"tokens"`
+}
+
+type InfoNode struct {
+	Module       string    `json:"module"`
+	Score        float32   `json:"textScore"`
+	Intent       string    `json:"intent"`
+	IntentScore  float32   `json:"intentScore"`
+	Emotion      string    `json:"emotion"`
+	EmotionScore float32   `json:"emotionScore"`
+	Tokens       []*string `json:"tokens"`
+}
+
+type BFOPControllerResponse struct {
+	Status int           `json:"status"`
+	Answer []interface{} `json:"data"`
+	Info   *InfoNode     `json:"info"`
 }

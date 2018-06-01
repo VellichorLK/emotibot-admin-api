@@ -28,6 +28,7 @@ func init() {
 		"DC":         DoChatRequestWithDC,
 		"OPENAPI":    DoChatRequestWithOpenAPI,
 		"CONTROLLER": DoChatRequestWithController,
+		"BFOP":       DoChatRequestWithBFOPController,
 	}
 }
 

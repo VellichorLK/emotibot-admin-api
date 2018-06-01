@@ -14,6 +14,59 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+func DoChatRequestWithBFOPController(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
+	controllerURL := getControllerURL()
+	if len(controllerURL) == 0 {
+		return nil, ApiError.REQUEST_ERROR, nil
+	}
+
+	input := make(map[string]interface{})
+	input["uniqueId"] = genRandomUUIDSameAsOpenAPI()
+	input["question"] = inputData.UserInput
+	input["robotId"] = appid
+	input["userId"] = user
+
+	input["customInfo"] = inputData.Info
+	if input["customInfo"] == nil {
+		input["customInfo"] = map[string]string{}
+	}
+
+	customHeader := make(map[string]string)
+	customHeader["X-Lb-Uid"] = user
+
+	response, err := util.HTTPPostJSONWithHeader(controllerURL, input, 10, customHeader)
+	if err != nil {
+		return nil, ApiError.OPENAPI_URL_ERROR, err
+	}
+	util.LogTrace.Printf("Raw response from Controller: %s", response)
+
+	controllerRet := BFOPControllerResponse{}
+	err = json.Unmarshal([]byte(response), &controllerRet)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+
+	ret := RetData{}
+	ret.Answers = make([]*string, len(controllerRet.Answer))
+	for idx, controllerAns := range controllerRet.Answer {
+		temp, err := json.Marshal(controllerAns)
+		if err != nil || string(temp) == "" {
+			continue
+		}
+		str := string(temp)
+		ret.Answers[idx] = &str
+	}
+
+	if controllerRet.Info != nil {
+		ret.Emotion = controllerRet.Info.Emotion
+		ret.Intent = controllerRet.Info.Intent
+		ret.Tokens = controllerRet.Info.Tokens
+	}
+	ret.OpenAPIReturn = controllerRet.Status
+
+	return &ret, ApiError.SUCCESS, nil
+}
+
 func DoChatRequestWithController(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
 	controllerURL := getControllerURL()
 	if len(controllerURL) == 0 {
