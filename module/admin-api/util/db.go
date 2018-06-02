@@ -66,6 +66,7 @@ func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) 
 	}
 
 	var err error
+	LogTrace.Println("Init DB: ", linkURL)
 	openDB, err := sql.Open("mysql", linkURL)
 	if err != nil {
 		return nil, err
