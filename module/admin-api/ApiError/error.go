@@ -1,5 +1,7 @@
 package ApiError
 
+import "net/http"
+
 var (
 	errorMsgMap = map[int]string{
 		0:   "success",
@@ -66,4 +68,15 @@ func GetErrorMsg(errno int) string {
 		return errMsg
 	}
 	return ""
+}
+
+func GetHttpStatus(errno int) int {
+	switch errno {
+	case NOT_FOUND_ERROR:
+		return http.StatusNotFound
+	case REQUEST_ERROR:
+		return http.StatusBadRequest
+	default:
+		return http.StatusInternalServerError
+	}
 }

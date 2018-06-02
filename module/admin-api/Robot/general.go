@@ -30,6 +30,13 @@ func init() {
 			util.NewEntryPoint("GET", "chat-info", []string{"view"}, handleChatInfoList),
 
 			util.NewEntryPoint("GET", "chatQAList", []string{"view"}, handleChatQAList),
+
+			util.NewEntryPointWithVer("GET", "chats", []string{"view"}, handleGetRobotWords, 2),
+			util.NewEntryPointWithVer("GET", "chat/{id}", []string{"view"}, handleGetRobotWord, 2),
+			util.NewEntryPointWithVer("PUT", "chat/{id}", []string{"edit"}, handleUpdateRobotWord, 2),
+			util.NewEntryPointWithVer("POST", "chat/{id}/content", []string{"edit"}, handleAddRobotWordContent, 2),
+			util.NewEntryPointWithVer("PUT", "chat/{id}/content/{cid}", []string{"edit"}, handleUpdateRobotWordContent, 2),
+			util.NewEntryPointWithVer("DELETE", "chat/{id}/content/{cid}", []string{"delete"}, handleDeleteRobotWordContent, 2),
 		},
 	}
 }

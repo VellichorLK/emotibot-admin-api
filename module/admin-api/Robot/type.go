@@ -53,28 +53,41 @@ type Function struct {
 }
 
 type ChatQA struct {
-	Question string `json:"question"`
-	Answers []string `json:"answer"`
+	Question string   `json:"question"`
+	Answers  []string `json:"answer"`
 }
 
 type ChatQAList struct {
-	TotalQACnt int `json:"totalQACnt"`
-	ChatQAs []ChatQA `json:"chatQAs"`
+	TotalQACnt int      `json:"totalQACnt"`
+	ChatQAs    []ChatQA `json:"chatQAs"`
 }
- 
+
 type SolrQueryResponse struct {
 	ResponseHeader SolrResponseHeader `json:"responseHeader"`
-	Response SolrResponse `json:"response"`
+	Response       SolrResponse       `json:"response"`
 }
 
 type SolrResponseHeader struct {
 	Status int `json:"status"`
 }
 type SolrResponse struct {
-	NumFound int `json:"numFound"`
-	QAs []SolrQA `json:"docs"`
+	NumFound int      `json:"numFound"`
+	QAs      []SolrQA `json:"docs"`
 }
 type SolrQA struct {
-	Question string `json:"sentence_original"`
-	Answers []string `json:"related_sentences"`
+	Question string   `json:"sentence_original"`
+	Answers  []string `json:"related_sentences"`
+}
+
+type ChatContentInfoV2 struct {
+	ID      int    `json:"id"`
+	Content string `json:"content"`
+}
+
+type ChatInfoV2 struct {
+	Type     int                  `json:"type"`
+	Name     string               `json:"name"`
+	Comment  string               `json:"comment"`
+	Contents []*ChatContentInfoV2 `json:"contents"`
+	Limit    int                  `json:"limit"`
 }

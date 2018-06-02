@@ -124,3 +124,149 @@ func auditMultiChatModify(r *http.Request, origInfos []*ChatInfo, newInfos []*Ch
 
 	addAudit(r, util.AuditModuleBotMessage, util.AuditOperationEdit, strings.Join(msgs, "\n"), result)
 }
+
+func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+
+	ret, errno, err := GetRobotWords(appid)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+}
+
+func handleGetRobotWord(w http.ResponseWriter, r *http.Request) {
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	ret, errno, err = GetRobotWord(appid, id)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+}
+func handleUpdateRobotWord(w http.ResponseWriter, r *http.Request) {
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	contentStr := r.FormValue("content")
+	contents := []string{}
+	err = json.Unmarshal([]byte(contentStr), &contents)
+	if err != nil {
+		ret, errno, httpStatus = "Invalid contents", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	ret, errno, err = UpdateRobotWord(appid, id, contents)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+}
+func handleAddRobotWordContent(w http.ResponseWriter, r *http.Request) {
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	content := r.FormValue("content")
+	if content == "" {
+		ret, errno, httpStatus = "Invalid content", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	ret, errno, err = AddRobotWordContent(appid, id, content)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+}
+func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+	cid, err := util.GetMuxIntVar(r, "cid")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid Content ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	content := r.FormValue("content")
+	if content == "" {
+		ret, errno, httpStatus = "Invalid content", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	errno, err = UpdateRobotWordContent(appid, id, cid, content)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	} else {
+		ret = ChatContentInfoV2{
+			ID:      cid,
+			Content: content,
+		}
+	}
+}
+func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
+	httpStatus := http.StatusOK
+	var ret interface{}
+	var errno int
+	defer func() {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+	}()
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+	cid, err := util.GetMuxIntVar(r, "cid")
+	if err != nil {
+		ret, errno, httpStatus = "Invalid Content ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		return
+	}
+
+	errno, err = DeleteRobotWordContent(appid, id, cid)
+	if err != nil {
+		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+}
