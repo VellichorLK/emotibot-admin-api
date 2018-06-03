@@ -1,16 +1,17 @@
 package Robot
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"encoding/json"
 	"strings"
-	"emotibot.com/emotigo/module/admin-api/util"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
-func GetRobotQuestionCnt(appid string) (int, error) {
-	count, err := getAllRobotQACnt(appid)
+func GetRobotQuestionCnt(appid string, version int) (int, error) {
+	count, err := getAllRobotQACnt(appid, version)
 	if err != nil {
 		return 0, err
 	}
@@ -18,16 +19,16 @@ func GetRobotQuestionCnt(appid string) (int, error) {
 	return count, err
 }
 
-func GetRobotQA(appid string, id int) (*QAInfo, int, error) {
-	ret, err := getRobotQA(appid, id)
+func GetRobotQA(appid string, id int, version int) (*QAInfo, int, error) {
+	ret, err := getRobotQA(appid, id, version)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 	return ret, ApiError.SUCCESS, err
 }
 
-func GetRobotQAList(appid string) (*RetQAInfo, int, error) {
-	list, err := getAllRobotQAList(appid)
+func GetRobotQAList(appid string, version int) (*RetQAInfo, int, error) {
+	list, err := getAllRobotQAList(appid, version)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
@@ -40,13 +41,13 @@ func GetRobotQAList(appid string) (*RetQAInfo, int, error) {
 	return &ret, ApiError.SUCCESS, err
 }
 
-func GetRobotQAPage(appid string, page int, listPerPage int) (*RetQAInfo, int, error) {
-	list, err := getRobotQAListPage(appid, page, listPerPage)
+func GetRobotQAPage(appid string, page int, listPerPage int, version int) (*RetQAInfo, int, error) {
+	list, err := getRobotQAListPage(appid, page, listPerPage, version)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 
-	count, err := getAllRobotQACnt(appid)
+	count, err := getAllRobotQACnt(appid, version)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
@@ -59,8 +60,16 @@ func GetRobotQAPage(appid string, page int, listPerPage int) (*RetQAInfo, int, e
 	return &ret, ApiError.SUCCESS, err
 }
 
-func UpdateRobotQA(appid string, id int, info *QAInfo) (int, error) {
-	err := updateRobotQA(appid, id, info)
+func UpdateRobotQA(appid string, id int, info *QAInfo, version int) (int, error) {
+	var err error
+	switch version {
+	case 1:
+		err = updateRobotQA(appid, id, info)
+	case 2:
+		err = updateRobotQAV2(appid, id, info)
+	default:
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return ApiError.DB_ERROR, err
 	}
@@ -117,7 +126,7 @@ func UpdateMultiChat(appid string, input []*ChatInfoInput) (int, error) {
 	return ApiError.SUCCESS, nil
 }
 
-func GetChatQAList(appid string, keyword string, page int, pageLimit int)(*ChatQAList, int, error) {
+func GetChatQAList(appid string, keyword string, page int, pageLimit int) (*ChatQAList, int, error) {
 	if len(appid) < 0 {
 		return nil, ApiError.REQUEST_ERROR, errors.New("Invalid request")
 	}
@@ -128,9 +137,9 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int)(*ChatQ
 		solrURL = "http://172.17.0.1:8081/solr/3rd_core/select?q=(database:appid_robot OR database:chat)"
 		util.LogTrace.Printf("ENV \"SOLR_URL\" not exist, use default url")
 	}
-	solrURL = strings.Replace(solrURL, "appid", appid, -1);
+	solrURL = strings.Replace(solrURL, "appid", appid, -1)
 	query := fmt.Sprintf("AND (sentence_original:*%s* OR related_sentences:*%s*)", keyword, keyword)
-	
+
 	start, rows := 0, 10 //default query parameter
 	if page > 0 && pageLimit > 0 {
 		start = (page - 1) * pageLimit
@@ -144,7 +153,7 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int)(*ChatQ
 	if err != nil {
 		return nil, ApiError.WEB_REQUEST_ERROR, errors.New("Fail to connect to solr")
 	}
-	
+
 	//parse query result
 	solrJson := SolrQueryResponse{}
 	err = json.Unmarshal([]byte(content), &solrJson)
@@ -173,4 +182,3 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int)(*ChatQ
 	}
 	return &ret, ApiError.SUCCESS, nil
 }
-

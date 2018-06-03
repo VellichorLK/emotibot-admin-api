@@ -26,6 +26,9 @@ func init() {
 			util.NewEntryPoint("POST", "qabuild", []string{"edit"}, handleRobotQAModelRebuild),
 			util.NewEntryPoint("GET", "qa/{id}", []string{"view"}, handleRobotQA),
 			util.NewEntryPoint("POST", "qa/{id}", []string{"edit"}, handleUpdateRobotQA),
+			util.NewEntryPointWithVer("GET", "qas", []string{"view"}, handleRobotQAListV2, 2),
+			util.NewEntryPointWithVer("GET", "qa/{id}", []string{"view"}, handleRobotQAV2, 2),
+			util.NewEntryPointWithVer("POST", "qa/{id}", []string{"edit"}, handleUpdateRobotQAV2, 2),
 
 			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
 			util.NewEntryPoint("GET", "chat/{id}", []string{"view"}, handleGetChat),

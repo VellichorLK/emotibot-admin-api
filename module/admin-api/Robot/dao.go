@@ -1,6 +1,7 @@
 package Robot
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -65,15 +66,26 @@ func updateFunctionList(appid string, infos map[string]*FunctionInfo) error {
 	return err
 }
 
-func getAllRobotQAList(appid string) ([]*QAInfo, error) {
+func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
 	}
+	var err error
+	var rows *sql.Rows
+	var queryStr string
 
 	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
-	queryStr := fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id", strings.Join(cols, ","), appid)
-	rows, err := mySQL.Query(queryStr)
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id", strings.Join(cols, ","), appid)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE (appid = ? OR appid = '') ORDER BY q_id", strings.Join(cols, ","))
+		rows, err = mySQL.Query(queryStr, appid)
+	default:
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +120,7 @@ func getAllRobotQAList(appid string) ([]*QAInfo, error) {
 	}
 
 	// Load all answer and put into corresponded question
-	answerMap, err := getAllAnswer(appid)
+	answerMap, err := getAllAnswer(appid, version)
 	if err != nil {
 		return nil, err
 	}
@@ -121,15 +133,27 @@ func getAllRobotQAList(appid string) ([]*QAInfo, error) {
 	return ret, nil
 }
 
-func getAllAnswer(appid string) (map[int][]string, error) {
+func getAllAnswer(appid string, version int) (map[int][]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
 	}
 
 	ret := make(map[int][]string)
-	queryStr := fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer`", appid)
-	rows, err := mySQL.Query(queryStr)
+
+	var queryStr string
+	var rows *sql.Rows
+	var err error
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer`", appid)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = "SELECT parent_q_id, content FROM `robot_answer` WHERE appid = ?"
+		rows, err = mySQL.Query(queryStr, appid)
+	default:
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -148,15 +172,27 @@ func getAllAnswer(appid string) (map[int][]string, error) {
 	return ret, nil
 }
 
-func getAnswerOfQuestion(appid string, qid int) ([]string, error) {
+func getAnswerOfQuestion(appid string, qid int, version int) ([]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
 	}
 
 	ret := []string{}
-	queryStr := fmt.Sprintf("SELECT content FROM `%s_robotanswer` where parent_q_id = ?", appid)
-	rows, err := mySQL.Query(queryStr, qid)
+
+	var err error
+	var rows *sql.Rows
+	var queryStr string
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT content FROM `%s_robotanswer` where parent_q_id = ?", appid)
+		rows, err = mySQL.Query(queryStr, qid)
+	case 2:
+		queryStr = "SELECT content FROM `robot_answer` where parent_q_id = ? AND appid = ?"
+		rows, err = mySQL.Query(queryStr, qid, appid)
+	default:
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +210,7 @@ func getAnswerOfQuestion(appid string, qid int) ([]string, error) {
 	return ret, nil
 }
 
-func getAnswerOfQuestions(appid string, ids []int) (map[int][]string, error) {
+func getAnswerOfQuestions(appid string, ids []int, version int) (map[int][]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
@@ -185,11 +221,21 @@ func getAnswerOfQuestions(appid string, ids []int) (map[int][]string, error) {
 	}
 
 	ret := make(map[int][]string)
-	idsStr := strings.Trim(strings.Replace(fmt.Sprint(ids), " ", ",", -1), "[]")
-	queryStr := fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer` WHERE parent_q_id IN (%s)", appid, idsStr)
-	util.LogTrace.Printf("Select part of answer: %s", queryStr)
 
-	rows, err := mySQL.Query(queryStr)
+	var queryStr string
+	var rows *sql.Rows
+	var err error
+	idsStr := strings.Trim(strings.Replace(fmt.Sprint(ids), " ", ",", -1), "[]")
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT parent_q_id, content FROM `%s_robotanswer` WHERE parent_q_id IN (%s)", appid, idsStr)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = fmt.Sprintf("SELECT parent_q_id, content FROM `robot_answer` WHERE parent_q_id IN (%s) AND appid = ?", idsStr)
+		rows, err = mySQL.Query(queryStr, appid)
+	default:
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +271,7 @@ func convertQuestionRowToQAInfo(row []interface{}) *QAInfo {
 	return &info
 }
 
-func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, error) {
+func getRobotQAListPage(appid string, page int, listPerPage int, version int) ([]*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
@@ -237,9 +283,22 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 
 	start := listPerPage * (page - 1)
 	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
-	queryStr := fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id LIMIT %d OFFSET %d", strings.Join(cols, ","), appid, listPerPage, start)
-	util.LogTrace.Printf("Query part of question: %s", queryStr)
-	rows, err := mySQL.Query(queryStr)
+	var err error
+	var rows *sql.Rows
+	var queryStr string
+
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id LIMIT %d OFFSET %d", strings.Join(cols, ","), appid, listPerPage, start)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE appid = ? ORDER BY q_id LIMIT %d OFFSET %d", strings.Join(cols, ","), listPerPage, start)
+		rows, err = mySQL.Query(queryStr, appid)
+	default:
+		err = errInvalidVersion
+		return nil, err
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +339,7 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 	}
 
 	// Load all answer and put into corresponded question
-	answerMap, err := getAnswerOfQuestions(appid, ids)
+	answerMap, err := getAnswerOfQuestions(appid, ids, version)
 	if err != nil {
 		return nil, err
 	}
@@ -295,15 +354,26 @@ func getRobotQAListPage(appid string, page int, listPerPage int) ([]*QAInfo, err
 	return ret, nil
 }
 
-func getAllRobotQACnt(appid string) (int, error) {
+func getAllRobotQACnt(appid string, version int) (int, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return 0, errors.New("DB not init")
 	}
+	var err error
+	var rows *sql.Rows
+	var queryStr string
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf("SELECT COUNT(*) AS total FROM %s_robotquestion", appid)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = "SELECT COUNT(*) AS total FROM robot_question WHERE appid = ?"
+		rows, err = mySQL.Query(queryStr, appid)
+	default:
+		err = errInvalidVersion
+		return 0, err
+	}
 
-	queryStr := fmt.Sprintf("SELECT COUNT(*) AS total FROM %s_robotquestion", appid)
-	util.LogTrace.Printf("Query total count: %s", queryStr)
-	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return 0, err
 	}
@@ -319,15 +389,26 @@ func getAllRobotQACnt(appid string) (int, error) {
 	return count, nil
 }
 
-func getRobotQA(appid string, id int) (*QAInfo, error) {
+func getRobotQA(appid string, id int, version int) (*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
 	}
 
 	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
-	queryStr := fmt.Sprintf("SELECT %s FROM `%s_robotquestion` WHERE q_id = ?", strings.Join(cols, ","), appid)
-	rows, err := mySQL.Query(queryStr, id)
+	var err error
+	var rows *sql.Rows
+	var queryStr string
+	if version == 1 {
+		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` WHERE q_id = ?", strings.Join(cols, ","), appid)
+		rows, err = mySQL.Query(queryStr, id)
+	} else if version == 2 {
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE q_id = ? AND (appid = ? OR appid = '')", strings.Join(cols, ","))
+		rows, err = mySQL.Query(queryStr, id, appid)
+	} else {
+		err = errInvalidVersion
+		return nil, err
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -361,13 +442,12 @@ func getRobotQA(appid string, id int) (*QAInfo, error) {
 	}
 
 	// Load all answer and put into corresponded question
-	answerList, err := getAnswerOfQuestion(appid, id)
+	answerList, err := getAnswerOfQuestion(appid, id, version)
 	if err != nil {
 		return nil, err
 	}
 	ret.Answers = answerList
 	return ret, nil
-
 }
 
 func updateRobotQA(appid string, id int, info *QAInfo) error {
@@ -431,6 +511,50 @@ func updateRobotQA(appid string, id int, info *QAInfo) error {
 	}
 	stmt.Close()
 	return nil
+}
+
+func updateRobotQAV2(appid string, id int, info *QAInfo) error {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	link, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(link)
+
+	// TODO: update question if different from orig, use custom rows of appid itself
+
+	// Delete orig answer
+	queryStr := "DELETE FROM robot_answer WHERE parent_q_id = ? AND appid = ?"
+	_, err = link.Exec(queryStr, id, appid)
+	if err != nil {
+		return err
+	}
+
+	// Insert new answer
+	queryStr = "INSERT INTO robot_answer (appid, parent_q_id, content) VALUES (?, ?,?)"
+	stmt, err := link.Prepare(queryStr)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, answer := range info.Answers {
+		_, err = stmt.Exec(appid, id, answer)
+		if err != nil {
+			return err
+		}
+	}
+	err = link.Commit()
+	return err
 }
 
 func getRobotChat(appid string, id int) (*ChatInfo, error) {
