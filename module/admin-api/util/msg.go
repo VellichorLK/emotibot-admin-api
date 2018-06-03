@@ -33,6 +33,9 @@ var (
 		"Row":          "列",
 		"IDError":      "ID错误",
 
+		// Used in robot words
+		"RobotWords": "话术",
+
 		// Used in Switch
 		"Name":     "名称",
 		"Status":   "状态",

@@ -1,6 +1,7 @@
 package Robot
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -139,7 +140,6 @@ func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
 		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
 	}
 }
-
 func handleGetRobotWord(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
 	var ret interface{}
@@ -190,17 +190,39 @@ func handleAddRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
 	var ret interface{}
 	var errno int
+	var content string
+	var wordsType *ChatInfoV2
 	defer func() {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+		auditBuffer := bytes.Buffer{}
+		auditBuffer.WriteString(util.Msg["Add"])
+		if wordsType != nil {
+			auditBuffer.WriteString(wordsType.Name)
+		} else {
+			auditBuffer.WriteString(util.Msg["RobotWords"])
+		}
+		if content != "" {
+			auditBuffer.WriteString(fmt.Sprintf(" %s", content))
+		}
+		retVal := 0
+		if errno == ApiError.SUCCESS {
+			retVal = 1
+		}
+		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
 	}()
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
+		ret, errno, httpStatus = "Invalid type ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
 		return
 	}
 
-	content := r.FormValue("content")
+	wordsType, errno, err = GetRobotWord(appid, id)
+	if err != nil {
+		ret, httpStatus = "Invalid type ID", ApiError.GetHttpStatus(errno)
+	}
+
+	content = r.FormValue("content")
 	if content == "" {
 		ret, errno, httpStatus = "Invalid content", ApiError.REQUEST_ERROR, http.StatusBadRequest
 		return
@@ -215,8 +237,27 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
 	var ret interface{}
 	var errno int
+
+	var origContent string
+	var content string
+	var wordsType *ChatInfoV2
 	defer func() {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+		auditBuffer := bytes.Buffer{}
+		auditBuffer.WriteString(util.Msg["Modify"])
+		if wordsType != nil {
+			auditBuffer.WriteString(wordsType.Name)
+		} else {
+			auditBuffer.WriteString(util.Msg["RobotWords"])
+		}
+		if origContent != "" && content != "" {
+			auditBuffer.WriteString(fmt.Sprintf(": %s => %s", origContent, content))
+		}
+		retVal := 0
+		if errno == ApiError.SUCCESS {
+			retVal = 1
+		}
+		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
 	}()
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
@@ -230,10 +271,21 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	content := r.FormValue("content")
+	content = r.FormValue("content")
 	if content == "" {
 		ret, errno, httpStatus = "Invalid content", ApiError.REQUEST_ERROR, http.StatusBadRequest
 		return
+	}
+
+	wordsType, errno, err = GetRobotWord(appid, id)
+	if err != nil {
+		ret, httpStatus = "Invalid type ID", ApiError.GetHttpStatus(errno)
+	}
+	for _, c := range wordsType.Contents {
+		if c.ID == cid {
+			origContent = c.Content
+			break
+		}
 	}
 
 	errno, err = UpdateRobotWordContent(appid, id, cid, content)
@@ -250,8 +302,26 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
 	var ret interface{}
 	var errno int
+
+	var origContent string
+	var wordsType *ChatInfoV2
 	defer func() {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
+		auditBuffer := bytes.Buffer{}
+		auditBuffer.WriteString(util.Msg["Delete"])
+		if wordsType != nil {
+			auditBuffer.WriteString(wordsType.Name)
+		} else {
+			auditBuffer.WriteString(util.Msg["RobotWords"])
+		}
+		if origContent != "" {
+			auditBuffer.WriteString(fmt.Sprintf(" %s", origContent))
+		}
+		retVal := 0
+		if errno == ApiError.SUCCESS {
+			retVal = 1
+		}
+		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
 	}()
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
@@ -263,6 +333,17 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		ret, errno, httpStatus = "Invalid Content ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
 		return
+	}
+
+	wordsType, errno, err = GetRobotWord(appid, id)
+	if err != nil {
+		ret, httpStatus = "Invalid type ID", ApiError.GetHttpStatus(errno)
+	}
+	for _, c := range wordsType.Contents {
+		if c.ID == cid {
+			origContent = c.Content
+			break
+		}
 	}
 
 	errno, err = DeleteRobotWordContent(appid, id, cid)
