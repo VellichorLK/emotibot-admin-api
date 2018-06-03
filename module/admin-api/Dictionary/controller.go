@@ -151,7 +151,7 @@ func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
 	}
 
 	auditMessage := buffer.String()
-	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationEdit, auditMessage, auditRet)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +198,7 @@ func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
 	if newWordBank != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, newWordBank))
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
 }
 
 func checkLevel1Valid(dir string) bool {
@@ -298,12 +298,12 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := ApiError.GetErrorMsg(errCode)
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	} else if errCode != ApiError.SUCCESS {
 		errMsg := ApiError.GetErrorMsg(errCode)
 		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	}
 
@@ -311,12 +311,12 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	errCode, err = util.McUpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
 		util.LogError.Printf("update wordbank with multicustomer error: %s", err.Error())
 	} else {
 		errCode = ApiError.SUCCESS
 		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
 	}
 }
 
@@ -359,7 +359,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			ret = 1
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
 
 		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 		RecordDictionaryImportProcess(appid, filename, buf, err)
@@ -404,7 +404,7 @@ func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 	filename := util.GetMuxVar(r, "file")
 	errMsg := fmt.Sprintf("%s%s: %s", util.Msg["DownloadFile"], util.Msg["Wordbank"], filename)
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationExport, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationExport, errMsg, ret)
 	}()
 
 	if filename == "" {
@@ -471,7 +471,7 @@ func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
 	ret := 0
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")
@@ -513,7 +513,7 @@ func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 	errMsg := fmt.Sprintf("%s%s %s", util.Msg["Delete"], util.Msg["WordbankDir"], path)
 	ret := 0
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
 	}()
 
 	if appid == "" {
@@ -600,7 +600,7 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
 	ret := 0
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
 	}()
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
@@ -639,7 +639,7 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["WordbankDir"])
 	ret := 0
 	defer func() {
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
 	}()
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
@@ -693,7 +693,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 			ret = 1
 		}
 		util.LogTrace.Println("Audit: ", errMsg)
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
 
 		RecordDictionaryImportProcess(appid, filename, buf, err)
 	}()
@@ -817,7 +817,7 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
 	pid, err := strconv.Atoi(r.FormValue("pid"))
 	if err != nil {
@@ -881,7 +881,7 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
 
 	newName = r.FormValue("name")
@@ -946,7 +946,7 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
 
 	cid, err := strconv.Atoi(r.FormValue("cid"))
@@ -1013,7 +1013,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")

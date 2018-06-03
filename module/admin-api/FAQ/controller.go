@@ -99,7 +99,7 @@ func handleAddCategory(w http.ResponseWriter, r *http.Request) {
 	} else {
 		util.WriteJSON(w, newCatetory)
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +135,7 @@ func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		auditRet = 0
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
 	util.ConsulUpdateFAQ(appid)
 }
 
@@ -173,7 +173,7 @@ func handleUpdateCategories(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		auditRet = 0
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handleGetCategories(w http.ResponseWriter, r *http.Request) {
@@ -237,7 +237,7 @@ func handleUpdateSimilarQuestions(w http.ResponseWriter, r *http.Request) {
 	// update similar questions
 	err = updateSimilarQuestions(qid, appid, userID, sqs)
 	if err != nil {
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, "更新相似问失败", proccessStatus)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, "更新相似问失败", proccessStatus)
 		util.LogError.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
 		return
@@ -273,7 +273,7 @@ contentMatching:
 		auditMessage += fmt.Sprintf("%s=>%s", strings.Join(originSimilarityQuestions, ";"), strings.Join(sqsStr, ";"))
 
 	}
-	util.AddAuditLog(userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
 
 }
 

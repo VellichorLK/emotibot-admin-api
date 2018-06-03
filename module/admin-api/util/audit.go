@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -25,6 +27,7 @@ const (
 )
 
 type auditLog struct {
+	AppID     string
 	UserID    string
 	UserIP    string
 	Module    string
@@ -33,15 +36,19 @@ type auditLog struct {
 	Result    int
 }
 
+func (log auditLog) toString() string {
+	return fmt.Sprintf("[%s] %s@%s %s,%s: %s [%d]", log.AppID, log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
+}
+
 var auditChannel chan auditLog
 
 // AddAuditLog will add audit log to mysql-audit
-func AddAuditLog(userID string, userIP string, module string, operation string, content string, result int) error {
+func AddAuditLog(appid string, userID string, userIP string, module string, operation string, content string, result int) error {
 	if auditChannel == nil {
 		auditChannel = make(chan auditLog)
 		go logRoutine()
 	}
-	log := auditLog{userID, userIP, module, operation, content, result}
+	log := auditLog{appid, userID, userIP, module, operation, content, result}
 	auditChannel <- log
 	return nil
 }
@@ -59,10 +66,20 @@ func addAuditLog(log auditLog) {
 		LogError.Printf("Audit DB connection hasn't init")
 		return
 	}
+	if minShowLevel >= levelTrace {
+		LogTrace.Println("AUDIT: ", log.toString())
+	}
+	_, errWithAppID := auditDB.Exec("insert audit_record(appid, user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?, ?)",
+		log.AppID, log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
+	if errWithAppID == nil {
+		return
+	} else {
+		LogWarn.Println("Schema of audit_record should be upgraded")
+	}
 
-	_, err := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)",
+	_, errWithoutAppID := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)",
 		log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
-	if err != nil {
-		LogError.Printf("insert audit fail: %s", err.Error())
+	if errWithAppID != nil && errWithoutAppID != nil {
+		LogError.Printf("insert audit fail: %s", errWithoutAppID.Error())
 	}
 }

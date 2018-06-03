@@ -195,6 +195,7 @@ func loadSwitchFromContext(w http.ResponseWriter, r *http.Request) *SwitchInfo {
 func addAudit(r *http.Request, operation string, msg string, result int) {
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
+	appid := util.GetAppID(r)
 
-	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
+	util.AddAuditLog(appid, userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
 }

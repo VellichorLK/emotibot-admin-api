@@ -75,7 +75,7 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		fileName = "无"
 		reason = jsonResponse.Message
 		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 		return
 	}
 	ext := filepath.Ext(fileHeader.Filename)
@@ -85,7 +85,7 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		fileName = fileHeader.Filename
 		reason = jsonResponse.Message
 		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 		return
 	}
 	fileName = fileHeader.Filename
@@ -99,7 +99,7 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, jsonResponse, http.StatusServiceUnavailable)
 		reason = "导入正在执行中"
 		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	case nil: //200
 		status = 1
 		jsonResponse.StateID = response.SyncInfo.StatID
@@ -109,7 +109,7 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, jsonResponse, http.StatusInternalServerError)
 		reason = "服务器不正常"
 		auditMessage := fmt.Sprintf("[%s]:%s:%s", method, fileName, reason)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 	}
 
 }
@@ -170,13 +170,13 @@ func exportExcel(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
 		}
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditLogContent, 1)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditLogContent, 1)
 	case util.ErrorMCLock: //503 MCError
 		util.WriteJSONWithStatus(w, errorJSON{err.Error(), mcResponse.SyncInfo.UserID}, http.StatusServiceUnavailable)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 其他操作正在进行中", 0)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 其他操作正在进行中", 0)
 	default: //500 error
 		util.WriteJSONWithStatus(w, errorJSON{err.Error(), ""}, http.StatusInternalServerError)
-		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 服务器不正常", 0)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationExport, "[全量导出]: 服务器不正常", 0)
 	}
 }
 

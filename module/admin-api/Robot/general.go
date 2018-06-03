@@ -71,6 +71,7 @@ func getGlobalEnv(key string) string {
 func addAudit(r *http.Request, module string, operation string, msg string, result int) {
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
+	appid := util.GetAppID(r)
 
-	util.AddAuditLog(userID, userIP, module, operation, msg, result)
+	util.AddAuditLog(appid, userID, userIP, module, operation, msg, result)
 }

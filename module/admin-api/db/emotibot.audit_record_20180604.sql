@@ -1,0 +1,1 @@
+ALTER TABLE `audit_record` ADD `appid` CHAR(36) NOT NULL DEFAULT '' AFTER `id`;

@@ -27,8 +27,16 @@ var (
 		"INFO":  2,
 		"TRACE": 3,
 	}
-	levelCount = 4
-	logPrefix  = ""
+	levelCount   = 4
+	logPrefix    = ""
+	minShowLevel = 1
+)
+
+const (
+	levelError = iota
+	levelWarn
+	levelInfo
+	levelTrace
 )
 
 // LogInit should be called before server start
@@ -60,7 +68,8 @@ func LogInit(
 }
 
 func SetLogLevel(level string) {
-	minShowLevel, ok := logLevel[level]
+	var ok bool
+	minShowLevel, ok = logLevel[level]
 	if !ok {
 		minShowLevel = 1
 	}
