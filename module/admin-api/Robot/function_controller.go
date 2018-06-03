@@ -11,12 +11,12 @@ import (
 )
 
 // ==========================================
-// Functions for using mysql
+// Functions for using mysql, all in one table function_switch
 // ==========================================
-func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
+func handleDBFunctionListV2(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	ret, errCode, err := GetDBFunctions(appid)
+	ret, errCode, err := GetDBFunctions(appid, 2)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
@@ -24,7 +24,7 @@ func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
+func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	function := util.GetMuxVar(r, "name")
 	result := 0
@@ -34,7 +34,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 		funcName = function
 	}
 
-	ret, errCode, err := GetDBFunctions(appid)
+	ret, errCode, err := GetDBFunctions(appid, 2)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
@@ -57,7 +57,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 	activeStr := r.FormValue("active")
 	active := (activeStr == "true")
 
-	errCode, err = UpdateDBFunction(appid, function, active)
+	errCode, err = UpdateDBFunction(appid, function, active, 2)
 	origStatus := util.Msg["Close"]
 	if origInfo.Active {
 		origStatus = util.Msg["Open"]
@@ -86,11 +86,11 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
+func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	result := 0
 
-	origFunctions, errCode, err := GetDBFunctions(appid)
+	origFunctions, errCode, err := GetDBFunctions(appid, 2)
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
@@ -129,7 +129,146 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 		buffer.WriteString(fmt.Sprintf("\n%s: [%s]->[%s]", funcName, origStatus, newStatus))
 	}
 
-	errCode, err = UpdateMultiDBFunction(appid, activeMap)
+	errCode, err = UpdateMultiDBFunction(appid, activeMap, 2)
+	auditLog := ""
+	if errCode != ApiError.SUCCESS {
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		errMsg := ApiError.GetErrorMsg(errCode)
+		auditLog = fmt.Sprintf("%s%s: (%s)\n%s",
+			util.Msg["Modify"], util.Msg["Error"], errMsg, buffer.String())
+	} else {
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
+		auditLog = fmt.Sprintf("%s%s:\n%s",
+			util.Msg["Modify"], util.Msg["Success"], buffer.String())
+		result = 1
+	}
+	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	ret, err := util.ConsulUpdateFunctionStatus(appid)
+	if err != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+	}
+}
+
+// ==========================================
+// Functions for using mysql, table split by appid
+// ==========================================
+func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	ret, errCode, err := GetDBFunctions(appid, 1)
+	if errCode != ApiError.SUCCESS {
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+	} else {
+		util.WriteJSON(w, util.GenRetObj(errCode, ret))
+	}
+}
+
+func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	function := util.GetMuxVar(r, "name")
+	result := 0
+
+	funcName, ok := util.Msg[function]
+	if !ok {
+		funcName = function
+	}
+
+	ret, errCode, err := GetDBFunctions(appid, 1)
+	if errCode != ApiError.SUCCESS {
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
+			errMsg, result)
+	}
+
+	var origInfo *Function
+	for _, f := range ret {
+		if f.Code == function {
+			origInfo = f
+			break
+		}
+	}
+	if origInfo == nil {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+
+	activeStr := r.FormValue("active")
+	active := (activeStr == "true")
+
+	errCode, err = UpdateDBFunction(appid, function, active, 1)
+	origStatus := util.Msg["Close"]
+	if origInfo.Active {
+		origStatus = util.Msg["Open"]
+	}
+	newStatus := util.Msg["Close"]
+	if active {
+		newStatus = util.Msg["Open"]
+	}
+	auditLog := ""
+
+	if errCode != ApiError.SUCCESS {
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		errMsg := ApiError.GetErrorMsg(errCode)
+		auditLog = fmt.Sprintf("%s%s, %s: [%s]->[%s] (%s)",
+			util.Msg["Modify"], util.Msg["Error"], funcName, origStatus, newStatus, errMsg)
+	} else {
+		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
+		auditLog = fmt.Sprintf("%s%s, %s: [%s]->[%s]",
+			util.Msg["Modify"], util.Msg["Success"], funcName, origStatus, newStatus)
+		result = 1
+	}
+	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
+	if err != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
+	}
+}
+
+func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	result := 0
+
+	origFunctions, errCode, err := GetDBFunctions(appid, 1)
+	if errCode != ApiError.SUCCESS {
+		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
+		util.WriteJSON(w, util.GenRetObj(errCode, err))
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		return
+	}
+	origFunctionMap := map[string]*Function{}
+	for _, function := range origFunctions {
+		origFunctionMap[function.Code] = function
+	}
+
+	activeMapStr := r.FormValue("active")
+	activeMap := map[string]bool{}
+	err = json.Unmarshal([]byte(activeMapStr), &activeMap)
+	if err != nil {
+		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
+		http.Error(w, "", http.StatusBadRequest)
+	}
+
+	var buffer bytes.Buffer
+	for name, status := range activeMap {
+		funcName, ok := util.Msg[name]
+		if !ok {
+			funcName = name
+		}
+
+		origStatus := util.Msg["Close"]
+		origFunc, ok := origFunctionMap[name]
+		if ok && origFunc.Active {
+			origStatus = util.Msg["Open"]
+		}
+		newStatus := util.Msg["Close"]
+		if status {
+			newStatus = util.Msg["Open"]
+		}
+		buffer.WriteString(fmt.Sprintf("\n%s: [%s]->[%s]", funcName, origStatus, newStatus))
+	}
+
+	errCode, err = UpdateMultiDBFunction(appid, activeMap, 1)
 	auditLog := ""
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))

@@ -18,6 +18,9 @@ func init() {
 			util.NewEntryPoint("GET", "functions", []string{"view"}, handleDBFunctionList),
 			util.NewEntryPoint("POST", "functions", []string{"edit"}, handleUpdateAllDBFunction),
 			util.NewEntryPoint("POST", "function/{name}", []string{"edit"}, handleUpdateDBFunction),
+			util.NewEntryPointWithVer("GET", "functions", []string{"view"}, handleDBFunctionListV2, 2),
+			util.NewEntryPointWithVer("POST", "functions", []string{"edit"}, handleUpdateAllDBFunctionV2, 2),
+			util.NewEntryPointWithVer("POST", "function/{name}", []string{"edit"}, handleUpdateDBFunctionV2, 2),
 
 			util.NewEntryPoint("GET", "qas", []string{"view"}, handleRobotQAList),
 			util.NewEntryPoint("POST", "qabuild", []string{"edit"}, handleRobotQAModelRebuild),

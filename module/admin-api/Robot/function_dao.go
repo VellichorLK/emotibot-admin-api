@@ -1,24 +1,40 @@
 package Robot
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
-func getDBFunction(appid string, code string) (ret *Function, err error) {
+var errInvalidVersion = errors.New("invalid version")
+
+func getDBFunction(appid string, code string, version int) (ret *Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
 		return
 	}
 
-	queryStr := fmt.Sprintf(`
-		SELECT module_name, module_name_zh, on_off, remark, intent
-		FROM %s_function
-		WHERE module_name = ?`, appid)
-	row := mySQL.QueryRow(queryStr, code)
+	var queryStr string
+	var row *sql.Row
+	if version == 1 {
+		queryStr = fmt.Sprintf(`
+			SELECT module_name, module_name_zh, on_off, remark, intent
+			FROM %s_function
+			WHERE module_name = ? AND status != -1`, appid)
+		row = mySQL.QueryRow(queryStr, code)
+	} else if version == 2 {
+		queryStr = `
+			SELECT module_name, module_name_zh, on_off, remark, intent
+			FROM function_switch
+			WHERE module_name = ? AND appid = ? AND status != -1`
+		row = mySQL.QueryRow(queryStr, code, appid)
+	} else {
+		err = errInvalidVersion
+		return
+	}
 
 	temp := Function{}
 	var active int
@@ -31,21 +47,34 @@ func getDBFunction(appid string, code string) (ret *Function, err error) {
 	return
 }
 
-func getDBFunctions(appid string) (ret []*Function, err error) {
+func getDBFunctions(appid string, version int) (ret []*Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
 		return
 	}
 
-	queryStr := fmt.Sprintf(`
-		SELECT module_name, module_name_zh, on_off, remark, intent
-		FROM %s_function
-		WHERE status != -1`, appid)
-	rows, err := mySQL.Query(queryStr)
+	var queryStr string
+	var rows *sql.Rows
+	if version == 1 {
+		queryStr = fmt.Sprintf(`
+			SELECT module_name, module_name_zh, on_off, remark, intent
+			FROM %s_function
+			WHERE status != -1`, appid)
+		rows, err = mySQL.Query(queryStr)
+	} else if version == 2 {
+		queryStr = `
+			SELECT module_name, module_name_zh, on_off, remark, intent
+			FROM function_switch
+			WHERE status != -1 AND appid = ?`
+		rows, err = mySQL.Query(queryStr, appid)
+	} else {
+		err = errInvalidVersion
+	}
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 
 	ret = []*Function{}
 	for rows.Next() {
@@ -61,26 +90,35 @@ func getDBFunctions(appid string) (ret []*Function, err error) {
 	return
 }
 
-func setDBFunctionActiveStatus(appid string, code string, active bool) (ret bool, err error) {
+func setDBFunctionActiveStatus(appid string, code string, active bool, version int) (ret bool, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
 		return
 	}
-
-	queryStr := fmt.Sprintf("UPDATE %s_function SET on_off = ? where module_name = ?", appid)
 	val := 0
 	if active {
 		val = 1
 	}
-	_, err = mySQL.Exec(queryStr, val, code)
+
+	var queryStr string
+	if version == 1 {
+		queryStr = fmt.Sprintf("UPDATE %s_function SET on_off = ? WHERE module_name = ?", appid)
+		_, err = mySQL.Exec(queryStr, val, code)
+	} else if version == 2 {
+		queryStr = "UPDATE function_switch SET on_off = ? WHERE module_name = ? AND appid = ?"
+		_, err = mySQL.Exec(queryStr, val, code, appid)
+	} else {
+		err = errInvalidVersion
+		return
+	}
 	if err == nil {
 		ret = true
 	}
 	return
 }
 
-func setDBMultiFunctionActiveStatus(appid string, active map[string]bool) (ret bool, err error) {
+func setDBMultiFunctionActiveStatus(appid string, active map[string]bool, version int) (ret bool, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = errors.New("DB not init")
@@ -92,13 +130,28 @@ func setDBMultiFunctionActiveStatus(appid string, active map[string]bool) (ret b
 		return
 	}
 
+	var queryStr = ""
+	if version == 1 {
+		queryStr = fmt.Sprintf("UPDATE %s_function SET on_off = ? WHERE module_name = ?", appid)
+	} else if version == 2 {
+		queryStr = "UPDATE function_switch SET on_off = ? WHERE module_name = ? AND appid = ?"
+	} else {
+		err = errInvalidVersion
+		return
+	}
+
 	for code, val := range active {
-		queryStr := fmt.Sprintf("UPDATE %s_function SET on_off = ? where module_name = ?", appid)
 		sqlVal := 0
 		if val {
 			sqlVal = 1
 		}
-		_, err = t.Exec(queryStr, sqlVal, code)
+
+		if version == 1 {
+			_, err = t.Exec(queryStr, sqlVal, code)
+		} else {
+			_, err = t.Exec(queryStr, sqlVal, code, appid)
+		}
+
 		if err != nil {
 			t.Rollback()
 			return

@@ -9,31 +9,31 @@ import (
 // ==========================================
 // Functions for using mysql
 // ==========================================
-func GetDBFunctions(appid string) ([]*Function, int, error) {
-	functions, err := getDBFunctions(appid)
+func GetDBFunctions(appid string, version int) ([]*Function, int, error) {
+	functions, err := getDBFunctions(appid, version)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 	return functions, ApiError.SUCCESS, nil
 }
 
-func UpdateDBFunction(appid string, function string, active bool) (int, error) {
-	_, err := getDBFunction(appid, function)
+func UpdateDBFunction(appid string, function string, active bool, version int) (int, error) {
+	_, err := getDBFunction(appid, function, version)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ApiError.REQUEST_ERROR, err
 		}
 		return ApiError.DB_ERROR, err
 	}
-	_, err = setDBFunctionActiveStatus(appid, function, active)
+	_, err = setDBFunctionActiveStatus(appid, function, active, version)
 	if err != nil {
 		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, err
 }
 
-func UpdateMultiDBFunction(appid string, active map[string]bool) (int, error) {
-	_, err := setDBMultiFunctionActiveStatus(appid, active)
+func UpdateMultiDBFunction(appid string, active map[string]bool, version int) (int, error) {
+	_, err := setDBMultiFunctionActiveStatus(appid, active, version)
 	if err != nil {
 		return ApiError.DB_ERROR, err
 	}
