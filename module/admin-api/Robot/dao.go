@@ -81,7 +81,7 @@ func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id", strings.Join(cols, ","), appid)
 		rows, err = mySQL.Query(queryStr)
 	case 2:
-		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE (appid = ? OR appid = '') ORDER BY q_id", strings.Join(cols, ","))
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE appid = ? OR ORDER BY q_id", strings.Join(cols, ","))
 		rows, err = mySQL.Query(queryStr, appid)
 	default:
 		err = errInvalidVersion
@@ -403,7 +403,7 @@ func getRobotQA(appid string, id int, version int) (*QAInfo, error) {
 		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` WHERE q_id = ?", strings.Join(cols, ","), appid)
 		rows, err = mySQL.Query(queryStr, id)
 	} else if version == 2 {
-		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE q_id = ? AND (appid = ? OR appid = '')", strings.Join(cols, ","))
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE q_id = ? AND appid = ?", strings.Join(cols, ","))
 		rows, err = mySQL.Query(queryStr, id, appid)
 	} else {
 		err = errInvalidVersion
