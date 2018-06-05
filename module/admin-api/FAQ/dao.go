@@ -922,7 +922,7 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	return dimensionIdMap, nil
 }
 
-func getTagTypes(appid string) (ret []*TagType, err error) {
+func getTagTypes(appid string, version int) (ret []*TagType, err error) {
 	ret = []*TagType{}
 	defer func() {
 		util.ShowError(err)
@@ -933,17 +933,40 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 		return
 	}
 
-	queryStr := fmt.Sprintf(`
-		SELECT
-			type.Type_id,
-			type.Type_name,
-			type.Type_code,
-			tag.Tag_Id,
-			tag.Tag_Name,
-			tag.Tag_Code
-		FROM %s_tag_type as type, %s_tag as tag
-		WHERE type.Type_id = tag.Tag_Type`, appid, appid)
-	rows, err := mySQL.Query(queryStr)
+	var queryStr string
+	var rows *sql.Rows
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf(`
+			SELECT
+				type.Type_id,
+				type.Type_name,
+				type.Type_code,
+				tag.Tag_Id,
+				tag.Tag_Name,
+				tag.Tag_Code
+			FROM %s_tag_type as type, %s_tag as tag
+			WHERE type.Type_id = tag.Tag_Type`, appid, appid)
+		rows, err = mySQL.Query(queryStr)
+	case 2:
+		queryStr = `
+			SELECT
+				type.id,
+				type.name,
+				type.code,
+				tag.id,
+				tag.name,
+				tag.code
+			FROM tag_type as type
+			LEFT JOIN tags as tag
+			ON type.id = tag.type
+				AND (type.appid = ? OR type.appid = 'system')
+				AND (tag.app_id = ? OR tag.app_id = 'system')`
+		rows, err = mySQL.Query(queryStr, appid, appid)
+	default:
+		err = errors.New("invalid version")
+	}
+
 	if err != nil {
 		return
 	}
@@ -954,10 +977,10 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 		id := 0
 		name := ""
 		code := ""
-		valueID := 0
-		value := ""
-		valueCode := ""
-		err = rows.Scan(&id, &name, &code, &valueID, &value, &valueCode)
+		var valueIDPtr *int
+		var valuePtr *string
+		var valueCodePtr *string
+		err = rows.Scan(&id, &name, &code, &valueIDPtr, &valuePtr, &valueCodePtr)
 		if err != nil {
 			return
 		}
@@ -971,23 +994,33 @@ func getTagTypes(appid string) (ret []*TagType, err error) {
 			}
 			ret = append(ret, typeMap[id])
 		}
-		// Note: format is always #<value>#, so trim the # here
-		if len(value) <= 2 {
-			util.LogError.Println("Strange value in tag value: ", value)
-			continue
+		if valueIDPtr != nil && valuePtr != nil && valueCodePtr != nil {
+			valueID := *valueIDPtr
+			value := *valuePtr
+			valueCode := *valueCodePtr
+			// Note: format is always #<value>#, so trim the # here
+			if len(value) <= 2 {
+				util.LogError.Println("Strange value in tag value: ", value)
+				continue
+			}
+			if value[0] == '#' {
+				value = value[1:]
+			}
+			if value[len(value)-1] == '#' {
+				value = value[0 : len(value)-1]
+			}
+			newValue := &TagValue{
+				ID:    valueID,
+				Value: value,
+				Code:  valueCode,
+			}
+			typeMap[id].Values = append(typeMap[id].Values, newValue)
 		}
-		value = value[1 : len(value)-1]
-		newValue := &TagValue{
-			ID:    valueID,
-			Value: value,
-			Code:  valueCode,
-		}
-		typeMap[id].Values = append(typeMap[id].Values, newValue)
 	}
 	return
 }
 
-func getTagType(appid string, id int) (ret *TagType, err error) {
+func getTagType(appid string, id int, version int) (ret *TagType, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -997,17 +1030,41 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 		return
 	}
 
-	queryStr := fmt.Sprintf(`
+	var queryStr string
+	var rows *sql.Rows
+	switch version {
+	case 1:
+		queryStr = fmt.Sprintf(`
+			SELECT
+				type.Type_id,
+				type.Type_name,
+				type.Type_code,
+				tag.Tag_Id,
+				tag.Tag_name,
+				tag.Tag_Code
+			FROM %s_tag_type AS type, %s_tag AS tag
+			WHERE type.Type_id = tag.Tag_Type AND type.Type_id = ?`, appid, appid)
+		rows, err = mySQL.Query(queryStr, id)
+	case 2:
+		queryStr = `
 		SELECT
-			type.Type_id,
-			type.Type_name,
-			type.Type_code,
-			tag.Tag_Id,
-			tag.Tag_name,
-			tag.Tag_Code
-		FROM %s_tag_type as type, %s_tag as tag
-		WHERE type.Type_id = tag.Tag_Type AND type.Type_id = ?`, appid, appid)
-	rows, err := mySQL.Query(queryStr, id)
+			type.id,
+			type.name,
+			type.code,
+			tag.id,
+			tag.name,
+			tag.Code
+		FROM (
+			SELECT id, name, code, appid FROM tag_type WHERE id = ?
+		) AS type
+		LEFT JOIN tags AS tag
+		ON type.id = tag.type
+			AND (type.appid = ? OR type.appid = 'system')
+			AND (tag.app_id = ? OR tag.app_id = 'system')`
+		rows, err = mySQL.Query(queryStr, id, appid, appid)
+	default:
+		err = errors.New("invalid version")
+	}
 	if err != nil {
 		return
 	}
@@ -1017,10 +1074,10 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 		id := 0
 		name := ""
 		code := ""
-		valueID := 0
-		value := ""
-		valueCode := ""
-		err = rows.Scan(&id, &name, &code, &valueID, &value, &valueCode)
+		var valueIDPtr *int
+		var valuePtr *string
+		var valueCodePtr *string
+		err = rows.Scan(&id, &name, &code, &valueIDPtr, &valuePtr, &valueCodePtr)
 		if err != nil {
 			return
 		}
@@ -1033,18 +1090,28 @@ func getTagType(appid string, id int) (ret *TagType, err error) {
 				Values: []*TagValue{},
 			}
 		}
-		// FIXME: format is always #<value>#, so trim the # here
-		if len(value) <= 2 {
-			util.LogError.Println("Strange value in tag value: ", value)
-			continue
+		if valueIDPtr != nil && valuePtr != nil && valueCodePtr != nil {
+			valueID := *valueIDPtr
+			value := *valuePtr
+			valueCode := *valueCodePtr
+			// FIXME: format is always #<value>#, so trim the # here
+			if len(value) <= 2 {
+				util.LogError.Println("Strange value in tag value: ", value)
+				continue
+			}
+			if value[0] == '#' {
+				value = value[1:]
+			}
+			if value[len(value)-1] == '#' {
+				value = value[0 : len(value)-1]
+			}
+			newValue := &TagValue{
+				ID:    valueID,
+				Value: value,
+				Code:  valueCode,
+			}
+			ret.Values = append(ret.Values, newValue)
 		}
-		value = value[1 : len(value)-1]
-		newValue := &TagValue{
-			ID:    valueID,
-			Value: value,
-			Code:  valueCode,
-		}
-		ret.Values = append(ret.Values, newValue)
 	}
 	return
 }

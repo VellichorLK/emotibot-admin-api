@@ -262,11 +262,11 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 	return condition, nil
 }
 
-func GetTagTypes(appid string) ([]*TagType, error) {
-	return getTagTypes(appid)
+func GetTagTypes(appid string, version int) ([]*TagType, error) {
+	return getTagTypes(appid, version)
 }
-func GetTagType(appid string, id int) (*TagType, error) {
-	return getTagType(appid, id)
+func GetTagType(appid string, id int, version int) (*TagType, error) {
+	return getTagType(appid, id, version)
 }
 
 func UpdateQALabel(appid string, questionID, answerID int, labelIDs []int) (errno int, err error) {

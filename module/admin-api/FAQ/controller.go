@@ -59,6 +59,8 @@ func init() {
 
 			util.NewEntryPoint("GET", "tag-types", []string{"view"}, handleGetTagTypes),
 			util.NewEntryPoint("GET", "tag-type/{id}", []string{"view"}, handleGetTagType),
+			util.NewEntryPointWithVer("GET", "tag-types", []string{"view"}, handleGetTagTypesV2, 2),
+			util.NewEntryPointWithVer("GET", "tag-type/{id}", []string{"view"}, handleGetTagTypeV2, 2),
 		},
 	}
 }
@@ -439,7 +441,7 @@ func handleQuestionFilter(w http.ResponseWriter, r *http.Request) {
 func handleGetTagTypes(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	tag, err := GetTagTypes(appid)
+	tag, err := GetTagTypes(appid, 1)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 	} else {
@@ -454,7 +456,33 @@ func handleGetTagType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tag, err := GetTagType(appid, id)
+	tag, err := GetTagType(appid, id, 1)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	} else {
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tag))
+	}
+}
+
+func handleGetTagTypesV2(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	tag, err := GetTagTypes(appid, 2)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	} else {
+		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, tag))
+	}
+}
+func handleGetTagTypeV2(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	tag, err := GetTagType(appid, id, 2)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 	} else {
