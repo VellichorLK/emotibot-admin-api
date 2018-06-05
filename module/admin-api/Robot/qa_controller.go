@@ -257,4 +257,13 @@ func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
 	}
 	addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
 	util.WriteJSON(w, util.GenRetObj(errCode, retObj))
+
+	mcCode, mcErr := util.McRebuildRobotQA(appid)
+	if mcErr != nil {
+		errMsg = "SUCCESS"
+		if mcErr != nil {
+			errMsg = mcErr.Error()
+		}
+		util.LogInfo.Printf("Call multicustomer result: %d, %s", mcCode, errMsg)
+	}
 }
