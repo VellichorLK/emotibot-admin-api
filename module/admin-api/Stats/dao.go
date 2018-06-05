@@ -96,8 +96,10 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 	}
 
 	conditions = append(conditions, "(UNIX_TIMESTAMP(create_time) BETWEEN ? and ?)")
-	args = append(args, input.Start)
-	args = append(args, input.End)
+	args = append(args, input.Start, input.End)
+
+	conditions = append(conditions, "(appid = ?)")
+	args = append(args, appid)
 
 	shift := (page - 1) * listPerPage
 	queryStr := ""
@@ -114,6 +116,7 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
+		util.LogError.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
 		return nil, 0, err
 	}
 	defer rows.Close()
