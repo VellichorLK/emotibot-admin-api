@@ -78,10 +78,10 @@ func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
 	switch version {
 	case 1:
-		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id", strings.Join(cols, ","), appid)
+		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` WHERE status >= 0 ORDER BY q_id", strings.Join(cols, ","), appid)
 		rows, err = mySQL.Query(queryStr)
 	case 2:
-		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE appid = ? ORDER BY q_id", strings.Join(cols, ","))
+		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE appid = ? AND status >= 0 ORDER BY q_id", strings.Join(cols, ","))
 		rows, err = mySQL.Query(queryStr, appid)
 	default:
 		err = errInvalidVersion
@@ -289,10 +289,18 @@ func getRobotQAListPage(appid string, page int, listPerPage int, version int) ([
 
 	switch version {
 	case 1:
-		queryStr = fmt.Sprintf("SELECT %s FROM `%s_robotquestion` ORDER BY q_id LIMIT %d OFFSET %d", strings.Join(cols, ","), appid, listPerPage, start)
+		queryStr = fmt.Sprintf(`
+			SELECT %s FROM %s_robotquestion
+			WHERE status >= 0
+			ORDER BY q_id LIMIT %d
+			OFFSET %d`, strings.Join(cols, ","), appid, listPerPage, start)
 		rows, err = mySQL.Query(queryStr)
 	case 2:
-		queryStr = fmt.Sprintf("SELECT %s FROM `robot_question` WHERE appid = ? ORDER BY q_id LIMIT %d OFFSET %d", strings.Join(cols, ","), listPerPage, start)
+		queryStr = fmt.Sprintf(`
+			SELECT %s FROM robot_question
+			WHERE appid = ? AND status >= 0
+			ORDER BY q_id LIMIT %d
+			OFFSET %d`, strings.Join(cols, ","), listPerPage, start)
 		rows, err = mySQL.Query(queryStr, appid)
 	default:
 		err = errInvalidVersion
@@ -364,10 +372,10 @@ func getAllRobotQACnt(appid string, version int) (int, error) {
 	var queryStr string
 	switch version {
 	case 1:
-		queryStr = fmt.Sprintf("SELECT COUNT(*) AS total FROM %s_robotquestion", appid)
+		queryStr = fmt.Sprintf("SELECT COUNT(*) AS total FROM %s_robotquestion WHERE status >= 0", appid)
 		rows, err = mySQL.Query(queryStr)
 	case 2:
-		queryStr = "SELECT COUNT(*) AS total FROM robot_question WHERE appid = ?"
+		queryStr = "SELECT COUNT(*) AS total FROM robot_question WHERE appid = ? AND status >= 0"
 		rows, err = mySQL.Query(queryStr, appid)
 	default:
 		err = errInvalidVersion
@@ -531,9 +539,14 @@ func updateRobotQAV2(appid string, id int, info *QAInfo) error {
 	defer util.ClearTransition(link)
 
 	// TODO: update question if different from orig, use custom rows of appid itself
+	queryStr := "UPDATE robot_question SET status = 1, answer_count = ? WHERE q_id = ?"
+	_, err = link.Exec(queryStr, len(info.Answers), id)
+	if err != nil {
+		return err
+	}
 
 	// Delete orig answer
-	queryStr := "DELETE FROM robot_answer WHERE parent_q_id = ? AND appid = ?"
+	queryStr = "DELETE FROM robot_answer WHERE parent_q_id = ? AND appid = ?"
 	_, err = link.Exec(queryStr, id, appid)
 	if err != nil {
 		return err
