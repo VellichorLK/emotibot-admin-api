@@ -232,6 +232,7 @@ func handleAddRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
 	}
+	updateWordsConsul(appid)
 }
 func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
@@ -297,6 +298,7 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 			Content: content,
 		}
 	}
+	updateWordsConsul(appid)
 }
 func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	httpStatus := http.StatusOK
@@ -349,5 +351,14 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 	errno, err = DeleteRobotWordContent(appid, id, cid)
 	if err != nil {
 		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
+	}
+	updateWordsConsul(appid)
+}
+func updateWordsConsul(appid string) {
+	consulRet, consulErr := util.ConsulUpdateRobotChat(appid)
+	if consulErr != nil {
+		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, consulErr.Error())
+	} else {
+		util.LogInfo.Printf("Update consul result: %d", consulRet)
 	}
 }
