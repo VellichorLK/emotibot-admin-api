@@ -1,0 +1,14 @@
+FROM docker-reg.emotibot.com.cn:55688/go-build:20180319_d6de838 AS buildEnv
+ARG module_type
+ARG module_name
+ADD ./ /go/src/emotibot.com/emotigo
+WORKDIR /go/src/emotibot.com/emotigo/${module_type}/${module_name}
+RUN go build -o ${module_name}
+
+FROM alpine:3.5
+ARG module_type
+ARG module_name
+RUN apk add --no-cache tzdata
+VOLUME ["/data"]
+COPY --from=buildEnv /go/src/emotibot.com/emotigo/${module_type}/${module_name}/${module_name} /usr/bin/gomain
+ENTRYPOINT ["/usr/bin/gomain"]
