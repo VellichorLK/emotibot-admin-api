@@ -11,4 +11,5 @@ ARG module_name
 RUN apk add --no-cache tzdata
 VOLUME ["/data"]
 COPY --from=buildEnv /go/src/emotibot.com/emotigo/${module_type}/${module_name}/${module_name} /usr/bin/gomain
-ENTRYPOINT ["/usr/bin/gomain"]
+COPY ${module_type}/${module_name}/entrypoint.sh /app/entrypoint.sh
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
