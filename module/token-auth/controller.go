@@ -25,7 +25,15 @@ const (
 
 func EnterprisesGetHandler(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetEnterprises()
-	returnOKMsg(w, err.Error(), retData)
+
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	} else {
+		errMsg = ""
+	}
+
+	returnOKMsg(w, errMsg, retData)
 }
 
 func EnterpriseGetHandler(w http.ResponseWriter, r *http.Request) {
