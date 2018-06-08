@@ -64,7 +64,6 @@ components:
         message:
           type: string
         result:
-          type: object
           $ref: '#/components/schemas/wordbank'
     ret-wordbank-class:
       type: object
@@ -74,7 +73,6 @@ components:
         message:
           type: string
         result:
-          type: object
           $ref: '#/components/schemas/wordbank-class'
     wordbank-input:
       type: object
@@ -115,7 +113,6 @@ paths:
           content:
             application/json:
               schema:
-                type: object
                 $ref: '#/components/schemas/ret-wordbank-class'
         500:
           description: "Internal server error"
@@ -134,11 +131,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
                 $ref: '#/components/schemas/ret-wordbank'
       
   /wordbank/{id}:
     get:
+      parameters:
+        - in: path
+          name: id
+          description: 詞庫 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
       tags:
         - Get Data
       summary: "取得特定詞庫"
@@ -149,13 +153,20 @@ paths:
           content:
             application/json:
               schema:
-                type: object
                 $ref: '#/components/schemas/ret-wordbank'
         404:
           description: "Invalid id"
         500:
           description: "Internal server error"
     delete:
+      parameters:
+        - in: path
+          name: id
+          description: 詞庫 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
       tags:
         - Delete Data
       summary: "刪除特定詞庫"
@@ -179,10 +190,17 @@ paths:
           content:
             application/json:
               schema:
-                type: object
                 $ref: '#/components/schemas/ret-wordbank-class'
   /class/{id}:
     get:
+      parameters:
+        - in: path
+          name: id
+          description: 詞庫 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
       tags:
         - Get Data
       summary: "取得特定詞庫分類"
@@ -193,19 +211,59 @@ paths:
           content:
             application/json:
               schema:
-                type: object
                 $ref: '#/components/schemas/ret-wordbank-class'
         404:
           description: "Invalid id"
         500:
           description: "Internal server error"
     delete:
+      parameters:
+        - in: path
+          name: id
+          description: 詞庫 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
       tags:
         - Delete Data
       summary: "刪除特定詞庫分類"
       responses:
         200:
           description: "OK"
+        500:
+          description: "Internal server error"
+  /wordbank/{id}/move:
+    put:
+      summary: "搬動詞庫"
+      parameters:
+        - in: path
+          name: id
+          description: 詞庫 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        content:
+          'application/x-www-form-urlencoded':
+            schema:
+              $ref: '#/components/schemas/class-input'
+      tags:
+        - Update Data
+      responses:
+        200: 
+          description: "OK"
+          content:
+            'application/x-www-form-urlencoded':
+              schema:
+                type: object
+                properties:
+                  cid:
+                    type: integer
+                    description: 目標詞庫分類 ID
+        404:
+          description: "Invalid id"
         500:
           description: "Internal server error"
       

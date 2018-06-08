@@ -11,6 +11,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+var errDuplicated = errors.New("duplicate item")
+
 func getWordbank(appid string, id int) (*WordBank, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
@@ -849,6 +851,28 @@ func addWordbankClassV3(appid string, className string, pid int) (id int, err er
 		return
 	}
 
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := "SELECT count(*) FROM entity_class WHERE appid = ? AND name = ?"
+	row := t.QueryRow(queryStr, appid, className)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+	if count > 0 {
+		err = errDuplicated
+		return
+	}
+
 	columns := []string{"appid", "name", "editable"}
 	params := []interface{}{appid, className, 1}
 	q := []string{"?", "?", "?"}
@@ -858,11 +882,11 @@ func addWordbankClassV3(appid string, className string, pid int) (id int, err er
 		q = append(q, "?")
 	}
 
-	queryStr := fmt.Sprintf(
+	queryStr = fmt.Sprintf(
 		"INSERT INTO entity_class (%s) VALUES (%s)",
 		strings.Join(columns, ","),
 		strings.Join(q, ","))
-	result, err := mySQL.Exec(queryStr, params...)
+	result, err := t.Exec(queryStr, params...)
 	if err != nil {
 		return
 	}
@@ -872,6 +896,7 @@ func addWordbankClassV3(appid string, className string, pid int) (id int, err er
 	}
 	id = int(id64)
 
+	err = t.Commit()
 	return
 }
 
@@ -908,10 +933,32 @@ func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
 		return
 	}
 
-	queryStr := `INSERT INTO entities
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := "SELECT count(*) FROM entities WHERE cid = ? AND name = ?"
+	row := t.QueryRow(queryStr, cid, wb.Name)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+	if count > 0 {
+		err = errDuplicated
+		return
+	}
+
+	queryStr = `INSERT INTO entities
 		(name, cid, similar_words, answer)
 		VALUES (?, ?, ?, ?)`
-	result, err := mySQL.Exec(queryStr,
+	result, err := t.Exec(queryStr,
 		wb.Name, cid, strings.Join(wb.SimilarWords, ","), wb.Answer)
 	if err != nil {
 		return
@@ -922,6 +969,7 @@ func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
 	}
 	id = int(id64)
 
+	err = t.Commit()
 	return
 }
 
@@ -941,5 +989,52 @@ func updateWordbankV3(appid string, id int, wb *WordBankV3) (err error) {
 		WHERE id = ?`
 	_, err = mySQL.Exec(queryStr,
 		wb.Name, strings.Join(wb.SimilarWords, ","), wb.Answer, id)
+	return
+}
+
+func moveWordbankV3(appid string, id, cid int) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	// check if target class has a same name of entity or not
+	queryStr := `
+		SELECT count(*)
+		FROM entities AS e1, entities AS e2
+		WHERE e1.id = ? AND e2.cid = ? AND e2.name = e1.name AND e2.id != e1.id`
+	row := t.QueryRow(queryStr, id, cid)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+	if count > 0 {
+		err = errDuplicated
+		return
+	}
+
+	queryStr = `UPDATE entities SET cid = ? WHERE id = ?`
+	_, err = t.Exec(queryStr, cid, id)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
 	return
 }

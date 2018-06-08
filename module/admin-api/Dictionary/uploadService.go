@@ -810,3 +810,7 @@ func AddWordbankV3(appid string, cid int, wb *WordBankV3) (int, error) {
 func UpdateWordbankV3(appid string, id int, wb *WordBankV3) error {
 	return updateWordbankV3(appid, id, wb)
 }
+
+func MoveWordbankV3(appid string, id, cid int) error {
+	return moveWordbankV3(appid, id, cid)
+}

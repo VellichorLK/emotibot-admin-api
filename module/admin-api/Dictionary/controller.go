@@ -54,6 +54,7 @@ func init() {
 			util.NewEntryPointWithVer("POST", "wordbank", []string{"create"}, handleAddWordbankV3, 3),
 			util.NewEntryPointWithVer("POST", "class", []string{"create"}, handleAddWordbankClassV3, 3),
 			util.NewEntryPointWithVer("PUT", "wordbank/{id}", []string{"edit"}, handleUpdateWordbankV3, 3),
+			util.NewEntryPointWithVer("PUT", "wordbank/{id}/move", []string{"edit"}, handleMoveWordbankV3, 3),
 			util.NewEntryPointWithVer("PUT", "class/{id}", []string{"edit"}, handleUpdateWordbankClassV3, 3),
 
 			util.NewEntryPointWithVer("POST", "upload", []string{"view"}, handleUploadToMySQLV3, 3),
@@ -964,9 +965,6 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 			retCode, result = ApiError.NOT_FOUND_ERROR, "Parent not existed"
 			return
 		}
-	} else {
-		retCode, result = ApiError.REQUEST_ERROR, "Parent cannot be root"
-		return
 	}
 
 	wb, err = parseWordbankV3FromRequest(r)
@@ -1056,6 +1054,81 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 	} else {
 		wb.ID = id
 		result = wb
+	}
+}
+
+func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var result interface{}
+	retCode := ApiError.SUCCESS
+
+	var wbName string
+	var parentName string
+	appid := util.GetAppID(r)
+	defer func() {
+		userID := util.GetUserID(r)
+		userIP := util.GetUserIP(r)
+		ret := 0
+
+		auditMsg := fmt.Sprintf("%s%s %s %s %s",
+			util.Msg["Move"], util.Msg["Wordbank"], wbName, util.Msg["To"], parentName)
+		if err == nil {
+			ret = 1
+			util.WriteJSON(w, util.GenRetObj(retCode, result))
+		} else {
+			switch retCode {
+			case ApiError.REQUEST_ERROR:
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
+			case ApiError.DB_ERROR:
+				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+			}
+			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+		}
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+	}()
+
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		result = fmt.Sprintf("id fail: %s", err.Error())
+		return
+	}
+	cid, err := strconv.Atoi(r.FormValue("cid"))
+	if err != nil {
+		retCode, result = ApiError.REQUEST_ERROR, "invalid target"
+		return
+	}
+	if cid != -1 {
+		parentClass, _, err := GetWordbankClassV3(appid, cid)
+		if err != nil {
+			retCode, result = ApiError.DB_ERROR, fmt.Sprintf("Get parent class error: %s", err.Error())
+			return
+		}
+		if parentClass == nil {
+			retCode, result = ApiError.NOT_FOUND_ERROR, "Parent not existed"
+			return
+		}
+		parentName = parentClass.Name
+	} else {
+		parentName = "/"
+	}
+
+	origWordbank, _, err := GetWordbankV3(appid, id)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		return
+	}
+	if origWordbank == nil {
+		err = errors.New("Wordbank not existed")
+		retCode = ApiError.NOT_FOUND_ERROR
+		return
+	}
+	wbName = origWordbank.Name
+
+	err = MoveWordbankV3(appid, id, cid)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		result = err.Error()
 	}
 }
 
