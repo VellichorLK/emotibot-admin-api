@@ -3,6 +3,7 @@ package Dictionary
 import (
 	"bufio"
 	"bytes"
+	"crypto/md5"
 	"errors"
 	"fmt"
 	"io"
@@ -329,6 +330,33 @@ func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow, version int) 
 		"md5":         md5Words,
 		"synonym-url": fmt.Sprintf("%s/api/v%d/dictionary/synonyms/%s", url, version, appid),
 		"synonym-md5": md5Synonyms,
+		"timestamp":   now.UnixNano() / 1000000,
+	}
+	util.ConsulUpdateEntity(appid, consulJSON)
+	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	return
+}
+
+func TriggerUpdateWordbankV3(appid string) (err error) {
+	// Update consul key
+	// TODO: use relative to compose the url
+	url := getEnvironment("INTERNAL_URL")
+	if url == "" {
+		url = defaultInternalURL
+	}
+	now := time.Now()
+
+	err, wordLines, synonymLines := GetWordDataV3(appid)
+	wordContent := strings.Join(wordLines, "\n") + "\n"
+	synonymContent := strings.Join(synonymLines, "\n") + "\n"
+	md5Words := md5.Sum([]byte(wordContent))
+	md5Synonyms := md5.Sum([]byte(synonymContent))
+
+	consulJSON := map[string]interface{}{
+		"url":         fmt.Sprintf("%s/api/v3/dictionary/words/%s", url, appid),
+		"md5":         fmt.Sprintf("%x", md5Words),
+		"synonym-url": fmt.Sprintf("%s/api/v3/dictionary/synonyms/%s", url, appid),
+		"synonym-md5": fmt.Sprintf("%x", md5Synonyms),
 		"timestamp":   now.UnixNano() / 1000000,
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)

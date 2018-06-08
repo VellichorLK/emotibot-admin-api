@@ -2,6 +2,8 @@ package util
 
 var (
 	Msg = map[string]string{
+		"To":           "到",
+		"Move":         "移动",
 		"DownloadFile": "下载",
 		"UploadFile":   "上传",
 		"Delete":       "删除",
@@ -23,7 +25,7 @@ var (
 		"Success":      "成功",
 		"Open":         "开启",
 		"Close":        "关闭",
-		"Request":      "請求",
+		"Request":      "请求",
 		"Rebuild":      "重新建模",
 		"RobotProfile": "机器人形象",
 		"Question":     "问题",
@@ -65,7 +67,7 @@ var (
 		"ProperNounsWordbank": "专有词库",
 		"SheetError":          "获取词库模板资料表错误",
 		"EmptyRows":           "资料表中无资料",
-		"DirectoryError":      "目錄錯誤",
+		"DirectoryError":      "目录错误",
 		"Level1Error":         "第一层目录错误",
 		"BelowRows":           "以下行数",
 	}

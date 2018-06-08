@@ -631,6 +631,7 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 	}
 	ret = 1
 	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	go TriggerUpdateWordbankV3(appid)
 	return
 }
 func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
@@ -675,6 +676,7 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	go TriggerUpdateWordbankV3(appid)
 	return
 }
 
@@ -732,7 +734,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, map[string]interface{}{
 		"root": root,
 	}))
-	// TriggerUpdateWordbank(appid, wordbanks)
+	go TriggerUpdateWordbankV3(appid)
 }
 
 func handleDownloadFromMySQLV3(w http.ResponseWriter, r *http.Request) {
@@ -853,6 +855,7 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	} else {
 		result = class
 	}
+	go TriggerUpdateWordbankV3(appid)
 }
 func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	var err error
@@ -916,6 +919,7 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		retCode, result = ApiError.DB_ERROR, err.Error()
 	}
+	go TriggerUpdateWordbankV3(appid)
 }
 
 func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
@@ -980,6 +984,7 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 		wb.ID = id
 		result = wb
 	}
+	go TriggerUpdateWordbankV3(appid)
 }
 
 func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
@@ -1055,6 +1060,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 		wb.ID = id
 		result = wb
 	}
+	go TriggerUpdateWordbankV3(appid)
 }
 
 func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
@@ -1130,6 +1136,7 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 		retCode = ApiError.DB_ERROR
 		result = err.Error()
 	}
+	go TriggerUpdateWordbankV3(appid)
 }
 
 func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
