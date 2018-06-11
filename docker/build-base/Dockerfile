@@ -1,6 +1,5 @@
-FROM golang:1.9-alpine
-
-RUN apk add --no-cache git
+ARG baseImageName
+FROM ${baseImageName}
 RUN go get github.com/go-sql-driver/mysql
 RUN go get github.com/kataras/iris
 RUN go get github.com/kataras/golog
