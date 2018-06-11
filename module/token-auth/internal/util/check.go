@@ -7,7 +7,7 @@ import (
 
 const (
 	// UUIDPattern is regex of UUID
-	UUIDPattern = "^[0-9a-f]{8}(-[0-9a-f]{4}){4}[0-9a-f]{8}$"
+	UUIDPattern = "^[a-f0-9]{32}$"
 	// MD5Pattern is regex for md5
 	MD5Pattern = "^[a-f0-9]{32}$"
 )
@@ -20,7 +20,7 @@ func IsValidString(str *string) bool {
 	if strings.Trim(*str, " ") == "" {
 		return false
 	}
-	return true	
+	return true
 }
 
 // IsValidUUID will check if string is standard uuid or not
