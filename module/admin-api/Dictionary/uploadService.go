@@ -516,12 +516,14 @@ func fillV3RowWithLast(current *WordBankRow, last *WordBankRow) error {
 	level := 1
 	for true {
 		if current.Level1 == "" {
-			hasErr = true
-			break
+			shouldBeBlank = true
 		}
 
 		level = 2
-		if current.Level2 == "" {
+		if shouldBeBlank && (current.Level2 != "") {
+			hasErr = true
+			break
+		} else if current.Level2 == "" {
 			shouldBeBlank = true
 		}
 
@@ -591,6 +593,7 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 		}
 	}
 
+	classMap[""] = root
 	for classPath, wordbanks := range classWordbank {
 		class, ok := classMap[classPath]
 		if !ok {
@@ -777,9 +780,10 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 			DFSTravel(child, level+1)
 		}
 	}
-	for _, child := range root.Children {
-		DFSTravel(child, 1)
-	}
+	DFSTravel(root, 0)
+	// for _, child := range root.Children {
+	// 	DFSTravel(child, 1)
+	// }
 
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)

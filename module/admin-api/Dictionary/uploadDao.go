@@ -214,13 +214,13 @@ func insertClassV3WithTransaction(appid string, pid *int, class *WordBankClassV3
 
 func insertWordbankV3WithTransaction(appid string, pid *int, wordbank *WordBankV3, tx *sql.Tx) error {
 	queryStr := `
-		INSERT INTO entities (name, editable, cid, similar_words, answer)
-		VALUES (?, ?, ?, ?, ?)`
+		INSERT INTO entities (appid, name, editable, cid, similar_words, answer)
+		VALUES (?, ?, ?, ?, ?, ?)`
 	editable := 0
 	if wordbank.Editable {
 		editable = 1
 	}
 	_, err := tx.Exec(queryStr,
-		wordbank.Name, editable, pid, strings.Join(wordbank.SimilarWords, ","), wordbank.Answer)
+		appid, wordbank.Name, editable, pid, strings.Join(wordbank.SimilarWords, ","), wordbank.Answer)
 	return err
 }

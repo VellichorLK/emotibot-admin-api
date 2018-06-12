@@ -1095,8 +1095,7 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		retCode = ApiError.REQUEST_ERROR
-		result = fmt.Sprintf("id fail: %s", err.Error())
+		retCode, result = ApiError.REQUEST_ERROR, fmt.Sprintf("id fail: %s", err.Error())
 		return
 	}
 	cid, err := strconv.Atoi(r.FormValue("cid"))

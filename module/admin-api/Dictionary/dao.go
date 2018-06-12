@@ -500,10 +500,20 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		return
 	}
 
-	queryStr = fmt.Sprintf(`
-		SELECT id, editable, name, cid, similar_words, answer
-		FROM entities
-		WHERE cid in (%s)`, strings.Join(queryQuestion, ","))
+	queryParam = append(queryParam, appid)
+
+	if len(queryParam) == 1 {
+		// only has appid condition
+		queryStr = `
+			SELECT id, editable, name, cid, similar_words, answer
+			FROM entities
+			WHERE appid = ?`
+	} else {
+		queryStr = fmt.Sprintf(`
+			SELECT id, editable, name, cid, similar_words, answer
+			FROM entities
+			WHERE cid in (%s) OR appid = ?`, strings.Join(queryQuestion, ","))
+	}
 	entityRows, err := mySQL.Query(queryStr, queryParam...)
 	if err != nil {
 		return
@@ -512,7 +522,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 
 	for entityRows.Next() {
 		temp := &WordBankV3{}
-		cid := 0
+		var cid *int
 		var editable *int
 		similarWordStr := ""
 		err = entityRows.Scan(&temp.ID, &editable, &temp.Name, &cid, &similarWordStr, &temp.Answer)
@@ -526,11 +536,17 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		}
 		if editable != nil {
 			temp.Editable = *editable != 0
+		} else if cid != nil && *cid != -1 {
+			temp.Editable = classMap[*cid].Editable
 		} else {
-			temp.Editable = classMap[cid].Editable
+			temp.Editable = true
 		}
 
-		classMap[cid].Wordbank = append(classMap[cid].Wordbank, temp)
+		if cid == nil || *cid == -1 {
+			root.Wordbank = append(root.Wordbank, temp)
+		} else {
+			classMap[*cid].Wordbank = append(classMap[*cid].Wordbank, temp)
+		}
 	}
 
 	ret = &root
@@ -545,17 +561,22 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
 	}
 
 	queryStr := `
-		SELECT e.name, e.editable, e.similar_words, e.answer, c.editable, e.cid
-		FROM entities as e, entity_class as c
-		WHERE e.cid = c.id AND e.id = ? AND c.appid = ?`
+		SELECT e.name, e.editable, e.similar_words, e.answer, e.cid, c.editable FROM (
+			SELECT name, editable, similar_words, answer, cid
+			FROM entities 
+			WHERE id = ? AND appid = ?
+		) as e
+		LEFT JOIN entity_class as c
+		ON e.cid = c.id`
 	row := mySQL.QueryRow(queryStr, id, appid)
 	util.LogTrace.Printf("Get wordbank of %d@%s", id, appid)
 
 	ret = &WordBankV3{}
 	similarWordsStr := ""
+	var classID *int
 	var editable *int
-	var parentEditable int
-	err = row.Scan(&ret.Name, &editable, &similarWordsStr, &ret.Answer, &parentEditable, &cid)
+	var parentEditable *int
+	err = row.Scan(&ret.Name, &editable, &similarWordsStr, &ret.Answer, &classID, &parentEditable)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			ret = nil
@@ -566,14 +587,21 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
 
 	if editable != nil {
 		ret.Editable = *editable != 0
+	} else if parentEditable != nil {
+		ret.Editable = *parentEditable != 0
 	} else {
-		ret.Editable = parentEditable != 0
+		ret.Editable = true
 	}
 	similarWordsStr = strings.TrimSpace(similarWordsStr)
 	if similarWordsStr == "" {
 		ret.SimilarWords = []string{}
 	} else {
 		ret.SimilarWords = strings.Split(similarWordsStr, ",")
+	}
+	if classID != nil {
+		cid = *classID
+	} else {
+		cid = -1
 	}
 	ret.ID = id
 	return
@@ -776,9 +804,19 @@ func deleteWordbankV3(appid string, id int) (err error) {
 		return
 	}
 	queryStr := `
-		DELETE e.*
-		FROM entity_class AS c, entities AS e
-		WHERE e.id = ? AND e.cid = c.id AND c.appid = ? AND c.editable > 0`
+	DELETE e.* FROM 
+	entities as e,
+		(SELECT * FROM (
+			SELECT e.id as id, c.id as cid, c.editable as editable  FROM
+				(SELECT * FROM entities WHERE id = ? AND appid = ?) AS e
+			LEFT JOIN entity_class as c
+			ON
+				e.cid = c.id
+			) as temp
+			WHERE (temp.cid IS NULL) OR (temp.cid IS NOT NULL AND editable > 0)
+		) AS temp2
+	WHERE e.id = temp2.id
+	`
 	_, err = mySQL.Exec(queryStr, id, appid)
 	return err
 }
@@ -955,11 +993,15 @@ func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
 		return
 	}
 
+	classID := &cid
+	if cid == -1 {
+		classID = nil
+	}
 	queryStr = `INSERT INTO entities
 		(name, cid, similar_words, answer)
 		VALUES (?, ?, ?, ?)`
 	result, err := t.Exec(queryStr,
-		wb.Name, cid, strings.Join(wb.SimilarWords, ","), wb.Answer)
+		wb.Name, classID, strings.Join(wb.SimilarWords, ","), wb.Answer)
 	if err != nil {
 		return
 	}
@@ -1009,12 +1051,16 @@ func moveWordbankV3(appid string, id, cid int) (err error) {
 	}
 	defer util.ClearTransition(t)
 
+	classID := &cid
+	if cid == -1 {
+		classID = nil
+	}
 	// check if target class has a same name of entity or not
 	queryStr := `
 		SELECT count(*)
 		FROM entities AS e1, entities AS e2
 		WHERE e1.id = ? AND e2.cid = ? AND e2.name = e1.name AND e2.id != e1.id`
-	row := t.QueryRow(queryStr, id, cid)
+	row := t.QueryRow(queryStr, id, classID)
 	count := 0
 	err = row.Scan(&count)
 	if err != nil {
@@ -1030,7 +1076,7 @@ func moveWordbankV3(appid string, id, cid int) (err error) {
 	}
 
 	queryStr = `UPDATE entities SET cid = ? WHERE id = ?`
-	_, err = t.Exec(queryStr, cid, id)
+	_, err = t.Exec(queryStr, classID, id)
 	if err != nil {
 		return
 	}
