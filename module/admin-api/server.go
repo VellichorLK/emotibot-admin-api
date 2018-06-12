@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
@@ -167,6 +168,7 @@ func setRoute() *mux.Router {
 		UI.ModuleInfo,
 		SelfLearning.ModuleInfo,
 		System.ModuleInfo,
+		BF.ModuleInfo,
 	}
 
 	for _, module := range modules {
