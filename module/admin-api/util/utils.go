@@ -66,12 +66,12 @@ func Contains(arr []string, str string) bool {
 }
 
 func IsValidAppID(id string) bool {
-	return len(id) > 0 && HasOnlyNumEng(id)
+	return len(id) > 0 && HasOnlyNumEngDash(id)
 }
 
-func HasOnlyNumEng(input string) bool {
+func HasOnlyNumEngDash(input string) bool {
 	for _, c := range input {
-		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') {
+		if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') && (c < '0' || c > '9') && c != '-' {
 			return false
 		}
 	}
