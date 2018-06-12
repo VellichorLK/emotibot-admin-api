@@ -27,14 +27,14 @@ DROP TABLE IF EXISTS `app_group`;
 
 CREATE TABLE `app_group` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `group` char(32) NOT NULL DEFAULT '',
-  `app` char(32) NOT NULL DEFAULT '',
+  `robot_group` char(32) NOT NULL DEFAULT '',
+  `app` char(32) NOT NULL,
   `created_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `app exist` (`group`),
+  KEY `app exist` (`robot_group`),
   KEY `app exists` (`app`),
   CONSTRAINT `app exists` FOREIGN KEY (`app`) REFERENCES `apps` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `group exist` FOREIGN KEY (`group`) REFERENCES `groups` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `group exist` FOREIGN KEY (`robot_group`) REFERENCES `robot_groups` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
@@ -118,12 +118,12 @@ VALUES
 UNLOCK TABLES;
 
 
-# Dump of table groups
+# Dump of table robot_groups
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `groups`;
+DROP TABLE IF EXISTS `robot_groups`;
 
-CREATE TABLE `groups` (
+CREATE TABLE `robot_groups` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `uuid` char(32) NOT NULL DEFAULT '',
   `name` varchar(64) NOT NULL DEFAULT '',
