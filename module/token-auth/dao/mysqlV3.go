@@ -500,6 +500,7 @@ func (controller MYSQLController) UpdateUserV3(enterpriseID string,
 		util.LogDBError(err)
 		return false, err
 	}
+	defer util.ClearTransition(t)
 
 	// Check the existence
 	var count int
