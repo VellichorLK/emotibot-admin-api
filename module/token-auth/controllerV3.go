@@ -94,6 +94,16 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if newAdmin.UserName == "" {
+		newAdmin.UserName = origAdmin.UserName
+	}
+	if newAdmin.DisplayName == "" {
+		newAdmin.DisplayName = origAdmin.DisplayName
+	}
+	if newAdmin.Email == "" {
+		newAdmin.Email = origAdmin.Email
+	}
+
 	result, err := service.UpdateSystemAdminV3(newAdmin, adminID)
 	if err != nil {
 		returnInternalError(w, err.Error())
@@ -209,7 +219,7 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEnterprise, err := service.GetEnterpriseV3(id)
-	if err != nil {
+	if err != nil || newEnterprise == nil {
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -365,7 +375,7 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newUser, err := service.GetUserV3(enterpriseID, id)
-	if err != nil {
+	if err != nil || user == nil {
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -391,11 +401,10 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	origUser, err := service.GetUserV3(enterpriseID, userID)
 	if err != nil {
-		if origUser == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if origUser == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -408,6 +417,16 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
+	}
+
+	if newUser.UserName == "" {
+		newUser.UserName = origUser.UserName
+	}
+	if newUser.DisplayName == "" {
+		newUser.DisplayName = origUser.DisplayName
+	}
+	if newUser.Email == "" {
+		newUser.Email = origUser.Email
 	}
 
 	result, err := service.UpdateUserV3(enterpriseID, userID, newUser)
@@ -439,11 +458,10 @@ func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	user, err := service.GetUserV3(enterpriseID, userID)
 	if err != nil {
-		if user == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if user == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -531,7 +549,7 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newApp, err := service.GetAppV3(enterpriseID, id)
-	if err != nil {
+	if err != nil || newApp == nil {
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -556,11 +574,10 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	origApp, err := service.GetAppV3(enterpriseID, appID)
 	if err != nil {
-		if origApp == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if origApp == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -676,7 +693,7 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newGroup, err := service.GetGroupV3(enterpriseID, id)
-	if err != nil {
+	if err != nil || newGroup == nil {
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -701,11 +718,10 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	origGroup, err := service.GetGroupV3(enterpriseID, groupID)
 	if err != nil {
-		if origGroup == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if origGroup == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -762,7 +778,7 @@ func RolesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetRoles(enterpriseID)
+	retData, err := service.GetRolesV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else {
@@ -785,7 +801,7 @@ func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetRole(enterpriseID, roleID)
+	retData, err := service.GetRoleV3(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -851,6 +867,7 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if !result {
 		returnNotFound(w)
+		return
 	}
 
 	returnSuccess(w, true)
@@ -869,11 +886,13 @@ func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.DeleteRole(enterpriseID, roleID)
+	result, err := service.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
+		return
 	} else if !result {
 		returnNotFound(w)
+		return
 	}
 
 	returnSuccess(w, true)
@@ -928,6 +947,23 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	returnSuccess(w, ret)
+}
+
+func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterpriseID")
+		return
+	}
+
+	retData, err := service.GetModulesV3(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+	} else {
+		returnSuccess(w, retData)
+	}
 }
 
 func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {
@@ -996,16 +1032,16 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 	roles := r.FormValue("apps")
 	if roles != "" {
 		userRolesReq := data.UserRolesRequestV3{}
-		err = json.Unmarshal([]byte(roles), userRolesReq)
+		err = json.Unmarshal([]byte(roles), &userRolesReq)
 		if err == nil {
 			userRoles := data.UserRolesV3{
 				GroupRoles: make([]*data.UserGroupRoleV3, 0),
-				AppRoles: make([]*data.UserAppRoleV3, 0),
+				AppRoles:   make([]*data.UserAppRoleV3, 0),
 			}
 
 			for group, role := range userRolesReq.GroupRoles {
 				userGroup := data.UserGroupRoleV3{
-					ID: group,
+					ID:   group,
 					Role: role,
 				}
 				userRoles.GroupRoles = append(userRoles.GroupRoles, &userGroup)
@@ -1013,7 +1049,7 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 
 			for app, role := range userRolesReq.AppRoles {
 				userApp := data.UserAppRoleV3{
-					ID: app,
+					ID:   app,
 					Role: role,
 				}
 				userRoles.AppRoles = append(userRoles.AppRoles, &userApp)
@@ -1055,7 +1091,12 @@ func parseAppFromRequestV3(r *http.Request) (*data.AppDetailV3, error) {
 
 func parseGroupFromRequestV3(r *http.Request) (*data.GroupDetailV3, []string, error) {
 	name := r.FormValue("name")
-	apps := strings.Split(r.FormValue("apps"), ",")
+
+	var apps []string
+	err := json.Unmarshal([]byte(r.FormValue("apps")), &apps)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	group := data.GroupDetailV3{
 		GroupV3: data.GroupV3{

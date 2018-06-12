@@ -22,7 +22,7 @@ const (
 	userPrivilegesTableV3 = "user_privileges"
 	appTableV3            = "apps"
 	appGroupTableV3       = "app_group"
-	groupTableV3          = "groups"
+	groupTableV3          = "robot_groups"
 	roleTableV3           = "roles"
 	rolePrivilegeTableV3  = "privileges"
 	humanTableV3          = "human"
@@ -127,6 +127,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	}
 	adminUserID := hex.EncodeToString(adminUserUUID[:])
 
+	// Update human table
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, adminUserID)
 	if err != nil {
@@ -188,25 +189,29 @@ func (controller MYSQLController) UpdateEnterpriseV3(enterpriseID string,
 	}
 	defer util.ClearTransition(t)
 
+	// Check the existence
+	var count int
 	queryStr := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM %s
+		WHERE uuid = ?`, enterpriseTableV3)
+	err = t.QueryRow(queryStr, enterpriseID).Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+
+	queryStr = fmt.Sprintf(`
 		UPDATE %s
 		SET name = ?, description = ?
 		WHERE uuid = ?`,
 		enterpriseTableV3)
-	res, err := t.Exec(queryStr, enterprise.Name, enterprise.Description, enterpriseID)
+	_, err = t.Exec(queryStr, enterprise.Name, enterprise.Description, enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		util.LogDBError(err)
-		return false, err
-	}
-
-	if rowCnt == 0 {
-		return false, nil
 	}
 
 	err = updateModulesEnterpriseWithTxV3(modules, enterpriseID, t)
@@ -396,7 +401,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 
 	count := 0
 	queryStr := fmt.Sprintf(`
-		SELECT count(*)
+		SELECT COUNT(*)
 		FROM %s
 		WHERE user_name = ? OR (email = ? AND email != '')`, userTableV3)
 	row := t.QueryRow(queryStr, user.UserName, user.Email)
@@ -413,7 +418,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	userID = hex.EncodeToString(userUUID[:])
 
 	// Update human table
-	queryStr = fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr = fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
 		return
@@ -446,18 +451,19 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 		return
 	}
 
-	// If custom info not set, no need to check custom columns
-	if user.CustomInfo == nil {
-		err = t.Commit()
-		return
-	}
-	err = insertCustomInfoWithTxV3(enterpriseID, userID, *user.CustomInfo, t)
+	err = addUserPrivilegesWithTxV3(userID, user, t)
 	if err != nil {
 		util.LogDBError(err)
 		return
 	}
 
-	err = addUserPrivilegesWithTxV3(user, t)
+	// If custom info not set, no need to check custom columns
+	if user.CustomInfo == nil {
+		err = t.Commit()
+		return
+	}
+
+	err = insertCustomInfoWithTxV3(enterpriseID, userID, *user.CustomInfo, t)
 	if err != nil {
 		util.LogDBError(err)
 		return
@@ -486,7 +492,20 @@ func (controller MYSQLController) UpdateUserV3(enterpriseID string,
 		return false, err
 	}
 
-	var queryStr string
+	// Check the existence
+	var count int
+	queryStr := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM %s
+		WHERE uuid = ?`, userTableV3)
+	err = t.QueryRow(queryStr, userID).Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+
 	var queryParams []interface{}
 
 	switch user.Type {
@@ -527,20 +546,22 @@ func (controller MYSQLController) UpdateUserV3(enterpriseID string,
 		}
 	}
 
-	res, err := t.Exec(queryStr, queryParams...)
+	_, err = t.Exec(queryStr, queryParams...)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
 	}
 
-	rowCnt, err := res.RowsAffected()
+	err = deleteUserPrivilegesWithTxV3(userID, t)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
 	}
 
-	if rowCnt == 0 {
-		return false, nil
+	err = addUserPrivilegesWithTxV3(userID, user, t)
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
 	}
 
 	if user.CustomInfo == nil {
@@ -564,18 +585,6 @@ func (controller MYSQLController) UpdateUserV3(enterpriseID string,
 		return false, err
 	}
 
-	err = deleteUserPrivilegesWithTxV3(user, t)
-	if err != nil {
-		util.LogDBError(err)
-		return false, err
-	}
-
-	err = addUserPrivilegesWithTxV3(user, t)
-	if err != nil {
-		util.LogDBError(err)
-		return false, err
-	}
-
 	err = t.Commit()
 	if err != nil {
 		return false, err
@@ -590,13 +599,18 @@ func (controller MYSQLController) DeleteUserV3(enterpriseID string, userID strin
 		return false, err
 	}
 
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
+	}
+	defer util.ClearTransition(t)
+
 	queryStr := fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", userTableV3)
-	res, err := controller.connectDB.Exec(queryStr, userID)
+	res, err := t.Exec(queryStr, userID)
 	if err != nil {
 		return false, err
 	}
-	fmt.Println(queryStr)
-	fmt.Println(userID)
 
 	rowCnt, err := res.RowsAffected()
 	if err != nil {
@@ -604,6 +618,13 @@ func (controller MYSQLController) DeleteUserV3(enterpriseID string, userID strin
 	}
 
 	if rowCnt == 0 {
+		return false, nil
+	}
+
+	// Update human table
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", humanTableV3)
+	_, err = t.Exec(queryStr, userID)
+	if err != nil {
 		return false, nil
 	}
 
@@ -686,7 +707,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 	appID = hex.EncodeToString(appUUID[:])
 
-	// Insert machine table
+	// Update machine table
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, appID)
 	if err != nil {
@@ -715,24 +736,28 @@ func (controller MYSQLController) UpdateAppV3(enterpriseID string, appID string,
 		return false, err
 	}
 
+	// Check the existence
+	var count int
 	queryStr := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM %s
+		WHERE uuid = ?`, appTableV3)
+	err = controller.connectDB.QueryRow(queryStr, appID).Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+
+	queryStr = fmt.Sprintf(`
 		UPDATE %s
 		SET name = ?, description = ?
 		WHERE uuid = ?`, appTableV3)
-	res, err := controller.connectDB.Exec(queryStr, app.Name, app.Description, appID)
+	_, err = controller.connectDB.Exec(queryStr, app.Name, app.Description, appID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
-	}
-
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		util.LogDBError(err)
-		return false, err
-	}
-
-	if rowCnt == 0 {
-		return false, nil
 	}
 
 	return true, nil
@@ -744,10 +769,17 @@ func (controller MYSQLController) DeleteAppV3(enterpriseID string, appID string)
 		return false, err
 	}
 
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
+	}
+	defer util.ClearTransition(t)
+
 	queryStr := fmt.Sprintf(`
 		DELETE FROM %s
 		WHERE uuid = ?`, appTableV3)
-	res, err := controller.connectDB.Exec(queryStr, appID)
+	res, err := t.Exec(queryStr, appID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
@@ -761,6 +793,13 @@ func (controller MYSQLController) DeleteAppV3(enterpriseID string, appID string)
 
 	if rowCnt == 0 {
 		return false, nil
+	}
+
+	// Update machine table
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
+	_, err = t.Exec(queryStr, appID)
+	if err != nil {
+		return false, err
 	}
 
 	return true, nil
@@ -802,7 +841,7 @@ func (controller MYSQLController) GetGroupsV3(enterpriseID string) ([]*data.Grou
 			FROM %s AS ag
 			LEFT JOIN %s AS a
 			ON a.uuid = ag.app
-			WHERE ag.group = ?`, appGroupTableV3, appTableV3)
+			WHERE ag.robot_group = ?`, appGroupTableV3, appTableV3)
 		rows, err := controller.connectDB.Query(queryStr, group.ID)
 		if err != nil {
 			util.LogDBError(err)
@@ -854,7 +893,7 @@ func (controller MYSQLController) GetGroupV3(enterpriseID string, groupID string
 		FROM %s AS a
 		INNER JOIN %s AS ag
 		ON ag.app = a.uuid
-		WHERE enterprise = ? AND ag.group = ?`, appTableV3, appGroupTableV3)
+		WHERE enterprise = ? AND ag.robot_group = ?`, appTableV3, appGroupTableV3)
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID, groupID)
 	if err != nil {
 		util.LogDBError(err)
@@ -897,7 +936,7 @@ func (controller MYSQLController) AddGroupV3(enterpriseID string, group *data.Gr
 	}
 	groupID = hex.EncodeToString(groupUUID[:])
 
-	// Insert machine table
+	// Update machine table
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, groupID)
 	if err != nil {
@@ -907,7 +946,7 @@ func (controller MYSQLController) AddGroupV3(enterpriseID string, group *data.Gr
 
 	queryStr = fmt.Sprintf(`
 		INSERT INTO %s (uuid, name, enterprise, status)
-		VALUES (? ?, ?, 1)`,
+		VALUES (?, ?, ?, 1)`,
 		groupTableV3)
 	_, err = t.Exec(queryStr, groupID, group.Name, enterpriseID)
 	if err != nil {
@@ -916,8 +955,7 @@ func (controller MYSQLController) AddGroupV3(enterpriseID string, group *data.Gr
 	}
 
 	// Insert app_group table
-	queryStr = fmt.Sprintf("INSERT INTO %s (group, app) VALUES (?, ?)",
-		appGroupTableV3)
+	queryStr = fmt.Sprintf("INSERT INTO %s (robot_group, app) VALUES (?, ?)", appGroupTableV3)
 
 	// Update app_group
 	for _, app := range apps {
@@ -947,41 +985,40 @@ func (controller MYSQLController) UpdateGroupV3(enterpriseID string, groupID str
 	}
 	defer util.ClearTransition(t)
 
+	// Check the existence
+	var count int
 	queryStr := fmt.Sprintf(`
-		UPDATE %s
-		SET name = ?
+		SELECT COUNT(*)
+		FROM %s
 		WHERE uuid = ?`, groupTableV3)
-	res, err := t.Exec(queryStr, group.Name, groupID)
+	err = t.QueryRow(queryStr, groupID).Scan(&count)
 	if err != nil {
-		util.LogDBError(err)
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
 		return false, err
 	}
 
-	rowCnt, err := res.RowsAffected()
+	queryStr = fmt.Sprintf("UPDATE %s SET name = ? WHERE uuid = ?", groupTableV3)
+	_, err = t.Exec(queryStr, group.Name, groupID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
-	}
-
-	if rowCnt == 0 {
-		return false, nil
 	}
 
 	// Update app_group table
-	queryStr = fmt.Sprintf(`
-		DELETE FROM %s
-		WHERE app IN (?)`,
-		appGroupTableV3)
-	_, err = t.Exec(queryStr)
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE robot_group = ?", appGroupTableV3)
+	_, err = t.Exec(queryStr, groupID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
 	}
 
-	queryStr = fmt.Sprintf("INSERT INTO %s (group, app) VALUES (?, ?)", appGroupTableV3)
+	// Update app_group table
+	queryStr = fmt.Sprintf("INSERT INTO %s (robot_group, app) VALUES (?, ?)", appGroupTableV3)
 
 	for _, app := range apps {
-		_, err = t.Exec(queryStr, group.ID, app)
+		_, err = t.Exec(queryStr, groupID, app)
 		if err != nil {
 			util.LogDBError(err)
 			return false, err
@@ -998,11 +1035,17 @@ func (controller MYSQLController) DeleteGroupV3(enterpriseID string, groupID str
 		return false, err
 	}
 
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
+	}
+	defer util.ClearTransition(t)
+
 	queryStr := fmt.Sprintf(`
 		DELETE FROM %s
-		WHERE uuid = ?`,
-		machineTableV3)
-	res, err := controller.connectDB.Exec(queryStr, groupID)
+		WHERE uuid = ?`, groupTableV3)
+	res, err := t.Exec(queryStr, groupID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
@@ -1016,6 +1059,13 @@ func (controller MYSQLController) DeleteGroupV3(enterpriseID string, groupID str
 
 	if rowCnt == 0 {
 		return false, nil
+	}
+
+	// Update machine table
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
+	_, err = t.Exec(queryStr, groupID)
+	if err != nil {
+		return false, err
 	}
 
 	return true, nil
@@ -1089,7 +1139,7 @@ func (controller MYSQLController) GetRoleV3(enterpriseID string, roleID string) 
 	return &role, nil
 }
 
-func (controller MYSQLController) AddRoleV3(enterprise string, role *data.RoleV3) (roleUUID string, err error) {
+func (controller MYSQLController) AddRoleV3(enterpriseID string, role *data.RoleV3) (roleUUID string, err error) {
 	defer func() {
 		util.LogTrace.Println("Add role ret uuid: ", roleUUID)
 		if err != nil {
@@ -1119,7 +1169,7 @@ func (controller MYSQLController) AddRoleV3(enterprise string, role *data.RoleV3
 	queryStr := fmt.Sprintf(`
 		INSERT INTO %s (uuid, name, enterprise, description)
 		VALUES (?, ?, ?, ?)`, roleTable)
-	ret, err := t.Exec(queryStr, roleUUID, role.Name, enterprise, role.Description)
+	ret, err := t.Exec(queryStr, roleUUID, role.Name, enterpriseID, role.Description)
 	if err != nil {
 		util.LogDBError(err)
 		return
@@ -1132,7 +1182,7 @@ func (controller MYSQLController) AddRoleV3(enterprise string, role *data.RoleV3
 	}
 
 	moduleMap := map[string]*data.ModuleDetailV3{}
-	modules, err := controller.GetModulesV3(enterprise)
+	modules, err := controller.GetModulesV3(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return
@@ -1164,7 +1214,7 @@ func (controller MYSQLController) AddRoleV3(enterprise string, role *data.RoleV3
 	return
 }
 
-func (controller MYSQLController) UpdateRoleV3(enterprise string, roleUUID string, role *data.RoleV3) (bool, error) {
+func (controller MYSQLController) UpdateRoleV3(enterpriseID string, roleUUID string, role *data.RoleV3) (bool, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -1178,37 +1228,29 @@ func (controller MYSQLController) UpdateRoleV3(enterprise string, roleUUID strin
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := fmt.Sprintf("SELECT id FROM %s WHERE uuid = ?", roleTable)
-	row := t.QueryRow(queryStr, roleUUID)
-
 	var roleID int
-	err = row.Scan(&roleID)
+	queryStr := fmt.Sprintf("SELECT id FROM %s WHERE uuid = ?", roleTable)
+	err = t.QueryRow(queryStr, roleUUID).Scan(&roleID)
 	if err != nil {
-		util.LogDBError(err)
+		// Check the existence
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
 		return false, err
 	}
 
 	queryStr = fmt.Sprintf(`
 		UPDATE %s
-		SET name = ?, discription = ?
+		SET name = ?, description = ?
 		WHERE enterprise = ? AND id = ?`, roleTable)
-	res, err := t.Exec(queryStr, role.Name, role.Description, enterprise, roleID)
+	_, err = t.Exec(queryStr, role.Name, role.Description, enterpriseID, roleID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
 	}
 
-	rowCnt, err := res.RowsAffected()
-	if err != nil {
-		return false, err
-	}
-
-	if rowCnt == 0 {
-		return false, nil
-	}
-
 	moduleMap := map[string]*data.ModuleDetailV3{}
-	modules, err := controller.GetModulesV3(enterprise)
+	modules, err := controller.GetModulesV3(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return false, err
@@ -1307,6 +1349,21 @@ func (controller MYSQLController) DeleteRoleV3(enterpriseID string, roleID strin
 	return true, nil
 }
 
+func (controller MYSQLController) GetUsersCountOfRoleV3(roleID string) (count int, err error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM %s
+		WHERE role = ?`, userPrivilegesTableV3)
+	err = controller.connectDB.QueryRow(queryStr, roleID).Scan(&count)
+	return
+}
+
 func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 	var err error
 	ok, err := controller.checkDB()
@@ -1319,7 +1376,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 		SELECT id, code, name, status, description, cmd_list
 		FROM %s
 		WHERE enterprise = ?`, moduleTableV3)
-	rows, err := controller.connectDB.Query(queryStr)
+	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return nil, err
@@ -1330,7 +1387,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 	for rows.Next() {
 		module := data.ModuleDetailV3{}
 		var commands string
-		err := rows.Scan(&module.Code, &module.Name, &module.Status, &module.Description, &commands)
+		err := rows.Scan(&module.ID, &module.Code, &module.Name, &module.Status, &module.Description, &commands)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
@@ -1433,14 +1490,14 @@ func (controller MYSQLController) getUserRolesV3(userID string) (roles *data.Use
 	return
 }
 
-func addUserPrivilegesWithTxV3(user *data.UserDetailV3, tx *sql.Tx) error {
+func addUserPrivilegesWithTxV3(userID string, user *data.UserDetailV3, tx *sql.Tx) error {
 	if roles := user.Roles; roles != nil {
 		if groupRoles := roles.GroupRoles; groupRoles != nil {
 			for _, groupRole := range groupRoles {
 				queryStr := fmt.Sprintf(`
 					INSERT INTO %s (human, machine, role)
 					VALUES (?, ?, ?)`, userPrivilegesTableV3)
-				_, err := tx.Exec(queryStr, user.ID, groupRole.ID, groupRole.Role)
+				_, err := tx.Exec(queryStr, userID, groupRole.ID, groupRole.Role)
 				if err != nil {
 					return err
 				}
@@ -1452,7 +1509,7 @@ func addUserPrivilegesWithTxV3(user *data.UserDetailV3, tx *sql.Tx) error {
 				queryStr := fmt.Sprintf(`
 					INSERT INTO %s (human, machine, role)
 					VALUES (?, ?, ?)`, userPrivilegesTableV3)
-				_, err := tx.Exec(queryStr, user.ID, appRole.ID, appRole.Role)
+				_, err := tx.Exec(queryStr, userID, appRole.ID, appRole.Role)
 				if err != nil {
 					return err
 				}
@@ -1463,11 +1520,11 @@ func addUserPrivilegesWithTxV3(user *data.UserDetailV3, tx *sql.Tx) error {
 	return nil
 }
 
-func deleteUserPrivilegesWithTxV3(user *data.UserDetailV3, tx *sql.Tx) error {
+func deleteUserPrivilegesWithTxV3(userID string, tx *sql.Tx) error {
 	queryStr := fmt.Sprintf(`
 		DELETE FROM %s
 		WHERE human = ?`, userPrivilegesTableV3)
-	_, err := tx.Exec(queryStr, user.ID)
+	_, err := tx.Exec(queryStr, userID)
 	return err
 }
 
@@ -1605,13 +1662,14 @@ func getRolePrivileges(controller MYSQLController, role *data.RoleV3) error {
 		FROM %s AS p
 		INNER JOIN %s AS m
 		ON p.module = m.id
-		WHERE p.role = ?`, userPrivilegesTableV3, moduleTableV3)
+		WHERE p.role = ?`, rolePrivilegeTableV3, moduleTableV3)
 	rows, err := controller.connectDB.Query(queryStr, role.ID)
 	if err != nil {
 		util.LogDBError(err)
 		return err
 	}
 
+	role.Privileges = make(map[string][]string, 0)
 	for rows.Next() {
 		var code, cmdList string
 		err := rows.Scan(&code, &cmdList)

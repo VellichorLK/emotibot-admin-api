@@ -102,7 +102,7 @@ func setUpRoutes() {
 		Route{"ValidateToken", "GET", 3, "token/{token}", ValidateTokenHandler, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "token", ValidateTokenHandler, []interface{}{}},
 
-		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", ModulesGetHandler, []interface{}{0, 1, 2}},
+		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", ModulesGetHandlerV3, []interface{}{0, 1, 2}},
 	}
 }
 

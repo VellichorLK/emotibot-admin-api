@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"errors"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
@@ -303,6 +302,9 @@ func UpdateGroupV3(enterpriseID string, groupID string,
 	if enterpriseID == "" {
 		return false, errors.New("Invalid enterpriseID")
 	}
+	if groupID == "" {
+		return false, errors.New("Invalid groupID")
+	}
 	if group == nil {
 		return false, errors.New("Invalid group")
 	}
@@ -399,11 +401,12 @@ func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
 		return false, errors.New("Invalid roleID")
 	}
 
-	users, err := useDB.GetUsersOfRole(enterpriseID, roleID)
-	if err != nil && err != sql.ErrNoRows {
+	usersCount, err := useDB.GetUsersCountOfRoleV3(roleID)
+	if err != nil {
 		return false, err
 	}
-	if users != nil && len(*users) > 0 {
+	
+	if usersCount > 0 {
 		return false, errors.New("Cannot remove role having user")
 	}
 
@@ -417,4 +420,13 @@ func LoginV3(account string, passwd string) (*data.UserDetailV3, error) {
 	}
 
 	return useDB.GetAuthUserV3(account, passwd)
+}
+
+func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	return useDB.GetModulesV3(enterpriseID)
 }
