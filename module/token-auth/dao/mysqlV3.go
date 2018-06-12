@@ -460,6 +460,10 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	// If custom info not set, no need to check custom columns
 	if user.CustomInfo == nil {
 		err = t.Commit()
+		if err != nil {
+			util.LogDBError(err)
+			return
+		}
 		return
 	}
 
@@ -470,6 +474,11 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	}
 
 	err = t.Commit()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
 	return
 }
 
@@ -626,6 +635,11 @@ func (controller MYSQLController) DeleteUserV3(enterpriseID string, userID strin
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
 		return false, nil
+	}
+
+	err = t.Commit()
+	if err != nil {
+		return false, err
 	}
 
 	return true, err
@@ -798,6 +812,11 @@ func (controller MYSQLController) DeleteAppV3(enterpriseID string, appID string)
 	// Update machine table
 	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
 	_, err = t.Exec(queryStr, appID)
+	if err != nil {
+		return false, err
+	}
+
+	err = t.Commit()
 	if err != nil {
 		return false, err
 	}
@@ -1025,6 +1044,11 @@ func (controller MYSQLController) UpdateGroupV3(enterpriseID string, groupID str
 		}
 	}
 
+	err = t.Commit()
+	if err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
 
@@ -1066,6 +1090,11 @@ func (controller MYSQLController) DeleteGroupV3(enterpriseID string, groupID str
 	_, err = t.Exec(queryStr, groupID)
 	if err != nil {
 		return false, err
+	}
+
+	err = t.Commit()
+	if err != nil {
+		return false, nil
 	}
 
 	return true, nil
