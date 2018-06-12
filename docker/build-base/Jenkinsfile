@@ -7,10 +7,12 @@ pipeline {
                 CHECK_CHANGE=`git diff HEAD HEAD^ --stat`
                 echo $CHECK_CHANGE;
                 cd ./docker/build-base
-                if [[ $CHECK_CHANGE = *"/docker/build-base/Dockerfile" ]]; then
+                lastest_version=`sha1sum ./Dockerfile | awk '{ print $1 }'| cut -c1-8`
+                VERSION=`cat ./VERSION`
+
+                if [ "$lastest_version" != "$VERSION" ]; then
                     ./build.sh alpine;
-                    VERSION=`cat ./VERSION`
-                    docker push docker-reg.emotibot.com:55688/go-build:$VERSION-alpine
+                    docker push docker-reg.emotibot.com:55688/go-build:$lastest_version-alpine
                 fi
                 ret=$?
                 echo "Result: $ret"

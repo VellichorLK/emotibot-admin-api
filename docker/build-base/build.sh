@@ -19,7 +19,7 @@ echo "building base on $baseImageName"
 if [ "$(uname)" == "Darwin" ]; then
   VERSION=`shasum $DIR/Dockerfile | awk '{ print $1 }'| cut -c1-8`
 elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
-  VERSION=$(sha1sum $DIR/Dockerfile)
+  VERSION=`(sha1sum $DIR/Dockerfile) | awk '{ print $1 }'| cut -c1-8`
 else
   echo "unsupport platform"
   exit
