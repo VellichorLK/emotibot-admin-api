@@ -130,7 +130,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	}
 	adminUserID := hex.EncodeToString(adminUserUUID[:])
 
-	// Update human table
+	// Insert human table entry
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, adminUserID)
 	if err != nil {
@@ -230,12 +230,159 @@ func (controller MYSQLController) DeleteEnterpriseV3(enterpriseID string) error 
 		return err
 	}
 
-	queryStr := fmt.Sprintf(`
-		DELETE FROM %s
-		WHERE uuid = ?`, enterpriseTableV3)
-	_, err = controller.connectDB.Exec(queryStr, enterpriseID)
+	t, err := controller.connectDB.Begin()
 	if err != nil {
 		util.LogDBError(err)
+		return err
+	}
+	defer util.ClearTransition(t)
+
+	// Delete enterprise users
+	userUUIDs := make([]string, 0)
+	queryStr := fmt.Sprintf(`
+		SELECT uuid
+		FROM %s
+		WHERE enterprise = ?`, userTableV3)
+	rows, err := t.Query(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userUUID string
+		err = rows.Scan(&userUUID)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+
+		userUUIDs = append(userUUIDs, userUUID)
+	}
+	rows.Close()
+
+	for _, userUUID := range userUUIDs {
+		err = deleteUserWithTxV3(userUUID, t)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+	}
+
+	// Delete enterprise groups
+	groupUUIDs := make([]string, 0)
+	queryStr = fmt.Sprintf(`
+		SELECT uuid
+		FROM %s
+		WHERE enterprise = ?`, groupTableV3)
+	rows, err = t.Query(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var groupUUID string
+		err = rows.Scan(&groupUUID)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+
+		groupUUIDs = append(groupUUIDs, groupUUID)
+	}
+	rows.Close()
+
+	for _, groupUUID := range groupUUIDs {
+		err = deleteGroupWithTxV3(groupUUID, t)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+	}
+
+	// Delete enterprise apps
+	appUUIDs := make([]string, 0)
+	queryStr = fmt.Sprintf(`
+		SELECT uuid
+		FROM %s
+		WHERE enterprise = ?`, appTableV3)
+	rows, err = t.Query(queryStr, enterpriseID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var appUUID string
+		err = rows.Scan(&appUUID)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+
+		appUUIDs = append(appUUIDs, appUUID)
+	}
+	rows.Close()
+
+	for _, appUUID := range appUUIDs {
+		err = deleteAppWithTxV3(appUUID, t)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+	}
+
+	// Delete enterprise roles
+	roleIDs := make([]int, 0)
+	roleUUIDs := make([]string, 0)
+	queryStr = fmt.Sprintf(`
+		SELECT id, uuid
+		FROM %s
+		WHERE enterprise = ?`, roleTableV3)
+	rows, err = t.Query(queryStr, enterpriseID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var roleID int
+		var roleUUID string
+		err = rows.Scan(&roleID, &roleUUID)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+
+		roleIDs = append(roleIDs, roleID)
+		roleUUIDs = append(roleUUIDs, roleUUID)
+	}
+	rows.Close()
+
+	for i, roleID := range roleIDs {
+		roleUUID := roleUUIDs[i]
+
+		err = deleteRoleWithTx(roleID, roleUUID, t)
+		if err != nil {
+			util.LogDBError(err)
+			return err
+		}
+	}
+
+	queryStr = fmt.Sprintf(`
+		DELETE FROM %s
+		WHERE uuid = ?`, enterpriseTableV3)
+	_, err = t.Exec(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return err
+	}
+
+	err = t.Commit()
+	if err != nil {
 		return err
 	}
 
@@ -412,7 +559,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	userUUID, _ := uuid.NewV4()
 	userID = hex.EncodeToString(userUUID[:])
 
-	// Update human table
+	// Insert human table entry
 	queryStr = fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
@@ -595,19 +742,10 @@ func (controller MYSQLController) DeleteUserV3(enterpriseID string, userID strin
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", userTableV3)
-	_, err = t.Exec(queryStr, userID)
+	err = deleteUserWithTxV3(userID, t)
 	if err != nil {
 		util.LogDBError(err)
 		return err
-	}
-
-	// Update human table
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", humanTableV3)
-	_, err = t.Exec(queryStr, userID)
-	if err != nil {
-		util.LogDBError(err)
-		return nil
 	}
 
 	err = t.Commit()
@@ -704,7 +842,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 	appID = hex.EncodeToString(appUUID[:])
 
-	// Update machine table
+	// Insert machine table entry
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, appID)
 	if err != nil {
@@ -765,24 +903,15 @@ func (controller MYSQLController) DeleteAppV3(enterpriseID string, appID string)
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := fmt.Sprintf(`
-		DELETE FROM %s
-		WHERE uuid = ?`, appTableV3)
-	_, err = t.Exec(queryStr, appID)
+	err = deleteAppWithTxV3(appID, t)
 	if err != nil {
 		util.LogDBError(err)
 		return err
 	}
 
-	// Update machine table
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
-	_, err = t.Exec(queryStr, appID)
-	if err != nil {
-		return err
-	}
-
 	err = t.Commit()
 	if err != nil {
+		util.LogDBError(err)
 		return err
 	}
 
@@ -930,7 +1059,7 @@ func (controller MYSQLController) AddGroupV3(enterpriseID string, group *data.Gr
 	}
 	groupID = hex.EncodeToString(groupUUID[:])
 
-	// Update machine table
+	// Insert machine table entry
 	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, groupID)
 	if err != nil {
@@ -1033,21 +1162,10 @@ func (controller MYSQLController) DeleteGroupV3(enterpriseID string, groupID str
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := fmt.Sprintf(`
-		DELETE FROM %s
-		WHERE uuid = ?`, groupTableV3)
-	_, err = t.Exec(queryStr, groupID)
+	err = deleteGroupWithTxV3(groupID, t)
 	if err != nil {
 		util.LogDBError(err)
-		return err
-	}
-
-	// Update machine table
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
-	_, err = t.Exec(queryStr, groupID)
-	if err != nil {
-		util.LogDBError(err)
-		return err
+		return nil
 	}
 
 	err = t.Commit()
@@ -1309,15 +1427,7 @@ func (controller MYSQLController) DeleteRoleV3(enterpriseID string, roleID strin
 	}
 	defer util.ClearTransition(t)
 
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE role = ?", rolePrivilegeTable)
-	_, err = t.Exec(queryStr, id)
-	if err != nil {
-		util.LogDBError(err)
-		return err
-	}
-
-	queryStr = fmt.Sprintf("DELETE FROM %s WHERE enterprise = ? and uuid = ?", roleTable)
-	_, err = t.Exec(queryStr, enterpriseID, roleID)
+	err = deleteRoleWithTx(id, roleID, t)
 	if err != nil {
 		util.LogDBError(err)
 		return err
@@ -1654,4 +1764,109 @@ func (controller MYSQLController) rowExists(query string, args ...interface{}) (
 	}
 
 	return exists, nil
+}
+
+func deleteUserWithTxV3(userID string, t *sql.Tx) error {
+	// Delete user_privileges table entry
+	err := deleteUserPrivilegesWithTxV3(userID, t)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Delete user_info table entry
+
+	queryStr := fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", userTableV3)
+	_, err = t.Exec(queryStr, userID)
+	if err != nil {
+		return err
+	}
+
+	// Delete human table entry
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", humanTableV3)
+	_, err = t.Exec(queryStr, userID)
+	if err != nil {
+		return nil
+	}
+
+	return nil
+}
+
+func deleteAppWithTxV3(appID string, t *sql.Tx) error {
+	// Delete app_group table entry
+	queryStr := fmt.Sprintf(`
+		DELETE FROM %s
+		WHERE app = ?`, appGroupTableV3)
+	_, err := t.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		DELETE FROM %s
+		WHERE uuid = ?`, appTableV3)
+	_, err = t.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	// Delete machine table entry
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
+	_, err = t.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteGroupWithTxV3(groupID string, t *sql.Tx) error {
+	// Delete app_group table entry
+	queryStr := fmt.Sprintf(`
+		DELETE FROM %s
+		WHERE robot_group = ?`, appGroupTableV3)
+	_, err := t.Exec(queryStr, groupID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		DELETE FROM %s
+		WHERE uuid = ?`, groupTableV3)
+	_, err = t.Exec(queryStr, groupID)
+	if err != nil {
+		return err
+	}
+
+	// Delete machine table entry
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", machineTableV3)
+	_, err = t.Exec(queryStr, groupID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func deleteRoleWithTx(roleID int, roleUUID string, t *sql.Tx) error {
+	// Delete privileges table entry
+	queryStr := fmt.Sprintf("DELETE FROM %s WHERE role = ?", rolePrivilegeTable)
+	_, err := t.Exec(queryStr, roleID)
+	if err != nil {
+		return err
+	}
+
+	// Delete user_priviliges table entry
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE role = ?", userPrivilegesTableV3)
+	_, err = t.Exec(queryStr, roleUUID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", roleTable)
+	_, err = t.Exec(queryStr, roleUUID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
