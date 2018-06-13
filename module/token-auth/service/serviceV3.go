@@ -163,6 +163,13 @@ func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 		return "", err
 	}
 
+	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
 	return useDB.AddUserV3(enterpriseID, user)
 }
 
@@ -225,6 +232,13 @@ func AddAppV3(enterpriseID string, app *data.AppDetailV3) (appID string, err err
 	err = checkDB()
 	if err != nil {
 		return "", err
+	}
+
+	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
 	}
 
 	return useDB.AddAppV3(enterpriseID, app)
@@ -292,6 +306,13 @@ func AddGroupV3(enterpriseID string, group *data.GroupDetailV3,
 		return "", err
 	}
 
+	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
 	return useDB.AddGroupV3(enterpriseID, group, apps)
 }
 
@@ -355,6 +376,13 @@ func AddRoleV3(enterpriseID string, role *data.RoleV3) (string, error) {
 	err := checkDB()
 	if err != nil {
 		return "", err
+	}
+
+	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
 	}
 
 	return useDB.AddRoleV3(enterpriseID, role)

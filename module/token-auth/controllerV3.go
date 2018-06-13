@@ -355,6 +355,9 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
+		return
 	}
 
 	newUser, err := service.GetUserV3(enterpriseID, id)
@@ -528,6 +531,9 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
+		return
 	}
 
 	newApp, err := service.GetAppV3(enterpriseID, id)
@@ -672,6 +678,9 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
+		return
 	}
 
 	newGroup, err := service.GetGroupV3(enterpriseID, id)
@@ -751,6 +760,7 @@ func GroupDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RolesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterpriseID")
@@ -814,6 +824,9 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	id, err := service.AddRoleV3(enterpriseID, role)
 	if err != nil {
 		returnInternalError(w, err.Error())
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
