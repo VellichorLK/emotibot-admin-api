@@ -998,10 +998,10 @@ func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
 		classID = nil
 	}
 	queryStr = `INSERT INTO entities
-		(name, cid, similar_words, answer)
-		VALUES (?, ?, ?, ?)`
+		(name, appid, cid, similar_words, answer)
+		VALUES (?, ?, ?, ?, ?)`
 	result, err := t.Exec(queryStr,
-		wb.Name, classID, strings.Join(wb.SimilarWords, ","), wb.Answer)
+		wb.Name, appid, classID, strings.Join(wb.SimilarWords, ","), wb.Answer)
 	if err != nil {
 		return
 	}
