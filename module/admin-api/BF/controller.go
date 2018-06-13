@@ -46,6 +46,9 @@ func init() {
 			util.NewEntryPoint("PUT", "role/{id}", []string{}, handleUpdateRole),
 			// id
 			util.NewEntryPoint("DELETE", "role/{id}", []string{}, handleDeleteRole),
+
+			// appid
+			util.NewEntryPoint("POST", "ssm-data", []string{}, handleInitSSM),
 		},
 	}
 }
@@ -177,5 +180,27 @@ func handleUpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
+	}
+}
+
+func handleInitSSM(w http.ResponseWriter, r *http.Request) {
+	appid := r.FormValue("appid")
+	envs := util.GetEnvOf(ModuleInfo.ModuleName)
+	url := envs["DAL_URL"]
+	if url == "" {
+		url = "http://127.0.0.1:8885/dal"
+	}
+
+	options := map[string]interface{}{
+		"op":       "insert",
+		"category": "app",
+		"appid":    appid,
+	}
+
+	ret, err := util.HTTPPostJSON(url, options, 30)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	} else {
+		w.Write([]byte(ret))
 	}
 }
