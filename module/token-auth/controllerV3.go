@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -346,29 +345,12 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roleID := r.FormValue("role")
-	if roleID == "" && user.Type == 2 {
-		returnBadRequest(w, "role")
-		return
-	}
-
 	if requester.Type > user.Type {
 		returnForbidden(w)
 		return
 	}
 
-	if roleID != "" {
-		role, err := service.GetRoleV3(enterpriseID, roleID)
-		if err != nil && err != sql.ErrNoRows {
-			util.LogError.Printf("Error when get role %s: %s\n", roleID, err.Error())
-			returnInternalError(w, err.Error())
-			return
-		} else if role == nil {
-			returnBadRequest(w, "role")
-		}
-	}
-
-	id, err := service.AddUserV3(enterpriseID, user, roleID)
+	id, err := service.AddUserV3(enterpriseID, user)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

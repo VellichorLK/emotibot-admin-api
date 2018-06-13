@@ -153,7 +153,7 @@ func GetUserV3(enterpriseID string, userID string) (*data.UserDetailV3, error) {
 	return user, nil
 }
 
-func AddUserV3(enterpriseID string, user *data.UserDetailV3, roleID string) (string, error) {
+func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 	err := checkDB()
 	if err != nil {
 		return "", err
@@ -405,7 +405,7 @@ func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	
+
 	if usersCount > 0 {
 		return false, errors.New("Cannot remove role having user")
 	}
