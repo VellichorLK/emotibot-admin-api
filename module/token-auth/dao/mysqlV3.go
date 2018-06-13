@@ -1450,7 +1450,7 @@ func (controller MYSQLController) getUserRolesV3(userID string) (roles *data.Use
 	err error) {
 	// Get user's group roles
 	queryStr := fmt.Sprintf(`
-		SELECT g.uuid , g.name , r.name
+		SELECT g.uuid , g.name , r.uuid
 		FROM %s AS u
 		INNER JOIN %s AS p
 		ON p.human = u.uuid
@@ -1482,7 +1482,7 @@ func (controller MYSQLController) getUserRolesV3(userID string) (roles *data.Use
 
 	// Get user's app roles
 	queryStr = fmt.Sprintf(`
-		SELECT a.uuid , a.name , r.name
+		SELECT a.uuid , a.name , r.uuid
 		FROM %s AS u
 		INNER JOIN %s AS p
 		ON p.human = u.uuid
