@@ -186,7 +186,36 @@ CREATE TABLE `modules` (
   CONSTRAINT `enterprise of modules` FOREIGN KEY (`enterprise`) REFERENCES `enterprises` (`uuid`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-
+/*!40000 ALTER TABLE `modules` DISABLE KEYS */;
+INSERT INTO `modules` (`id`, `code`, `name`, `enterprise`, `cmd_list`, `description`, `status`, `created_time`)
+VALUES
+	(1, 'statistic_dash', '', NULL, 'view', '', 1, '2018-04-12 22:47:45'),
+	(2, 'ssm', '', NULL, 'view,edit,export,import', '', 1, '2018-05-16 07:04:37'),
+	(3, 'qa_label', '', NULL, 'view,edit', '', 1, '2018-05-16 07:05:01'),
+	(4, 'task_engine', '', NULL, 'edit', '', 1, '2018-05-16 06:59:01'),
+	(5, 'wordbank', '', NULL, 'view,edit,create,delete,export,import', '', 1, '2018-04-12 22:47:45'),
+	(6, 'statistic_daily', '', NULL, 'view,export', '', 1, '2018-04-12 22:47:45'),
+	(7, 'statistic_analysis', '', NULL, 'view,export', '', 1, '2018-05-16 07:05:25'),
+	(8, 'statistic_audit', '', NULL, 'view,export', '', 1, '2018-04-12 22:47:45'),
+	(9, 'robot_profile', '', NULL, 'view,edit', '', 1, '2018-04-12 22:47:45'),
+	(10, 'robot_chat_skill', '', NULL, 'view,edit', '', 1, '2018-04-12 22:47:45'),
+	(11, 'robot_function', '', NULL, 'view,edit', '', 1, '2018-05-16 07:06:30'),
+	(12, 'robot_command', '', NULL, 'view,edit', '', 1, '2018-05-16 07:06:41'),
+	(13, 'management', '', NULL, 'edit', '', 1, '2018-04-12 22:47:45'),
+	(14, 'statistic_dash', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view', '', 1, '2018-04-12 22:47:45'),
+	(15, 'ssm', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit,export,import', '', 1, '2018-05-16 07:04:37'),
+	(16, 'qa_label', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit', '', 1, '2018-05-16 07:05:01'),
+	(17, 'task_engine', '', 'bb3e3925f0ad11e7bd860242ac120003', 'edit', '', 1, '2018-05-16 06:59:01'),
+	(18, 'wordbank', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit,create,delete,export,import', '', 1, '2018-04-12 22:47:45'),
+	(19, 'statistic_daily', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,export', '', 1, '2018-04-12 22:47:45'),
+	(20, 'statistic_analysis', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,export', '', 1, '2018-05-16 07:05:25'),
+	(21, 'statistic_audit', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,export', '', 1, '2018-04-12 22:47:45'),
+	(22, 'robot_profile', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit', '', 1, '2018-04-12 22:47:45'),
+	(23, 'robot_chat_skill', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit', '', 1, '2018-04-12 22:47:45'),
+	(24, 'robot_function', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit', '', 1, '2018-05-16 07:06:30'),
+	(25, 'robot_command', '', 'bb3e3925f0ad11e7bd860242ac120003', 'view,edit', '', 1, '2018-05-16 07:06:41'),
+	(26, 'management', '', 'bb3e3925f0ad11e7bd860242ac120003', 'edit', '', 1, '2018-04-12 22:47:45');
+/*!40000 ALTER TABLE `modules` ENABLE KEYS */;
 
 # Dump of table privileges
 # ------------------------------------------------------------
