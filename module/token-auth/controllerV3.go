@@ -79,11 +79,10 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	origAdmin, err := service.GetSystemAdminV3(adminID)
 	if err != nil {
-		if origAdmin == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if origAdmin == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -103,12 +102,9 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		newAdmin.Email = origAdmin.Email
 	}
 
-	result, err := service.UpdateSystemAdminV3(newAdmin, adminID)
+	err = service.UpdateSystemAdminV3(newAdmin, adminID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -211,7 +207,12 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := service.AddEnterpriseV3(name, description, modules, &enterpriseAdmin)
+	enterprise := data.EnterpriseV3{
+		Name:        name,
+		Description: description,
+	}
+
+	id, err := service.AddEnterpriseV3(&enterprise, modules, &enterpriseAdmin)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -252,12 +253,9 @@ func EnterpriseUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	modules := strings.Split(r.FormValue("modules"), ",")
 
-	result, err := service.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
+	err = service.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -296,6 +294,9 @@ func UsersGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetUsersV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -411,12 +412,9 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		newUser.Email = origUser.Email
 	}
 
-	result, err := service.UpdateUserV3(enterpriseID, userID, newUser)
+	err = service.UpdateUserV3(enterpriseID, userID, newUser)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -477,6 +475,8 @@ func AppsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if retData == nil {
+		returnNotFound(w)
 	}
 
 	returnSuccess(w, retData)
@@ -569,12 +569,9 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.UpdateAppV3(enterpriseID, appID, newApp)
+	err = service.UpdateAppV3(enterpriseID, appID, newApp)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -620,6 +617,9 @@ func GroupsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetGroupsV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -713,12 +713,9 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
+	err = service.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -763,9 +760,13 @@ func RolesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetRolesV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-	} else {
-		returnSuccess(w, retData)
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
 	}
+
+	returnSuccess(w, retData)
 }
 
 func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
@@ -797,6 +798,7 @@ func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
@@ -826,11 +828,13 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
+
 	roleID := vars["roleID"]
 	if !util.IsValidUUID(roleID) {
 		returnBadRequest(w, "role-id")
@@ -843,12 +847,9 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.UpdateRoleV3(enterpriseID, roleID, role)
+	err = service.UpdateRoleV3(enterpriseID, roleID, role)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
 		return
 	}
 
@@ -857,6 +858,7 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
@@ -943,9 +945,13 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetModulesV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-	} else {
-		returnSuccess(w, retData)
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
 	}
+
+	returnSuccess(w, retData)
 }
 
 func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {

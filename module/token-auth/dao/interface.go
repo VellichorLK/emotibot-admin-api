@@ -43,36 +43,45 @@ type DB interface {
 	GetEnterprisesV3() ([]*data.EnterpriseV3, error)
 	GetEnterpriseV3(enterpriseID string) (*data.EnterpriseDetailV3, error)
 	AddEnterpriseV3(enterprise *data.EnterpriseV3, modules []string, adminUser *data.UserDetailV3) (string, error)
-	UpdateEnterpriseV3(enterprsieID string, newEnterprise *data.EnterpriseV3, modules []string) (bool, error)
-	DeleteEnterpriseV3(enterprsieID string) (bool, error)
+	UpdateEnterpriseV3(enterprsieID string, newEnterprise *data.EnterpriseV3, modules []string) error
+	DeleteEnterpriseV3(enterprsieID string) error
+
+	EnterpriseExistsV3(enterpriseID string) (bool, error)
 
 	GetUsersV3(enterpriseID string, admin bool) ([]*data.UserV3, error)
 	GetUserV3(enterpriseID string, userID string) (*data.UserDetailV3, error)
 	AddUserV3(enterpriseID string, user *data.UserDetailV3) (userID string, err error)
-	UpdateUserV3(enterpriseID string, userID string, user *data.UserDetailV3) (bool, error)
-	DeleteUserV3(enterpriseID string, userID string) (bool, error)
+	UpdateUserV3(enterpriseID string, userID string, user *data.UserDetailV3) error
+	DeleteUserV3(enterpriseID string, userID string) error
 
 	GetAuthUserV3(account string, passwd string) (user *data.UserDetailV3, err error)
+	UserExistsV3(userID string) (bool, error)
 
 	GetAppsV3(enterpriseID string) ([]*data.AppV3, error)
 	GetAppV3(enterpriseID string, appID string) (*data.AppDetailV3, error)
 	AddAppV3(enterpriseID string, app *data.AppDetailV3) (string, error)
-	UpdateAppV3(enterpriseID string, appID string, app *data.AppDetailV3) (bool, error)
-	DeleteAppV3(enterpriseID string, appID string) (bool, error)
+	UpdateAppV3(enterpriseID string, appID string, app *data.AppDetailV3) error
+	DeleteAppV3(enterpriseID string, appID string) error
+
+	AppExistsV3(appID string) (bool, error)
 
 	GetGroupsV3(enterpriseID string) ([]*data.GroupDetailV3, error)
 	GetGroupV3(enterpriseID string, groupID string) (*data.GroupDetailV3, error)
 	AddGroupV3(enterpriseID string, group *data.GroupDetailV3, apps []string) (string, error)
-	UpdateGroupV3(enterpriseID string, groupID string, group *data.GroupDetailV3, apps []string) (bool, error)
-	DeleteGroupV3(enterpriseID string, groupID string) (bool, error)
+	UpdateGroupV3(enterpriseID string, groupID string, group *data.GroupDetailV3, apps []string) error
+	DeleteGroupV3(enterpriseID string, groupID string) error
+
+	GroupExistsV3(groupID string) (bool, error)
 
 	GetUsersCountOfRoleV3(roleID string) (count int, err error)
 
 	GetRolesV3(enterpriseID string) ([]*data.RoleV3, error)
 	GetRoleV3(enterpriseID string, roleID string) (*data.RoleV3, error)
 	AddRoleV3(enterpriseID string, role *data.RoleV3) (string, error)
-	UpdateRoleV3(enterpriseID string, roleID string, role *data.RoleV3) (bool, error)
-	DeleteRoleV3(enterpriseID string, roleID string) (bool, error)
+	UpdateRoleV3(enterpriseID string, roleID string, role *data.RoleV3) error
+	DeleteRoleV3(enterpriseID string, roleID string) error
+
+	RoleExistsV3(roleID string) (bool, error)
 
 	GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error)
 }
