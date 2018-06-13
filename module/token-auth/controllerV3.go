@@ -872,8 +872,11 @@ func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	result, err := service.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
+		if err == util.ErrRoleUsersNotEmpty {
+			returnUnprocessableEntity(w, err.Error())
+			return
+		}
 		returnInternalError(w, err.Error())
-		return
 	} else if !result {
 		returnNotFound(w)
 		return

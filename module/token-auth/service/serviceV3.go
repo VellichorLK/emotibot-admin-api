@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
 func checkDB() error {
@@ -387,7 +388,7 @@ func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
 	}
 
 	if usersCount > 0 {
-		return false, errors.New("Cannot remove role having user")
+		return false, util.ErrRoleUsersNotEmpty
 	}
 
 	err = useDB.DeleteRoleV3(enterpriseID, roleID)
