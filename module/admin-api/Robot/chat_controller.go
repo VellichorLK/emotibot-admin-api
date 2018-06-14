@@ -258,7 +258,7 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		if errno == ApiError.SUCCESS {
 			retVal = 1
 		}
-		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
+		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationEdit, auditBuffer.String(), retVal)
 	}()
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
