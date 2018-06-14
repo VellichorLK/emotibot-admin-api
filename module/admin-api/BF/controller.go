@@ -188,7 +188,7 @@ func handleInitSSM(w http.ResponseWriter, r *http.Request) {
 	envs := util.GetEnvOf(ModuleInfo.ModuleName)
 	url := envs["DAL_URL"]
 	if url == "" {
-		url = "http://127.0.0.1:8885/dal"
+		url = "http://172.17.0.1:8885/dal"
 	}
 
 	options := map[string]interface{}{
