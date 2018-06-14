@@ -102,6 +102,14 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		newAdmin.Email = origAdmin.Email
 	}
 
+	oldPassword := r.FormValue("old_password")
+	if oldPassword != "" {
+		if oldPassword != *origAdmin.Password {
+			returnForbidden(w)
+			return
+		}
+	}
+
 	err = service.UpdateSystemAdminV3(newAdmin, adminID)
 	if err != nil {
 		returnInternalError(w, err.Error())
@@ -413,6 +421,14 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 	if newUser.Email == "" {
 		newUser.Email = origUser.Email
+	}
+
+	oldPassword := r.FormValue("old_password")
+	if oldPassword != "" {
+		if oldPassword != *origUser.Password {
+			returnForbidden(w)
+			return
+		}
 	}
 
 	err = service.UpdateUserV3(enterpriseID, userID, newUser)
