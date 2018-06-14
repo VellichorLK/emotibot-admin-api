@@ -140,7 +140,6 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 }
 
 func getAuditListCnt(appid string, input *AuditInput) (int, error) {
-	// Audit log is not splited by appid for now
 	mySQL := util.GetAuditDB()
 	if mySQL == nil {
 		return 0, errors.New("DB is not inited")
@@ -166,12 +165,16 @@ func getAuditListCnt(appid string, input *AuditInput) (int, error) {
 	args = append(args, input.Start)
 	args = append(args, input.End)
 
+	conditions = append(conditions, "appid = ?")
+	args = append(args, appid)
+
 	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM audit_record WHERE %s", strings.Join(conditions, " and "))
 	util.LogTrace.Printf("Query for audit: %s", queryStr)
 	util.LogTrace.Printf("Query param: %#v", args)
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
+		util.LogError.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
 		return 0, err
 	}
 	defer rows.Close()
