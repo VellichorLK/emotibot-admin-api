@@ -538,6 +538,31 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 	return &user, nil
 }
 
+func (controller MYSQLController) GetUserPasswordV3(userID string) (string, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	var password string
+	queryStr := fmt.Sprintf(`
+		SELECT password
+		FROM %s
+		WHERE uuid = ?`, userTableV3)
+	err = controller.connectDB.QueryRow(queryStr, userID).Scan(&password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+
+		util.LogDBError(err)
+		return "", err
+	}
+
+	return password, nil
+}
+
 func (controller MYSQLController) AddUserV3(enterpriseID string,
 	user *data.UserDetailV3) (userID string, err error) {
 	ok, err := controller.checkDB()

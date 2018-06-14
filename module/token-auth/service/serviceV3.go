@@ -451,3 +451,19 @@ func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 
 	return useDB.GetModulesV3(enterpriseID)
 }
+
+func GetUserPasswordV3(userID string) (string, error) {
+	err := checkDB()
+	if err != nil {
+		return "", err
+	}
+
+	exists, err := useDB.UserExistsV3(userID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
+	return useDB.GetUserPasswordV3(userID)
+}

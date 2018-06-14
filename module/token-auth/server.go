@@ -69,35 +69,35 @@ func setUpRoutes() {
 		Route{"UpdateSystemAdmin", "PUT", 3, "admin/{adminID}", SystemAdminUpdateHandlerV3, []interface{}{0}},
 		Route{"DeleteSystemAdmin", "DELETE", 3, "admin/{adminID}", SystemAdminDeleteHandlerV3, []interface{}{0}},
 
-		Route{"GetEnterprises", "GET", 3, "enterprises", EnterprisesGetHandlerV3, []interface{}{0}},
+		Route{"GetEnterprises", "GET", 3, "enterprises", EnterprisesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetEnterprise", "GET", 3, "enterprise/{enterpriseID}", EnterpriseGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"AddEnterprise", "POST", 3, "enterprise", EnterpriseAddHandlerV3, []interface{}{0}},
 		Route{"UpdateEnterprise", "PUT", 3, "enterprise/{enterpriseID}", EnterpriseUpdateHandlerV3, []interface{}{0, 1}},
-		Route{"DeleteEnterprise", "DELETE", 3, "enterprise/{enterpriseID}", EnterpriseDeleteHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteEnterprise", "DELETE", 3, "enterprise/{enterpriseID}", EnterpriseDeleteHandlerV3, []interface{}{0}},
 
 		Route{"GetUsers", "GET", 3, "enterprise/{enterpriseID}/users", UsersGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetUser", "GET", 3, "enterprise/{enterpriseID}/user/{userID}", UserGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddUser", "POST", 3, "enterprise/{enterpriseID}/user", UserAddHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddUser", "POST", 3, "enterprise/{enterpriseID}/user", UserAddHandlerV3, []interface{}{0, 1}},
 		Route{"UpdateUser", "PUT", 3, "enterprise/{enterpriseID}/user/{userID}", UserUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteUser", "DELETE", 3, "enterprise/{enterpriseID}/user/{userID}", UserDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"DeleteUser", "DELETE", 3, "enterprise/{enterpriseID}/user/{userID}", UserDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetApps", "GET", 3, "enterprise/{enterpriseID}/apps", AppsGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetApp", "GET", 3, "enterprise/{enterpriseID}/app/{appID}", AppGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddApp", "POST", 3, "enterprise/{enterpriseID}/app", AppAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateApp", "PUT", 3, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteApp", "DELETE", 3, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddApp", "POST", 3, "enterprise/{enterpriseID}/app", AppAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateApp", "PUT", 3, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteApp", "DELETE", 3, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetGroups", "GET", 3, "enterprise/{enterpriseID}/groups", GroupsGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetGroup", "GET", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddGroup", "POST", 3, "enterprise/{enterpriseID}/group", GroupAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateGroup", "PUT", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteGroup", "DELETE", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddGroup", "POST", 3, "enterprise/{enterpriseID}/group", GroupAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateGroup", "PUT", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteGroup", "DELETE", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetRoles", "GET", 3, "enterprise/{enterpriseID}/roles", RolesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetRole", "GET", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddRole", "POST", 3, "enterprise/{enterpriseID}/role", RoleAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateRole", "PUT", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteRole", "DELETE", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddRole", "POST", 3, "enterprise/{enterpriseID}/role", RoleAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateRole", "PUT", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteRole", "DELETE", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"Login", "POST", 3, "login", LoginHandlerV3, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "token/{token}", ValidateTokenHandler, []interface{}{}},
@@ -152,7 +152,7 @@ func checkAuth(r *http.Request, route Route) bool {
 			}
 
 			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != *userInfo.Enterprise {
+			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
 				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
 				return false
 			}
@@ -187,7 +187,7 @@ func checkAuth(r *http.Request, route Route) bool {
 			}
 
 			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != *userInfo.Enterprise {
+			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
 				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
 				return false
 			}

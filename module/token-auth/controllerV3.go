@@ -70,6 +70,7 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	adminID := vars["adminID"]
@@ -103,9 +104,24 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		newAdmin.Email = origAdmin.Email
 	}
 
-	oldPassword := r.FormValue("old_password")
-	if oldPassword != "" {
-		if oldPassword != *origAdmin.Password {
+	if *newAdmin.Password != "" {
+		verifyPassword := r.FormValue("verify_password")
+
+		if verifyPassword == "" {
+			returnForbidden(w)
+			return
+		}
+
+		password, err := service.GetUserPasswordV3(requester.ID)
+		if err != nil {
+			returnInternalError(w, err.Error())
+			return
+		} else if password == "" {
+			returnForbidden(w)
+			return
+		}
+
+		if verifyPassword != password {
 			returnForbidden(w)
 			return
 		}
@@ -424,9 +440,33 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		newUser.Email = origUser.Email
 	}
 
-	oldPassword := r.FormValue("old_password")
-	if oldPassword != "" {
-		if oldPassword != *origUser.Password {
+	if *newUser.Password != "" {
+		verifyPassword := r.FormValue("verify_password")
+
+		if verifyPassword == "" {
+			returnForbidden(w)
+			return
+		}
+
+		var password string
+
+		switch requester.Type {
+		case enum.SuperAdminUser:
+			fallthrough
+		case enum.AdminUser:
+			password, err = service.GetUserPasswordV3(requester.ID)
+			if err != nil {
+				returnInternalError(w, err.Error())
+				return
+			} else if password == "" {
+				returnForbidden(w)
+				return
+			}
+		case enum.NormalUser:
+			password = *origUser.Password
+		}
+
+		if verifyPassword != password {
 			returnForbidden(w)
 			return
 		}

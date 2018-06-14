@@ -55,6 +55,7 @@ type DB interface {
 	DeleteUserV3(enterpriseID string, userID string) error
 
 	GetAuthUserV3(account string, passwd string) (user *data.UserDetailV3, err error)
+	GetUserPasswordV3(userID string) (string, error)
 	UserExistsV3(userID string) (bool, error)
 
 	GetAppsV3(enterpriseID string) ([]*data.AppV3, error)

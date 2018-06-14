@@ -102,10 +102,10 @@ parameters:
     description: 系統管理員密碼
     schema:
       type: password
-  system-admin-old-passwd:
-    name: old_password
+  system-admin-verify-passwd:
+    name: verify_password
     in: formData
-    description: 系統管理員舊密碼
+    description: 驗證密碼 (只有在修改使用者密碼的時候會檢查)
     schema:
       type: password
   enterprise-name:
@@ -186,10 +186,10 @@ parameters:
     description: 企業用戶密碼
     schema:
       type: password
-  enterprise-user-old-passwd:
-    name: old_password
+  enterprise-user-verify-passwd:
+    name: verify_password
     in: formData
-    description: 企業用戶舊密碼
+    description: 驗證密碼 (只有在修改使用者密碼的時候會檢查)
     schema:
       type: password
   enterprise-user-role:
@@ -376,7 +376,7 @@ paths:
         - $ref: '#/parameters/system-admin-email'
         - $ref: '#/parameters/system-admin-phone'
         - $ref: '#/parameters/system-admin-passwd'
-        - $ref: '#/parameters/system-admin-old-passwd'
+        - $ref: '#/parameters/system-admin-verify-passwd'
       description: 更新系統管理員資訊
       responses:
         200:
@@ -592,7 +592,7 @@ paths:
         - $ref: '#/parameters/enterprise-user-email'
         - $ref: '#/parameters/enterprise-user-phone'
         - $ref: '#/parameters/enterprise-user-passwd'
-        - $ref: '#/parameters/enterprise-user-old-passwd'
+        - $ref: '#/parameters/enterprise-user-verify-passwd'
         - $ref: '#/parameters/enterprise-user-apps'
       description: 更新企業用戶資訊
       responses:
