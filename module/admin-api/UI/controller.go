@@ -98,7 +98,10 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	moduleName := util.ModuleName[module]
-	log := fmt.Sprintf("%s%s %s: %s", util.Msg["DownloadFile"], moduleName, fileName, extMsg)
+	log := fmt.Sprintf("%s%s %s", util.Msg["DownloadFile"], moduleName, fileName)
+	if extMsg != "" {
+		log = fmt.Sprintf("%s: %s", log, extMsg)
+	}
 	err := util.AddAuditLog(appid, userID, userIP, moduleID, util.AuditOperationExport, log, 1)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
