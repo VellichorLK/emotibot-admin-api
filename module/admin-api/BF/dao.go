@@ -305,3 +305,4 @@ func updateUserPassword(enterprise, userid, password string) error {
 	}
 	return nil
 }
+

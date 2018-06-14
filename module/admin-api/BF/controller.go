@@ -49,6 +49,18 @@ func init() {
 
 			// appid
 			util.NewEntryPoint("POST", "ssm-data", []string{}, handleInitSSM),
+
+			// using label in ssm
+			// util.NewEntryPoint("GET", "labels", []string{"view"}, handleGetLabels),
+			// util.NewEntryPoint("PUT", "label/{id}", []string{"view"}, handleUpdateLabel),
+			// util.NewEntryPoint("POST", "label", []string{"view"}, handleAddLabel),
+			// util.NewEntryPoint("DELETE", "label/{id}", []string{"view"}, handleDeleteLabel),
+
+			util.NewEntryPoint("GET", "cmds", []string{"view"}, handleGetCmds),
+			util.NewEntryPoint("GET", "cmd/{id}", []string{"edit"}, handleGetCmd),
+			util.NewEntryPoint("PUT", "cmd/{id}", []string{"edit"}, handleUpdateCmd),
+			util.NewEntryPoint("POST", "cmd", []string{"create"}, handleAddCmd),
+			util.NewEntryPoint("DELETE", "cmd/{id}", []string{"view"}, handleDeleteCmd),
 		},
 	}
 }
