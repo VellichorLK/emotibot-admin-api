@@ -112,7 +112,7 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func SystemAdminDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	if requester.Type != enum.SuperAdminUser {
@@ -331,7 +331,7 @@ func UserGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -370,7 +370,7 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -425,7 +425,7 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]

@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -128,34 +129,76 @@ func checkAuth(r *http.Request, route Route) bool {
 		return false
 	}
 
-	userInfo := data.User{}
-	err := userInfo.SetValueWithToken(vals[1])
-	if err != nil {
-		util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
-		return false
-	}
-
-	if !util.IsInSlice(userInfo.Type, route.GrantType) {
-		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
-		return false
-	}
-
-	vars := mux.Vars(r)
-	// Type 1 can only check enterprise of itself
-	// Type 2 can only check enterprise of itself and user info of itself
-	if userInfo.Type == 1 || userInfo.Type == 2 {
-		enterpriseID := vars["enterpriseID"]
-		if enterpriseID != *userInfo.Enterprise {
-			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+	switch route.Version {
+	case 2:
+		userInfo := data.User{}
+		err := userInfo.SetValueWithToken(vals[1])
+		if err != nil {
+			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
 			return false
 		}
-	}
 
-	if userInfo.Type == 2 {
-		userID := vars["userID"]
-		if userID != "" && userID != userInfo.ID {
-			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+		if !util.IsInSlice(userInfo.Type, route.GrantType) {
+			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
 			return false
+		}
+
+		vars := mux.Vars(r)
+		// Enterprise admin user can only check enterprise of itself
+		// Enterprise normal can only check enterprise of itself and user info of itself
+		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+			if userInfo.Enterprise == nil {
+				return false
+			}
+
+			enterpriseID := vars["enterpriseID"]
+			if enterpriseID != *userInfo.Enterprise {
+				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+				return false
+			}
+		}
+
+		if userInfo.Type == enum.NormalUser {
+			userID := vars["userID"]
+			if userID != "" && userID != userInfo.ID {
+				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+				return false
+			}
+		}
+	case 3:
+		userInfo := data.UserDetailV3{}
+		err := userInfo.SetValueWithToken(vals[1])
+		if err != nil {
+			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+			return false
+		}
+
+		if !util.IsInSlice(userInfo.Type, route.GrantType) {
+			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+			return false
+		}
+
+		vars := mux.Vars(r)
+		// Enterprise admin user can only check enterprise of itself
+		// Enterprise normal can only check enterprise of itself and user info of itself
+		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+			if userInfo.Enterprise == nil {
+				return false
+			}
+
+			enterpriseID := vars["enterpriseID"]
+			if enterpriseID != *userInfo.Enterprise {
+				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+				return false
+			}
+		}
+
+		if userInfo.Type == enum.NormalUser {
+			userID := vars["userID"]
+			if userID != "" && userID != userInfo.ID {
+				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+				return false
+			}
 		}
 	}
 
@@ -186,7 +229,7 @@ func main() {
 						route.HandlerFunc(w, r)
 					}
 				} else {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					returnForbidden(w)
 				}
 			})
 		util.LogInfo.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
@@ -210,6 +253,22 @@ func getRequester(r *http.Request) *data.User {
 	}
 
 	userInfo := data.User{}
+	err := userInfo.SetValueWithToken(vals[1])
+	if err != nil {
+		return nil
+	}
+
+	return &userInfo
+}
+
+func getRequesterV3(r *http.Request) *data.UserDetailV3 {
+	authorization := r.Header.Get("Authorization")
+	vals := strings.Split(authorization, " ")
+	if len(vals) < 2 {
+		return nil
+	}
+
+	userInfo := data.UserDetailV3{}
 	err := userInfo.SetValueWithToken(vals[1])
 	if err != nil {
 		return nil
