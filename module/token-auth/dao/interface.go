@@ -65,6 +65,7 @@ type DB interface {
 	DeleteAppV3(enterpriseID string, appID string) error
 
 	AppExistsV3(appID string) (bool, error)
+	EnterpriseAppExistsV3(enterpriseID string, appID string) (bool, error)
 
 	GetGroupsV3(enterpriseID string) ([]*data.GroupDetailV3, error)
 	GetGroupV3(enterpriseID string, groupID string) (*data.GroupDetailV3, error)
@@ -73,6 +74,7 @@ type DB interface {
 	DeleteGroupV3(enterpriseID string, groupID string) error
 
 	GroupExistsV3(groupID string) (bool, error)
+	EnterpriseGroupExistsV3(enterpriseID string, groupID string) (bool, error)
 
 	GetUsersCountOfRoleV3(roleID string) (count int, err error)
 
@@ -83,6 +85,7 @@ type DB interface {
 	DeleteRoleV3(enterpriseID string, roleID string) error
 
 	RoleExistsV3(roleID string) (bool, error)
+	EnterpriseRoleExistsV3(enterpriseID string, roleID string) (bool, error)
 
 	GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error)
 }

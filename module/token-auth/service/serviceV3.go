@@ -170,11 +170,21 @@ func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 		return "", nil
 	}
 
+	err = checkUserRoles(user, enterpriseID)
+	if err != nil {
+		return "", err
+	}
+
 	return useDB.AddUserV3(enterpriseID, user)
 }
 
 func UpdateUserV3(enterpriseID string, userID string, user *data.UserDetailV3) error {
 	err := checkDB()
+	if err != nil {
+		return err
+	}
+
+	err = checkUserRoles(user, enterpriseID)
 	if err != nil {
 		return err
 	}
@@ -466,4 +476,48 @@ func GetUserPasswordV3(userID string) (string, error) {
 	}
 
 	return useDB.GetUserPasswordV3(userID)
+}
+
+func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
+	if user.Roles == nil {
+		return nil
+	}
+
+	if user.Roles.GroupRoles != nil {
+		for _, groupRole := range user.Roles.GroupRoles {
+			exist, err := useDB.EnterpriseGroupExistsV3(enterpriseID, groupRole.ID)
+			if err != nil {
+				return err
+			} else if !exist {
+				return util.ErrRobotGroupNotExist
+			}
+
+			exist, err = useDB.EnterpriseRoleExistsV3(enterpriseID, groupRole.Role)
+			if err != nil {
+				return err
+			} else if !exist {
+				return util.ErrRoleNotExist
+			}
+		}
+	}
+
+	if user.Roles.AppRoles != nil {
+		for _, appRole := range user.Roles.AppRoles {
+			exist, err := useDB.EnterpriseAppExistsV3(enterpriseID, appRole.ID)
+			if err != nil {
+				return err
+			} else if !exist {
+				return util.ErrRobotNotExist
+			}
+
+			exist, err = useDB.EnterpriseRoleExistsV3(enterpriseID, appRole.Role)
+			if err != nil {
+				return err
+			} else if !exist {
+				return util.ErrRoleNotExist
+			}
+		}
+	}
+
+	return nil
 }

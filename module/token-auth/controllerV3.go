@@ -378,8 +378,18 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddUserV3(enterpriseID, user)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
+		switch err {
+		case util.ErrRobotGroupNotExist:
+			fallthrough
+		case util.ErrRobotNotExist:
+			fallthrough
+		case util.ErrRoleNotExist:
+			returnUnprocessableEntity(w, err.Error())
+			return
+		default:
+			returnInternalError(w, err.Error())
+			return
+		}
 	} else if id == "" {
 		returnBadRequest(w, "enterprise-id")
 		return
@@ -474,8 +484,18 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	err = service.UpdateUserV3(enterpriseID, userID, newUser)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
+		switch err {
+		case util.ErrRobotGroupNotExist:
+			fallthrough
+		case util.ErrRobotNotExist:
+			fallthrough
+		case util.ErrRoleNotExist:
+			returnUnprocessableEntity(w, err.Error())
+			return
+		default:
+			returnInternalError(w, err.Error())
+			return
+		}
 	}
 
 	returnSuccess(w, true)

@@ -961,6 +961,12 @@ func (controller MYSQLController) AppExistsV3(appID string) (bool, error) {
 	return controller.rowExists(queryStr, appID)
 }
 
+func (controller MYSQLController) EnterpriseAppExistsV3(enterpriseID string,
+	appID string) (bool, error) {
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", appTableV3)
+	return controller.rowExists(queryStr, enterpriseID, appID)
+}
+
 func (controller MYSQLController) GetGroupsV3(enterpriseID string) ([]*data.GroupDetailV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -1218,6 +1224,12 @@ func (controller MYSQLController) DeleteGroupV3(enterpriseID string, groupID str
 func (controller MYSQLController) GroupExistsV3(groupID string) (bool, error) {
 	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE uuid = ?", groupTableV3)
 	return controller.rowExists(queryStr, groupID)
+}
+
+func (controller MYSQLController) EnterpriseGroupExistsV3(enterpriseID string,
+	groupID string) (bool, error) {
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", groupTableV3)
+	return controller.rowExists(queryStr, enterpriseID, groupID)
 }
 
 func (controller MYSQLController) GetRolesV3(enterpriseID string) ([]*data.RoleV3, error) {
@@ -1483,6 +1495,12 @@ func (controller MYSQLController) DeleteRoleV3(enterpriseID string, roleID strin
 func (controller MYSQLController) RoleExistsV3(roleID string) (bool, error) {
 	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE uuid = ?", roleTableV3)
 	return controller.rowExists(queryStr, roleID)
+}
+
+func (controller MYSQLController) EnterpriseRoleExistsV3(enterpriseID string,
+	roleID string) (bool, error) {
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", roleTableV3)
+	return controller.rowExists(queryStr, enterpriseID, roleID)
 }
 
 func (controller MYSQLController) GetUsersCountOfRoleV3(roleID string) (count int, err error) {
