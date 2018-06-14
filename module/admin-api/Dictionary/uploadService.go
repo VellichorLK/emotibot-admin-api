@@ -795,9 +795,11 @@ func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File) (sheet *xlsx.Sheet, rows []
 	sheets := xlsxFile.Sheets
 	if sheets == nil {
 		err = errors.New(util.Msg["SheetError"])
+		return
 	}
 	if len(sheets) != exceptSheetNum {
 		err = errors.New(util.Msg["SheetError"])
+		return
 	}
 
 	sheet = sheets[exceptSheetNum-1]
