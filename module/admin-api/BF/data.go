@@ -37,7 +37,7 @@ type Cmd struct {
 	ID        int           `json:"id"`
 	Name      string        `json:"name"`
 	Target    CmdTarget     `json:"target"`
-	Cmd       []*CmdContent `json:"cmd"`
+	Rule      []*CmdContent `json:"rule"`
 	Answer    string        `json:"answer"`
 	Type      ResponseType  `json:"response_type"`
 	Status    bool          `json:"status"`

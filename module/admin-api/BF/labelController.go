@@ -263,7 +263,7 @@ func parseCmdFromRequest(r *http.Request) (cmd *Cmd, err error) {
 			return
 		}
 	}
-	ret.Cmd = ruleContents
+	ret.Rule = ruleContents
 
 	labelsStr := r.FormValue("labels")
 	labelIDs := []string{}

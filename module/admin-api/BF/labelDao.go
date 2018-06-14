@@ -146,24 +146,24 @@ func getCmds(appid string) (*CmdClass, error) {
 }
 
 func scanRowToCmd(rows scanner) (parentPtr *int, ret *Cmd, err error) {
-	cmdStr := ""
+	ruleStr := ""
 	temp := &Cmd{}
-	err = rows.Scan(&parentPtr, &temp.ID, &temp.Name, &temp.Target, &cmdStr, &temp.Answer,
+	err = rows.Scan(&parentPtr, &temp.ID, &temp.Name, &temp.Target, &ruleStr, &temp.Answer,
 		&temp.Type, &temp.Status, &temp.Begin, &temp.End)
 	if err != nil {
 		return
 	}
 
-	cmdStr = strings.Replace(cmdStr, "\n", "", -1)
-	cmdContents := []*CmdContent{}
-	err = json.Unmarshal([]byte(cmdStr), &cmdContents)
+	ruleStr = strings.Replace(ruleStr, "\n", "", -1)
+	ruleContents := []*CmdContent{}
+	err = json.Unmarshal([]byte(ruleStr), &ruleContents)
 	if err != nil {
-		fmt.Printf("Error json: \n%s\n\n", cmdStr)
-		err = fmt.Errorf("Invalid cmd content: %s", err.Error())
+		fmt.Printf("Error json: \n%s\n\n", ruleStr)
+		err = fmt.Errorf("Invalid rule content: %s", err.Error())
 		return
 	}
 
-	temp.Cmd = cmdContents
+	temp.Rule = ruleContents
 	temp.Answer = strings.Replace(temp.Answer, "\n", "", -1)
 	temp.Answer = strings.Replace(temp.Answer, "\t", "", -1)
 	temp.Answer = strings.Replace(temp.Answer, "\r", "", -1)
@@ -263,7 +263,7 @@ func addCmd(appid string, cmd *Cmd, cid int) (int, error) {
 		INSERT INTO cmd
 		(cid, name, target, rule, answer, response_type, status, begin_time, end_time, appid)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	cmdStr, _ := json.Marshal(cmd.Cmd)
+	ruleStr, _ := json.Marshal(cmd.Rule)
 	statusInt := 0
 	if cmd.Status {
 		statusInt = 1
@@ -276,7 +276,7 @@ func addCmd(appid string, cmd *Cmd, cid int) (int, error) {
 		cidPtr,
 		cmd.Name,
 		cmd.Target,
-		cmdStr,
+		ruleStr,
 		cmd.Answer,
 		cmd.Type,
 		statusInt,
@@ -328,7 +328,7 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 		name = ?, target = ?, rule = ?, answer = ?,
 		response_type = ?, status = ?, begin_time = ?, end_time = ?
 		WHERE cmd_id = ? AND appid = ?`
-	cmdStr, _ := json.Marshal(cmd.Cmd)
+	ruleStr, _ := json.Marshal(cmd.Rule)
 	statusInt := 0
 	if cmd.Status {
 		statusInt = 1
@@ -336,7 +336,7 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 	queryParams := []interface{}{
 		cmd.Name,
 		cmd.Target,
-		cmdStr,
+		ruleStr,
 		cmd.Answer,
 		cmd.Type,
 		statusInt,
