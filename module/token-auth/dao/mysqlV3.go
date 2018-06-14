@@ -131,7 +131,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	adminUserID := hex.EncodeToString(adminUserUUID[:])
 
 	// Insert human table entry
-	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, adminUserID)
 	if err != nil {
 		util.LogDBError(err)
@@ -598,7 +598,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	userID = hex.EncodeToString(userUUID[:])
 
 	// Insert human table entry
-	queryStr = fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr = fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
 		util.LogDBError(err)
@@ -881,7 +881,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	appID = hex.EncodeToString(appUUID[:])
 
 	// Insert machine table entry
-	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
+	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, appID)
 	if err != nil {
 		return
@@ -1098,7 +1098,7 @@ func (controller MYSQLController) AddGroupV3(enterpriseID string, group *data.Gr
 	groupID = hex.EncodeToString(groupUUID[:])
 
 	// Insert machine table entry
-	queryStr := fmt.Sprintf("INSERT IGNORE INTO %s (uuid) VALUES (?)", machineTableV3)
+	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", machineTableV3)
 	_, err = t.Exec(queryStr, groupID)
 	if err != nil {
 		util.LogDBError(err)
