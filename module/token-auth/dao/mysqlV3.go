@@ -459,15 +459,28 @@ func (controller MYSQLController) GetUserV3(enterpriseID string,
 		return nil, err
 	}
 
-	queryStr := fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status
+	var queryStr string
+	var queryParams []interface{}
+
+	if enterpriseID == "" {
+		queryStr = fmt.Sprintf(`
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
+		FROM %s
+		WHERE uuid = ?`, userTableV3)
+		queryParams = []interface{}{userID}
+	} else {
+		queryStr = fmt.Sprintf(`
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
 		FROM %s
 		WHERE enterprise = ? AND uuid = ?`, userTableV3)
-	row := controller.connectDB.QueryRow(queryStr, enterpriseID, userID)
+		queryParams = []interface{}{enterpriseID, userID}
+	}
+
+	row := controller.connectDB.QueryRow(queryStr, queryParams...)
 
 	user := data.UserDetailV3{}
 	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
-		&user.Enterprise, &user.Status)
+		&user.Enterprise, &user.Status, &user.Password)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
