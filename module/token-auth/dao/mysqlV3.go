@@ -1530,21 +1530,6 @@ func (controller MYSQLController) EnterpriseRoleInfoExistsV3(enterpriseID string
 	return controller.rowExists(querStr, enterpriseID, roleName)
 }
 
-func (controller MYSQLController) GetUsersCountOfRoleV3(roleID string) (count int, err error) {
-	ok, err := controller.checkDB()
-	if !ok {
-		util.LogDBError(err)
-		return
-	}
-
-	queryStr := fmt.Sprintf(`
-		SELECT COUNT(*)
-		FROM %s
-		WHERE role = ?`, userPrivilegesTableV3)
-	err = controller.connectDB.QueryRow(queryStr, roleID).Scan(&count)
-	return
-}
-
 func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 	var err error
 	ok, err := controller.checkDB()

@@ -540,15 +540,6 @@ func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
 		return false, nil
 	}
 
-	usersCount, err := useDB.GetUsersCountOfRoleV3(roleID)
-	if err != nil {
-		return false, err
-	}
-
-	if usersCount > 0 {
-		return false, util.ErrRoleUsersNotEmpty
-	}
-
 	err = useDB.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
 		return false, err

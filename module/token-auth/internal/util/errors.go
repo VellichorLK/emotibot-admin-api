@@ -11,7 +11,6 @@ var (
 	ErrAppInfoExists        = errors.New("Conflict app info")
 	ErrGroupInfoExists      = errors.New("Conflict group info")
 	ErrRoleInfoExists       = errors.New("Conflict role info")
-	ErrRoleUsersNotEmpty    = errors.New("Cannot remove role having users")
 	ErrRobotGroupNotExist   = errors.New("Robot group does not exist")
 	ErrRobotNotExist        = errors.New("Robot does not exist")
 	ErrRoleNotExist         = errors.New("Role does not exist")

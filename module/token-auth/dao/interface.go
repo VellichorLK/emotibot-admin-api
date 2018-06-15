@@ -79,8 +79,6 @@ type DB interface {
 	GroupExistsV3(groupID string) (bool, error)
 	EnterpriseGroupInfoExistsV3(enterpriseID string, groupName string) (bool, error)
 
-	GetUsersCountOfRoleV3(roleID string) (count int, err error)
-
 	GetRolesV3(enterpriseID string) ([]*data.RoleV3, error)
 	GetRoleV3(enterpriseID string, roleID string) (*data.RoleV3, error)
 	AddRoleV3(enterpriseID string, role *data.RoleV3) (string, error)
