@@ -461,7 +461,17 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 				wordbank.Editable = true
 			}
 			if row.SimilarWords != "" {
-				wordbank.SimilarWords = strings.Split(row.SimilarWords, ",")
+				words := strings.Split(row.SimilarWords, ",")
+				filteredWords := []string{}
+
+				for _, word := range words {
+					trimWord := strings.TrimSpace(word)
+					if trimWord != "" {
+						filteredWords = append(filteredWords, trimWord)
+					}
+				}
+
+				wordbank.SimilarWords = filteredWords
 			}
 
 			path := row.GetPath()
