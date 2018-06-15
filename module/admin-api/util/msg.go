@@ -70,6 +70,9 @@ var (
 		"DirectoryError":      "目录错误",
 		"Level1Error":         "第一层目录错误",
 		"BelowRows":           "以下行数",
+		"ErrorEmptyNameTpl":   "行 %d: 詞庫名為空",
+		"ErrorRowErrorTpl":    "行 %d：%s",
+		"ErrorPathLevelTpl":   "路徑 %d 級內容錯誤",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

@@ -689,6 +689,9 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
 	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Recovered in %v", r)
+		}
 		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 		ret := 0
 		if err == nil {

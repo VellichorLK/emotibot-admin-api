@@ -421,13 +421,24 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			continue
 		}
 
-		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
-		if err != nil {
-			err = fmt.Errorf("Invalid row %d, %s, %v", idx+1, err.Error(), rowCellStr)
+		if currentWordbankRow.Name == "" {
+			err = fmt.Errorf(util.Msg["ErrorEmptyNameTpl"], idx+1)
 			return
 		}
+
+		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
+		if err != nil {
+			err = fmt.Errorf(util.Msg["ErrorRowErrorTpl"], idx+1, err.Error())
+			return
+		}
+
 		wordbankRowList = append(wordbankRowList, currentWordbankRow)
 		lastWordbankRow = currentWordbankRow
+	}
+
+	if len(wordbankRowList) == 0 {
+		err = errors.New(util.Msg["EmptyRows"])
+		return
 	}
 
 	for _, row := range wordbankRowList {
@@ -546,7 +557,7 @@ func fillV3RowWithLast(current *WordBankRow, last *WordBankRow) error {
 	}
 	if hasErr {
 		util.LogTrace.Printf("Check for %#v\n", current)
-		return fmt.Errorf("Invalid path in level %d", level)
+		return fmt.Errorf(util.Msg["ErrorPathLevelTpl"], level)
 	}
 
 	return nil
