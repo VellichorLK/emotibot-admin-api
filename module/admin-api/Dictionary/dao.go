@@ -895,8 +895,13 @@ func addWordbankClassV3(appid string, className string, pid int) (id int, err er
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := "SELECT count(*) FROM entity_class WHERE appid = ? AND name = ?"
-	row := t.QueryRow(queryStr, appid, className)
+	pidPtr := &pid
+	if pid == -1 {
+		pidPtr = nil
+	}
+
+	queryStr := "SELECT count(*) FROM entity_class WHERE appid = ? AND BINARY name = ? AND pid = ?"
+	row := t.QueryRow(queryStr, appid, className, pidPtr)
 	count := 0
 	err = row.Scan(&count)
 	if err != nil {
@@ -977,8 +982,8 @@ func addWordbankV3(appid string, cid int, wb *WordBankV3) (id int, err error) {
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := "SELECT count(*) FROM entities WHERE cid = ? AND name = ?"
-	row := t.QueryRow(queryStr, cid, wb.Name)
+	queryStr := "SELECT count(*) FROM entities WHERE cid = ? AND BINARY name = ? AND appid = ?"
+	row := t.QueryRow(queryStr, cid, wb.Name, appid)
 	count := 0
 	err = row.Scan(&count)
 	if err != nil {
@@ -1059,7 +1064,7 @@ func moveWordbankV3(appid string, id, cid int) (err error) {
 	queryStr := `
 		SELECT count(*)
 		FROM entities AS e1, entities AS e2
-		WHERE e1.id = ? AND e2.cid = ? AND e2.name = e1.name AND e2.id != e1.id`
+		WHERE e1.id = ? AND e2.cid = ? AND BINARY e2.name = e1.name AND e2.id != e1.id`
 	row := t.QueryRow(queryStr, id, classID)
 	count := 0
 	err = row.Scan(&count)
