@@ -28,7 +28,7 @@ func GetMySQLConfig() (url string, port int, user string, password string, datab
 	}
 	user = GetStrEnv(mysqlSQLUserKey, "root")
 	password = GetStrEnv(mysqlSQLPasswordKey, "password")
-	database = GetStrEnv(mysqlSQLDatabaseKey, "auth")
+	database = GetStrEnv(mysqlSQLDatabaseKey, "authentication")
 	return
 }
 

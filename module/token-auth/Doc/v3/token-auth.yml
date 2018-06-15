@@ -1,0 +1,1118 @@
+openapi: "3.0.0"
+info:
+  title: Token Authentication
+  description: This is API document page for Token Auth RestAPIs
+  version: v3
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/auth/v3/
+
+################################################################################
+#                                  Parameters                                  #
+################################################################################
+parameters:
+  # Path parameters
+  admin-id:
+    name: admin-id
+    in: path
+    description: 系統管理員 ID
+    schema:
+      type: string
+    required: true
+  enterprise-id:
+    name: enterprise-id
+    in: path
+    description: 企業 ID
+    schema:
+      type: string
+    required: true
+  user-id:
+    name: user-id
+    in: path
+    description: 用戶 ID
+    schema:
+      type: string
+    required: true
+  app-id:
+    name: app-id
+    in: path
+    description: 機器人 ID
+    schema:
+      type: string
+    required: true
+  group-id:
+    name: group-id
+    in: path
+    description: 企業機器人群組 ID
+    schema:
+      type: string
+    required: true
+  role-id:
+    name: role-id
+    in: path
+    description: 用戶角色 ID
+    schema:
+      type: string
+    required: true
+
+  # Form data parameters
+  account:
+    name: account
+    in: formData
+    description: 用戶帳號 (user_name)
+    schema:
+      type: string
+    required: true
+  passwd:
+    name: passwd
+    in: formData
+    description: 用戶密碼
+    schema:
+      type: password
+    required: true
+  system-admin-username:
+    name: username
+    in: formData
+    description: 系統管理員 ID (user_name) 
+    schema:
+      type: string
+  system-admin-name:
+    name: name
+    in: formData
+    description: 系統管理員名稱 (display_name)
+    schema:
+      type: string
+  system-admin-email:
+    name: email
+    in: formData
+    description: 系統管理員 E-mail
+    schema:
+      type: string
+  system-admin-phone:
+    name: phone
+    in: formData
+    description: 系統管理員聯絡電話
+    schema:
+      type: string
+  system-admin-passwd:
+    name: password
+    in: formData
+    description: 系統管理員密碼
+    schema:
+      type: password
+  enterprise-name:
+    name: name
+    in: formData
+    description: 企業名稱
+    schema:
+      type: string
+  enterprise-description:
+    name: description
+    in: formData
+    description: 企業描述
+    schema:
+      type: string
+  enterprise-modules:
+    name: modules
+    in: formData
+    description: 企業功能
+    schema:
+      type: array
+      items:
+        type: string
+  enterprise-admin:
+    name: admin
+    in: formData
+    description: 企業管理員
+    schema:
+      type: object
+      properties:
+        account:
+          description: 企業管理員 ID (user_name)
+          type: string
+        name:
+          description: 企業管理員名稱 (display_name)
+          type: string
+        passwd:
+          description: 企業管理員密碼
+          type: password
+  enterprise-user-username:
+    name: username
+    in: formData
+    description: 企業用戶 ID (user_name) 
+    schema:
+      type: string
+  enterprise-user-name:
+    name: name
+    in: formData
+    description: 企業用戶名稱 (display_name)
+    schema:
+      type: string
+  enterprise-user-type:
+    name: type
+    in: formData
+    description: 企業用戶類型 >
+      * 1 - Enterprise admin
+      * 2 - Normal user
+    schema:
+      type: integer
+      enum:
+        - 0
+        - 1
+        - 2
+  enterprise-user-email:
+    name: email
+    in: formData
+    description: 企業用戶 E-mail
+    schema:
+      type: string
+  enterprise-user-phone:
+    name: phone
+    in: formData
+    description: 企業用戶聯絡電話
+    schema:
+      type: string
+  enterprise-user-passwd:
+    name: password
+    in: formData
+    description: 企業用戶密碼
+    schema:
+      type: password
+  enterprise-user-role:
+    name: role
+    in: formData
+    description: 企業用戶角色
+    schema:
+      type: string
+  enterprise-user-apps:
+    name: apps
+    in: formData
+    description: 企業用戶可操作的機器人們
+    schema:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            description: 對應機器人的操作角色 (Key - apps.uuid, Value - roles.uuid)
+            type: object
+            additionalProperties:
+              type: string
+        apps:
+          type: array
+          items:
+            description: 對應機器人的操作角色 (Key - apps.uuid, Value - roles.uuid)
+            type: object
+            additionalProperties:
+              type: string
+  app-name:
+    name: name
+    in: formData
+    description: 機器人名稱
+    schema:
+      type: string
+  app-description:
+    name: description
+    in: formData
+    description: 機器人描述
+    schema:
+      type: string
+  group-name:
+    name: name
+    in: formData
+    description: 機器人群組名稱
+    schema:
+      type: string
+  group-apps:
+    name: apps
+    in: formData
+    description: 機器人群組所包含的機器人 ID
+    schema:
+      type: array
+      items:
+        type: string
+  role-name:
+    name: name
+    in: formData
+    description: 角色名稱
+    schema:
+      type: string
+  role-privileges:
+    name: privilege
+    in: formData
+    description: 角色模組權限
+    schema:
+      description: 模組權限 (Key - module.code, Value - module.cmd_list)
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+  # Header parameter
+  authorization:
+    name: Authorization
+    in: header
+    description: 用戶登入 token
+    schema:
+      type: string
+    required: true
+
+################################################################################
+#                                    Paths                                     #
+################################################################################
+paths:
+  /login:
+    post:
+      tags:
+        - Authentication
+      parameters:
+        - $ref: '#/parameters/account'
+        - $ref: '#/parameters/passwd'
+      description: 用戶登入
+      responses:
+        200:
+          description: 用戶資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      info:
+                        $ref: '#/definitions/UserInfoDetail'
+  
+  /admins:
+    get:
+      tags:
+        - System
+      description: 取得系統管理員列表
+      responses:
+        200:
+          description: 系統管理員列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/UserInfo'
+  /admin:
+    post:
+      tags:
+        - System
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/system-admin-username'
+        - $ref: '#/parameters/system-admin-name'
+        - $ref: '#/parameters/system-admin-email'
+        - $ref: '#/parameters/system-admin-phone'
+        - $ref: '#/parameters/system-admin-passwd'
+      description: 新增系統管理員
+      responses:
+        200:
+          description: 新增結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/UserInfoDetail'
+  /admin/{admin-id}:
+    get:
+      tags:
+        - System
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/admin-id'
+      description: 取得系統管理員資訊
+      responses:
+        200:
+          description: 系統管理員資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/UserInfoDetail'
+    put:
+      tags:
+        - System
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/admin-id'
+        - $ref: '#/parameters/system-admin-username'
+        - $ref: '#/parameters/system-admin-name'
+        - $ref: '#/parameters/system-admin-email'
+        - $ref: '#/parameters/system-admin-phone'
+        - $ref: '#/parameters/system-admin-passwd'
+      description: 更新系統管理員資訊
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - System
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/admin-id'
+      description: 刪除系統管理員
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprises:
+    get:
+      tags:
+        - Enterprises
+      parameters:
+        - $ref: '#/parameters/authorization'
+      description: 取得企業列表
+      responses:
+        200:
+          description: 企業列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/EnterpriseInfo'
+  /enterprise:
+    post:
+      tags:
+        - Enterprises
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-name'
+        - $ref: '#/parameters/enterprise-description'
+        - $ref: '#/parameters/enterprise-modules'
+        - $ref: '#/parameters/enterprise-admin'
+      description: 新增企業
+      responses:
+        200:
+          description: 新增企業資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/EnterpriseInfoDetail'
+  /enterprise/{enterprise-id}:
+    get:
+      tags:
+        - Enterprises
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 取得企業詳細資訊
+      responses:
+        200:
+          description: 企業詳細資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/EnterpriseInfoDetail'
+    put:
+      tags:
+        - Enterprises
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/enterprise-name'
+        - $ref: '#/parameters/enterprise-description'
+        - $ref: '#/parameters/enterprise-modules'
+      description: 更新企業資訊
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - Enterprises
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 刪除企業
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprise/{enterprise-id}/users:
+    get:
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - admin:
+          name: admin
+          in: query
+          description: 只列出企業管理員?
+          schema:
+            type: boolean
+      description: 取得企業用戶列表
+      responses:
+        200:
+          description: 企業用戶列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/UserInfo'
+  /enterprise/{enterprise-id}/user:
+    post:
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/enterprise-user-username'
+        - $ref: '#/parameters/enterprise-user-name'
+        - $ref: '#/parameters/enterprise-user-type'
+        - $ref: '#/parameters/enterprise-user-email'
+        - $ref: '#/parameters/enterprise-user-phone'
+        - $ref: '#/parameters/enterprise-user-passwd'
+        - $ref: '#/parameters/enterprise-user-apps'
+      description: 新增企業用戶
+      responses:
+        200:
+          description: 新增結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/UserInfoDetail'
+  /enterprise/{enterprise-id}/user/{user-id}:
+    get:
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/user-id'
+      description: 取得企業用戶資訊
+      responses:
+        200:
+          description: 用戶資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/UserInfoDetail'
+    put:
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/user-id'
+        - $ref: '#/parameters/enterprise-user-username'
+        - $ref: '#/parameters/enterprise-user-name'
+        - $ref: '#/parameters/enterprise-user-email'
+        - $ref: '#/parameters/enterprise-user-phone'
+        - $ref: '#/parameters/enterprise-user-passwd'
+        - $ref: '#/parameters/enterprise-user-apps'
+      description: 更新企業用戶資訊
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - Users
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/user-id'
+      description: 刪除企業用戶
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprise/{enterprise-id}/apps:
+    get:
+      tags:
+        - Apps
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 取得企業機器人列表
+      responses:
+        200:
+          description: 企業機器人列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      allOf:
+                        - $ref: '#/definitions/AppInfo'
+                      properties:
+                        groups:
+                          type: array
+                          items:
+                            $ref: '#/definitions/GroupInfo'
+  /enterprise/{enterprise-id}/app:
+    post:
+      tags:
+        - Apps
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/app-name'
+        - $ref: '#/parameters/app-description'
+      description: 新增企業機器人
+      responses:
+        200:
+          description: 新增結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/AppInfoDetail'
+  /enterprise/{enterprise-id}/app/{app-id}:
+    get:
+      tags:
+        - Apps
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/app-id'
+      description: 取得企業機器人資訊
+      responses:
+        200:
+          description: 企業機器人資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/AppInfoDetail'
+    put:
+      tags:
+        - Apps
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/app-id'
+        - $ref: '#/parameters/app-name'
+        - $ref: '#/parameters/app-description'
+      description: 更新企業機器人
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - Apps
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/app-id'
+      description: 刪除企業機器人
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprise/{enterprise-id}/groups:
+    get:
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 取得企業機器人群組列表
+      responses:
+        200:
+          description: 企業機器人群組列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/GroupInfoDetail'
+  /enterprise/{enterprise-id}/group:
+    post:
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/group-name'
+        - $ref: '#/parameters/group-apps'
+      description: 新增企業機器人群組
+      responses:
+        200:
+          description: 新增結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/GroupInfoDetail'
+  /enterprise/{enterprise-id}/group/{group-id}:
+    get:
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/group-id'
+      description: 取得企業機器人群組資訊
+      responses:
+        200:
+          description: 機器人群組資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/GroupInfoDetail'
+    put:
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/group-id'
+        - $ref: '#/parameters/group-name'
+        - $ref: '#/parameters/group-apps'
+      description: 更新企業機器人群組資訊
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - Groups
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/group-id'
+      description: 刪除企業機器人群組
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprise/{enterprise-id}/roles:
+    get:
+      tags:
+        - Roles
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 取得企業用戶角色列表
+      responses:
+        200:
+          description: 企業用戶角色列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/RoleInfo'
+  /enterprise/{enterprise-id}/role:
+    post:
+      tags:
+        - Roles
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/role-name'
+        - $ref: '#/parameters/role-privileges'
+      description: 新增企業用戶角色
+      responses:
+        200:
+          description: 新增結果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/RoleInfo'
+  /enterprise/{enterprise-id}/role/{role-id}:
+    get:
+      tags:
+        - Roles
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/role-id'
+      description: 取得企業用戶角色資訊
+      responses:
+        200:
+          description: 用戶角色資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    $ref: '#/definitions/RoleInfo'
+    put:
+      tags:
+        - Roles
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/role-id'
+        - $ref: '#/parameters/role-name'
+        - $ref: '#/parameters/role-privileges'
+      description: 更新企業用戶角色
+      responses:
+        200:
+          description: 更新結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+    delete:
+      tags:
+        - Roles
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+        - $ref: '#/parameters/role-id'
+      description: 刪除企業用戶角色
+      responses:
+        200:
+          description: 刪除結果
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: '#/definitions/SimpleResp'
+
+  /enterprise/{enterprise-id}/modules:
+    get:
+      tags:
+        - Modules
+      parameters:
+        - $ref: '#/parameters/authorization'
+        - $ref: '#/parameters/enterprise-id'
+      description: 取得企業模組列表
+      responses:
+        200:
+          description: 企業模組列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ret_msg:
+                    $ref: '#/definitions/RetMsg'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/definitions/ModuleInfoDetail'
+
+
+################################################################################
+#                                 Definitions                                  #
+################################################################################
+definitions:
+  RetMsg:
+    type: string
+    enums:
+      - success
+      - forbidden
+  
+  EnterpriseInfo:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      description:
+        type: string
+
+  EnterpriseInfoDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/EnterpriseInfo'
+    properties:
+      modules:
+        type: array
+        items:
+          $ref: '#/definitions/ModuleInfo'
+
+  UserInfo:
+    type: object
+    properties:
+      id: 
+        type: string
+      user_name:
+        type: string
+      display_name:
+        type: string
+      email:
+        type: string
+      phone:
+        type: string
+      type:
+        type: integer
+      roles:
+        type: object
+        properties:
+          groups:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                role:
+                  type: string
+          apps:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                name:
+                  type: string
+                role:
+                  type: string
+  
+  UserInfoDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/UserInfo'
+    properties:
+      enterprise:
+        type: string
+      status:
+        type: integer
+      custom:
+        type: object
+        additionalProperties:
+          type: string
+
+  AppInfo:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      status:
+        type: integer
+        
+  AppInfoDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/AppInfo'
+    properties:
+      description:
+        type: string
+  
+  GroupInfo:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+  
+  GroupInfoDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/GroupInfo'
+    properties:
+      status:
+        type: integer
+      apps:
+        type: array
+        items:
+          $ref: '#/definitions/AppInfo'
+
+  RoleInfo:
+    type: object
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      description:
+        type: string
+      privileges:
+        description: 此角色的模組權限 (Key - module.code, Value - privileges.cmd_list)
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
+      user_count:
+        type: integer
+  
+  ModuleInfo:
+    type: object
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      status:
+        type: boolean
+  
+  ModuleInfoDetail:
+    type: object
+    allOf:
+      - $ref: '#/definitions/ModuleInfo'
+    properties:
+      description:
+        type: string
+      commands:
+        type: array
+        items:
+          type: string
+  
+  SimpleResp:
+    type: object
+    properties:
+      ret_msg:
+        $ref: '#/definitions/RetMsg'
+      result:
+        type: boolean
