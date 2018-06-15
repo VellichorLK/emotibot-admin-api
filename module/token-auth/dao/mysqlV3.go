@@ -3,7 +3,6 @@ package dao
 import (
 	"database/sql"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -183,7 +182,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 }
 
 func (controller MYSQLController) UpdateEnterpriseV3(enterpriseID string,
-	enterprise *data.EnterpriseV3, modules []string) error {
+	enterprise *data.EnterpriseDetailV3, modules []string) error {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -394,6 +393,11 @@ func (controller MYSQLController) EnterpriseExistsV3(enterpriseID string) (bool,
 	return controller.rowExists(queryStr, enterpriseID)
 }
 
+func (controller MYSQLController) EnterpriseInfoExistsV3(enterpriseName string) (bool, error) {
+	querStr := fmt.Sprintf("SELECT 1 FROM %s WHERE name = ?", enterpriseTableV3)
+	return controller.rowExists(querStr, enterpriseName)
+}
+
 func (controller MYSQLController) GetUsersV3(enterpriseID string, admin bool) ([]*data.UserV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -578,27 +582,11 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	}
 	defer util.ClearTransition(t)
 
-	count := 0
-	queryStr := fmt.Sprintf(`
-		SELECT COUNT(*)
-		FROM %s
-		WHERE user_name = ? OR (email = ? AND email != '')`, userTableV3)
-	row := t.QueryRow(queryStr, user.UserName, user.Email)
-	err = row.Scan(&count)
-	if err != nil && err != sql.ErrNoRows {
-		util.LogDBError(err)
-		return
-	}
-	if count > 0 {
-		err = errors.New("Conflict user")
-		return
-	}
-
 	userUUID, _ := uuid.NewV4()
 	userID = hex.EncodeToString(userUUID[:])
 
 	// Insert human table entry
-	queryStr = fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
 		util.LogDBError(err)
@@ -800,6 +788,42 @@ func (controller MYSQLController) UserExistsV3(userID string) (bool, error) {
 	return controller.rowExists(queryStr, userID)
 }
 
+func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
+	enterpriseID string, userName string, userEmail string) (bool, string, string, error) {
+	var existedUserName string
+	var existedUserEmail string
+
+	switch userType {
+	case enum.SuperAdminUser:
+		queryStr := fmt.Sprintf(`
+			SELECT user_name, email
+			FROM %s
+			WHERE type = %d AND user_name = ? OR (email = ? AND email != '')`,
+			userTableV3, enum.SuperAdminUser)
+		err := controller.connectDB.QueryRow(queryStr, userType, userName, userEmail).Scan(&existedUserName, &existedUserEmail)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return false, "", "", nil
+			}
+			return false, "", "", err
+		}
+		return true, existedUserName, existedUserEmail, nil
+	default:
+		queryStr := fmt.Sprintf(`
+			SELECT user_name, email
+			FROM %s
+			WHERE enterprise = ? AND user_name = ? OR (email = ? AND email != '')`, userTableV3)
+		err := controller.connectDB.QueryRow(queryStr, enterpriseID, userName, userEmail).Scan(&existedUserName, &existedUserEmail)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return false, "", "", nil
+			}
+			return false, "", "", err
+		}
+		return true, existedUserName, existedUserEmail, nil
+	}
+}
+
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -961,10 +985,13 @@ func (controller MYSQLController) AppExistsV3(appID string) (bool, error) {
 	return controller.rowExists(queryStr, appID)
 }
 
-func (controller MYSQLController) EnterpriseAppExistsV3(enterpriseID string,
-	appID string) (bool, error) {
-	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", appTableV3)
-	return controller.rowExists(queryStr, enterpriseID, appID)
+func (controller MYSQLController) EnterpriseAppInfoExistsV3(enterpriseID string,
+	appName string) (bool, error) {
+	querStr := fmt.Sprintf(`
+		SELECT 1
+		FROM %s
+		WHERE enterprise = ? AND name = ?`, appTableV3)
+	return controller.rowExists(querStr, enterpriseID, appName)
 }
 
 func (controller MYSQLController) GetGroupsV3(enterpriseID string) ([]*data.GroupDetailV3, error) {
@@ -1226,10 +1253,10 @@ func (controller MYSQLController) GroupExistsV3(groupID string) (bool, error) {
 	return controller.rowExists(queryStr, groupID)
 }
 
-func (controller MYSQLController) EnterpriseGroupExistsV3(enterpriseID string,
-	groupID string) (bool, error) {
-	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", groupTableV3)
-	return controller.rowExists(queryStr, enterpriseID, groupID)
+func (controller MYSQLController) EnterpriseGroupInfoExistsV3(enterpriseID string,
+	groupName string) (bool, error) {
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND name = ?", groupTableV3)
+	return controller.rowExists(queryStr, enterpriseID, groupName)
 }
 
 func (controller MYSQLController) GetRolesV3(enterpriseID string) ([]*data.RoleV3, error) {
@@ -1497,10 +1524,10 @@ func (controller MYSQLController) RoleExistsV3(roleID string) (bool, error) {
 	return controller.rowExists(queryStr, roleID)
 }
 
-func (controller MYSQLController) EnterpriseRoleExistsV3(enterpriseID string,
-	roleID string) (bool, error) {
-	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND uuid = ?", roleTableV3)
-	return controller.rowExists(queryStr, enterpriseID, roleID)
+func (controller MYSQLController) EnterpriseRoleInfoExistsV3(enterpriseID string,
+	roleName string) (bool, error) {
+	querStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND name = ?", roleTableV3)
+	return controller.rowExists(querStr, enterpriseID, roleName)
 }
 
 func (controller MYSQLController) GetUsersCountOfRoleV3(roleID string) (count int, err error) {

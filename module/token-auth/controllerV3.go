@@ -56,7 +56,14 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddSystemAdminV3(admin)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -93,6 +100,7 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
+	newAdmin.Type = enum.SuperAdminUser
 
 	if newAdmin.UserName == "" {
 		newAdmin.UserName = origAdmin.UserName
@@ -102,6 +110,9 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 	if newAdmin.Email == "" {
 		newAdmin.Email = origAdmin.Email
+	}
+	if newAdmin.Phone == "" {
+		newAdmin.Phone = origAdmin.Phone
 	}
 
 	if *newAdmin.Password != "" {
@@ -127,10 +138,19 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = service.UpdateSystemAdminV3(newAdmin, adminID)
+	err = service.UpdateSystemAdminV3(origAdmin, newAdmin, adminID)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
+		switch err {
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+			return
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+			return
+		default:
+			returnInternalError(w, err.Error())
+			return
+		}
 	}
 
 	returnSuccess(w, true)
@@ -239,7 +259,12 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddEnterpriseV3(&enterprise, modules, &enterpriseAdmin)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -276,11 +301,23 @@ func EnterpriseUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if newEnterprise.Name == "" {
+		newEnterprise.Name = origEnterprise.Name
+	}
+	if newEnterprise.Description == "" {
+		newEnterprise.Description = origEnterprise.Description
+	}
+
 	modules := strings.Split(r.FormValue("modules"), ",")
 
-	err = service.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
+	err = service.UpdateEnterpriseV3(enterpriseID, origEnterprise, newEnterprise, modules)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -385,11 +422,14 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 			fallthrough
 		case util.ErrRoleNotExist:
 			returnUnprocessableEntity(w, err.Error())
-			return
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
 		default:
 			returnInternalError(w, err.Error())
-			return
 		}
+		return
 	} else if id == "" {
 		returnBadRequest(w, "enterprise-id")
 		return
@@ -449,6 +489,9 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if newUser.Email == "" {
 		newUser.Email = origUser.Email
 	}
+	if newUser.Phone == "" {
+		newUser.Phone = origUser.Phone
+	}
 
 	if *newUser.Password != "" {
 		verifyPassword := r.FormValue("verify_password")
@@ -461,8 +504,6 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		var password string
 
 		switch requester.Type {
-		case enum.SuperAdminUser:
-			fallthrough
 		case enum.AdminUser:
 			password, err = service.GetUserPasswordV3(requester.ID)
 			if err != nil {
@@ -474,6 +515,9 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 			}
 		case enum.NormalUser:
 			password = *origUser.Password
+		default:
+			returnForbidden(w)
+			return
 		}
 
 		if verifyPassword != password {
@@ -482,7 +526,7 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = service.UpdateUserV3(enterpriseID, userID, newUser)
+	err = service.UpdateUserV3(enterpriseID, userID, origUser, newUser)
 	if err != nil {
 		switch err {
 		case util.ErrRobotGroupNotExist:
@@ -491,6 +535,12 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 			fallthrough
 		case util.ErrRoleNotExist:
 			returnUnprocessableEntity(w, err.Error())
+			return
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+			return
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
 			return
 		default:
 			returnInternalError(w, err.Error())
@@ -606,7 +656,12 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddAppV3(enterpriseID, app)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrAppInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	} else if id == "" {
 		returnBadRequest(w, "enterprise-id")
@@ -652,9 +707,21 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = service.UpdateAppV3(enterpriseID, appID, newApp)
+	if newApp.Name == "" {
+		newApp.Name = origApp.Name
+	}
+	if newApp.Description == "" {
+		newApp.Description = origApp.Description
+	}
+
+	err = service.UpdateAppV3(enterpriseID, appID, origApp, newApp)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrAppInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -753,7 +820,12 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddGroupV3(enterpriseID, group, apps)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrGroupInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	} else if id == "" {
 		returnBadRequest(w, "enterprise-id")
@@ -799,9 +871,18 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = service.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
+	if newGroup.Name == "" {
+		newGroup.Name = origGroup.Name
+	}
+
+	err = service.UpdateGroupV3(enterpriseID, groupID, origGroup, newGroup, apps)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrGroupInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -900,7 +981,12 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddRoleV3(enterpriseID, role)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrRoleInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	} else if id == "" {
 		returnBadRequest(w, "enterprise-id")
@@ -931,15 +1017,29 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	role, err := parseRoleFromRequestV3(r)
+	origRole, err := service.GetRoleV3(enterpriseID, roleID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if origRole == nil {
+		returnNotFound(w)
+		return
+	}
+
+	newRole, err := parseRoleFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
 	}
 
-	err = service.UpdateRoleV3(enterpriseID, roleID, role)
+	err = service.UpdateRoleV3(enterpriseID, roleID, origRole, newRole)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrRoleInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -962,10 +1062,6 @@ func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	result, err := service.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
-		if err == util.ErrRoleUsersNotEmpty {
-			returnUnprocessableEntity(w, err.Error())
-			return
-		}
 		returnInternalError(w, err.Error())
 	} else if !result {
 		returnNotFound(w)
@@ -1047,7 +1143,7 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	returnSuccess(w, retData)
 }
 
-func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {
+func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, error) {
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 
@@ -1055,7 +1151,7 @@ func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {
 		return nil, errors.New("invalid name")
 	}
 
-	enterprise := data.EnterpriseV3{}
+	enterprise := data.EnterpriseDetailV3{}
 	enterprise.Name = name
 	enterprise.Description = description
 
