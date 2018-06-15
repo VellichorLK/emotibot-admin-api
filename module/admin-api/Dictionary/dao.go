@@ -536,7 +536,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		}
 		if editable != nil {
 			temp.Editable = *editable != 0
-		} else if cid != nil && *cid != -1 {
+		} else if cid != nil && *cid != -1 && classMap[*cid] != nil {
 			temp.Editable = classMap[*cid].Editable
 		} else {
 			temp.Editable = true
@@ -545,7 +545,12 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		if cid == nil || *cid == -1 {
 			root.Wordbank = append(root.Wordbank, temp)
 		} else {
-			classMap[*cid].Wordbank = append(classMap[*cid].Wordbank, temp)
+			var classObj *WordBankClassV3
+			classObj = classMap[*cid]
+			if classObj == nil {
+				classObj = &root
+			}
+			classObj.Wordbank = append(classObj.Wordbank, temp)
 		}
 	}
 
@@ -828,6 +833,12 @@ func deleteWordbankClassV3(appid string, id int) (err error) {
 		err = errors.New("DB not init")
 		return
 	}
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
 	queryStr := `
 		SELECT id
 		FROM (
@@ -838,7 +849,7 @@ func deleteWordbankClassV3(appid string, id int) (err error) {
 			AND appid = ?
 			AND length(@pv := concat(@pv, ',', id))
 	`
-	rows, err := mySQL.Query(queryStr, id, appid)
+	rows, err := t.Query(queryStr, id, appid)
 	if err != nil {
 		return err
 	}
@@ -867,7 +878,18 @@ func deleteWordbankClassV3(appid string, id int) (err error) {
 	util.LogTrace.Printf("Delete id: %v\n", ids)
 
 	queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE id in (%s)", strings.Join(qmark, ","))
-	_, err = mySQL.Exec(queryStr, ids...)
+	_, err = t.Exec(queryStr, ids...)
+	if err != nil {
+		return
+	}
+
+	queryStr = fmt.Sprintf("UPDATE entities SET cid = NULL WHERE cid in (%s)", strings.Join(qmark, ","))
+	_, err = t.Exec(queryStr, ids...)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
 	return err
 }
 
