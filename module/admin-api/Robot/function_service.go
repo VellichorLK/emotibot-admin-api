@@ -73,3 +73,7 @@ func UpdateFunctions(appid string, newInfos map[string]*FunctionInfo) (int, erro
 	}
 	return ApiError.SUCCESS, nil
 }
+
+func InitRobotFunction(appid string) error {
+	return initRobotFunctionData(appid)
+}

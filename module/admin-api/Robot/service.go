@@ -182,3 +182,7 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int) (*Chat
 	}
 	return &ret, ApiError.SUCCESS, nil
 }
+
+func InitRobotQAData(appid string) error {
+	return initRobotQAData(appid)
+}

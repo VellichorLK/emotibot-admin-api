@@ -758,3 +758,53 @@ func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
 
 	return nil
 }
+
+// initRobotQA only support in version 2
+func initRobotQAData(appid string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	// 1. check is there has function set
+	queryStr := `
+		SELECT count(*)
+		FROM robot_question
+		WHERE appid = ?`
+	count := 0
+	row := tx.QueryRow(queryStr, appid)
+	err = row.Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	// if existed, return
+	if count > 0 {
+		return nil
+	}
+
+	// copy default function to appid
+	queryStr = `
+		INSERT INTO robot_question
+		(content,appid,created_at,answer_count,
+			content2,content3,content4,content5,content6,content7,content8,content9,content10,status)
+			SELECT content,?,created_at,answer_count,
+			content2,content3,content4,content5,content6,content7,content8,content9,content10,status
+			FROM robot_question
+			WHERE appid = ''`
+	_, err = tx.Exec(queryStr, appid)
+	if err != nil {
+		return
+	}
+	return tx.Commit()
+}

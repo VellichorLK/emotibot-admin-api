@@ -163,3 +163,51 @@ func setDBMultiFunctionActiveStatus(appid string, active map[string]bool, versio
 	}
 	return
 }
+
+// initRobotFunction only support in version 2
+func initRobotFunctionData(appid string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	// 1. check is there has function set
+	queryStr := `
+		SELECT count(*)
+		FROM function_switch
+		WHERE appid = ?`
+	count := 0
+	row := tx.QueryRow(queryStr, appid)
+	err = row.Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	// if existed, return
+	if count > 0 {
+		return nil
+	}
+
+	// copy default function to appid
+	queryStr = `
+		INSERT INTO function_switch
+		(appid, module_name, module_name_zh, third_url, on_off, remark, intent, type, status)
+			SELECT ?, module_name, module_name_zh, third_url, on_off, remark, intent, type, status
+			FROM function_switch
+			WHERE appid = ''`
+	_, err = tx.Exec(queryStr, appid)
+	if err != nil {
+		return
+	}
+	return tx.Commit()
+}

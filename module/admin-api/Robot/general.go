@@ -3,6 +3,7 @@ package Robot
 import (
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -43,6 +44,8 @@ func init() {
 			util.NewEntryPointWithVer("POST", "chat/{id}/content", []string{"edit"}, handleAddRobotWordContent, 2),
 			util.NewEntryPointWithVer("PUT", "chat/{id}/content/{cid}", []string{"edit"}, handleUpdateRobotWordContent, 2),
 			util.NewEntryPointWithVer("DELETE", "chat/{id}/content/{cid}", []string{"delete"}, handleDeleteRobotWordContent, 2),
+
+			util.NewEntryPointWithVer("POST", "data", []string{"edit"}, handleInitRobotData, 2),
 		},
 	}
 }
@@ -77,4 +80,20 @@ func addAudit(r *http.Request, module string, operation string, msg string, resu
 	appid := util.GetAppID(r)
 
 	util.AddAuditLog(appid, userID, userIP, module, operation, msg, result)
+}
+
+func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
+	appid := r.FormValue("appid")
+
+	errRobot := InitRobotFunction(appid)
+	errQA := InitRobotQAData(appid)
+	if errRobot != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errRobot.Error()))
+		return
+	}
+	if errQA != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errQA.Error()))
+		return
+	}
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, nil))
 }
