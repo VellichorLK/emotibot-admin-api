@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -426,6 +427,11 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			return
 		}
 
+		if utf8.RuneCountInString(currentWordbankRow.Name) > 20 {
+			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
+			return
+		}
+
 		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
 		if err != nil {
 			err = fmt.Errorf(util.Msg["ErrorRowErrorTpl"], idx+1, err.Error())
@@ -466,6 +472,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 
 				for _, word := range words {
 					trimWord := strings.TrimSpace(word)
+
 					if trimWord != "" {
 						filteredWords = append(filteredWords, trimWord)
 					}
