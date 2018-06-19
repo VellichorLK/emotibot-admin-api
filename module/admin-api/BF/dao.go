@@ -1,6 +1,7 @@
 package BF
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -161,6 +162,10 @@ func addRole(uuid string, commands []string) error {
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
 
 	rightIDs := []int{}
 	for _, cmd := range commands {
@@ -225,7 +230,7 @@ func updateRole(uuid string, commands []string) error {
 		return err
 	}
 
-	queryStr = "DELETE tbl_role_right WHERE ROLE_ID = ?"
+	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
 	_, err = t.Exec(queryStr, uuid)
 	if err != nil {
 		return err
@@ -260,16 +265,19 @@ func deleteRole(uuid string) error {
 
 	err = row.Scan(&id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
 		return err
 	}
 
-	queryStr = "DELETE tbl_role_right WHERE ROLE_ID = ?"
+	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
 	_, err = t.Exec(queryStr, uuid)
 	if err != nil {
 		return err
 	}
 
-	queryStr = "DELETE ent_role WHERE NAME = ?"
+	queryStr = "DELETE FROM ent_role WHERE NAME = ?"
 	_, err = t.Exec(queryStr, uuid)
 	if err != nil {
 		return err
@@ -283,13 +291,31 @@ func updateUserRole(enterprise, userid, roleid string) error {
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
 
-	queryStr := "UPDATE api_user SET RoleId = ? WHERE UserId = ? AND enterprise_id = ?"
-	_, err := mySQL.Exec(queryStr, roleid, userid, enterprise)
+	t, err := mySQL.Begin()
 	if err != nil {
 		return err
 	}
-	return nil
+
+	queryStr := "SELECT ID FROM ent_role WHERE NAME = ?"
+	row := t.QueryRow(queryStr, roleid)
+	id := 0
+	err = row.Scan(&id)
+	if err != nil {
+		return err
+	}
+
+	queryStr = "UPDATE api_user SET RoleId = ? WHERE UserId = ? AND enterprise_id = ?"
+	_, err = t.Exec(queryStr, id, userid, enterprise)
+	if err != nil {
+		return err
+	}
+
+	return t.Commit()
 }
 
 func updateUserPassword(enterprise, userid, password string) error {
@@ -305,4 +331,3 @@ func updateUserPassword(enterprise, userid, password string) error {
 	}
 	return nil
 }
-
