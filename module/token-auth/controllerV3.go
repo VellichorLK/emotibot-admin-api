@@ -1216,20 +1216,24 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 				AppRoles:   make([]*data.UserAppRoleV3, 0),
 			}
 
-			for group, role := range userRolesReq.GroupRoles {
-				userGroup := data.UserGroupRoleV3{
-					ID:   group,
-					Role: role,
+			for group, roles := range userRolesReq.GroupRoles {
+				for _, role := range roles {
+					userGroup := data.UserGroupRoleV3{
+						ID:   group,
+						Role: role,
+					}
+					userRoles.GroupRoles = append(userRoles.GroupRoles, &userGroup)
 				}
-				userRoles.GroupRoles = append(userRoles.GroupRoles, &userGroup)
 			}
 
-			for app, role := range userRolesReq.AppRoles {
-				userApp := data.UserAppRoleV3{
-					ID:   app,
-					Role: role,
+			for app, roles := range userRolesReq.AppRoles {
+				for _, role := range roles {
+					userApp := data.UserAppRoleV3{
+						ID:   app,
+						Role: role,
+					}
+					userRoles.AppRoles = append(userRoles.AppRoles, &userApp)
 				}
-				userRoles.AppRoles = append(userRoles.AppRoles, &userApp)
 			}
 
 			user.Roles = &userRoles
