@@ -39,6 +39,7 @@ func init() {
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("POST", "questions/delete", []string{"edit"}, handleDeleteQuestion),
+			util.NewEntryPoint("PUT", "questions/commit", []string{"edit"}, handleCommitQuestion),
 			util.NewEntryPoint("GET", "RFQuestions", []string{"view"}, handleGetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions", []string{"edit"}, handleSetRFQuestions),
 			util.NewEntryPoint("POST", "RFQuestions/validation", []string{}, handleRFQValidation),
@@ -255,7 +256,6 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-	util.McManualBusiness(appid)
 
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
@@ -471,11 +471,6 @@ func handleCreateQuestion(ctx context.Context) {
 	userIP := util.GetUserIP(ctx)
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
 
-	// notify FAQ update
-	if err == nil {
-		util.McManualBusiness(appid)
-	}
-
 	// response
 	type Response struct {
 		Qid int64 `json:"qid"`
@@ -526,11 +521,6 @@ func handleUpdateQuestion(ctx context.Context) {
 		util.LogError.Printf("error while update quesiton: %s", err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
 		auditRet = 0
-	}
-
-	// notify multicustomer
-	if err == nil {
-		util.McManualBusiness(appid)
 	}
 
 	// write audit log
@@ -933,14 +923,14 @@ func handleDeleteQuestion(ctx context.Context) {
 		auditRet = 0
 	}
 
-	// notify FAQ update
-	if err == nil {
-		util.McManualBusiness(appid)
-	}
-
 	// write audit log
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
-	util.LogError.Printf("audit message: %s", auditMsg)
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationDelete, auditMsg, auditRet)
+}
+
+func handleCommitQuestion(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	
+	go util.McManualBusiness(appid)
 }
