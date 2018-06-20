@@ -410,7 +410,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		for cellIdx, cell := range row.Cells {
 			rowCellStr[cellIdx] = strings.TrimSpace(cell.Value)
 		}
-		if strings.Join(rowCellStr, "") == "" {
+		if strings.TrimSpace(strings.Join(rowCellStr, "")) == "" {
 			util.LogTrace.Printf("Skip empty row %d\n", idx+1)
 			continue
 		}
@@ -422,12 +422,12 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			continue
 		}
 
-		if currentWordbankRow.Name == "" {
-			err = fmt.Errorf(util.Msg["ErrorEmptyNameTpl"], idx+1)
-			return
-		}
+		// if currentWordbankRow.Name == "" {
+		// 	err = fmt.Errorf(util.Msg["ErrorEmptyNameTpl"], idx+1)
+		// 	return
+		// }
 
-		if utf8.RuneCountInString(currentWordbankRow.Name) > 20 {
+		if utf8.RuneCountInString(currentWordbankRow.Name) > 35 {
 			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
 			return
 		}
