@@ -153,8 +153,8 @@ func updateCategoryName(appid string, categoryID int, name string) error {
 	return nil
 }
 
-func selectSimilarQuestions(qID int, appID string) ([]string, error) {
-	query := fmt.Sprintf("SELECT Content FROM %s_squestion WHERE Question_Id = ?", appID)
+func selectSimilarQuestions(qID int, appID string) ([]SimilarQuestion, error) {
+	query := fmt.Sprintf("SELECT SQ_Id, Content FROM %s_squestion WHERE Question_Id = ?", appID)
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("DB not init")
@@ -164,18 +164,18 @@ func selectSimilarQuestions(qID int, appID string) ([]string, error) {
 		return nil, fmt.Errorf("query execute failed: %s", err)
 	}
 	defer rows.Close()
-	var contents []string
+	var similarQuestions []SimilarQuestion
 
 	for rows.Next() {
-		var content string
-		rows.Scan(&content)
-		contents = append(contents, content)
+		var sq SimilarQuestion
+		rows.Scan(&sq.Id, &sq.Content)
+		similarQuestions = append(similarQuestions, sq)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("Scanning query failed: %s", err)
 	}
 
-	return contents, nil
+	return similarQuestions, nil
 }
 
 // selectQuestion will return StdQuestion struct of the qid.
@@ -1837,3 +1837,4 @@ func LabelMap(appid string) (map[int]string, error) {
 	}
 	return tagMap, nil
 }
+

@@ -30,12 +30,13 @@ func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "faq",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("GET", "question/{qid:string}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
+			util.NewEntryPoint("GET", "question/{qid:int}/similar-questions", []string{"edit"}, handleQuerySimilarQuestions),
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
 
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("POST", "question", []string{"edit"}, handleCreateQuestion),
 			util.NewEntryPoint("PUT", "question/{qid:int}", []string{"edit"}, handleUpdateQuestion),
+			util.NewEntryPoint("GET", "question/{qid:int}", []string{"view"}, handleQueryQuestion),
 			util.NewEntryPoint("GET", "questions/search", []string{"view"}, handleSearchQuestion),
 			util.NewEntryPoint("GET", "questions/filter", []string{"view"}, handleQuestionFilter),
 			util.NewEntryPoint("POST", "questions/delete", []string{"edit"}, handleDeleteQuestion),
@@ -198,7 +199,25 @@ func handleGetCategories(ctx context.Context) {
 }
 
 func handleQuerySimilarQuestions(ctx context.Context) {
-	ctx.Writef("[]")
+	appid := util.GetAppID(ctx)
+	qid, err := ctx.Params().GetInt("qid")
+	if err != nil {
+		util.LogError.Printf("error while parsing qid, error: %s", err.Error())
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+
+	similarQuestions, err := selectSimilarQuestions(qid, appid)
+
+	type Response struct {
+		SimilarQuestions []SimilarQuestion `json:"similar_question"`
+	}
+
+	response := Response{
+		SimilarQuestions: similarQuestions,
+	}
+
+	ctx.JSON(response)
 }
 
 func handleUpdateSimilarQuestions(ctx context.Context) {
@@ -234,12 +253,18 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	}
 	auditMessage := fmt.Sprintf("[相似问题]:[%s][%s]:", categoryName, question.Content)
 	// select origin Similarity Questions for audit log
-	originSimilarityQuestions, err := selectSimilarQuestions(qid, appid)
+	similarityQuestions, err := selectSimilarQuestions(qid, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
+	var originSimilarityQuestions []string
+	for i := 0; i < len(similarityQuestions); i++ {
+		originSimilarityQuestions = append(originSimilarityQuestions, similarityQuestions[i].Content)
+	}
+
+
 	body := SimilarQuestionReqBody{}
 	if err = ctx.ReadJSON(&body); err != nil {
 		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
@@ -931,6 +956,51 @@ func handleDeleteQuestion(ctx context.Context) {
 
 func handleCommitQuestion(ctx context.Context) {
 	appid := util.GetAppID(ctx)
-	
+
 	go util.McManualBusiness(appid)
+}
+
+func handleQueryQuestion(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	qid, err := ctx.Params().GetInt("qid")
+	if err != nil {
+		util.LogError.Printf("Error happened while fetching question id, reason: %s", err.Error())
+		ctx.StatusCode(http.StatusBadRequest)
+	}
+
+	var targetQuestions []Question = []Question {
+		Question{
+			QuestionId: qid,
+		},
+	}
+
+	questions, err := FindQuestions(appid, targetQuestions)
+	if err != nil {
+		util.LogError.Printf("Error happened while get question %d, reason: %s", qid,  err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+	}
+
+	if len(questions) == 0 {
+		util.LogInfo.Printf("Can not find question: %d", qid)
+		ctx.StatusCode(http.StatusNotFound)
+	}
+
+	question := questions[0]
+	question.AppID = appid
+	err = question.FetchAnswers()
+	if err != nil {
+		util.LogError.Printf("Error happened while fetch answers of question %d, reason: %s", qid,  err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+	}
+
+	for index, _ := range question.Answers {
+		answer := &question.Answers[index]
+		answer.AppID = appid
+		err = answer.Fetch()
+		if err != nil {
+			return
+		}
+	}
+
+	ctx.JSON(question)
 }
