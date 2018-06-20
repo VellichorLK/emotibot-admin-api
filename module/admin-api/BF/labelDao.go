@@ -322,11 +322,16 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 		return err
 	}
 	defer util.ClearTransition(tx)
+	statusVal := 0
+	if cmd.Status {
+		statusVal = 1
+	}
 
 	queryStr := `
 		UPDATE cmd SET
 		name = ?, target = ?, rule = ?, answer = ?,
 		response_type = ?, status = ?, begin_time = ?, end_time = ?
+		status = ?
 		WHERE cmd_id = ? AND appid = ?`
 	ruleStr, _ := json.Marshal(cmd.Rule)
 	statusInt := 0
@@ -342,6 +347,7 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 		statusInt,
 		cmd.Begin,
 		cmd.End,
+		statusVal,
 		id,
 		appid,
 	}

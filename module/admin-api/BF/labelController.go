@@ -109,6 +109,7 @@ func handleUpdateCmd(w http.ResponseWriter, r *http.Request) {
 		retObj = err.Error()
 		return
 	}
+	cmd.ID = id
 	retObj = cmd
 }
 func handleAddCmd(w http.ResponseWriter, r *http.Request) {
