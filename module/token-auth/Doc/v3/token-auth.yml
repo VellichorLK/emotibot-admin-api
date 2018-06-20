@@ -102,6 +102,12 @@ parameters:
     description: 系統管理員密碼
     schema:
       type: password
+  system-admin-verify-passwd:
+    name: verify_password
+    in: formData
+    description: 驗證密碼 (只有在修改使用者密碼的時候會檢查)
+    schema:
+      type: password
   enterprise-name:
     name: name
     in: formData
@@ -180,6 +186,12 @@ parameters:
     description: 企業用戶密碼
     schema:
       type: password
+  enterprise-user-verify-passwd:
+    name: verify_password
+    in: formData
+    description: 驗證密碼 (只有在修改使用者密碼的時候會檢查)
+    schema:
+      type: password
   enterprise-user-role:
     name: role
     in: formData
@@ -194,18 +206,18 @@ parameters:
       type: object
       properties:
         groups:
-          type: array
-          items:
-            description: 對應機器人的操作角色 (Key - apps.uuid, Value - roles.uuid)
-            type: object
-            additionalProperties:
+          description: 對應機器人的操作角色 (Key - robot_groups.uuid, Value - roles.uuid)
+          type: object
+          additionalProperties:
+            type: array
+            items:
               type: string
         apps:
-          type: array
-          items:
-            description: 對應機器人的操作角色 (Key - apps.uuid, Value - roles.uuid)
-            type: object
-            additionalProperties:
+          description: 對應機器人的操作角色 (Key - apps.uuid, Value - roles.uuid)
+          type: object
+          additionalProperties:
+            type: array
+            items:
               type: string
   app-name:
     name: name
@@ -364,6 +376,7 @@ paths:
         - $ref: '#/parameters/system-admin-email'
         - $ref: '#/parameters/system-admin-phone'
         - $ref: '#/parameters/system-admin-passwd'
+        - $ref: '#/parameters/system-admin-verify-passwd'
       description: 更新系統管理員資訊
       responses:
         200:
@@ -579,6 +592,7 @@ paths:
         - $ref: '#/parameters/enterprise-user-email'
         - $ref: '#/parameters/enterprise-user-phone'
         - $ref: '#/parameters/enterprise-user-passwd'
+        - $ref: '#/parameters/enterprise-user-verify-passwd'
         - $ref: '#/parameters/enterprise-user-apps'
       description: 更新企業用戶資訊
       responses:

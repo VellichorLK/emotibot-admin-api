@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -68,35 +69,35 @@ func setUpRoutes() {
 		Route{"UpdateSystemAdmin", "PUT", 3, "admin/{adminID}", SystemAdminUpdateHandlerV3, []interface{}{0}},
 		Route{"DeleteSystemAdmin", "DELETE", 3, "admin/{adminID}", SystemAdminDeleteHandlerV3, []interface{}{0}},
 
-		Route{"GetEnterprises", "GET", 3, "enterprises", EnterprisesGetHandlerV3, []interface{}{0}},
+		Route{"GetEnterprises", "GET", 3, "enterprises", EnterprisesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetEnterprise", "GET", 3, "enterprise/{enterpriseID}", EnterpriseGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"AddEnterprise", "POST", 3, "enterprise", EnterpriseAddHandlerV3, []interface{}{0}},
 		Route{"UpdateEnterprise", "PUT", 3, "enterprise/{enterpriseID}", EnterpriseUpdateHandlerV3, []interface{}{0, 1}},
-		Route{"DeleteEnterprise", "DELETE", 3, "enterprise/{enterpriseID}", EnterpriseDeleteHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteEnterprise", "DELETE", 3, "enterprise/{enterpriseID}", EnterpriseDeleteHandlerV3, []interface{}{0}},
 
 		Route{"GetUsers", "GET", 3, "enterprise/{enterpriseID}/users", UsersGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetUser", "GET", 3, "enterprise/{enterpriseID}/user/{userID}", UserGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddUser", "POST", 3, "enterprise/{enterpriseID}/user", UserAddHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddUser", "POST", 3, "enterprise/{enterpriseID}/user", UserAddHandlerV3, []interface{}{0, 1}},
 		Route{"UpdateUser", "PUT", 3, "enterprise/{enterpriseID}/user/{userID}", UserUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteUser", "DELETE", 3, "enterprise/{enterpriseID}/user/{userID}", UserDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"DeleteUser", "DELETE", 3, "enterprise/{enterpriseID}/user/{userID}", UserDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetApps", "GET", 3, "enterprise/{enterpriseID}/apps", AppsGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetApp", "GET", 3, "enterprise/{enterpriseID}/app/{appID}", AppGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddApp", "POST", 3, "enterprise/{enterpriseID}/app", AppAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateApp", "PUT", 3, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteApp", "DELETE", 3, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddApp", "POST", 3, "enterprise/{enterpriseID}/app", AppAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateApp", "PUT", 3, "enterprise/{enterpriseID}/app/{appID}", AppUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteApp", "DELETE", 3, "enterprise/{enterpriseID}/app/{appID}", AppDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetGroups", "GET", 3, "enterprise/{enterpriseID}/groups", GroupsGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetGroup", "GET", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddGroup", "POST", 3, "enterprise/{enterpriseID}/group", GroupAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateGroup", "PUT", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteGroup", "DELETE", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddGroup", "POST", 3, "enterprise/{enterpriseID}/group", GroupAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateGroup", "PUT", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteGroup", "DELETE", 3, "enterprise/{enterpriseID}/group/{groupID}", GroupDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"GetRoles", "GET", 3, "enterprise/{enterpriseID}/roles", RolesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetRole", "GET", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleGetHandlerV3, []interface{}{0, 1, 2}},
-		Route{"AddRole", "POST", 3, "enterprise/{enterpriseID}/role", RoleAddHandlerV3, []interface{}{0, 1, 2}},
-		Route{"UpdateRole", "PUT", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandlerV3, []interface{}{0, 1, 2}},
-		Route{"DeleteRole", "DELETE", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandlerV3, []interface{}{0, 1, 2}},
+		Route{"AddRole", "POST", 3, "enterprise/{enterpriseID}/role", RoleAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateRole", "PUT", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleUpdateHandlerV3, []interface{}{0, 1}},
+		Route{"DeleteRole", "DELETE", 3, "enterprise/{enterpriseID}/role/{roleID}", RoleDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"Login", "POST", 3, "login", LoginHandlerV3, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "token/{token}", ValidateTokenHandler, []interface{}{}},
@@ -128,34 +129,76 @@ func checkAuth(r *http.Request, route Route) bool {
 		return false
 	}
 
-	userInfo := data.User{}
-	err := userInfo.SetValueWithToken(vals[1])
-	if err != nil {
-		util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
-		return false
-	}
-
-	if !util.IsInSlice(userInfo.Type, route.GrantType) {
-		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
-		return false
-	}
-
-	vars := mux.Vars(r)
-	// Type 1 can only check enterprise of itself
-	// Type 2 can only check enterprise of itself and user info of itself
-	if userInfo.Type == 1 || userInfo.Type == 2 {
-		enterpriseID := vars["enterpriseID"]
-		if enterpriseID != *userInfo.Enterprise {
-			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+	switch route.Version {
+	case 2:
+		userInfo := data.User{}
+		err := userInfo.SetValueWithToken(vals[1])
+		if err != nil {
+			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
 			return false
 		}
-	}
 
-	if userInfo.Type == 2 {
-		userID := vars["userID"]
-		if userID != "" && userID != userInfo.ID {
-			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+		if !util.IsInSlice(userInfo.Type, route.GrantType) {
+			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
 			return false
+		}
+
+		vars := mux.Vars(r)
+		// Enterprise admin user can only check enterprise of itself
+		// Enterprise normal can only check enterprise of itself and user info of itself
+		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+			if userInfo.Enterprise == nil {
+				return false
+			}
+
+			enterpriseID := vars["enterpriseID"]
+			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
+				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+				return false
+			}
+		}
+
+		if userInfo.Type == enum.NormalUser {
+			userID := vars["userID"]
+			if userID != "" && userID != userInfo.ID {
+				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+				return false
+			}
+		}
+	case 3:
+		userInfo := data.UserDetailV3{}
+		err := userInfo.SetValueWithToken(vals[1])
+		if err != nil {
+			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+			return false
+		}
+
+		if !util.IsInSlice(userInfo.Type, route.GrantType) {
+			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+			return false
+		}
+
+		vars := mux.Vars(r)
+		// Enterprise admin user can only check enterprise of itself
+		// Enterprise normal can only check enterprise of itself and user info of itself
+		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+			if userInfo.Enterprise == nil {
+				return false
+			}
+
+			enterpriseID := vars["enterpriseID"]
+			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
+				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+				return false
+			}
+		}
+
+		if userInfo.Type == enum.NormalUser {
+			userID := vars["userID"]
+			if userID != "" && userID != userInfo.ID {
+				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+				return false
+			}
 		}
 	}
 
@@ -186,7 +229,7 @@ func main() {
 						route.HandlerFunc(w, r)
 					}
 				} else {
-					http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					returnForbidden(w)
 				}
 			})
 		util.LogInfo.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
@@ -210,6 +253,22 @@ func getRequester(r *http.Request) *data.User {
 	}
 
 	userInfo := data.User{}
+	err := userInfo.SetValueWithToken(vals[1])
+	if err != nil {
+		return nil
+	}
+
+	return &userInfo
+}
+
+func getRequesterV3(r *http.Request) *data.UserDetailV3 {
+	authorization := r.Header.Get("Authorization")
+	vals := strings.Split(authorization, " ")
+	if len(vals) < 2 {
+		return nil
+	}
+
+	userInfo := data.UserDetailV3{}
 	err := userInfo.SetValueWithToken(vals[1])
 	if err != nil {
 		return nil

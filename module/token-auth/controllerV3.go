@@ -40,6 +40,7 @@ func SystemAdminGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if retData == nil {
 		returnNotFound(w)
+		return
 	}
 
 	returnSuccess(w, retData)
@@ -55,7 +56,14 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddSystemAdminV3(admin)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -69,6 +77,7 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	adminID := vars["adminID"]
@@ -79,11 +88,10 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	origAdmin, err := service.GetSystemAdminV3(adminID)
 	if err != nil {
-		if origAdmin == nil {
-			returnNotFound(w)
-		} else {
-			returnInternalError(w, err.Error())
-		}
+		returnInternalError(w, err.Error())
+		return
+	} else if origAdmin == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -92,6 +100,7 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
+	newAdmin.Type = enum.SuperAdminUser
 
 	if newAdmin.UserName == "" {
 		newAdmin.UserName = origAdmin.UserName
@@ -102,21 +111,53 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if newAdmin.Email == "" {
 		newAdmin.Email = origAdmin.Email
 	}
+	if newAdmin.Phone == "" {
+		newAdmin.Phone = origAdmin.Phone
+	}
 
-	result, err := service.UpdateSystemAdminV3(newAdmin, adminID)
+	if *newAdmin.Password != "" {
+		verifyPassword := r.FormValue("verify_password")
+
+		if verifyPassword == "" {
+			returnForbidden(w)
+			return
+		}
+
+		password, err := service.GetUserPasswordV3(requester.ID)
+		if err != nil {
+			returnInternalError(w, err.Error())
+			return
+		} else if password == "" {
+			returnForbidden(w)
+			return
+		}
+
+		if verifyPassword != password {
+			returnForbidden(w)
+			return
+		}
+	}
+
+	err = service.UpdateSystemAdminV3(origAdmin, newAdmin, adminID)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
-		return
+		switch err {
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+			return
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+			return
+		default:
+			returnInternalError(w, err.Error())
+			return
+		}
 	}
 
 	returnSuccess(w, true)
 }
 
 func SystemAdminDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	if requester.Type != enum.SuperAdminUser {
@@ -211,9 +252,19 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := service.AddEnterpriseV3(name, description, modules, &enterpriseAdmin)
+	enterprise := data.EnterpriseV3{
+		Name:        name,
+		Description: description,
+	}
+
+	id, err := service.AddEnterpriseV3(&enterprise, modules, &enterpriseAdmin)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -250,14 +301,23 @@ func EnterpriseUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if newEnterprise.Name == "" {
+		newEnterprise.Name = origEnterprise.Name
+	}
+	if newEnterprise.Description == "" {
+		newEnterprise.Description = origEnterprise.Description
+	}
+
 	modules := strings.Split(r.FormValue("modules"), ",")
 
-	result, err := service.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
+	err = service.UpdateEnterpriseV3(enterpriseID, origEnterprise, newEnterprise, modules)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -297,6 +357,9 @@ func UsersGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
 	}
 
 	returnSuccess(w, retData)
@@ -330,7 +393,7 @@ func UserGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -352,7 +415,23 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddUserV3(enterpriseID, user)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrRobotGroupNotExist:
+			fallthrough
+		case util.ErrRobotNotExist:
+			fallthrough
+		case util.ErrRoleNotExist:
+			returnUnprocessableEntity(w, err.Error())
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
@@ -366,7 +445,7 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -410,21 +489,70 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if newUser.Email == "" {
 		newUser.Email = origUser.Email
 	}
+	if newUser.Phone == "" {
+		newUser.Phone = origUser.Phone
+	}
 
-	result, err := service.UpdateUserV3(enterpriseID, userID, newUser)
+	if *newUser.Password != "" {
+		verifyPassword := r.FormValue("verify_password")
+
+		if verifyPassword == "" {
+			returnForbidden(w)
+			return
+		}
+
+		var password string
+
+		switch requester.Type {
+		case enum.AdminUser:
+			password, err = service.GetUserPasswordV3(requester.ID)
+			if err != nil {
+				returnInternalError(w, err.Error())
+				return
+			} else if password == "" {
+				returnForbidden(w)
+				return
+			}
+		case enum.NormalUser:
+			password = *origUser.Password
+		default:
+			returnForbidden(w)
+			return
+		}
+
+		if verifyPassword != password {
+			returnForbidden(w)
+			return
+		}
+	}
+
+	err = service.UpdateUserV3(enterpriseID, userID, origUser, newUser)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
-		return
+		switch err {
+		case util.ErrRobotGroupNotExist:
+			fallthrough
+		case util.ErrRobotNotExist:
+			fallthrough
+		case util.ErrRoleNotExist:
+			returnUnprocessableEntity(w, err.Error())
+			return
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
+			return
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "email")
+			return
+		default:
+			returnInternalError(w, err.Error())
+			return
+		}
 	}
 
 	returnSuccess(w, true)
 }
 
 func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequester(r)
+	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -477,6 +605,8 @@ func AppsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
+	} else if retData == nil {
+		returnNotFound(w)
 	}
 
 	returnSuccess(w, retData)
@@ -526,7 +656,15 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddAppV3(enterpriseID, app)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrAppInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
@@ -569,12 +707,21 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.UpdateAppV3(enterpriseID, appID, newApp)
+	if newApp.Name == "" {
+		newApp.Name = origApp.Name
+	}
+	if newApp.Description == "" {
+		newApp.Description = origApp.Description
+	}
+
+	err = service.UpdateAppV3(enterpriseID, appID, origApp, newApp)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
+		switch err {
+		case util.ErrAppInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -620,6 +767,9 @@ func GroupsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetGroupsV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
 		return
 	}
 
@@ -670,7 +820,15 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddGroupV3(enterpriseID, group, apps)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrGroupInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
@@ -713,12 +871,18 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
+	if newGroup.Name == "" {
+		newGroup.Name = origGroup.Name
+	}
+
+	err = service.UpdateGroupV3(enterpriseID, groupID, origGroup, newGroup, apps)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
+		switch err {
+		case util.ErrGroupInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -754,6 +918,7 @@ func GroupDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RolesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterpriseID")
@@ -763,9 +928,13 @@ func RolesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetRolesV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-	} else {
-		returnSuccess(w, retData)
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
 	}
+
+	returnSuccess(w, retData)
 }
 
 func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
@@ -797,6 +966,7 @@ func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
@@ -811,7 +981,15 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	id, err := service.AddRoleV3(enterpriseID, role)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		switch err {
+		case util.ErrRoleInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
@@ -826,29 +1004,42 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
+
 	roleID := vars["roleID"]
 	if !util.IsValidUUID(roleID) {
 		returnBadRequest(w, "role-id")
 		return
 	}
 
-	role, err := parseRoleFromRequestV3(r)
+	origRole, err := service.GetRoleV3(enterpriseID, roleID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if origRole == nil {
+		returnNotFound(w)
+		return
+	}
+
+	newRole, err := parseRoleFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
 	}
 
-	result, err := service.UpdateRoleV3(enterpriseID, roleID, role)
+	err = service.UpdateRoleV3(enterpriseID, roleID, origRole, newRole)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	} else if !result {
-		returnNotFound(w)
+		switch err {
+		case util.ErrRoleInfoExists:
+			returnBadRequest(w, "name")
+		default:
+			returnInternalError(w, err.Error())
+		}
 		return
 	}
 
@@ -857,6 +1048,7 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
 		returnBadRequest(w, "enterprise-id")
@@ -871,7 +1063,6 @@ func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	result, err := service.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-		return
 	} else if !result {
 		returnNotFound(w)
 		return
@@ -943,12 +1134,16 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetModulesV3(enterpriseID)
 	if err != nil {
 		returnInternalError(w, err.Error())
-	} else {
-		returnSuccess(w, retData)
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
 	}
+
+	returnSuccess(w, retData)
 }
 
-func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {
+func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, error) {
 	name := r.FormValue("name")
 	description := r.FormValue("description")
 
@@ -956,7 +1151,7 @@ func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseV3, error) {
 		return nil, errors.New("invalid name")
 	}
 
-	enterprise := data.EnterpriseV3{}
+	enterprise := data.EnterpriseDetailV3{}
 	enterprise.Name = name
 	enterprise.Description = description
 
@@ -1021,20 +1216,24 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 				AppRoles:   make([]*data.UserAppRoleV3, 0),
 			}
 
-			for group, role := range userRolesReq.GroupRoles {
-				userGroup := data.UserGroupRoleV3{
-					ID:   group,
-					Role: role,
+			for group, roles := range userRolesReq.GroupRoles {
+				for _, role := range roles {
+					userGroup := data.UserGroupRoleV3{
+						ID:   group,
+						Role: role,
+					}
+					userRoles.GroupRoles = append(userRoles.GroupRoles, &userGroup)
 				}
-				userRoles.GroupRoles = append(userRoles.GroupRoles, &userGroup)
 			}
 
-			for app, role := range userRolesReq.AppRoles {
-				userApp := data.UserAppRoleV3{
-					ID:   app,
-					Role: role,
+			for app, roles := range userRolesReq.AppRoles {
+				for _, role := range roles {
+					userApp := data.UserAppRoleV3{
+						ID:   app,
+						Role: role,
+					}
+					userRoles.AppRoles = append(userRoles.AppRoles, &userApp)
 				}
-				userRoles.AppRoles = append(userRoles.AppRoles, &userApp)
 			}
 
 			user.Roles = &userRoles

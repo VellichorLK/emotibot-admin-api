@@ -43,8 +43,8 @@ type UserRolesV3 struct {
 }
 
 type UserRolesRequestV3 struct {
-	GroupRoles map[string]string `json:"groups"`
-	AppRoles map[string]string `json:"apps"`
+	GroupRoles map[string][]string `json:"groups"`
+	AppRoles   map[string][]string `json:"apps"`
 }
 
 // IsValid will check valid of not

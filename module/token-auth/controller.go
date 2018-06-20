@@ -572,6 +572,11 @@ func returnForbidden(w http.ResponseWriter) {
 	http.Error(w, "", http.StatusForbidden)
 }
 
+func returnUnprocessableEntity(w http.ResponseWriter, errMsg string) {
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	writeErrJSON(w, errMsg)
+}
+
 func returnInternalError(w http.ResponseWriter, errMsg string) {
 	w.WriteHeader(http.StatusInternalServerError)
 	writeErrJSON(w, errMsg)
