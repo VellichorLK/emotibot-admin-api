@@ -3,6 +3,8 @@ package BF
 import (
 	"database/sql"
 	"strconv"
+
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 )
 
 func GetCmds(appid string) (*CmdClass, error) {
@@ -57,4 +59,43 @@ func GetLabelsOfCmd(appid string, cmdID int) ([]*Label, error) {
 
 func GetCmdCountOfLabels(appid string) (map[int]int, error) {
 	return getCmdCountOfLabels(appid)
+}
+
+func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
+	class, err := getCmdClass(appid, classID)
+	if err == sql.ErrNoRows {
+		return nil, ApiError.NOT_FOUND_ERROR, err
+	} else if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	if class == nil {
+		return nil, ApiError.NOT_FOUND_ERROR, err
+	}
+	return class, ApiError.SUCCESS, nil
+}
+
+func UpdateCmdClass(appid string, classID int, newClassName string) (int, error) {
+	err := updateCmdClass(appid, classID, newClassName)
+	if err == sql.ErrNoRows {
+		return ApiError.NOT_FOUND_ERROR, err
+	} else if err == errDuplicate {
+		return ApiError.REQUEST_ERROR, err
+	} else if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}
+
+func AddCmdClass(appid string, pid *int, className string) (int, int, error) {
+	id, err := addCmdClass(appid, pid, className)
+	if err == errDuplicate {
+		return 0, ApiError.REQUEST_ERROR, err
+	} else if err != nil {
+		return 0, ApiError.DB_ERROR, err
+	}
+	return id, ApiError.SUCCESS, nil
+}
+
+func DeleteCmdClass(appid string, classID int) error {
+	return deleteCmdClass(appid, classID)
 }

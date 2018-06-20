@@ -309,3 +309,109 @@ func handleGetLabelsOfCmd(w http.ResponseWriter, r *http.Request) {
 		retObj = labels
 	}
 }
+
+func handleGetCmdClass(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	classID, err := util.GetMuxIntVar(r, "id")
+
+	retObj, retCode, err = GetCmdClass(appid, classID)
+	if err != nil {
+		status = ApiError.GetHttpStatus(retCode)
+		retObj = err.Error()
+		return
+	}
+}
+func handleDeleteCmdClass(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	classID, err := util.GetMuxIntVar(r, "id")
+	err = DeleteCmdClass(appid, classID)
+	if err != nil {
+		status, retCode, retObj = http.StatusInternalServerError, ApiError.DB_ERROR, err.Error()
+		return
+	}
+}
+func handleAddCmdClass(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	className := r.FormValue("name")
+
+	// class layer is only one for now
+	// pid, err := strconv.Atoi(r.FormValue("pid"))
+	// if err != nil {
+	// 	retCode, retObj = ApiError.REQUEST_ERROR, fmt.Sprintf("get pid fail: %s", err.Error())
+	// 	status = http.StatusBadRequest
+	// 	return
+	// }
+	// class, err = GetCmdClass(appid, pid)
+	// if err != nil {
+	// 	retCode, retObj = ApiError.DB_ERROR, fmt.Sprintf("get parent class fail")
+	// }
+
+	var pid *int
+	classID, retCode, err := AddCmdClass(appid, pid, className)
+	if err != nil {
+		status = ApiError.GetHttpStatus(retCode)
+		retObj = err.Error()
+		return
+	}
+	retObj, retCode, err = GetCmdClass(appid, classID)
+	if err != nil {
+		status = ApiError.GetHttpStatus(retCode)
+		retObj = err.Error()
+		return
+	}
+}
+
+func handleUpdateCmdClass(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	status, retCode := http.StatusOK, ApiError.SUCCESS
+	defer func() {
+		if status == http.StatusOK {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
+		}
+	}()
+	appid := util.GetAppID(r)
+	classID, err := util.GetMuxIntVar(r, "id")
+	newClassName := r.FormValue("name")
+
+	retCode, err = UpdateCmdClass(appid, classID, newClassName)
+	if err != nil {
+		status = ApiError.GetHttpStatus(retCode)
+		retObj = err.Error()
+		return
+	}
+	retObj, retCode, err = GetCmdClass(appid, classID)
+	if err != nil {
+		status = ApiError.GetHttpStatus(retCode)
+		retObj = err.Error()
+		return
+	}
+}

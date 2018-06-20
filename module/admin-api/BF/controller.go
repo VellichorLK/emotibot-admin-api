@@ -61,6 +61,10 @@ func init() {
 			util.NewEntryPoint("PUT", "cmd/{id}", []string{"edit"}, handleUpdateCmd),
 			util.NewEntryPoint("POST", "cmd", []string{"create"}, handleAddCmd),
 			util.NewEntryPoint("DELETE", "cmd/{id}", []string{"view"}, handleDeleteCmd),
+			util.NewEntryPoint("GET", "cmd-class/{id}", []string{"view"}, handleGetCmdClass),
+			util.NewEntryPoint("POST", "cmd-class", []string{"view"}, handleAddCmdClass),
+			util.NewEntryPoint("PUT", "cmd-class/{id}", []string{"edit"}, handleUpdateCmdClass),
+			util.NewEntryPoint("DELETE", "cmd-class/{id}", []string{"delete"}, handleDeleteCmdClass),
 		},
 	}
 }

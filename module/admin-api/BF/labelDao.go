@@ -10,6 +10,9 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+var errDuplicate = errors.New("duplicate item")
+var errDBNotInit = errors.New("DB not init")
+
 // =======================
 // Start of Cmd part
 // =======================
@@ -25,7 +28,7 @@ func getCmds(appid string) (*CmdClass, error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return nil, err
 	}
 
@@ -182,7 +185,7 @@ func getCmd(appid string, id int) (*Cmd, error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return nil, err
 	}
 
@@ -230,7 +233,7 @@ func deleteCmd(appid string, id int) error {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return err
 	}
 
@@ -249,7 +252,7 @@ func addCmd(appid string, cmd *Cmd, cid int) (int, error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return -1, err
 	}
 
@@ -313,7 +316,7 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return err
 	}
 
@@ -384,7 +387,7 @@ func getCmdsOfLabel(appid string, labelID int) ([]*Cmd, error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = errDBNotInit
 		return nil, err
 	}
 
@@ -418,7 +421,7 @@ func getCmdsOfLabel(appid string, labelID int) ([]*Cmd, error) {
 func getLabelsOfCmd(appid string, cmdID int) ([]*Label, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, errDBNotInit
 	}
 
 	queryStr := `
@@ -450,7 +453,7 @@ func getLabelsOfCmd(appid string, cmdID int) ([]*Label, error) {
 func getCmdCountOfLabels(appid string) (map[int]int, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, errDBNotInit
 	}
 
 	ret := map[int]int{}
@@ -481,7 +484,7 @@ func getLabelCmdCount(appid string, id int) (int, error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return 0, errors.New("DB not init")
+		return 0, errDBNotInit
 	}
 
 	queryStr := fmt.Sprintf(
@@ -506,7 +509,7 @@ func getLabelCmdCountMap(appid string) (map[int]int, error) {
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return map[int]int{}, errors.New("DB not init")
+		return map[int]int{}, errDBNotInit
 	}
 
 	queryStr := fmt.Sprintf(
@@ -530,4 +533,164 @@ func getLabelCmdCountMap(appid string) (map[int]int, error) {
 		ret[id]++
 	}
 	return ret, nil
+}
+
+func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `SELECT name FROM cmd_class WHERE appid = ? AND id = ?`
+	row := t.QueryRow(queryStr, appid, classID)
+	cmdClass := CmdClass{}
+	err = row.Scan(&cmdClass.Name)
+	if err != nil {
+		return
+	}
+
+	queryStr = `
+		SELECT
+			cid, cmd_id, name, target, rule, answer,
+			response_type, status, begin_time, end_time
+		FROM cmd WHERE appid = ? AND cid = ?`
+	rows, err := t.Query(queryStr, appid, classID)
+
+	for rows.Next() {
+		var cmd *Cmd
+		_, cmd, err = scanRowToCmd(row)
+		if err != nil {
+			return
+		}
+		cmdClass.Cmds = append(cmdClass.Cmds, cmd)
+	}
+
+	ret = &cmdClass
+	cmdClass.ID = classID
+	err = t.Commit()
+	return
+}
+func updateCmdClass(appid string, classID int, newClassName string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `SELECT count(*) FROM cmd_class WHERE appid = ? AND name = ?`
+	row := t.QueryRow(queryStr, appid, newClassName)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+
+	if count > 0 {
+		err = errDuplicate
+		return
+	}
+
+	queryStr = "UPDATE cmd_class SET name = ? WHERE appid = ? AND id = ?"
+	_, err = t.Exec(queryStr, newClassName, appid, classID)
+	return err
+}
+func addCmdClass(appid string, pid *int, className string) (id int, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `SELECT count(*) FROM cmd_class WHERE appid = ? AND name = ?`
+	row := t.QueryRow(queryStr, appid, className)
+	count := 0
+	err = row.Scan(&count)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+
+	if count > 0 {
+		err = errDuplicate
+		return
+	}
+
+	// parent will always be nil
+	queryStr = `INSERT INTO cmd_class (appid, name, parent) VALUES (?, ?, ?)`
+	result, err := mySQL.Exec(queryStr, appid, className, pid)
+	if err != nil {
+		return
+	}
+
+	id64, err := result.LastInsertId()
+	if err != nil {
+		return
+	}
+	id = int(id64)
+	err = t.Commit()
+	return
+}
+func deleteCmdClass(appid string, classID int) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := "DELETE FROM cmd_class WHERE appid = ? AND id = ?"
+	_, err = t.Exec(queryStr, appid, classID)
+	if err != nil {
+		return
+	}
+
+	queryStr = "UPDATE cmd SET cid = NULL WHERE appid = ? AND cid = ?"
+	_, err = t.Exec(queryStr, appid, classID)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
+	return
 }
