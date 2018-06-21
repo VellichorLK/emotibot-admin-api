@@ -465,6 +465,7 @@ func getCmdCountOfLabels(appid string) (map[int]int, error) {
 	if err != nil {
 		return ret, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		id, count := 0, 0
@@ -554,6 +555,8 @@ func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
 	queryStr := `SELECT name FROM cmd_class WHERE appid = ? AND id = ?`
 	row := t.QueryRow(queryStr, appid, classID)
 	cmdClass := CmdClass{}
+	cmdClass.Cmds = []*Cmd{}
+	cmdClass.Children = []*CmdClass{}
 	err = row.Scan(&cmdClass.Name)
 	if err != nil {
 		return
@@ -565,10 +568,18 @@ func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
 			response_type, status, begin_time, end_time
 		FROM cmd WHERE appid = ? AND cid = ?`
 	rows, err := t.Query(queryStr, appid, classID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+		} else {
+			return
+		}
+	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var cmd *Cmd
-		_, cmd, err = scanRowToCmd(row)
+		_, cmd, err = scanRowToCmd(rows)
 		if err != nil {
 			return
 		}
@@ -614,7 +625,10 @@ func updateCmdClass(appid string, classID int, newClassName string) (err error) 
 
 	queryStr = "UPDATE cmd_class SET name = ? WHERE appid = ? AND id = ?"
 	_, err = t.Exec(queryStr, newClassName, appid, classID)
-	return err
+	if err != nil {
+		return
+	}
+	return t.Commit()
 }
 func addCmdClass(appid string, pid *int, className string) (id int, err error) {
 	defer func() {
