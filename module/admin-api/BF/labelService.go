@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 func GetCmds(appid string) (*CmdClass, error) {
@@ -28,12 +29,26 @@ func DeleteCmd(appid string, id int) error {
 	return err
 }
 
-func AddCmd(appid string, cmd *Cmd, cid int) (int, error) {
-	return addCmd(appid, cmd, cid)
+func AddCmd(appid string, cmd *Cmd, cid int) (int, int, error) {
+	id, err := addCmd(appid, cmd, cid)
+	if err == errDuplicate {
+		return 0, ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+	} else if err != nil {
+		return 0, ApiError.DB_ERROR, err
+	}
+	return id, ApiError.SUCCESS, nil
 }
 
-func UpdateCmd(appid string, id int, cmd *Cmd) error {
-	return updateCmd(appid, id, cmd)
+func UpdateCmd(appid string, id int, cmd *Cmd) (int, error) {
+	err := updateCmd(appid, id, cmd)
+	if err == errDuplicate {
+		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+	} else if err == sql.ErrNoRows {
+		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+	} else if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
 }
 
 func GetLabelsOfCmd(appid string, cmdID int) ([]*Label, error) {
@@ -64,7 +79,7 @@ func GetCmdCountOfLabels(appid string) (map[int]int, error) {
 func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
 	class, err := getCmdClass(appid, classID)
 	if err == sql.ErrNoRows {
-		return nil, ApiError.NOT_FOUND_ERROR, err
+		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
 	} else if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
@@ -77,9 +92,9 @@ func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
 func UpdateCmdClass(appid string, classID int, newClassName string) (int, error) {
 	err := updateCmdClass(appid, classID, newClassName)
 	if err == sql.ErrNoRows {
-		return ApiError.NOT_FOUND_ERROR, err
+		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
 	} else if err == errDuplicate {
-		return ApiError.REQUEST_ERROR, err
+		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
 	} else if err != nil {
 		return ApiError.DB_ERROR, err
 	}
@@ -89,7 +104,7 @@ func UpdateCmdClass(appid string, classID int, newClassName string) (int, error)
 func AddCmdClass(appid string, pid *int, className string) (int, int, error) {
 	id, err := addCmdClass(appid, pid, className)
 	if err == errDuplicate {
-		return 0, ApiError.REQUEST_ERROR, err
+		return 0, ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
 	} else if err != nil {
 		return 0, ApiError.DB_ERROR, err
 	}

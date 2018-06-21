@@ -34,6 +34,7 @@ var (
 		"Category":     "分类",
 		"Row":          "列",
 		"IDError":      "ID错误",
+		"Name":         "名称",
 
 		// General Error
 		"ErrorReadFileError":   "读取档案失败",
@@ -43,7 +44,6 @@ var (
 		"RobotWords": "话术",
 
 		// Used in Switch
-		"Name":     "名称",
 		"Status":   "状态",
 		"Remark":   "描述",
 		"Scenario": "业务场景",
@@ -79,6 +79,12 @@ var (
 		"ErrorRowErrorTpl":    "行 %d：%s",
 		"ErrorPathLevelTpl":   "路径 %d 级内容错误",
 		"ErrorNotEditable":    "该词库不可编辑",
+
+		// Used in Command and command-class
+		"Cmd":          "指令",
+		"CmdClass":     "指令目錄",
+		"CmdClassName": "指令目錄名稱",
+		"CmdParentID":  "指令目錄ID",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

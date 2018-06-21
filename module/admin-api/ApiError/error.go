@@ -13,6 +13,7 @@ var (
 		-2:  "io error",
 		-4:  "consul server unavailable",
 		-7:  "Error when send request to other API server",
+		-8:  "Error when resource not found",
 		101: "Uploaded file still processing",
 		102: "File extension should be xlsx",
 		103: "File size should smaller than 2MB",
@@ -71,6 +72,10 @@ var (
 	ErrDuplicated = errors.New("資源已存在")
 	ErrNotFound   = errors.New("資源不存在")
 )
+
+func GenDuplicatedError(column string, resource string) error {
+	return fmt.Errorf("已存在相同%s的%s", column, resource)
+}
 
 func GenBadRequestError(column string) error {
 	return fmt.Errorf("無效的欄位：%s", column)
