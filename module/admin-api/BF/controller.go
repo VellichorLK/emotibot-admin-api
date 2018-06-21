@@ -168,6 +168,9 @@ func handleUpdateRole(w http.ResponseWriter, r *http.Request) {
 
 func handleDeleteRole(w http.ResponseWriter, r *http.Request) {
 	uuid := util.GetMuxVar(r, "id")
+	if strings.TrimSpace(uuid) == "" {
+		return
+	}
 
 	err := deleteRole(uuid)
 	if err != nil {
