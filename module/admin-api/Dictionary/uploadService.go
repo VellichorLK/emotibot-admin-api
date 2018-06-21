@@ -747,16 +747,18 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		if level > maxDirDepth {
 			return
 		}
-
-		row := sheet.AddRow()
-		for i := 1; i <= maxDirDepth; i++ {
-			cell := row.AddCell()
-			if i == level {
-				name := node.Name
-				if !node.Editable {
-					name = "*" + node.Name
+		var row *xlsx.Row
+		if level > 0 {
+			row = sheet.AddRow()
+			for i := 1; i <= maxDirDepth; i++ {
+				cell := row.AddCell()
+				if i == level {
+					name := node.Name
+					if !node.Editable {
+						name = "*" + node.Name
+					}
+					cell.SetValue(name)
 				}
-				cell.SetValue(name)
 			}
 		}
 
@@ -776,7 +778,7 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 				similarWords = similarWords[boundary:]
 
 				// write wordbank rows
-				if idx != 0 {
+				if idx != 0 || level == 0 {
 					row = sheet.AddRow()
 					fillEmptyCell(row, maxDirDepth)
 				}
@@ -809,9 +811,6 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		}
 	}
 	DFSTravel(root, 0)
-	// for _, child := range root.Children {
-	// 	DFSTravel(child, 1)
-	// }
 
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
