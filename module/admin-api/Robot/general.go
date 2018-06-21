@@ -95,5 +95,12 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errQA.Error()))
 		return
 	}
+	// after init data, update consul to notify controller to init data
+	go util.ConsulUpdateRobotChat(appid)
+	go util.ConsulUpdateFunctionStatus(appid)
+
+	// call multicustomer to handle robot QA
+	go util.McRebuildRobotQA(appid)
+
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, nil))
 }
