@@ -90,10 +90,14 @@ func GetErrorMsg(errno int) string {
 
 func GetHttpStatus(errno int) int {
 	switch errno {
+	case SUCCESS:
+		return http.StatusOK
 	case NOT_FOUND_ERROR:
 		return http.StatusNotFound
 	case REQUEST_ERROR:
 		return http.StatusBadRequest
+	case DB_ERROR:
+		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
 	}

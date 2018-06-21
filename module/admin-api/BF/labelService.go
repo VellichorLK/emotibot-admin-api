@@ -84,7 +84,7 @@ func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
 		return nil, ApiError.DB_ERROR, err
 	}
 	if class == nil {
-		return nil, ApiError.NOT_FOUND_ERROR, err
+		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
 	}
 	return class, ApiError.SUCCESS, nil
 }

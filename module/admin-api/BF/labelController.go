@@ -443,14 +443,15 @@ func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if cid != -1 {
-		parentClass, _, err := GetCmdClass(appid, cid)
-		if err != nil {
-			retCode = ApiError.DB_ERROR
+		var parentClass *CmdClass
+		parentClass, _, err = GetCmdClass(appid, cid)
+		if parentClass == nil {
+			retCode = ApiError.REQUEST_ERROR
 			err = errors.New(util.Msg["ErrorCmdParentNotFound"])
 			return
 		}
-		if parentClass == nil {
-			retCode = ApiError.REQUEST_ERROR
+		if err != nil {
+			retCode = ApiError.DB_ERROR
 			err = errors.New(util.Msg["ErrorCmdParentNotFound"])
 			return
 		}
