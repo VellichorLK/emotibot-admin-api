@@ -55,6 +55,19 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 	admin.Type = enum.SuperAdminUser
 
+	if admin.UserName == "" {
+		returnBadRequest(w, "username")
+		return
+	}
+	if admin.Email == "" {
+		returnBadRequest(w, "email")
+		return
+	}
+	if admin.DisplayName == "" {
+		returnBadRequest(w, "name")
+		return
+	}
+
 	id, err := service.AddSystemAdminV3(admin)
 	if err != nil {
 		switch err {
@@ -106,14 +119,13 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if newAdmin.UserName == "" {
 		newAdmin.UserName = origAdmin.UserName
 	}
-	if newAdmin.DisplayName == "" {
-		newAdmin.DisplayName = origAdmin.DisplayName
-	}
 	if newAdmin.Email == "" {
-		newAdmin.Email = origAdmin.Email
+		returnBadRequest(w, "email")
+		return
 	}
-	if newAdmin.Phone == "" {
-		newAdmin.Phone = origAdmin.Phone
+	if newAdmin.DisplayName == "" {
+		returnBadRequest(w, "name")
+		return
 	}
 
 	if *newAdmin.Password != "" {
@@ -303,10 +315,8 @@ func EnterpriseUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newEnterprise.Name == "" {
-		newEnterprise.Name = origEnterprise.Name
-	}
-	if newEnterprise.Description == "" {
-		newEnterprise.Description = origEnterprise.Description
+		returnBadRequest(w, "name")
+		return
 	}
 
 	modules := strings.Split(r.FormValue("modules"), ",")
@@ -426,6 +436,22 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.UserName == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "username")
+		return
+	}
+	if user.Email == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "email")
+		return
+	}
+	if user.DisplayName == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
+	}
+
 	if requester.Type > user.Type {
 		err = util.ErrOperationForbidden
 		returnForbidden(w)
@@ -530,14 +556,15 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if newUser.UserName == "" {
 		newUser.UserName = origUser.UserName
 	}
-	if newUser.DisplayName == "" {
-		newUser.DisplayName = origUser.DisplayName
-	}
 	if newUser.Email == "" {
-		newUser.Email = origUser.Email
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "email")
+		return
 	}
-	if newUser.Phone == "" {
-		newUser.Phone = origUser.Phone
+	if newUser.DisplayName == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
 	}
 
 	if *newUser.Password != "" {
@@ -746,6 +773,12 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if app.Name == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
+	}
+
 	id, err := service.AddAppV3(enterpriseID, app)
 	if err != nil {
 		switch err {
@@ -826,10 +859,9 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newApp.Name == "" {
-		newApp.Name = origApp.Name
-	}
-	if newApp.Description == "" {
-		newApp.Description = origApp.Description
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
 	}
 
 	err = service.UpdateAppV3(enterpriseID, appID, origApp, newApp)
@@ -985,6 +1017,12 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if group.Name == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
+	}
+
 	id, err := service.AddGroupV3(enterpriseID, group, apps)
 	if err != nil {
 		switch err {
@@ -1066,7 +1104,9 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newGroup.Name == "" {
-		newGroup.Name = origGroup.Name
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
 	}
 
 	err = service.UpdateGroupV3(enterpriseID, groupID, origGroup, newGroup, apps)
@@ -1222,6 +1262,12 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if role.Name == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
+	}
+
 	id, err := service.AddRoleV3(enterpriseID, role)
 	if err != nil {
 		switch err {
@@ -1299,6 +1345,12 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	newRole, err := parseRoleFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
+		return
+	}
+
+	if newRole.Name == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
 		return
 	}
 
@@ -1460,13 +1512,8 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, error) {
-	name := r.FormValue("name")
+	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")
-
-	if name == "" {
-		return nil, errors.New("invalid name")
-	}
-
 	enterprise := data.EnterpriseDetailV3{}
 	enterprise.Name = name
 	enterprise.Description = description
@@ -1477,14 +1524,8 @@ func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, er
 func parseAddUserFromRequestV3(r *http.Request) (*data.UserDetailV3, error) {
 	user := loadUserFromRequestV3(r)
 
-	// if user.Email == nil || *user.Email == "" {
-	// 	return nil, errors.New("invalid email")
-	// }
 	if user.Password == nil || *user.Password == "" {
-		return nil, errors.New("Invalid password")
-	}
-	if user.UserName == "" {
-		return nil, errors.New("Invalid username")
+		return nil, errors.New("password")
 	}
 
 	return user, nil
@@ -1501,9 +1542,9 @@ func parseUpdateUserFromRequestV3(r *http.Request) (*data.UserDetailV3, error) {
 }
 
 func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
-	username := r.FormValue("username")
-	name := r.FormValue("name")
-	email := r.FormValue("email")
+	username := strings.TrimSpace(r.FormValue("username"))
+	name := strings.TrimSpace(r.FormValue("name"))
+	email := strings.TrimSpace(r.FormValue("email"))
 	phone := r.FormValue("phone")
 	password := r.FormValue("password")
 
@@ -1573,7 +1614,7 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 }
 
 func parseAppFromRequestV3(r *http.Request) (*data.AppDetailV3, error) {
-	name := r.FormValue("name")
+	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")
 
 	ret := data.AppDetailV3{
@@ -1587,7 +1628,7 @@ func parseAppFromRequestV3(r *http.Request) (*data.AppDetailV3, error) {
 }
 
 func parseGroupFromRequestV3(r *http.Request) (*data.GroupDetailV3, []string, error) {
-	name := r.FormValue("name")
+	name := strings.TrimSpace(r.FormValue("name"))
 
 	var apps []string
 	err := json.Unmarshal([]byte(r.FormValue("apps")), &apps)
@@ -1606,9 +1647,6 @@ func parseGroupFromRequestV3(r *http.Request) (*data.GroupDetailV3, []string, er
 
 func parseRoleFromRequestV3(r *http.Request) (*data.RoleV3, error) {
 	name := strings.TrimSpace(r.FormValue("name"))
-	if name == "" {
-		return nil, errors.New("Invalid name")
-	}
 	description := r.FormValue("description")
 	privilegeStr := r.FormValue("privilege")
 
