@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
+	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
@@ -109,10 +110,16 @@ func setUpRoutes() {
 
 func setUpDB() {
 	db := dao.MYSQLController{}
+
 	url, port, user, passwd, dbName := util.GetMySQLConfig()
 	util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitDB(url, port, dbName, user, passwd)
 	service.SetDB(&db)
+
+	url, port, user, passwd, dbName = util.GetMySQLAuditConfig()
+	util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	db.InitAuditDB(url, port, dbName, user, passwd)
+	audit.SetDB(&db)
 }
 
 func checkAuth(r *http.Request, route Route) bool {

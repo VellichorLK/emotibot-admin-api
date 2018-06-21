@@ -89,4 +89,6 @@ type DB interface {
 	EnterpriseRoleInfoExistsV3(enterpriseID string, roleName string) (bool, error)
 
 	GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error)
+
+	AddAuditLog(auditLog data.AuditLog) error
 }
