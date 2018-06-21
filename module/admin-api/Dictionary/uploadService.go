@@ -726,7 +726,7 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	root, err := GetWordbanksV3(appid)
+	root, _, err := GetWordbanksV3(appid)
 	if err != nil {
 		return nil, err
 	}

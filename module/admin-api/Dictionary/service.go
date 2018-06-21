@@ -117,24 +117,44 @@ func GetWordbankRow(appid string, id int) (*WordBankRow, error) {
 }
 
 // GetWordbankV3 will get wordbank from new table
-func GetWordbanksV3(appid string) (*WordBankClassV3, error) {
-	return getWordbanksV3(appid)
+func GetWordbanksV3(appid string) (*WordBankClassV3, int, error) {
+	root, err := getWordbanksV3(appid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return root, ApiError.SUCCESS, nil
 }
 
 func GetWordbankV3(appid string, id int) (*WordBankV3, int, error) {
-	return getWordbankV3(appid, id)
+	wordbank, _, err := getWordbankV3(appid, id)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	} else if wordbank == nil {
+		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+	}
+	return wordbank, ApiError.SUCCESS, nil
 }
 
 func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, int, error) {
-	return getWordbankClassV3(appid, id)
+	class, _, err := getWordbankClassV3(appid, id)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	} else if class == nil {
+		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+	}
+	return class, ApiError.SUCCESS, nil
 }
 
 func GetWordbanksWithChildrenV3(appid string, id int) (ret *WordBankClassV3, err error) {
 	return getWordbanksWithChildren(appid, id)
 }
 
-func DeleteWordbankV3(appid string, id int) error {
-	return deleteWordbankV3(appid, id)
+func DeleteWordbankV3(appid string, id int) (int, error) {
+	err := deleteWordbankV3(appid, id)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
 }
 func DeleteWordbankClassV3(appid string, id int) error {
 	return deleteWordbankClassV3(appid, id)

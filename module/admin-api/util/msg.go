@@ -35,6 +35,10 @@ var (
 		"Row":          "列",
 		"IDError":      "ID错误",
 
+		// General Error
+		"ErrorReadFileError":   "读取档案失败",
+		"ErrorUploadEmptyFile": "上传档案为大小为0",
+
 		// Used in robot words
 		"RobotWords": "话术",
 
@@ -74,6 +78,7 @@ var (
 		"ErrorNameTooLongTpl": "行 %d: 词库名超过20字",
 		"ErrorRowErrorTpl":    "行 %d：%s",
 		"ErrorPathLevelTpl":   "路径 %d 级内容错误",
+		"ErrorNotEditable":    "该词库不可编辑",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

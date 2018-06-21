@@ -541,96 +541,112 @@ func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 func handleGetWordbanksV3(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	wordbanks, err := GetWordbanksV3(appid)
+	wordbanks, errno, err := GetWordbanksV3(appid)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 	} else {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
 	}
 }
 
 func handleGetWordbankV3(w http.ResponseWriter, r *http.Request) {
+	var ret interface{}
+	var err error
+	errno := ApiError.SUCCESS
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(errno, ret))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		}
+	}()
+
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		util.WriteJSONWithStatus(w,
-			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("Invalid ID: %s", err.Error())),
-			http.StatusBadRequest)
+		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
 		return
 	}
 
-	wordbank, _, err := GetWordbankV3(appid, id)
+	wordbank, errno, err := GetWordbankV3(appid, id)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	if wordbank == nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Not found"), http.StatusNotFound)
-		return
-	}
-
-	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
+	ret = wordbank
+	return
 }
 func handleGetWordbankClassV3(w http.ResponseWriter, r *http.Request) {
+	var ret interface{}
+	var err error
+	errno := ApiError.SUCCESS
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(errno, ret))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		}
+	}()
+
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		util.WriteJSONWithStatus(w,
-			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("Invalid ID: %s", err.Error())),
-			http.StatusBadRequest)
+		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
 		return
 	}
 
-	wordbank, _, err := GetWordbankClassV3(appid, id)
+	wordbankClass, errno, err := GetWordbankClassV3(appid, id)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	if wordbank == nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Not found"), http.StatusNotFound)
 		return
 	}
 
-	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbank))
+	ret = wordbankClass
+	return
 }
 
 func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
+	var ret interface{}
+	var err error
+	errno := ApiError.SUCCESS
 	appid := util.GetAppID(r)
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
-	ret := 0
+	result := 0
 	defer func() {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(errno, ret))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		}
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, result)
 	}()
+
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		errMsg += ": " + util.Msg["IDError"]
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
 		return
 	}
 
-	wordbank, _, err := GetWordbankV3(appid, id)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+	wordbank, errno, err := GetWordbankV3(appid, id)
+	if err == ApiError.ErrNotFound {
+		errno, err = ApiError.SUCCESS, nil
 		return
 	}
-	if wordbank == nil {
-		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	if err != nil {
 		return
 	}
 	if !wordbank.Editable {
-		err = errors.New("Wordbank not editable")
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-	}
-
-	err = DeleteWordbankV3(appid, id)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		err = errors.New(util.Msg["ErrorNotEditable"])
+		errno = ApiError.REQUEST_ERROR
 		return
 	}
-	ret = 1
-	util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+
+	errno, err = DeleteWordbankV3(appid, id)
+	if err != nil {
+		return
+	}
+	result = 1
 	go TriggerUpdateWordbankV3(appid)
 	return
 }
@@ -681,10 +697,12 @@ func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
+	var ret interface{}
+	var err error
+	errno := ApiError.SUCCESS
 	errMsg := ""
 	appid := util.GetAppID(r)
 	now := time.Now()
-	var err error
 	buf := []byte{}
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
@@ -692,21 +710,29 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("Recovered in %v", r)
 		}
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(errno, ret))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		}
 		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
-		ret := 0
+		importResult := 0
 		if err == nil {
 			errMsg += " => " + filename
-			ret = 1
+			importResult = 1
+		} else {
+			errMsg += ": " + err.Error()
 		}
 		util.LogTrace.Println("Audit: ", errMsg)
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, importResult)
 
 		RecordDictionaryImportProcess(appid, filename, buf, err)
 	}()
 
 	file, info, err := r.FormFile("file")
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
+		errno = ApiError.IO_ERROR
+		err = fmt.Errorf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
 		return
 	}
 	defer file.Close()
@@ -715,28 +741,35 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 
 	// 1. parseFile
 	size := info.Size
+	if size == 0 {
+		errno = ApiError.REQUEST_ERROR
+		err = errors.New(util.Msg["ErrorUploadEmptyFile"])
+		return
+	}
+
 	buf = make([]byte, size)
 	_, err = file.Read(buf)
 	if err != nil {
-		errMsg += fmt.Sprintf(", %s", err.Error())
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		errno = ApiError.IO_ERROR
+		err = fmt.Errorf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
 		return
 	}
 	root, err := parseDictionaryFromXLSXV3(buf)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		errno = ApiError.REQUEST_ERROR
 		return
 	}
 
 	// 2. save to mysql
 	err = SaveWordbankV3Rows(appid, root)
 	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		errno = ApiError.DB_ERROR
 		return
 	}
-	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, map[string]interface{}{
+
+	ret = map[string]interface{}{
 		"root": root,
-	}))
+	}
 	go TriggerUpdateWordbankV3(appid)
 }
 
@@ -989,7 +1022,6 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 	}
 	go TriggerUpdateWordbankV3(appid)
 }
-
 func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var result interface{}
@@ -1065,7 +1097,6 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 	}
 	go TriggerUpdateWordbankV3(appid)
 }
-
 func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var result interface{}
