@@ -333,7 +333,7 @@ func updateCmd(appid string, id int, cmd *Cmd) error {
 	queryStr := `
 		UPDATE cmd SET
 		name = ?, target = ?, rule = ?, answer = ?,
-		response_type = ?, status = ?, begin_time = ?, end_time = ?
+		response_type = ?, status = ?, begin_time = ?, end_time = ?,
 		status = ?
 		WHERE cmd_id = ? AND appid = ?`
 	ruleStr, _ := json.Marshal(cmd.Rule)
