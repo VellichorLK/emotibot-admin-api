@@ -28,6 +28,7 @@ const (
 	machineTableV3        = "machine"
 	columnTableV3         = "columns"
 	moduleTableV3         = "modules"
+	auditTableV3          = "audit_record"
 )
 
 func (controller MYSQLController) GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
@@ -1933,6 +1934,27 @@ func deleteRoleWithTx(roleID int, roleUUID string, t *sql.Tx) error {
 	queryStr = fmt.Sprintf("DELETE FROM %s WHERE uuid = ?", roleTable)
 	_, err = t.Exec(queryStr, roleUUID)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (controller MYSQLController) AddAuditLog(auditLog data.AuditLog) error {
+	ok, err := controller.checkAuditDB()
+	if !ok {
+		util.LogDBError(err)
+		return err
+	}
+
+	queryStr := fmt.Sprintf(`
+		INSERT INTO %s
+		(appid, user_id, ip_source, module, operation, content, result)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, auditTableV3)
+	_, err = controller.auditDB.Exec(queryStr, auditLog.AppID, auditLog.UserID, auditLog.UserIP,
+		auditLog.Module, auditLog.Operation, auditLog.Content, auditLog.Result)
+	if err != nil {
+		util.LogDBError(err)
 		return err
 	}
 

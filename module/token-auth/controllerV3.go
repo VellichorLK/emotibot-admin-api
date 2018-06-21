@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
@@ -396,19 +397,37 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
+	var user *data.UserDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if user != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentUserAdd, user.UserName)
+		} else {
+			auditMessage = data.AuditContentUserAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleMembers, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	user, err := parseAddUserFromRequestV3(r)
+	user, err = parseAddUserFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
 	}
 
 	if requester.Type > user.Type {
+		err = util.ErrOperationForbidden
 		returnForbidden(w)
 		return
 	}
@@ -431,12 +450,17 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	} else if id == "" {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
 	newUser, err := service.GetUserV3(enterpriseID, id)
-	if err != nil || user == nil {
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if newUser == nil {
+		err = util.ErrInteralServer
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -448,28 +472,51 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
+	var userID string
+	var origUser *data.UserDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if origUser != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentUserUpdate, origUser.UserName)
+		} else if userID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentUserUpdate, userID)
+		} else {
+			auditMessage = data.AuditContentUserUpdate
+		}
+
+		addAuditLog(r, audit.AuditModuleMembers, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	userID := vars["userID"]
+	userID = vars["userID"]
 	if !util.IsValidUUID(userID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "user-id")
 		return
 	}
 
-	origUser, err := service.GetUserV3(enterpriseID, userID)
+	origUser, err = service.GetUserV3(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	} else if origUser == nil {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
 
 	if requester.Type > origUser.Type {
+		err = util.ErrOperationForbidden
 		returnForbidden(w)
 		return
 	}
@@ -497,6 +544,7 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		verifyPassword := r.FormValue("verify_password")
 
 		if verifyPassword == "" {
+			err = util.ErrOperationForbidden
 			returnForbidden(w)
 			return
 		}
@@ -510,17 +558,20 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 				returnInternalError(w, err.Error())
 				return
 			} else if password == "" {
+				err = util.ErrOperationForbidden
 				returnForbidden(w)
 				return
 			}
 		case enum.NormalUser:
 			password = *origUser.Password
 		default:
+			err = util.ErrOperationForbidden
 			returnForbidden(w)
 			return
 		}
 
 		if verifyPassword != password {
+			err = util.ErrOperationForbidden
 			returnForbidden(w)
 			return
 		}
@@ -555,27 +606,50 @@ func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	requester := getRequesterV3(r)
 	vars := mux.Vars(r)
 
+	var userID string
+	var user *data.UserDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if user != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentUserDelete, user.UserName)
+		} else if userID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentUserDelete, userID)
+		} else {
+			auditMessage = data.AuditContentUserDelete
+		}
+
+		addAuditLog(r, audit.AuditModuleMembers, audit.AuditOperationDelete,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
-	userID := vars["userID"]
+	userID = vars["userID"]
 	if !util.IsValidUUID(userID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "user-id")
 		return
 	}
 
-	user, err := service.GetUserV3(enterpriseID, userID)
+	user, err = service.GetUserV3(enterpriseID, userID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	} else if user == nil {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
 
 	if requester.Type > user.Type {
+		err = util.ErrOperationForbidden
 		returnForbidden(w)
 		return
 	}
@@ -585,6 +659,7 @@ func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnInternalError(w, err.Error())
 		return
 	} else if !result {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -642,13 +717,30 @@ func AppGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var app *data.AppDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if app != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppAdd, app.Name)
+		} else {
+			auditMessage = data.AuditContentAppAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleRobot, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	app, err := parseAppFromRequestV3(r)
+	app, err = parseAppFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
@@ -669,7 +761,11 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newApp, err := service.GetAppV3(enterpriseID, id)
-	if err != nil || newApp == nil {
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if newApp == nil {
+		err = util.ErrInteralServer
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -680,23 +776,45 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var appID string
+	var origApp *data.AppDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if origApp != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppUpdate, origApp.Name)
+		} else if appID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppUpdate, appID)
+		} else {
+			auditMessage = data.AuditContentAppUpdate
+		}
+
+		addAuditLog(r, audit.AuditModuleRobot, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	appID := vars["appID"]
+	appID = vars["appID"]
 	if !util.IsValidUUID(appID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "app-id")
 		return
 	}
 
-	origApp, err := service.GetAppV3(enterpriseID, appID)
+	origApp, err = service.GetAppV3(enterpriseID, appID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	} else if origApp == nil {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -731,15 +849,46 @@ func AppUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 func AppDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var appID string
+	var app *data.AppDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if app != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppDelete, app.Name)
+		} else if appID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppDelete, appID)
+		} else {
+			auditMessage = data.AuditContentAppDelete
+		}
+
+		addAuditLog(r, audit.AuditModuleRobot, audit.AuditOperationDelete,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	appID := vars["appID"]
+	appID = vars["appID"]
 	if !util.IsValidUUID(appID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "app-id")
+		return
+	}
+
+	app, err = service.GetAppV3(enterpriseID, appID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if app == nil {
+		err = util.ErrResourceNotFound
+		returnNotFound(w)
 		return
 	}
 
@@ -748,6 +897,7 @@ func AppDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnInternalError(w, err.Error())
 		return
 	} else if !result {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -806,8 +956,25 @@ func GroupGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var group *data.GroupDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if group != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentGroupAdd, group.Name)
+		} else {
+			auditMessage = data.AuditContentGroupAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleRobotGroup, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
@@ -828,12 +995,17 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	} else if id == "" {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
 	newGroup, err := service.GetGroupV3(enterpriseID, id)
-	if err != nil || newGroup == nil {
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if newGroup == nil {
+		err = util.ErrInteralServer
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -844,23 +1016,45 @@ func GroupAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var groupID string
+	var origGroup *data.GroupDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if origGroup != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentGroupUpdate, origGroup.Name)
+		} else if groupID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentGroupUpdate, groupID)
+		} else {
+			auditMessage = data.AuditContentGroupUpdate
+		}
+
+		addAuditLog(r, audit.AuditModuleRobotGroup, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	groupID := vars["groupID"]
+	groupID = vars["groupID"]
 	if !util.IsValidUUID(groupID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "group-id")
 		return
 	}
 
-	origGroup, err := service.GetGroupV3(enterpriseID, groupID)
+	origGroup, err = service.GetGroupV3(enterpriseID, groupID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	} else if origGroup == nil {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -892,15 +1086,46 @@ func GroupUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 func GroupDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var groupID string
+	var group *data.GroupDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if group != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentGroupDelete, group.Name)
+		} else if groupID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentGroupDelete, groupID)
+		} else {
+			auditMessage = data.AuditContentGroupDelete
+		}
+
+		addAuditLog(r, audit.AuditModuleRobotGroup, audit.AuditOperationDelete,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	groupID := vars["groupID"]
+	groupID = vars["groupID"]
 	if !util.IsValidUUID(groupID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "group-id")
+		return
+	}
+
+	group, err = service.GetGroupV3(enterpriseID, groupID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if group == nil {
+		err = util.ErrResourceNotFound
+		returnNotFound(w)
 		return
 	}
 
@@ -909,6 +1134,7 @@ func GroupDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnInternalError(w, err.Error())
 		return
 	} else if !result {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -967,13 +1193,30 @@ func RoleGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var role *data.RoleV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if role != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentRoleAdd, role.Name)
+		} else {
+			auditMessage = data.AuditContentRoleAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleRole, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	role, err := parseRoleFromRequestV3(r)
+	role, err = parseRoleFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
 		return
@@ -989,12 +1232,17 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	} else if id == "" {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
 	newRole, err := service.GetRoleV3(enterpriseID, id)
 	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if newRole == nil {
+		err = util.ErrInteralServer
 		returnInternalError(w, err.Error())
 		return
 	}
@@ -1005,23 +1253,45 @@ func RoleAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var roleID string
+	var origRole *data.RoleV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if origRole != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentRoleUpdate, origRole.Name)
+		} else if roleID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentRoleUpdate, roleID)
+		} else {
+			auditMessage = data.AuditContentRoleUpdate
+		}
+
+		addAuditLog(r, audit.AuditModuleRole, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
 
-	roleID := vars["roleID"]
+	roleID = vars["roleID"]
 	if !util.IsValidUUID(roleID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "role-id")
 		return
 	}
 
-	origRole, err := service.GetRoleV3(enterpriseID, roleID)
+	origRole, err = service.GetRoleV3(enterpriseID, roleID)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
 	} else if origRole == nil {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -1049,14 +1319,46 @@ func RoleUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
+	var roleID string
+	var role *data.RoleV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if role != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentRoleDelete, role.Name)
+		} else if roleID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentRoleDelete, roleID)
+		} else {
+			auditMessage = data.AuditContentRoleDelete
+		}
+
+		addAuditLog(r, audit.AuditModuleRole, audit.AuditOperationDelete,
+			auditMessage, err)
+	}()
+
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "enterprise-id")
 		return
 	}
-	roleID := vars["roleID"]
+
+	roleID = vars["roleID"]
 	if !util.IsValidUUID(roleID) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "role-id")
+		return
+	}
+
+	role, err = service.GetRoleV3(enterpriseID, roleID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if role == nil {
+		err = util.ErrResourceNotFound
+		returnNotFound(w)
 		return
 	}
 
@@ -1064,6 +1366,7 @@ func RoleDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		returnInternalError(w, err.Error())
 	} else if !result {
+		err = util.ErrResourceNotFound
 		returnNotFound(w)
 		return
 	}
@@ -1075,13 +1378,25 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	account := r.Form.Get("account")
 	passwd := r.Form.Get("passwd")
+
+	var err error
+
+	defer func() {
+		// Add audit log
+		auditMessage := fmt.Sprintf("[%s]: %s", data.AuditLogin, account)
+		addAuditLog(r, audit.AuditModuleMembers, audit.AuditOperationLogin,
+			auditMessage, err)
+	}()
+
 	if !util.IsValidString(&passwd) || !util.IsValidString(&account) {
+		err = util.ErrInvalidParameter
 		returnBadRequest(w, "")
 		return
 	}
 
 	// If user is banned, return Forbidden
 	if util.UserBanInfos.IsUserBanned(account) {
+		err = util.ErrOperationForbidden
 		returnForbidden(w)
 		writeErrJSONWithObj(w, "forbidden", util.UserBanInfos[account])
 		return
@@ -1100,6 +1415,7 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 			util.UserBanInfos.BanUser(account)
 			resetUserTryCount(account)
 		}
+		err = util.ErrOperationForbidden
 		returnForbidden(w)
 		writeErrJSONWithObj(w, "forbidden", util.UserBanInfos[account])
 		return
@@ -1310,4 +1626,19 @@ func parseRoleFromRequestV3(r *http.Request) (*data.RoleV3, error) {
 	}
 
 	return &ret, nil
+}
+
+func addAuditLog(r *http.Request, auditModule, auditOperation,
+	auditMessage string, err error) {
+	appID := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+
+	result := 1
+	if err != nil {
+		result = 0
+	}
+
+	audit.AddAuditLog(appID, userID, userIP, auditModule, auditOperation,
+		auditMessage, result)
 }
