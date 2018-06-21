@@ -81,10 +81,11 @@ var (
 		"ErrorNotEditable":    "该词库不可编辑",
 
 		// Used in Command and command-class
-		"Cmd":          "指令",
-		"CmdClass":     "指令目錄",
-		"CmdClassName": "指令目錄名稱",
-		"CmdParentID":  "指令目錄ID",
+		"Cmd":                    "指令",
+		"CmdClass":               "指令目录",
+		"CmdClassName":           "指令目录名称",
+		"CmdParentID":            "指令目录ID",
+		"ErrorCmdParentNotFound": "目标目录获取失败",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

@@ -59,6 +59,7 @@ func init() {
 			util.NewEntryPoint("GET", "cmds", []string{"view"}, handleGetCmds),
 			util.NewEntryPoint("GET", "cmd/{id}", []string{"edit"}, handleGetCmd),
 			util.NewEntryPoint("PUT", "cmd/{id}", []string{"edit"}, handleUpdateCmd),
+			util.NewEntryPoint("PUT", "cmd/{id}/move", []string{"edit"}, handleMoveCmd),
 			util.NewEntryPoint("GET", "cmd-class/{id}", []string{"view"}, handleGetCmdClass),
 
 			util.NewEntryPoint("POST", "cmd", []string{"create"}, handleAddCmd),

@@ -92,9 +92,55 @@ components:
           type: string
         result:
           $ref: '#/components/schemas/cmd-class'
+    ret-success-class:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
 paths:
+  '/cmd/{id}/move':
+    put:
+      tags: 
+        - 指令
+      summary: "移動指令所在目錄名稱"
+      parameters: 
+        - in: path
+          name: id
+          description: 指令 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                cid:
+                  type: integer
+                  description: 目標指令目錄ID
+                  example: 10
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-success-class'
+        400:
+          description: "ID 參數錯誤"
+        404:
+          description: "目錄不存在"
+        500:
+          description: "Internal server error"
   '/cmd-class/{id}':
     get:
+      tags: 
+        - 指令目錄
       summary: "取得單一指令目錄"
       parameters: 
         - in: path
@@ -118,6 +164,8 @@ paths:
         500:
           description: "Internal server error"
     put:
+      tags: 
+        - 指令目錄
       summary: "更新指令目錄名稱"
       parameters: 
         - in: path
@@ -152,6 +200,8 @@ paths:
         500:
           description: "Internal server error"
     delete:
+      tags: 
+        - 指令目錄
       summary: "刪除指令目錄"
       description: "刪除後會將底下的指令放至根目錄下"
       parameters: 
@@ -172,6 +222,8 @@ paths:
           
   '/cmd-class':
     post:
+      tags: 
+        - 指令目錄
       summary: "新增一個指令目錄"
       requestBody:
         required: true

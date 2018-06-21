@@ -92,7 +92,7 @@ func handleUpdateCmd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		retCode = ApiError.IO_ERROR
+		retCode = ApiError.DB_ERROR
 		return
 	}
 
@@ -415,4 +415,61 @@ func handleUpdateCmdClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	retObj, retCode, err = GetCmdClass(appid, classID)
+}
+
+func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	var err error
+	appid := util.GetAppID(r)
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
+		}
+	}()
+
+	id, err := util.GetMuxIntVar(r, "id")
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		err = ApiError.GenBadRequestError("ID")
+		return
+	}
+	cid, err := strconv.Atoi(r.FormValue("cid"))
+	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
+		err = ApiError.GenBadRequestError(util.Msg["CmdParentID"])
+		return
+	}
+	if cid != -1 {
+		parentClass, _, err := GetCmdClass(appid, cid)
+		if err != nil {
+			retCode = ApiError.DB_ERROR
+			err = errors.New(util.Msg["ErrorCmdParentNotFound"])
+			return
+		}
+		if parentClass == nil {
+			retCode = ApiError.REQUEST_ERROR
+			err = errors.New(util.Msg["ErrorCmdParentNotFound"])
+			return
+		}
+	}
+
+	origCmd, err := GetCmd(appid, id)
+	if origCmd == nil {
+		retCode = ApiError.NOT_FOUND_ERROR
+		err = ApiError.ErrNotFound
+		return
+	}
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+		return
+	}
+
+	retCode, err = MoveCmd(appid, id, cid)
+	if err != nil {
+		return
+	}
+	go util.ConsulUpdateCmd(appid)
 }

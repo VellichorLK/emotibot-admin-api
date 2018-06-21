@@ -114,3 +114,16 @@ func AddCmdClass(appid string, pid *int, className string) (int, int, error) {
 func DeleteCmdClass(appid string, classID int) error {
 	return deleteCmdClass(appid, classID)
 }
+
+func MoveCmd(appid string, id int, cid int) (int, error) {
+	err := moveCmd(appid, id, cid)
+	if err == errDuplicate {
+		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+	} else if err == sql.ErrNoRows {
+		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+	} else if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+
+	return ApiError.SUCCESS, nil
+}

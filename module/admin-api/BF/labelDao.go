@@ -708,3 +708,35 @@ func deleteCmdClass(appid string, classID int) (err error) {
 	err = t.Commit()
 	return
 }
+
+func moveCmd(appid string, id int, cid int) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return err
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
+	pidPtr := &cid
+	if cid == -1 {
+		pidPtr = nil
+	}
+
+	queryStr := `
+		UPDATE cmd SET cid = ?
+		WHERE cmd_id = ? AND appid = ?`
+	_, err = tx.Exec(queryStr, pidPtr, id, appid)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
