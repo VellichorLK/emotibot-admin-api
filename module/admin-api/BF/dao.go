@@ -223,7 +223,7 @@ func updateRole(uuid string, commands []string) error {
 
 	queryStr := "SELECT ID FROM ent_role WHERE NAME = ?"
 	row := t.QueryRow(queryStr, uuid)
-	id := 0
+	id := -1
 
 	err = row.Scan(&id)
 	if err != nil {
@@ -231,11 +231,12 @@ func updateRole(uuid string, commands []string) error {
 	}
 
 	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
-	_, err = t.Exec(queryStr, uuid)
+	_, err = t.Exec(queryStr, id)
 	if err != nil {
 		return err
 	}
 
+	util.LogTrace.Printf("role: %s (%d), %+v\n", uuid, id, rightIDs)
 	queryStr = "INSERT tbl_role_right (ROLE_ID ,RIGHT_ID) VALUES (?, ?)"
 	for _, rightID := range rightIDs {
 		_, err = t.Exec(queryStr, id, rightID)
