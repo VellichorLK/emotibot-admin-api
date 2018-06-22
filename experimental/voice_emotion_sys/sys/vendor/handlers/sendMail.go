@@ -1,42 +1,45 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/smtp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //MailSender send the email through smtp server
 type MailSender struct {
-	sender         string
-	password       string
-	mailServer     string
-	mailServerPort int
+	Sender         string
+	Password       string
+	MailServer     string
+	MailServerPort int
 }
 
 //SendMail send email
-func (ms *MailSender) SendMail(to []string, subject string, body string, contentType string) error {
+func (ms *MailSender) SendMail(to []string, subject string, body string) error {
 	// Set up authentication information.
-	auth := smtp.PlainAuth("", ms.sender, ms.password, ms.mailServer)
-	msg := ms.BuildEmail(ms.sender, to, subject, body, contentType)
-	mailHost := ms.mailServer + ":" + strconv.Itoa(ms.mailServerPort)
-	return smtp.SendMail(mailHost, auth, ms.sender, to, msg)
+	auth := smtp.PlainAuth("", ms.Sender, ms.Password, ms.MailServer)
+	msg := ms.BuildEmail(ms.Sender, to, subject, body)
+	mailHost := ms.MailServer + ":" + strconv.Itoa(ms.MailServerPort)
+	return smtp.SendMail(mailHost, auth, ms.Sender, to, msg)
 }
 
 //BuildEmail build the email message
-func (ms *MailSender) BuildEmail(sender string, to []string, subject string, body string, contentType string) []byte {
+func (ms *MailSender) BuildEmail(sender string, to []string, subject string, body string) []byte {
 	message := ""
 	message += fmt.Sprintf("From: %s\r\n", sender)
 	if len(to) > 0 {
 		message += fmt.Sprintf("To: %s\r\n", strings.Join(to, ";"))
 	}
-	message += fmt.Sprintf("Subject: %s\r\n", subject)
-	if contentType == "" {
-		message += "Content-Type: text/plain; charset=\"UTF-8\"\r\n"
-	} else {
-		message += fmt.Sprintf("Content-Type: %s\r\n", contentType)
-	}
-	message += "\r\n" + body
+	message += fmt.Sprintf("Subject: =?utf-8?B?%s?=\r\n", base64.StdEncoding.EncodeToString([]byte(subject)))
+
+	message += "Content-Type: text/plain; charset=utf-8\r\n"
+	message += "Content-Transfer-Encoding: base64\r\n"
+	message += "Mime-Version: 1.0 (1.0)\r\n"
+	message += "Date: " + time.Now().Format(time.RFC1123Z) + "\r\n"
+
+	message += "\r\n" + base64.StdEncoding.EncodeToString([]byte(body))
 	return []byte(message)
 }

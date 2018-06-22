@@ -385,7 +385,7 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 	return err
 }
 
-func ComputeChannelScore(eb *EmotionBlock) {
+func ComputeChannelScore(eb *EmotionBlock) []*TotalEmotionScore {
 
 	const divider = 1000
 
@@ -401,6 +401,8 @@ func ComputeChannelScore(eb *EmotionBlock) {
 			}
 		}
 	}
+
+	emotionScore := make([]*TotalEmotionScore, 0, 4)
 
 	for chEmotion, scores := range EmotionScoreInEachChannel {
 		channel := chEmotion / divider
@@ -493,9 +495,14 @@ func ComputeChannelScore(eb *EmotionBlock) {
 
 			}
 
+			tes := &TotalEmotionScore{Channel: channel, EType: emotionType, Score: twoFixedScore}
+			emotionScore = append(emotionScore, tes)
+
 			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
 		}
 	}
+
+	return emotionScore
 }
 
 func InsertChannelScore(id uint64, channel int, emotion int, score float64) error {
@@ -581,32 +588,6 @@ func InsertEmotionRecord(emotionID int64, emotionType int, score float64) error 
 	return nil
 }
 
-/*
-func QueryUnfinished(fileID string, appid string) ([]byte, int, error) {
-	rb := new(ReturnBlock)
-	rb.Channels = make([]*ChannelResult, 0)
-
-	query := SingleQuerySQL
-	query += " where " + NFILEID + "=? and " + NAPPID + "=?" + " and " + NANARES + "=-1"
-
-	err := db.QueryRow(query, fileID, appid).Scan(&rb.FileID, &rb.FileName, &rb.FileType, &rb.Duration,
-		&rb.CreateTime, &rb.Checksum, &rb.Tag, &rb.Priority, &rb.Size)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, http.StatusBadRequest, errors.New("No " + NFILEID + ": " + fileID)
-		}
-		log.Println(err)
-		return nil, http.StatusInternalServerError, err
-	}
-	//encode to json
-	encodeRes, err := json.Marshal(rb)
-	if err != nil {
-		log.Println(err)
-		return nil, http.StatusInternalServerError, errors.New("Internal server error")
-	}
-	return encodeRes, http.StatusOK, nil
-}
-*/
 func QuerySingleDetail(fileID string, appid string, drb *DetailReturnBlock) (int, error) {
 
 	enableASR := os.Getenv("ASR_ENABLE")
@@ -822,37 +803,6 @@ func getProhitbitWords(appid string) (map[uint64]string, error) {
 	return prohibitedMap, nil
 }
 
-/*
-func QuerySingleResult(fileID string, appid string) ([]byte, int, error) {
-
-	rb := new(ReturnBlock)
-	rb.Channels = make([]*ChannelResult, 0)
-	//query the fileInformation table
-	query := SingleQuerySQL
-	query += " where " + NFILEID + "=? and " + NAPPID + "=?"
-
-	err := db.QueryRow(query, fileID, appid).Scan(&rb.FileID, &rb.FileName, &rb.FileType, &rb.Duration,
-		&rb.CreateTime, &rb.Checksum, &rb.Tag, &rb.Priority, &rb.Size)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, http.StatusBadRequest, errors.New("No " + NFILEID + ": " + fileID)
-		}
-		log.Println(err)
-		return nil, http.StatusInternalServerError, err
-	}
-
-	QueryChannelScore(fileID, &rb.Channels)
-
-	//encode to json
-	encodeRes, err := json.Marshal(rb)
-	if err != nil {
-		log.Println(err)
-		return nil, http.StatusInternalServerError, errors.New("Internal server error")
-	}
-	return encodeRes, http.StatusOK, nil
-
-}
-*/
 func QueryResult(appid string, conditions string, conditions2 string, offset int, doPaging bool, checkLimit *CheckLimit, rbs *[]*ReturnBlock) (int, int, error) {
 	//debug.FreeOSMemory()
 
@@ -1356,4 +1306,64 @@ func InitEmotionMap() {
 			AngerType = angerType
 		}
 	*/
+}
+
+//GetAppidByID get appid from id
+func GetAppidByID(id uint64) (string, error) {
+	querySQL := fmt.Sprintf("select %s from %s where %s=?", NAPPID, MainTable, NID)
+
+	rows, err := db.Query(querySQL, id)
+	if err != nil {
+		return "", err
+	}
+	defer rows.Close()
+
+	var appid string
+
+	if rows.Next() {
+		err = rows.Scan(&appid)
+	}
+	return appid, err
+}
+
+//GetColumnByID get value by assigned column
+func GetColumnByID(columns []string, id uint64) ([]interface{}, error) {
+
+	count := len(columns)
+
+	if count == 0 {
+		return nil, nil
+	}
+
+	querySQL := "select "
+
+	values := make([]interface{}, count)
+	valuePtrs := make([]interface{}, count)
+
+	for idx, v := range columns {
+		if idx != 0 {
+			querySQL += ","
+		}
+		querySQL += v
+		valuePtrs[idx] = &values[idx]
+	}
+
+	querySQL += " from " + MainTable + " where " + NID + "=?"
+
+	rows, err := db.Query(querySQL, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	if rows.Next() {
+		err = rows.Scan(valuePtrs...)
+	}
+	return values, err
+
+}
+
+//QuerySQL
+func QuerySQL(querySQL string, params ...interface{}) (*sql.Rows, error) {
+	return db.Query(querySQL, params...)
 }
