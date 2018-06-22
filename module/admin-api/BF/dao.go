@@ -275,8 +275,9 @@ func deleteRole(uuid string) error {
 		return err
 	}
 
+	util.LogTrace.Printf("Delete bf role with id: %d, uuid: %s\n", id, uuid)
 	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
-	_, err = t.Exec(queryStr, uuid)
+	_, err = t.Exec(queryStr, id)
 	if err != nil {
 		return err
 	}
