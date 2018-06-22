@@ -227,6 +227,9 @@ func updateRole(uuid string, commands []string) error {
 
 	err = row.Scan(&id)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
 		return err
 	}
 
@@ -262,7 +265,7 @@ func deleteRole(uuid string) error {
 
 	queryStr := "SELECT ID FROM ent_role WHERE NAME = ?"
 	row := t.QueryRow(queryStr, uuid)
-	id := 0
+	id := -1
 
 	err = row.Scan(&id)
 	if err != nil {
