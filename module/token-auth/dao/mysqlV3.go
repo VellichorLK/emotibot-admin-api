@@ -801,7 +801,7 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 			FROM %s
 			WHERE type = %d AND user_name = ? OR (email = ? AND email != '')`,
 			userTableV3, enum.SuperAdminUser)
-		err := controller.connectDB.QueryRow(queryStr, userType, userName, userEmail).Scan(&existedUserName, &existedUserEmail)
+		err := controller.connectDB.QueryRow(queryStr, userName, userEmail).Scan(&existedUserName, &existedUserEmail)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				return false, "", "", nil
