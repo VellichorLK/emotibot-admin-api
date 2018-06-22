@@ -310,8 +310,14 @@ func updateUserRole(enterprise, userid, roleid string) error {
 	row := t.QueryRow(queryStr, roleid)
 	id := 0
 	err = row.Scan(&id)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return err
+	}
+
+	// If role doesn't exist in BF, set role to default
+	if err == sql.ErrNoRows {
+		err = nil
+		id = 0
 	}
 
 	queryStr = "UPDATE api_user SET RoleId = ? WHERE UserId = ? AND enterprise_id = ?"
