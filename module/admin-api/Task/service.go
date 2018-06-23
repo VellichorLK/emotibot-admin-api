@@ -2,6 +2,7 @@ package Task
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +10,9 @@ import (
 	"mime/multipart"
 	"net/url"
 	"runtime"
+	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -174,4 +177,66 @@ func checkScenarioExist(appid string, id string) (bool, error) {
 	}
 	util.LogTrace.Printf("Check scenario: %s exist\n", id)
 	return true, nil
+}
+
+func GetMapTableList(appid, userID string) ([]string, int, error) {
+	list, err := getMapTableList(appid, userID)
+	if err == sql.ErrNoRows {
+		return []string{}, ApiError.SUCCESS, nil
+	} else if err != nil {
+		return []string{}, ApiError.DB_ERROR, err
+	}
+	return list, ApiError.SUCCESS, nil
+}
+
+func GetMapTableContent(appid, userID, tableName string) (string, int, error) {
+	content, err := getMapTableContent(appid, userID, tableName)
+	if err == sql.ErrNoRows {
+		return "", ApiError.NOT_FOUND_ERROR, nil
+	} else if err != nil {
+		return "", ApiError.DB_ERROR, err
+	}
+	return content, ApiError.SUCCESS, nil
+}
+
+func SaveMappingTable(userID, appid, fileName, content string) (int, error) {
+	err := saveMappingTable(userID, appid, fileName, content)
+	if err != nil {
+		return ApiError.DB_ERROR, nil
+	}
+	return ApiError.SUCCESS, nil
+}
+
+func ParseUploadMappingTable(buf []byte) ([]*MapTuple, error) {
+	// REMOVE utf-8 BOM if existed
+	buf = bytes.Trim(buf, "\xef\xbb\xbf")
+
+	buf = bytes.Replace(buf, []byte("\r\n"), []byte("\n"), -1)
+	buf = bytes.Replace(buf, []byte("\r"), []byte("\n"), -1)
+
+	lines := strings.Split(string(buf), "\n")
+
+	ret := []*MapTuple{}
+	for idx, line := range lines {
+		params := strings.Split(line, ",")
+		if len(params) != 2 {
+			util.LogTrace.Printf("Parse csv in line %d format error", idx+1)
+			continue
+		}
+
+		temp := MapTuple{
+			Key:   params[0],
+			Value: params[1],
+		}
+		ret = append(ret, &temp)
+	}
+	return ret, nil
+}
+
+func DeleteMappingTable(userID, tableName string) error {
+	err := deleteMappingTable(userID, tableName)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	return err
 }

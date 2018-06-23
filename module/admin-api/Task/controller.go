@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -32,6 +33,11 @@ func init() {
 			util.NewEntryPoint("GET", "scenarios", []string{}, handleGetScenarios),
 			util.NewEntryPoint("PUT", "scenarios", []string{}, handlePutScenarios),
 			util.NewEntryPoint("POST", "scenarios", []string{}, handlePostScenarios),
+
+			util.NewEntryPoint("GET", "mapping-tables", []string{}, handleGetMapTableList),
+			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
+			util.NewEntryPoint("POST", "mapping-table/upload", []string{}, handleUploadMapTable),
+			util.NewEntryPoint("POST", "mapping-table/delete", []string{}, handleDeleteMapTable),
 		},
 	}
 }
@@ -247,6 +253,151 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 		// r.Header.Set("Content-type", "application/json; charset=utf-8")
 		r.Header.Set("Content-type", "text/plain; charset=utf-8")
 		io.WriteString(w, content)
+	}
+}
+
+func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	userInQuery := r.URL.Query().Get("user")
+	if userInQuery != "" {
+		userID = userInQuery
+	}
+
+	util.LogTrace.Printf("Get mapping list of %s, %s\n", appid, userID)
+	list, errno, err := GetMapTableList(appid, userID)
+	if err != nil {
+		w.WriteHeader(ApiError.GetHttpStatus(errno))
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	buf, err := json.Marshal(list)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write(buf)
+}
+
+func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	tableName := util.GetMuxVar(r, "name")
+	if tableName == "" {
+		w.WriteHeader(ApiError.GetHttpStatus(ApiError.REQUEST_ERROR))
+		err := ApiError.GenBadRequestError("Table name")
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	content, errno, err := GetMapTableContent(appid, userID, tableName)
+	if err != nil {
+		w.WriteHeader(ApiError.GetHttpStatus(errno))
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write([]byte(content))
+}
+
+func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	errno := ApiError.SUCCESS
+	var ret string
+	defer func() {
+		status := ApiError.GetHttpStatus(errno)
+		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		util.WriteJSONWithStatus(w, map[string]interface{}{
+			"error":  ret,
+			"return": errno,
+		}, status)
+	}()
+
+	file, info, err := r.FormFile("mapping_table")
+	if err != nil {
+		errno = ApiError.IO_ERROR
+		ret = fmt.Sprintf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
+		return
+	}
+	defer file.Close()
+	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+
+	size := info.Size
+	if size == 0 {
+		errno = ApiError.REQUEST_ERROR
+		ret = util.Msg["ErrorUploadEmptyFile"]
+		return
+	}
+
+	buf := make([]byte, size)
+	_, err = file.Read(buf)
+	if err != nil {
+		errno = ApiError.IO_ERROR
+		ret = fmt.Sprintf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
+		return
+	}
+
+	mappingTuple, err := ParseUploadMappingTable(buf)
+	if err != nil {
+		errno = ApiError.REQUEST_ERROR
+		ret = fmt.Sprintf("Parse error: %s", err.Error())
+		return
+	}
+
+	now := time.Now()
+	nowTimeStr := now.Format("2006-01-02 15:04:05")
+	fileName := fmt.Sprintf("%s_%d%02d%02d%02d%02d%02d",
+		info.Filename, now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second())
+
+	mappingObj := MappingTable{
+		MappingData: mappingTuple,
+		Metadata: &MapMeta{
+			UpdateTime:       nowTimeStr,
+			UpdateUser:       userID,
+			MappingTableName: fileName,
+		},
+	}
+
+	content, err := json.Marshal(mappingObj)
+	if err != nil {
+		errno = ApiError.IO_ERROR
+		ret = fmt.Sprintf("JSON to string error: %s", err.Error())
+		return
+	}
+
+	errno, err = SaveMappingTable(userID, appid, fileName, string(content))
+	if err != nil {
+		ret = err.Error()
+	}
+}
+
+func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
+	userID := util.GetUserID(r)
+	tableName := r.FormValue("table_name")
+	errno := ApiError.SUCCESS
+	var ret string
+	defer func() {
+		status := ApiError.GetHttpStatus(errno)
+		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		util.WriteJSONWithStatus(w, map[string]interface{}{
+			"error":  ret,
+			"return": errno,
+		}, status)
+	}()
+
+	if tableName == "" {
+		errno = ApiError.REQUEST_ERROR
+		ret = ApiError.GenBadRequestError("Table name").Error()
+		return
+	}
+
+	err := DeleteMappingTable(userID, tableName)
+	if err != nil {
+		errno = ApiError.DB_ERROR
+		ret = err.Error()
 	}
 }
 
