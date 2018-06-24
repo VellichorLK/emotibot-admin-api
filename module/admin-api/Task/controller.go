@@ -375,6 +375,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
 	userID := util.GetUserID(r)
 	tableName := r.FormValue("table_name")
 	errno := ApiError.SUCCESS
@@ -394,7 +395,7 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := DeleteMappingTable(userID, tableName)
+	err := DeleteMappingTable(appid, userID, tableName)
 	if err != nil {
 		errno = ApiError.DB_ERROR
 		ret = err.Error()

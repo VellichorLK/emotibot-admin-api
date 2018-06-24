@@ -233,8 +233,8 @@ func ParseUploadMappingTable(buf []byte) ([]*MapTuple, error) {
 	return ret, nil
 }
 
-func DeleteMappingTable(userID, tableName string) error {
-	err := deleteMappingTable(userID, tableName)
+func DeleteMappingTable(appid, userID, tableName string) error {
+	err := deleteMappingTable(appid, userID, tableName)
 	if err == sql.ErrNoRows {
 		return nil
 	}

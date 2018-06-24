@@ -44,10 +44,13 @@ func getMapTableList(appid, userID string) ([]string, error) {
 	queryStr := ""
 	var rows *sql.Rows
 	if userID == "templateadmin" {
+		// 4c8cad6375894d487327cd1e7c5d5ef4 is special init userID
+		// it may change to NULL in future
 		queryStr = `
 			SELECT mapping_table_name
 			FROM taskenginemappingtable
-			WHERE update_user IS NULL AND appID IS NULL order by update_time`
+			WHERE (update_user IS NULL OR update_user = '4c8cad6375894d487327cd1e7c5d5ef4')
+				AND appID IS NULL order by update_time`
 		rows, err = mySQL.Query(queryStr)
 	} else {
 		queryStr = `
@@ -120,7 +123,7 @@ func saveMappingTable(userID, appid, fileName, content string) error {
 	return err
 }
 
-func deleteMappingTable(userID, tableName string) error {
+func deleteMappingTable(appid, userID, tableName string) error {
 	var err error
 	defer func() {
 		util.ShowError(err)
@@ -133,7 +136,7 @@ func deleteMappingTable(userID, tableName string) error {
 	queryStr := `
 		DELETE FROM taskenginemappingtable
 		WHERE mapping_table_name = ?
-		AND update_user = ?`
-	_, err = mySQL.Exec(queryStr, tableName, userID)
+		AND update_user = ? OR appID = ?`
+	_, err = mySQL.Exec(queryStr, tableName, userID, appid)
 	return err
 }
