@@ -110,6 +110,8 @@ services:
             LISTEN_PORT: ${API_VOICE_EMOTION_PORT}
             FILE_PREFIX: ${API_VOICE_EMOTION_DATA_PATH}
             ASR_ENABLE: ${WORKER_ENV_KEY_ASR_ENABLE}
+            CONSUL_IP: ${CONSUL_IP}
+            CONSUL_PORT: ${CONSUL_PORT}
         volumes:
             - ${API_VOICE_EMOTION_DATA_PATH}:/usr/src/app/upload_file
             - /etc/localtime:/etc/localtime

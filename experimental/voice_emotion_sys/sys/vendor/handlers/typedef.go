@@ -502,3 +502,10 @@ type WhereStates struct {
 	name    string
 	compare string
 }
+
+//AlertConfig sturct of config for alert setting
+type AlertConfig struct {
+	Enable    *int     `json:"alert_enable"`
+	Threshold *int     `json:"anger_threshold"`
+	EmailList []string `json:"email_list"`
+}

@@ -6,10 +6,13 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 var envs = make(map[string]string)
-var variableLists = [...]string{"RABBITMQ_HOST", "RABBITMQ_PORT", "DB_HOST", "DB_PORT", "DB_USER", "DB_PWD", "FILE_PREFIX", "LISTEN_PORT", "RABBITMQ_USER", "RABBITMQ_PWD"}
+var variableLists = [...]string{"RABBITMQ_HOST", "RABBITMQ_PORT", "DB_HOST", "DB_PORT",
+	"DB_USER", "DB_PWD", "FILE_PREFIX", "LISTEN_PORT", "RABBITMQ_USER", "RABBITMQ_PWD",
+	"CONSUL_IP", "CONSUL_PORT"}
 
 func parseEnv() {
 	for _, v := range variableLists {
@@ -24,7 +27,12 @@ func parseEnv() {
 
 func readyHandlers() {
 
-	err := handlers.InitDatabaseCon(envs["DB_HOST"], envs["DB_PORT"], envs["DB_USER"], envs["DB_PWD"], "voice_emotion")
+	err := handlers.InitConsulClient(envs["CONSUL_IP"]+":"+envs["CONSUL_PORT"], 1*time.Second)
+	if err != nil {
+		log.Fatalf("Init consul client error:%s\n", err)
+	}
+
+	err = handlers.InitDatabaseCon(envs["DB_HOST"], envs["DB_PORT"], envs["DB_USER"], envs["DB_PWD"], "voice_emotion")
 	//err := handlers.InitDatabaseCon(envs["DB_HOST"], envs["DB_PORT"], envs["DB_USER"], envs["DB_PWD"], "mydb")
 	if err != nil {
 		log.Fatal("Can't connect to database!!!")
