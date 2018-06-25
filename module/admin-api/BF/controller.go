@@ -104,7 +104,7 @@ func handleAddApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteApp(w http.ResponseWriter, r *http.Request) {
-	appid := r.FormValue("appid")
+	appid := util.GetMuxVar(r, "id")
 
 	err := deleteApp(appid)
 	if err != nil {
