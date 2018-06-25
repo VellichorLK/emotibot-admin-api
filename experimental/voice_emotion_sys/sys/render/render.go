@@ -304,12 +304,19 @@ func recordData(task string) (string, string) {
 	}
 	eb.IDUint64 = idInt64
 
+	appid, err := handlers.GetAppidByID(eb.IDUint64)
+	if err != nil || appid == "" {
+		log.Printf("Error: can't find %v 's appid [%s]\n", eb.IDUint64, err)
+		return "", ""
+	}
+
 	err = handlers.InsertAnalysisRecord(eb)
 	if err != nil {
 		log.Println(err)
 		return "", ""
 	}
-	scores := handlers.ComputeChannelScore(eb)
+
+	scores := handlers.ComputeChannelScore(eb, appid)
 	handlers.UpdateResult(eb)
 
 	var asrPush bool
@@ -330,14 +337,9 @@ func recordData(task string) (string, string) {
 
 	log.Println(">>> recordData   end, eb.ID = ", eb.ID, ", elapsedTime = ", time.Now().Sub(startTime))
 
-	appid, err := handlers.GetAppidByID(eb.IDUint64)
-	if err != nil || appid == "" {
-		log.Printf("Error: can't find %v 's appid [%s]\n", eb.IDUint64, err)
-	} else {
-		err = checkAlert(scores, appid, eb.IDUint64)
-		if err != nil {
-			fmt.Printf("Error: %s\n", err)
-		}
+	err = checkAlert(scores, appid, eb.IDUint64)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
 	}
 
 	return "", ""

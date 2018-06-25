@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"errors"
 	"net/http"
@@ -385,7 +387,7 @@ func InsertAnalysisRecord(eb *EmotionBlock) error {
 	return err
 }
 
-func ComputeChannelScore(eb *EmotionBlock) []*TotalEmotionScore {
+func ComputeChannelScore(eb *EmotionBlock, appid string) []*TotalEmotionScore {
 
 	const divider = 1000
 
@@ -400,6 +402,11 @@ func ComputeChannelScore(eb *EmotionBlock) []*TotalEmotionScore {
 				EmotionScoreInEachChannel[emotionChannelKey] = append(EmotionScoreInEachChannel[emotionChannelKey], s.Score)
 			}
 		}
+	}
+
+	//it's ecovacs appid. Because voice team would change the formula for online and experimental seperately
+	if appid == "fec52c2952483842a78f5b733d8221ef" {
+		return ecovacsOnlineFormula(eb, EmotionScoreInEachChannel)
 	}
 
 	emotionScore := make([]*TotalEmotionScore, 0, 4)
@@ -498,6 +505,123 @@ func ComputeChannelScore(eb *EmotionBlock) []*TotalEmotionScore {
 			tes := &TotalEmotionScore{Channel: channel, EType: emotionType, Score: twoFixedScore}
 			emotionScore = append(emotionScore, tes)
 
+			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
+		}
+	}
+
+	return emotionScore
+}
+
+func ecovacsOnlineFormula(eb *EmotionBlock, emotionScoreInEachChannel map[int][]float64) []*TotalEmotionScore {
+
+	const divider = 1000
+
+	emotionScore := make([]*TotalEmotionScore, 0, 4)
+
+	for chEmotion, scores := range emotionScoreInEachChannel {
+		channel := chEmotion / divider
+		emotionType := chEmotion % divider
+		count := len(scores)
+
+		if count > 0 {
+
+			var twoFixedScore float64
+			var weight float64
+			var calculateNum float64
+			//customer
+			if channel == 1 {
+				sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
+				if count > 30 && eb.RDuration > (180*1000) {
+
+					const gap = 0.6
+
+					const extractNum = 5
+
+					hasEmotionCount := 0
+					weight = 0.8
+					for _, s := range scores {
+						if s < gap {
+							break
+						}
+						hasEmotionCount++
+					}
+
+					if hasEmotionCount > extractNum {
+						for i := 0; i < extractNum; i++ {
+							twoFixedScore += scores[i]
+						}
+						calculateNum = extractNum
+
+						if twoFixedScore/calculateNum > 0.75 {
+							weight = 0.64
+						}
+
+					} else {
+						for _, s := range scores {
+							twoFixedScore += s
+						}
+						calculateNum = float64(count)
+					}
+
+				} else {
+					weight = 0.5
+					for _, s := range scores {
+						twoFixedScore += s
+					}
+					calculateNum = float64(count)
+				}
+
+				twoFixedScore = float64(int((twoFixedScore/calculateNum)*100*weight*100)) / 100
+			} else {
+				var upRateCount int
+				var avgCountAcc float64
+				var upRate, avgProb float64
+				var primaryScore float64
+
+				const gap = 0.6
+				const weight = 1.5
+				const portion = 0.25
+
+				var lastNSentence int
+				lastNSentence = int(math.Ceil(float64(count) / float64(4)))
+
+				for i := 0; i < count; i++ {
+					avgCountAcc += scores[i]
+				}
+
+				for i := 0; i < lastNSentence; i++ {
+					if scores[count-1-i] > gap {
+						upRateCount++
+					}
+				}
+
+				avgProb = avgCountAcc / float64(count)
+
+				if count > 10 && eb.RDuration > (120*1000) {
+					upRate = float64(upRateCount) / float64(lastNSentence)
+
+					primaryScore = 120*avgProb + 7 + 20*upRate
+
+					if primaryScore >= 90 {
+
+						s1 := rand.NewSource(time.Now().UnixNano())
+						r1 := rand.New(s1)
+
+						twoFixedScore = float64(90 + r1.Intn(6))
+						if twoFixedScore < 95 {
+							twoFixedScore += float64(r1.Intn(100)) / 100
+						}
+					} else {
+						twoFixedScore = float64(int(primaryScore*100)) / 100
+					}
+
+				} else {
+					twoFixedScore = float64(int((10+avgProb*10+7)*100)) / 100
+				}
+
+			}
+			tes := &TotalEmotionScore{Channel: channel, EType: emotionType, Score: twoFixedScore}
+			emotionScore = append(emotionScore, tes)
 			InsertChannelScore(eb.IDUint64, channel, emotionType, twoFixedScore)
 		}
 	}
