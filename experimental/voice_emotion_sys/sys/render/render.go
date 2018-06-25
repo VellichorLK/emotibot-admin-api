@@ -164,7 +164,8 @@ func getMailList(appid string) ([]string, error) {
 }
 
 var notifySubject = "竹间语音情绪质检系统警告邮件。坐席号 %s"
-var notifyBody = `竹间语音情绪质检系统分析录音发现愤怒情绪值超过 %v\r\n
+var notifyBody = `竹间语音情绪质检系统分析录音发现愤怒情绪值超过 %v
+
 录音文件名: %s
 通话时长: %v
 CallID: %v
