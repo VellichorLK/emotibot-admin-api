@@ -76,7 +76,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 	ret := map[string]interface{}{
 		"return": 0,
-		"error":  "",
+		"error":  "Update success",
 	}
 	// var ret map[string]interface{}
 	if err == nil {
