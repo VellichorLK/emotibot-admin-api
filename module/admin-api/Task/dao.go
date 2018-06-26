@@ -136,7 +136,7 @@ func deleteMappingTable(appid, userID, tableName string) error {
 	queryStr := `
 		DELETE FROM taskenginemappingtable
 		WHERE mapping_table_name = ?
-		AND update_user = ? OR appID = ?`
+		AND (update_user = ? OR appID = ?)`
 	_, err = mySQL.Exec(queryStr, tableName, userID, appid)
 	return err
 }
