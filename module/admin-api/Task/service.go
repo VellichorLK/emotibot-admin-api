@@ -192,7 +192,7 @@ func GetMapTableList(appid, userID string) ([]string, int, error) {
 func GetMapTableContent(appid, userID, tableName string) (string, int, error) {
 	content, err := getMapTableContent(appid, userID, tableName)
 	if err == sql.ErrNoRows {
-		return "", ApiError.NOT_FOUND_ERROR, nil
+		return "", ApiError.NOT_FOUND_ERROR, err
 	} else if err != nil {
 		return "", ApiError.DB_ERROR, err
 	}

@@ -35,6 +35,9 @@ var (
 		"Row":          "列",
 		"IDError":      "ID错误",
 		"Name":         "名称",
+		"ParseError":   "档案格式错误",
+		"MarshalError": "JSON转换错误",
+		"ServerError":  "伺服器错误",
 
 		// General Error
 		"ErrorReadFileError":   "读取档案失败",
@@ -86,6 +89,10 @@ var (
 		"CmdClassName":           "指令目录名称",
 		"CmdParentID":            "指令目录ID",
 		"ErrorCmdParentNotFound": "目标目录获取失败",
+
+		// Used in task-engine
+		"MappingTable":     "转换数据",
+		"MappingTableName": "转换数据名称",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

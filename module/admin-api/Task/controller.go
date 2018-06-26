@@ -1,12 +1,14 @@
 package Task
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -35,9 +37,11 @@ func init() {
 			util.NewEntryPoint("POST", "scenarios", []string{}, handlePostScenarios),
 
 			util.NewEntryPoint("GET", "mapping-tables", []string{}, handleGetMapTableList),
-			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
 			util.NewEntryPoint("POST", "mapping-table/upload", []string{}, handleUploadMapTable),
 			util.NewEntryPoint("POST", "mapping-table/delete", []string{}, handleDeleteMapTable),
+			util.NewEntryPoint("GET", "mapping-table/export", []string{}, handleExportMapTable),
+			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
+			util.NewEntryPoint("GET", "mapping-table", []string{}, handleGetMapTable),
 		},
 	}
 }
@@ -285,9 +289,14 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	userID := util.GetUserID(r)
 	tableName := util.GetMuxVar(r, "name")
+	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
+
+	if tableName == "" {
+		tableName = tableNameInQuery
+	}
 	if tableName == "" {
 		w.WriteHeader(ApiError.GetHttpStatus(ApiError.REQUEST_ERROR))
-		err := ApiError.GenBadRequestError("Table name")
+		err := ApiError.GenBadRequestError(util.Msg["MappingTableName"])
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -305,6 +314,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	userID := util.GetUserID(r)
 	errno := ApiError.SUCCESS
+	var auditMsg bytes.Buffer
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
@@ -313,7 +323,15 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 			"error":  ret,
 			"return": errno,
 		}, status)
+
+		if errno == ApiError.SUCCESS {
+			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+		} else {
+			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
+			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+		}
 	}()
+	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["MappingTable"]))
 
 	file, info, err := r.FormFile("mapping_table")
 	if err != nil {
@@ -323,6 +341,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	auditMsg.WriteString(info.Filename)
 
 	size := info.Size
 	if size == 0 {
@@ -342,7 +361,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	mappingTuple, err := ParseUploadMappingTable(buf)
 	if err != nil {
 		errno = ApiError.REQUEST_ERROR
-		ret = fmt.Sprintf("Parse error: %s", err.Error())
+		ret = fmt.Sprintf("%s: %s", util.Msg["ParseError"], err.Error())
 		return
 	}
 
@@ -364,13 +383,15 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(mappingObj)
 	if err != nil {
 		errno = ApiError.IO_ERROR
-		ret = fmt.Sprintf("JSON to string error: %s", err.Error())
+		ret = fmt.Sprintf("%s: %s", util.Msg["MarshalError"], err.Error())
 		return
 	}
 
 	errno, err = SaveMappingTable(userID, appid, fileName, string(content))
 	if err != nil {
-		ret = err.Error()
+		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
+	} else {
+		auditMsg.WriteString(fmt.Sprintf(" -> %s", fileName))
 	}
 }
 
@@ -379,6 +400,7 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 	userID := util.GetUserID(r)
 	tableName := r.FormValue("table_name")
 	errno := ApiError.SUCCESS
+	var auditMsg bytes.Buffer
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
@@ -387,13 +409,22 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 			"error":  ret,
 			"return": errno,
 		}, status)
+
+		if errno == ApiError.SUCCESS {
+			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), true)
+		} else {
+			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
+			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), false)
+		}
 	}()
+	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["MappingTable"]))
 
 	if tableName == "" {
 		errno = ApiError.REQUEST_ERROR
-		ret = ApiError.GenBadRequestError("Table name").Error()
+		ret = ApiError.GenBadRequestError(util.Msg["MappingTableName"]).Error()
 		return
 	}
+	auditMsg.WriteString(tableName)
 
 	err := DeleteMappingTable(appid, userID, tableName)
 	if err != nil {
@@ -414,4 +445,69 @@ func getEnvironment(key string) string {
 		}
 	}
 	return ""
+}
+
+func addAuditLog(r *http.Request, op string, msg string, ret bool) {
+	appid := util.GetAppID(r)
+	user := util.GetUserID(r)
+	ip := util.GetUserIP(r)
+	retVal := 0
+	if ret {
+		retVal = 1
+	}
+	util.AddAuditLog(appid, user, ip, util.AuditModuleTaskEngine, op, msg, retVal)
+}
+
+func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	userID := util.GetUserID(r)
+	tableName := util.GetMuxVar(r, "name")
+	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
+	var auditMsg bytes.Buffer
+	var outputBuf bytes.Buffer
+
+	errno := ApiError.SUCCESS
+	defer func() {
+		status := ApiError.GetHttpStatus(errno)
+		w.WriteHeader(status)
+		w.Write(outputBuf.Bytes())
+
+		addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
+	}()
+
+	util.LogTrace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
+	if tableName == "" {
+		tableName = tableNameInQuery
+	}
+	if tableName == "" {
+		w.WriteHeader(ApiError.GetHttpStatus(ApiError.REQUEST_ERROR))
+		err := ApiError.GenBadRequestError(util.Msg["MappingTableName"])
+		auditMsg.WriteString(fmt.Sprintf("%s", err.Error()))
+		return
+	}
+
+	content, errno, err := GetMapTableContent(appid, userID, tableName)
+	if err != nil {
+		auditMsg.WriteString(fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error()))
+		return
+	}
+
+	mappingTable := MappingTable{}
+	err = json.Unmarshal([]byte(content), &mappingTable)
+	if err != nil {
+		errno = ApiError.IO_ERROR
+		auditMsg.WriteString(fmt.Sprintf("%s: %s", util.Msg["MarshalError"], err.Error()))
+		return
+	}
+	auditMsg.WriteString(fmt.Sprintf("%s%s %s",
+		util.Msg["DownloadFile"], util.Msg["MappingTable"], tableName))
+
+	for _, tuple := range mappingTable.MappingData {
+		if tuple == nil {
+			continue
+		}
+		key := strings.Replace(tuple.Key, "\"", "\"\"\"", -1)
+		value := strings.Replace(tuple.Value, "\"", "\"\"\"", -1)
+		outputBuf.WriteString(fmt.Sprintf("\"%s\",\"%s\"\n", key, value))
+	}
 }

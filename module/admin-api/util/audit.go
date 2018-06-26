@@ -24,6 +24,7 @@ const (
 	AuditModuleStatistics     = "6" // "数据管理"
 	AuditModuleMembers        = "7" // "用户管理"
 	AuditModuleRole           = "8" // "角色管理"
+	AuditModuleTaskEngine     = "9" // "Task-Engine"
 )
 
 type auditLog struct {

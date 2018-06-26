@@ -9,6 +9,10 @@ import (
 
 var errDBNotInit = errors.New("DB not init")
 
+// 4c8cad6375894d487327cd1e7c5d5ef4 is special init userID
+// it may change to NULL in future
+var specialInitUser = "4c8cad6375894d487327cd1e7c5d5ef4"
+
 func setAllScenarioStatus(appid string, status bool) error {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
@@ -44,14 +48,12 @@ func getMapTableList(appid, userID string) ([]string, error) {
 	queryStr := ""
 	var rows *sql.Rows
 	if userID == "templateadmin" {
-		// 4c8cad6375894d487327cd1e7c5d5ef4 is special init userID
-		// it may change to NULL in future
 		queryStr = `
 			SELECT mapping_table_name
 			FROM taskenginemappingtable
-			WHERE (update_user IS NULL OR update_user = '4c8cad6375894d487327cd1e7c5d5ef4')
+			WHERE (update_user IS NULL OR update_user = ?)
 				AND appID IS NULL order by update_time`
-		rows, err = mySQL.Query(queryStr)
+		rows, err = mySQL.Query(queryStr, specialInitUser)
 	} else {
 		queryStr = `
 			SELECT mapping_table_name
@@ -90,8 +92,8 @@ func getMapTableContent(appid, userID, tableName string) (string, error) {
 		SELECT content
 		FROM taskenginemappingtable
 		WHERE mapping_table_name = ? AND
-			(appid = ? OR update_user = ?)`
-	row := mySQL.QueryRow(queryStr, tableName, appid, userID)
+			(appid = ? OR update_user = ? OR update_user = ?)`
+	row := mySQL.QueryRow(queryStr, tableName, appid, userID, specialInitUser)
 	if err != nil {
 		return "", err
 	}
