@@ -38,8 +38,9 @@ func (m *Mutex) TryLock() bool {
 
 //TaskBlock used to send to the rabbitmq as a task
 type TaskBlock struct {
-	Path string `json:"path"`
-	File string `json:"file"`
+	Path  string `json:"path"`
+	File  string `json:"file"`
+	Appid string `json:"appid"`
 	//Extension string `json:"extension"`
 	//FileID    string `json:"fileID"`
 }
@@ -364,6 +365,7 @@ const TimeFormat = "2006/01/02 15:04:05"
 const ContentTypeJSON = "application/json; charset=utf-8"
 const ContentTypeCSV = "text/csv; charset=utf-8"
 const ConsulAlertKey = "voice_alert"
+const ConsulMinimumSecKey = "voice_min_second"
 
 //Column name of alertThreshold
 const NType = "type"

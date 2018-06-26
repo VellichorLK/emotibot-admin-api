@@ -234,7 +234,7 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 }
 
 func pacakgeTask(fi *FileInfo) (string, error) {
-	task := &TaskBlock{Path: fi.Path, File: fi.UFileName}
+	task := &TaskBlock{Path: fi.Path, File: fi.UFileName, Appid: fi.Appid}
 	encodeTask, err := json.Marshal(task)
 	if err != nil {
 		log.Printf("path:%s, file:%s, extension:%s\n", fi.Path, fi.FileName, fi.FileType)
