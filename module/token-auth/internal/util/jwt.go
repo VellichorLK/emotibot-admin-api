@@ -12,14 +12,20 @@ const (
 	authApp    = "simple-auth"
 )
 
+var jwtExpireSeconds = 60 * 60
+
 type CustomClaims struct {
 	Custom interface{} `json:"custom"`
 	jwt.StandardClaims
 }
 
+func SetJWTExpireTime(seconds int) {
+	jwtExpireSeconds = seconds
+}
+
 func GetJWTTokenWithCustomInfo(custom interface{}) (string, error) {
 	now := time.Now()
-	expireSecond := 60 * 60 // token will expired after 1 hr
+	expireSecond := jwtExpireSeconds // token will expired after 1 hr
 
 	// Create the Claims
 	customClaims := &CustomClaims{

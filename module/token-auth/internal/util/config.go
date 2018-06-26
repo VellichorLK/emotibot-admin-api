@@ -11,13 +11,15 @@ const (
 	mysqlSQLPasswordKey = "ADMIN_AUTH_MYSQL_PASS"
 	mysqlSQLDatabaseKey = "ADMIN_AUTH_MYSQL_DB"
 
-	mysqlAuditURLKey       = "ADMIN_AUTH_AUDIT_MYSQL_URL"
-	mysqlAuditUserKey      = "ADMIN_AUTH_AUDIT_MYSQL_USER"
+	mysqlAuditURLKey      = "ADMIN_AUTH_AUDIT_MYSQL_URL"
+	mysqlAuditUserKey     = "ADMIN_AUTH_AUDIT_MYSQL_USER"
 	mysqlAuditPasswordKey = "ADMIN_AUTH_AUDIT_MYSQL_PASS"
-	mysqlAuditDatabaseKey  = "ADMIN_AUTH_AUDIT_MYSQL_DB"
+	mysqlAuditDatabaseKey = "ADMIN_AUTH_AUDIT_MYSQL_DB"
 
 	serverPortKey = "ADMIN_AUTH_PORT"
 	serverURLKey  = "ADMIN_AUTH_URL"
+
+	jwtTimeoutKey = "ADMIN_AUTH_TIMEOUT"
 )
 
 // GetMySQLConfig will get db init config from env
@@ -58,5 +60,11 @@ func GetMySQLAuditConfig() (url string, port int, user string, password string, 
 func GetServerConfig() (url string, port int) {
 	port = GetIntEnv(serverPortKey, 8088)
 	url = GetStrEnv(serverURLKey, "0.0.0.0")
+	return
+}
+
+// GetJWTExpireTimeConfig will get timeout in jwt token
+func GetJWTExpireTimeConfig() (timeout int) {
+	timeout = GetIntEnv(jwtTimeoutKey, 3600)
 	return
 }

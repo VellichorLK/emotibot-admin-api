@@ -242,6 +242,8 @@ func main() {
 		util.LogInfo.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
 	}
 
+	util.SetJWTExpireTime(util.GetJWTExpireTimeConfig())
+
 	url, port := util.GetServerConfig()
 	serverBind := fmt.Sprintf("%s:%d", url, port)
 	util.LogInfo.Printf("Start auth server on %s\n", serverBind)
