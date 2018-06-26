@@ -164,7 +164,7 @@ func selectSimilarQuestions(qID int, appID string) ([]SimilarQuestion, error) {
 		return nil, fmt.Errorf("query execute failed: %s", err)
 	}
 	defer rows.Close()
-	var similarQuestions []SimilarQuestion
+	var similarQuestions []SimilarQuestion = make([]SimilarQuestion, 0)
 
 	for rows.Next() {
 		var sq SimilarQuestion

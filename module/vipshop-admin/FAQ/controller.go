@@ -978,11 +978,13 @@ func handleQueryQuestion(ctx context.Context) {
 	if err != nil {
 		util.LogError.Printf("Error happened while get question %d, reason: %s", qid,  err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
 
 	if len(questions) == 0 {
 		util.LogInfo.Printf("Can not find question: %d", qid)
 		ctx.StatusCode(http.StatusNotFound)
+		return
 	}
 
 	question := questions[0]
