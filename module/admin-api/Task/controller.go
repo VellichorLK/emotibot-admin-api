@@ -82,23 +82,12 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		"return": 0,
 		"error":  "Update success",
 	}
-	// var ret map[string]interface{}
 	if err == nil {
 		ImportScenario(appid, useNewID, taskEngineJSON)
-		// ret = map[string]interface{}{
-		// 	"a":    appid,
-		// 	"new":  fmt.Sprintf("%t", useNewID),
-		// 	"file": taskEngineJSON,
-		// }
 	} else {
 		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
-		// ret = map[string]interface{}{
-		// 	"a":    appid,
-		// 	"new":  fmt.Sprintf("%t", useNewID),
-		// 	"file": multiTaskEngineJSON,
-		// }
 	}
-	// util.LogInfo.Printf("info: %+v\n", ret)
+	util.LogInfo.Printf("info: %+v\n", ret)
 	util.WriteJSON(w, ret)
 }
 
