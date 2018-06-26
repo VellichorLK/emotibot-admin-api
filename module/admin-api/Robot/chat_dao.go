@@ -41,7 +41,7 @@ func getRobotWords(appid string) (ret []*ChatInfoV2, err error) {
 		infoMap[tmp.Type] = tmp
 	}
 
-	queryStr = "SELECT id,content,type FROM robot_words WHERE appid = ?;"
+	queryStr = "SELECT id,content,type FROM robot_words WHERE appid = ? ORDER BY id"
 	contentRows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return

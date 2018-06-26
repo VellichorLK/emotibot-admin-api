@@ -507,12 +507,12 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		queryStr = `
 			SELECT id, editable, name, cid, similar_words, answer
 			FROM entities
-			WHERE appid = ?`
+			WHERE appid = ? ORDER BY id DESC`
 	} else {
 		queryStr = fmt.Sprintf(`
 			SELECT id, editable, name, cid, similar_words, answer
 			FROM entities
-			WHERE cid in (%s) OR appid = ?`, strings.Join(queryQuestion, ","))
+			WHERE cid in (%s) OR appid = ? ORDER BY id DESC`, strings.Join(queryQuestion, ","))
 	}
 	entityRows, err := mySQL.Query(queryStr, queryParam...)
 	if err != nil {
