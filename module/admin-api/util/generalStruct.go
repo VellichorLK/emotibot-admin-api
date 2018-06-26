@@ -13,6 +13,7 @@ type EntryPoint struct {
 	Callback    func(w http.ResponseWriter, r *http.Request)
 	Version     int
 	Command     []string
+	CheckAppID  bool
 }
 
 // NewEntryPoint create new instance of EntryPoint with version 1
@@ -23,6 +24,7 @@ func NewEntryPoint(method string, path string, cmd []string, callback func(w htt
 	entrypoint.Callback = callback
 	entrypoint.Version = 1
 	entrypoint.Command = cmd
+	entrypoint.CheckAppID = true
 	return entrypoint
 }
 
@@ -34,6 +36,30 @@ func NewEntryPointWithVer(method string, path string, cmd []string, callback fun
 	entrypoint.Callback = callback
 	entrypoint.Version = version
 	entrypoint.Command = cmd
+	entrypoint.CheckAppID = true
+	return entrypoint
+}
+
+// NewEntryPointWithCustom create new instance of EntryPoint with custom param
+// which is (version int, checkAppID bool)
+func NewEntryPointWithCustom(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), param ...interface{}) EntryPoint {
+	entrypoint := EntryPoint{}
+	entrypoint.AllowMethod = method
+	entrypoint.EntryPath = path
+	entrypoint.Callback = callback
+	entrypoint.Command = cmd
+
+	if val, ok := param[0].(int); ok {
+		entrypoint.Version = val
+	} else {
+		entrypoint.Version = 1
+	}
+	if val, ok := param[1].(bool); ok {
+		entrypoint.CheckAppID = val
+	} else {
+		entrypoint.CheckAppID = true
+	}
+
 	return entrypoint
 }
 

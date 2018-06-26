@@ -45,7 +45,7 @@ func init() {
 			util.NewEntryPointWithVer("PUT", "chat/{id}/content/{cid}", []string{"edit"}, handleUpdateRobotWordContent, 2),
 			util.NewEntryPointWithVer("DELETE", "chat/{id}/content/{cid}", []string{"delete"}, handleDeleteRobotWordContent, 2),
 
-			util.NewEntryPointWithVer("POST", "data", []string{"edit"}, handleInitRobotData, 2),
+			util.NewEntryPointWithCustom("POST", "data", []string{"edit"}, handleInitRobotData, 2, false),
 		},
 	}
 }
