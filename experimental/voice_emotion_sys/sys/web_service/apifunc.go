@@ -24,7 +24,7 @@ var v1api = apiFunc{
 	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
 	v1basePath + "/prohibited":        handlers.ManipulateProhibitedWords,
 	v1basePath + "/prohibited/":       handlers.ModifyProhibitedWords,
-	v1basePath + "/notification":      handlers.UpdateAlertConfig,
+	v1basePath + "/notification":      handlers.AlertSys,
 	v1basePath + "/minimum_second":    handlers.MinimumSecond,
 }
 

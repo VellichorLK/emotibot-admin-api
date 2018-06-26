@@ -12,83 +12,141 @@ import (
 	"github.com/hashicorp/consul/api"
 )
 
-//UpdateAlertConfig update the configuration of alert system
-func UpdateAlertConfig(w http.ResponseWriter, r *http.Request) {
+//AlertSys update the configuration of alert system
+func AlertSys(w http.ResponseWriter, r *http.Request) {
 	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 	if r.Method == "POST" {
-		config := &AlertConfig{}
-		err := json.NewDecoder(r.Body).Decode(config)
-		if err != nil {
-			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
-		} else {
-
-			if err := configCheck(config); err != nil {
-				http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-
-			tx, err := db.Begin()
-			if err != nil {
-				log.Printf("Error getting transaction from db:%s\n", err)
-				http.Error(w, "Internal server error ", http.StatusInternalServerError)
-				return
-			}
-			defer tx.Rollback()
-
-			if config.Threshold != nil {
-				err = updateThreshold(tx, *config.Threshold, appid)
-				if err != nil {
-					log.Printf("Error update threshold:%s\n", err)
-					http.Error(w, "Internal server error ", http.StatusInternalServerError)
-					return
-				}
-			}
-
-			if config.EmailList != nil {
-				err = updateMailList(tx, config.EmailList, appid)
-				if err != nil {
-					log.Printf("Error update mailList:%s\n", err)
-					http.Error(w, "Internal server error ", http.StatusInternalServerError)
-					return
-				}
-			}
-
-			enableStr, err := getAlertSysStatus(appid)
-			if err != nil {
-				log.Printf("Error getting status from consul:%s\n", err)
-				http.Error(w, "Internal server error ", http.StatusInternalServerError)
-				return
-			}
-
-			enable := 0
-
-			if enableStr != "" {
-				enable, err = strconv.Atoi(enableStr)
-				if err != nil {
-					log.Printf("Error getting sys status from consul, has wrong value:%s(%s)\n", err, enableStr)
-					http.Error(w, "Internal server error ", http.StatusInternalServerError)
-					return
-				}
-			}
-
-			if config.Enable != nil && enable != *config.Enable {
-				err = activateAlertSys(*config.Enable, appid)
-				if err != nil {
-					log.Printf("Error put status to consul:%s\n", err)
-					http.Error(w, "Internal server error ", http.StatusInternalServerError)
-					return
-				}
-			}
-
-			tx.Commit()
-
-		}
+		updateAlertConfig(w, r)
+	} else if r.Method == "GET" {
+		getAlertConfig(w, r)
 	} else {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func getAlertConfig(w http.ResponseWriter, r *http.Request) {
+	appid := r.Header.Get(NUAPPID)
+	config := &AlertConfig{}
+	statusStr, err := getAlertSysStatus(appid)
+	if err != nil {
+		log.Printf("Error getting status from consul:%s\n", err)
+		http.Error(w, "Internal server error ", http.StatusInternalServerError)
+		return
+	}
+
+	var status int
+	if statusStr == "1" {
+		status = 1
+	}
+
+	threshold, err := getThreshold(appid)
+	if err != nil {
+		log.Printf("Error getting threshold from db %s\n", err)
+	}
+
+	mailMap, err := queryMailList(appid)
+	if err != nil {
+		log.Printf("Error getting mail list from db:%s\n", err)
+		http.Error(w, "Internal server error ", http.StatusInternalServerError)
+		return
+	}
+
+	mailList := make([]string, 0, len(mailMap))
+	for mail := range mailMap {
+		mailList = append(mailList, mail)
+	}
+
+	config.Enable = &status
+	if threshold != 0 {
+		config.Threshold = &threshold
+	}
+	config.EmailList = mailList
+
+	encodeRes, err := json.Marshal(config)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Internal server error ", http.StatusInternalServerError)
+		return
+	}
+	contentType := "application/json; charset=utf-8"
+
+	w.Header().Set("Content-Type", contentType)
+	w.WriteHeader(http.StatusOK)
+	w.Write(encodeRes)
+
+}
+
+func updateAlertConfig(w http.ResponseWriter, r *http.Request) {
+	appid := r.Header.Get(NUAPPID)
+	config := &AlertConfig{}
+	err := json.NewDecoder(r.Body).Decode(config)
+	if err != nil {
+		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+	} else {
+
+		if err := configCheck(config); err != nil {
+			http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		tx, err := db.Begin()
+		if err != nil {
+			log.Printf("Error getting transaction from db:%s\n", err)
+			http.Error(w, "Internal server error ", http.StatusInternalServerError)
+			return
+		}
+		defer tx.Rollback()
+
+		if config.Threshold != nil {
+			err = updateThreshold(tx, *config.Threshold, appid)
+			if err != nil {
+				log.Printf("Error update threshold:%s\n", err)
+				http.Error(w, "Internal server error ", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if config.EmailList != nil {
+			err = updateMailList(tx, config.EmailList, appid)
+			if err != nil {
+				log.Printf("Error update mailList:%s\n", err)
+				http.Error(w, "Internal server error ", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		enableStr, err := getAlertSysStatus(appid)
+		if err != nil {
+			log.Printf("Error getting status from consul:%s\n", err)
+			http.Error(w, "Internal server error ", http.StatusInternalServerError)
+			return
+		}
+
+		enable := 0
+
+		if enableStr != "" {
+			enable, err = strconv.Atoi(enableStr)
+			if err != nil {
+				log.Printf("Error getting sys status from consul, has wrong value:%s(%s)\n", err, enableStr)
+				http.Error(w, "Internal server error ", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if config.Enable != nil && enable != *config.Enable {
+			err = activateAlertSys(*config.Enable, appid)
+			if err != nil {
+				log.Printf("Error put status to consul:%s\n", err)
+				http.Error(w, "Internal server error ", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		tx.Commit()
 	}
 }
 
@@ -270,4 +328,29 @@ func queryMailList(appid string) (map[string]uint64, error) {
 	}
 
 	return emailIDMap, err
+}
+
+func getThreshold(appid string) (int, error) {
+	querySQL := fmt.Sprintf("select %s from %s where %s=? limit 1", NSCORE, ThresholdTable, NAPPID)
+	stmt, err := db.Prepare(querySQL)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+	rows, err := stmt.Query(appid)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	var threshold int
+	if rows.Next() {
+		err = rows.Scan(&threshold)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return threshold, nil
+
 }

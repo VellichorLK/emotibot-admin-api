@@ -418,6 +418,7 @@ type TotalEmotionScore struct {
 
 //DefaultThreshold defualt threshold of emotion. [channel-1][emotion_type]
 var DefaultThreshold = [][]float64{{-1, 80}, {-1, 80}}
+var DefThreshold = 80
 
 /*
 type GroupReport struct {
@@ -508,6 +509,6 @@ type WhereStates struct {
 //AlertConfig sturct of config for alert setting
 type AlertConfig struct {
 	Enable    *int     `json:"alert_enable"`
-	Threshold *int     `json:"anger_threshold"`
+	Threshold *int     `json:"anger_threshold,omitempty"`
 	EmailList []string `json:"email_list"`
 }
