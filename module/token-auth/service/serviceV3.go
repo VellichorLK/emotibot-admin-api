@@ -246,9 +246,9 @@ func UpdateUserV3(enterpriseID string, userID string,
 		if err != nil {
 			return err
 		} else if exists {
-			if newUser.UserName == existedUserName {
+			if newUser.UserName != origUser.UserName && newUser.UserName == existedUserName {
 				return util.ErrUserNameExists
-			} else if newUser.Email != existedUserEmail {
+			} else if newUser.Email != origUser.Email && newUser.Email == existedUserEmail {
 				return util.ErrUserEmailExists
 			}
 		}

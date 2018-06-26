@@ -553,9 +553,7 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if newUser.UserName == "" {
-		newUser.UserName = origUser.UserName
-	}
+	newUser.UserName = origUser.UserName
 	if newUser.Email == "" {
 		err = util.ErrInvalidParameter
 		returnBadRequest(w, "email")
