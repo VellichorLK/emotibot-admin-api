@@ -799,7 +799,7 @@ func initRobotQAData(appid string) (err error) {
 		(content,appid,created_at,answer_count,
 			content2,content3,content4,content5,content6,content7,content8,content9,content10,status)
 			SELECT content,?,created_at,answer_count,
-			content2,content3,content4,content5,content6,content7,content8,content9,content10,status
+			content2,content3,content4,content5,content6,content7,content8,content9,content10,1
 			FROM robot_question
 			WHERE appid = ''`
 	_, err = tx.Exec(queryStr, appid)
