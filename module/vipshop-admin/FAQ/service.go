@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sort"
 	// "strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -20,6 +21,22 @@ func AddAPICategory(appid string, name string, parentID int, level int) (*APICat
 		return nil, err
 	}
 	return newCategory, nil
+}
+
+// sort category by name
+type ByName []*APICategory
+
+func (c ByName) Len() int           { return len(c) }
+func (c ByName) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c ByName) Less(i, j int) bool { return c[i].Name < c[j].Name }
+
+func doSort(categories []*APICategory) {
+	if len(categories) != 0 {
+		sort.Sort(ByName(categories))
+		for _, category := range categories {
+			doSort(category.Children)
+		}
+	}
 }
 
 func GetAPICategories(appid string) ([]*APICategory, error) {
@@ -39,6 +56,7 @@ func GetAPICategories(appid string) ([]*APICategory, error) {
 	for _, category := range ret {
 		fillCategoryInfo(category, "", 1)
 	}
+	doSort(ret)
 
 	return ret, nil
 }

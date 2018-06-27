@@ -70,7 +70,7 @@ func getCategories(appid string) (map[int]*APICategory, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	queryStr := fmt.Sprintf("SELECT CategoryId, CategoryName, ParentId FROM `%s_categories` where CategoryId > 0 order by CategoryId", appid)
+	queryStr := fmt.Sprintf("SELECT CategoryId, CategoryName, ParentId FROM `%s_categories` where Status > 0 and CategoryId > 0", appid)
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return nil, err
