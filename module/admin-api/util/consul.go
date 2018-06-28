@@ -17,7 +17,9 @@ import (
 
 const (
 	//ConsulTEKey is a helper value used in ConsulUpdateTaskEngine
-	ConsulTEKey = "te/enabled"
+	ConsulTEKey                = "te/enabled"
+	ConsulTEMappingTableKey    = "te/mapping_table"
+	ConsulTEMappingTableAllKey = "te/mapping_table_all"
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	ConsulRCKey = "chat/%s"
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
@@ -230,10 +232,28 @@ func ConsulUpdateFAQ(appid string) (int, error) {
 	return ConsulUpdateVal(key, now)
 }
 
-//ConsulUpdateTaskEngine is a convenient function for updating Task Engine's Consul Key
+//ConsulUpdateTaskEngine update Task Engine enabling Consul Key
+//to enable/disable Task Engine
 func ConsulUpdateTaskEngine(appid string, val bool) (int, error) {
-	//contains no appid, becaues this can be use in vipshop for now
+	//contains no appid, becaues this can only be use in vipshop for now
 	return ConsulUpdateVal(ConsulTEKey, val)
+}
+
+//ConsulUpdateTaskEngineMappingTable update the mapping table consul key
+//to inform TaskEngine to reload new tables
+func ConsulUpdateTaskEngineMappingTable() (int, error) {
+	t := time.Now()
+	val := t.Format("2006-01-02 15:04:05")
+	LogInfo.Printf(val)
+	return ConsulUpdateVal(ConsulTEMappingTableKey, val)
+}
+
+//ConsulUpdateTaskEngineMappingTableAll update the mapping table all consul key
+//to inform TaskEngine to reload all tables
+func ConsulUpdateTaskEngineMappingTableAll() (int, error) {
+	t := time.Now()
+	val := t.Format("2006-01-02 15:04:05")
+	return ConsulUpdateVal(ConsulTEMappingTableAllKey, val)
 }
 
 //ConsulUpdateFunctionStatus is a convenient function for updating Robot Chat's Consul Key

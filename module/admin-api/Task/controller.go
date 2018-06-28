@@ -379,8 +379,17 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	errno, err = SaveMappingTable(userID, appid, fileName, string(content))
 	if err != nil {
 		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
+		return
+	}
+	auditMsg.WriteString(fmt.Sprintf(" -> %s", fileName))
+
+	// inform TE to reload mapping table
+	var result int
+	result, err = util.ConsulUpdateTaskEngineMappingTable()
+	if err != nil {
+		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d, %s", result, err.Error())
 	} else {
-		auditMsg.WriteString(fmt.Sprintf(" -> %s", fileName))
+		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d", result)
 	}
 }
 
@@ -419,6 +428,16 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errno = ApiError.DB_ERROR
 		ret = err.Error()
+		return
+	}
+
+	// inform TE to reload all mapping table
+	var result int
+	result, err = util.ConsulUpdateTaskEngineMappingTableAll()
+	if err != nil {
+		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d, %s", result, err.Error())
+	} else {
+		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d", result)
 	}
 }
 
@@ -497,6 +516,6 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 		}
 		key := strings.Replace(tuple.Key, "\"", "\"\"\"", -1)
 		value := strings.Replace(tuple.Value, "\"", "\"\"\"", -1)
-		outputBuf.WriteString(fmt.Sprintf("\"%s\",\"%s\"\n", key, value))
+		outputBuf.WriteString(fmt.Sprintf("%s,%s\n", key, value))
 	}
 }
