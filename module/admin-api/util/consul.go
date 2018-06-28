@@ -244,7 +244,6 @@ func ConsulUpdateTaskEngine(appid string, val bool) (int, error) {
 func ConsulUpdateTaskEngineMappingTable() (int, error) {
 	t := time.Now()
 	val := t.Format("2006-01-02 15:04:05")
-	LogInfo.Printf(val)
 	return ConsulUpdateVal(ConsulTEMappingTableKey, val)
 }
 
