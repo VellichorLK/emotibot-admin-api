@@ -236,7 +236,7 @@ func main() {
 						route.HandlerFunc(w, r)
 					}
 				} else {
-					returnForbidden(w)
+					returnUnauthorized(w)
 				}
 			})
 		util.LogInfo.Printf("Setup for path [%s:%s], %+v", route.Method, path, route.GrantType)
