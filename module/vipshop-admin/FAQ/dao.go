@@ -441,10 +441,10 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 
 	} else {
 		// no filter
-		query = fmt.Sprintf(`SELECT q.Question_Id, GROUP_CONCAT(DISTINCT a.Answer_Id) as aids from %s_question as q
+		query = fmt.Sprintf(`SELECT q.Question_Id, GROUP_CONCAT(DISTINCT a.Answer_Id) as aids from ( select Question_Id from %s_question where %s_question.status >= 0) as q
 				inner join %s_answer as a on q.Question_Id = a.Question_Id
 				group by q.Question_Id
-				order by q.Question_Id desc`, appid, appid)
+				order by q.Question_Id desc`, appid, appid, appid)
 	}
 
 	db := util.GetMainDB()
