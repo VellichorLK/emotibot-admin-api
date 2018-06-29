@@ -313,7 +313,7 @@ func searchQuestionByContent(content string, appid string) (StdQuestion, error) 
 	if db == nil {
 		return q, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content = ? ORDER BY Question_id DESC", appid)
+	rawQuery := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content = ? and Status >= 0 ORDER BY Question_id DESC", appid)
 	results, err := db.Query(rawQuery, content)
 	if err != nil {
 		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
