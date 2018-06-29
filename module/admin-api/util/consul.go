@@ -219,7 +219,7 @@ func (c ConsulClient) ConsulGetVal(key string) (string, int, error) {
 	return c.getHandler(key)
 }
 
-//ConsulUpdateEntity is a convenient function for updating Task Engine's Consul Key
+//ConsulUpdateEntity is a convenient function for updating wordbank's Consul Key
 func ConsulUpdateEntity(appid string, value interface{}) (int, error) {
 	key := fmt.Sprintf(ConsulEntityKey, appid)
 	return ConsulUpdateVal(key, value)

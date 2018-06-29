@@ -808,3 +808,51 @@ func initRobotQAData(appid string) (err error) {
 	}
 	return tx.Commit()
 }
+
+// initWordbankData only support in version 3
+func initWordbankData(appid string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	// 1. check is there has function set
+	queryStr := `
+		SELECT count(*)
+		FROM entity_class
+		WHERE appid = ?`
+	count := 0
+	row := tx.QueryRow(queryStr, appid)
+	err = row.Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	// if existed, return
+	if count > 0 {
+		return nil
+	}
+
+	// copy default function to appid
+	queryStr = `
+		INSERT INTO entity_class
+		(appid, name, editable, intent_engine, rule_engine)
+			SELECT ?, name, editable, intent_engine, rule_engine
+			FROM entity_class
+			WHERE appid = ''`
+	_, err = tx.Exec(queryStr, appid)
+	if err != nil {
+		return
+	}
+	return tx.Commit()
+}

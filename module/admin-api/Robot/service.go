@@ -186,3 +186,7 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int) (*Chat
 func InitRobotQAData(appid string) error {
 	return initRobotQAData(appid)
 }
+
+func InitWordbankData(appid string) error {
+	return initWordbankData(appid)
+}

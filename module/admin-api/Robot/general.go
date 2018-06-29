@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -87,6 +88,7 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 
 	errRobot := InitRobotFunction(appid)
 	errQA := InitRobotQAData(appid)
+	errWordbank := InitWordbankData(appid)
 	if errRobot != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errRobot.Error()))
 		return
@@ -95,9 +97,14 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errQA.Error()))
 		return
 	}
+	if errWordbank != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errWordbank.Error()))
+		return
+	}
 	// after init data, update consul to notify controller to init data
 	go util.ConsulUpdateRobotChat(appid)
 	go util.ConsulUpdateFunctionStatus(appid)
+	go Dictionary.TriggerUpdateWordbankV3(appid)
 
 	// call multicustomer to handle robot QA
 	go util.McRebuildRobotQA(appid)
