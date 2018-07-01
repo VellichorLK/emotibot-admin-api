@@ -1,8 +1,6 @@
 package ApiError
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 )
 
@@ -67,19 +65,6 @@ var (
 	// QA test error: return format from openapi has error
 	QA_TEST_FORMAT_ERROR = 301
 )
-
-var (
-	ErrDuplicated = errors.New("資源已存在")
-	ErrNotFound   = errors.New("資源不存在")
-)
-
-func GenDuplicatedError(column string, resource string) error {
-	return fmt.Errorf("已存在相同%s的%s", column, resource)
-}
-
-func GenBadRequestError(column string) error {
-	return fmt.Errorf("無效的欄位：%s", column)
-}
 
 func GetErrorMsg(errno int) string {
 	if errMsg, ok := errorMsgMap[errno]; ok {

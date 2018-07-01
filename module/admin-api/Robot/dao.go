@@ -2,7 +2,6 @@ package Robot
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -69,7 +68,7 @@ func updateFunctionList(appid string, infos map[string]*FunctionInfo) error {
 func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 	var err error
 	var rows *sql.Rows
@@ -136,7 +135,7 @@ func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 func getAllAnswer(appid string, version int) (map[int][]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	ret := make(map[int][]string)
@@ -175,7 +174,7 @@ func getAllAnswer(appid string, version int) (map[int][]string, error) {
 func getAnswerOfQuestion(appid string, qid int, version int) ([]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	ret := []string{}
@@ -213,7 +212,7 @@ func getAnswerOfQuestion(appid string, qid int, version int) ([]string, error) {
 func getAnswerOfQuestions(appid string, ids []int, version int) (map[int][]string, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	if len(ids) == 0 {
@@ -274,7 +273,7 @@ func convertQuestionRowToQAInfo(row []interface{}) *QAInfo {
 func getRobotQAListPage(appid string, page int, listPerPage int, version int) ([]*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	if listPerPage < 0 || page <= 0 {
@@ -365,7 +364,7 @@ func getRobotQAListPage(appid string, page int, listPerPage int, version int) ([
 func getAllRobotQACnt(appid string, version int) (int, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return 0, errors.New("DB not init")
+		return 0, util.ErrDBNotInit
 	}
 	var err error
 	var rows *sql.Rows
@@ -400,7 +399,7 @@ func getAllRobotQACnt(appid string, version int) (int, error) {
 func getRobotQA(appid string, id int, version int) (*QAInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	cols := []string{"q_id", "created_at", "content", "content2", "content3", "content4", "content5", "content6", "content7", "content8", "content9", "content10"}
@@ -461,7 +460,7 @@ func getRobotQA(appid string, id int, version int) (*QAInfo, error) {
 func updateRobotQA(appid string, id int, info *QAInfo) error {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return errors.New("DB not init")
+		return util.ErrDBNotInit
 	}
 	emptyStr := ""
 
@@ -529,7 +528,7 @@ func updateRobotQAV2(appid string, id int, info *QAInfo) error {
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return errors.New("DB not init")
+		return util.ErrDBNotInit
 	}
 
 	link, err := mySQL.Begin()
@@ -573,7 +572,7 @@ func updateRobotQAV2(appid string, id int, info *QAInfo) error {
 func getRobotChat(appid string, id int) (*ChatInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	queryStr := fmt.Sprintf("SELECT content FROM %s_robot_setting where type = ?", appid)
@@ -605,7 +604,7 @@ func getRobotChat(appid string, id int) (*ChatInfo, error) {
 func getRobotChatList(appid string) ([]*ChatInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	queryStr := fmt.Sprintf("SELECT type, content FROM %s_robot_setting", appid)
@@ -641,7 +640,7 @@ func getRobotChatList(appid string) ([]*ChatInfo, error) {
 func getRobotChatInfoList(appid string) ([]*ChatDescription, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	nameMap := make(map[int]string)
@@ -682,7 +681,7 @@ func getRobotChatInfoList(appid string) ([]*ChatDescription, error) {
 func getMultiRobotChat(appid string, input []int) ([]*ChatInfo, error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return nil, errors.New("DB not init")
+		return nil, util.ErrDBNotInit
 	}
 
 	if len(input) == 0 {
@@ -721,7 +720,7 @@ func getMultiRobotChat(appid string, input []int) ([]*ChatInfo, error) {
 func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		return errors.New("DB not init")
+		return util.ErrDBNotInit
 	}
 
 	link, err := mySQL.Begin()
@@ -766,7 +765,7 @@ func initRobotQAData(appid string) (err error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 
@@ -816,7 +815,7 @@ func initWordbankData(appid string) (err error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 

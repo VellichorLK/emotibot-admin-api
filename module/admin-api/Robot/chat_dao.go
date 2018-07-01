@@ -18,7 +18,7 @@ func getRobotWords(appid string) (ret []*ChatInfoV2, err error) {
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	queryStr := "SELECT type,name,comment FROM robot_words_type"
@@ -71,7 +71,7 @@ func getRobotWord(appid string, id int) (ret *ChatInfoV2, err error) {
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	tx, err := mySQL.Begin()
@@ -140,7 +140,7 @@ func updateRobotWord(appid string, typeID int, contents []string) (ret []*ChatCo
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	tx, err := mySQL.Begin()
@@ -192,7 +192,7 @@ func addRobotWordContent(appid string, typeID int, content string) (ret *ChatCon
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	tx, err := mySQL.Begin()
@@ -242,7 +242,7 @@ func updateRobotWordContent(appid string, typeID int, contentID int, content str
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	tx, err := mySQL.Begin()
@@ -283,7 +283,7 @@ func deleteRobotWordContent(appid string, typeID int, contentID int) (err error)
 
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 

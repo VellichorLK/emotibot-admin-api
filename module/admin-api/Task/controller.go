@@ -285,7 +285,7 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 	}
 	if tableName == "" {
 		w.WriteHeader(ApiError.GetHttpStatus(ApiError.REQUEST_ERROR))
-		err := ApiError.GenBadRequestError(util.Msg["MappingTableName"])
+		err := util.GenBadRequestError(util.Msg["MappingTableName"])
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -419,7 +419,7 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 
 	if tableName == "" {
 		errno = ApiError.REQUEST_ERROR
-		ret = ApiError.GenBadRequestError(util.Msg["MappingTableName"]).Error()
+		ret = util.GenBadRequestError(util.Msg["MappingTableName"]).Error()
 		return
 	}
 	auditMsg.WriteString(tableName)
@@ -489,7 +489,7 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 	}
 	if tableName == "" {
 		w.WriteHeader(ApiError.GetHttpStatus(ApiError.REQUEST_ERROR))
-		err := ApiError.GenBadRequestError(util.Msg["MappingTableName"])
+		err := util.GenBadRequestError(util.Msg["MappingTableName"])
 		auditMsg.WriteString(fmt.Sprintf("%s", err.Error()))
 		return
 	}

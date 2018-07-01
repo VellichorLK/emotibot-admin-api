@@ -55,7 +55,7 @@ func handleGetCmd(w http.ResponseWriter, r *http.Request) {
 	cmd, err := GetCmd(appid, id)
 	if cmd == nil {
 		retCode = ApiError.NOT_FOUND_ERROR
-		err = ApiError.ErrNotFound
+		err = util.ErrNotFound
 		return
 	} else if err != nil {
 		retCode = ApiError.DB_ERROR
@@ -81,14 +81,14 @@ func handleUpdateCmd(w http.ResponseWriter, r *http.Request) {
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
-		err = ApiError.GenBadRequestError("ID")
+		err = util.GenBadRequestError("ID")
 		return
 	}
 
 	origCmd, err := GetCmd(appid, id)
 	if origCmd == nil {
 		retCode = ApiError.NOT_FOUND_ERROR
-		err = ApiError.ErrNotFound
+		err = util.ErrNotFound
 		return
 	}
 	if err != nil {
@@ -130,7 +130,7 @@ func handleAddCmd(w http.ResponseWriter, r *http.Request) {
 	}
 	cid, err := strconv.Atoi(r.FormValue("cid"))
 	if err != nil {
-		err = ApiError.GenBadRequestError(util.Msg["CmdParentID"])
+		err = util.GenBadRequestError(util.Msg["CmdParentID"])
 		retCode = ApiError.REQUEST_ERROR
 		return
 	}
@@ -316,7 +316,7 @@ func handleGetCmdClass(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		retCode, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
+		retCode, err = ApiError.REQUEST_ERROR, util.GenBadRequestError("ID")
 		return
 	}
 
@@ -337,7 +337,7 @@ func handleDeleteCmdClass(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		err = ApiError.GenBadRequestError(util.Msg["CmdParentID"])
+		err = util.GenBadRequestError(util.Msg["CmdParentID"])
 		retCode = ApiError.REQUEST_ERROR
 		return
 	}
@@ -362,7 +362,7 @@ func handleAddCmdClass(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	className := r.FormValue("name")
 	if strings.TrimSpace(className) == "" {
-		retCode, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError(util.Msg["CmdClassName"])
+		retCode, err = ApiError.REQUEST_ERROR, util.GenBadRequestError(util.Msg["CmdClassName"])
 		return
 	}
 
@@ -399,14 +399,14 @@ func handleUpdateCmdClass(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		err = ApiError.GenBadRequestError(util.Msg["CmdParentID"])
+		err = util.GenBadRequestError(util.Msg["CmdParentID"])
 		retCode = ApiError.REQUEST_ERROR
 		return
 	}
 
 	newClassName := r.FormValue("name")
 	if strings.TrimSpace(newClassName) == "" {
-		retCode, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError(util.Msg["CmdClassName"])
+		retCode, err = ApiError.REQUEST_ERROR, util.GenBadRequestError(util.Msg["CmdClassName"])
 		return
 	}
 
@@ -433,13 +433,13 @@ func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
-		err = ApiError.GenBadRequestError("ID")
+		err = util.GenBadRequestError("ID")
 		return
 	}
 	cid, err := strconv.Atoi(r.FormValue("cid"))
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
-		err = ApiError.GenBadRequestError(util.Msg["CmdParentID"])
+		err = util.GenBadRequestError(util.Msg["CmdParentID"])
 		return
 	}
 	if cid != -1 {
@@ -460,7 +460,7 @@ func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
 	origCmd, err := GetCmd(appid, id)
 	if origCmd == nil {
 		retCode = ApiError.NOT_FOUND_ERROR
-		err = ApiError.ErrNotFound
+		err = util.ErrNotFound
 		return
 	}
 	if err != nil {

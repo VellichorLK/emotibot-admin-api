@@ -564,7 +564,7 @@ func handleGetWordbankV3(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
+		errno, err = ApiError.REQUEST_ERROR, util.GenBadRequestError("ID")
 		return
 	}
 
@@ -590,7 +590,7 @@ func handleGetWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
-		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
+		errno, err = ApiError.REQUEST_ERROR, util.GenBadRequestError("ID")
 		return
 	}
 
@@ -624,12 +624,12 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		errMsg += ": " + util.Msg["IDError"]
-		errno, err = ApiError.REQUEST_ERROR, ApiError.GenBadRequestError("ID")
+		errno, err = ApiError.REQUEST_ERROR, util.GenBadRequestError("ID")
 		return
 	}
 
 	wordbank, errno, err := GetWordbankV3(appid, id)
-	if err == ApiError.ErrNotFound {
+	if err == util.ErrNotFound {
 		errno, err = ApiError.SUCCESS, nil
 		return
 	}

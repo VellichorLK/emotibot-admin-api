@@ -13,7 +13,7 @@ var errInvalidVersion = errors.New("invalid version")
 func getDBFunction(appid string, code string, version int) (ret *Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 
@@ -50,7 +50,7 @@ func getDBFunction(appid string, code string, version int) (ret *Function, err e
 func getDBFunctions(appid string, version int) (ret []*Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 
@@ -93,7 +93,7 @@ func getDBFunctions(appid string, version int) (ret []*Function, err error) {
 func setDBFunctionActiveStatus(appid string, code string, active bool, version int) (ret bool, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 	val := 0
@@ -121,7 +121,7 @@ func setDBFunctionActiveStatus(appid string, code string, active bool, version i
 func setDBMultiFunctionActiveStatus(appid string, active map[string]bool, version int) (ret bool, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 
@@ -171,7 +171,7 @@ func initRobotFunctionData(appid string) (err error) {
 	}()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
-		err = errors.New("DB not init")
+		err = util.ErrDBNotInit
 		return
 	}
 

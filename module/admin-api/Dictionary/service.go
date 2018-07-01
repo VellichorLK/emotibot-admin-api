@@ -130,7 +130,7 @@ func GetWordbankV3(appid string, id int) (*WordBankV3, int, error) {
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	} else if wordbank == nil {
-		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return nil, ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	}
 	return wordbank, ApiError.SUCCESS, nil
 }
@@ -140,7 +140,7 @@ func GetWordbankClassV3(appid string, id int) (*WordBankClassV3, int, error) {
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	} else if class == nil {
-		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return nil, ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	}
 	return class, ApiError.SUCCESS, nil
 }

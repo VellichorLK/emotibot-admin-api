@@ -32,7 +32,7 @@ func DeleteCmd(appid string, id int) error {
 func AddCmd(appid string, cmd *Cmd, cid int) (int, int, error) {
 	id, err := addCmd(appid, cmd, cid)
 	if err == errDuplicate {
-		return 0, ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+		return 0, ApiError.REQUEST_ERROR, util.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
 	} else if err != nil {
 		return 0, ApiError.DB_ERROR, err
 	}
@@ -42,9 +42,9 @@ func AddCmd(appid string, cmd *Cmd, cid int) (int, int, error) {
 func UpdateCmd(appid string, id int, cmd *Cmd) (int, error) {
 	err := updateCmd(appid, id, cmd)
 	if err == errDuplicate {
-		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+		return ApiError.REQUEST_ERROR, util.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
 	} else if err == sql.ErrNoRows {
-		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	} else if err != nil {
 		return ApiError.DB_ERROR, err
 	}
@@ -79,12 +79,12 @@ func GetCmdCountOfLabels(appid string) (map[int]int, error) {
 func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
 	class, err := getCmdClass(appid, classID)
 	if err == sql.ErrNoRows {
-		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return nil, ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	} else if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 	if class == nil {
-		return nil, ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return nil, ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	}
 	return class, ApiError.SUCCESS, nil
 }
@@ -92,9 +92,9 @@ func GetCmdClass(appid string, classID int) (*CmdClass, int, error) {
 func UpdateCmdClass(appid string, classID int, newClassName string) (int, error) {
 	err := updateCmdClass(appid, classID, newClassName)
 	if err == sql.ErrNoRows {
-		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	} else if err == errDuplicate {
-		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
+		return ApiError.REQUEST_ERROR, util.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
 	} else if err != nil {
 		return ApiError.DB_ERROR, err
 	}
@@ -104,7 +104,7 @@ func UpdateCmdClass(appid string, classID int, newClassName string) (int, error)
 func AddCmdClass(appid string, pid *int, className string) (int, int, error) {
 	id, err := addCmdClass(appid, pid, className)
 	if err == errDuplicate {
-		return 0, ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
+		return 0, ApiError.REQUEST_ERROR, util.GenDuplicatedError(util.Msg["Name"], util.Msg["CmdClass"])
 	} else if err != nil {
 		return 0, ApiError.DB_ERROR, err
 	}
@@ -118,9 +118,9 @@ func DeleteCmdClass(appid string, classID int) error {
 func MoveCmd(appid string, id int, cid int) (int, error) {
 	err := moveCmd(appid, id, cid)
 	if err == errDuplicate {
-		return ApiError.REQUEST_ERROR, ApiError.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
+		return ApiError.REQUEST_ERROR, util.GenDuplicatedError(util.Msg["Name"], util.Msg["Cmd"])
 	} else if err == sql.ErrNoRows {
-		return ApiError.NOT_FOUND_ERROR, ApiError.ErrNotFound
+		return ApiError.NOT_FOUND_ERROR, util.ErrNotFound
 	} else if err != nil {
 		return ApiError.DB_ERROR, err
 	}
