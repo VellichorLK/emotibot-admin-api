@@ -91,3 +91,15 @@ type ChatInfoV2 struct {
 	Contents []*ChatContentInfoV2 `json:"contents"`
 	Limit    int                  `json:"limit"`
 }
+
+type InfoV3 struct {
+	ID      int    `json:"id"`
+	Content string `json:"content"`
+}
+
+type QAInfoV3 struct {
+	ID               int       `json:"id"`
+	Question         string    `json:"main_question"`
+	RelatedQuestions []*InfoV3 `json:"relate_questions"`
+	Answers          []*InfoV3 `json:"answers"`
+}

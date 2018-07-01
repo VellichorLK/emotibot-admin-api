@@ -32,6 +32,17 @@ func init() {
 			util.NewEntryPointWithVer("GET", "qa/{id}", []string{"view"}, handleRobotQAV2, 2),
 			util.NewEntryPointWithVer("POST", "qa/{id}", []string{"edit"}, handleUpdateRobotQAV2, 2),
 
+			util.NewEntryPointWithVer("GET", "qas", []string{"view"}, handleRobotQAListV3, 3),
+			util.NewEntryPointWithVer("POST", "qa", []string{"edit"}, handleCreateRobotQAV3, 3),
+			util.NewEntryPointWithVer("GET", "qa/{id}", []string{"view"}, handleRobotQAV3, 3),
+			util.NewEntryPointWithVer("PUT", "qa/{id}", []string{"edit"}, handleUpdateRobotQAV3, 3),
+			util.NewEntryPointWithVer("POST", "qa/{id}/answer", []string{"create"}, handleAddRobotQAAnswerV3, 3),
+			util.NewEntryPointWithVer("PUT", "qa/{id}/answer/{aid}", []string{"edit"}, handleUpdateRobotQAAnswerV3, 3),
+			util.NewEntryPointWithVer("DELETE", "qa/{id}/answer/{aid}", []string{"delete"}, handleDeleteRobotQAAnswerV3, 3),
+			util.NewEntryPointWithVer("POST", "qa/{id}/question", []string{"create"}, handleAddRobotQARQuestionV3, 3),
+			util.NewEntryPointWithVer("PUT", "qa/{id}/question/{qid}", []string{"edit"}, handleUpdateRobotQARQuestionV3, 3),
+			util.NewEntryPointWithVer("DELETE", "qa/{id}/question/{qid}", []string{"delete"}, handleDeleteRobotQARQuestionV3, 3),
+
 			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
 			util.NewEntryPoint("GET", "chat/{id}", []string{"view"}, handleGetChat),
 			util.NewEntryPoint("POST", "chats", []string{"edit"}, handleMultiChatModify),
