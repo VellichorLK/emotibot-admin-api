@@ -74,12 +74,13 @@ func main() {
 		Timeout: time.Duration(5) * time.Second,
 	}
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
-	util.LogTrace.Printf("Init consul client with url: %#v\n", u)
+	util.LogInfo.Printf("Init consul client with url: %#v\n", u)
 
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
 		logLevel = "INFO"
 	}
+	util.LogInfo.Printf("Set log level %s\n", logLevel)
 
 	accessLog := serverEnvs["ACCESS_LOG"]
 	if accessLog == "1" {
@@ -121,16 +122,23 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	userid := util.GetUserID(r)
 	token := util.GetAuthToken(r)
 
-	if len(userid) == 0 || len(token) == 0 {
-		util.LogTrace.Printf("Unauthorized path[%s] userid:[%s] token:[%s]", ep.EntryPath, userid, token)
+	if len(userid) == 0 {
+		util.LogTrace.Printf("Unauthorized path[%s]: empty user", ep.EntryPath)
 		return false
 	}
 	if ep.CheckAppID && !util.IsValidAppID(appid) {
-		util.LogTrace.Printf("Unauthorized path[%s] appid[%s]", ep.EntryPath, appid)
+		util.LogTrace.Printf("Unauthorized path[%s]: appid[%s]", ep.EntryPath, appid)
 		return false
 	}
+	if ep.CheckAuthToken {
+		if len(token) == 0 {
+			util.LogTrace.Printf("Unauthorized path[%s]: empty token", ep.EntryPath)
+			return false
+		}
+		return checkPrivilegeWithAPI(module, cmd, token)
+	}
 
-	return checkPrivilegeWithAPI(module, cmd, token)
+	return true
 }
 
 func checkPrivilegeWithAPI(module string, cmd string, token string) bool {

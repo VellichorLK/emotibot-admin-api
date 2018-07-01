@@ -8,12 +8,13 @@ import (
 
 // EntryPoint is used in every module define
 type EntryPoint struct {
-	AllowMethod string
-	EntryPath   string
-	Callback    func(w http.ResponseWriter, r *http.Request)
-	Version     int
-	Command     []string
-	CheckAppID  bool
+	AllowMethod    string
+	EntryPath      string
+	Callback       func(w http.ResponseWriter, r *http.Request)
+	Version        int
+	Command        []string
+	CheckAppID     bool
+	CheckAuthToken bool
 }
 
 // NewEntryPoint create new instance of EntryPoint with version 1
@@ -25,6 +26,7 @@ func NewEntryPoint(method string, path string, cmd []string, callback func(w htt
 	entrypoint.Version = 1
 	entrypoint.Command = cmd
 	entrypoint.CheckAppID = true
+	entrypoint.CheckAuthToken = true
 	return entrypoint
 }
 
@@ -37,11 +39,12 @@ func NewEntryPointWithVer(method string, path string, cmd []string, callback fun
 	entrypoint.Version = version
 	entrypoint.Command = cmd
 	entrypoint.CheckAppID = true
+	entrypoint.CheckAuthToken = true
 	return entrypoint
 }
 
 // NewEntryPointWithCustom create new instance of EntryPoint with custom param
-// which is (version int, checkAppID bool)
+// which is (version int, checkAppID bool, checkAuthToken bool)
 func NewEntryPointWithCustom(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), param ...interface{}) EntryPoint {
 	entrypoint := EntryPoint{}
 	entrypoint.AllowMethod = method
@@ -49,15 +52,28 @@ func NewEntryPointWithCustom(method string, path string, cmd []string, callback 
 	entrypoint.Callback = callback
 	entrypoint.Command = cmd
 
-	if val, ok := param[0].(int); ok {
-		entrypoint.Version = val
-	} else {
-		entrypoint.Version = 1
-	}
-	if val, ok := param[1].(bool); ok {
-		entrypoint.CheckAppID = val
-	} else {
-		entrypoint.CheckAppID = true
+	for idx := range param {
+		origVal := param[idx]
+		switch idx {
+		case 0:
+			if val, ok := origVal.(int); ok {
+				entrypoint.Version = val
+			} else {
+				entrypoint.Version = 1
+			}
+		case 1:
+			if val, ok := origVal.(bool); ok {
+				entrypoint.CheckAppID = val
+			} else {
+				entrypoint.CheckAppID = true
+			}
+		case 2:
+			if val, ok := origVal.(bool); ok {
+				entrypoint.CheckAuthToken = val
+			} else {
+				entrypoint.CheckAuthToken = true
+			}
+		}
 	}
 
 	return entrypoint
