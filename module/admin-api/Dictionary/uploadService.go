@@ -431,6 +431,23 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			continue
 		}
 
+		if utf8.RuneCountInString(currentWordbankRow.Level1) > 20 {
+			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			return
+		}
+		if utf8.RuneCountInString(currentWordbankRow.Level2) > 20 {
+			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			return
+		}
+		if utf8.RuneCountInString(currentWordbankRow.Level3) > 20 {
+			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			return
+		}
+		if utf8.RuneCountInString(currentWordbankRow.Level4) > 20 {
+			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			return
+		}
+
 		if utf8.RuneCountInString(currentWordbankRow.Name) > 35 {
 			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
 			return
