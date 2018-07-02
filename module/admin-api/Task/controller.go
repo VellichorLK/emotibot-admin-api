@@ -124,8 +124,10 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	// FIXME: trick here, task-engine will call update almost every click on UI
 	// it will cause too much audit log into database
 	// As a result, use get API to audit start edit only.
-	auditMsg := fmt.Sprintf("%s%s%s ID: %s", util.Msg["Start"], util.Msg["Edit"], util.Msg["TaskEngineScenario"], scenarioid)
-	addAuditLog(r, util.AuditOperationEdit, auditMsg, err == nil)
+	if scenarioid != "all" {
+		auditMsg := fmt.Sprintf("%s%s%s ID: %s", util.Msg["Start"], util.Msg["Modify"], util.Msg["TaskEngineScenario"], scenarioid)
+		addAuditLog(r, util.AuditOperationEdit, auditMsg, err == nil)
+	}
 }
 
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
