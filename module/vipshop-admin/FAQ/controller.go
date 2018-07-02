@@ -423,6 +423,11 @@ func handleQuestionFilter(ctx context.Context) {
 	} else if len(qids) < condition.Limit {
 		pagedQIDs = qids
 		pagedAIDs = aids
+	} else if len(qids) <= start {
+		start = len(qids) - condition.Limit
+		end = len(qids)
+		pagedQIDs = qids[start:end]
+		pagedAIDs = aids[start:end]
 	} else if len(qids) < end {
 		end = len(qids)
 		pagedQIDs = qids[start:end]
