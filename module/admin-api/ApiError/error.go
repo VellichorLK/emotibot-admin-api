@@ -18,6 +18,7 @@ var (
 		104: "Multicustomer is not available",
 		201: "Get no info of given id",
 		301: "Return from openapi has error",
+		401: "Intent file format error",
 	}
 
 	// SUCCESS
@@ -64,6 +65,9 @@ var (
 
 	// QA test error: return format from openapi has error
 	QA_TEST_FORMAT_ERROR = 301
+
+	// Intent file format error
+	INTENT_FORMAT_ERROR = 401
 )
 
 func GetErrorMsg(errno int) string {

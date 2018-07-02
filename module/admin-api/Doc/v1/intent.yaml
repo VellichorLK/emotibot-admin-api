@@ -1,0 +1,198 @@
+openapi: 3.0.0
+info:
+  title: Intent
+  description: This is API document page for Intent RestAPIs
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v1/
+
+################################################################################
+#                                  Parameters                                  #
+################################################################################
+parameters:
+  version:
+    name: version
+    in: query
+    description: 意圖版本號 (若未指定，則預設為指定最新版本)
+    type: string
+  zh_tw:
+    name: zh_tw
+    in: query
+    description: 回傳資料是否要轉為繁體中文
+    type: boolean
+
+################################################################################
+#                                    Paths                                     #
+################################################################################
+paths:
+  /intents:
+    get:
+      summary: 意圖訓練名稱
+      description: 回傳意圖訓練名稱
+      parameters:
+        - $ref: '#/parameters/version'
+        - $ref: "#/parameters/zh_tw"
+      responses:
+        200:
+          description: 意圖訓練名稱列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/definitions/Message'
+                  result:
+                    type: array
+                    items:
+                      type: string
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+  /intents/upload:
+    post:
+      summary: 上傳新版本的意圖訓練資料
+      description: 上傳 Excel (*.xslx) 檔案，新增新版本的意圖訓練資料
+      responses:
+        200:
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/definitions/Message'
+                  result:
+                    type: object
+                    properties:
+                      version:
+                        type: integer
+                        description: 上傳意圖資料版本號
+        422:
+          description: 上傳失敗
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/definitions/Message'
+        500:
+          description: Internal server error
+
+  /intents/download:
+    get:
+      summary: 下載意圖訓練資料
+      description: 下載意圖訓練資料 Excel (*.xslx) 檔案
+      parameters:
+        - $ref: "#/parameters/version"
+      responses:
+        200:
+          description: 下載成功
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binaray
+        400:
+          description: Bad request
+        404:
+          description: 找不到檔案
+        500:
+          description: Internal server error
+          
+  /intents/train:
+    post:
+      summary: 訓練意圖
+      description: 訓練所指定版本的意圖
+      parameters:
+        - $ref: "#/parameters/version"
+        - name: auto_reload
+          in: query
+          description: 訓練完後是否自動載入 model (若未指定，則預設為 true)
+          type: boolean
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+  /intents/status:
+    get:
+      summary: 目前意圖訓練狀態
+      description: 回傳目前意圖訓練的狀態值
+      parameters:
+        - $ref: "#/parameters/version"
+      responses:
+        200:
+          description: 訓練狀態值
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/definitions/Message'
+                  result:
+                    type: object
+                    properties:
+                      ie_status:
+                        $ref: '#/definitions/TrainStatus'
+                        description: Intent Engine 訓練狀態
+                      re_status:
+                        $ref: '#/definitions/TrainStatus'
+                        description: Rule Engine 訓練狀態
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+################################################################################
+#                                 Definitions                                  #
+################################################################################
+definitions:
+  Message:
+    type: string
+    enum:
+      - success
+      - db error
+      - io error
+      - consul server unavailable
+      - Error when send request to other API server
+      - Uploaded file still processing
+      - File extension should be xlsx
+      - File size should smaller than 2MB
+      - Multicustomer is not available
+      - File format error
+      - Get no info of given id
+      - Return from openapi has error
+  
+  TrainStatus:
+    type: string
+    enum:
+      - NOT_TRAINED
+      - TRAINING
+      - TRAINED
