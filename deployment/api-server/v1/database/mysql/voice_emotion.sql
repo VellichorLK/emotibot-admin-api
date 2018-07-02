@@ -155,6 +155,37 @@ CREATE TABLE IF NOT EXISTS `voice_emotion`.`userSelectableValue` (
 ENGINE = InnoDB;
 
 
+-- -----------------------------------------------------
+-- Table `voice_emotion`.`alertThreshold`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`alertThreshold` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `channel` INT NOT NULL,
+  `type` INT NOT NULL,
+  `score` FLOAT NOT NULL,
+  `appid` VARCHAR(32) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `index_appid` (`appid` ASC),
+  UNIQUE INDEX `unique_key` (`channel` ASC, `type` ASC, `score` ASC, `appid` ASC),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `voice_emotion`.`emailNotification`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`emailNotification` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `appid` VARCHAR(32) NOT NULL,
+  `email` VARCHAR(256) NOT NULL,
+  PRIMARY KEY (`id`),
+  INDEX `index_appid` (`appid` ASC),
+  UNIQUE INDEX `unique_combine` (`appid` ASC, `email` ASC),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC))
+ENGINE = InnoDB;
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+

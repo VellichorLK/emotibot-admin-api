@@ -110,6 +110,8 @@ services:
             LISTEN_PORT: ${API_VOICE_EMOTION_PORT}
             FILE_PREFIX: ${API_VOICE_EMOTION_DATA_PATH}
             ASR_ENABLE: ${WORKER_ENV_KEY_ASR_ENABLE}
+            CONSUL_IP: ${CONSUL_IP}
+            CONSUL_PORT: ${CONSUL_PORT}
         volumes:
             - ${API_VOICE_EMOTION_DATA_PATH}:/usr/src/app/upload_file
             - /etc/localtime:/etc/localtime
@@ -254,12 +256,16 @@ services:
             DB_USER: ${WORKER_VOICE_EMOTION_STATISTIC_DB_USER}
             DB_PWD: ${WORKER_VOICE_EMOTION_STATISTIC_DB_PWD}
             ENABLE_SILENCE_COMPUTING: ${WORKER_VOICE_EMOTION_STATISTIC_ENABLE_SILENCE_COMPUTING}
+            CONSUL_IP: ${CONSUL_IP}
+            CONSUL_PORT: ${CONSUL_PORT}
         restart: always
         depends_on:
             "mysql":
                 condition: service_healthy
             "rabbitmq":
                 condition: service_healthy
+        volumes:
+            - /etc/localtime:/etc/localtime
     # ========== Admin UI/admin UI
     voice_emotion_houta:
         image: ${VOICE_EMOTION_HOUTA_IMAGE}:${VOICE_EMOTION_HOUTA_TAG}

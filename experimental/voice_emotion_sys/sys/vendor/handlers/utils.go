@@ -3,9 +3,14 @@ package handlers
 import (
 	"errors"
 	"math"
+	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/hashicorp/consul/api"
 )
+
+var consulClient *api.Client
 
 //time unit
 const (
@@ -15,6 +20,24 @@ const (
 	Month = Day * 30
 	Year  = Day * 365
 )
+
+//InitConsulClient init the consul client
+func InitConsulClient(consulHost string, timeout time.Duration) error {
+	var err error
+	// Get a new consul client
+	config := api.DefaultConfig()
+	config.Address = consulHost
+	config.WaitTime = timeout
+
+	consulClient, err = api.NewClient(config)
+
+	return err
+}
+
+//GetConsulClient get the consul client
+func GetConsulClient() *api.Client {
+	return consulClient
+}
 
 func GetFloatPrecesion(v float64, precesion int) float64 {
 	t := math.Pow(10, float64(precesion))
@@ -126,4 +149,11 @@ func StdDev(nums []float64) float64 {
 	std = math.Sqrt(std / float64(length-1))
 
 	return std
+}
+
+//ValidateEmail validate email, this code is copied from
+//https://socketloop.com/tutorials/golang-validate-email-address-with-regular-expression
+func ValidateEmail(email string) bool {
+	Re := regexp.MustCompile(`^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,4}$`)
+	return Re.MatchString(email)
 }

@@ -38,8 +38,9 @@ func (m *Mutex) TryLock() bool {
 
 //TaskBlock used to send to the rabbitmq as a task
 type TaskBlock struct {
-	Path string `json:"path"`
-	File string `json:"file"`
+	Path  string `json:"path"`
+	File  string `json:"file"`
+	Appid string `json:"appid"`
 	//Extension string `json:"extension"`
 	//FileID    string `json:"fileID"`
 }
@@ -285,6 +286,8 @@ const ChannelTable = "channelScore"
 const EmotionMapTable = "emotionMap"
 const VadInfoTable = "asr_analysisInformation"
 const ProhibitedTable = "prohibited_words"
+const ThresholdTable = "alertThreshold"
+const EmailTable = "emailNotification"
 
 const DEFAULTPRIORITY = 0
 const LIMITTAGLEN = 128
@@ -330,6 +333,9 @@ const NCHANNEL = "channel"
 const NSTATUS = "status"
 const NEXTAINFO = "extra_info"
 
+//column name of emailNotification
+const NEmail = "email"
+
 //column name of emotion table
 const NEMOID = "emotion_id"
 const NEMOTYPE = "emotion_type"
@@ -358,6 +364,11 @@ const TimeFormat = "2006/01/02 15:04:05"
 
 const ContentTypeJSON = "application/json; charset=utf-8"
 const ContentTypeCSV = "text/csv; charset=utf-8"
+const ConsulAlertKey = "voice_alert"
+const ConsulMinimumSecKey = "voice_min_second"
+
+//Column name of alertThreshold
+const NType = "type"
 
 //Name of User defined column table
 const (
@@ -398,6 +409,16 @@ type AvgEmotion struct {
 	AvgCh1Anger float64 `json:"avg_ch1_angry"`
 	AvgCh2Anger float64 `json:"avg_ch2_angry"`
 }
+
+type TotalEmotionScore struct {
+	EType   int
+	Score   float64
+	Channel int
+}
+
+//DefaultThreshold defualt threshold of emotion. [channel-1][emotion_type]
+var DefaultThreshold = [][]float64{{-1, 80}, {-1, 80}}
+var DefThreshold = 80
 
 /*
 type GroupReport struct {
@@ -483,4 +504,11 @@ type ScoreCount struct {
 type WhereStates struct {
 	name    string
 	compare string
+}
+
+//AlertConfig sturct of config for alert setting
+type AlertConfig struct {
+	Enable    *int     `json:"alert_enable"`
+	Threshold *int     `json:"anger_threshold,omitempty"`
+	EmailList []string `json:"email_list"`
 }

@@ -24,6 +24,8 @@ var v1api = apiFunc{
 	v1basePath + "/user_column_value": handlers.UpdateColumnVal,
 	v1basePath + "/prohibited":        handlers.ManipulateProhibitedWords,
 	v1basePath + "/prohibited/":       handlers.ModifyProhibitedWords,
+	v1basePath + "/notification":      handlers.AlertSys,
+	v1basePath + "/minimum_second":    handlers.MinimumSecond,
 }
 
 var services = [...]apiFunc{
@@ -43,15 +45,17 @@ func fakeEnv() {
 	envs["RABBITMQ_PORT"] = "5672"
 	//envs["DB_HOST"] = "192.168.3.208"
 	//envs["DB_HOST"] = "172.16.101.64"
-	//envs["DB_PORT"] = "3306"
+	envs["DB_PORT"] = "3306"
 	envs["DB_HOST"] = "127.0.0.1"
-	envs["DB_PORT"] = "3309"
+	//envs["DB_PORT"] = "3309"
 	envs["DB_USER"] = "root"
 	envs["DB_PWD"] = "password"
 	envs["FILE_PREFIX"] = "/Users/public/go/src/emotibot.com/emotigo/experimental/voice_emotion_sys/sys/web_service/upload_file"
 	envs["LISTEN_PORT"] = ":8080"
 	envs["RABBITMQ_USER"] = "guest"
 	envs["RABBITMQ_PWD"] = "guest"
+	envs["CONSUL_IP"] = "127.0.0.1"
+	envs["CONSUL_PORT"] = "8500"
 }
 func FakeHandlers(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
