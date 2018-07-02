@@ -42,6 +42,7 @@ func init() {
 			util.NewEntryPoint("GET", "mapping-table/export", []string{}, handleExportMapTable),
 			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
 			util.NewEntryPoint("GET", "mapping-table", []string{}, handleGetMapTable),
+			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
 		},
 	}
 }
@@ -311,6 +312,66 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write([]byte(content))
+}
+
+func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
+	scenarioID := r.FormValue("scenarioId")
+	scenarioString := r.FormValue("scenario")
+	retCode := ApiError.SUCCESS
+	var auditMsg bytes.Buffer
+	var ret string
+	defer func() {
+		status := ApiError.GetHttpStatus(retCode)
+		util.LogTrace.Printf("Upload spreadsheet ret: %d, %s\n", retCode, ret)
+		util.WriteJSONWithStatus(w, map[string]interface{}{
+			"error":  ret,
+			"return": retCode,
+		}, status)
+
+		if retCode == ApiError.SUCCESS {
+			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+		} else {
+			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
+			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+		}
+	}()
+	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["Spreadsheet"]))
+
+	file, info, err := r.FormFile("spreadsheet")
+	if err != nil {
+		retCode = ApiError.IO_ERROR
+		ret = fmt.Sprintf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
+		return
+	}
+	defer file.Close()
+	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	auditMsg.WriteString(info.Filename)
+
+	size := info.Size
+	if size == 0 {
+		retCode = ApiError.REQUEST_ERROR
+		ret = util.Msg["ErrorUploadEmptyFile"]
+		return
+	}
+
+	buf := make([]byte, size)
+	_, err = file.Read(buf)
+	if err != nil {
+		retCode = ApiError.IO_ERROR
+		ret = fmt.Sprintf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
+		return
+	}
+
+	scenario, err := ParseUploadSpreadsheet(scenarioString, buf)
+
+	content, err := json.Marshal(scenario.EditingContent)
+	layout, err := json.Marshal(scenario.EditingLayout)
+	util.LogTrace.Printf("Save scenario content: %s", string(content))
+	retCode, err = UpdateScenario(scenarioID, string(content), string(layout))
+	if err != nil {
+		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
+		return
+	}
 }
 
 func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {

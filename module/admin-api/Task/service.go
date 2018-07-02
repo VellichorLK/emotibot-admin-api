@@ -14,6 +14,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"github.com/tealeg/xlsx"
 )
 
 func EnableAllScenario(appid string) {
@@ -53,7 +54,7 @@ func ImportScenarios(appid string, newID bool, datas []interface{}) {
 func ImportScenario(appid string, newID bool, data interface{}) {
 	// util.LogInfo.Printf("Import scenario, use new ID: %t \ndata: %#v\n", newID, data)
 	if !newID {
-		updateScenario(appid, data)
+		bfbUpdateScenario(appid, data)
 	} else {
 		ret, err := addScenario(appid, data)
 		if err != nil {
@@ -80,7 +81,7 @@ func parseJSONData(data interface{}) (string, string, interface{}, interface{}) 
 	return id, name, content, layout
 }
 
-func updateScenario(appid string, data interface{}) (string, error) {
+func bfbUpdateScenario(appid string, data interface{}) (string, error) {
 	id, _, content, layout := parseJSONData(data)
 	existed, err := checkScenarioExist(appid, id)
 	if err != nil {
@@ -239,4 +240,49 @@ func DeleteMappingTable(appid, userID, tableName string) error {
 		return nil
 	}
 	return err
+}
+
+// ParseUploadSpreadsheet will parse and verify uploaded spreadsheet
+func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) (Scenario, error) {
+	var scenario Scenario
+	xlFile, err := xlsx.OpenBinary(fileBuf)
+	if err != nil {
+		return scenario, err
+	}
+
+	entityList, err := parseEntity(xlFile.Sheet["信息收集"])
+	if err != nil {
+		return scenario, err
+	}
+
+	json.Unmarshal([]byte(scenarioString), &scenario)
+	scenario.EditingContent.Skills["mainSkill"].EntityCollectorList = entityList
+	return scenario, err
+}
+
+func parseEntity(sheet *xlsx.Sheet) ([]*Entity, error) {
+	entities := make([]*Entity, 0)
+	sheetEntity := new(SpreadsheetEntity)
+	if sheet.MaxRow <= 1 {
+		return entities, nil
+	}
+	for i := 1; i < sheet.MaxRow; i++ {
+		err := sheet.Rows[i].ReadStruct(sheetEntity)
+		if err != nil {
+			return nil, err
+		}
+		entity := sheetEntity.ToEntity()
+		entities = append(entities, &entity)
+	}
+	return entities, nil
+}
+
+// SaveScenario saves scenario
+func UpdateScenario(scenarioID, content, layout string) (int, error) {
+	// TODO check duplicate scenario name
+	err := updateScenario(scenarioID, content, layout)
+	if err != nil {
+		return ApiError.DB_ERROR, nil
+	}
+	return ApiError.SUCCESS, nil
 }
