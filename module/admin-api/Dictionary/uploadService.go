@@ -417,15 +417,19 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 
 		currentWordbankRow := &WordBankRow{}
 		currentWordbankRow.ReadFromRow(rowCellStr)
+
+		similars := strings.Split(currentWordbankRow.SimilarWords, ",")
+		for _, similar := range similars {
+			if utf8.RuneCountInString(similar) > 35 {
+				err = fmt.Errorf(util.Msg["ErrorSimilarTooLongTpl"], idx+1)
+				return
+			}
+		}
+
 		if currentWordbankRow.IsExtendedRow() {
 			lastWordbankRow.SimilarWords += "," + currentWordbankRow.SimilarWords
 			continue
 		}
-
-		// if currentWordbankRow.Name == "" {
-		// 	err = fmt.Errorf(util.Msg["ErrorEmptyNameTpl"], idx+1)
-		// 	return
-		// }
 
 		if utf8.RuneCountInString(currentWordbankRow.Name) > 35 {
 			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
