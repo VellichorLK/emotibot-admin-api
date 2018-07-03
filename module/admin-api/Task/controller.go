@@ -315,6 +315,7 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
+	appID := r.FormValue("appId")
 	scenarioID := r.FormValue("scenarioId")
 	scenarioString := r.FormValue("scenario")
 	retCode := ApiError.SUCCESS
@@ -362,8 +363,21 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scenario, err := ParseUploadSpreadsheet(scenarioString, buf)
+	triggerPhrases, scenario, err := ParseUploadSpreadsheet(scenarioString, buf)
+	if err != nil {
+		ret = fmt.Sprintf("%s: %s", util.Msg["ParseError"], err.Error())
+		return
+	}
 
+	// register intent
+	scenarioName := scenario.EditingContent.Metadata["scenario_name"]
+	err = UpdateIntentV1(appID, scenarioName, triggerPhrases)
+	if err != nil {
+		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
+		return
+	}
+
+	// save scenario
 	content, err := json.Marshal(scenario.EditingContent)
 	layout, err := json.Marshal(scenario.EditingLayout)
 	util.LogTrace.Printf("Save scenario content: %s", string(content))

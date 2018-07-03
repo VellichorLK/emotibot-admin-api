@@ -18,10 +18,26 @@ type MappingTable struct {
 	Metadata    *MapMeta    `json:"metadata"`
 }
 
-var SlotTypeMap = map[string]string{
-	"整数": "integer",
-	"姓氏": "last-name",
-	"时间日期(粒度-时)(未来时间)": "time-hour-future",
+type SpreadsheetTrigger struct {
+	Phrase string `xlsx:"0"`
+}
+
+type Trigger struct {
+	Type       string `json:"type"`
+	IntentName string `json:"intent_name"`
+	Editable   bool   `json:"editable"`
+}
+
+type IntentV1 struct {
+	AppID      string              `json:"app_id"`
+	IntentID   string              `json:"intent_id"`
+	IntentName string              `json:"intent_name"`
+	Sentences  []*IntentSentenceV1 `json:"sentences"`
+}
+
+type IntentSentenceV1 struct {
+	Keywords []string `json:"keywords"`
+	Sentence string   `json:"sentence"`
 }
 
 type SpreadsheetEntity struct {
@@ -34,7 +50,7 @@ type SpreadsheetEntity struct {
 func (s *SpreadsheetEntity) ToEntity() Entity {
 	ner := Ner{
 		EntityType:     s.EntityTypt,
-		SlotType:       SlotTypeMap[s.EntityTypt],
+		SlotType:       SlotType[s.EntityTypt],
 		EntityCategory: s.EntityCategory,
 		SourceType:     "system",
 	}
@@ -86,7 +102,7 @@ type ScenarioContent struct {
 
 type Skill struct {
 	SkillName           string                  `json:"skillName"`
-	TriggerList         []*interface{}          `json:"triggerList"`
+	TriggerList         []*Trigger              `json:"triggerList"`
 	EntityCollectorList []*Entity               `json:"entityCollectorList"`
 	ActionGroupList     []*interface{}          `json:"actionGroupList"`
 	RelatedEntities     map[string]*interface{} `json:"relatedEntities"`

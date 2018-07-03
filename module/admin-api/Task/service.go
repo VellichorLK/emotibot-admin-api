@@ -203,7 +203,7 @@ func GetMapTableContent(appid, userID, tableName string) (string, int, error) {
 func SaveMappingTable(userID, appid, fileName, content string) (int, error) {
 	err := saveMappingTable(userID, appid, fileName, content)
 	if err != nil {
-		return ApiError.DB_ERROR, nil
+		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
 }
@@ -243,28 +243,95 @@ func DeleteMappingTable(appid, userID, tableName string) error {
 }
 
 // ParseUploadSpreadsheet will parse and verify uploaded spreadsheet
-func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) (Scenario, error) {
+func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) ([]string, *Scenario, error) {
 	var scenario Scenario
+	json.Unmarshal([]byte(scenarioString), &scenario)
 	xlFile, err := xlsx.OpenBinary(fileBuf)
 	if err != nil {
-		return scenario, err
+		return nil, nil, err
 	}
 
-	entityList, err := parseEntity(xlFile.Sheet["信息收集"])
+	// crreate an default intent named by scenario_name
+	trigger := createDefaultTrigger(&scenario)
+	triggerList := &scenario.EditingContent.Skills["mainSkill"].TriggerList
+	*triggerList = append(*triggerList, trigger)
+
+	// parse triggier phrases to return
+	triggerPhrases, err := parseTriggerPhrase(xlFile.Sheet[SheetName["triggerPhrase"]])
 	if err != nil {
-		return scenario, err
+		return nil, nil, err
 	}
 
-	json.Unmarshal([]byte(scenarioString), &scenario)
+	// parser entity and assign to scenario
+	entityList, err := parseEntity(xlFile.Sheet[SheetName["entityCollecting"]])
+	if err != nil {
+		return nil, nil, err
+	}
 	scenario.EditingContent.Skills["mainSkill"].EntityCollectorList = entityList
-	return scenario, err
+	return triggerPhrases, &scenario, err
+}
+
+func parseTriggerPhrase(sheet *xlsx.Sheet) ([]string, error) {
+	phrases := make([]string, 0)
+	sheetPhrase := new(SpreadsheetTrigger)
+	if sheet.MaxRow == 0 {
+		return phrases, errors.New("Missing trigger phrases")
+	}
+	for i := 0; i < sheet.MaxRow; i++ {
+		err := sheet.Rows[i].ReadStruct(sheetPhrase)
+		if err != nil {
+			return nil, err
+		}
+		phrases = append(phrases, sheetPhrase.Phrase)
+	}
+	return phrases, nil
+}
+
+func createDefaultTrigger(scenario *Scenario) *Trigger {
+	intentName := scenario.EditingContent.Metadata["scenario_name"]
+	trigger := Trigger{
+		Type:       "intent_engine",
+		IntentName: intentName,
+		Editable:   true,
+	}
+	return &trigger
+}
+
+// UpdateIntentV1 register or update intent to intent engine 1.0
+func UpdateIntentV1(appID string, intentName string, triggerPhrases []string) error {
+	sentences := []*IntentSentenceV1{}
+	for _, phrase := range triggerPhrases {
+		sentence := IntentSentenceV1{
+			Keywords: make([]string, 0),
+			Sentence: phrase,
+		}
+		sentences = append(sentences, &sentence)
+	}
+	intentV1 := IntentV1{
+		AppID:      appID,
+		IntentID:   fmt.Sprintf("%s_%s", appID, intentName),
+		IntentName: intentName,
+		Sentences:  sentences,
+	}
+	dataString, err := json.Marshal([]IntentV1{intentV1})
+	url := fmt.Sprintf("%s/intent/update", getEnvironment("INTENT_ENGINE_V1_URL"))
+	params := map[string]string{
+		"app_id": appID,
+		"data":   string(dataString),
+	}
+	_, err = util.HTTPPostForm(url, params, 0)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func parseEntity(sheet *xlsx.Sheet) ([]*Entity, error) {
 	entities := make([]*Entity, 0)
 	sheetEntity := new(SpreadsheetEntity)
 	if sheet.MaxRow <= 1 {
-		return entities, nil
+		// skip entity collecting
+		return nil, nil
 	}
 	for i := 1; i < sheet.MaxRow; i++ {
 		err := sheet.Rows[i].ReadStruct(sheetEntity)
