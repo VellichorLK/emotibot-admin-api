@@ -59,6 +59,9 @@ func init() {
 
 			util.NewEntryPointWithCustom("POST", "data", []string{"edit"}, handleInitRobotData, 2, false),
 		},
+		OneTimeFunc: map[string]func(){
+			"SyncRobotProfileToSolr": SyncRobotProfileToSolr,
+		},
 	}
 }
 

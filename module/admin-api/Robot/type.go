@@ -103,3 +103,25 @@ type QAInfoV3 struct {
 	RelatedQuestions []*InfoV3 `json:"relate_questions"`
 	Answers          []*InfoV3 `json:"answers"`
 }
+
+// ManualAnswerTagging is used when update robot profile to solr
+type ManualAnswerTagging struct {
+	SolrID       string `json:"answer_id"`
+	Answer       string `json:"content"`
+	Segment      string `json:"answer_seg"`
+	WordPos      string `json:"answer_word_pos"`
+	Keyword      string `json:"answer_keyword"`
+	SentenceType string `json:"answer_sentence_type"`
+}
+
+// ManualTagging is used when update robot profile to solr
+type ManualTagging struct {
+	SolrID       string                 `json:"id"`
+	Question     string                 `json:"question"`
+	Segment      string                 `json:"question_seg"`
+	WordPos      string                 `json:"question_word_pos"`
+	Keyword      string                 `json:"question_keyword"`
+	SentenceType string                 `json:"question_sentence_type"`
+	Answers      []*ManualAnswerTagging `json:"answers"`
+	AppID        string                 `json:"app_id"`
+}

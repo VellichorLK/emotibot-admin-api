@@ -2,6 +2,9 @@ package Robot
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -95,7 +98,7 @@ func getRobotQAListV3(appid string) (ret []*QAInfoV3, err error) {
 
 	// Get extend questions
 	queryStr = `SELECT qid, id, content FROM robot_profile_extend
-		WHERE appid = ?`
+		WHERE appid = ? AND status >= 0`
 	extendQRows, err := t.Query(queryStr, appid)
 	if err != nil {
 		return
@@ -113,7 +116,7 @@ func getRobotQAListV3(appid string) (ret []*QAInfoV3, err error) {
 
 	// Get answers
 	queryStr = `SELECT qid, id, content FROM robot_profile_answer
-		WHERE appid = ?`
+		WHERE appid = ? AND status >= 0`
 	ansRows, err := t.Query(queryStr, appid)
 	if err != nil {
 		return
@@ -172,7 +175,7 @@ func getRobotQAV3(appid string, id int) (ret *QAInfoV3, err error) {
 
 	// Get extend questions
 	queryStr = `SELECT id, content FROM robot_profile_extend
-		WHERE appid = ? AND qid = ?`
+		WHERE appid = ? AND qid = ? AND status >= 0`
 	extendQRows, err := t.Query(queryStr, appid, id)
 	if err != nil {
 		return
@@ -186,7 +189,7 @@ func getRobotQAV3(appid string, id int) (ret *QAInfoV3, err error) {
 
 	// Get answers
 	queryStr = `SELECT id, content FROM robot_profile_answer
-		WHERE appid = ? AND qid = ?`
+		WHERE appid = ? AND qid = ? AND status >= 0`
 	ansRows, err := t.Query(queryStr, appid, id)
 	if err != nil {
 		return
@@ -232,7 +235,7 @@ func addRobotQAAnswerV3(appid string, qid int, answer string) (id int, err error
 	}
 
 	queryStr = `SELECT count(*) FROM robot_profile_answer
-		WHERE appid = ? AND qid = ? AND content = ?`
+		WHERE appid = ? AND qid = ? AND content = ? AND status >= 0`
 	row := t.QueryRow(queryStr, appid, qid, answer)
 	count = 0
 	err = row.Scan(&count)
@@ -249,7 +252,7 @@ func addRobotQAAnswerV3(appid string, qid int, answer string) (id int, err error
 
 	queryStr = `
 		INSERT INTO robot_profile_answer
-		(appid, qid, content) VALUES (?, ?, ?)`
+		(appid, qid, content, status) VALUES (?, ?, ?, 1)`
 	result, err := t.Exec(queryStr, appid, qid, answer)
 	if err != nil {
 		return
@@ -292,7 +295,7 @@ func getRobotQAAnswerV3(appid string, qid, aid int) (ret *InfoV3, err error) {
 	}
 
 	queryStr := `SELECT id, content FROM robot_profile_answer
-		WHERE appid = ? AND qid = ? AND id = ?`
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	row := mySQL.QueryRow(queryStr, appid, qid, aid)
 	ret, err = scanInfo(row)
 	return
@@ -314,7 +317,7 @@ func updateRobotQAAnswerV3(appid string, qid, aid int, answer string) (err error
 	defer util.ClearTransition(t)
 
 	queryStr := `SELECT count(*) FROM robot_profile_answer
-		WHERE appid = ? AND qid = ? AND content = ? AND id != ?`
+		WHERE appid = ? AND qid = ? AND content = ? AND id != ? AND status >= 0`
 	row := t.QueryRow(queryStr, appid, qid, answer, aid)
 	count := 0
 	err = row.Scan(&count)
@@ -329,7 +332,7 @@ func updateRobotQAAnswerV3(appid string, qid, aid int, answer string) (err error
 	}
 
 	queryStr = `UPDATE robot_profile_answer SET content = ?
-		WHERE appid = ? AND qid = ? AND id = ?`
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = t.Exec(queryStr, answer, appid, qid, aid)
 	if err != nil {
 		return
@@ -349,8 +352,8 @@ func deleteRobotQAAnswerV3(appid string, qid, aid int) (err error) {
 		return
 	}
 
-	queryStr := `DELETE FROM robot_profile_answer
-		WHERE appid = ? AND qid = ? AND id = ?`
+	queryStr := `UPDATE robot_profile_answer SET status = -1
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = mySQL.Exec(queryStr, appid, qid, aid)
 	return err
 }
@@ -384,7 +387,7 @@ func addRobotQARQuestionV3(appid string, qid int, question string) (id int, err 
 	}
 
 	queryStr = `SELECT count(*) FROM robot_profile_extend
-		WHERE appid = ? AND qid = ? AND content = ?`
+		WHERE appid = ? AND qid = ? AND content = ? AND status >= 0`
 	row := t.QueryRow(queryStr, appid, qid, question)
 	count = 0
 	err = row.Scan(&count)
@@ -401,7 +404,7 @@ func addRobotQARQuestionV3(appid string, qid int, question string) (id int, err 
 
 	queryStr = `
 		INSERT INTO robot_profile_extend
-		(appid, qid, content) VALUES (?, ?, ?)`
+		(appid, qid, content, status) VALUES (?, ?, ?, 1)`
 	result, err := t.Exec(queryStr, appid, qid, question)
 	if err != nil {
 		return
@@ -428,7 +431,7 @@ func getRobotQARQuestionV3(appid string, qid, rQid int) (ret *InfoV3, err error)
 	}
 
 	queryStr := `SELECT id, content FROM robot_profile_extend
-		WHERE appid = ? AND qid = ? AND id = ?`
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	row := mySQL.QueryRow(queryStr, appid, qid, rQid)
 	ret, err = scanInfo(row)
 	return
@@ -450,7 +453,7 @@ func updateRobotQARQuestionV3(appid string, qid, rQid int, relateQuestion string
 	defer util.ClearTransition(t)
 
 	queryStr := `SELECT count(*) FROM robot_profile_extend
-		WHERE appid = ? AND qid = ? AND content = ? AND id != ?`
+		WHERE appid = ? AND qid = ? AND content = ? AND id != ? AND status >= 0`
 	row := t.QueryRow(queryStr, appid, qid, relateQuestion, rQid)
 	count := 0
 	err = row.Scan(&count)
@@ -465,7 +468,7 @@ func updateRobotQARQuestionV3(appid string, qid, rQid int, relateQuestion string
 	}
 
 	queryStr = `UPDATE robot_profile_extend SET content = ?
-		WHERE appid = ? AND qid = ? AND id = ?`
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = t.Exec(queryStr, relateQuestion, appid, qid, rQid)
 	if err != nil {
 		return
@@ -485,8 +488,359 @@ func deleteRobotQARQuestionV3(appid string, qid, rQid int) (err error) {
 		return
 	}
 
-	queryStr := `DELETE FROM robot_profile_extend
-		WHERE appid = ? AND qid = ? AND id = ?`
+	queryStr := `UPDATE robot_profile_extend SET status = -1
+		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = mySQL.Exec(queryStr, appid, qid, rQid)
 	return err
+}
+
+func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err error) {
+	// this sync status no need to check appid
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	var start int
+	var running bool
+	var status = ""
+
+	queryStr := `
+		SELECT UNIX_TIMESTAMP(start_at), status FROM process_status
+		WHERE module = 'robot-profile'
+		ORDER BY id desc limit 1
+	`
+	row := t.QueryRow(queryStr)
+	err = row.Scan(&start, &status)
+	if err == sql.ErrNoRows {
+		running, err = false, nil
+	} else if err != nil {
+		return
+	} else {
+		running, err = status == "running", nil
+	}
+
+	now := time.Now().Unix()
+	if running {
+		util.LogTrace.Printf("Previous still running from %d", start)
+		if int(now)-start <= syncSolrTimeout {
+			return
+		}
+	}
+
+	queryStr = `
+		INSERT INTO process_status
+		(app_id, module, status) VALUES ('', 'robot-profile', 'running')
+	`
+	result, err := t.Exec(queryStr)
+	if err != nil {
+		return
+	}
+
+	id64, err := result.LastInsertId()
+	if err != nil {
+		return
+	}
+
+	processID = int(id64)
+	err = t.Commit()
+	if err != nil {
+		return
+	}
+
+	ret = true
+	return
+}
+
+func finishSyncProcess(pid int, result bool, msg string) (err error) {
+	// this sync status no need to check appid
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	status := "success"
+	if !result {
+		status = "fail"
+	}
+
+	queryStr := `
+		UPDATE process_status
+		SET status = ?, message = ?
+		WHERE id = ?`
+	_, err = mySQL.Exec(queryStr, status, msg, pid)
+	return
+}
+
+func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `
+		SELECT id, r.qid, content, appid
+		FROM robot_profile_extend AS r,
+			(
+				SELECT DISTINCT qid
+				FROM robot_profile_answer
+				WHERE status = 1 OR status = -1
+			) as changeQ
+		WHERE r.qid = changeQ.qid OR r.status = 1;`
+	rqRows, err := t.Query(queryStr)
+	if err != nil {
+		return
+	}
+	defer rqRows.Close()
+
+	rqInfos := []*ManualTagging{}
+	// key is standard q id, values are rq of standard q
+	rqMap := map[int][]*ManualTagging{}
+	qids := []interface{}{}
+
+	for rqRows.Next() {
+		temp := ManualTagging{}
+		id, qid := 0, 0
+		err = rqRows.Scan(&id, &qid, &temp.Question, &temp.AppID)
+		temp.SolrID = fmt.Sprintf("%d_%d", qid, id)
+		if _, ok := rqMap[qid]; !ok {
+			rqMap[qid] = []*ManualTagging{}
+		}
+		rqMap[qid] = append(rqMap[qid], &temp)
+		rqInfos = append(rqInfos, &temp)
+		qids = append(qids, qid)
+		rqIDs = append(rqIDs, id)
+	}
+
+	if len(qids) == 0 {
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		SELECT id, qid, content FROM robot_profile_answer
+		WHERE qid in (?%s)`, strings.Repeat(",?", len(qids)-1))
+	ansRows, err := t.Query(queryStr, qids...)
+	if err != nil {
+		return
+	}
+	defer ansRows.Close()
+
+	ansIDs = []interface{}{}
+	for ansRows.Next() {
+		id, qid, content := 0, 0, ""
+		err = ansRows.Scan(&id, &qid, &content)
+		if err != nil {
+			return
+		}
+
+		if _, ok := rqMap[qid]; ok {
+			for _, info := range rqMap[qid] {
+				info.Answers = append(info.Answers, &ManualAnswerTagging{
+					SolrID: fmt.Sprintf("%s_%d", info.SolrID, id),
+					Answer: content,
+				})
+			}
+		}
+		ansIDs = append(ansIDs, id)
+	}
+
+	queryStr = fmt.Sprintf(`
+		SELECT id FROM robot_profile_answer
+		WHERE qid in (?%s) AND status = -1`, strings.Repeat(",?", len(qids)-1))
+	delAnsRows, err := t.Query(queryStr, qids...)
+	if err != nil {
+		return
+	}
+	defer delAnsRows.Close()
+
+	for delAnsRows.Next() {
+		id := 0
+		err = delAnsRows.Scan(&id)
+		if err != nil {
+			return
+		}
+		deleteAnsIDs = append(deleteAnsIDs, id)
+	}
+
+	ret = rqInfos
+	err = t.Commit()
+	return
+}
+
+func getDeleteModifyRobotQA() (solrIDs []string, rqIDs []interface{}, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `
+		SELECT id, r.qid
+		FROM robot_profile_extend AS r,
+			(
+				SELECT DISTINCT qid
+				FROM robot_profile_answer
+				WHERE status = 1
+			) as changeQ
+		WHERE r.qid = changeQ.qid OR r.status = -1;`
+	rqRows, err := t.Query(queryStr)
+	if err != nil {
+		return
+	}
+	defer rqRows.Close()
+
+	solrIDs = []string{}
+	for rqRows.Next() {
+		id, qid := 0, 0
+		err = rqRows.Scan(&id, &qid)
+		if err != nil {
+			return
+		}
+		solrIDs = append(solrIDs, fmt.Sprintf("%d_%d", qid, id))
+		rqIDs = append(rqIDs, id)
+	}
+	err = t.Commit()
+	return
+}
+
+func resetRobotQAData(rqIDs []interface{}, deleteRQIDs []interface{}, ansIDs []interface{}, delAnsIDs []interface{}) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+	queryStr := ""
+
+	if len(rqIDs) > 0 {
+		queryStr = fmt.Sprintf(`
+			UPDATE robot_profile_extend SET status = 0
+			WHERE id in (?%s)`, strings.Repeat(",?", len(rqIDs)-1))
+		_, err = t.Exec(queryStr, rqIDs...)
+		if err != nil {
+			return
+		}
+	}
+	if len(deleteRQIDs) > 0 {
+		queryStr = fmt.Sprintf(`
+			DELETE FROM robot_profile_extend
+			WHERE status = -1 AND id in (?%s)`, strings.Repeat(",?", len(deleteRQIDs)-1))
+		_, err = t.Exec(queryStr, deleteRQIDs...)
+		if err != nil {
+			return
+		}
+	}
+	if len(ansIDs) > 0 {
+		queryStr = fmt.Sprintf(`
+			UPDATE robot_profile_answer SET status = 0
+			WHERE status = 1 AND id in (?%s)`, strings.Repeat(",?", len(ansIDs)-1))
+		_, err = t.Exec(queryStr, ansIDs...)
+		if err != nil {
+			return
+		}
+	}
+	if len(delAnsIDs) > 0 {
+		queryStr = fmt.Sprintf(`
+			DELETE FROM robot_profile_answer
+			WHERE status = -1 AND id in (?%s)`, strings.Repeat(",?", len(delAnsIDs)-1))
+		_, err = t.Exec(queryStr, delAnsIDs...)
+		if err != nil {
+			return
+		}
+	}
+
+	err = t.Commit()
+	return
+}
+
+func needProcessRobotData() (ret bool, err error) {
+	ret = false
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `
+		SELECT count(*) FROM robot_profile_extend
+		WHERE status != 0`
+	extendRow := t.QueryRow(queryStr)
+	count := 0
+	err = extendRow.Scan(&count)
+	if err != nil {
+		return
+	}
+
+	if count >= 0 {
+		ret = true
+		return
+	}
+
+	queryStr = `
+		SELECT count(*) FROM robot_profile_answer
+		WHERE status != 0`
+	answerRow := t.QueryRow(queryStr)
+	count = 0
+	err = answerRow.Scan(&count)
+	if err != nil {
+		return
+	}
+
+	if count >= 0 {
+		ret = true
+		return
+	}
+
+	err = t.Commit()
+	return
 }

@@ -2,9 +2,16 @@ package Robot
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/util"
+)
+
+var (
+	syncSolrTimeout = 5 * 60
 )
 
 func GetRobotQAListV3(appid string) ([]*QAInfoV3, int, error) {
@@ -129,4 +136,113 @@ func DeleteRobotQARQuestionV3(appid string, qid, rQid int) (int, error) {
 		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
+}
+
+func SyncRobotProfileToSolr() {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogError.Println("Error when sync to solr:", err.Error())
+			return
+		}
+	}()
+
+	start, pid, err := tryStartSyncProcess(syncSolrTimeout)
+	if err != nil {
+		return
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			msg := ""
+			switch r.(type) {
+			case error:
+				msg = (r.(error)).Error()
+			case string:
+				msg = r.(string)
+			default:
+				msg = fmt.Sprintf("%v", r)
+			}
+			finishSyncProcess(pid, false, msg)
+		} else if err != nil {
+			finishSyncProcess(pid, false, err.Error())
+		} else {
+			finishSyncProcess(pid, true, "")
+		}
+	}()
+
+	if !start {
+		util.LogInfo.Println("Pass sync, there is still process running")
+		return
+	}
+
+	rqIDs, ansIDs, delAnsIDs, tagInfos, err := getProcessModifyRobotQA()
+	if err != nil {
+		return
+	}
+	if len(tagInfos) == 0 {
+		util.LogTrace.Println("No data need to update")
+		return
+	}
+
+	err = fillNLUInfoInTaggingInfos(tagInfos)
+	if err != nil {
+		return
+	}
+
+	jsonStr, _ := json.Marshal(tagInfos)
+	util.LogTrace.Printf("\n%+v\n%+v\n%+v\n%s\n", rqIDs, ansIDs, delAnsIDs, jsonStr)
+	body, err := Service.IncrementAddSolr(jsonStr)
+	if err != nil {
+		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+		return
+	}
+
+	deleteSolrIDs, deleteRQIDs, err := getDeleteModifyRobotQA()
+	if err != nil {
+		return
+	}
+	body, err = Service.DeleteInSolr(deleteSolrIDs)
+	if err != nil {
+		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+		return
+	}
+	err = resetRobotQAData(rqIDs, deleteRQIDs, ansIDs, delAnsIDs)
+	if err != nil {
+		util.LogError.Println("Reset status to 0 fail: ", err.Error())
+		return
+	}
+
+	restart, err := needProcessRobotData()
+	if err != nil {
+		util.LogError.Println("Check status fail: ", err.Error())
+		return
+	}
+	if restart {
+		go SyncRobotProfileToSolr()
+	}
+}
+
+func fillNLUInfoInTaggingInfos(tagInfos []*ManualTagging) error {
+	sentences := make([]string, 0, len(tagInfos))
+	for _, tagInfo := range tagInfos {
+		sentences = append(sentences, tagInfo.Question)
+	}
+
+	sentenceResult, err := Service.BatchGetNLUResults("", sentences)
+	if err != nil {
+		return err
+	}
+
+	for _, tagInfo := range tagInfos {
+		if _, ok := sentenceResult[tagInfo.Question]; !ok {
+			continue
+		}
+		result := sentenceResult[tagInfo.Question]
+		tagInfo.Segment = result.Segment.ToString()
+		tagInfo.WordPos = result.Segment.ToFullString()
+		tagInfo.Keyword = result.Keyword.ToString()
+		tagInfo.SentenceType = result.SentenceType
+	}
+
+	return nil
 }

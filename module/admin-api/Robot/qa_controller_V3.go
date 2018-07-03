@@ -117,6 +117,7 @@ func handleAddRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 		ID:      id,
 		Content: answer,
 	}
+	go SyncRobotProfileToSolr()
 	return
 }
 
@@ -199,6 +200,7 @@ func handleUpdateRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ret = origAnswerInfo
+	go SyncRobotProfileToSolr()
 	return
 }
 
@@ -269,6 +271,7 @@ func handleDeleteRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	go SyncRobotProfileToSolr()
 	return
 }
 func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -334,6 +337,7 @@ func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		ID:      id,
 		Content: relateQuestion,
 	}
+	go SyncRobotProfileToSolr()
 	return
 }
 func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -415,6 +419,7 @@ func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ret = origRQuestionInfo
+	go SyncRobotProfileToSolr()
 	return
 }
 func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -484,5 +489,6 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+	go SyncRobotProfileToSolr()
 	return
 }
