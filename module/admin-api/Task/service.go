@@ -245,6 +245,7 @@ func DeleteMappingTable(appid, userID, tableName string) error {
 // ParseUploadSpreadsheet will parse and verify uploaded spreadsheet
 func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) ([]string, *Scenario, error) {
 	var scenario Scenario
+	var triggerPhrases []string
 	json.Unmarshal([]byte(scenarioString), &scenario)
 	xlFile, err := xlsx.OpenBinary(fileBuf)
 	if err != nil {
@@ -256,18 +257,35 @@ func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) ([]string, *S
 	triggerList := &scenario.EditingContent.Skills["mainSkill"].TriggerList
 	*triggerList = append(*triggerList, trigger)
 
+	var sheet *xlsx.Sheet
 	// parse triggier phrases to return
-	triggerPhrases, err := parseTriggerPhrase(xlFile.Sheet[SheetName["triggerPhrase"]])
-	if err != nil {
-		return nil, nil, err
+	sheet = xlFile.Sheet[SheetName["triggerPhrase"]]
+	if sheet != nil {
+		triggerPhrases, err = parseTriggerPhrase(sheet)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// parser entity and assign to scenario
-	entityList, err := parseEntity(xlFile.Sheet[SheetName["entityCollecting"]])
-	if err != nil {
-		return nil, nil, err
+	sheet = xlFile.Sheet[SheetName["entityCollecting"]]
+	if sheet != nil {
+		entityList, err := parseEntity(sheet)
+		if err != nil {
+			return nil, nil, err
+		}
+		scenario.EditingContent.Skills["mainSkill"].EntityCollectorList = entityList
 	}
-	scenario.EditingContent.Skills["mainSkill"].EntityCollectorList = entityList
+
+	sheet = xlFile.Sheet[SheetName["responseMessage"]]
+	if sheet != nil {
+		actionGroupList, err := parseMsgAction(sheet)
+		if err != nil {
+			return nil, nil, err
+		}
+		scenario.EditingContent.Skills["mainSkill"].ActionGroupList = actionGroupList
+	}
+
 	return triggerPhrases, &scenario, err
 }
 
@@ -344,7 +362,7 @@ func parseEntity(sheet *xlsx.Sheet) ([]*Entity, error) {
 	return entities, nil
 }
 
-// SaveScenario saves scenario
+// UpdateScenario updates task engine scenario
 func UpdateScenario(scenarioID, content, layout string) (int, error) {
 	// TODO check duplicate scenario name
 	err := updateScenario(scenarioID, content, layout)
@@ -352,4 +370,30 @@ func UpdateScenario(scenarioID, content, layout string) (int, error) {
 		return ApiError.DB_ERROR, nil
 	}
 	return ApiError.SUCCESS, nil
+}
+
+func parseMsgAction(sheet *xlsx.Sheet) ([]*ActionGroup, error) {
+	actionGroupList := make([]*ActionGroup, 0)
+	sheetMsgAction := new(SpreadsheetMsgAction)
+	if sheet.MaxRow == 0 {
+		return nil, errors.New("Missing response message")
+	}
+	for i := 0; i < sheet.MaxRow; i++ {
+		err := sheet.Rows[i].ReadStruct(sheetMsgAction)
+		if err != nil {
+			return nil, err
+		}
+		action := Action{
+			Type: "msg",
+			Msg:  sheetMsgAction.Msg,
+		}
+		actionGroup := ActionGroup{
+			ActionGroupID: util.GenRandomUUIDSameAsOpenAPI(),
+			ActionList:    []*Action{&action},
+			ConditionList: make([]*interface{}, 0),
+		}
+
+		actionGroupList = append(actionGroupList, &actionGroup)
+	}
+	return actionGroupList, nil
 }

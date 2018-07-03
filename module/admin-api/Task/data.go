@@ -104,8 +104,23 @@ type Skill struct {
 	SkillName           string                  `json:"skillName"`
 	TriggerList         []*Trigger              `json:"triggerList"`
 	EntityCollectorList []*Entity               `json:"entityCollectorList"`
-	ActionGroupList     []*interface{}          `json:"actionGroupList"`
+	ActionGroupList     []*ActionGroup          `json:"actionGroupList"`
 	RelatedEntities     map[string]*interface{} `json:"relatedEntities"`
 	ReParsers           []*interface{}          `json:"re_parsers"`
 	TDESetting          map[string]*interface{} `json:"tde_setting"`
+}
+
+type SpreadsheetMsgAction struct {
+	Msg string `xlsx:"0"`
+}
+
+type ActionGroup struct {
+	ActionGroupID string         `json:"actionGroupId"`
+	ActionList    []*Action      `json:"actionList"`
+	ConditionList []*interface{} `json:"conditionList"`
+}
+
+type Action struct {
+	Type string `json:"type"`
+	Msg  string `json:"msg"`
 }

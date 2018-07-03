@@ -4,6 +4,7 @@ var (
 	SheetName = map[string]string{
 		"triggerPhrase":    "触发语句",
 		"entityCollecting": "信息收集",
+		"responseMessage":  "回复语句",
 	}
 	SlotType = map[string]string{
 		"整数": "integer",
