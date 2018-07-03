@@ -1,9 +1,12 @@
 package util
 
 import (
+	"fmt"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -76,4 +79,14 @@ func HasOnlyNumEngDash(input string) bool {
 		}
 	}
 	return true
+}
+
+func GenRandomUUIDSameAsOpenAPI() string {
+	now := time.Now()
+	randomNum := rand.Intn(900) + 100
+	ret := fmt.Sprintf("%d%02d%02d%02d%02d%02d%06d%03d",
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000,
+		randomNum)
+	return ret
 }

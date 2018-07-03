@@ -142,3 +142,21 @@ func deleteMappingTable(appid, userID, tableName string) error {
 	_, err = mySQL.Exec(queryStr, tableName, userID, appid)
 	return err
 }
+
+func updateScenario(scenarioID, content, layout string) error {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errDBNotInit
+	}
+
+	queryStr := `
+		UPDATE taskenginescenario SET
+		editing = 1, editingContent = ?, editingLayout = ?, updatetime = CURRENT_TIME
+		where scenarioID = ?`
+	_, err = mySQL.Exec(queryStr, content, layout, scenarioID)
+	return err
+}

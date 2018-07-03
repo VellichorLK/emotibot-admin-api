@@ -42,6 +42,7 @@ func init() {
 			util.NewEntryPoint("GET", "mapping-table/export", []string{}, handleExportMapTable),
 			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
 			util.NewEntryPoint("GET", "mapping-table", []string{}, handleGetMapTable),
+			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
 		},
 	}
 }

@@ -104,6 +104,7 @@ var (
 		"MappingTable":       "转换数据",
 		"MappingTableName":   "转换数据名称",
 		"TaskEngineScenario": "任务引擎场景",
+		"Spreadsheet":        "Spreadsheet场景",
 
 		// Used in robot profile
 		"RobotProfileQuestion":              "形象问题",

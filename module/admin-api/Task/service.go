@@ -53,7 +53,7 @@ func ImportScenarios(appid string, newID bool, datas []interface{}) {
 func ImportScenario(appid string, newID bool, data interface{}) {
 	// util.LogInfo.Printf("Import scenario, use new ID: %t \ndata: %#v\n", newID, data)
 	if !newID {
-		updateScenario(appid, data)
+		bfbUpdateScenario(appid, data)
 	} else {
 		ret, err := addScenario(appid, data)
 		if err != nil {
@@ -80,7 +80,7 @@ func parseJSONData(data interface{}) (string, string, interface{}, interface{}) 
 	return id, name, content, layout
 }
 
-func updateScenario(appid string, data interface{}) (string, error) {
+func bfbUpdateScenario(appid string, data interface{}) (string, error) {
 	id, _, content, layout := parseJSONData(data)
 	existed, err := checkScenarioExist(appid, id)
 	if err != nil {
@@ -202,7 +202,7 @@ func GetMapTableContent(appid, userID, tableName string) (string, int, error) {
 func SaveMappingTable(userID, appid, fileName, content string) (int, error) {
 	err := saveMappingTable(userID, appid, fileName, content)
 	if err != nil {
-		return ApiError.DB_ERROR, nil
+		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
 }
@@ -239,4 +239,43 @@ func DeleteMappingTable(appid, userID, tableName string) error {
 		return nil
 	}
 	return err
+}
+
+// UpdateScenario updates task engine scenario
+func UpdateScenario(scenarioID, content, layout string) (int, error) {
+	// TODO check duplicate scenario name
+	err := updateScenario(scenarioID, content, layout)
+	if err != nil {
+		return ApiError.DB_ERROR, nil
+	}
+	return ApiError.SUCCESS, nil
+}
+
+// UpdateIntentV1 register or update intent to intent engine 1.0
+func UpdateIntentV1(appID string, intentName string, triggerPhrases []string) error {
+	sentences := []*IntentSentenceV1{}
+	for _, phrase := range triggerPhrases {
+		sentence := IntentSentenceV1{
+			Keywords: make([]string, 0),
+			Sentence: phrase,
+		}
+		sentences = append(sentences, &sentence)
+	}
+	intentV1 := IntentV1{
+		AppID:      appID,
+		IntentID:   fmt.Sprintf("%s_%s", appID, intentName),
+		IntentName: intentName,
+		Sentences:  sentences,
+	}
+	dataString, err := json.Marshal([]IntentV1{intentV1})
+	url := fmt.Sprintf("%s/intent/update", getEnvironment("INTENT_ENGINE_V1_URL"))
+	params := map[string]string{
+		"app_id": appID,
+		"data":   string(dataString),
+	}
+	_, err = util.HTTPPostForm(url, params, 0)
+	if err != nil {
+		return err
+	}
+	return nil
 }
