@@ -88,6 +88,10 @@ type ModuleInfo struct {
 	EntryPoints []EntryPoint
 
 	Environments map[string]string
+
+	// OneTimeFunc will run once when server is up
+	// It can use for data sync or recover
+	OneTimeFunc map[string]func()
 }
 
 type RetObj struct {

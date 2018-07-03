@@ -15,11 +15,11 @@ import (
 	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
+	"emotibot.com/emotigo/module/admin-api/Intent"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning"
 	"emotibot.com/emotigo/module/admin-api/Stats"
-	"emotibot.com/emotigo/module/admin-api/Intent"
 	"emotibot.com/emotigo/module/admin-api/Switch"
 	"emotibot.com/emotigo/module/admin-api/System"
 	"emotibot.com/emotigo/module/admin-api/Task"
@@ -30,6 +30,22 @@ import (
 // constant define all const used in server
 var constant = map[string]interface{}{
 	"API_PREFIX": "api",
+}
+
+var modules = []util.ModuleInfo{
+	Dictionary.ModuleInfo,
+	Switch.ModuleInfo,
+	Robot.ModuleInfo,
+	QA.ModuleInfo,
+	FAQ.ModuleInfo,
+	QA.TestModuleInfo,
+	Task.ModuleInfo,
+	Stats.ModuleInfo,
+	UI.ModuleInfo,
+	SelfLearning.ModuleInfo,
+	System.ModuleInfo,
+	BF.ModuleInfo,
+	Intent.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -101,6 +117,8 @@ func main() {
 		serverURL = "0.0.0.0:" + port
 	}
 
+	go runOnetimeJob()
+
 	util.LogInfo.Println("Start server on", serverURL)
 	err = http.ListenAndServe(serverURL, router)
 	if err != nil {
@@ -169,24 +187,9 @@ func clientNoStoreCache(w http.ResponseWriter) {
 
 func setRoute() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
-	modules := []interface{}{
-		Dictionary.ModuleInfo,
-		Switch.ModuleInfo,
-		Robot.ModuleInfo,
-		QA.ModuleInfo,
-		FAQ.ModuleInfo,
-		QA.TestModuleInfo,
-		Task.ModuleInfo,
-		Stats.ModuleInfo,
-		UI.ModuleInfo,
-		SelfLearning.ModuleInfo,
-		System.ModuleInfo,
-		BF.ModuleInfo,
-		Intent.ModuleInfo,
-	}
 
 	for _, module := range modules {
-		info := module.(util.ModuleInfo)
+		info := module
 		for idx := range info.EntryPoints {
 			entrypoint := info.EntryPoints[idx]
 			// entry will be api/v_/<module>/<entry>
@@ -270,4 +273,22 @@ func initDB() {
 	util.InitAuditDB(url, user, pass, db)
 
 	SelfLearning.InitDB()
+}
+
+func runOnetimeJob() {
+	for _, module := range modules {
+		if module.OneTimeFunc != nil {
+			for key, fun := range module.OneTimeFunc {
+				util.LogInfo.Printf("Run func %s of module %s\n", key, module.ModuleName)
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							util.LogError.Printf("Run func %s error: %s\n", key, r)
+						}
+					}()
+					fun()
+				}()
+			}
+		}
+	}
 }
