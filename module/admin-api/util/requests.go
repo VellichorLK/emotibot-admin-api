@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -312,4 +314,52 @@ func HTTPPutForm(requestURL string, data map[string]interface{}, timeout int) (s
 	}
 
 	return string(body), nil
+}
+
+func HTTPPostFileWithStatus(requestURL string, file io.Reader, filename string, key string, timeout int) (status int, content string, err error) {
+	if requestURL == "" {
+		err = errors.New("Invalid url")
+		return
+	}
+	var client *http.Client
+
+	if timeout > 0 {
+		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
+		client = &http.Client{
+			Timeout: getTimeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	var buf bytes.Buffer
+	w := multipart.NewWriter(&buf)
+	fw, err := w.CreateFormFile(key, filename)
+	if err != nil {
+		return
+	}
+	if _, err = io.Copy(fw, file); err != nil {
+		return
+	}
+	w.Close()
+	req, err := http.NewRequest("POST", requestURL, &buf)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	response, err := client.Do(req)
+	if err != nil {
+		return
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
+
+	status = response.StatusCode
+	content = string(body)
+	return
 }
