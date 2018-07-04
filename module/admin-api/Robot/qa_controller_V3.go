@@ -323,6 +323,7 @@ func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 
 	relateQuestion := strings.TrimSpace(r.FormValue("content"))
 	if relateQuestion == "" {
+		errno = ApiError.REQUEST_ERROR
 		err = util.GenBadRequestError(util.Msg["Content"])
 		return
 	}
