@@ -658,7 +658,8 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 		}
 
 		if _, ok := rqMap[qid]; ok {
-			for _, info := range rqMap[qid] {
+			for idx := range rqMap[qid] {
+				info := rqMap[qid][idx]
 				info.Answers = append(info.Answers, &ManualAnswerTagging{
 					SolrID: fmt.Sprintf("%s_%d", info.SolrID, id),
 					Answer: content,
