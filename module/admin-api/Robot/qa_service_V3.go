@@ -210,7 +210,7 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		return
 	}
-	body, err = Service.DeleteInSolr(appid, "robot", deleteSolrIDs)
+	body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
 	if err != nil {
 		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
 		return

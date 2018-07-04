@@ -701,7 +701,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 	return
 }
 
-func getDeleteModifyRobotQA() (solrIDs []string, rqIDs []interface{}, err error) {
+func getDeleteModifyRobotQA() (mapSolrIDs map[string][]string, rqIDs []interface{}, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -718,7 +718,7 @@ func getDeleteModifyRobotQA() (solrIDs []string, rqIDs []interface{}, err error)
 	defer util.ClearTransition(t)
 
 	queryStr := `
-		SELECT id, r.qid
+		SELECT id, appid, r.qid
 		FROM robot_profile_extend AS r,
 		WHERE r.status = -1;`
 	rqRows, err := t.Query(queryStr)
@@ -727,14 +727,18 @@ func getDeleteModifyRobotQA() (solrIDs []string, rqIDs []interface{}, err error)
 	}
 	defer rqRows.Close()
 
-	solrIDs = []string{}
+	mapSolrIDs = map[string][]string{}
 	for rqRows.Next() {
 		id, qid := 0, 0
-		err = rqRows.Scan(&id, &qid)
+		appid := ""
+		err = rqRows.Scan(&id, &appid, &qid)
 		if err != nil {
 			return
 		}
-		solrIDs = append(solrIDs, fmt.Sprintf("%d_%d", qid, id))
+		if _, ok := mapSolrIDs[appid]; !ok {
+			mapSolrIDs[appid] = []string{}
+		}
+		mapSolrIDs[appid] = append(mapSolrIDs[appid], fmt.Sprintf("%d_%d", qid, id))
 		rqIDs = append(rqIDs, id)
 	}
 	err = t.Commit()

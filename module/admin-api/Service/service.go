@@ -160,14 +160,21 @@ func IncrementAddSolr(content []byte) (string, error) {
 	return body, nil
 }
 
-func DeleteInSolr(appid string, t string, deleteSolrIDs []string) (string, error) {
+func DeleteInSolr(typeInSolr string, deleteSolrIDs map[string][]string) (string, error) {
 	url := getSolrDeleteURL()
-	params := map[string]string{
-		"ids":   strings.Join(deleteSolrIDs, ","),
-		"appid": appid,
-		"type":  t,
+	for appid := range deleteSolrIDs {
+		params := map[string]string{
+			"ids":   strings.Join(deleteSolrIDs[appid], ","),
+			"appid": appid,
+			"type":  typeInSolr,
+		}
+		content, err := util.HTTPGet(url, params, 30)
+		if err != nil {
+			return "", err
+		}
+		util.LogTrace.Println("Get from delete in solr: ", content)
 	}
-	return util.HTTPGet(url, params, 30)
+	return "", nil
 }
 
 func getSolrIncrementURL() string {
