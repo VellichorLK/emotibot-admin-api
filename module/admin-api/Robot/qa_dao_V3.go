@@ -719,7 +719,7 @@ func getDeleteModifyRobotQA() (mapSolrIDs map[string][]string, rqIDs []interface
 
 	queryStr := `
 		SELECT id, appid, r.qid
-		FROM robot_profile_extend AS r,
+		FROM robot_profile_extend AS r
 		WHERE r.status = -1;`
 	rqRows, err := t.Query(queryStr)
 	if err != nil {
