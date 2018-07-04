@@ -175,12 +175,17 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 			var answerID int
 			var tagID sql.NullInt64
 			var delimiter string
-			var content string
-			var categoryID int
+			var content sql.NullString
+			var categoryID sql.NullInt64
 
 			err := rows.Scan(&qID, &answerID, &tagID, &content, &categoryID)
 			if err != nil {
 				return nil, err
+			}
+
+			if !content.Valid || !categoryID.Valid {
+				util.LogError.Printf("Error: cannot find answer id %d 's question!\n", answerID)
+				continue
 			}
 
 			if lastAnswerID != answerID || qID != lastQID {
@@ -189,16 +194,16 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 				if qID == lastQID {
 					qi.Info = lastQIDCategoryAndQ
 				} else {
-					categories, err := GetFullCategory(categoriesMap, categoryID)
+					categories, err := GetFullCategory(categoriesMap, int(categoryID.Int64))
 					if err != nil {
-						util.LogError.Printf("Category %d has error %v\n", categoryID, err)
+						util.LogError.Printf("Category %d has error %v\n", categoryID.Int64, err)
 						continue
 					}
 					lastQID = qID
 					for i := 0; i < 2 && i < len(categories); i++ {
 						qi.Info += categories[i] + "/"
 					}
-					qi.Info += content + "/"
+					qi.Info += content.String + "/"
 					lastQIDCategoryAndQ = qi.Info
 				}
 				qis[answerID] = qi
