@@ -410,6 +410,11 @@ func handleQuestionFilter(ctx context.Context) {
 
 	var pagedQIDs []int
 	var pagedAIDs [][]string
+
+	util.LogError.Printf("start: %d", start)
+	util.LogError.Printf("end: %d", end)
+	util.LogError.Printf("qids: %d", len(qids))
+	util.LogError.Printf("aids: %d", len(aids))
 	if len(qids) == 0 {
 		response := Response{
 			CurPage:     "0",
