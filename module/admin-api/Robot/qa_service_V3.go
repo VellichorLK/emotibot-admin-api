@@ -141,6 +141,7 @@ func DeleteRobotQARQuestionV3(appid string, qid, rQid int) (int, error) {
 func SyncRobotProfileToSolr() {
 	var err error
 	restart := false
+	body := ""
 	defer func() {
 		if err != nil {
 			util.LogError.Println("Error when sync to solr:", err.Error())
@@ -193,28 +194,32 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		return
 	}
-	if len(tagInfos) == 0 && len(deleteSolrIDs) == 0 {
+	if len(tagInfos) == 0 && len(deleteRQIDs) == 0 {
 		util.LogTrace.Println("No data need to update")
 		return
 	}
 
-	err = fillNLUInfoInTaggingInfos(tagInfos)
-	if err != nil {
-		return
+	if len(tagInfos) > 0 {
+		err = fillNLUInfoInTaggingInfos(tagInfos)
+		if err != nil {
+			return
+		}
+
+		jsonStr, _ := json.Marshal(tagInfos)
+		util.LogTrace.Printf("\n%+v\n%+v\n%+v\n%s\n", rqIDs, ansIDs, delAnsIDs, jsonStr)
+		body, err = Service.IncrementAddSolr(jsonStr)
+		if err != nil {
+			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			return
+		}
 	}
 
-	jsonStr, _ := json.Marshal(tagInfos)
-	util.LogTrace.Printf("\n%+v\n%+v\n%+v\n%s\n", rqIDs, ansIDs, delAnsIDs, jsonStr)
-	body, err := Service.IncrementAddSolr(jsonStr)
-	if err != nil {
-		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
-		return
-	}
-
-	body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
-	if err != nil {
-		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
-		return
+	if len(deleteRQIDs) > 0 {
+		body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
+		if err != nil {
+			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			return
+		}
 	}
 	err = resetRobotQAData(rqIDs, deleteRQIDs, ansIDs, delAnsIDs)
 	if err != nil {
