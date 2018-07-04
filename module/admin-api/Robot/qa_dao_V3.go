@@ -603,14 +603,23 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 	defer util.ClearTransition(t)
 
 	queryStr := `
-		SELECT id, r.qid, content, appid
-		FROM robot_profile_extend AS r,
-			(
-				SELECT DISTINCT qid
-				FROM robot_profile_answer
-				WHERE status = 1 OR status = -1
-			) as changeQ
-		WHERE r.qid = changeQ.qid OR r.status = 1;`
+	SELECT id, qid, content, appid
+	FROM
+	(
+			SELECT id, r.qid as qid, content, appid, status, aid
+			FROM robot_profile_extend AS r
+			-- select answer changed from answer
+			LEFT JOIN
+				(
+					SELECT qid, GROUP_CONCAT(id) as aid
+					FROM robot_profile_answer
+					WHERE status = 1 OR status = -1
+					GROUP BY qid
+				) as changeQ
+			ON r.qid = changeQ.qid
+	) AS final
+	-- only get changed extend q, and extend q whose answer changed
+	WHERE final.status = 1 OR final.aid IS NOT NULL`
 	rqRows, err := t.Query(queryStr)
 	if err != nil {
 		return
@@ -711,12 +720,7 @@ func getDeleteModifyRobotQA() (solrIDs []string, rqIDs []interface{}, err error)
 	queryStr := `
 		SELECT id, r.qid
 		FROM robot_profile_extend AS r,
-			(
-				SELECT DISTINCT qid
-				FROM robot_profile_answer
-				WHERE status = 1
-			) as changeQ
-		WHERE r.qid = changeQ.qid OR r.status = -1;`
+		WHERE r.status = -1;`
 	rqRows, err := t.Query(queryStr)
 	if err != nil {
 		return
@@ -822,7 +826,8 @@ func needProcessRobotData() (ret bool, err error) {
 		return
 	}
 
-	if count >= 0 {
+	if count > 0 {
+		util.LogTrace.Println("New modify in robot profile extend")
 		ret = true
 		return
 	}
@@ -837,7 +842,8 @@ func needProcessRobotData() (ret bool, err error) {
 		return
 	}
 
-	if count >= 0 {
+	if count > 0 {
+		util.LogTrace.Println("New modify in robot profile answer")
 		ret = true
 		return
 	}

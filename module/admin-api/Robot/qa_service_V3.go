@@ -140,6 +140,7 @@ func DeleteRobotQARQuestionV3(appid string, qid, rQid int) (int, error) {
 
 func SyncRobotProfileToSolr() {
 	var err error
+	restart := false
 	defer func() {
 		if err != nil {
 			util.LogError.Println("Error when sync to solr:", err.Error())
@@ -149,6 +150,10 @@ func SyncRobotProfileToSolr() {
 
 	start, pid, err := tryStartSyncProcess(syncSolrTimeout)
 	if err != nil {
+		return
+	}
+	if !start {
+		util.LogInfo.Println("Pass sync, there is still process running")
 		return
 	}
 	defer func() {
@@ -168,12 +173,16 @@ func SyncRobotProfileToSolr() {
 		} else {
 			finishSyncProcess(pid, true, "")
 		}
+		restart, err = needProcessRobotData()
+		if err != nil {
+			util.LogError.Println("Check status fail: ", err.Error())
+			return
+		}
+		if restart {
+			util.LogTrace.Println("Restart sync process")
+			go SyncRobotProfileToSolr()
+		}
 	}()
-
-	if !start {
-		util.LogInfo.Println("Pass sync, there is still process running")
-		return
-	}
 
 	rqIDs, ansIDs, delAnsIDs, tagInfos, err := getProcessModifyRobotQA()
 	if err != nil {
@@ -201,7 +210,7 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		return
 	}
-	body, err = Service.DeleteInSolr(deleteSolrIDs)
+	body, err = Service.DeleteInSolr(appid, "robot", deleteSolrIDs)
 	if err != nil {
 		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
 		return
@@ -210,15 +219,6 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		util.LogError.Println("Reset status to 0 fail: ", err.Error())
 		return
-	}
-
-	restart, err := needProcessRobotData()
-	if err != nil {
-		util.LogError.Println("Check status fail: ", err.Error())
-		return
-	}
-	if restart {
-		go SyncRobotProfileToSolr()
 	}
 }
 

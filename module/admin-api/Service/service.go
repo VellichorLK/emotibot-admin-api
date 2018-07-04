@@ -160,10 +160,12 @@ func IncrementAddSolr(content []byte) (string, error) {
 	return body, nil
 }
 
-func DeleteInSolr(deleteSolrIDs []string) (string, error) {
+func DeleteInSolr(appid string, t string, deleteSolrIDs []string) (string, error) {
 	url := getSolrDeleteURL()
 	params := map[string]string{
-		"ids": strings.Join(deleteSolrIDs, ","),
+		"ids":   strings.Join(deleteSolrIDs, ","),
+		"appid": appid,
+		"type":  t,
 	}
 	return util.HTTPGet(url, params, 30)
 }
@@ -174,7 +176,7 @@ func getSolrIncrementURL() string {
 }
 func getSolrDeleteURL() string {
 	url := strings.TrimSpace(getEnvironment(serviceSolrETLKey))
-	return fmt.Sprintf("%s/deletebyids", url)
+	return fmt.Sprintf("%s/editorial/deletebyids", url)
 }
 
 func getEnvironments() map[string]string {
