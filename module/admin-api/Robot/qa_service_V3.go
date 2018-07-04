@@ -188,7 +188,12 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		return
 	}
-	if len(tagInfos) == 0 {
+
+	deleteSolrIDs, deleteRQIDs, err := getDeleteModifyRobotQA()
+	if err != nil {
+		return
+	}
+	if len(tagInfos) == 0 && len(deleteSolrIDs) == 0 {
 		util.LogTrace.Println("No data need to update")
 		return
 	}
@@ -206,10 +211,6 @@ func SyncRobotProfileToSolr() {
 		return
 	}
 
-	deleteSolrIDs, deleteRQIDs, err := getDeleteModifyRobotQA()
-	if err != nil {
-		return
-	}
 	body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
 	if err != nil {
 		util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
