@@ -262,6 +262,9 @@ func ParseCondition(param Parameter) (QueryCondition, error) {
 
 	page, err := strconv.Atoi(curPage)
 	if err == nil {
+		if page < 0 {
+			page = 0
+		}
 		condition.CurPage = page
 	}
 
