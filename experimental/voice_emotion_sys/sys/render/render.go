@@ -281,7 +281,7 @@ func checkAlert(scores []*handlers.TotalEmotionScore, appid string, id uint64) e
 	}
 
 	if goNotify {
-		return notifyAlert(anger1, anger2, thresholdV, id, appid)
+		return notifyAlert(handlers.Round(anger1), handlers.Round(anger2), thresholdV, id, appid)
 	}
 
 	return nil
