@@ -206,7 +206,7 @@ func notifyAlert(anger1 float64, anger2 float64, threshold float64, id uint64, a
 			createT := time.Unix(createdTime, 0)
 			uploadT := time.Unix(uploadTime, 0)
 			body := fmt.Sprintf(notifyBody, threshold, fileName, durationFormat, callID, staffID,
-				createT.Format(time.RFC1123Z), uploadT.Format(time.RFC1123Z), anger2, anger1)
+				createT.Format(time.RFC1123Z), uploadT.Format(time.RFC1123Z), anger1, anger2)
 			err = sendMail(subject, body, cacheMailList[appid])
 			fmt.Printf("Send mail\n\nTo:%v\n Subject:%s\n%s\n", cacheMailList[appid], subject, body)
 		}

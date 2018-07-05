@@ -421,7 +421,7 @@ func ComputeChannelScore(eb *EmotionBlock, appid string) []*TotalEmotionScore {
 			var twoFixedScore float64
 			var weight float64
 			var calculateNum float64
-			//customer
+			//staff
 			if channel == 1 {
 				sort.Sort(sort.Reverse(sort.Float64Slice(scores)))
 				if count > 30 && eb.RDuration > (180*1000) {
