@@ -10,6 +10,15 @@ var (
 	ErrDBNotInit  = errors.New("DB not init")
 	ErrDuplicated = errors.New("資源已存在")
 	ErrNotFound   = errors.New("資源不存在")
+
+	// ErrorMCLock represent multicustomer return locking status which can not run the command, should try later
+	ErrorMCLock = errors.New("Someone else is already locking qa module, please try again later")
+
+	// ErrSQLRowNotFound represent SQL query not found error
+	ErrSQLRowNotFound = errors.New("Not Found")
+
+	// ErrSQLAlreadyOccupied represent rows already have value, should not updated it.
+	ErrSQLAlreadyOccupied = errors.New("db row already updated")
 )
 
 func GenNotFoundError(name string) error {
