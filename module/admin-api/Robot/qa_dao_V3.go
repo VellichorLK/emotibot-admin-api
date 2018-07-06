@@ -638,11 +638,34 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 		temp.SolrID = fmt.Sprintf("%d_%d", qid, id)
 		if _, ok := rqMap[qid]; !ok {
 			rqMap[qid] = []*ManualTagging{}
+			qids = append(qids, qid)
 		}
 		rqMap[qid] = append(rqMap[qid], &temp)
 		rqInfos = append(rqInfos, &temp)
-		qids = append(qids, qid)
 		rqIDs = append(rqIDs, id)
+	}
+
+	queryStr = `
+	SELECT DISTINCT a.qid, q.content, a.appid
+	FROM robot_profile_answer as a, robot_profile_question as q
+	WHERE
+		(a.status = 1 OR a.status = -1)
+		AND a.qid = q.id;`
+	qRows, err := t.Query(queryStr)
+	if err != nil {
+		return
+	}
+	for qRows.Next() {
+		temp := ManualTagging{}
+		id := 0
+		err = qRows.Scan(&id, &temp.Question, &temp.AppID)
+		temp.SolrID = fmt.Sprintf("%d_0", id)
+		if _, ok := rqMap[id]; !ok {
+			rqMap[id] = []*ManualTagging{}
+			qids = append(qids, id)
+		}
+		rqMap[id] = append(rqMap[id], &temp)
+		rqInfos = append(rqInfos, &temp)
 	}
 
 	if len(qids) == 0 {

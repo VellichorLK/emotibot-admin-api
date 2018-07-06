@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Service"
@@ -181,6 +182,7 @@ func SyncRobotProfileToSolr() {
 		}
 		if restart {
 			util.LogTrace.Println("Restart sync process")
+			time.Sleep(time.Second)
 			go SyncRobotProfileToSolr()
 		}
 	}()
