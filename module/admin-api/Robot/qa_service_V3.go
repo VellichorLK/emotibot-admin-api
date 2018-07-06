@@ -209,11 +209,12 @@ func SyncRobotProfileToSolr() {
 	if len(tagInfos) > 0 {
 		err = fillNLUInfoInTaggingInfos(tagInfos)
 		if err != nil {
+			util.LogError.Printf("Get NLUInfo fail: %s\n", err.Error())
 			return
 		}
 
 		jsonStr, _ := json.Marshal(tagInfos)
-		util.LogTrace.Println("JSON send to solr:", jsonStr)
+		util.LogTrace.Printf("JSON send to solr: %s\n", jsonStr)
 		body, err = Service.IncrementAddSolr(jsonStr)
 		if err != nil {
 			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
