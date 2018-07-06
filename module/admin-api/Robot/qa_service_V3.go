@@ -196,7 +196,12 @@ func SyncRobotProfileToSolr() {
 	if err != nil {
 		return
 	}
-	if len(tagInfos) == 0 && len(deleteRQIDs) == 0 {
+	util.LogTrace.Printf("relate question: %+v", rqIDs)
+	util.LogTrace.Printf("update answers: %+v", ansIDs)
+	util.LogTrace.Printf("delete answers: %+v", delAnsIDs)
+	util.LogTrace.Printf("delete relate question: %+v", deleteRQIDs)
+
+	if len(tagInfos) == 0 && len(deleteRQIDs) == 0 && len(delAnsIDs) == 0 {
 		util.LogTrace.Println("No data need to update")
 		return
 	}
@@ -208,7 +213,7 @@ func SyncRobotProfileToSolr() {
 		}
 
 		jsonStr, _ := json.Marshal(tagInfos)
-		util.LogTrace.Printf("\n%+v\n%+v\n%+v\n%s\n", rqIDs, ansIDs, delAnsIDs, jsonStr)
+		util.LogTrace.Println("JSON send to solr:", jsonStr)
 		body, err = Service.IncrementAddSolr(jsonStr)
 		if err != nil {
 			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
