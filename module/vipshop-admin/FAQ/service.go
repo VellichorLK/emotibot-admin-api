@@ -162,6 +162,11 @@ func updateSimilarQuestions(qid int, appid string, user string, sqs []SimilarQue
 		t.Rollback()
 		return fmt.Errorf("insert operation failed, %s", err)
 	}
+
+	if err = setQuestionDirty(t, qid, appid); err != nil {
+		t.Rollback()
+		return fmt.Errorf("set Question status failed when update similar questions, error: %s", err)
+	}
 	t.Commit()
 
 	return nil

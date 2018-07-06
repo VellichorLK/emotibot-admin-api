@@ -287,21 +287,24 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 		if err != nil {
 			return fmt.Errorf("SQL Execution err, %s", err)
 		}
-
-		// update standard question status
-		sqlStr = fmt.Sprintf("UPDATE %s_question SET Status = 1 where Question_Id = %d", appid, qid)
-		updapteStmt, err := t.Prepare(sqlStr)
-		if err != nil {
-			return fmt.Errorf("SQL Prepare err, %s", err)
-		}
-		defer updapteStmt.Close()
-
-		_, err = updapteStmt.Exec()
-		if err != nil {
-			return fmt.Errorf("SQL Execution err, %s", err)
-		}
 	}
 
+	return nil
+}
+
+func setQuestionDirty(t *sql.Tx, qid int, appid string) (err error) {
+	// update standard question status
+	sqlStr := fmt.Sprintf("UPDATE %s_question SET Status = 1 where Question_Id = %d", appid, qid)
+	updapteStmt, err := t.Prepare(sqlStr)
+	if err != nil {
+		return fmt.Errorf("Prepare statement failed when set question status, %s", err)
+	}
+	defer updapteStmt.Close()
+
+	_, err = updapteStmt.Exec()
+	if err != nil {
+		return fmt.Errorf("Execute statement failed when set question status, %s", err)
+	}
 	return nil
 }
 
