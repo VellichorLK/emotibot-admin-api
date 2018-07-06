@@ -363,3 +363,53 @@ func HTTPPostFileWithStatus(requestURL string, file io.Reader, filename string, 
 	content = string(body)
 	return
 }
+
+func Redirect(url string, w http.ResponseWriter, req *http.Request, timeout int) {
+	body := make([]byte, 0)
+	n, err := io.ReadFull(req.Body, body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Request Data Error"))
+		return
+	}
+	reqURL := url + req.URL.Path
+
+	var client *http.Client
+	if timeout > 0 {
+		getTimeout := time.Duration(time.Second) * time.Duration(timeout)
+		client = &http.Client{
+			Timeout: getTimeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	req2, err := http.NewRequest(req.Method, reqURL, strings.NewReader(string(body)))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Request Error"))
+		return
+	}
+	// set request content type
+	contentType := req.Header.Get("Content-Type")
+	req2.Header.Set("Content-Type", contentType)
+	// request
+	rep2, err := client.Do(req2)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("Not Found!"))
+		return
+	}
+	defer rep2.Body.Close()
+	n, err = io.ReadFull(rep2.Body, body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Request Error"))
+		return
+	}
+	// set response header
+	for k, v := range rep2.Header {
+		w.Header().Set(k, v[0])
+	}
+	w.Write([]byte(string(body[:n])))
+}
