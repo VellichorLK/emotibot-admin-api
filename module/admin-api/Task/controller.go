@@ -43,6 +43,7 @@ func init() {
 			util.NewEntryPoint("GET", "mapping-table/{name}", []string{}, handleGetMapTable),
 			util.NewEntryPoint("GET", "mapping-table", []string{}, handleGetMapTable),
 			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
+			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
 		},
 	}
 }
@@ -532,5 +533,39 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 		key := strings.Replace(tuple.Key, "\"", "\"\"\"", -1)
 		value := strings.Replace(tuple.Value, "\"", "\"\"\"", -1)
 		outputBuf.WriteString(fmt.Sprintf("%s,%s\n", key, value))
+	}
+}
+
+func handleIntentV1(w http.ResponseWriter, r *http.Request) {
+	reqType := r.FormValue("type")
+	// For now, cu_intent type will never used
+	// appid := r.FormValue("app_id")
+	// cuIntent := r.FormValue("cu_intent")
+	if reqType == "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty type"), http.StatusBadRequest)
+		return
+	}
+	intentURL := ""
+	switch reqType {
+	case "delete":
+		fallthrough
+	case "search":
+		fallthrough
+	case "check":
+		util.Redirect(fmt.Sprintf("%s/%s", intentURL, reqType), w, r, 0)
+	case "update":
+		util.Redirect(fmt.Sprintf("%s/%s", intentURL, reqType), w, r, 3)
+	// case "cu_intent":
+	// 	if cuIntent == "" {
+	// 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty cu_intent"), http.StatusBadRequest)
+	// 		return
+	// 	}
+	//  cuIntentURL := ""
+	// 	url := fmt.Sprintf("%s/%s", cuIntentURL, appid)
+	// 	r.URL.Query().Set("value", cuIntent)
+	// 	r.URL.Query().Set("key", "ccu")
+	// 	util.Redirect(url, w, r, 0)
+	default:
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no match type"), http.StatusBadRequest)
 	}
 }
