@@ -7,6 +7,12 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+var (
+	statusNormal  = 0
+	statusDelete  = -1
+	statusUpdated = 1
+)
+
 type APICategory struct {
 	ParentID int            `json:"fid"`
 	ID       int            `json:"id"`

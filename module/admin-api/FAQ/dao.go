@@ -261,16 +261,20 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 	return nil
 }
 
-//searchQuestionByContent return standard question based on content given.
-//return util.ErrSQLRowNotFound if query is empty
+// searchQuestionByContent return standard question based on content given.
+// return util.ErrSQLRowNotFound if query is empty
 func searchQuestionByContent(content string, appid string) (StdQuestion, error) {
 	var q StdQuestion
 	db := util.GetMainDB()
 	if db == nil {
 		return q, fmt.Errorf("main db connection pool is nil")
 	}
-	rawQuery := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content = ? ORDER BY Question_id DESC", appid)
-	results, err := db.Query(rawQuery, content)
+	rawQuery := fmt.Sprintf(`
+		SELECT Question_id, Content, CategoryId
+		FROM %s_question
+		WHERE Content = ? AND status != ?
+		ORDER BY Question_id DESC`, appid)
+	results, err := db.Query(rawQuery, content, statusDelete)
 	if err != nil {
 		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
 	}
