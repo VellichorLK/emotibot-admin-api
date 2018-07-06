@@ -673,7 +673,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 	}
 
 	queryStr = fmt.Sprintf(`
-		SELECT id, qid, content FROM robot_profile_answer
+		SELECT id, qid, content, appid FROM robot_profile_answer
 		WHERE qid in (?%s)`, strings.Repeat(",?", len(qids)-1))
 	ansRows, err := t.Query(queryStr, qids...)
 	if err != nil {
@@ -683,8 +683,8 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 
 	ansIDs = []interface{}{}
 	for ansRows.Next() {
-		id, qid, content := 0, 0, ""
-		err = ansRows.Scan(&id, &qid, &content)
+		id, qid, content, appid := 0, 0, "", ""
+		err = ansRows.Scan(&id, &qid, &content, &appid)
 		if err != nil {
 			return
 		}
@@ -692,10 +692,12 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 		if _, ok := rqMap[qid]; ok {
 			for idx := range rqMap[qid] {
 				info := rqMap[qid][idx]
-				info.Answers = append(info.Answers, &ManualAnswerTagging{
-					SolrID: fmt.Sprintf("%s_%d", info.SolrID, id),
-					Answer: content,
-				})
+				if info.AppID == appid {
+					info.Answers = append(info.Answers, &ManualAnswerTagging{
+						SolrID: fmt.Sprintf("%s_%d", info.SolrID, id),
+						Answer: content,
+					})
+				}
 			}
 		}
 		ansIDs = append(ansIDs, id)
