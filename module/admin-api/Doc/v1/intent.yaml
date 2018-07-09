@@ -126,6 +126,13 @@ paths:
           in: query
           description: 訓練完後是否自動載入 model (若未指定，則預設為 true)
           type: boolean
+        - name: engine
+          in: query
+          description: 指定所要訓練的 engine (若未指定，則預設為同時訓練 Intent Engine 及 Rule Engine)
+          type: string
+          enum:
+            - intent_engine
+            - rule_engine
       responses:
         200:
           description: OK
