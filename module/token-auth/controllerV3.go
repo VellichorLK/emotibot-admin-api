@@ -1509,6 +1509,19 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	returnSuccess(w, retData)
 }
 
+func GlobalModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
+	retData, err := service.GetGlobalModulesV3()
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
 func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, error) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")

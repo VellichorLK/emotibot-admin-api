@@ -573,6 +573,14 @@ func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 	return useDB.GetModulesV3(enterpriseID)
 }
 
+func GetGlobalModulesV3() ([]*data.ModuleDetailV3, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+	return useDB.GetModulesV3("")
+}
+
 func GetUserPasswordV3(userID string) (string, error) {
 	err := checkDB()
 	if err != nil {

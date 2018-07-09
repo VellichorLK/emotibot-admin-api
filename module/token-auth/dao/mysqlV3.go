@@ -1539,11 +1539,21 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 		return nil, err
 	}
 
-	queryStr := fmt.Sprintf(`
-		SELECT id, code, name, status, description, cmd_list
-		FROM %s
-		WHERE enterprise = ?`, moduleTableV3)
-	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
+	var rows *sql.Rows
+	if enterpriseID != "" {
+		queryStr := fmt.Sprintf(`
+			SELECT id, code, name, status, description, cmd_list
+			FROM %s
+			WHERE enterprise = ?`, moduleTableV3)
+		rows, err = controller.connectDB.Query(queryStr, enterpriseID)
+	} else {
+		queryStr := fmt.Sprintf(`
+			SELECT id, code, name, status, description, cmd_list
+			FROM %s
+			WHERE enterprise IS NULL`, moduleTableV3)
+		rows, err = controller.connectDB.Query(queryStr)
+	}
+
 	if err != nil {
 		util.LogDBError(err)
 		return nil, err

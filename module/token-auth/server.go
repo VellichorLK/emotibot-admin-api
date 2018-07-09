@@ -105,6 +105,7 @@ func setUpRoutes() {
 		Route{"ValidateToken", "GET", 3, "token", ValidateTokenHandler, []interface{}{}},
 
 		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", ModulesGetHandlerV3, []interface{}{0, 1, 2}},
+		Route{"GetModules", "GET", 3, "modules", GlobalModulesGetHandlerV3, []interface{}{}},
 	}
 }
 
@@ -125,7 +126,7 @@ func setUpDB() {
 func checkAuth(r *http.Request, route Route) bool {
 	util.LogInfo.Printf("Access: %s %s", r.Method, r.RequestURI)
 	if len(route.GrantType) == 0 {
-		util.LogError.Println("[Auth check] pass: no need")
+		util.LogTrace.Println("[Auth check] pass: no need")
 		return true
 	}
 
