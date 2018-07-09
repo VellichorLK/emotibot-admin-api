@@ -39,6 +39,10 @@ const (
 	levelTrace
 )
 
+func init() {
+	LogInit("", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+}
+
 // LogInit should be called before server start
 func LogInit(
 	prefix string,
@@ -48,7 +52,6 @@ func LogInit(
 	for len(handler) < levelCount {
 		handler = append(handler, ioutil.Discard)
 	}
-	fmt.Printf("handlers: %+v\n", handler)
 
 	LogTrace = log.New(handler[logLevel["TRACE"]],
 		fmt.Sprintf("[%s][TRACE] ", prefix),

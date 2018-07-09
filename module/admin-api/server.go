@@ -52,7 +52,6 @@ var serverConfig map[string]string
 var logChannel chan util.AccessLog
 
 func init() {
-	util.LogInit("ADMIN", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {
