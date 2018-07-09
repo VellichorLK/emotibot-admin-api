@@ -674,7 +674,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 
 	queryStr = fmt.Sprintf(`
 		SELECT id, qid, content, appid FROM robot_profile_answer
-		WHERE qid in (?%s)`, strings.Repeat(",?", len(qids)-1))
+		WHERE qid in (?%s) AND status >= 0`, strings.Repeat(",?", len(qids)-1))
 	ansRows, err := t.Query(queryStr, qids...)
 	if err != nil {
 		return
