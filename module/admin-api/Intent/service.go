@@ -19,6 +19,12 @@ import (
 
 const intentFilesPath = "./statics"
 
+const (
+	TrainBothEngines = iota
+	TrainIntentEngine
+	TrainRuleEngine
+)
+
 func GetIntents(appID string, version int) (intents []string, retCode int, err error) {
 	if version == 0 {
 		// Use latest version of intents dataset
@@ -132,7 +138,7 @@ func DownloadIntents(w http.ResponseWriter, appID string, version int) {
 	io.Copy(w, f)
 }
 
-func Train(appID string, version int, autoReload bool) (retCode int, err error) {
+func Train(appID string, version int, autoReload bool, trainEngine int) (retCode int, err error) {
 	if version == 0 {
 		// Use latest version of intents dataset
 		version, err = getLatestIntentsVersion(appID)
@@ -147,36 +153,40 @@ func Train(appID string, version int, autoReload bool) (retCode int, err error) 
 	}
 
 	// Train Intent Engine if required
-	ieModelID, err := getIntentEngineModelID(appID, version)
-	if err != nil {
-		if string(ieModelID) == "" {
-			// Cannot find corresponded version (sql.ErrNoRows)
-			retCode = ApiError.REQUEST_ERROR
-			return
-		}
-	}
-
-	if ieModelID == nil {
-		retCode, err = trainIntentEngine(appID, version, autoReload)
+	if trainEngine == TrainBothEngines || trainEngine == TrainIntentEngine {
+		ieModelID, err := getIntentEngineModelID(appID, version)
 		if err != nil {
-			return
+			if string(ieModelID) == "" {
+				// Cannot find corresponded version (sql.ErrNoRows)
+				retCode = ApiError.REQUEST_ERROR
+				return retCode, err
+			}
+		}
+
+		if ieModelID == nil {
+			retCode, err = trainIntentEngine(appID, version, autoReload)
+			if err != nil {
+				return retCode, err
+			}
 		}
 	}
 
 	// Train Rule Engine if required
-	reModelID, err := getRuleEngineModelID(appID, version)
-	if err != nil {
-		if string(reModelID) == "" {
-			// Cannot find corresponded version (sql.ErrNoRows)
-			retCode = ApiError.REQUEST_ERROR
-			return
-		}
-	}
-
-	if reModelID == nil {
-		retCode, err = trainRuleEngine(appID, version, autoReload)
+	if trainEngine == TrainBothEngines || trainEngine == TrainRuleEngine {
+		reModelID, err := getRuleEngineModelID(appID, version)
 		if err != nil {
-			return
+			if string(reModelID) == "" {
+				// Cannot find corresponded version (sql.ErrNoRows)
+				retCode = ApiError.REQUEST_ERROR
+				return retCode, err
+			}
+		}
+
+		if reModelID == nil {
+			retCode, err = trainRuleEngine(appID, version, autoReload)
+			if err != nil {
+				return retCode, err
+			}
 		}
 	}
 

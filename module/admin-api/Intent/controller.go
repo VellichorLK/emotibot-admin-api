@@ -137,6 +137,7 @@ func handleTrain(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	auto := r.URL.Query().Get("auto_reload")
+	engine := r.URL.Query().Get("engine")
 
 	var version int
 	if v == "" {
@@ -164,7 +165,19 @@ func handleTrain(w http.ResponseWriter, r *http.Request) {
 		autoReload = _auto
 	}
 
-	retCode, err := Train(appID, version, autoReload)
+	var trainEngine int
+	if engine == "" {
+		trainEngine = TrainBothEngines
+	} else if engine == "intent_engine" {
+		trainEngine = TrainIntentEngine
+	} else if engine == "rule_engine" {
+		trainEngine = TrainRuleEngine
+	} else {
+		http.Error(w, "Invalid engine parameter", http.StatusBadRequest)
+		return
+	}
+
+	retCode, err := Train(appID, version, autoReload, trainEngine)
 	if err != nil {
 		if retCode == ApiError.REQUEST_ERROR {
 			http.Error(w, err.Error(), http.StatusBadRequest)
