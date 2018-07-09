@@ -59,17 +59,9 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	triggerPhrases, scenario, err := ParseUploadSpreadsheet(scenarioString, buf)
+	scenario, err := ParseUploadSpreadsheet(appID, scenarioString, buf)
 	if err != nil {
 		ret = fmt.Sprintf("%s: %s", util.Msg["ParseError"], err.Error())
-		return
-	}
-
-	// register intent
-	scenarioName := scenario.EditingContent.Metadata["scenario_name"]
-	err = UpdateIntentV1(appID, scenarioName, triggerPhrases)
-	if err != nil {
-		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
 		return
 	}
 

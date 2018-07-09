@@ -3,6 +3,7 @@ package Task
 var (
 	SheetName = map[string]string{
 		"triggerPhrase":    "触发语句",
+		"triggerIntent":    "触发意图",
 		"entityCollecting": "信息收集",
 		"responseMessage":  "回复语句",
 	}

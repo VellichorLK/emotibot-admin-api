@@ -9,28 +9,44 @@ import (
 )
 
 // ParseUploadSpreadsheet will parse and verify uploaded spreadsheet
-func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) ([]string, *Scenario, error) {
+// Use intent_engine_2.0 intent as trigger
+func ParseUploadSpreadsheet(appID string, scenarioString string, fileBuf []byte) (*Scenario, error) {
 	var scenario Scenario
-	var triggerPhrases []string
 	json.Unmarshal([]byte(scenarioString), &scenario)
 	xlFile, err := xlsx.OpenBinary(fileBuf)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	// crreate an default intent named by scenario_name
-	trigger := createDefaultTrigger(&scenario)
-	triggerList := &scenario.EditingContent.Skills["mainSkill"].TriggerList
-	*triggerList = append(*triggerList, trigger)
-
 	var sheet *xlsx.Sheet
-	// parse triggier phrases to return
+	// parse triggier phrases and register an intent to intent engine 1.0
 	sheet = xlFile.Sheet[SheetName["triggerPhrase"]]
 	if sheet != nil {
-		triggerPhrases, err = parseTriggerPhrase(sheet)
+		// create an intent with intent_name = scenario_name
+		scenarioName := scenario.EditingContent.Metadata["scenario_name"]
+		trigger := createDefaultTrigger(scenarioName, "intent_engine")
+		triggerList := &scenario.EditingContent.Skills["mainSkill"].TriggerList
+		*triggerList = append(*triggerList, trigger)
+
+		// register an intent to intent engine 1.0
+		triggerPhrases, err := parseTriggerPhrase(sheet)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
+		err = UpdateIntentV1(appID, scenarioName, triggerPhrases)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// parse triggier intents 2.0 and assign to scenario
+	sheet = xlFile.Sheet[SheetName["triggerIntent"]]
+	if sheet != nil {
+		triggerList, err := parseTriggerIntent(sheet)
+		if err != nil {
+			return nil, err
+		}
+		scenario.EditingContent.Skills["mainSkill"].TriggerList = triggerList
 	}
 
 	// parser entity and assign to scenario
@@ -38,21 +54,22 @@ func ParseUploadSpreadsheet(scenarioString string, fileBuf []byte) ([]string, *S
 	if sheet != nil {
 		entityList, err := parseEntity(sheet)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		scenario.EditingContent.Skills["mainSkill"].EntityCollectorList = entityList
 	}
 
+	// parse action and assign to scenario
 	sheet = xlFile.Sheet[SheetName["responseMessage"]]
 	if sheet != nil {
 		actionGroupList, err := parseMsgAction(sheet)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		scenario.EditingContent.Skills["mainSkill"].ActionGroupList = actionGroupList
 	}
 
-	return triggerPhrases, &scenario, err
+	return &scenario, err
 }
 
 func parseTriggerPhrase(sheet *xlsx.Sheet) ([]string, error) {
@@ -71,10 +88,26 @@ func parseTriggerPhrase(sheet *xlsx.Sheet) ([]string, error) {
 	return phrases, nil
 }
 
-func createDefaultTrigger(scenario *Scenario) *Trigger {
-	intentName := scenario.EditingContent.Metadata["scenario_name"]
+func parseTriggerIntent(sheet *xlsx.Sheet) ([]*Trigger, error) {
+	triggerList := make([]*Trigger, 0)
+	sheetIntent := new(SpreadsheetTriggerIntent)
+	if sheet.MaxRow == 0 {
+		return triggerList, errors.New("Missing trigger intents")
+	}
+	for i := 0; i < sheet.MaxRow; i++ {
+		err := sheet.Rows[i].ReadStruct(sheetIntent)
+		if err != nil {
+			return nil, err
+		}
+		trigger := createDefaultTrigger(sheetIntent.Intent, "intent_engine_2.0")
+		triggerList = append(triggerList, trigger)
+	}
+	return triggerList, nil
+}
+
+func createDefaultTrigger(intentName string, intentType string) *Trigger {
 	trigger := Trigger{
-		Type:       "intent_engine",
+		Type:       intentType,
 		IntentName: intentName,
 		Editable:   true,
 	}

@@ -22,6 +22,10 @@ type SpreadsheetTrigger struct {
 	Phrase string `xlsx:"0"`
 }
 
+type SpreadsheetTriggerIntent struct {
+	Intent string `xlsx:"0"`
+}
+
 type Trigger struct {
 	Type       string `json:"type"`
 	IntentName string `json:"intent_name"`
