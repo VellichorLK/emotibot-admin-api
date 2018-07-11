@@ -3,7 +3,9 @@ package Task
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/tealeg/xlsx"
 )
@@ -67,6 +69,16 @@ func ParseUploadSpreadsheet(appID string, scenarioString string, fileBuf []byte)
 			return nil, err
 		}
 		scenario.EditingContent.Skills["mainSkill"].ActionGroupList = actionGroupList
+	}
+
+	// parse action and assign to scenario
+	sheet = xlFile.Sheet[SheetName["nerMap"]]
+	if sheet != nil {
+		nerMap, err := parseNerMap(sheet)
+		if err != nil {
+			return nil, err
+		}
+		scenario.EditingContent.IDToNerMap = nerMap
 	}
 
 	return &scenario, err
@@ -156,4 +168,60 @@ func parseMsgAction(sheet *xlsx.Sheet) ([]*ActionGroup, error) {
 		actionGroupList = append(actionGroupList, &actionGroup)
 	}
 	return actionGroupList, nil
+}
+
+func parseNerMap(sheet *xlsx.Sheet) (map[string]*CustomNer, error) {
+	nerMap := map[string]*CustomNer{}
+	wordBankRow := new(Dictionary.WordBankRow)
+	lastWordBankRow := new(Dictionary.WordBankRow)
+	pathToEntitySynonymsList := make(map[string][]*EntitySynonyms)
+	if sheet.MaxRow <= 1 {
+		// skip nerMap parsing
+		return nil, nil
+	}
+
+	for i := 1; i < sheet.MaxRow; i++ {
+		if empty := isEmptyRow(sheet.Rows[i]); empty == true {
+			// skip empty row
+			continue
+		}
+
+		err := sheet.Rows[i].ReadStruct(wordBankRow)
+		if err != nil {
+			return nil, err
+		}
+		entitySynonyms := &EntitySynonyms{
+			Entity:   wordBankRow.Name,
+			Synonyms: wordBankRow.SimilarWords,
+		}
+
+		newWordBankRow := wordBankRow.FillLevel(*lastWordBankRow)
+		lastWordBankRow = &newWordBankRow
+		path := newWordBankRow.GetPath()
+
+		if _, ok := pathToEntitySynonymsList[path]; !ok {
+			pathToEntitySynonymsList[path] = []*EntitySynonyms{}
+		}
+		pathToEntitySynonymsList[path] = append(pathToEntitySynonymsList[path], entitySynonyms)
+	}
+
+	for k, v := range pathToEntitySynonymsList {
+		customNer := newCustomNer()
+		customNer.EntityType = k
+		customNer.EntitySynonymsList = v
+		nerMap[customNer.ID] = &customNer
+	}
+	return nerMap, nil
+}
+
+func isEmptyRow(row *xlsx.Row) bool {
+	cells := row.Cells
+	rowCellStr := make([]string, len(cells))
+	for cellIdx, cell := range cells {
+		rowCellStr[cellIdx] = strings.TrimSpace(cell.Value)
+	}
+	if strings.TrimSpace(strings.Join(rowCellStr, "")) == "" {
+		return true
+	}
+	return false
 }

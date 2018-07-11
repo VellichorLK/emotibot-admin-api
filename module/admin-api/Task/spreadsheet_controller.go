@@ -61,6 +61,7 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 
 	scenario, err := ParseUploadSpreadsheet(appID, scenarioString, buf)
 	if err != nil {
+		retCode = ApiError.REQUEST_ERROR
 		ret = fmt.Sprintf("%s: %s", util.Msg["ParseError"], err.Error())
 		return
 	}
@@ -71,6 +72,7 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 	util.LogTrace.Printf("Save scenario content: %s", string(content))
 	retCode, err = UpdateScenario(scenarioID, string(content), string(layout))
 	if err != nil {
+		retCode = ApiError.DB_ERROR
 		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())
 		return
 	}

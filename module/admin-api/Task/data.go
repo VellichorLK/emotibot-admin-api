@@ -1,6 +1,8 @@
 package Task
 
-import "emotibot.com/emotigo/module/admin-api/util"
+import (
+	"emotibot.com/emotigo/module/admin-api/util"
+)
 
 type MapTuple struct {
 	Key   string `json:"key"`
@@ -95,13 +97,13 @@ type Scenario struct {
 }
 
 type ScenarioContent struct {
-	Version    string                  `json:"version"`
-	Metadata   map[string]string       `json:"metadata"`
-	Setting    map[string]int          `json:"setting"`
-	MsgConfirm []*interface{}          `json:"msg_confirm"`
-	Nodes      []*interface{}          `json:"nodes"`
-	IDToNerMap map[string]*interface{} `json:"idToNerMap"`
-	Skills     map[string]*Skill       `json:"skills"`
+	Version    string                `json:"version"`
+	Metadata   map[string]string     `json:"metadata"`
+	Setting    map[string]int        `json:"setting"`
+	MsgConfirm []*interface{}        `json:"msg_confirm"`
+	Nodes      []*interface{}        `json:"nodes"`
+	IDToNerMap map[string]*CustomNer `json:"idToNerMap"`
+	Skills     map[string]*Skill     `json:"skills"`
 }
 
 type Skill struct {
@@ -127,4 +129,29 @@ type ActionGroup struct {
 type Action struct {
 	Type string `json:"type"`
 	Msg  string `json:"msg"`
+}
+
+type CustomNer struct {
+	SlotType              string            `json:"slotType"`
+	SourceType            string            `json:"sourceType"`
+	EntityType            string            `json:"entityType"`
+	EntityTypeDescription string            `json:"entityTypeDescription"`
+	EntitySynonymsList    []*EntitySynonyms `json:"entitySynonymsList"`
+	EntityCategory        string            `json:"entityCategory"`
+	ID                    string            `json:"id"`
+}
+
+func newCustomNer() CustomNer {
+	return CustomNer{
+		SlotType:              "pText",
+		SourceType:            "custom",
+		EntityCategory:        "通用实体类别",
+		EntityTypeDescription: "自定义实体",
+		ID: util.GenRandomUUIDSameAsOpenAPI(),
+	}
+}
+
+type EntitySynonyms struct {
+	Entity   string `json:"entity"`
+	Synonyms string `json:"synonyms"`
 }

@@ -6,6 +6,7 @@ var (
 		"triggerIntent":    "触发意图",
 		"entityCollecting": "信息收集",
 		"responseMessage":  "回复语句",
+		"nerMap":           "自定义实体",
 	}
 	SlotType = map[string]string{
 		"整数": "integer",

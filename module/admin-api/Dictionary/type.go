@@ -37,13 +37,13 @@ type WordBank struct {
 }
 
 type WordBankRow struct {
-	Level1       string
-	Level2       string
-	Level3       string
-	Level4       string
-	Name         string
-	SimilarWords string
-	Answer       string
+	Level1       string `xlsx:"0"`
+	Level2       string `xlsx:"1"`
+	Level3       string `xlsx:"2"`
+	Level4       string `xlsx:"3"`
+	Name         string `xlsx:"4"`
+	SimilarWords string `xlsx:"5"`
+	Answer       string `xlsx:"6"`
 }
 
 func (row WordBankRow) ToString() string {
@@ -55,6 +55,47 @@ func (row WordBankRow) ToString() string {
 	return fmt.Sprintf("%s>%s>%s>%s\t%s\t%s",
 		row.Level1, row.Level2, row.Level3, row.Level4, row.Name,
 		strings.Join(trimSimilars, "\t"))
+}
+
+func (row WordBankRow) FillLevel(lastRow WordBankRow) WordBankRow {
+	newRow := row
+	hasLevel := false
+	if newRow.Level4 == "" {
+		if hasLevel == true {
+			newRow.Level4 = lastRow.Level4
+		}
+	} else {
+		hasLevel = true
+	}
+	if newRow.Level3 == "" {
+		if hasLevel == true {
+			newRow.Level3 = lastRow.Level3
+		}
+	} else {
+		hasLevel = true
+	}
+	if newRow.Level2 == "" {
+		if hasLevel == true {
+			newRow.Level2 = lastRow.Level2
+		}
+	} else {
+		hasLevel = true
+	}
+	if newRow.Level1 == "" {
+		if hasLevel == true {
+			newRow.Level1 = lastRow.Level1
+		}
+	} else {
+		hasLevel = true
+	}
+
+	if hasLevel == false {
+		newRow.Level1 = lastRow.Level1
+		newRow.Level2 = lastRow.Level2
+		newRow.Level3 = lastRow.Level3
+		newRow.Level4 = lastRow.Level4
+	}
+	return newRow
 }
 
 func (row WordBankRow) GetPath() string {
