@@ -210,7 +210,7 @@ func groupAvgEmotion(_t1, _t2 uint64, appid string, filter string) (map[string][
 	whereStates, params := genDefaultWhereStates(_t1, _t2, appid)
 	orderStates := genDefaultOrderStates()
 
-	rows, err := getEmotionData(selectColumns, whereStates, orderStates, params)
+	rows, err := getEmotionData(selectColumns, whereStates, nil, orderStates, params)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -345,13 +345,13 @@ func groupAvgDuration(_t1, _t2 uint64, appid string, filter string) (map[string]
 	return groups, nil
 }
 
-func dailyAvgEmotion(_t1 uint64, _t2 uint64, appid string) ([]*AvgEmotion, error) {
+func dailyAvgEmotion(_t1 uint64, _t2 uint64, appid string, groupIDs []interface{}) ([]*AvgEmotion, error) {
 
 	selectColumns := [2][]string{{NID, NRDURATION, NFILET}, {NCHANNEL, NSCORE}}
 	whereStates, params := genDefaultWhereStates(_t1, _t2, appid)
 	orderStates := genDefaultOrderStates()
 
-	rows, err := getEmotionData(selectColumns, whereStates, orderStates, params)
+	rows, err := getEmotionData(selectColumns, whereStates, groupIDs, orderStates, params)
 	if err != nil {
 		log.Println(err)
 		return nil, err

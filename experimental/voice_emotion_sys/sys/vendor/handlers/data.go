@@ -2,11 +2,16 @@ package handlers
 
 import (
 	"database/sql"
+	"strings"
 )
 
-func getEmotionData(selectColumns [2][]string, whereState [2][]WhereStates, orderState [2][]string, params []interface{}) (*sql.Rows, error) {
+func getEmotionData(selectColumns [2][]string, whereState [2][]WhereStates, groupIDs []interface{}, orderState [2][]string, params []interface{}) (*sql.Rows, error) {
 
-	sql := getEmotionBaseSQL(selectColumns, whereState, orderState)
+	sql := getEmotionBaseSQL(selectColumns, whereState, groupIDs, orderState)
+
+	if groupIDs != nil && len(groupIDs) > 0 {
+		params = append(params, groupIDs...)
+	}
 
 	rows, err := db.Query(sql, params...)
 	if err != nil {
@@ -15,7 +20,7 @@ func getEmotionData(selectColumns [2][]string, whereState [2][]WhereStates, orde
 	return rows, nil
 }
 
-func getEmotionBaseSQL(selectColumns [2][]string, whereState [2][]WhereStates, orderState [2][]string) string {
+func getEmotionBaseSQL(selectColumns [2][]string, whereState [2][]WhereStates, groupIDs []interface{}, orderState [2][]string) string {
 
 	nickTable := [2]string{"a", "b"}
 
@@ -34,15 +39,27 @@ func getEmotionBaseSQL(selectColumns [2][]string, whereState [2][]WhereStates, o
 	sql += " from " + MainTable + " as " + nickTable[0] + " inner join " + ChannelTable + " as " + nickTable[1] +
 		" on " + nickTable[0] + "." + NID + "=" + nickTable[1] + "." + NID
 
+	var hasWhereState bool
 	for idx, states := range whereState {
 		for idx2, state := range states {
 			if idx == 0 && idx2 == 0 {
 				sql += " where "
+				hasWhereState = true
 			} else {
 				sql += " and "
 			}
 			sql += nickTable[idx] + "." + state.name + state.compare + "?"
 		}
+	}
+
+	if groupIDs != nil && len(groupIDs) > 0 {
+		if !hasWhereState {
+			sql += " where "
+		} else {
+			sql += " and "
+		}
+		sql += nickTable[0] + "." + NTAG2 + " in (?" + strings.Repeat(",?", len(groupIDs)-1) + ")"
+
 	}
 
 	for idx, orders := range orderState {
