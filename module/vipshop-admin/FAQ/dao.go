@@ -1192,7 +1192,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 
 	var conditions []interface{}
 	appids := []interface{}{appid, appid, appid, appid, appid, appid}
-	sql := fmt.Sprintf(`SELECT Question_Id, Content, CategoryId, categoryname FROM %s_question as q
+	sql := fmt.Sprintf(`SELECT Question_Id, Content, CategoryId, categoryname, Status FROM %s_question as q
 		left join (
 			select level5.categoryid as id,concat_ws('/',level1.categoryname, level2.categoryname, level3.categoryname, level4.categoryname, level5.categoryname) AS CategoryName from (
 				select categoryid, categoryname, parentid from %s_categories) as level5
@@ -1225,7 +1225,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 
 	for rows.Next() {
 		question := Question{}
-		rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &question.CategoryName)
+		rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &question.CategoryName, &question.Status)
 
 		questions = append(questions, question)
 	}

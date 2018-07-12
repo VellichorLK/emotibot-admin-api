@@ -60,6 +60,7 @@ type Question struct {
 	Answers         []Answer `json:"answerItem"`
 	User			string   `json:"createuser"`
 	AppID			string
+	Status          int      `json:"status"`
 }
 
 func (q *Question) FetchAnswers() (err error) {

@@ -988,12 +988,19 @@ func handleQueryQuestion(ctx context.Context) {
 	}
 
 	if len(questions) == 0 {
-		util.LogInfo.Printf("Can not find question: %d", qid)
+		util.LogError.Printf("Can not find question: %d", qid)
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
 
 	question := questions[0]
+	// status -1 means the question was deleted, but not commited
+	if question.Status == -1 {
+		util.LogInfo.Printf("Target question is deleted: %d", qid)
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	}
+
 	question.AppID = appid
 	err = question.FetchAnswers()
 	if err != nil {
