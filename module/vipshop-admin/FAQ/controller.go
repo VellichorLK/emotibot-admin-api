@@ -195,6 +195,10 @@ func handleGetCategories(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.Writef(err.Error())
 	}
+
+	if categories == nil {
+		categories = make([]*APICategory, 0)
+	}
 	ctx.JSON(categories)
 }
 
