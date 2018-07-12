@@ -1224,8 +1224,17 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 	}
 
 	for rows.Next() {
+		var categoryName *string
 		question := Question{}
-		rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &question.CategoryName, &question.Status)
+		err = rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &categoryName, &question.Status)
+		if err != nil {
+			err = fmt.Errorf("error while fetching question, error: %s", err)
+			return 
+		}
+
+		if categoryName != nil {
+			question.CategoryName = *categoryName
+		}
 
 		questions = append(questions, question)
 	}
