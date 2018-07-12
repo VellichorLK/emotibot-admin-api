@@ -28,7 +28,7 @@ func GroupAPI(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "GET":
-		groups, err := getGroups(appid)
+		groups, err := getGroups(appid, nil)
 
 		if err != nil {
 			log.Printf("Error: %s\n", err)
@@ -69,13 +69,24 @@ func GroupAPI(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getGroups(appid string) ([]*GroupSet, error) {
-	querySQL := fmt.Sprintf("select a.%s,a.%s,b.%s from %s as a left join %s as b on a.%s=b.%s where %s=? order by %s",
+func getGroups(appid string, groupID []uint64) ([]*GroupSet, error) {
+	querySQL := fmt.Sprintf("select a.%s,a.%s,b.%s from %s as a left join %s as b on a.%s=b.%s where a.%s=?",
 		NID, GroupName, GroupVal,
 		GroupTable, GroupValTable,
-		NID, GroupID, NAPPID, NID)
+		NID, GroupID, NAPPID)
 
-	rows, err := db.Query(querySQL, appid)
+	params := make([]interface{}, 0)
+	params = append(params, appid)
+	if groupID != nil && len(groupID) > 0 {
+		querySQL += " and a." + NID + " in (?" + strings.Repeat(",?", len(groupID)-1) + ")"
+		for _, id := range groupID {
+			params = append(params, id)
+		}
+	}
+
+	querySQL += " order by " + NID
+
+	rows, err := db.Query(querySQL, params...)
 	if err != nil {
 		return nil, err
 	}

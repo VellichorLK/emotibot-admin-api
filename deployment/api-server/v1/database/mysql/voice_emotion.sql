@@ -186,9 +186,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `voice_emotion`.`groups`
+-- Table `voice_emotion`.`groupSet`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `voice_emotion`.`groups` (
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`groupSet` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `group_name` VARCHAR(128) NOT NULL,
   `appid` VARCHAR(32) NOT NULL,
@@ -199,9 +199,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `voice_emotion`.`groupsValue`
+-- Table `voice_emotion`.`groupValue`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `voice_emotion`.`groupsValue` (
+CREATE TABLE IF NOT EXISTS `voice_emotion`.`groupValue` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `group_id` BIGINT UNSIGNED NULL,
   `group_value` VARCHAR(128) NULL,

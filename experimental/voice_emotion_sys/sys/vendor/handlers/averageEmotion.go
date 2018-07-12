@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -81,6 +83,26 @@ func CallAverageEmotion(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		_t1 := params.Get(NT1)
 		_t2 := params.Get(NT2)
+		groupStr := params.Get(GROUPS)
+
+		var groupVals []interface{}
+		if groupStr != "" {
+			groups := strings.Split(groupStr, ",")
+			groupIDs, err := parseGroup(groups)
+			if err != nil {
+				http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			groupSet, err := getGroups(appid, groupIDs)
+			if err != nil {
+				log.Printf("Error:%s\n", err)
+				http.Error(w, "Internal Server error", http.StatusInternalServerError)
+				return
+			}
+
+			groupVals = parseGroupSet(groupSet)
+		}
 
 		t1, t2, days, err := ParseTime(_t1, _t2)
 		if err != nil {
@@ -88,7 +110,7 @@ func CallAverageEmotion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		aes, err := dailyAvgEmotion(t1, t2, appid)
+		aes, err := dailyAvgEmotion(t1, t2, appid, groupVals)
 		if err != nil {
 			http.Error(w, "Internal server error: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -170,4 +192,35 @@ func AverageDuration(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+}
+
+func parseGroup(groups []string) ([]uint64, error) {
+	num := len(groups)
+	var groupIDs []uint64
+	var err error
+	var id uint64
+	if num > 0 {
+		groupIDs = make([]uint64, num, num)
+		for idx, val := range groups {
+			id, err = strconv.ParseUint(val, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			groupIDs[idx] = id
+		}
+
+	}
+	return groupIDs, err
+
+}
+
+func parseGroupSet(groups []*GroupSet) []interface{} {
+
+	vals := make([]interface{}, 0)
+	for _, group := range groups {
+		for _, val := range group.GroupVal {
+			vals = append(vals, val)
+		}
+	}
+	return vals
 }
