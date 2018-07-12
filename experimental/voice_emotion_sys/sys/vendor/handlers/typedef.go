@@ -288,6 +288,8 @@ const VadInfoTable = "asr_analysisInformation"
 const ProhibitedTable = "prohibited_words"
 const ThresholdTable = "alertThreshold"
 const EmailTable = "emailNotification"
+const GroupTable = "groups"
+const GroupValTable = "groupsValue"
 
 const DEFAULTPRIORITY = 0
 const LIMITTAGLEN = 128
@@ -375,6 +377,13 @@ const (
 	UsrColTable    = "userColumn"
 	UsrColValTable = "userColumnValue"
 	UsrSelValTable = "userSelectableValue"
+)
+
+//coulumn name of groups and groupsvalue
+const (
+	GroupName = "group_name"
+	GroupVal  = "group_value"
+	GroupID   = "group_id"
 )
 
 //field name of user column table

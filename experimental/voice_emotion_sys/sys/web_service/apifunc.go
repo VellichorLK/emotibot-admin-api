@@ -26,6 +26,7 @@ var v1api = apiFunc{
 	v1basePath + "/prohibited/":       handlers.ModifyProhibitedWords,
 	v1basePath + "/notification":      handlers.AlertSys,
 	v1basePath + "/minimum_second":    handlers.MinimumSecond,
+	v1basePath + "/groups":            handlers.GroupAPI,
 }
 
 var services = [...]apiFunc{
