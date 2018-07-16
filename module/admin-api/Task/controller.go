@@ -46,6 +46,7 @@ func init() {
 			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
 			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
 			util.NewEntryPointWithVer("GET", "mapping-tables", []string{}, handleGetMapTableListV2, 2),
+			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableListAllV2, 2),
 		},
 	}
 }
@@ -292,7 +293,7 @@ func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf)
 }
 
-// handleGetMapTableListV2 load mapping table list from wordbank
+// handleGetMapTableListV2 load mapping table list by appid from wordbank
 func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	// if the user in query url is templateadmin, get the template scenario mapping tables
@@ -300,6 +301,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	if userInQuery == "templateadmin" {
 		appID = userInQuery
 	}
+	util.LogTrace.Printf("appID: %+v", appID)
 
 	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
 	if err != nil {
@@ -315,6 +317,11 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(buf)
+}
+
+// handleGetMapTableListAllV2 load mapping table list for all appid from wordbank
+func handleGetMapTableListAllV2(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func handleGetMapTable(w http.ResponseWriter, r *http.Request) {

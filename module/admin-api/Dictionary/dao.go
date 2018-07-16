@@ -446,7 +446,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	}
 
 	queryStr := `
-		SELECT id, name, pid, editable, intent_engine, rule_engine
+		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
 		FROM entity_class
 		WHERE appid = ?`
 	rows, err := mySQL.Query(queryStr, appid)
@@ -455,11 +455,97 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	}
 	defer rows.Close()
 
-	root := WordBankClassV3{-1, "", []*WordBankV3{}, []*WordBankClassV3{}, false, true, true}
+	rootMap, classMap, err := parseWordbankClassRowsV3(rows)
+	if err != nil {
+		return
+	}
 
-	// classMap is a map from classID to class
+	// queryParam is used in next mysql params
+	queryParam := []interface{}{}
+	// quereyQuestion will used to form the question mark in sql query
+	queryQuestion := []string{}
+	for id := range classMap {
+		queryParam = append(queryParam, id)
+		queryQuestion = append(queryQuestion, "?")
+	}
+	if len(queryParam) <= 0 {
+		// no WordBankClass found for this appid, return a empty root
+		ret = &WordBankClassV3{-1, "", []*WordBankV3{}, []*WordBankClassV3{}, false, true, true}
+		return
+	}
+	queryParam = append(queryParam, appid)
+
+	if len(queryParam) == 1 {
+		// only has appid condition
+		queryStr = `
+			SELECT id, appid, name, editable, cid, similar_words, answer
+			FROM entities
+			WHERE appid = ? ORDER BY id DESC`
+	} else {
+		queryStr = fmt.Sprintf(`
+			SELECT id, appid, name, editable, cid, similar_words, answer
+			FROM entities
+			WHERE cid in (%s) OR appid = ? ORDER BY id DESC`, strings.Join(queryQuestion, ","))
+	}
+	entityRows, err := mySQL.Query(queryStr, queryParam...)
+	if err != nil {
+		return
+	}
+	defer entityRows.Close()
+
+	rootMap, err = parseWordbankRowsV3(rootMap, classMap, entityRows)
+	if err != nil {
+		return
+	}
+	ret = rootMap[appid]
+	return
+}
+
+// getWordbanksAllV3 get wordbanks for all appid
+func getWordbanksAllV3() (retRootMap map[string]*WordBankClassV3, err error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := `
+		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
+		FROM entity_class`
+	rows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	rootMap, classMap, err := parseWordbankClassRowsV3(rows)
+	if err != nil {
+		return
+	}
+
+	queryStr = `
+		SELECT id, appid, name, editable, cid, similar_words, answer
+		FROM entities ORDER BY id DESC`
+	entityRows, err := mySQL.Query(queryStr)
+	if err != nil {
+		return
+	}
+	defer entityRows.Close()
+
+	rootMap, err = parseWordbankRowsV3(rootMap, classMap, entityRows)
+	if err != nil {
+		return
+	}
+	return rootMap, nil
+}
+
+// parseWordbankClassRowsV3 parse WordbankClass rows and return rootMap, classMap
+func parseWordbankClassRowsV3(rows *sql.Rows) (retRootMap map[string]*WordBankClassV3, retClassMap map[int]*WordBankClassV3, err error) {
+	// rootMap maps appid to its root wordbank class
+	rootMap := map[string]*WordBankClassV3{}
+	// classMap map classID to wordbank class
 	classMap := map[int]*WordBankClassV3{}
-	// childrenMap is a map from classID to it's children
+	// childrenMap map classID to it's children wordbank classes
 	childrenMap := map[int][]*WordBankClassV3{}
 
 	for rows.Next() {
@@ -467,9 +553,14 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		temp.Children = []*WordBankClassV3{}
 		temp.Wordbank = []*WordBankV3{}
 		var pidPtr *int
-		err = rows.Scan(&temp.ID, &temp.Name, &pidPtr, &temp.Editable, &temp.IntentEngine, &temp.RuleEngine)
+		var appid string
+		err = rows.Scan(&temp.ID, &appid, &temp.Name, &pidPtr, &temp.Editable, &temp.IntentEngine, &temp.RuleEngine)
 		if err != nil {
 			return
+		}
+		if _, ok := rootMap[appid]; !ok {
+			// initialize a root WordbankClass
+			rootMap[appid] = &WordBankClassV3{-1, "", []*WordBankV3{}, []*WordBankClassV3{}, false, true, true}
 		}
 		classMap[temp.ID] = temp
 
@@ -480,52 +571,25 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 			}
 			childrenMap[pid] = append(childrenMap[pid], temp)
 		} else {
-			root.Children = append(root.Children, temp)
+			rootMap[appid].Children = append(rootMap[appid].Children, temp)
 		}
 	}
 
-	// queryParam is used in next mysql params
-	queryParam := []interface{}{}
-	// quereyQuestion will used to form the question mark in sql query
-	queryQuestion := []string{}
-
 	for id, class := range classMap {
 		class.Children = childrenMap[id]
-		queryParam = append(queryParam, id)
-		queryQuestion = append(queryQuestion, "?")
 	}
+	return rootMap, classMap, nil
+}
 
-	if len(queryParam) <= 0 {
-		ret = &root
-		return
-	}
-
-	queryParam = append(queryParam, appid)
-
-	if len(queryParam) == 1 {
-		// only has appid condition
-		queryStr = `
-			SELECT id, editable, name, cid, similar_words, answer
-			FROM entities
-			WHERE appid = ? ORDER BY id DESC`
-	} else {
-		queryStr = fmt.Sprintf(`
-			SELECT id, editable, name, cid, similar_words, answer
-			FROM entities
-			WHERE cid in (%s) OR appid = ? ORDER BY id DESC`, strings.Join(queryQuestion, ","))
-	}
-	entityRows, err := mySQL.Query(queryStr, queryParam...)
-	if err != nil {
-		return
-	}
-	defer entityRows.Close()
-
+// parseWordbankRowsV3 parse Wordbank rows and return rootMap
+func parseWordbankRowsV3(rootMap map[string]*WordBankClassV3, classMap map[int]*WordBankClassV3, entityRows *sql.Rows) (retRootMap map[string]*WordBankClassV3, err error) {
 	for entityRows.Next() {
 		temp := &WordBankV3{}
-		var cid *int
+		var appid string
 		var editable *int
+		var cid *int
 		similarWordStr := ""
-		err = entityRows.Scan(&temp.ID, &editable, &temp.Name, &cid, &similarWordStr, &temp.Answer)
+		err = entityRows.Scan(&temp.ID, &appid, &temp.Name, &editable, &cid, &similarWordStr, &temp.Answer)
 		if err != nil {
 			return
 		}
@@ -543,19 +607,17 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		}
 
 		if cid == nil || *cid == -1 {
-			root.Wordbank = append(root.Wordbank, temp)
+			rootMap[appid].Wordbank = append(rootMap[appid].Wordbank, temp)
 		} else {
 			var classObj *WordBankClassV3
 			classObj = classMap[*cid]
 			if classObj == nil {
-				classObj = &root
+				classObj = rootMap[appid]
 			}
 			classObj.Wordbank = append(classObj.Wordbank, temp)
 		}
 	}
-
-	ret = &root
-	return
+	return rootMap, nil
 }
 
 func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
