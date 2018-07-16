@@ -190,18 +190,41 @@ func GetMapTableList(appid, userID string) ([]string, int, error) {
 	return list, ApiError.SUCCESS, nil
 }
 
+// GetMapTableAllV2 parse and generate mapping table map from a WordBankClassV3 tree
+func GetMapTableAllV2(rootMap map[string]*Dictionary.WordBankClassV3) map[string]map[string][]*MapTuple {
+	// appidToMapTupleMap map appid to a MapTupleMap which map mapTableName to a list of MapTuple
+	appidToMapTupleMap := map[string]map[string][]*MapTuple{}
+	for appid, root := range rootMap {
+		// mtMap map mapTableName to a list of WordBankV3
+		mtMap := parseWordBankClassV3Tree(root)
+		// mapTupleMap map mapTableName to a list of MapTuple
+		mapTupleMap := map[string][]*MapTuple{}
+		for mapTableName, wbList := range mtMap {
+			mapTupleList := []*MapTuple{}
+			for _, wb := range wbList {
+				mtList := wordbankV3ToMapTupleList(wb)
+				mapTupleList = append(mapTupleList, mtList...)
+			}
+			mapTupleMap[mapTableName] = mapTupleList
+		}
+		appidToMapTupleMap[appid] = mapTupleMap
+	}
+	return appidToMapTupleMap
+}
+
+func wordbankV3ToMapTupleList(wb *Dictionary.WordBankV3) []*MapTuple {
+	mapTupleList := []*MapTuple{}
+	for _, word := range wb.SimilarWords {
+		mapTuple := MapTuple{Key: word, Value: wb.Name}
+		mapTupleList = append(mapTupleList, &mapTuple)
+	}
+	return mapTupleList
+}
+
 // GetMapTableListV2 parse and generate mapping table name list from a WordBankClassV3 tree
 func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
-	teRoot := root.GetChildByName(util.Msg["TaskEngineWordbank"])
-	if teRoot == nil {
-		return *new([]string)
-	}
 	// mtMap map mapTableName to a list of WordBankV3
-	mtMap := map[string][]*Dictionary.WordBankV3{}
-	for _, child := range teRoot.Children {
-		tmpPath := make([]string, 0)
-		dfsMapTableScan(child, tmpPath, mtMap)
-	}
+	mtMap := parseWordBankClassV3Tree(root)
 
 	mtList := make([]string, len(mtMap))
 	i := 0
@@ -211,6 +234,20 @@ func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
 	}
 	util.LogTrace.Printf("GetMapTableListV2: %+v", mtList)
 	return mtList
+}
+
+func parseWordBankClassV3Tree(root *Dictionary.WordBankClassV3) (retMtMap map[string][]*Dictionary.WordBankV3) {
+	teRoot := root.GetChildByName(util.Msg["TaskEngineWordbank"])
+	if teRoot == nil {
+		return
+	}
+	// mtMap map mapTableName to a list of WordBankV3
+	mtMap := map[string][]*Dictionary.WordBankV3{}
+	for _, child := range teRoot.Children {
+		tmpPath := make([]string, 0)
+		dfsMapTableScan(child, tmpPath, mtMap)
+	}
+	return mtMap
 }
 
 func dfsMapTableScan(wbc *Dictionary.WordBankClassV3, path []string, mtMap map[string][]*Dictionary.WordBankV3) {

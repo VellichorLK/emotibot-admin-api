@@ -116,13 +116,22 @@ func GetWordbankRow(appid string, id int) (*WordBankRow, error) {
 	return getWordbankRow(appid, id)
 }
 
-// GetWordbankV3 will get wordbank from new table
+// GetWordbanksV3 will get wordbanks for specific appid
 func GetWordbanksV3(appid string) (*WordBankClassV3, int, error) {
 	root, err := getWordbanksV3(appid)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 	return root, ApiError.SUCCESS, nil
+}
+
+// GetWordbanksAllV3 will get wordbanks for all appid
+func GetWordbanksAllV3() (map[string]*WordBankClassV3, int, error) {
+	rootMap, err := getWordbanksAllV3()
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return rootMap, ApiError.SUCCESS, nil
 }
 
 func GetWordbankV3(appid string, id int) (*WordBankV3, int, error) {

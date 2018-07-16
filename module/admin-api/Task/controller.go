@@ -46,7 +46,7 @@ func init() {
 			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
 			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
 			util.NewEntryPointWithVer("GET", "mapping-tables", []string{}, handleGetMapTableListV2, 2),
-			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableListAllV2, 2),
+			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableAllV2, 2),
 		},
 	}
 }
@@ -319,9 +319,21 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	w.Write(buf)
 }
 
-// handleGetMapTableListAllV2 load mapping table list for all appid from wordbank
-func handleGetMapTableListAllV2(w http.ResponseWriter, r *http.Request) {
+// handleGetMapTableAllV2 load mapping table list for all appid from wordbank
+func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
+	rootMap, errno, err := Dictionary.GetWordbanksAllV3()
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+	}
 
+	appidToMtMap := GetMapTableAllV2(rootMap)
+	buf, err := json.Marshal(appidToMtMap)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write(buf)
 }
 
 func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
