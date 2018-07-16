@@ -31,19 +31,21 @@ func saveWordbankRows(appid string, wordbanks []*WordBankRow) (err error) {
 	queryArgs := []interface{}{}
 	queryQMark := []string{}
 
-	for _, wordbank := range wordbanks {
-		queryArgs = append(queryArgs,
-			wordbank.Level1, wordbank.Level2, wordbank.Level3, wordbank.Level4,
-			wordbank.Name, wordbank.SimilarWords, wordbank.Answer)
-		queryQMark = append(queryQMark, "(?, ?, ?, ?, ?, ?, ?)")
-	}
-	queryStr = fmt.Sprintf(`
-		INSERT INTO %s_entity
-		(level1, level2, level3, level4, entity_name, similar_words, answer)
-		VALUES %s`, appid, strings.Join(queryQMark, ","))
-	_, err = t.Exec(queryStr, queryArgs...)
-	if err != nil {
-		return
+	if len(wordbanks) > 0 {
+		for _, wordbank := range wordbanks {
+			queryArgs = append(queryArgs,
+				wordbank.Level1, wordbank.Level2, wordbank.Level3, wordbank.Level4,
+				wordbank.Name, wordbank.SimilarWords, wordbank.Answer)
+			queryQMark = append(queryQMark, "(?, ?, ?, ?, ?, ?, ?)")
+		}
+		queryStr = fmt.Sprintf(`
+			INSERT INTO %s_entity
+			(level1, level2, level3, level4, entity_name, similar_words, answer)
+			VALUES %s`, appid, strings.Join(queryQMark, ","))
+		_, err = t.Exec(queryStr, queryArgs...)
+		if err != nil {
+			return
+		}
 	}
 	err = t.Commit()
 	return

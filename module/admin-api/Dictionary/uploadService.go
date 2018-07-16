@@ -86,9 +86,9 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			_, _, line, _ := runtime.Caller(1)
+			_, file, line, _ := runtime.Caller(4)
 			err = fmt.Errorf("Panic error: %s", r)
-			util.LogError.Printf("Panic in parse xlsx @%d, %s\n", line, r)
+			util.LogError.Printf("Panic in parse xlsx @%s:%d, %s\n", file, line, r)
 		}
 	}()
 	xlsxFile, err := xlsx.OpenBinary(buf)
@@ -124,6 +124,9 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 	}
 
 	for idx, row := range rows {
+		if idx == 0 {
+			continue
+		}
 		wordbank := WordBankRow{}
 		if row.Cells == nil {
 			util.LogError.Printf("Cannot get cell from row %d\n", idx)
@@ -162,11 +165,24 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 		ret = append(ret, &wordbank)
 	}
 	fillWordbanksRowValue(ret)
+
+	for _, row := range ret {
+		if row.Level1 != util.Msg["SensitiveWordbank"] &&
+			row.Level1 != util.Msg["ProperNounsWordbank"] {
+			err = errors.New(util.Msg["Level1Explain"])
+			return
+		}
+	}
+
+	if len(ret) <= 0 {
+		err = errors.New(util.Msg["EmptyRows"])
+		return
+	}
+
 	result, errs := checkWordbanksRowValue(ret)
 	if !result {
 		err = errors.New(strings.Join(errs, "\n"))
 	}
-	ret = ret[1:]
 	return
 }
 

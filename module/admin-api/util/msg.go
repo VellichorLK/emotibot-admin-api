@@ -85,6 +85,7 @@ var (
 		"DirectoryError":         "目录错误",
 		"Level1Error":            "第一层目录错误",
 		"BelowRows":              "以下行数",
+		"Level1Explain":          "一级目录只可有敏感词库或专有词库",
 		"ErrorEmptyNameTpl":      "行 %d: 词库名为空",
 		"ErrorNameTooLongTpl":    "行 %d: 词库名超过35字",
 		"ErrorSimilarTooLongTpl": "行 %d: 同义词超过35字",
