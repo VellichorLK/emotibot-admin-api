@@ -80,6 +80,7 @@ var (
 		"TemplateXLSXName":       "词库模板",
 		"SensitiveWordbank":      "敏感词库",
 		"ProperNounsWordbank":    "专有词库",
+		"TaskEngineWordbank":     "任务引擎词库",
 		"SheetError":             "获取词库模板资料表错误",
 		"EmptyRows":              "资料表中无资料",
 		"DirectoryError":         "目录错误",

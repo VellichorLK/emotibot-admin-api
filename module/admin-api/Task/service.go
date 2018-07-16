@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -187,6 +188,45 @@ func GetMapTableList(appid, userID string) ([]string, int, error) {
 		return []string{}, ApiError.DB_ERROR, err
 	}
 	return list, ApiError.SUCCESS, nil
+}
+
+// GetMapTableListV2 parse and generate mapping table name list from a WordBankClassV3 tree
+func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
+	teRoot := root.GetChildByName(util.Msg["TaskEngineWordbank"])
+	if teRoot == nil {
+		return *new([]string)
+	}
+	// mtMap map mapTableName to a list of WordBankV3
+	mtMap := map[string][]*Dictionary.WordBankV3{}
+	for _, child := range teRoot.Children {
+		tmpPath := make([]string, 0)
+		dfsMapTableScan(child, tmpPath, mtMap)
+	}
+
+	mtList := make([]string, len(mtMap))
+	i := 0
+	for key := range mtMap {
+		mtList[i] = key
+		i++
+	}
+	util.LogTrace.Printf("GetMapTableListV2: %+v", mtList)
+	return mtList
+}
+
+func dfsMapTableScan(wbc *Dictionary.WordBankClassV3, path []string, mtMap map[string][]*Dictionary.WordBankV3) {
+	newPath := make([]string, len(path))
+	copy(newPath, path)
+	newPath = append(newPath, wbc.Name)
+	if len(wbc.Children) == 0 {
+		if len(wbc.Wordbank) != 0 {
+			mtName := strings.Join(newPath, "/")
+			mtMap[mtName] = wbc.Wordbank
+		}
+	} else {
+		for _, child := range wbc.Children {
+			dfsMapTableScan(child, newPath, mtMap)
+		}
+	}
 }
 
 func GetMapTableContent(appid, userID, tableName string) (string, int, error) {

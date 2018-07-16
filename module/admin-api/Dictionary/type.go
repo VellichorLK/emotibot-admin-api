@@ -283,3 +283,13 @@ type WordBankRowV3 struct {
 	SimilarWords string
 	Answer       string
 }
+
+// GetChildByName will return its child with the request name
+func (wb WordBankClassV3) GetChildByName(name string) *WordBankClassV3 {
+	for _, child := range wb.Children {
+		if child.Name == name {
+			return child
+		}
+	}
+	return nil
+}

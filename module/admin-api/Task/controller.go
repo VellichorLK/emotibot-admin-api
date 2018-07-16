@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -44,6 +45,7 @@ func init() {
 			util.NewEntryPoint("GET", "mapping-table", []string{}, handleGetMapTable),
 			util.NewEntryPoint("POST", "spreadsheet", []string{}, handleUploadSpreadSheet),
 			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
+			util.NewEntryPointWithVer("GET", "mapping-tables", []string{}, handleGetMapTableListV2, 2),
 		},
 	}
 }
@@ -282,6 +284,31 @@ func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	buf, err := json.Marshal(list)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.Write(buf)
+}
+
+// handleGetMapTableListV2 load mapping table list from wordbank
+func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	// if the user in query url is templateadmin, get the template scenario mapping tables
+	userInQuery := r.URL.Query().Get("user")
+	if userInQuery == "templateadmin" {
+		appID = userInQuery
+	}
+
+	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+	}
+
+	mtList := GetMapTableListV2(wordbanks)
+
+	buf, err := json.Marshal(mtList)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
