@@ -351,6 +351,9 @@ func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow, version int) 
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)
 	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	// inform TE to reload mapping table
+	util.ConsulUpdateTaskEngineMappingTableAll()
+	util.LogInfo.Printf("Update consul key: te/mapping_table_all")
 	return
 }
 
