@@ -255,12 +255,15 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		},
 		Password: &adminReq.Password,
 	}
+	temp, _ := json.Marshal(enterpriseAdmin)
+	util.LogTrace.Println("Add admin user:", string(temp))
 
 	description := r.FormValue("description")
 
 	var modules []string
 	err = json.Unmarshal([]byte(r.FormValue("modules")), &modules)
 	if err != nil {
+		util.LogInfo.Println("Parse json fail: ", err.Error())
 		returnBadRequest(w, "modules")
 		return
 	}

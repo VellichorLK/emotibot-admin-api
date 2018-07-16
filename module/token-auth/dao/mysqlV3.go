@@ -105,6 +105,27 @@ func (controller MYSQLController) GetEnterpriseV3(enterpriseID string) (*data.En
 	}
 
 	enterprise.Modules = modules
+
+	queryStr = `
+		SELECT uuid, user_name, display_name, email, phone
+		FROM users
+		WHERE enterprise = ? AND type = ?`
+	adminRows, err := controller.connectDB.Query(queryStr, enterpriseID, enum.AdminUser)
+	if err != nil {
+		return nil, err
+	}
+
+	for adminRows.Next() {
+		user := data.UserV3{}
+		user.Type = enum.AdminUser
+		user.Roles = &data.UserRolesV3{
+			GroupRoles: []*data.UserGroupRoleV3{},
+			AppRoles:   []*data.UserAppRoleV3{},
+		}
+		adminRows.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone)
+		enterprise.Admin = append(enterprise.Admin, &user)
+	}
+
 	return &enterprise, nil
 }
 

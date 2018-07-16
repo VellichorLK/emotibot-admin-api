@@ -11,10 +11,11 @@ type EnterpriseV3 struct {
 type EnterpriseDetailV3 struct {
 	EnterpriseV3
 	Modules []*ModuleV3 `json:"modules"`
+	Admin   []*UserV3   `json:"admins"`
 }
 
 type EnterpriseAdminRequestV3 struct {
-	Account 	string `json:"account"`
-	Name		string `json:"name"`
-	Password 	string `json:"password"`
+	Account  string `json:"account"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
 }
