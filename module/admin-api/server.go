@@ -75,28 +75,13 @@ func logAvailablePath(router *mux.Router) {
 }
 
 func main() {
-	//Init Consul Client
 	serverEnvs := util.GetEnvOf("server")
-	consulAddr, ok := serverEnvs["CONSUL_URL"]
-	if !ok {
-		util.LogError.Printf("Can not init without server env:'CONSUL_URL env\n'")
-		os.Exit(-1)
-	}
-	u, err := url.Parse(consulAddr)
-	if err != nil {
-		util.LogError.Printf("env parsing as URL failed, %v", err)
-	}
-	customHTTPClient := &http.Client{
-		Timeout: time.Duration(5) * time.Second,
-	}
-	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
-	util.LogInfo.Printf("Init consul client with url: %#v\n", u)
-
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
 		logLevel = "INFO"
 	}
 	util.LogInfo.Printf("Set log level %s\n", logLevel)
+	initConsul()
 
 	accessLog := serverEnvs["ACCESS_LOG"]
 	if accessLog == "1" {
@@ -119,7 +104,7 @@ func main() {
 	go runOnetimeJob()
 
 	util.LogInfo.Println("Start server on", serverURL)
-	err = http.ListenAndServe(serverURL, router)
+	err := http.ListenAndServe(serverURL, router)
 	if err != nil {
 		util.LogError.Println("Start server fail: ", err.Error())
 	}
@@ -290,4 +275,39 @@ func runOnetimeJob() {
 			}
 		}
 	}
+}
+
+func initConsul() {
+	//Init Consul Client
+	serverEnvs := util.GetEnvOf("server")
+	consulURL, ok := serverEnvs["CONSUL_URL"]
+	if !ok {
+		util.LogError.Printf("Can not init without server env:'CONSUL_URL env\n'")
+		os.Exit(-1)
+	}
+	consulPrefix := serverEnvs["CONSUL_PREFIX"]
+
+	consulAddr := fmt.Sprintf("%s/v1/kv/%s/", strings.TrimRight(consulURL, "/"), consulPrefix)
+	consulRootAddr := fmt.Sprintf("%s/v1/kv/", strings.TrimRight(consulURL, "/"))
+
+	u, err := url.Parse(consulAddr)
+	if err != nil {
+		util.LogError.Printf("env parsing as URL failed, %v", err)
+	}
+	rootURL, err := url.Parse(consulRootAddr)
+	if err != nil {
+		util.LogError.Printf("env parsing as URL failed, %v", err)
+	}
+
+	customHTTPClient := &http.Client{
+		Timeout: time.Duration(5) * time.Second,
+	}
+	rootHTTPClient := &http.Client{
+		Timeout: time.Duration(5) * time.Second,
+	}
+
+	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
+	util.RootConsulClient = util.NewConsulClientWithCustomHTTP(rootURL, rootHTTPClient)
+	util.LogInfo.Printf("Init consul client with url: %s\n", u.String())
+	util.LogInfo.Printf("Init root consul client with url: %s\n", rootURL.String())
 }

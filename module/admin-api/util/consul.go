@@ -29,6 +29,7 @@ const (
 	ConsulRuleKey              = "rule/%s"
 	ConsulCmdKey               = "cmd/%s"
 	ConsulControllerSettingKey = "setting/controller"
+	ConsulReleaseInfoKey       = "release_versions"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -59,17 +60,27 @@ type ConsulUpdateHandler func(key string, val interface{}) (int, error)
 // ConsulGetHandler should handle get kv store in consul.
 type ConsulGetHandler func(key string) (string, int, error)
 
+// ConsulGetTreeHandler should handle get kv store recursively in consul.
+type ConsulGetTreeHandler func(key string) (map[string]string, int, error)
+
 // ConsulClient is an adapter used for communicate with Consul API.
 type ConsulClient struct {
-	lockHandler   ConsulLockHandler
-	updateHandler ConsulUpdateHandler
-	getHandler    ConsulGetHandler
-	Address       *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
-	client        *http.Client
+	lockHandler    ConsulLockHandler
+	updateHandler  ConsulUpdateHandler
+	getHandler     ConsulGetHandler
+	getTreeHandler ConsulGetTreeHandler
+	Address        *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
+	client         *http.Client
 }
 
 // DefaultConsulClient is a used for convenient function packed in package.
 var DefaultConsulClient = NewConsulClient(&url.URL{
+	Host:   "127.0.0.1:8500",
+	Scheme: "http",
+})
+
+// RootConsulClient is a used for access consul values from root
+var RootConsulClient = NewConsulClient(&url.URL{
 	Host:   "127.0.0.1:8500",
 	Scheme: "http",
 })
@@ -89,6 +100,7 @@ func NewConsulClientWithCustomHTTP(address *url.URL, client *http.Client) *Consu
 	c.updateHandler = newDefaultUpdateHandler(client, address)
 	c.lockHandler = newDefaultLockHandler(client, address)
 	c.getHandler = newDefaultGetHandler(client, address)
+	c.getTreeHandler = newDefaultGetTreeHandler(client, address)
 	return c
 }
 
@@ -131,6 +143,66 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 		}
 
 		return ApiError.SUCCESS, nil
+	}
+}
+
+func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
+	return func(key string) (map[string]string, int, error) {
+		key = strings.TrimPrefix(key, "/")
+		k, err := url.Parse(key)
+		if err != nil {
+			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			return nil, 0, err
+		}
+		temp := u.ResolveReference(k)
+		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
+		if err != nil {
+			//TODO: should Logging behavior be done at Controller level or API level?
+			logConsulError(err)
+			return nil, ApiError.REQUEST_ERROR, err
+		}
+		q := request.URL.Query()
+		q.Add("recurse", "true")
+		request.URL.RawQuery = q.Encode()
+
+		logTraceConsul("get", request.URL.Path)
+		response, err := c.Do(request)
+		if err != nil {
+			logConsulError(err)
+			return nil, ApiError.CONSUL_SERVICE_ERROR, err
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, ApiError.IO_ERROR, err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			return nil, ApiError.SUCCESS, nil
+		}
+
+		objs := []map[string]interface{}{}
+		err = json.Unmarshal(body, &objs)
+		if len(objs) <= 0 {
+			return nil, ApiError.JSON_PARSE_ERROR, err
+		}
+
+		ret := map[string]string{}
+		for idx := range objs {
+			if b64Val, ok := objs[idx]["Value"]; ok {
+				value, err := base64.StdEncoding.DecodeString(b64Val.(string))
+				if err != nil {
+					continue
+				}
+				origKey := objs[idx]["Key"].(string)
+				moduleName := strings.TrimPrefix(origKey, key+"/")
+				strValue := strings.TrimPrefix(string(value), moduleName+":")
+
+				LogTrace.Printf("Get [%s]: %s\n", key, string(value))
+				ret[moduleName] = strValue
+			}
+		}
+
+		return ret, ApiError.SUCCESS, nil
 	}
 }
 
@@ -219,6 +291,11 @@ func (c ConsulClient) ConsulGetVal(key string) (string, int, error) {
 	return c.getHandler(key)
 }
 
+// ConsulGetVal get Consul KV Store by the given key, return value in string format
+func (c ConsulClient) ConsulGetTreeVal(key string) (map[string]string, int, error) {
+	return c.getTreeHandler(key)
+}
+
 //ConsulUpdateEntity is a convenient function for updating wordbank's Consul Key
 func ConsulUpdateEntity(appid string, value interface{}) (int, error) {
 	key := fmt.Sprintf(ConsulEntityKey, appid)
@@ -292,6 +369,11 @@ func ConsulSetControllerSetting(val string) (int, error) {
 	return ConsulUpdateVal(key, val)
 }
 
+func ConsulGetReleaseSetting() (map[string]string, int, error) {
+	key := ConsulReleaseInfoKey
+	return COnsulGetTreeFromRoot(key)
+}
+
 // ConsulUpdateVal is a convenient function for updating Consul KV Store.
 // ConsulUpdateVal update Consul KV Store by the given key, value pair.
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
@@ -302,6 +384,10 @@ func ConsulUpdateVal(key string, val interface{}) (int, error) {
 
 func ConsulGetVal(key string) (string, int, error) {
 	return DefaultConsulClient.ConsulGetVal(key)
+}
+
+func COnsulGetTreeFromRoot(key string) (map[string]string, int, error) {
+	return RootConsulClient.ConsulGetTreeVal(key)
 }
 
 func logTraceConsul(function string, msg string) {
