@@ -144,14 +144,14 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		if err != nil {
 			copyFiles(Volume+"/"+folerName, Volume, fileList)
 		}
-		deleteFiles("", []string{Volume + "/" + folerName})
+		deleteFiles("", []string{Volume + "/" + folerName}, true)
 
 	}()
 
 	//delete files
 	var delFileCount int64
 
-	delFileCount, err = deleteFiles(Volume, fileList)
+	delFileCount, err = deleteFiles(Volume, fileList, false)
 	if err != nil {
 		return 0, err
 	}

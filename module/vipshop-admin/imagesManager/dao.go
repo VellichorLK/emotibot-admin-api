@@ -505,7 +505,7 @@ func copy(from string, to string) error {
 	return nil
 }
 
-func deleteFiles(prefix string, fileName []string) (int64, error) {
+func deleteFiles(prefix string, fileName []string, isFolder bool) (int64, error) {
 	var count int64
 
 	if prefix != "" {
@@ -513,7 +513,27 @@ func deleteFiles(prefix string, fileName []string) (int64, error) {
 	}
 
 	for _, name := range fileName {
-		err := os.RemoveAll(prefix + name)
+		fullName := prefix + name
+
+		fi, err := os.Stat(fullName)
+		if err != nil {
+			return count, err
+		}
+		switch mode := fi.Mode(); {
+		case mode.IsDir():
+			if !isFolder {
+				return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
+			}
+		case mode.IsRegular():
+			if isFolder {
+				return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
+			}
+			if len(fileName) <= 0 {
+				return count, errors.New("Error! try to delete empty file name with prefix " + prefix)
+			}
+		}
+
+		err = os.RemoveAll(fullName)
 		if err != nil {
 			//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
 			if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
@@ -524,6 +544,7 @@ func deleteFiles(prefix string, fileName []string) (int64, error) {
 			return count, errors.New("remove file " + name + " failed." + err.Error())
 		}
 		count++
+
 	}
 	return count, nil
 }
