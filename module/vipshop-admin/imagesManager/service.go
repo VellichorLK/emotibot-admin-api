@@ -131,21 +131,21 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 	}
 	length := 10
 
-	folerName, err := createBackupFolder(length, Volume)
+	folderName, err := createBackupFolder(length, Volume)
 	if err != nil {
 		return 0, err
 	}
 
-	_, err = copyFiles(Volume, Volume+"/"+folerName, fileList)
+	_, err = copyFiles(Volume, Volume+"/"+folderName, fileList)
 	if err != nil {
 		return 0, err
 	}
 
 	defer func() {
 		if err != nil {
-			copyFiles(Volume+"/"+folerName, Volume, fileList)
+			copyFiles(Volume+"/"+folderName, Volume, fileList)
 		}
-		os.RemoveAll(Volume + "/" + folerName)
+		os.RemoveAll(Volume + "/" + folderName)
 	}()
 
 	//delete files

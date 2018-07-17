@@ -530,7 +530,7 @@ func deleteFiles(prefix string, fileName []string) (int64, error) {
 		case mode.IsDir():
 			return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
 		}
-		if len(fileName) > 0 {
+		if len(name) > 0 {
 			err = os.Remove(fullName)
 			if err != nil {
 				//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
