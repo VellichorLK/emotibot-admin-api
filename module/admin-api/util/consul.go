@@ -165,7 +165,7 @@ func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
 		q.Add("recurse", "true")
 		request.URL.RawQuery = q.Encode()
 
-		logTraceConsul("get", request.URL.Path)
+		logTraceConsul("get", request.URL.String())
 		response, err := c.Do(request)
 		if err != nil {
 			logConsulError(err)
@@ -371,7 +371,7 @@ func ConsulSetControllerSetting(val string) (int, error) {
 
 func ConsulGetReleaseSetting() (map[string]string, int, error) {
 	key := ConsulReleaseInfoKey
-	return COnsulGetTreeFromRoot(key)
+	return ConsulGetTreeFromRoot(key)
 }
 
 // ConsulUpdateVal is a convenient function for updating Consul KV Store.
@@ -386,7 +386,7 @@ func ConsulGetVal(key string) (string, int, error) {
 	return DefaultConsulClient.ConsulGetVal(key)
 }
 
-func COnsulGetTreeFromRoot(key string) (map[string]string, int, error) {
+func ConsulGetTreeFromRoot(key string) (map[string]string, int, error) {
 	return RootConsulClient.ConsulGetTreeVal(key)
 }
 
