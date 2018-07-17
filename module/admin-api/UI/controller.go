@@ -19,6 +19,7 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "envs", []string{}, handleDumpUISetting),
 			util.NewEntryPoint("POST", "export-log", []string{}, handleExportAuditLog),
+			util.NewEntryPoint("GET", "versions", []string{}, handleDumpVersionInfo),
 
 			util.NewEntryPoint("GET", "encrypt", []string{}, handleEncrypt),
 			util.NewEntryPoint("GET", "decrypt", []string{}, handleDecrypt),
@@ -113,4 +114,13 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 
 func getEnvironments() map[string]string {
 	return util.GetEnvOf(ModuleInfo.ModuleName)
+}
+
+func handleDumpVersionInfo(w http.ResponseWriter, r *http.Request) {
+	content, errno, err := util.ConsulGetReleaseSetting()
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, content))
 }
