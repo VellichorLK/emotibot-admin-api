@@ -15,12 +15,23 @@ func addUser(userid, account, password, enterprise string) error {
 		return errors.New("DB not init")
 	}
 
-	queryStr := `
-		INSERT INTO api_user
-		(UserId, Email, CreatedTime, Password, NickName, Type, Status, UpdatedTime, enterprise_id)
-		VALUES
-		(?, ?, CURRENT_TIMESTAMP(), ?, ?, 0, 1, CURRENT_TIMESTAMP(), ?)`
-	_, err := mySQL.Exec(queryStr, userid, account, password, account, enterprise)
+	queryStr := ""
+	var err error
+	if enterprise == "" {
+		queryStr = `
+			INSERT INTO api_user
+			(UserId, Email, CreatedTime, Password, NickName, Type, Status, UpdatedTime, enterprise_id)
+			VALUES
+			(?, ?, CURRENT_TIMESTAMP(), ?, ?, 0, 1, CURRENT_TIMESTAMP(), NULL)`
+		_, err = mySQL.Exec(queryStr, userid, account, password, account)
+	} else {
+		queryStr = `
+			INSERT INTO api_user
+			(UserId, Email, CreatedTime, Password, NickName, Type, Status, UpdatedTime, enterprise_id)
+			VALUES
+			(?, ?, CURRENT_TIMESTAMP(), ?, ?, 0, 1, CURRENT_TIMESTAMP(), ?)`
+		_, err = mySQL.Exec(queryStr, userid, account, password, account, enterprise)
+	}
 	if err != nil {
 		return err
 	}
