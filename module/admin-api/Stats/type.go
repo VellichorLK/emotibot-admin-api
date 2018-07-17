@@ -71,26 +71,8 @@ type SessionCondition struct {
 	ID        string     `json:"id"`
 	UserID    string     `json:"user_id"`
 	Duration  int        `json:"duration"`
-	Status    string     `json:"status"`
+	Status    *int       `json:"status"`
 	Limit     *PageLimit `json:"limit"`
-}
-
-//sessionsStatStrToInt search string into database status
-var SessionStatStrToInt = map[string]int{
-	"canceled": -3,
-	"timeout":  -2,
-	"toHuman":  -1,
-	"ongoing":  0,
-	"finished": 1,
-}
-
-//sessionsStatIntToStr search int into represent text
-var sessionStatIntToStr = map[int]string{
-	-3: "canceled",
-	-2: "timeout",
-	-1: "toHuman",
-	0:  "ongoing",
-	1:  "finished",
 }
 
 //JoinedSQLCondition create a JOINED SQL condition based on SessionCondition & SessionTbl & recordsTbl
@@ -123,11 +105,10 @@ func (c *SessionCondition) JoinedSQLCondition(sessionTblName, recordTblName stri
 	}
 
 	//Remember to validate status at controller phase
-	if c.Status != "" {
+	if c.Status != nil {
 		query := sessionTblName + ".status = ?"
 		AndConditions = append(AndConditions, query)
-		status, _ := SessionStatStrToInt[c.Status]
-		values = append(values, status)
+		values = append(values, *c.Status)
 	}
 	sqlText = strings.Join(AndConditions, " AND ")
 	return sqlText, values
@@ -140,13 +121,19 @@ type PageLimit struct {
 }
 
 // Session map to a sessions table row.
+//	Status int mean:
+//	"canceled": -3
+// 	"timeout":  -2
+// 	"toHuman":  -1
+// 	"ongoing":  0
+// 	"finished": 1
 type Session struct {
 	ID          string      `json:"id"`
 	UserID      string      `json:"user_id"`
 	StartTime   int64       `json:"start_time"`
 	EndTime     int64       `json:"end_time"`
 	Duration    int64       `json:"duration"`
-	Status      string      `json:"status"`
+	Status      int64       `json:"status"`
 	Information []ValuePair `json:"information"`
 	Notes       string      `json:"notes"`
 }

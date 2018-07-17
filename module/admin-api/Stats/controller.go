@@ -40,6 +40,7 @@ func init() {
 			util.NewEntryPoint("GET", "users/{uid}/records", []string{"view"}, handleRecords),
 			util.NewEntryPoint("GET", "faq", []string{"view"}, handleFAQStats),
 			util.NewEntryPoint("POST", "sessions/query", []string{}, handleSessionQuery),
+			util.NewEntryPoint("POST", "sessions/download", []string{}, handleSessionDownload),
 		},
 	}
 	cacheTimeout = nil
@@ -479,6 +480,32 @@ func handleFAQStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleSessionDownload(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	var cond SessionCondition
+	err := util.ReadJSON(r, &cond)
+	if err != nil {
+		http.Error(w, "Body bad formatted, "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	body, err := SessionCSV(appID, cond)
+	if err != nil {
+		http.Error(w, "Get Sessions error, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename=\"sessions_data.csv\"")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		util.LogError.Println("body io error, " + err.Error())
+	}
+
+}
+
 func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	var condition SessionCondition
@@ -509,4 +536,3 @@ func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
 		util.LogError.Printf("IO Error %v\n", err)
 	}
 }
-

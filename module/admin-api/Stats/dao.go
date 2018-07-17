@@ -409,35 +409,52 @@ func getTagValue(appID string, typ int) (map[string]string, error) {
 	return tags, nil
 }
 
-func getSessions(appID string, condition SessionCondition) (totalSize int, sessions []Session, err error) {
+func getSessionCount(appID string, cond SessionCondition) (totalSize int, err error) {
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
-		return 0, nil, fmt.Errorf("can not get main DB")
+		return 0, fmt.Errorf("can not get main DB")
 	}
-	whereText, values := condition.JoinedSQLCondition("sessions", "records")
-	selectColumns := "SELECT sessions.id, sessions.start_time, sessions.end_time, records.user_id, sessions.status, sessions.data"
+	whereText, values := cond.JoinedSQLCondition("sessions", "records")
 	selectCount := "SELECT count(distinct sessions.id)"
 	fromText := " FROM sessions JOIN records ON sessions.session_id = records.session_id "
-	selectColumns += fromText
 	selectCount += fromText
-	selectColumns += " WHERE records.app_id = ?"
 	selectCount += " WHERE records.app_id = ?"
 	if len(values) > 0 {
-		selectColumns += " AND " + whereText
 		selectCount += " AND " + whereText
 	}
 	values = append([]interface{}{appID}, values...)
-	selectColumns += " GROUP BY sessions.id, records.user_id"
-	selectColumns += fmt.Sprintf(" LIMIT %d, %d", condition.Limit.Index*condition.Limit.PageSize, condition.Limit.PageSize)
-	rows, err := db.Query(selectColumns, values...)
-	if err != nil {
-		util.LogError.Println("Error SQL: ", selectColumns, " values ", values)
-		return 0, nil, fmt.Errorf("session sql query error, %v", err.Error())
-	}
 	err = db.QueryRow(selectCount, values...).Scan(&totalSize)
 	if err != nil {
 		util.LogError.Println("Error SQL: ", selectCount)
-		return 0, nil, fmt.Errorf("session sql query error, %v", err.Error())
+		return 0, fmt.Errorf("session sql query error, %v", err.Error())
+	}
+
+	return totalSize, nil
+}
+
+func getSessions(appID string, condition SessionCondition) (sessions []Session, err error) {
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return nil, fmt.Errorf("can not get main DB")
+	}
+	whereText, values := condition.JoinedSQLCondition("sessions", "records")
+	selectColumns := "SELECT sessions.session_id, sessions.start_time, sessions.end_time, records.user_id, sessions.status, sessions.data"
+	fromText := " FROM sessions JOIN records ON sessions.session_id = records.session_id "
+	selectColumns += fromText
+	selectColumns += " WHERE records.app_id = ?"
+	if len(values) > 0 {
+		selectColumns += " AND " + whereText
+	}
+	values = append([]interface{}{appID}, values...)
+	selectColumns += " GROUP BY sessions.id, records.user_id"
+	if condition.Limit != nil && condition.Limit.PageSize != 0 {
+		selectColumns += fmt.Sprintf(" LIMIT %d, %d", condition.Limit.Index*condition.Limit.PageSize, condition.Limit.PageSize)
+	}
+
+	rows, err := db.Query(selectColumns, values...)
+	if err != nil {
+		util.LogError.Println("Error SQL: ", selectColumns, " values ", values)
+		return nil, fmt.Errorf("session sql query error, %v", err.Error())
 	}
 
 	sessions = []Session{}
@@ -447,14 +464,14 @@ func getSessions(appID string, condition SessionCondition) (totalSize int, sessi
 			start  int64
 			end    int64
 			userID sql.NullString
-			status int
+			status int64
 			data   sql.NullString
 		)
 		rows.Scan(&id, &start, &end, &userID, &status, &data)
 		var jsonData map[string]interface{}
 		err = json.Unmarshal([]byte(data.String), &jsonData)
 		if err != nil {
-			return 0, nil, fmt.Errorf("format session data error, %v", err)
+			return nil, fmt.Errorf("format session data error, %v", err)
 		}
 		var values = []ValuePair{}
 		for key, value := range jsonData {
@@ -465,7 +482,7 @@ func getSessions(appID string, condition SessionCondition) (totalSize int, sessi
 			StartTime:   start,
 			EndTime:     end,
 			UserID:      userID.String,
-			Status:      sessionStatIntToStr[status],
+			Status:      status,
 			Duration:    (end - start) / 1000,
 			Information: values,
 			Notes:       "",
@@ -474,9 +491,8 @@ func getSessions(appID string, condition SessionCondition) (totalSize int, sessi
 	}
 
 	if err = rows.Err(); err != nil {
-		return 0, nil, fmt.Errorf("scan error, %v", err)
+		return nil, fmt.Errorf("scan error, %v", err)
 	}
 
-	return totalSize, sessions, nil
-
+	return sessions, nil
 }

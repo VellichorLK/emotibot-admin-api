@@ -1,7 +1,12 @@
 package Stats
 
 import (
+	"bytes"
+	"encoding/csv"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -106,7 +111,43 @@ func GetFAQStats(appID string, start, end time.Time, brandName, keyword string) 
 	}, nil
 }
 
+// SessionCSV fetch sessions data and formatted as csv content bytes
+func SessionCSV(appID string, condition SessionCondition) ([]byte, error) {
+	sessions, err := getSessions(appID, condition)
+	if err != nil {
+		return nil, fmt.Errorf("fetch sessions content error, %v", err)
+	}
+	var buffer bytes.Buffer
+	//UTF-8 BOM handle
+	buffer.Write([]byte{0xEF, 0xBB, 0xBF})
+	writer := csv.NewWriter(&buffer)
+	defer writer.Flush()
+	writer.Write([]string{"会话id", "使用者ID", "状态", "开始时间", "结束时间", "会话长度", "会话资讯", "备忘"})
+	for _, s := range sessions {
+		start := time.Unix(s.StartTime, 0).In(asiaTaipei).Format(time.RFC3339)
+		end := time.Unix(s.EndTime, 0).In(asiaTaipei).Format(time.RFC3339)
+		duration := strconv.FormatInt(s.Duration, 10)
+		status := strconv.FormatInt(s.Status, 10)
+		info, _ := json.Marshal(s.Information)
+		writer.Write([]string{s.ID, s.UserID, status, start, end, duration, string(info), s.Notes})
+
+	}
+	if err := writer.Error(); err != nil {
+		return nil, fmt.Errorf("io error, %v", err)
+	}
+	return buffer.Bytes(), nil
+}
+
 //GetSessions fetch sessions based on condition given
 func GetSessions(appID string, condition SessionCondition) (int, []Session, error) {
-	return getSessions(appID, condition)
+	sessions, err := getSessions(appID, condition)
+	if err != nil {
+		return 0, nil, fmt.Errorf("fetch sessions content error, %v", err)
+	}
+	count, err := getSessionCount(appID, condition)
+	if err != nil {
+		return 0, nil, fmt.Errorf("fetch session size error, %v", err)
+	}
+
+	return count, sessions, nil
 }
