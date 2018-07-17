@@ -516,15 +516,22 @@ func deleteFiles(prefix string, fileName []string) (int64, error) {
 		fullName := prefix + name
 
 		fi, err := os.Stat(fullName)
+
 		if err != nil {
-			return count, err
+			if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
+				util.LogWarn.Printf("remove file %s failed. File not exist.\n", name)
+				continue
+			} else {
+				return count, err
+			}
 		}
+
 		switch mode := fi.Mode(); {
 		case mode.IsDir():
 			return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
 		}
 		if len(fileName) > 0 {
-			err = os.RemoveAll(fullName)
+			err = os.Remove(fullName)
 			if err != nil {
 				//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
 				if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
