@@ -597,6 +597,22 @@ func GetUserPasswordV3(userID string) (string, error) {
 	return useDB.GetUserPasswordV3(userID)
 }
 
+func GetEnterpriseIDV3(appID string) (string, error) {
+	err := checkDB()
+	if err != nil {
+		return "", err
+	}
+
+	exists, err := useDB.AppExistsV3(appID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
+	return useDB.GetEnterpriseIDV3(appID)
+}
+
 func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
 	if user.Roles == nil {
 		return nil

@@ -1599,6 +1599,21 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 	return modules, nil
 }
 
+func (controller MYSQLController) GetEnterpriseIDV3(appID string) (string, error) {
+	var enterpriseID string
+
+	queryStr := fmt.Sprintf(`
+		SELECT enterprise
+		FROM %s
+		WHERE uuid = ?`, appTableV3)
+	err := controller.connectDB.QueryRow(queryStr, appID).Scan(&enterpriseID)
+	if err != nil {
+		return "", err
+	}
+
+	return enterpriseID, nil
+}
+
 type ByIDV3 []*data.ModuleDetailV3
 
 func (m ByIDV3) Len() int      { return len(m) }

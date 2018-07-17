@@ -1525,6 +1525,25 @@ func GlobalModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	returnSuccess(w, retData)
 }
 
+func EnterpriseIDGetHandlerV3(w http.ResponseWriter, r *http.Request) {
+	appID := r.URL.Query().Get("app-id")
+	if !util.IsValidUUID(appID) {
+		returnBadRequest(w, "app-id")
+		return
+	}
+
+	retData, err := service.GetEnterpriseIDV3(appID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == "" {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
 func parseEnterpriseFromRequestV3(r *http.Request) (*data.EnterpriseDetailV3, error) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")

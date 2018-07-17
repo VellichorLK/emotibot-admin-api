@@ -90,5 +90,7 @@ type DB interface {
 
 	GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error)
 
+	GetEnterpriseIDV3(appID string) (string, error)
+
 	AddAuditLog(auditLog data.AuditLog) error
 }
