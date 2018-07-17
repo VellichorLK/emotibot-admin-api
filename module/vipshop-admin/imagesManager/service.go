@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 
@@ -144,14 +145,13 @@ func deleteImages(imageIDs []interface{}) (int64, error) {
 		if err != nil {
 			copyFiles(Volume+"/"+folerName, Volume, fileList)
 		}
-		deleteFiles("", []string{Volume + "/" + folerName}, true)
-
+		os.RemoveAll(Volume + "/" + folerName)
 	}()
 
 	//delete files
 	var delFileCount int64
 
-	delFileCount, err = deleteFiles(Volume, fileList, false)
+	delFileCount, err = deleteFiles(Volume, fileList)
 	if err != nil {
 		return 0, err
 	}

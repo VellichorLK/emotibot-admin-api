@@ -505,7 +505,7 @@ func copy(from string, to string) error {
 	return nil
 }
 
-func deleteFiles(prefix string, fileName []string, isFolder bool) (int64, error) {
+func deleteFiles(prefix string, fileName []string) (int64, error) {
 	var count int64
 
 	if prefix != "" {
@@ -521,29 +521,23 @@ func deleteFiles(prefix string, fileName []string, isFolder bool) (int64, error)
 		}
 		switch mode := fi.Mode(); {
 		case mode.IsDir():
-			if !isFolder {
-				return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
-			}
-		case mode.IsRegular():
-			if isFolder {
-				return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
-			}
-			if len(fileName) <= 0 {
-				return count, errors.New("Error! try to delete empty file name with prefix " + prefix)
-			}
+			return count, errors.New("Error! Try to delete folder " + fullName + " in only file allowed")
 		}
-
-		err = os.RemoveAll(fullName)
-		if err != nil {
-			//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
-			if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
-				util.LogWarn.Printf("remove file %s failed. File not exist.\n", name)
-				continue
+		if len(fileName) > 0 {
+			err = os.RemoveAll(fullName)
+			if err != nil {
+				//if the file doesn't exist, assusme it is deleted by another goroutine as the same time.
+				if e, ok := err.(*os.PathError); ok && os.IsNotExist(e) {
+					util.LogWarn.Printf("remove file %s failed. File not exist.\n", name)
+					continue
+				}
+				util.LogError.Printf("remove file %s failed! %s", name, err.Error())
+				return count, errors.New("remove file " + name + " failed." + err.Error())
 			}
-			util.LogError.Printf("remove file %s failed! %s", name, err.Error())
-			return count, errors.New("remove file " + name + " failed." + err.Error())
+			count++
+		} else {
+			util.LogError.Printf("Warning!! delete the empty file name! ignore")
 		}
-		count++
 
 	}
 	return count, nil
