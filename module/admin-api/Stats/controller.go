@@ -39,6 +39,7 @@ func init() {
 			util.NewEntryPoint("GET", "users/last_visit", []string{"view"}, handleLastVisit),
 			util.NewEntryPoint("GET", "users/{uid}/records", []string{"view"}, handleRecords),
 			util.NewEntryPoint("GET", "faq", []string{"view"}, handleFAQStats),
+			util.NewEntryPoint("POST", "sessions/query", []string{}, handleSessionQuery),
 		},
 	}
 	cacheTimeout = nil
@@ -477,3 +478,35 @@ func handleFAQStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	var condition SessionCondition
+	err := util.ReadJSON(r, &condition)
+	if err != nil {
+		http.Error(w, "Body bad formatted, "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	// Check  filter Conditition
+	if condition.Limit == nil {
+		http.Error(w, "need limit condition, "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	totalSize, sessions, err := GetSessions(appID, condition)
+	if err != nil {
+		http.Error(w, "Get sessions failed, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	var response = struct {
+		Sessions []Session `json:"sessions"`
+		Size     int       `json:"total_size"`
+	}{
+		Sessions: sessions,
+		Size:     totalSize,
+	}
+	err = util.WriteJSON(w, response)
+	if err != nil {
+		util.LogError.Printf("IO Error %v\n", err)
+	}
+}
+

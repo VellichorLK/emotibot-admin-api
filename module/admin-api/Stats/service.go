@@ -105,3 +105,8 @@ func GetFAQStats(appID string, start, end time.Time, brandName, keyword string) 
 		Data:    data,
 	}, nil
 }
+
+//GetSessions fetch sessions based on condition given
+func GetSessions(appID string, condition SessionCondition) (int, []Session, error) {
+	return getSessions(appID, condition)
+}

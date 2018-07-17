@@ -2,6 +2,7 @@ package Stats
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -406,4 +407,76 @@ func getTagValue(appID string, typ int) (map[string]string, error) {
 	//contact taylor@emotibot.com or deansu@emotibot.com for detail
 	tags["all"] = "all"
 	return tags, nil
+}
+
+func getSessions(appID string, condition SessionCondition) (totalSize int, sessions []Session, err error) {
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return 0, nil, fmt.Errorf("can not get main DB")
+	}
+	whereText, values := condition.JoinedSQLCondition("sessions", "records")
+	selectColumns := "SELECT sessions.id, sessions.start_time, sessions.end_time, records.user_id, sessions.status, sessions.data"
+	selectCount := "SELECT count(distinct sessions.id)"
+	fromText := " FROM sessions JOIN records ON sessions.session_id = records.session_id "
+	selectColumns += fromText
+	selectCount += fromText
+	selectColumns += " WHERE records.app_id = ?"
+	selectCount += " WHERE records.app_id = ?"
+	if len(values) > 0 {
+		selectColumns += " AND " + whereText
+		selectCount += " AND " + whereText
+	}
+	values = append([]interface{}{appID}, values...)
+	selectColumns += " GROUP BY sessions.id, records.user_id"
+	selectColumns += fmt.Sprintf(" LIMIT %d, %d", condition.Limit.Index*condition.Limit.PageSize, condition.Limit.PageSize)
+	rows, err := db.Query(selectColumns, values...)
+	if err != nil {
+		util.LogError.Println("Error SQL: ", selectColumns, " values ", values)
+		return 0, nil, fmt.Errorf("session sql query error, %v", err.Error())
+	}
+	err = db.QueryRow(selectCount, values...).Scan(&totalSize)
+	if err != nil {
+		util.LogError.Println("Error SQL: ", selectCount)
+		return 0, nil, fmt.Errorf("session sql query error, %v", err.Error())
+	}
+
+	sessions = []Session{}
+	for rows.Next() {
+		var (
+			id     string
+			start  int64
+			end    int64
+			userID sql.NullString
+			status int
+			data   sql.NullString
+		)
+		rows.Scan(&id, &start, &end, &userID, &status, &data)
+		var jsonData map[string]interface{}
+		err = json.Unmarshal([]byte(data.String), &jsonData)
+		if err != nil {
+			return 0, nil, fmt.Errorf("format session data error, %v", err)
+		}
+		var values = []ValuePair{}
+		for key, value := range jsonData {
+			values = append(values, ValuePair{Name: key, Value: value})
+		}
+		var s = Session{
+			ID:          id,
+			StartTime:   start,
+			EndTime:     end,
+			UserID:      userID.String,
+			Status:      sessionStatIntToStr[status],
+			Duration:    (end - start) / 1000,
+			Information: values,
+			Notes:       "",
+		}
+		sessions = append(sessions, s)
+	}
+
+	if err = rows.Err(); err != nil {
+		return 0, nil, fmt.Errorf("scan error, %v", err)
+	}
+
+	return totalSize, sessions, nil
+
 }
