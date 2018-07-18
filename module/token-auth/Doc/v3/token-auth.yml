@@ -958,6 +958,29 @@ paths:
                     items:
                       $ref: '#/definitions/ModuleInfoDetail'
 
+  /getEnterpriseId:
+    get:
+      tags:
+        - Apps
+      parameters:
+        - app-id:
+          name: app-id
+          in: query
+          description: 機器人 ID
+          schema:
+            type: string
+          required: true
+      description: 取得機器人所對應之企業 ID
+      responses:
+        200:
+          description: 機器人所對應之企業 ID
+          content:
+            application/json:
+              schema:
+                ret_msg:
+                  $ref: '#/definitions/RetMsg'
+                result:
+                  type: string
 
 ################################################################################
 #                                 Definitions                                  #
