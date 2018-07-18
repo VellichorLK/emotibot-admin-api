@@ -429,6 +429,31 @@ func GetImageByAnswerID(answerIDs []interface{}) ([]*ImageRelation, error) {
 
 }
 
+func createTmpStoreFolder(path string) (string, error) {
+	folderName := "backupTmpPicFolder"
+	fullName := path + "/" + folderName
+	fi, err := os.Stat(fullName)
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			err := os.Mkdir(path+"/"+folderName, 0755)
+			if err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
+		}
+
+	} else {
+		if !fi.IsDir() {
+			return "", errors.New("folder name " + folderName + " is occupied by file. Cannot create backup folder")
+		}
+	}
+
+	return folderName, nil
+
+}
+
 func createBackupFolder(n int, path string) (string, error) {
 	folderName := GetUniqueString(n)
 	err := os.Mkdir(path+"/"+folderName, 0755)
