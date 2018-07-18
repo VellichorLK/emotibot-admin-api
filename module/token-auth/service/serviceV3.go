@@ -598,9 +598,16 @@ func GetUserPasswordV3(userID string) (string, error) {
 }
 
 func GetEnterpriseIDV3(appID string) (string, error) {
+	cacheMod := "app-enterprise"
 	err := checkDB()
 	if err != nil {
 		return "", err
+	}
+
+	id := util.GetCacheValue(cacheMod, appID)
+	if id != "" {
+		util.LogTrace.Printf("Hit cache for appid [%s]: [%s]", appID, id)
+		return id, nil
 	}
 
 	exists, err := useDB.AppExistsV3(appID)
@@ -610,7 +617,12 @@ func GetEnterpriseIDV3(appID string) (string, error) {
 		return "", nil
 	}
 
-	return useDB.GetEnterpriseIDV3(appID)
+	id, err = useDB.GetEnterpriseIDV3(appID)
+	if err != nil {
+		return "", err
+	}
+	util.SetCache(cacheMod, appID, id)
+	return id, nil
 }
 
 func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
