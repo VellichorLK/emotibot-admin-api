@@ -32,20 +32,20 @@ var constant = map[string]interface{}{
 	"API_PREFIX": "api",
 }
 
-var modules = []util.ModuleInfo{
-	Dictionary.ModuleInfo,
-	Switch.ModuleInfo,
-	Robot.ModuleInfo,
-	QA.ModuleInfo,
-	FAQ.ModuleInfo,
-	QA.TestModuleInfo,
-	Task.ModuleInfo,
-	Stats.ModuleInfo,
-	UI.ModuleInfo,
-	SelfLearning.ModuleInfo,
-	System.ModuleInfo,
-	BF.ModuleInfo,
-	Intent.ModuleInfo,
+var modules = []*util.ModuleInfo{
+	&Dictionary.ModuleInfo,
+	&Switch.ModuleInfo,
+	&Robot.ModuleInfo,
+	&QA.ModuleInfo,
+	&FAQ.ModuleInfo,
+	&QA.TestModuleInfo,
+	&Task.ModuleInfo,
+	&Stats.ModuleInfo,
+	&UI.ModuleInfo,
+	&SelfLearning.ModuleInfo,
+	&System.ModuleInfo,
+	&BF.ModuleInfo,
+	&Intent.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -93,7 +93,7 @@ func main() {
 	router := setRoute()
 	initDB()
 	Stats.InitDB()
-	logAvailablePath(router)
+	// logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
 	serverURL := "0.0.0.0:8181"
@@ -172,8 +172,10 @@ func clientNoStoreCache(w http.ResponseWriter) {
 func setRoute() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
-	for _, module := range modules {
-		info := module
+	for idx := range modules {
+		info := modules[idx]
+		info.SetEnvironments(util.GetEnvOf(strings.ToLower(info.ModuleName)))
+
 		for idx := range info.EntryPoints {
 			entrypoint := info.EntryPoints[idx]
 			// entry will be api/v_/<module>/<entry>

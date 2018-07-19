@@ -94,6 +94,13 @@ type ModuleInfo struct {
 	OneTimeFunc map[string]func()
 }
 
+func (module *ModuleInfo) SetEnvironments(env map[string]string) {
+	module.Environments = make(map[string]string)
+	for key := range env {
+		module.Environments[key] = env[key]
+	}
+}
+
 type RetObj struct {
 	Status  int         `json:"status"`
 	Message string      `json:"message"`
