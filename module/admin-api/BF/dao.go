@@ -72,7 +72,8 @@ func addEnterprise(id, name string) error {
 	return nil
 }
 
-func deleteEnterprise(id string) error {
+func deleteEnterprise(id string) (err error) {
+	defer util.ShowError(err)
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return errors.New("DB not init")
@@ -104,6 +105,7 @@ func deleteEnterprise(id string) error {
 		users = append(users, userid)
 		qMarks = append(qMarks, "?")
 	}
+	util.LogTrace.Printf("Get users of enterprise [%s]: %+v\n", id, users)
 
 	if len(users) > 0 {
 		queryStr = fmt.Sprintf("DELETE FROM api_userkey WHERE UserId in (%s)",
