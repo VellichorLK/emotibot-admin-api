@@ -82,7 +82,7 @@ func handleAddEnterprise(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteEnterprise(w http.ResponseWriter, r *http.Request) {
-	id := r.FormValue("id")
+	id := util.GetMuxVar(r, "id")
 
 	err := deleteEnterprise(id)
 	if err != nil {
