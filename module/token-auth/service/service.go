@@ -62,7 +62,9 @@ func GetUser(enterpriseID string, userID string) (*data.User, error) {
 		return nil, errors.New("DB hasn't set")
 	}
 	user, err := useDB.GetUser(enterpriseID, userID)
-	if err != nil {
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
 		return nil, err
 	}
 	return user, nil

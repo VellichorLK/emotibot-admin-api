@@ -1713,3 +1713,18 @@ func addAuditLog(r *http.Request, auditModule, auditOperation,
 	audit.AddAuditLog(appID, userID, userIP, auditModule, auditOperation,
 		auditMessage, result)
 }
+
+func UserInfoGetHandler(w http.ResponseWriter, r *http.Request) {
+	userID := mux.Vars(r)["userID"]
+
+	userInfo, err := service.GetUserV3("", userID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+	if userInfo == nil {
+		returnNotFound(w)
+		return
+	}
+	returnSuccess(w, userInfo)
+}

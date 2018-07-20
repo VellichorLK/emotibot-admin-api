@@ -20,9 +20,9 @@ const (
 )
 
 const (
-	NotTrained 	= "NOT_TRAINED"
-	Training   	= "TRAINING"
-	Trained    	= "TRAINED"
+	NotTrained  = "NOT_TRAINED"
+	Training    = "TRAINING"
+	Trained     = "TRAINED"
 	TrainFailed = "TRAIN_FAILED"
 )
 
@@ -36,6 +36,16 @@ func init() {
 			util.NewEntryPoint("POST", "train", []string{"view"}, handleTrain),
 			util.NewEntryPoint("GET", "status", []string{"view"}, handleGetTrainStatus),
 			util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
+
+			// util.NewEntryPoint("POST", "intent", []string{"create"}, handleAddIntent),
+			// util.NewEntryPoint("GET", "intent/{id}", []string{"view"}, handleGetIntent),
+			// util.NewEntryPoint("PUT", "intent/{id}", []string{"view"}, handleUpdateIntent),
+			// util.NewEntryPoint("DELETE", "intent/{id}", []string{"view"}, handleDeleteIntent),
+
+			// util.NewEntryPoint("GET", "intent/{id}/sentence/{sid}", []string{"view"}, handleGetIntentSentence),
+			// util.NewEntryPoint("POST", "intent/{id}/sentence", []string{"view"}, handleUpdateIntentSentence),
+			// util.NewEntryPoint("PUT", "intent/{id}/sentence/{sid}", []string{"view"}, handleUpdateIntentSentence),
+			// util.NewEntryPoint("DELETE", "intent/{id}/sentence/{sid}", []string{"view"}, handleDeleteIntentSentence),
 		},
 	}
 }
@@ -217,7 +227,7 @@ func handleGetTrainStatus(w http.ResponseWriter, r *http.Request) {
 		} else if retCode == ApiError.NOT_FOUND_ERROR {
 			statusResp := StatusResponse{
 				IntentEngineStatus: NotTrained,
-				RuleEngineStatus: NotTrained,
+				RuleEngineStatus:   NotTrained,
 			}
 			util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, statusResp))
 		} else {
@@ -227,7 +237,7 @@ func handleGetTrainStatus(w http.ResponseWriter, r *http.Request) {
 	} else if retCode == ApiError.NOT_FOUND_ERROR {
 		statusResp := StatusResponse{
 			IntentEngineStatus: NotTrained,
-			RuleEngineStatus: NotTrained,
+			RuleEngineStatus:   NotTrained,
 		}
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, statusResp))
 		return

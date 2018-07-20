@@ -109,6 +109,7 @@ func setUpRoutes() {
 		Route{"GetModules", "GET", 3, "modules", nil, GlobalModulesGetHandlerV3, []interface{}{}},
 
 		Route{"GetEnterpriseId", "GET", 3, "getEnterpriseId", []string{"app-id", "{app-id}"}, EnterpriseIDGetHandlerV3, []interface{}{}},
+		Route{"GetUserBelong", "GET", 3, "user/{userID}/info", nil, UserInfoGetHandler, []interface{}{0, 1, 2}},
 	}
 }
 

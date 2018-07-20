@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"errors"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
@@ -197,7 +198,14 @@ func GetUserV3(enterpriseID string, userID string) (*data.UserDetailV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetUserV3(enterpriseID, userID)
+	info, err := useDB.GetUserV3(enterpriseID, userID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return info, nil
 }
 
 func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
