@@ -53,7 +53,7 @@ moduleConf="
   --env-file $envfile \
   --log-opt max-size=20m \
   --log-opt max-file=20 \
-  -v /Users/zhangchenhui/golang_workspace/emotigo/src/emotibot.com/emotigo/module/proxy/ubitechlist:/usr/local/bin/ubitechlist \
+  -v $PWD/ubitechlist:/usr/local/bin/ubitechlist \
 "
 # </EDIT_ME>
 
