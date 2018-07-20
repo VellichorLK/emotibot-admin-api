@@ -3,7 +3,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=goproxy-uid
 # Stable version before 2018/06/05
 #TAG=20180321001
-TAG=20180606001
+TAG=20180720001
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # Define the environment, e.g.,
