@@ -1,4 +1,4 @@
-FROM docker-reg.emotibot.com.cn:55688/go-build:20180412_9359f34 AS build-env
+FROM docker-reg.emotibot.com.cn:55688/go-build:debbffb2-alpine AS build-env
 
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
