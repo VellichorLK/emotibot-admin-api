@@ -6,7 +6,7 @@ RUN go get github.com/kataras/golog
 RUN go get github.com/kataras/pio
 RUN go get github.com/tealeg/xlsx
 RUN go get github.com/hashicorp/go-version
-RUN go get github.com/hashicorp/consul
+RUN go get github.com/hashicorp/consul/api
 RUN go get github.com/bitly/go-simplejson
 RUN go get github.com/gonum/blas
 RUN go get github.com/gonum/internal/asm/f32
