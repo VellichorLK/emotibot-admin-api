@@ -23,6 +23,7 @@ var AppidChan chan *trafficStats.AppidIP
 var trafficManager *trafficStats.TrafficManager
 
 var k8sRedirectList = make(map[string]bool, 0)
+var ubitechLsit = make(map[string]bool, 0)
 var logLevel string = "production"
 
 func GoProxy(w http.ResponseWriter, r *http.Request) {
@@ -59,11 +60,11 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ipPort := strings.Split(r.RemoteAddr, ":")
-	if len(ipPort) == 2 {
+	userIP, err := parseRemoteIP(r.RemoteAddr)
+	if err == nil {
 		appidIP := new(trafficStats.AppidIP)
 		appidIP.Appid = appid
-		appidIP.IP = ipPort[0]
+		appidIP.IP = userIP
 		appidIP.Userid = userid
 		appidIP.RequestURI = r.RequestURI
 		AppidChan <- appidIP
@@ -74,8 +75,11 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%+v\n", r)
 		log.Printf("appid:%s, userid:%s, onk8sList:%v\n", appid, userid, k8sRedirectList[appid])
 	}
+
 	if k8sRedirectList[appid] {
 		r.Header.Set("X-Lb-K8s", "k8suser")
+	} else if ubitechLsit[userIP] {
+		r.Header.Set("X-Lb-Ubitech", "ubituser")
 	} else if trafficManager.CheckOverFlowed(userid) {
 		log.Printf("userid:%s is overflowed\n", userid)
 		userid = userid + strconv.Itoa(rand.Intn(1000))
@@ -99,6 +103,15 @@ func checkerr(err error, who string) {
 	if err != nil {
 		log.Fatalf("No %s env variable, %v\n", who, err)
 	}
+}
+
+func parseRemoteIP(remoteAddr string) (string, error) {
+	ipPort := strings.Split(remoteAddr, ":")
+	if len(ipPort) != 2 {
+		return "", fmt.Errorf("Not format of ip:port. %s\n", remoteAddr)
+	}
+
+	return ipPort[0], nil
 }
 
 func main() {
@@ -135,6 +148,15 @@ func main() {
 		log.Fatalf("ReadList failed, %v", err)
 	}
 	log.Printf("K8S List readed:\n%+v\n", k8sRedirectList)
+
+	f, err = os.Open("./ubitechlist")
+	ubitechLsit, err = ReadList(f)
+	if err != nil {
+		log.Fatalf("Read IP list of Ubitech failed, %v", err)
+	}
+	log.Printf("Ubitech IP list is loaded")
+	log.Printf("%+v", ubitechLsit)
+
 	//make the channel
 	AddTrafficChan = make(chan string)
 	AppidChan = make(chan *trafficStats.AppidIP, 1024)
