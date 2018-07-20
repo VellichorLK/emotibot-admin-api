@@ -1561,19 +1561,11 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 	}
 
 	var rows *sql.Rows
-	if enterpriseID != "" {
-		queryStr := fmt.Sprintf(`
-			SELECT id, code, name, status, description, cmd_list
-			FROM %s
-			WHERE enterprise = ?`, moduleTableV3)
-		rows, err = controller.connectDB.Query(queryStr, enterpriseID)
-	} else {
-		queryStr := fmt.Sprintf(`
-			SELECT id, code, name, status, description, cmd_list
-			FROM %s
-			WHERE enterprise IS NULL`, moduleTableV3)
-		rows, err = controller.connectDB.Query(queryStr)
-	}
+	queryStr := fmt.Sprintf(`
+		SELECT id, code, name, status, description, cmd_list
+		FROM %s
+		WHERE enterprise IS NULL`, moduleTableV3)
+	rows, err = controller.connectDB.Query(queryStr)
 
 	if err != nil {
 		util.LogDBError(err)
@@ -1581,7 +1573,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 	}
 	defer rows.Close()
 
-	modules := make([]*data.ModuleDetailV3, 0)
+	moduleMap := map[string]*data.ModuleDetailV3{}
 	for rows.Next() {
 		module := data.ModuleDetailV3{}
 		var commands string
@@ -1592,7 +1584,44 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 		}
 
 		module.Commands = strings.Split(commands, ",")
-		modules = append(modules, &module)
+		moduleMap[module.Code] = &module
+	}
+
+	if enterpriseID != "" {
+		queryStr := fmt.Sprintf(`
+			SELECT id, code, name, status, description, cmd_list
+			FROM %s
+			WHERE enterprise = ?`, moduleTableV3)
+		selfRows, err := controller.connectDB.Query(queryStr, enterpriseID)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		defer selfRows.Close()
+
+		for selfRows.Next() {
+			module := data.ModuleDetailV3{}
+			var commands string
+			err := selfRows.Scan(&module.ID, &module.Code, &module.Name, &module.Status, &module.Description, &commands)
+			if err != nil {
+				util.LogDBError(err)
+				return nil, err
+			}
+			module.Commands = strings.Split(commands, ",")
+
+			// replace orig module setting by enterprise's setting
+			if mod, ok := moduleMap[module.Code]; ok {
+				mod.Name = module.Name
+				mod.Status = module.Status
+				mod.Description = module.Description
+				mod.Commands = module.Commands
+			}
+		}
+	}
+
+	modules := make([]*data.ModuleDetailV3, 0)
+	for key := range moduleMap {
+		modules = append(modules, moduleMap[key])
 	}
 
 	sort.Sort(ByIDV3(modules))
