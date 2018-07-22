@@ -1,6 +1,7 @@
 package Intent
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -91,27 +92,43 @@ func handleGetIntents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
+	auditMsg := util.Msg["UploadIntentEngine"]
+	var err error
+	defer func() {
+		ret := 1
+		if err != nil {
+			ret = 0
+		}
+		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationImport,
+			auditMsg, ret)
+	}()
+
 	appID := util.GetAppID(r)
 	file, info, err := r.FormFile("file")
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.INTENT_FORMAT_ERROR,
 			err.Error()), http.StatusUnprocessableEntity)
+		auditMsg += ": " + util.Msg["GetUploadFileFail"]
 		return
 	}
 	defer file.Close()
+	auditMsg += " " + info.Filename
 
 	version, retCode, err := UploadIntents(appID, file, info)
 	if err != nil {
 		if retCode == ApiError.INTENT_FORMAT_ERROR {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.INTENT_FORMAT_ERROR,
 				err.Error()), http.StatusUnprocessableEntity)
+			auditMsg += ": " + util.Msg["IntentFormatError"]
 			return
 		} else if retCode == ApiError.IO_ERROR {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR,
 				err.Error()), http.StatusUnprocessableEntity)
+			auditMsg += ": " + util.Msg["IOError"]
 			return
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			auditMsg = fmt.Sprintf("%s: %s [%s]", auditMsg, util.Msg["UnknownError"], err.Error())
 			return
 		}
 	}
@@ -126,6 +143,7 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	v := r.URL.Query().Get("version")
+	auditMsg := util.Msg["ExportIntentEngine"]
 
 	var version int
 	if v == "" {
@@ -134,13 +152,30 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		ver, err := strconv.Atoi(v)
 		if err != nil {
 			http.Error(w, "Invalid intent dataset version", http.StatusBadRequest)
+			util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+				fmt.Sprintf("%s: %s", auditMsg, util.Msg["IntentVersionError"]), 0)
 			return
 		}
 
 		version = ver
 	}
 
-	DownloadIntents(w, appID, version)
+	content, filename, errno, err := GetDownloadIntents(appID, version)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+			auditMsg, 0)
+		return
+	}
+
+	fileNameHeader := fmt.Sprintf("attachment; filename=%s", filename)
+	w.Header().Set("Content-Disposition", fileNameHeader)
+	w.Header().Set("Content-Type",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
+	w.Write(content)
+	util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+		auditMsg, 1)
 }
 
 func handleTrain(w http.ResponseWriter, r *http.Request) {

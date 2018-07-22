@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -87,18 +85,15 @@ func UploadIntents(appID string, file multipart.File, info *multipart.FileHeader
 	return
 }
 
-func DownloadIntents(w http.ResponseWriter, appID string, version int) {
+func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) {
 	if version == 0 {
 		// Use latest version of intents dataset
 		ver, err := getLatestIntentsVersion(appID)
 		if err != nil {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR,
-				err.Error()), http.StatusInternalServerError)
-			return
+			return nil, "", ApiError.DB_ERROR, err
 		} else if ver == -1 {
 			// No any version of intents existed
-			w.WriteHeader(http.StatusNotFound)
-			return
+			return nil, "", ApiError.NOT_FOUND_ERROR, errors.New("No any valid intent")
 		}
 
 		version = ver
@@ -108,34 +103,26 @@ func DownloadIntents(w http.ResponseWriter, appID string, version int) {
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
 		util.LogError.Printf(errMsg)
-		http.Error(w, errMsg, http.StatusNotFound)
-		return
+		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
 	}
 
 	f, err := os.OpenFile(intentFilesPath+"/"+string(fileName), os.O_RDONLY, 0666)
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
 		util.LogError.Printf(errMsg)
-		http.Error(w, errMsg, http.StatusNotFound)
-		return
+		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
 	}
 
 	info, err := f.Stat()
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot get intents file size with version %v", version)
 		util.LogError.Printf(errMsg)
-		http.Error(w, errMsg, http.StatusInternalServerError)
-		return
+		return nil, "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 
-	fileSize := strconv.FormatInt(info.Size(), 10)
-	fileNameHeader := fmt.Sprintf("attachment; filename=%s", origFileName)
-
-	w.Header().Set("Content-Disposition", fileNameHeader)
-	w.Header().Set("Content-Type",
-		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	w.Header().Set("Content-Length", fileSize)
-	io.Copy(w, f)
+	buf := make([]byte, info.Size())
+	_, err = f.Read(buf)
+	return buf, string(origFileName), ApiError.SUCCESS, nil
 }
 
 func Train(appID string, version int, autoReload bool, trainEngine int) (retCode int, err error) {

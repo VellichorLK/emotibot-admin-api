@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"net/http"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -15,16 +16,17 @@ const (
 	// AuditOperationRollback = "5" "回复", 目前無相關行為
 	AuditOperationLogin = "6" // "登入"
 
-	AuditModuleBotMessage     = "0" // "话术设置"
-	AuditModuleFunctionSwitch = "1" // "技能设置"
-	AuditModuleQA             = "2" // "问答库"
-	AuditModuleRobotProfile   = "3" // "形象设置"
-	AuditModuleSwitchList     = "4" // "开关管理"
-	AuditModuleDictionary     = "5" // "词库管理"
-	AuditModuleStatistics     = "6" // "数据管理"
-	AuditModuleMembers        = "7" // "用户管理"
-	AuditModuleRole           = "8" // "角色管理"
-	AuditModuleTaskEngine     = "9" // "Task-Engine"
+	AuditModuleBotMessage     = "0"  // "话术设置"
+	AuditModuleFunctionSwitch = "1"  // "技能设置"
+	AuditModuleQA             = "2"  // "问答库"
+	AuditModuleRobotProfile   = "3"  // "形象设置"
+	AuditModuleSwitchList     = "4"  // "开关管理"
+	AuditModuleDictionary     = "5"  // "词库管理"
+	AuditModuleStatistics     = "6"  // "数据管理"
+	AuditModuleMembers        = "7"  // "用户管理"
+	AuditModuleRole           = "8"  // "角色管理"
+	AuditModuleTaskEngine     = "9"  // "Task-Engine"
+	AuditModuleIntentEngine   = "10" // "意圖引擎"
 )
 
 type auditLog struct {
@@ -42,6 +44,15 @@ func (log auditLog) toString() string {
 }
 
 var auditChannel chan auditLog
+
+// AddAuditFromRequest will get userID, userIP and appid from request, and add audit log to mysql-audit
+func AddAuditFromRequest(r *http.Request, module string, operation string, msg string, result int) {
+	userID := GetUserID(r)
+	userIP := GetUserIP(r)
+	appid := GetAppID(r)
+
+	AddAuditLog(appid, userID, userIP, module, operation, msg, result)
+}
 
 // AddAuditLog will add audit log to mysql-audit
 func AddAuditLog(appid string, userID string, userIP string, module string, operation string, content string, result int) error {
@@ -74,9 +85,8 @@ func addAuditLog(log auditLog) {
 		log.AppID, log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
 	if errWithAppID == nil {
 		return
-	} else {
-		LogWarn.Println("Schema of audit_record should be upgraded")
 	}
+	LogWarn.Println("Schema of audit_record should be upgraded")
 
 	_, errWithoutAppID := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)",
 		log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)

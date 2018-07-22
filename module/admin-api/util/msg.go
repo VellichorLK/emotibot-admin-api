@@ -90,7 +90,7 @@ var (
 		"ErrorEmptyNameTpl":      "行 %d: 词库名为空",
 		"ErrorNameTooLongTpl":    "行 %d: 词库名超过35字",
 		"ErrorSimilarTooLongTpl": "行 %d: 同义词超过35字",
-		"ErrorPathTooLongTpl":    "行 %d: 目錄名超过20字",
+		"ErrorPathTooLongTpl":    "行 %d: 目录名超过20字",
 		"ErrorRowErrorTpl":       "行 %d：%s",
 		"ErrorPathLevelTpl":      "路径 %d 级内容错误",
 		"ErrorNotEditable":       "该词库不可编辑",
@@ -118,6 +118,15 @@ var (
 		"AddRobotProfileRQuestionTemplate":  "新增形象问题 [%s] 的相似问",
 		"EditRobotProfileRQuestionTemplate": "编辑形象问题 [%s] 的相似问",
 		"DelRobotProfileRQuestionTemplate":  "删除形象问题 [%s] 的相似问",
+
+		// Used in intent engine
+		"UploadIntentEngine": "上传意图引擎",
+		"ExportIntentEngine": "导出意图引擎",
+		"GetUploadFileFail":  "获取上传档案失败",
+		"IntentFormatError":  "上传格式错误",
+		"IOError":            "读取档案错误",
+		"UnknownError":       "未知错误",
+		"IntentVersionError": "意图版本错误",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

@@ -93,7 +93,7 @@ func main() {
 	router := setRoute()
 	initDB()
 	Stats.InitDB()
-	// logAvailablePath(router)
+	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
 	serverURL := "0.0.0.0:8181"
