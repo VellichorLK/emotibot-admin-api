@@ -24,6 +24,8 @@ const (
 )
 
 func GetIntents(appID string, version int) (intents []string, retCode int, err error) {
+	retCode = ApiError.SUCCESS
+	intents = []string{}
 	if version == 0 {
 		// Use latest version of intents dataset
 		version, err = getLatestIntentsVersion(appID)
@@ -31,8 +33,7 @@ func GetIntents(appID string, version int) (intents []string, retCode int, err e
 			retCode = ApiError.DB_ERROR
 			return
 		} else if version == -1 {
-			// No any version of intents existed
-			retCode = ApiError.NOT_FOUND_ERROR
+			// no existed intents
 			return
 		}
 	}
