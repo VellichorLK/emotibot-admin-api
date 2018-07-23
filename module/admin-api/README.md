@@ -2,6 +2,31 @@
 
 取代原有 Houta 的唯品會管理介面 API, 每一個 package 為一個 module
 
+## How to build & run
+
+``` bash
+# build image base on current date & tag
+# also create a latest tag for local debug
+./docker/build.sh
+
+# run standalone admin-api at 8182 port
+# if no tag is given, use latest
+./run.sh [tag_name]
+```
+
+開發完成後, 部署docker image版本會將環境變數透過entrypoint.sh以及env.template轉換成
+
+```
+# Add prefix for every line of env
+# So you can copy & paste to real production env
+./add_prefix.sh ../local.env
+# Remember also add new env into template file to active variable in production
+vim ./docker/env.template
+
+
+
+```
+
 ## Module List
 
 * Dictionary 詞庫
