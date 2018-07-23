@@ -24,7 +24,7 @@ fi
 # DO NOT DO THIS IN PRODUCTION
 moduleConf="
     -p 8182:8182
-    -v $DIR/entrypoint-env.sh:/usr/local/bin/entrypoint.sh:ro
+    -v $DIR/entrypoint-dev.sh:/usr/local/bin/entrypoint.sh:ro
     -v $DIR/../test.env:/usr/local/bin/.env:ro
 "
 
