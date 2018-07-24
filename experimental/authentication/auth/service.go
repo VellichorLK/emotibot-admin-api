@@ -79,7 +79,7 @@ type ChartProp struct {
 
 type SystemProp struct {
 	DisplayProp `json:"display"`
-	ChartProp   `json:"chart"`
+	ChartInfo   *ChartProp `json:"chart,omitempty"`
 }
 
 // size inferface for multipart.File to get size
