@@ -159,3 +159,48 @@ func GetRecords(appID, sessionID string) ([]record, error) {
 	}
 	return records, nil
 }
+	return records, nil
+}
+
+//GetDetailCSV create csv binary with detail about session row and it's chat record
+func GetDetailCSV(appID, sessionID string) ([]byte, error) {
+
+	sessions, err := getSessions(appID, SessionCondition{ID: sessionID, Limit: &PageLimit{PageSize: 1}})
+	if err != nil {
+		return nil, fmt.Errorf("get sessions failed, %v", err)
+	}
+	if len(sessions) <= 0 {
+		return nil, fmt.Errorf("can not found any row with %s", sessionID)
+	}
+
+	var buffer bytes.Buffer
+	//UTF-8 BOM handle
+	buffer.Write([]byte{0xEF, 0xBB, 0xBF})
+	writer := csv.NewWriter(&buffer)
+	writer.Write([]string{"会话id", "使用者ID", "状态", "开始时间", "结束时间", "会话长度", "会话资讯", "备忘"})
+	s := sessions[0]
+	start := time.Unix(s.StartTime, 0).In(asiaTaipei).Format(time.RFC3339)
+	end := time.Unix(s.EndTime, 0).In(asiaTaipei).Format(time.RFC3339)
+	duration := strconv.FormatInt(s.Duration, 10)
+	status := strconv.FormatInt(s.Status, 10)
+	info, _ := json.Marshal(s.Information)
+	writer.Write([]string{s.ID, s.UserID, status, start, end, duration, string(info), s.Notes})
+
+	writer.Write([]string{"对话时间", "客户问题", "机器人答复"})
+	records, err := records(appID, sessionID)
+	fmt.Printf("%+v", records)
+	if err != nil {
+		return nil, fmt.Errorf("get records failed, %v", err)
+	}
+	for _, r := range records {
+		timeStr := time.Unix(r.Timestamp, 0).In(asiaTaipei).Format(time.RFC3339)
+		writer.Write([]string{timeStr, r.UserText, r.RobotText})
+	}
+	if err = writer.Error(); err != nil {
+		return nil, fmt.Errorf("csv io failed, %v", err)
+	}
+	fmt.Println(buffer.Bytes())
+	writer.Flush()
+
+	return buffer.Bytes(), nil
+}

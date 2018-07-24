@@ -40,7 +40,8 @@ func init() {
 			util.NewEntryPoint("GET", "users/{uid}/records", []string{"view"}, handleRecords),
 			util.NewEntryPoint("GET", "faq", []string{"view"}, handleFAQStats),
 			util.NewEntryPoint("POST", "sessions/query", []string{}, handleSessionQuery),
-			util.NewEntryPoint("POST", "sessions/download", []string{}, handleSessionDownload),
+			util.NewEntryPoint("POST", "sessions/download", []string{}, handleSessionsDownload),
+			util.NewEntryPoint("POST", "sessions/{sid}/download", []string{}, handleSessionDowload),
 			util.NewEntryPoint("GET", "sessions/{sid}/records", []string{}, handleSessionRecords),
 		},
 	}
@@ -481,7 +482,30 @@ func handleFAQStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleSessionDownload(w http.ResponseWriter, r *http.Request) {
+func handleSessionDowload(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	sid, ok := mux.Vars(r)["sid"]
+	if !ok {
+		http.Error(w, "{sid} in path can not found", http.StatusBadRequest)
+		return
+	}
+	body, err := GetDetailCSV(appID, sid)
+	if err != nil {
+		http.Error(w, "API Error, "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println(body)
+	w.Header().Set("content-type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+sid+".csv\"")
+	w.WriteHeader(http.StatusOK)
+	_, err = w.Write(body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		util.LogError.Println("io error, " + err.Error())
+	}
+}
+
+func handleSessionsDownload(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	var cond SessionCondition
 	err := util.ReadJSON(r, &cond)
