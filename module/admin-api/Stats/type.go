@@ -76,6 +76,7 @@ type SessionCondition struct {
 }
 
 //JoinedSQLCondition create a JOINED SQL condition based on SessionCondition & SessionTbl & recordsTbl
+//ID and UserID can use % for fuzzy matching, given on pass in condition
 func (c *SessionCondition) JoinedSQLCondition(sessionTblName, recordTblName string) (preparedCond string, values []interface{}) {
 	var sqlText string
 	var AndConditions = []string{}
@@ -91,11 +92,11 @@ func (c *SessionCondition) JoinedSQLCondition(sessionTblName, recordTblName stri
 		values = append(values, "%"+c.Keyword+"%")
 	}
 	if c.ID != "" {
-		AndConditions = append(AndConditions, sessionTblName+".`id` = ?")
+		AndConditions = append(AndConditions, sessionTblName+".`session_id` LIKE ?")
 		values = append(values, c.ID)
 	}
 	if c.UserID != "" {
-		AndConditions = append(AndConditions, recordTblName+".`user_id` = ?")
+		AndConditions = append(AndConditions, recordTblName+".`user_id` LIKE ?")
 		values = append(values, c.UserID)
 	}
 	if c.Duration != 0 {
@@ -148,5 +149,5 @@ type ValuePair struct {
 type record struct {
 	UserText  string `json:"user_text"`
 	RobotText string `json:"robot_text"`
-	Timestamp uint64 `json:"conversation_time"`
+	Timestamp int64  `json:"conversation_time"`
 }

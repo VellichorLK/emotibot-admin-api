@@ -448,7 +448,7 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 	values = append([]interface{}{appID}, values...)
 	selectColumns += " GROUP BY sessions.id, records.user_id"
 	if condition.Limit != nil && condition.Limit.PageSize != 0 {
-		selectColumns += fmt.Sprintf(" LIMIT %d, %d", condition.Limit.Index*condition.Limit.PageSize, condition.Limit.PageSize)
+		selectColumns += fmt.Sprintf(" LIMIT %d OFFSET %d", condition.Limit.PageSize, condition.Limit.Index*condition.Limit.PageSize)
 	}
 
 	rows, err := db.Query(selectColumns, values...)
@@ -513,13 +513,13 @@ func records(appID, sessionID string) ([]record, error) {
 	var records = make([]record, 0)
 	for rows.Next() {
 		var userQ, answer sql.NullString
-		var timestamp uint64
+		var timestamp int64
 		var r = record{}
 		rows.Scan(&userQ, &answer, &timestamp)
 		r.UserText = userQ.String
 		if len(answer.String) > 0 {
 			var texts = []struct {
-				Text string `json:"text"`
+				Text string `json:"value"`
 			}{}
 			err = json.Unmarshal([]byte(answer.String), &texts)
 			if err != nil {
@@ -531,7 +531,6 @@ func records(appID, sessionID string) ([]record, error) {
 		}
 		r.Timestamp = timestamp
 		records = append(records, r)
-		fmt.Printf("records %v", r)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("sql scan err, %v", err)

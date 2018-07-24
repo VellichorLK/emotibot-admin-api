@@ -121,7 +121,6 @@ func SessionCSV(appID string, condition SessionCondition) ([]byte, error) {
 	//UTF-8 BOM handle
 	buffer.Write([]byte{0xEF, 0xBB, 0xBF})
 	writer := csv.NewWriter(&buffer)
-	defer writer.Flush()
 	writer.Write([]string{"会话id", "使用者ID", "状态", "开始时间", "结束时间", "会话长度", "会话资讯", "备忘"})
 	for _, s := range sessions {
 		start := time.Unix(s.StartTime, 0).In(asiaTaipei).Format(time.RFC3339)
@@ -135,6 +134,8 @@ func SessionCSV(appID string, condition SessionCondition) ([]byte, error) {
 	if err := writer.Error(); err != nil {
 		return nil, fmt.Errorf("io error, %v", err)
 	}
+
+	writer.Flush()
 	return buffer.Bytes(), nil
 }
 
@@ -152,13 +153,12 @@ func GetSessions(appID string, condition SessionCondition) (int, []Session, erro
 	return count, sessions, nil
 }
 
+//GetRecords retrive slice of record from records table
 func GetRecords(appID, sessionID string) ([]record, error) {
 	records, err := records(appID, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("get records failed, %v", err)
 	}
-	return records, nil
-}
 	return records, nil
 }
 
