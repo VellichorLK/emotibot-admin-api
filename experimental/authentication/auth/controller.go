@@ -753,8 +753,26 @@ func SystemSettingHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 	var s SystemProp
 	s.Channel1 = r.FormValue("channel1")
 	s.Channel2 = r.FormValue("channel2")
+	var err error
+	s.XMax, err = strconv.ParseFloat(r.FormValue("x_max"), 64)
+	if err != nil {
+		s.XMax = 36
+	}
+	s.XMin, err = strconv.ParseFloat(r.FormValue("x_min"), 64)
+	if err != nil {
+		s.XMin = 0
+	}
+	s.YMax, err = strconv.ParseFloat(r.FormValue("y_max"), 64)
+	if err != nil {
+		s.YMax = 0.8
+	}
+	s.YMin, err = strconv.ParseFloat(r.FormValue("y_min"), 64)
+	if err != nil {
+		s.YMax = -0.8
+	}
 
-	LogInfo.Printf("channel1: %s(%d), channel2: %s(%d)", s.Channel1, len(s.Channel1), s.Channel2, len(s.Channel2))
+	LogInfo.Printf("channel1: %s(%d), channel2: %s(%d)\n", s.Channel1, len(s.Channel1), s.Channel2, len(s.Channel2))
+	LogInfo.Printf("xMax: [%.5f], xMin: [%.5f], yMax: [%.5f], yMin: [%.5f]\n", s.XMax, s.XMin, s.YMax, s.YMin)
 
 	if len(s.Channel1) >= const_display_channel_len || len(s.Channel2) >= const_display_channel_len {
 		HandleError(-1, fmt.Errorf("Over length limitation(%d)", const_display_channel_len), w)

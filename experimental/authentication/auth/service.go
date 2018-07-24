@@ -70,8 +70,16 @@ type DisplayProp struct {
 	Channel2 string `json:"channel2"`
 }
 
+type ChartProp struct {
+	XMax float64 `json:"x_max"`
+	XMin float64 `json:"x_min"`
+	YMax float64 `json:"y_max"`
+	YMin float64 `json:"y_min"`
+}
+
 type SystemProp struct {
 	DisplayProp `json:"display"`
+	ChartProp   `json:"chart"`
 }
 
 // size inferface for multipart.File to get size
