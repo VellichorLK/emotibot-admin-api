@@ -41,6 +41,7 @@ func init() {
 			util.NewEntryPoint("GET", "faq", []string{"view"}, handleFAQStats),
 			util.NewEntryPoint("POST", "sessions/query", []string{}, handleSessionQuery),
 			util.NewEntryPoint("POST", "sessions/download", []string{}, handleSessionDownload),
+			util.NewEntryPoint("GET", "sessions/{sid}/records", []string{}, handleSessionRecords),
 		},
 	}
 	cacheTimeout = nil
@@ -534,5 +535,24 @@ func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
 	err = util.WriteJSON(w, response)
 	if err != nil {
 		util.LogError.Printf("IO Error %v\n", err)
+	}
+}
+
+func handleSessionRecords(w http.ResponseWriter, r *http.Request) {
+	appID := util.GetAppID(r)
+	sessionID, ok := mux.Vars(r)["sid"]
+	if !ok {
+		http.Error(w, "path {sid} is empty", http.StatusBadRequest)
+		return
+	}
+	records, err := GetRecords(appID, sessionID)
+	if err != nil {
+		http.Error(w, "Get records failed,"+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = util.WriteJSON(w, records)
+	if err != nil {
+		util.LogError.Println("write json failed, " + err.Error())
 	}
 }

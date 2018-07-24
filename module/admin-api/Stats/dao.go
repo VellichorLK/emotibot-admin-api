@@ -496,3 +496,45 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 
 	return sessions, nil
 }
+
+func records(appID, sessionID string) ([]record, error) {
+	query := "SELECT user_q, answer, UNIX_TIMESTAMP(created_time) FROM records WHERE session_id = ? AND app_id = ?"
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		return nil, fmt.Errorf("can not find " + ModuleInfo.ModuleName + " db")
+	}
+	rows, err := db.Query(query, sessionID, appID)
+	if err != nil {
+		util.LogError.Printf("Error SQL: %s\n", query)
+		return nil, fmt.Errorf("query failed, %v", err)
+	}
+	defer rows.Close()
+
+	var records = make([]record, 0)
+	for rows.Next() {
+		var userQ, answer sql.NullString
+		var timestamp uint64
+		var r = record{}
+		rows.Scan(&userQ, &answer, &timestamp)
+		r.UserText = userQ.String
+		if len(answer.String) > 0 {
+			var texts = []struct {
+				Text string `json:"text"`
+			}{}
+			err = json.Unmarshal([]byte(answer.String), &texts)
+			if err != nil {
+				return nil, fmt.Errorf("answer is not valid format, %v", err)
+			}
+			for _, t := range texts {
+				r.RobotText += t.Text
+			}
+		}
+		r.Timestamp = timestamp
+		records = append(records, r)
+		fmt.Printf("records %v", r)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan err, %v", err)
+	}
+	return records, nil
+}

@@ -143,3 +143,10 @@ type ValuePair struct {
 	Name  string      `json:"name"`
 	Value interface{} `json:"value"`
 }
+
+//record is chat record, also response format of sessions/{sid}/records
+type record struct {
+	UserText  string `json:"user_text"`
+	RobotText string `json:"robot_text"`
+	Timestamp uint64 `json:"conversation_time"`
+}

@@ -151,3 +151,11 @@ func GetSessions(appID string, condition SessionCondition) (int, []Session, erro
 
 	return count, sessions, nil
 }
+
+func GetRecords(appID, sessionID string) ([]record, error) {
+	records, err := records(appID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("get records failed, %v", err)
+	}
+	return records, nil
+}
