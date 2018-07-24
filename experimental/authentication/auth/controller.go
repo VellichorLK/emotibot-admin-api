@@ -769,7 +769,7 @@ func SystemSettingHandler(w http.ResponseWriter, r *http.Request, c *Configurati
 	}
 	s.ChartInfo.YMin, err = strconv.ParseFloat(r.FormValue("y_min"), 64)
 	if err != nil {
-		s.ChartInfo.YMax = -0.8
+		s.ChartInfo.YMin = -0.8
 	}
 
 	LogInfo.Printf("channel1: %s(%d), channel2: %s(%d)\n", s.Channel1, len(s.Channel1), s.Channel2, len(s.Channel2))
