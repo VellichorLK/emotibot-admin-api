@@ -1,12 +1,16 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
+
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 )
 
 const (
@@ -89,4 +93,55 @@ func GenRandomUUIDSameAsOpenAPI() string {
 		now.Hour(), now.Minute(), now.Second(), now.Nanosecond()/1000,
 		randomNum)
 	return ret
+}
+
+// PrintRuntimeStack will print run stack with most layer of maxStack
+func PrintRuntimeStack(maxStack int) {
+	pc := make([]uintptr, maxStack)
+	n := runtime.Callers(0, pc)
+	if n == 0 {
+		return
+	}
+	pc = pc[:n]
+	frames := runtime.CallersFrames(pc)
+	var buf bytes.Buffer
+
+	buf.WriteString("Stack: \n")
+	for {
+		frame, more := frames.Next()
+		buf.WriteString(fmt.Sprintf("\t[%s:%d]\n", frame.File, frame.Line))
+		if !more {
+			break
+		}
+	}
+	LogTrace.Printf(buf.String())
+}
+
+type RetObj struct {
+	Status  int         `json:"status"`
+	Message string      `json:"message"`
+	Result  interface{} `json:"result"`
+}
+
+func GenRetObj(status int, result interface{}) RetObj {
+	return RetObj{
+		Status:  status,
+		Message: ApiError.GetErrorMsg(status),
+		Result:  result,
+	}
+}
+
+func GenRetObjWithCustomMsg(status int, message string, result interface{}) RetObj {
+	return RetObj{
+		Status:  status,
+		Message: message,
+		Result:  result,
+	}
+}
+
+func GenSimpleRetObj(status int) RetObj {
+	return RetObj{
+		Status:  status,
+		Message: ApiError.GetErrorMsg(status),
+	}
 }

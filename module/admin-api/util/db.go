@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
-	"runtime"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -101,7 +100,7 @@ func ClearTransition(tx *sql.Tx) {
 
 func ShowError(err error) {
 	if err != nil {
-		_, file, line, _ := runtime.Caller(2)
-		LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
+		LogError.Printf("DB error: %s\n", err.Error())
+		PrintRuntimeStack(5)
 	}
 }

@@ -2,8 +2,6 @@ package util
 
 import (
 	"net/http"
-
-	"emotibot.com/emotigo/module/admin-api/ApiError"
 )
 
 // EntryPoint is used in every module define
@@ -92,40 +90,14 @@ type ModuleInfo struct {
 	// OneTimeFunc will run once when server is up
 	// It can use for data sync or recover
 	OneTimeFunc map[string]func()
+
+	ModuleID int
+	Errors   map[int]string
 }
 
 func (module *ModuleInfo) SetEnvironments(env map[string]string) {
 	module.Environments = make(map[string]string)
 	for key := range env {
 		module.Environments[key] = env[key]
-	}
-}
-
-type RetObj struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Result  interface{} `json:"result"`
-}
-
-func GenRetObj(status int, result interface{}) RetObj {
-	return RetObj{
-		Status:  status,
-		Message: ApiError.GetErrorMsg(status),
-		Result:  result,
-	}
-}
-
-func GenRetObjWithCustomMsg(status int, message string, result interface{}) RetObj {
-	return RetObj{
-		Status:  status,
-		Message: message,
-		Result:  result,
-	}
-}
-
-func GenSimpleRetObj(status int) RetObj {
-	return RetObj{
-		Status:  status,
-		Message: ApiError.GetErrorMsg(status),
 	}
 }
