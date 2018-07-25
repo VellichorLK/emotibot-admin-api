@@ -14,7 +14,10 @@ const (
 	AuditOperationImport = "3" // "导入"
 	AuditOperationExport = "4" // "导出"
 	// AuditOperationRollback = "5" "回复", 目前無相關行為
-	AuditOperationLogin = "6" // "登入"
+	AuditOperationLogin    = "6" // "登入"
+	AuditOperationPublish  = "7" // 發布
+	AuditOperationActive   = "8" // 啟動
+	AuditOperationDeactive = "9" // 關閉
 
 	AuditModuleBotMessage     = "0"  // "话术设置"
 	AuditModuleFunctionSwitch = "1"  // "技能设置"

@@ -60,6 +60,7 @@ var (
 		"Scenario": "业务场景",
 		"Num":      "次数配置",
 		"Msg":      "文案",
+		"All":      "全部",
 
 		// Used in Robot Skill
 		"function_weathermodule":     "天气模块",
@@ -103,10 +104,15 @@ var (
 		"ErrorCmdParentNotFound": "目标目录获取失败",
 
 		// Used in task-engine
-		"MappingTable":       "转换数据",
-		"MappingTableName":   "转换数据名称",
-		"TaskEngineScenario": "任务引擎场景",
-		"Spreadsheet":        "Spreadsheet场景",
+		"MappingTable":         "转换数据",
+		"MappingTableName":     "转换数据名称",
+		"TaskEngineScenario":   "任务引擎场景",
+		"Spreadsheet":          "Spreadsheet场景",
+		"AuditPublishTpl":      "发布任务引擎场景: %s",
+		"AuditActiveTpl":       "开启任务引擎场景: %s",
+		"AuditDeactiveTpl":     "关闭任务引擎场景: %s",
+		"AuditImportTpl":       "导入场景: %s",
+		"AuditImportJSONError": "导入场景失败，JSON格式有误",
 
 		// Used in robot profile
 		"RobotProfileQuestion":              "形象问题",

@@ -81,6 +81,8 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("invalid json: %s, %s", err.Error(), err2.Error())),
 			http.StatusBadRequest)
+		auditMsg := util.Msg["AuditImportJSONError"]
+		addAuditLog(r, util.AuditOperationImport, auditMsg, true)
 		return
 	}
 	ret := map[string]interface{}{
@@ -92,7 +94,8 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 	} else {
 		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
 	}
-	util.LogInfo.Printf("info: %+v\n", ret)
+	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
+	addAuditLog(r, util.AuditOperationImport, auditMsg, true)
 	util.WriteJSON(w, ret)
 }
 
@@ -129,6 +132,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	// FIXME: trick here, task-engine will call update almost every click on UI
 	// it will cause too much audit log into database
 	// As a result, use get API to audit start edit only.
+	// BUG: TE use this API to export for now...
 	if scenarioid != "all" {
 		auditMsg := fmt.Sprintf("%s%s%s ID: %s", util.Msg["Start"], util.Msg["Modify"], util.Msg["TaskEngineScenario"], scenarioid)
 		addAuditLog(r, util.AuditOperationEdit, auditMsg, err == nil)
@@ -166,9 +170,14 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	} else {
 		io.WriteString(w, content)
 	}
+	if publish != "" {
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
+	}
+
 	if delete != "" {
 		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
+		addAuditLog(r, util.AuditOperationPublish, auditMsg, err == nil)
 	}
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
@@ -234,19 +243,29 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, content)
 	}
 
-	if scenarioID == "all" {
-		if enable == "true" {
+	auditTpl := ""
+	target := scenarioID
+	operation := util.AuditOperationActive
+	if enable == "true" {
+		auditTpl = util.Msg["AuditActiveTpl"]
+		if scenarioID == "all" {
 			EnableAllScenario(appid)
+			target = util.Msg["All"]
 		} else {
-			DisableAllScenario(appid)
+			EnableScenario(appid, scenarioID)
 		}
 	} else {
-		if enable == "true" {
-			EnableScenario(appid, scenarioID)
+		auditTpl = util.Msg["AuditDeactiveTpl"]
+		operation = util.AuditOperationDeactive
+		if scenarioID == "all" {
+			DisableAllScenario(appid)
+			target = util.Msg["All"]
 		} else {
 			DisableScenario(appid, scenarioID)
 		}
 	}
+	auditMsg := fmt.Sprintf(auditTpl, target)
+	addAuditLog(r, operation, auditMsg, err == nil)
 }
 
 func handleGetApps(w http.ResponseWriter, r *http.Request) {
