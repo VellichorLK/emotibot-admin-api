@@ -1,4 +1,4 @@
-package Intent
+package intentengine
 
 import (
 	"fmt"
@@ -38,15 +38,15 @@ func init() {
 			util.NewEntryPoint("GET", "status", []string{"view"}, handleGetTrainStatus),
 			util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
 
-			// util.NewEntryPoint("POST", "intent", []string{"create"}, handleAddIntent),
-			// util.NewEntryPoint("GET", "intent/{id}", []string{"view"}, handleGetIntent),
-			// util.NewEntryPoint("PUT", "intent/{id}", []string{"view"}, handleUpdateIntent),
-			// util.NewEntryPoint("DELETE", "intent/{id}", []string{"view"}, handleDeleteIntent),
+			// util.NewEntryPointＷithVer("POST", "intent", []string{"create"}, handleAddIntent),
+			// util.NewEntryPointＷithVer("GET", "intent/{id}", []string{"view"}, handleGetIntent),
+			// util.NewEntryPointＷithVer("PUT", "intent/{id}", []string{"view"}, handleUpdateIntent),
+			// util.NewEntryPointＷithVer("DELETE", "intent/{id}", []string{"view"}, handleDeleteIntent),
 
-			// util.NewEntryPoint("GET", "intent/{id}/sentence/{sid}", []string{"view"}, handleGetIntentSentence),
-			// util.NewEntryPoint("POST", "intent/{id}/sentence", []string{"view"}, handleUpdateIntentSentence),
-			// util.NewEntryPoint("PUT", "intent/{id}/sentence/{sid}", []string{"view"}, handleUpdateIntentSentence),
-			// util.NewEntryPoint("DELETE", "intent/{id}/sentence/{sid}", []string{"view"}, handleDeleteIntentSentence),
+			// util.NewEntryPointＷithVer("GET", "intent/{id}/sentence/{sid}", []string{"view"}, handleGetIntentSentence),
+			// util.NewEntryPointＷithVer("POST", "intent/{id}/sentence", []string{"view"}, handleUpdateIntentSentence),
+			// util.NewEntryPointＷithVer("PUT", "intent/{id}/sentence/{sid}", []string{"view"}, handleUpdateIntentSentence),
+			// util.NewEntryPointＷithVer("DELETE", "intent/{id}/sentence/{sid}", []string{"view"}, handleDeleteIntentSentence),
 		},
 	}
 }

@@ -1,4 +1,4 @@
-package Intent
+package intentengine
 
 import (
 	"bytes"

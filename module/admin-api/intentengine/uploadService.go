@@ -1,11 +1,11 @@
-package Intent
+package intentengine
 
 import (
 	"errors"
 
 	"emotibot.com/emotigo/module/admin-api/util"
-	"github.com/tealeg/xlsx"
 	"github.com/siongui/gojianfan"
+	"github.com/tealeg/xlsx"
 )
 
 func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
@@ -39,7 +39,7 @@ func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
 		}
 
 		ret[gojianfan.T2S(sheet.Name)] = sentences
-    }
+	}
 
-    return
+	return
 }
