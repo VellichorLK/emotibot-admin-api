@@ -483,7 +483,7 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 			EndTime:     end,
 			UserID:      userID.String,
 			Status:      status,
-			Duration:    (end - start) / 1000,
+			Duration:    (end - start),
 			Information: values,
 			Notes:       "",
 		}
