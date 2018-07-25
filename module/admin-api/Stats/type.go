@@ -102,7 +102,7 @@ func (c *SessionCondition) JoinedSQLCondition(sessionTblName, recordTblName stri
 	if c.Duration != 0 {
 		query := sessionTblName + ".start_time - " + sessionTblName + ".end_time >= ?"
 		AndConditions = append(AndConditions, query)
-		values = append(values, c.Duration*1000)
+		values = append(values, c.Duration)
 	}
 
 	//Remember to validate status at controller phase
