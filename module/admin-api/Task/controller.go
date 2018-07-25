@@ -172,12 +172,12 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 	if publish != "" {
 		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
+		addAuditLog(r, util.AuditOperationPublish, auditMsg, err == nil)
 	}
 
 	if delete != "" {
 		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationPublish, auditMsg, err == nil)
+		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
 	}
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
