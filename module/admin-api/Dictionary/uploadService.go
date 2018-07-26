@@ -439,7 +439,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 
 		similars := strings.Split(currentWordbankRow.SimilarWords, ",")
 		for _, similar := range similars {
-			if utf8.RuneCountInString(similar) > 35 {
+			if utf8.RuneCountInString(similar) > maxSimilaryLen {
 				err = fmt.Errorf(util.Msg["ErrorSimilarTooLongTpl"], idx+1)
 				return
 			}
@@ -450,24 +450,24 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			continue
 		}
 
-		if utf8.RuneCountInString(currentWordbankRow.Level1) > 20 {
+		if utf8.RuneCountInString(currentWordbankRow.Level1) > maxDirNameLen {
 			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
 			return
 		}
-		if utf8.RuneCountInString(currentWordbankRow.Level2) > 20 {
+		if utf8.RuneCountInString(currentWordbankRow.Level2) > maxDirNameLen {
 			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
 			return
 		}
-		if utf8.RuneCountInString(currentWordbankRow.Level3) > 20 {
+		if utf8.RuneCountInString(currentWordbankRow.Level3) > maxDirNameLen {
 			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
 			return
 		}
-		if utf8.RuneCountInString(currentWordbankRow.Level4) > 20 {
+		if utf8.RuneCountInString(currentWordbankRow.Level4) > maxDirNameLen {
 			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
 			return
 		}
 
-		if utf8.RuneCountInString(currentWordbankRow.Name) > 35 {
+		if utf8.RuneCountInString(currentWordbankRow.Name) > maxNameLen {
 			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
 			return
 		}

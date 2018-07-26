@@ -7,9 +7,12 @@ import (
 )
 
 const (
-	StatusRunning Status = "running"
-	StatusFinish  Status = "finish"
-	StatusFail    Status = "fail"
+	StatusRunning  Status = "running"
+	StatusFinish   Status = "finish"
+	StatusFail     Status = "fail"
+	maxDirNameLen         = 20
+	maxNameLen            = 35
+	maxSimilaryLen        = 64
 )
 
 type Status string
