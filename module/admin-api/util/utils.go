@@ -23,6 +23,10 @@ const (
 	// ConstUserIPHeaderKey is header record the userip
 	ConstUserIPHeaderKey = "X-Real-IP"
 
+	// ConstLocaleHeaderKey is header record the request locale, which may be zh-cn or zh-tw
+	ConstLocaleHeaderKey = "X-Locale"
+	defaultLocale        = "zh-cn"
+
 	ConstAppIDHeaderKey = "X-AppID"
 )
 
@@ -60,6 +64,14 @@ func GetUserID(r *http.Request) string {
 // GetUserIP will get User addr from http header
 func GetUserIP(r *http.Request) string {
 	return r.Header.Get(ConstUserIPHeaderKey)
+}
+
+func GetLocale(r *http.Request) string {
+	locale := r.Header.Get(ConstLocaleHeaderKey)
+	if locale == "" {
+		locale = defaultLocale
+	}
+	return locale
 }
 
 // Contains will check if str is in arr or not

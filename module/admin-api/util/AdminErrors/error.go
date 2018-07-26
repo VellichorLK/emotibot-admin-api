@@ -1,6 +1,9 @@
 package AdminErrors
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func New(errno int, text string) AdminError {
 	return &errorStruct{
@@ -26,16 +29,20 @@ func (e *errorStruct) Errno() int {
 	return e.errno
 }
 func (e *errorStruct) String(input ...string) string {
-	locale := "ch-cn"
+	locale := "zh-cn"
 	if len(input) > 0 && msg[input[0]] != nil {
 		locale = input[0]
 	}
 	if e.Errno() == ErrnoSuccess {
 		return ""
 	}
-	errnoMsg := msg[locale][e.Errno()]
-	if errnoMsg == "" {
+	errnoMsg, ok := msg[locale][e.Errno()]
+	if !ok {
 		errnoMsg = unknownMsg[locale]
+	}
+
+	if strings.TrimSpace(e.Error()) == "" {
+		return errnoMsg
 	}
 
 	return fmt.Sprintf("%s: %s", errnoMsg, e.Error())

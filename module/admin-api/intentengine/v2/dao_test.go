@@ -1,4 +1,4 @@
-package intentengine
+package v2
 
 import (
 	"bytes"
@@ -14,11 +14,13 @@ import (
 	"github.com/lestrrat-go/test-mysqld"
 )
 
-var dao intentDaoV2
+var testDao intentDaoV2
+var mysqld *mysqltest.TestMysqld
 
 func setup() error {
-	if dao.db == nil {
-		mysqld, err := mysqltest.NewMysqld(nil)
+	var err error
+	if testDao.db == nil {
+		mysqld, err = mysqltest.NewMysqld(nil)
 		if err != nil {
 			log.Fatalln("Fail to start test mysqld:", err.Error())
 		}
@@ -31,7 +33,7 @@ func setup() error {
 		if err != nil {
 			log.Fatalln("Fail to setup mysql:", err.Error())
 		}
-		dao.db = db
+		testDao.db = db
 	}
 	util.LogInit("TEST")
 	return nil
@@ -69,12 +71,19 @@ func setupTestDB(db *sql.DB) error {
 }
 
 func teardown() {
-	dao.db.Close()
+	if testDao.db != nil {
+		testDao.db.Close()
+		testDao.db = nil
+	}
+	if mysqld != nil {
+		mysqld.Stop()
+		mysqld = nil
+	}
 }
 
 func TestGetIntents(t *testing.T) {
 	setup()
-	intents, err := dao.GetIntents("test", nil, "")
+	intents, err := testDao.GetIntents("test", nil, "")
 	if err != nil {
 		t.Error(
 			"For", "appid [test], version [nil]",
@@ -90,7 +99,7 @@ func TestGetIntents(t *testing.T) {
 		)
 	}
 
-	intents, err = dao.GetIntents("test", nil, "支出")
+	intents, err = testDao.GetIntents("test", nil, "支出")
 	if err != nil {
 		logError(t, "Get intents with keyword", nil, err)
 	}
@@ -114,7 +123,7 @@ func TestGetIntents(t *testing.T) {
 		}
 	}
 
-	intents, err = dao.GetIntents("csbot", nil, "")
+	intents, err = testDao.GetIntents("csbot", nil, "")
 	if err != nil {
 		t.Error(
 			"For", "appid [csbot], version [nil]",
@@ -131,7 +140,7 @@ func TestGetIntents(t *testing.T) {
 	}
 
 	version := 2
-	intents, err = dao.GetIntents("test", &version, "")
+	intents, err = testDao.GetIntents("test", &version, "")
 	if err != sql.ErrNoRows {
 		t.Error(
 			"For", "appid [test], version [1]",
@@ -144,7 +153,7 @@ func TestGetIntents(t *testing.T) {
 
 func TestGetIntent(t *testing.T) {
 	setup()
-	intent, err := dao.GetIntent("test", 1, "")
+	intent, err := testDao.GetIntent("test", 1, "")
 	if err != nil {
 		logError(t, "Get intent of appid [test], version [nil]", nil, err)
 	}
@@ -161,7 +170,7 @@ func TestGetIntent(t *testing.T) {
 		logError(t, "Get positive content of appid [test], version [nil]", "不出1", (*intent.Negative)[0].Content)
 	}
 
-	intent, err = dao.GetIntent("test", 1, "支出")
+	intent, err = testDao.GetIntent("test", 1, "支出")
 	if err != nil {
 		logError(t, "Get intent of appid [test], version [nil], keyword [支出]", nil, err)
 	}
@@ -179,7 +188,7 @@ func TestGetIntent(t *testing.T) {
 
 func TestAddIntent(t *testing.T) {
 	setup()
-	intent, err := dao.AddIntent("test", "addIntent",
+	intent, err := testDao.AddIntent("test", "addIntent",
 		[]string{"testPositiveAdd"},
 		[]string{"testNegativeAdd"})
 	if err != nil {
@@ -228,7 +237,7 @@ func TestAddIntent(t *testing.T) {
 		}
 	}
 
-	resultIntent, err := dao.GetIntent("test", intent.ID, "")
+	resultIntent, err := testDao.GetIntent("test", intent.ID, "")
 	if err != nil {
 		t.Error(
 			"Get added intent fail",
@@ -254,23 +263,23 @@ func TestUpdateIntent(t *testing.T) {
 	var err error
 	setup()
 	t.Run("Error test", func(t *testing.T) {
-		err = dao.ModifyIntent("csbot", 1, "123", nil, nil)
+		err = testDao.ModifyIntent("csbot", 1, "123", nil, nil)
 		if err != sql.ErrNoRows {
 			logError(t, "Modify invalid intent", sql.ErrNoRows, err)
 		}
-		err = dao.ModifyIntent("test", 7, "newName", nil, nil)
+		err = testDao.ModifyIntent("test", 7, "newName", nil, nil)
 		if err != ErrReadOnlyIntent {
 			logError(t, "Modify commited intent", ErrReadOnlyIntent, err)
 		}
 	})
 
 	t.Run("Update test", func(t *testing.T) {
-		err = dao.ModifyIntent("test", 1, "记支出new", nil, nil)
+		err = testDao.ModifyIntent("test", 1, "记支出new", nil, nil)
 		if err != nil {
 			logError(t, "Modify intent name only", nil, err)
 		}
 
-		err = dao.ModifyIntent("test", 1, "记支出new", []*SentenceV2WithType{
+		err = testDao.ModifyIntent("test", 1, "记支出new", []*SentenceV2WithType{
 			&SentenceV2WithType{SentenceV2{0, "支出2"}, 0},
 			&SentenceV2WithType{SentenceV2{0, "支出3"}, 0},
 			&SentenceV2WithType{SentenceV2{1, "支出11"}, 0},
@@ -279,12 +288,12 @@ func TestUpdateIntent(t *testing.T) {
 			logError(t, "Modify intent, update only", nil, err)
 		}
 
-		err = dao.ModifyIntent("test", 1, "记支出new", nil, []int{2})
+		err = testDao.ModifyIntent("test", 1, "记支出new", nil, []int64{2})
 		if err != nil {
 			logError(t, "Modify intent, delete only", nil, err)
 		}
 
-		intent, err := dao.GetIntent("test", 1, "")
+		intent, err := testDao.GetIntent("test", 1, "")
 		if err != nil {
 			logError(t, "Get modified intent", nil, err)
 		}
@@ -316,6 +325,31 @@ func TestUpdateIntent(t *testing.T) {
 			logError(t, "Get Negative fail after update", "valid pointer", nil)
 		}
 	})
+
+	teardown()
+}
+
+func TestDeleteIntent(t *testing.T) {
+	setup()
+
+	err := testDao.DeleteIntent("test", 7)
+	if err != ErrReadOnlyIntent {
+		logError(t, "Delete read only", ErrReadOnlyIntent, err)
+	}
+
+	err = testDao.DeleteIntent("test", 10)
+	if err != nil {
+		logError(t, "Delete not exised", nil, err)
+	}
+
+	err = testDao.DeleteIntent("test", 6)
+	if err != nil {
+		logError(t, "Test delete", nil, err)
+	}
+	_, err = testDao.GetIntent("test", 6, "")
+	if err != sql.ErrNoRows {
+		logError(t, "Test get after delete", sql.ErrNoRows, err)
+	}
 
 	teardown()
 }

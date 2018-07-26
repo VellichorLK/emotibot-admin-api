@@ -15,7 +15,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
-	"emotibot.com/emotigo/module/admin-api/Intent"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning"
@@ -24,6 +23,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/System"
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
+	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -45,7 +45,7 @@ var modules = []*util.ModuleInfo{
 	&SelfLearning.ModuleInfo,
 	&System.ModuleInfo,
 	&BF.ModuleInfo,
-	&Intent.ModuleInfo,
+	&intentengine.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -188,6 +188,7 @@ func setRoute() *mux.Router {
 					defer logHandleRuntime(w, r)()
 					clientNoStoreCache(w)
 					if checkPrivilege(r, entrypoint) {
+						r.Header.Set(util.AuditCustomHeader, info.ModuleName)
 						entrypoint.Callback(w, r)
 					} else {
 						http.Error(w, "Unauthorized", http.StatusUnauthorized)

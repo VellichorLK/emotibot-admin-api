@@ -42,6 +42,15 @@ func GetMuxIntVar(r *http.Request, key string) (int, error) {
 	return strconv.Atoi(vars[key])
 }
 
+func GetMuxInt64Var(r *http.Request, key string) (int64, error) {
+	vars := mux.Vars(r)
+	strVal := vars[key]
+	if strVal == "" {
+		return 0, fmt.Errorf("Invalid key %s", key)
+	}
+	return strconv.ParseInt(vars[key], 10, 64)
+}
+
 func GetParamInt(r *http.Request, key string) (int, error) {
 	return strconv.Atoi(r.URL.Query().Get(key))
 }

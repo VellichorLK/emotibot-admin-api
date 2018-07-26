@@ -44,12 +44,38 @@ func (log auditLog) toString() string {
 }
 
 var auditChannel chan auditLog
+var (
+	AuditCustomHeader = "X-AuditModule"
+)
 
 // AddAuditFromRequest will get userID, userIP and appid from request, and add audit log to mysql-audit
 func AddAuditFromRequest(r *http.Request, module string, operation string, msg string, result int) {
 	userID := GetUserID(r)
 	userIP := GetUserIP(r)
 	appid := GetAppID(r)
+
+	AddAuditLog(appid, userID, userIP, module, operation, msg, result)
+}
+
+func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
+	userID := GetUserID(r)
+	userIP := GetUserIP(r)
+	appid := GetAppID(r)
+
+	module := r.Header.Get(AuditCustomHeader)
+	operation := ""
+	switch r.Method {
+	case http.MethodPost:
+		operation = AuditOperationAdd
+	case http.MethodDelete:
+		operation = AuditOperationDelete
+	case http.MethodPatch:
+		fallthrough
+	case http.MethodPut:
+		operation = AuditOperationEdit
+	default:
+		operation = ""
+	}
 
 	AddAuditLog(appid, userID, userIP, module, operation, msg, result)
 }

@@ -1,4 +1,4 @@
-package intentengine
+package v2
 
 import (
 	"database/sql"
@@ -16,10 +16,11 @@ var (
 )
 
 type intentDaoInterface interface {
-	GetIntents(appid string, version int, keyword string) ([]*IntentV2, error)
-	GetIntent(appid string, intentID int, keyword string) (*IntentV2, error)
+	GetIntents(appid string, version *int, keyword string) ([]*IntentV2, error)
+	GetIntent(appid string, intentID int64, keyword string) (*IntentV2, error)
 	AddIntent(appid, name string, positive, negative []string) (*IntentV2, error)
-	ModifyIntent(appid string, intentID int, name string, updateSentence []*SentenceV2, deleteSentences []int) error
+	ModifyIntent(appid string, intentID int64, name string, updateSentence []*SentenceV2WithType, deleteSentences []int64) error
+	DeleteIntent(appid string, intentID int64) error
 }
 
 // intentDaoV2 implement interface of intentDaoInterface, which will store for service to use
@@ -39,6 +40,7 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 	defer func() {
 		util.ShowError(err)
 	}()
+	dao.checkDB()
 	if dao.db == nil {
 		return nil, util.ErrDBNotInit
 	}
@@ -148,6 +150,7 @@ func (dao intentDaoV2) GetIntent(appid string, intentID int64, keyword string) (
 	defer func() {
 		util.ShowError(err)
 	}()
+	dao.checkDB()
 	if dao.db == nil {
 		return nil, util.ErrDBNotInit
 	}
@@ -207,6 +210,7 @@ func (dao intentDaoV2) AddIntent(appid, name string, positive, negative []string
 	defer func() {
 		util.ShowError(err)
 	}()
+	dao.checkDB()
 	if dao.db == nil {
 		return nil, util.ErrDBNotInit
 	}
@@ -284,11 +288,12 @@ func (dao intentDaoV2) AddIntent(appid, name string, positive, negative []string
 // ModifyIntent will update intent with diff information
 // In updateSentence, if id is 0, means new sentence.
 // If intent version is not NULL, return error because it is readonly
-func (dao intentDaoV2) ModifyIntent(appid string, intentID int, name string,
-	updateSentence []*SentenceV2WithType, deleteSentences []int) (err error) {
+func (dao intentDaoV2) ModifyIntent(appid string, intentID int64, name string,
+	updateSentence []*SentenceV2WithType, deleteSentences []int64) (err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
+	dao.checkDB()
 	if dao.db == nil {
 		return util.ErrDBNotInit
 	}
@@ -311,8 +316,10 @@ func (dao intentDaoV2) ModifyIntent(appid string, intentID int, name string,
 		return ErrReadOnlyIntent
 	}
 
-	queryStr := "UPDATE intents SET name = ? WHERE id = ?"
-	_, err = tx.Exec(queryStr, name, intentID)
+	timestamp := time.Now().Unix()
+
+	queryStr := "UPDATE intents SET name = ?, updatetime = ? WHERE id = ?"
+	_, err = tx.Exec(queryStr, name, timestamp, intentID)
 	if err != nil {
 		return
 	}
@@ -347,7 +354,55 @@ func (dao intentDaoV2) ModifyIntent(appid string, intentID int, name string,
 	return
 }
 
-func checkIntent(tx db, appid string, intentID int) (readOnly bool, err error) {
+// DeleteIntent will delete intent with provided intentID only when intent is not read only
+func (dao intentDaoV2) DeleteIntent(appid string, intentID int64) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return util.ErrDBNotInit
+	}
+
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	readOnly, err := checkIntent(tx, appid, intentID)
+	if err == sql.ErrNoRows {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	if readOnly {
+		return ErrReadOnlyIntent
+	}
+
+	queryStr := "DELETE FROM intent_train_sets WHERE intent = ?"
+	_, err = tx.Exec(queryStr, intentID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = "DELETE FROM intents WHERE id = ? AND appid = ?"
+	_, err = tx.Exec(queryStr, intentID, appid)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	return
+}
+
+func (dao *intentDaoV2) checkDB() {
+	if dao.db == nil {
+		dao.db = util.GetMainDB()
+	}
+}
+
+func checkIntent(tx db, appid string, intentID int64) (readOnly bool, err error) {
 	// when error happen, return false
 	if tx == nil {
 		return false, errors.New("error parameter")

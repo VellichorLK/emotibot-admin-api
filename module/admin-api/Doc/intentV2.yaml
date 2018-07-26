@@ -89,6 +89,14 @@ components:
       schema:
         type: boolean
         default: false
+    keyword:
+      name: keyword
+      description: 若有設定關鍵字時，會回傳有符合關鍵字的意圖或是語料相關內容
+      in: query
+      required: false
+      schema:
+        type: string
+        example: 支出
   schemas:
     Message:
       type: string
@@ -217,8 +225,11 @@ paths:
       summary: 意圖詳細內容
       description: 回傳意圖列表
       parameters:
-        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
         - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/keyword'
       responses:
         200:
           description: 意圖訓練名稱列表
@@ -250,6 +261,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/appid'
         - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/keyword'
       requestBody:
         content:
           'application/x-www-form-data':
@@ -259,19 +271,11 @@ paths:
                 name:
                   type: string
                 positive:
-                  type: array
-                  items:
-                    type: string
-                  example:
-                    - 正例語料1
-                    - 正例語料2
+                  type: string
+                  example: "['正例語料1', '正例語料2']"
                 negative:
-                  type: array
-                  items:
-                    type: string
-                  example:
-                    - 反例語料1
-                    - 反例語料2
+                  type: string
+                  example: "['反例語料1', '反例語料2']"
       responses:
         200:
           description: 新增意圖回覆
@@ -490,6 +494,7 @@ paths:
           $ref: '#/components/responses/intentNotFound'
         500:
           $ref: '#/components/responses/serverError'
+
   /intent/{intentID}/sentence/{sentenceID}:
     get:
       tags:

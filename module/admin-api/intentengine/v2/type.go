@@ -1,4 +1,4 @@
-package intentengine
+package v2
 
 // SentenceV2 describe a sentence in trainint data
 type SentenceV2 struct {

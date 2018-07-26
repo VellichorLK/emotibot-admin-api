@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/intentengine/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/siongui/gojianfan"
 )
@@ -30,24 +31,16 @@ const (
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "intents",
-		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("GET", "", []string{"view"}, handleGetIntents),
-			util.NewEntryPoint("POST", "upload", []string{"view"}, handleUploadIntents),
-			util.NewEntryPoint("GET", "download", []string{}, handleDownloadIntents),
-			util.NewEntryPoint("POST", "train", []string{"view"}, handleTrain),
-			util.NewEntryPoint("GET", "status", []string{"view"}, handleGetTrainStatus),
-			util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
-
-			// util.NewEntryPointＷithVer("POST", "intent", []string{"create"}, handleAddIntent),
-			// util.NewEntryPointＷithVer("GET", "intent/{id}", []string{"view"}, handleGetIntent),
-			// util.NewEntryPointＷithVer("PUT", "intent/{id}", []string{"view"}, handleUpdateIntent),
-			// util.NewEntryPointＷithVer("DELETE", "intent/{id}", []string{"view"}, handleDeleteIntent),
-
-			// util.NewEntryPointＷithVer("GET", "intent/{id}/sentence/{sid}", []string{"view"}, handleGetIntentSentence),
-			// util.NewEntryPointＷithVer("POST", "intent/{id}/sentence", []string{"view"}, handleUpdateIntentSentence),
-			// util.NewEntryPointＷithVer("PUT", "intent/{id}/sentence/{sid}", []string{"view"}, handleUpdateIntentSentence),
-			// util.NewEntryPointＷithVer("DELETE", "intent/{id}/sentence/{sid}", []string{"view"}, handleDeleteIntentSentence),
-		},
+		EntryPoints: append(
+			[]util.EntryPoint{
+				util.NewEntryPoint("GET", "", []string{"view"}, handleGetIntents),
+				util.NewEntryPoint("POST", "upload", []string{"view"}, handleUploadIntents),
+				util.NewEntryPoint("GET", "download", []string{}, handleDownloadIntents),
+				util.NewEntryPoint("POST", "train", []string{"view"}, handleTrain),
+				util.NewEntryPoint("GET", "status", []string{"view"}, handleGetTrainStatus),
+				util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
+			},
+			v2.EntryList...),
 	}
 }
 
