@@ -1831,25 +1831,33 @@ func addModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *sql.
 	return
 }
 
+// TODO: check if enterprise's custom setting is not existed, created it. This situation will only
+// happen when there is a new module and only useful when enterprise can edit modules in spec
 func updateModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *sql.Tx) (err error) {
+	if len(modules) == 0 {
+		return util.ErrInvalidParameter
+	}
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET status = 1
-		WHERE enterprise = ? AND code IN (?)`, moduleTableV3)
-	_, err = t.Exec(queryStr, enterpriseID, strings.Join(modules, ","))
+		SET status = 0
+		WHERE enterprise = ?`, moduleTableV3)
+
+	_, err = t.Exec(queryStr, enterpriseID)
 	if err != nil {
 		return
 	}
 
 	queryStr = fmt.Sprintf(`
 		UPDATE %s
-		SET status = 0
-		WHERE enterprise = ? AND code NOT IN (?)`, moduleTableV3)
-	_, err = t.Exec(queryStr, enterpriseID, strings.Join(modules, ","))
-	if err != nil {
-		return
+		SET status = 1
+		WHERE enterprise = ? AND code IN (?%s)`, moduleTableV3, strings.Repeat(",?", len(modules)-1))
+	params := make([]interface{}, len(modules)+1)
+	params[0] = enterpriseID
+	for idx := range modules {
+		params[idx+1] = modules[idx]
 	}
 
+	_, err = t.Exec(queryStr, params...)
 	return
 }
 

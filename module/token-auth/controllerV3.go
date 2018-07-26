@@ -322,7 +322,14 @@ func EnterpriseUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	modules := strings.Split(r.FormValue("modules"), ",")
+	modules := []string{}
+	err = json.Unmarshal([]byte(r.FormValue("modules")), &modules)
+	if err != nil {
+		util.LogInfo.Println("Parse json fail: ", err.Error())
+		returnBadRequest(w, "modules")
+		return
+	}
+	util.LogTrace.Printf("Get new modules: %+v\n", modules)
 
 	err = service.UpdateEnterpriseV3(enterpriseID, origEnterprise, newEnterprise, modules)
 	if err != nil {
