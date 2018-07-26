@@ -854,7 +854,11 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 			case ApiError.DB_ERROR:
 				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
 			}
-			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			if result != nil {
+				auditMsg += fmt.Sprintf(":%v (%s)", result, ApiError.GetErrorMsg(retCode))
+			} else {
+				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			}
 		}
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
@@ -877,10 +881,14 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	className = r.FormValue("name")
-	if strings.TrimSpace(className) == "" {
+	className = strings.TrimSpace(r.FormValue("name"))
+	if className == "" {
 		retCode = ApiError.REQUEST_ERROR
 		result = "Class name should not be empty"
+		return
+	}
+	if len(className) > maxDirNameLen {
+		retCode, result = ApiError.REQUEST_ERROR, util.Msg["ErrorAPIPathTooLong"]
 		return
 	}
 
@@ -985,7 +993,11 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 			case ApiError.DB_ERROR:
 				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
 			}
-			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			if result != nil {
+				auditMsg += fmt.Sprintf(":%v (%s)", result, ApiError.GetErrorMsg(retCode))
+			} else {
+				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			}
 		}
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
@@ -1009,7 +1021,7 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	wb, err = parseWordbankV3FromRequest(r)
 	if err != nil {
-		retCode, result = ApiError.REQUEST_ERROR, fmt.Sprintf("get cid fail: %s", err.Error())
+		retCode, result = ApiError.REQUEST_ERROR, fmt.Sprintf(util.Msg["ErrorRequestErrorTpl"], err.Error())
 		return
 	}
 
@@ -1049,7 +1061,11 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 			case ApiError.DB_ERROR:
 				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
 			}
-			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			if result != nil {
+				auditMsg += fmt.Sprintf(":%v (%s)", result, ApiError.GetErrorMsg(retCode))
+			} else {
+				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			}
 		}
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
 	}()
@@ -1074,7 +1090,7 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 	wb, err = parseWordbankV3FromRequest(r)
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
-		result = fmt.Sprintf("get cid fail: %s", err.Error())
+		result = fmt.Sprintf(util.Msg["ErrorRequestErrorTpl"], err.Error())
 		return
 	}
 
@@ -1191,6 +1207,15 @@ func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
 
 	if ret.Name == "" {
 		return nil, errors.New("empty name")
+	}
+
+	if len(ret.Name) > maxNameLen {
+		return nil, errors.New(util.Msg["ErrorAPINameTooLong"])
+	}
+	for idx := range ret.SimilarWords {
+		if len(ret.SimilarWords[idx]) > maxSimilarWordsPerRow {
+			return nil, errors.New(util.Msg["ErrorAPISimilarTooLong"])
+		}
 	}
 
 	ret.Editable = true

@@ -90,11 +90,15 @@ var (
 		"Level1Explain":          "一级目录只可有敏感词库或专有词库",
 		"ErrorEmptyNameTpl":      "行 %d: 词库名为空",
 		"ErrorNameTooLongTpl":    "行 %d: 词库名超过35字",
-		"ErrorSimilarTooLongTpl": "行 %d: 同义词超过35字",
+		"ErrorSimilarTooLongTpl": "行 %d: 同义词超过64字",
 		"ErrorPathTooLongTpl":    "行 %d: 目录名超过20字",
 		"ErrorRowErrorTpl":       "行 %d：%s",
 		"ErrorPathLevelTpl":      "路径 %d 级内容错误",
 		"ErrorNotEditable":       "该词库不可编辑",
+		"ErrorRequestErrorTpl":   "传入参数有误",
+		"ErrorAPINameTooLong":    "词库名超过35字",
+		"ErrorAPISimilarTooLong": "同义词超过64字",
+		"ErrorAPIPathTooLong":    "目录名超过20字",
 
 		// Used in Command and command-class
 		"Cmd":                    "指令",
