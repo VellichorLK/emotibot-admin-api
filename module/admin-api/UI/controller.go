@@ -90,6 +90,9 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	case "statistic-audit":
 		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
 		break
+	case "task-engine":
+		moduleID = util.AuditModuleTaskEngine // 任務引擎
+		break
 	}
 
 	if moduleID == "" || fileName == "" {
