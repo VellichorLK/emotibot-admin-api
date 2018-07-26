@@ -456,7 +456,7 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 		util.LogError.Println("Error SQL: ", selectColumns, " values ", values)
 		return nil, fmt.Errorf("session sql query error, %v", err.Error())
 	}
-
+	defer rows.Close()
 	sessions = []Session{}
 	for rows.Next() {
 		var (
@@ -468,15 +468,18 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 			data   sql.NullString
 		)
 		rows.Scan(&id, &start, &end, &userID, &status, &data)
-		var jsonData map[string]interface{}
-		err = json.Unmarshal([]byte(data.String), &jsonData)
-		if err != nil {
-			return nil, fmt.Errorf("format session data error, %v", err)
-		}
 		var values = []ValuePair{}
-		for key, value := range jsonData {
-			values = append(values, ValuePair{Name: key, Value: value})
+		if data.Valid {
+			var jsonData map[string]interface{}
+			err = json.Unmarshal([]byte(data.String), &jsonData)
+			if err != nil {
+				return nil, fmt.Errorf("format session data error, %v", err)
+			}
+			for key, value := range jsonData {
+				values = append(values, ValuePair{Name: key, Value: value})
+			}
 		}
+
 		var s = Session{
 			ID:          id,
 			StartTime:   start,
