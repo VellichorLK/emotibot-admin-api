@@ -3,7 +3,7 @@ package v2
 // SentenceV2 describe a sentence in trainint data
 type SentenceV2 struct {
 	ID      int64  `json:"id"`
-	Content string `json:"count"`
+	Content string `json:"content"`
 }
 
 // SentenceV2WithType describe a sentence in trainint data
