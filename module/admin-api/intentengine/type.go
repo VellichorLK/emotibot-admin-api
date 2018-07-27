@@ -1,4 +1,4 @@
-package Intent
+package intentengine
 
 type Intent struct {
 	ID        int      `json:"id"`
@@ -70,18 +70,18 @@ func NewIntentSentencesResponse() IntentSentencesResponse {
 }
 
 type IntentFeaturesResponse struct {
-	Classes interface{}   					`json:"classes"`
-	Exacts  []interface{} 					`json:"exacts"`
-	Blacks  []interface{} 					`json:"blacks"`
-	Rules   []IntentFeatureRulesResponse 	`json:"rules"`
+	Classes interface{}                  `json:"classes"`
+	Exacts  []interface{}                `json:"exacts"`
+	Blacks  []interface{}                `json:"blacks"`
+	Rules   []IntentFeatureRulesResponse `json:"rules"`
 }
 
 func NewIntentFeaturesResponse() IntentFeaturesResponse {
 	return IntentFeaturesResponse{
 		Classes: struct{}{},
-		Exacts: make([]interface{}, 0),
-		Blacks: make([]interface{}, 0),
-		Rules: make([]IntentFeatureRulesResponse, 0),
+		Exacts:  make([]interface{}, 0),
+		Blacks:  make([]interface{}, 0),
+		Rules:   make([]IntentFeatureRulesResponse, 0),
 	}
 }
 

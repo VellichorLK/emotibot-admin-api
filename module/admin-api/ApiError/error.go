@@ -1,5 +1,7 @@
 package ApiError
 
+// this package is deprecated
+
 import (
 	"net/http"
 )

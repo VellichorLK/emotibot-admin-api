@@ -19,6 +19,8 @@ var (
 
 	// ErrSQLAlreadyOccupied represent rows already have value, should not updated it.
 	ErrSQLAlreadyOccupied = errors.New("db row already updated")
+
+	ErrParameter = errors.New("Invalid parameter")
 )
 
 func GenNotFoundError(name string) error {
