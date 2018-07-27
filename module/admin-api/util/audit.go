@@ -32,6 +32,10 @@ const (
 	AuditModuleIntentEngine   = "10" // "意圖引擎"
 )
 
+var moduleMap = map[string]string{
+	"intents": AuditModuleIntentEngine,
+}
+
 type auditLog struct {
 	AppID     string
 	UserID    string
@@ -80,7 +84,9 @@ func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
 		operation = ""
 	}
 
-	AddAuditLog(appid, userID, userIP, module, operation, msg, result)
+	moduleCode := moduleMap[module]
+
+	AddAuditLog(appid, userID, userIP, moduleCode, operation, msg, result)
 }
 
 // AddAuditLog will add audit log to mysql-audit
