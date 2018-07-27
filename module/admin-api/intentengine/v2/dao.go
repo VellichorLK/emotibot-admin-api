@@ -60,11 +60,6 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 		conditions = append(conditions, "version is NULL")
 	}
 
-	if keyword != "" {
-		conditions = append(conditions, "name like ?")
-		params = append(params, fmt.Sprintf("%%%s%%", strings.Replace(keyword, "%", "\\%", -1)))
-	}
-
 	// Get intents id and name
 	queryStr := fmt.Sprintf("SELECT id, name FROM intents WHERE %s", strings.Join(conditions, " AND "))
 	intentRows, err := tx.Query(queryStr, params...)
@@ -140,7 +135,21 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 		return
 	}
 
-	ret = intents
+	ret = []*IntentV2{}
+	for idx := range intents {
+		// intent has sentence with keyword
+		if intents[idx].PositiveCount > 0 || intents[idx].NegativeCount > 0 {
+			ret = append(ret, intents[idx])
+			continue
+		}
+
+		// ignore case in english when checking name of intent
+		intentName := strings.ToLower(intents[idx].Name)
+		key := strings.ToLower(keyword)
+		if strings.Index(intentName, key) >= 0 {
+			ret = append(ret, intents[idx])
+		}
+	}
 	return
 }
 

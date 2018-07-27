@@ -62,7 +62,7 @@ func setupTestDB(db *sql.DB) error {
 		fmt.Println("Insert intents meet error: ", err.Error())
 		return err
 	}
-	_, err = db.Exec("INSERT INTO `intent_train_sets` (`id`, `sentence`, `intent`, `type`) VALUES (1, '支出1', 1, 0), (2, '不出1', 1, 1)")
+	_, err = db.Exec("INSERT INTO `intent_train_sets` (`id`, `sentence`, `intent`, `type`) VALUES (1, '支出1', 1, 0), (2, '不出I', 1, 1)")
 	if err != nil {
 		fmt.Println("Insert intent_train_sets meet error: ", err.Error())
 		return err
@@ -104,7 +104,7 @@ func TestGetIntents(t *testing.T) {
 		logError(t, "Get intents with keyword", nil, err)
 	}
 	if len(intents) != 2 {
-		logError(t, "Get intents with keyword", 2, len(intents))
+		logError(t, "Get intents with keyword 支出", 2, len(intents))
 	}
 	var intent *IntentV2
 	for idx := range intents {
@@ -113,13 +113,36 @@ func TestGetIntents(t *testing.T) {
 		}
 	}
 	if intent == nil {
-		logError(t, "Get intents with keyword, check search result", "valid pointer", nil)
+		logError(t, "Get intents with keyword 支出, check search result", "valid pointer", nil)
 	} else {
 		if intent.PositiveCount != 1 {
-			logError(t, "Get intents with keyword, check positive sentence count", 1, intent.PositiveCount)
+			logError(t, "Get intents with keyword 支出, check positive sentence count", 1, intent.PositiveCount)
 		}
 		if intent.NegativeCount != 0 {
-			logError(t, "Get intents with keyword, check negative sentence count", 0, intent.NegativeCount)
+			logError(t, "Get intents with keyword 支出, check negative sentence count", 0, intent.NegativeCount)
+		}
+	}
+
+	intents, err = testDao.GetIntents("test", nil, "不出i")
+	if err != nil {
+		logError(t, "Get intents with keyword", nil, err)
+	}
+	if len(intents) != 1 {
+		logError(t, "Get intents with keyword 不出i", 1, len(intents))
+	}
+	for idx := range intents {
+		if intents[idx].Name == "记支出" {
+			intent = intents[idx]
+		}
+	}
+	if intent == nil {
+		logError(t, "Get intents with keyword 不出i, check search result", "valid pointer", nil)
+	} else {
+		if intent.PositiveCount != 0 {
+			logError(t, "Get intents with keyword 不出i, check positive sentence count", 0, intent.PositiveCount)
+		}
+		if intent.NegativeCount != 1 {
+			logError(t, "Get intents with keyword, 不出i check negative sentence count", 1, intent.NegativeCount)
 		}
 	}
 
@@ -166,8 +189,8 @@ func TestGetIntent(t *testing.T) {
 	if intent.NegativeCount != 1 {
 		logError(t, "Get negative count of appid [test], version [nil]", 1, intent.NegativeCount)
 	}
-	if (*intent.Negative)[0].Content != "不出1" {
-		logError(t, "Get positive content of appid [test], version [nil]", "不出1", (*intent.Negative)[0].Content)
+	if (*intent.Negative)[0].Content != "不出I" {
+		logError(t, "Get positive content of appid [test], version [nil]", "不出I", (*intent.Negative)[0].Content)
 	}
 
 	intent, err = testDao.GetIntent("test", 1, "支出")
