@@ -124,7 +124,7 @@ func TestConsulUpdateTaskEngine(t *testing.T) {
 func TestConsulUpdateRobotChat(t *testing.T) {
 	appid := "vipshop"
 	th := func(w http.ResponseWriter, r *http.Request) {
-		expectedURI := fmt.Sprintf("/"+ConsulRCKey, appid, appid)
+		expectedURI := fmt.Sprintf("/"+ConsulRCKey, appid)
 		if r.URL.Path != expectedURI {
 			t.Fatalf("expect URI to be /%v, but got %v", expectedURI, r.URL.Path)
 		}

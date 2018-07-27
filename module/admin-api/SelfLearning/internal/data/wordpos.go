@@ -145,7 +145,7 @@ func parseFromWordPosRsp(rsp []byte) []*DalItem {
 
 		dalItem.Content, err = singleResult.Get("query").String()
 		if err != nil {
-			util.LogWarn.Println("parse_query_fail: %s\n ", singleResult)
+			util.LogWarn.Println("parse_query_fail: ", singleResult)
 			continue
 		}
 

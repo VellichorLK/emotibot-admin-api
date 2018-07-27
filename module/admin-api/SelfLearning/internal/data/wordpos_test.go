@@ -10,7 +10,7 @@ import (
 )
 
 func TestWordpos(t *testing.T) {
-	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	util.LogInit("TEST", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	nluURL := "http://172.16.101.47:13901"
 	testQuestions := []string{
 		"APP交易指南—如何买入/卖出",
@@ -75,10 +75,14 @@ func TestWordpos(t *testing.T) {
 		"ac3adaf5bc41af3d212a9dd5f11951a3",
 		"af65f9f3eb1f63c184738c64f5593001",
 	}
+	testQuestionIDs := make([]uint64, len(testQuestions))
+	for idx := range testQuestionIDs {
+		testQuestionIDs[idx] = uint64(idx) + 1
+	}
 	start := time.Now()
 	var nativeLog NativeLog
 	nativeLog.Init()
-	nativeLog.GetWordPos(nluURL, testQuestions)
+	nativeLog.GetWordPos(nluURL, testQuestions, testQuestionIDs)
 	util.LogInfo.Printf("Test ends. Calculate [%v] questions in [%v]s\n", len(testQuestions), time.Since(start).Seconds())
 	for i := 0; i < len(nativeLog.Logs); i++ {
 		datItem := nativeLog.Logs[i]

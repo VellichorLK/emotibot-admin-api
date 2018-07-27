@@ -15,8 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"emotibot.com/emotigo/module/vipshop-admin/SelfLearning/internal/data"
-	"emotibot.com/emotigo/module/vipshop-admin/util"
+	"./internal/data"
+	"emotibot.com/emotigo/module/admin-api/util"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -66,7 +66,7 @@ func setup() error {
 	ClusteringBatch = 20
 	//empty := bytes.NewBuffer([]byte{})
 	//util.LogInit(empty, empty, empty, empty)
-	util.LogInit(os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	util.LogInit("TEST", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	if ok := data.InitializeWord2Vec("../"); !ok {
 		return fmt.Errorf("init failed")
 	}
@@ -203,7 +203,7 @@ func TestGetClusteringResult(t *testing.T) {
 
 func TestConcurrencyGetClusteringResult(t *testing.T) {
 	empty := bytes.NewBuffer([]byte{})
-	util.LogInit(empty, empty, empty, empty)
+	util.LogInit("TEST", empty, empty, empty, empty)
 	var feedbacks = newArray(size)
 	var feedbackID []uint64
 
@@ -331,7 +331,7 @@ func TestGetRecommend(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"Question_Id", "Content"}).AddRow(1, answers[0]).AddRow(2, answers[1]).AddRow(3, answers[2]).AddRow(4, answers[3]).AddRow(5, answers[4])
 	mock.ExpectQuery("select Question_Id,Content from vipshop_question where Content ").WithArgs(answers[0], answers[1], answers[2], answers[3], answers[4]).WillReturnRows(rows)
 
-	recommends, err := getRecommend(inputString)
+	recommends, err := getRecommend("csbot", inputString)
 	if err != nil {
 		t.Fatal(err)
 	}

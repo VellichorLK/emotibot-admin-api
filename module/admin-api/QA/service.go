@@ -562,7 +562,7 @@ func genCategoryStr(appid string, condition *FAQ.QueryCondition) (string, error)
 
 		categoryPath, err = category.FullName(appid)
 		if err != nil {
-			fmt.Printf("error: ", err.Error())
+			fmt.Println("error: ", err.Error())
 			return categoryPath, err
 		}
 		categorySlice := strings.Split(categoryPath, "/")

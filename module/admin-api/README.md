@@ -14,17 +14,15 @@
 ./run.sh [tag_name]
 ```
 
-開發完成後, 部署docker image版本會將環境變數透過entrypoint.sh以及env.template轉換成
+開發完成後, 部署 docker image 版本會將環境變數透過 entrypoint.sh 以及 env.template 轉換成
 
 ```
 # Add prefix for every line of env
 # So you can copy & paste to real production env
 ./add_prefix.sh ../local.env
+
 # Remember also add new env into template file to active variable in production
 vim ./docker/env.template
-
-
-
 ```
 
 ## Module List

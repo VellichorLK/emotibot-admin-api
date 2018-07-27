@@ -457,10 +457,10 @@ func getCmdCountOfLabels(appid string) (map[int]int, error) {
 	}
 
 	ret := map[int]int{}
-	queryStr := fmt.Sprintf(
-		`SELECT robot_tag_id, count(*)
+	queryStr := `
+		SELECT robot_tag_id, count(*)
 		FROM cmd_robot_tag
-		GROUP BY robot_tag_id`, appid)
+		GROUP BY robot_tag_id`
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return ret, err
@@ -488,11 +488,11 @@ func getLabelCmdCount(appid string, id int) (int, error) {
 		return 0, errDBNotInit
 	}
 
-	queryStr := fmt.Sprintf(
-		`SELECT count(*)
+	queryStr := `
+		SELECT count(*)
 		FROM cmd_robot_tag
 		WHERE robot_tag_id = ?
-		GROUP BY robot_tag_id`, appid)
+		GROUP BY robot_tag_id`
 	row := mySQL.QueryRow(queryStr, id)
 	count := 0
 	err = row.Scan(&count)
@@ -513,10 +513,10 @@ func getLabelCmdCountMap(appid string) (map[int]int, error) {
 		return map[int]int{}, errDBNotInit
 	}
 
-	queryStr := fmt.Sprintf(
-		`SELECT robot_tag_id, count(*)
+	queryStr := `
+		SELECT robot_tag_id, count(*)
 		FROM cmd_robot_tag
-		GROUP BY robot_tag_id`, appid)
+		GROUP BY robot_tag_id`
 	rows, err := mySQL.Query(queryStr)
 	if err != nil && err != sql.ErrNoRows {
 		return map[int]int{}, err
