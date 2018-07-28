@@ -244,7 +244,7 @@ func getLatestIntentsVersion(appID string) (version int, err error) {
 	}
 
 	var v sql.NullInt64
-	err = db.QueryRow("SELECT MAX(intent_version_id) FROM intent_versions").Scan(&v)
+	err = db.QueryRow("SELECT MAX(intent_version_id) FROM intent_versions WHERE app_id = ?", appID).Scan(&v)
 	if err != nil || !v.Valid {
 		version = -1
 		return
