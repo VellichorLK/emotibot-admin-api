@@ -1,6 +1,7 @@
 package intentengine
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"github.com/tealeg/xlsx"
 )
 
 const intentFilesPath = "./statics"
@@ -100,30 +102,33 @@ func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) 
 		version = ver
 	}
 
-	fileName, origFileName, err := getIntentsXSLXFileName(appID, version)
+	_, origFileName, err := getIntentsXSLXFileName(appID, version)
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
 		util.LogError.Printf(errMsg)
 		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
 	}
 
-	f, err := os.OpenFile(intentFilesPath+"/"+string(fileName), os.O_RDONLY, 0666)
-	if err != nil {
-		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
-		util.LogError.Printf(errMsg)
-		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
+	intents, err := getIntentDetails(appID, version)
+	xlsxFile := xlsx.NewFile()
+	for idx := range intents {
+		intent := intents[idx]
+		sheet, err := xlsxFile.AddSheet(intent.Name)
+		if err != nil {
+			return nil, "", ApiError.IO_ERROR, err
+		}
+		for _, sentence := range intent.Sentences {
+			sheet.AddRow().AddCell().SetString(sentence)
+		}
 	}
 
-	info, err := f.Stat()
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	err = xlsxFile.Write(writer)
 	if err != nil {
-		errMsg := fmt.Sprintf("Cannot get intents file size with version %v", version)
-		util.LogError.Printf(errMsg)
-		return nil, "", ApiError.IO_ERROR, errors.New(errMsg)
+		return nil, "", ApiError.IO_ERROR, err
 	}
-
-	buf := make([]byte, info.Size())
-	_, err = f.Read(buf)
-	return buf, string(origFileName), ApiError.SUCCESS, nil
+	return buf.Bytes(), string(origFileName), ApiError.SUCCESS, nil
 }
 
 func Train(appID string, version int, autoReload bool, trainEngine int) (retCode int, err error) {
