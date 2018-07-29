@@ -130,13 +130,15 @@ var (
 		"DelRobotProfileRQuestionTemplate":  "删除形象问题 [%s] 的相似问",
 
 		// Used in intent engine
-		"UploadIntentEngine": "上传意图引擎",
-		"ExportIntentEngine": "导出意图引擎",
-		"GetUploadFileFail":  "获取上传档案失败",
-		"IntentFormatError":  "上传格式错误",
-		"IOError":            "读取档案错误",
-		"UnknownError":       "未知错误",
-		"IntentVersionError": "意图版本错误",
+		"UploadIntentEngine":   "上传意图引擎",
+		"ExportIntentEngine":   "导出意图引擎",
+		"GetUploadFileFail":    "获取上传档案失败",
+		"IntentFormatError":    "上传格式错误",
+		"IOError":              "读取档案错误",
+		"UnknownError":         "未知错误",
+		"IntentVersionError":   "意图版本错误",
+		"PreviousStillRunning": "前一次训练进行中",
+		"UploadIntentInfoTpl":  "上传 %d 个意图",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

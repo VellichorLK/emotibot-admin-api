@@ -102,6 +102,12 @@ func Return(w http.ResponseWriter, adminErr AdminErrors.AdminError, ret interfac
 	return nil
 }
 
+func ReturnFile(w http.ResponseWriter, filename string, buf []byte) {
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Write(buf)
+}
+
 func ReturnError(w http.ResponseWriter, errno int, msg string) error {
 	return Return(w, AdminErrors.New(errno, msg), nil)
 }

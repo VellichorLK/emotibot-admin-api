@@ -40,7 +40,7 @@ func init() {
 				util.NewEntryPoint("GET", "status", []string{"view"}, handleGetTrainStatus),
 				util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
 			},
-			v2.EntryList...),
+			intentenginev2.EntryList...),
 	}
 }
 
@@ -289,7 +289,7 @@ func handleGetData(w http.ResponseWriter, r *http.Request) {
 
 	trainingData, retCode, err := GetTrainingData(appID, flag)
 	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR {
+		if retCode == ApiError.REQUEST_ERROR  {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

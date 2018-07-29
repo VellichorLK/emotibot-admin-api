@@ -1,4 +1,4 @@
-package v2
+package intentenginev2
 
 import (
 	"bytes"
@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
-	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/lestrrat-go/test-mysqld"
 )
 
@@ -35,36 +35,85 @@ func setup() error {
 		}
 		testDao.db = db
 	}
-	util.LogInit("TEST")
+	// util.LogInit("TEST")
 	return nil
 }
 
 func setupTestDB(db *sql.DB) error {
 	db.Exec("CREATE DATABASE emotibot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
 	db.Exec("USE emotibot")
-	_, err := db.Exec("CREATE TABLE `intent_train_sets` ( `id` int(11) NOT NULL AUTO_INCREMENT, `sentence` varchar(256) COLLATE utf8_unicode_ci NOT NULL, `intent` int(11) NOT NULL, `type` int(1) NOT NULL DEFAULT '0', PRIMARY KEY (`id`), KEY `intent_id` (`intent`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
+	_, err := db.Exec(
+		"CREATE TABLE `intent_train_sets` (" +
+			"`id` int(11) NOT NULL AUTO_INCREMENT, " +
+			"`sentence` varchar(256) COLLATE utf8_unicode_ci NOT NULL, " +
+			"`intent` int(11) NOT NULL, " +
+			"`type` int(1) NOT NULL DEFAULT '0', " +
+			"PRIMARY KEY (`id`), " +
+			"KEY `intent_id` (`intent`)" +
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
 	if err != nil {
 		fmt.Println("Create intent_train_sets meet error: ", err.Error())
 		return err
 	}
-	_, err = db.Exec("CREATE TABLE `intent_versions` ( `intent_version_id` int(11) NOT NULL AUTO_INCREMENT, `app_id` varchar(128) COLLATE utf8_unicode_ci NOT NULL, `ie_model_id` varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL, `re_model_id` varchar(128) COLLATE utf8_unicode_ci DEFAULT NULL, `orig_file_name` varchar(256) COLLATE utf8_unicode_ci NOT NULL, `file_name` varchar(256) COLLATE utf8_unicode_ci NOT NULL, `in_used` tinyint(1) NOT NULL DEFAULT '0', `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`intent_version_id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
+	_, err = db.Exec(
+		"CREATE TABLE `intent_versions` (" +
+			"`version` int(11) NOT NULL AUTO_INCREMENT," +
+			"`appid` char(36) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''," +
+			"`ie_model_id` char(64) COLLATE utf8_unicode_ci DEFAULT NULL," +
+			"`re_model_id` char(64) COLLATE utf8_unicode_ci DEFAULT NULL," +
+			"`in_used` tinyint(1) NOT NULL DEFAULT '0'," +
+			"`commit_time` int(20) NOT NULL," +
+			"`start_train` int(20) DEFAULT NULL," +
+			"`end_train` int(20) DEFAULT NULL," +
+			"PRIMARY KEY (`version`)" +
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
 	if err != nil {
 		fmt.Println("Create intent_versions meet error: ", err.Error())
 		return err
 	}
-	_, err = db.Exec("CREATE TABLE `intents` ( `id` int(11) NOT NULL AUTO_INCREMENT, `appid` varchar(128) COLLATE utf8_unicode_ci NOT NULL DEFAULT '', `name` varchar(256) COLLATE utf8_unicode_ci NOT NULL, `version` int(11) DEFAULT NULL, `updatetime` int(20) NOT NULL, PRIMARY KEY (`id`), KEY `intent_version_id` (`version`)) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
+	_, err = db.Exec(
+		"CREATE TABLE `intents` ( `id` int(11) NOT NULL AUTO_INCREMENT," +
+			"`appid` varchar(128) COLLATE utf8_unicode_ci NOT NULL DEFAULT ''," +
+			"`name` varchar(256) COLLATE utf8_unicode_ci NOT NULL," +
+			"`version` int(11) DEFAULT NULL," +
+			"`updatetime` int(20) NOT NULL," +
+			"PRIMARY KEY (`id`), KEY `intent_version_id` (`version`)" +
+			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
 	if err != nil {
 		fmt.Println("Create intent_versions meet error: ", err.Error())
 		return err
 	}
-	_, err = db.Exec("INSERT INTO `intents` (`id`, `appid`, `name`, `version`, `updatetime`) VALUES (1, 'test','记支出',NULL,0), (2, 'test','记收入',NULL,0), (3, 'test','查支出',NULL,0), (4, 'test','查汇总',NULL,0), (5, 'test','查收入',NULL,0), (6, 'test','other',NULL,0), (7, 'test','other',1,0);")
+	_, err = db.Exec(
+		"INSERT INTO `intents` " +
+			"(`id`, `appid`, `name`, `version`, `updatetime`) VALUES " +
+			"(1, 'test','记支出',NULL,10000)," +
+			"(2, 'test','记收入',NULL,1000)," +
+			"(3, 'test','查支出',NULL,1000)," +
+			"(4, 'test','查汇总',NULL,1000)," +
+			"(5, 'test','查收入',NULL,1000)," +
+			"(6, 'test','other',NULL,1000)," +
+			"(7, 'test','other',1,1000);")
 	if err != nil {
 		fmt.Println("Insert intents meet error: ", err.Error())
 		return err
 	}
-	_, err = db.Exec("INSERT INTO `intent_train_sets` (`id`, `sentence`, `intent`, `type`) VALUES (1, '支出1', 1, 0), (2, '不出I', 1, 1)")
+	_, err = db.Exec(
+		"INSERT INTO `intent_train_sets` " +
+			"(`id`, `sentence`, `intent`, `type`) VALUES" +
+			"(1, '支出1', 1, 0)," +
+			"(2, '不出I', 1, 1)")
 	if err != nil {
 		fmt.Println("Insert intent_train_sets meet error: ", err.Error())
+		return err
+	}
+
+	_, err = db.Exec(
+		"INSERT INTO `intent_versions` " +
+			"(`version`, `appid`, `ie_model_id`, `re_model_id`, `in_used`," +
+			"`commit_time`, `start_train`, `end_train`) VALUES" +
+			"(1, 'test', NULL, NULL, 0, 1000, NULL, NULL);")
+	if err != nil {
+		fmt.Println("Insert intent_versions meet error: ", err.Error())
 		return err
 	}
 	return nil
@@ -374,6 +423,42 @@ func TestDeleteIntent(t *testing.T) {
 		logError(t, "Test get after delete", sql.ErrNoRows, err)
 	}
 
+	teardown()
+}
+
+func TestCommitIntent(t *testing.T) {
+	setup()
+	version, _, err := testDao.CommitIntent("test")
+	if err != nil {
+		logError(t, "Commit intent fail", nil, err)
+		return
+	}
+	if version != 2 {
+		logError(t, "Commit intent version error", 2, version)
+	}
+	version, _, err = testDao.CommitIntent("test")
+	if err != nil {
+		logError(t, "Commit intent again fail", nil, err)
+		return
+	}
+	if version != 2 {
+		logError(t, "Commit intent again version error", 2, version)
+	}
+
+	time.Sleep(time.Second * 1)
+	err = testDao.ModifyIntent("test", 1, "记支出", []*SentenceV2WithType{}, []int64{2})
+	if err != nil {
+		logError(t, "Modify intent before commit again fail", nil, err)
+		return
+	}
+	version, _, err = testDao.CommitIntent("test")
+	if err != nil {
+		logError(t, "Commit intent after modify fail", nil, err)
+		return
+	}
+	if version != 3 {
+		logError(t, "Commit intent after modify version error", 3, version)
+	}
 	teardown()
 }
 

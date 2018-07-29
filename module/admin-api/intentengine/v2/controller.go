@@ -1,27 +1,18 @@
-package v2
+package intentenginev2
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-	"emotibot.com/emotigo/module/admin-api/util/LocaleMsg"
-)
-
-var (
-	// EntryList will be merged in the module controller
-	EntryList = []util.EntryPoint{
-		util.NewEntryPointWithVer("GET", "intents", []string{"view"}, handleGetIntentsV2, 2),
-		util.NewEntryPointWithVer("POST", "intent", []string{"create"}, handleAddIntentV2, 2),
-		util.NewEntryPointWithVer("GET", "intent/{intentID}", []string{"view"}, handleGetIntentV2, 2),
-		util.NewEntryPointWithVer("PATCH", "intent/{intentID}", []string{"view"}, handleUpdateIntentV2, 2),
-		util.NewEntryPointWithVer("DELETE", "intent/{intentID}", []string{"view"}, handleDeleteIntentV2, 2),
-	}
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 func init() {
@@ -59,7 +50,7 @@ func handleGetIntentV2(w http.ResponseWriter, r *http.Request) {
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
 		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentID")), nil)
+		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
 
@@ -82,7 +73,7 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		result := 0
 		var auditBuf bytes.Buffer
-		auditBuf.WriteString(LocaleMsg.Get(locale, "DeleteIntent"))
+		auditBuf.WriteString(localemsg.Get(locale, "DeleteIntent"))
 		if origIntent != nil {
 			auditBuf.WriteString(": ")
 			auditBuf.WriteString(origIntent.Name)
@@ -100,7 +91,7 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 
 	if convertErr != nil {
 		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentID"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID"))
 		return
 	}
 
@@ -123,14 +114,14 @@ func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		result := 0
 		var auditBuf bytes.Buffer
-		auditBuf.WriteString(LocaleMsg.Get(locale, "AddIntent"))
+		auditBuf.WriteString(localemsg.Get(locale, "AddIntent"))
 		if newIntent != nil {
-			msgTemplate := LocaleMsg.Get(locale, "AddIntentSummaryTpl")
+			msgTemplate := localemsg.Get(locale, "AddIntentSummaryTpl")
 			auditBuf.WriteString(fmt.Sprintf(msgTemplate,
 				newIntent.Name, newIntent.PositiveCount, newIntent.NegativeCount))
 		}
 		if err != nil {
-			auditBuf.WriteString(LocaleMsg.Get(locale, "Fail"))
+			auditBuf.WriteString(localemsg.Get(locale, "Fail"))
 			auditBuf.WriteString(", ")
 			auditBuf.WriteString(err.String())
 		}
@@ -146,7 +137,7 @@ func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentName"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentName"))
 		return
 	}
 
@@ -157,12 +148,12 @@ func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
 	negative := []string{}
 	jsonErr := json.Unmarshal([]byte(positiveStr), &positive)
 	if jsonErr != nil {
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentPositive"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentPositive"))
 		return
 	}
 	jsonErr = json.Unmarshal([]byte(negativeStr), &negative)
 	if jsonErr != nil {
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentNegative"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentNegative"))
 		return
 	}
 
@@ -186,14 +177,14 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		result := 0
 		var auditBuf bytes.Buffer
-		auditBuf.WriteString(LocaleMsg.Get(locale, "UpdateIntent"))
+		auditBuf.WriteString(localemsg.Get(locale, "UpdateIntent"))
 		if newIntent != nil {
-			msgTemplate := LocaleMsg.Get(locale, "UpdateIntentSummaryTpl")
+			msgTemplate := localemsg.Get(locale, "UpdateIntentSummaryTpl")
 			auditBuf.WriteString(fmt.Sprintf(msgTemplate,
 				newIntent.Name, len(updateList), len(deleteList)))
 		}
 		if err != nil {
-			auditBuf.WriteString(LocaleMsg.Get(locale, "Fail"))
+			auditBuf.WriteString(localemsg.Get(locale, "Fail"))
 			auditBuf.WriteString(", ")
 			auditBuf.WriteString(err.String())
 		}
@@ -209,14 +200,14 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
 		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentID")), nil)
+		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
 		util.LogTrace.Println("Error name param in request")
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentName"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentName"))
 		return
 	}
 
@@ -225,12 +216,12 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 
 	jsonErr := json.Unmarshal([]byte(updateStr), &updateList)
 	if jsonErr != nil {
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentModifyUpdate"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentModifyUpdate"))
 		return
 	}
 	jsonErr = json.Unmarshal([]byte(deleteStr), &deleteList)
 	if jsonErr != nil {
-		err = AdminErrors.New(AdminErrors.ErrnoRequestError, LocaleMsg.Get(locale, "IntentModifyDelete"))
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentModifyDelete"))
 		return
 	}
 
@@ -240,4 +231,137 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 	}
 	ret = newIntent
 	return
+}
+
+func handleGetIntentStatusV2(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	status, err := GetIntentEngineStatus(appid)
+	if err != nil {
+		util.Return(w, err, nil)
+	}
+	util.Return(w, nil, status)
+}
+
+func handleStartTrain(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+
+	version, err := StartTrain(appid)
+	if err != nil {
+		util.Return(w, err, nil)
+		return
+	}
+	util.Return(w, nil, version)
+}
+
+func handleGetTrainDataV2(w http.ResponseWriter, r *http.Request) {
+	appid := r.URL.Query().Get("app_id")
+	if appid == "" {
+		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError,
+			"app_id not specified"), nil)
+		return
+	}
+	rsp, err := GetTrainData(appid)
+	if err != nil {
+		util.Return(w, err, nil)
+		return
+	}
+	util.Return(w, nil, rsp)
+}
+
+func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetAppID(r)
+	locale := util.GetLocale(r)
+	var err AdminErrors.AdminError
+	var auditMsg bytes.Buffer
+
+	defer func() {
+		retVal := 0
+		if err == nil {
+			retVal = 1
+		} else {
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(err.Error())
+		}
+
+		util.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+		util.Return(w, err, auditMsg.String())
+	}()
+	auditMsg.WriteString(util.Msg["UploadIntentEngine"])
+
+	file, info, ioErr := r.FormFile("file")
+	if ioErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, "")
+		return
+	}
+
+	var buffer bytes.Buffer
+	_, ioErr = io.Copy(&buffer, file)
+	if ioErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, "")
+		return
+	}
+	auditMsg.WriteString(info.Filename)
+
+	intents, parseErr := ParseImportIntentFile(buffer.Bytes(), locale)
+	if parseErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, parseErr.Error())
+		return
+	}
+	auditMsg.WriteString(fmt.Sprintf(util.Msg["UploadIntentInfoTpl"], len(intents)))
+
+	err = UpdateLatestIntents(appid, intents)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
+	appid := r.URL.Query().Get("appid")
+	locale := util.GetLocale(r)
+	var err AdminErrors.AdminError
+	var ret []byte
+	var auditMsg bytes.Buffer
+
+	defer func() {
+		retVal := 0
+		if err == nil {
+			retVal = 1
+			now := time.Now()
+			filename := fmt.Sprintf("intent_%d%02d%02d_%02d%02d%02d.xlsx",
+				now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+			util.ReturnFile(w, filename, ret)
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(filename)
+		} else {
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(err.Error())
+			util.Return(w, err, nil)
+		}
+		util.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+	}()
+	auditMsg.WriteString(localemsg.Get(locale, "IntentExport"))
+
+	if !util.IsValidAppID(appid) {
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, "APPID")
+		return
+	}
+
+	ret, err = GetExportIntents(appid, locale)
+	return
+}
+
+func getEnvironments() map[string]string {
+	return util.GetEnvOf(moduleName)
+}
+
+func getEnvironment(key string) string {
+	envs := util.GetEnvOf(moduleName)
+	if envs != nil {
+		if val, ok := envs[key]; ok {
+			return val
+		}
+	}
+	return ""
 }
