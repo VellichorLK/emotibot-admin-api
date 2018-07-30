@@ -348,7 +348,7 @@ func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ret, err = GetExportIntents(appid, locale)
+	ret, err = GetExportIntentsBFFormat(appid, locale)
 	return
 }
 

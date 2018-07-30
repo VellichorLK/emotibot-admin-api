@@ -508,3 +508,55 @@ func GetExportIntents(appid string, locale string) (ret []byte, err AdminErrors.
 	}
 	return buf.Bytes(), nil
 }
+
+func GetExportIntentsBFFormat(appid string, locale string) (ret []byte, err AdminErrors.AdminError) {
+	intents, daoErr := dao.GetIntentsDetail(appid, nil)
+	if daoErr != nil {
+		return
+	}
+
+	file := xlsx.NewFile()
+	sheetPositive, xlsxErr := file.AddSheet(localemsg.Get(locale, "IntentBF2Sheet1Name"))
+	if xlsxErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, xlsxErr.Error())
+		return
+	}
+	sheetNegative, xlsxErr := file.AddSheet(localemsg.Get(locale, "IntentBF2Sheet2Name"))
+	if xlsxErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, xlsxErr.Error())
+		return
+	}
+	sheets := []*xlsx.Sheet{sheetPositive, sheetNegative}
+	for _, sheet := range sheets {
+		headerRow := sheet.AddRow()
+		headerRow.AddCell().SetString(localemsg.Get(locale, "IntentName"))
+		headerRow.AddCell().SetString(localemsg.Get(locale, "IntentSentence"))
+	}
+
+	for idx := range intents {
+		intent := intents[idx]
+		if intent.Positive != nil {
+			for _, sentence := range *intent.Positive {
+				row := sheetPositive.AddRow()
+				row.AddCell().SetString(intent.Name)
+				row.AddCell().SetString(sentence.Content)
+			}
+		}
+		if intent.Negative != nil {
+			for _, sentence := range *intent.Negative {
+				row := sheetNegative.AddRow()
+				row.AddCell().SetString(intent.Name)
+				row.AddCell().SetString(sentence.Content)
+			}
+		}
+	}
+
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	ioErr := file.Write(writer)
+	if ioErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, ioErr.Error())
+		return
+	}
+	return buf.Bytes(), nil
+}
