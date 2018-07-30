@@ -47,9 +47,9 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		Page: VisitRecordsRequest.Page,
 	}
 
-	query.UserID = VisitRecordsRequest.Filter.UserID
-
 	if VisitRecordsRequest.Filter != nil {
+		query.UserID = VisitRecordsRequest.Filter.UserID
+
 		if VisitRecordsRequest.Filter.Contains != nil && VisitRecordsRequest.Filter.Contains.Type == "question" {
 			query.Question = VisitRecordsRequest.Filter.Contains.Text
 		}
