@@ -11,6 +11,7 @@ const (
 	VisitRecordsMetricUserQ   = "user_q"
 	VisitRecordsMetricScore   = "score"
 	VisitRecordsMetricStdQ    = "std_q"
+	VisitRecordsMetricAnswer  = "answer"
 	VisitRecordsMetricLogTime = "log_time"
 	VisitRecordsMetricEmotion = "emotion"
 	VisitRecordsMetricQType   = "qtype"
@@ -77,13 +78,25 @@ type VisitRecordsData struct {
 	UserQ   string  `json:"user_q"`
 	Score   float64 `json:"score"`
 	StdQ    string  `json:"std_q"`
+	Answer  string  `json:"answer"`
 	LogTime string  `json:"log_time"`
 	Emotion string  `json:"emotion"`
 	QType   string  `json:"qtype"`
 }
 
+type VisitRecordsRawData struct {
+	UserID  string   `json:"user_id"`
+	UserQ   string   `json:"user_q"`
+	Score   float64  `json:"score"`
+	StdQ    string   `json:"std_q"`
+	Answer  []Answer `json:"answer"`
+	LogTime string   `json:"log_time"`
+	Emotion string   `json:"emotion"`
+	QType   string   `json:"qtype"`
+}
+
 type VisitRecordsHitResult struct {
-	VisitRecordsData
+	VisitRecordsRawData
 	Module string `json:"module"`
 }
 
@@ -103,6 +116,10 @@ var VisitRecordsTableHeader = []TableHeaderItem{
 	TableHeaderItem{
 		Text: "标准问题",
 		ID:   VisitRecordsMetricStdQ,
+	},
+	TableHeaderItem{
+		Text: "机器人回答",
+		ID:   VisitRecordsMetricAnswer,
 	},
 	TableHeaderItem{
 		Text: "访问时间",

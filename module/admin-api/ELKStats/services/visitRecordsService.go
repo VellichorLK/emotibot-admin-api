@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
@@ -53,6 +54,7 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		data.VisitRecordsMetricUserQ,
 		data.VisitRecordsMetricScore,
 		data.VisitRecordsMetricStdQ,
+		"answer.value",
 		data.VisitRecordsMetricLogTime,
 		data.VisitRecordsMetricEmotion,
 		"module",
@@ -98,14 +100,29 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		logTime = logTime.Local()
 		hitResult.LogTime = logTime.Format("2006-01-02 15:04:05")
 
-		record := hitResult.VisitRecordsData
+		rawRecord := hitResult.VisitRecordsRawData
+		answers := make([]string, 0)
+
+		for _, answer := range rawRecord.Answer {
+			answers = append(answers, answer.Value)
+		}
 
 		if hitResult.Module == "faq" || hitResult.Module == "task_engine" {
-			record.QType = "业务类"
+			rawRecord.QType = "业务类"
 		} else if hitResult.Module == "chat" {
-			record.QType = "聊天类"
+			rawRecord.QType = "聊天类"
 		} else {
-			record.QType = "其他类"
+			rawRecord.QType = "其他类"
+		}
+
+		record := data.VisitRecordsData{
+			UserID:  rawRecord.UserID,
+			UserQ:   rawRecord.UserQ,
+			Score:   rawRecord.Score,
+			Answer:  strings.Join(answers, ", "),
+			LogTime: rawRecord.LogTime,
+			Emotion: rawRecord.Emotion,
+			QType:   rawRecord.QType,
 		}
 
 		records = append(records, &record)
