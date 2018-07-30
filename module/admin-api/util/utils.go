@@ -27,6 +27,7 @@ const (
 	ConstLocaleHeaderKey = "X-Locale"
 	defaultLocale        = "zh-cn"
 
+	ConstEnterpriseIDHeaderKey = "X-EnterpriseID"
 	ConstAppIDHeaderKey = "X-AppID"
 )
 
@@ -44,6 +45,16 @@ func GetAuthToken(r *http.Request) string {
 		return ""
 	}
 	return params[1]
+}
+
+// GetEnterpriseID will get Enterprise ID from http header
+func GetEnterpriseID(r *http.Request) string {
+	enterpriseID := r.Header.Get(ConstEnterpriseIDHeaderKey)
+	match, _ := regexp.MatchString("[a-zA-Z0-9]+", enterpriseID)
+	if match {
+		return enterpriseID
+	}
+	return ""
 }
 
 // GetAppID will get AppID from http header
