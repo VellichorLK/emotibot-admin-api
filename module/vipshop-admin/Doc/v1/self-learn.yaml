@@ -184,7 +184,7 @@ paths:
                 feebacks:
                   type: array
                   items:
-                    type: string
+                    type: int64
                     description: "使用者問題ID"
       responses:
         200:
@@ -266,6 +266,6 @@ paths:
                       description: "標準問內容"
                     questionId:
                       type: integer
-                      format: int64
+                      format: integer
         500:
           description: "Internal server error"

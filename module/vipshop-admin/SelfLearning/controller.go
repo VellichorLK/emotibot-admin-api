@@ -420,7 +420,7 @@ func handleUpdateUserQuestions(ctx context.Context) {
 		ctx.Writef("Can't found one of the id")
 		return
 	} else if err == ErrAlreadyOccupied {
-		ctx.StatusCode(http.StatusBadRequest)
+		ctx.StatusCode(http.StatusConflict)
 		ctx.Writef("Can't updated one of the id, because it already has value")
 		return
 	} else if err != nil {
