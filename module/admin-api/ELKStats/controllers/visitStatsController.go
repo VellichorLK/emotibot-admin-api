@@ -11,9 +11,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
-var	visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
+var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 	data.VisitStatsMetricConversations:   services.ConversationCounts,
 	data.VisitStatsMetricUniqueUsers:     services.UniqueUserCounts,
 	data.VisitStatsMetricActiveUsers:     services.ActiveUserCounts,
@@ -56,7 +57,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime, endTime, err := util.CreateTimeRangeFromString(t1, t2, "20060102")
+	startTime, endTime, err := elasticsearch.CreateTimeRangeFromString(t1, t2, "20060102")
 	if err != nil {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterT2, "t1/t2")
 		returnBadRequest(w, errResponse)
@@ -132,7 +133,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	if statsType == data.VisitStatsTypeTime ||
 		(statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterCategory) {
@@ -216,7 +217,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime, endTime, err := util.CreateTimeRangeFromString(t1, t2, "20060102")
+	startTime, endTime, err := elasticsearch.CreateTimeRangeFromString(t1, t2, "20060102")
 	if err != nil {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterT2, "t1/t2")
 		returnBadRequest(w, errResponse)
@@ -232,7 +233,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	switch questionsType {
 	case data.VisitQuestionsTypeTop:
@@ -278,7 +279,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interface{}, error) {
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	var visitStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	visitStatsCounts := make(map[string]map[string]interface{})

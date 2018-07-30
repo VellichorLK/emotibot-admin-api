@@ -11,9 +11,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
-var	callStatsQueryHandlers = map[string]data.CallStatsQueryHandler{
+var callStatsQueryHandlers = map[string]data.CallStatsQueryHandler{
 	data.CallsMetricTotals:    services.TotalCallCounts,
 	data.CallsMetricCompletes: services.CompleteCallCounts,
 	data.CallsMetricToHumans:  services.ToHumanCallCounts,
@@ -52,7 +53,7 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime, endTime, err := util.CreateTimeRangeFromString(t1, t2, "20060102")
+	startTime, endTime, err := elasticsearch.CreateTimeRangeFromString(t1, t2, "20060102")
 	if err != nil {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterT2, "t1/t2")
 		returnBadRequest(w, errResponse)
@@ -77,7 +78,7 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		AggInterval: aggInterval,
 	}
 
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	switch statsType {
 	case data.CallStatsTypeTime:
@@ -113,7 +114,7 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchCallStats(query data.CallStatsQuery) (map[string]map[string]interface{}, error) {
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	var callStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	callStatsCounts := make(map[string]map[string]interface{})

@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
 func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
@@ -33,7 +34,7 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime, endTime := util.CreateTimeRangeFromTimestamp(VisitRecordsRequest.StartTime,
+	startTime, endTime := elasticsearch.CreateTimeRangeFromTimestamp(VisitRecordsRequest.StartTime,
 		VisitRecordsRequest.EndTime)
 
 	query := data.VisitRecordsQuery{
@@ -70,7 +71,7 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	esCtx, esClient := util.GetElasticsearch()
+	esCtx, esClient := elasticsearch.GetClient()
 
 	records, totalSize, limit, err := services.VisitRecordsQuery(esCtx, esClient, query)
 	if err != nil {

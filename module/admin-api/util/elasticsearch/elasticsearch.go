@@ -1,4 +1,4 @@
-package util
+package elasticsearch
 
 import (
 	"context"
@@ -16,7 +16,7 @@ var (
 	esCtx    context.Context
 )
 
-func InitElasticsearch(host string, port string) (err error) {
+func Init(host string, port string) (err error) {
 	esURL := fmt.Sprintf("http://%s:%s", host, port)
 
 	// Turn-off sniffing
@@ -82,7 +82,7 @@ func InitElasticsearch(host string, port string) (err error) {
 	return
 }
 
-func GetElasticsearch() (context.Context, *elastic.Client) {
+func GetClient() (context.Context, *elastic.Client) {
 	return esCtx, esClient
 }
 

@@ -26,6 +26,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
 // constant define all const used in server
@@ -98,14 +99,12 @@ func main() {
 
 	err := initElasticsearch()
 	if err != nil {
-		util.LogError.Println("Start server fail: ", err.Error())
-		return
+		util.LogError.Println("Init elastic search fail:", err.Error())
 	}
 
 	err = ELKStats.InitTags()
 	if err != nil {
-		util.LogError.Println("Start server fail: ", err.Error())
-		return
+		util.LogError.Println("Init elastic search tags fail:", err.Error())
 	}
 
 	logAvailablePath(router)
@@ -280,7 +279,7 @@ func initDB() {
 func initElasticsearch() (err error) {
 	host := getServerEnv("ELASTICSEARCH_HOST")
 	port := getServerEnv("ELASTICSEARCH_PORT")
-	return util.InitElasticsearch(host, port)
+	return elasticsearch.Init(host, port)
 }
 
 func runOnetimeJob() {
