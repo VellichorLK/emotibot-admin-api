@@ -79,7 +79,7 @@ type VisitRecordsData struct {
 	StdQ    string  `json:"std_q"`
 	LogTime string  `json:"log_time"`
 	Emotion string  `json:"emotion"`
-	QType   string  `json:"q_type"`
+	QType   string  `json:"qtype"`
 }
 
 type VisitRecordsHitResult struct {
