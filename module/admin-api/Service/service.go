@@ -172,6 +172,7 @@ func DeleteInSolr(typeInSolr string, deleteSolrIDs map[string][]string) (string,
 		if err != nil {
 			return "", err
 		}
+		util.LogTrace.Println("Send to solr-etl: ", params)
 		util.LogTrace.Println("Get from delete in solr: ", content)
 	}
 	return "", nil

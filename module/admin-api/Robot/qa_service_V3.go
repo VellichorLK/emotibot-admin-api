@@ -222,6 +222,24 @@ func SyncRobotProfileToSolr() {
 		}
 	}
 
+	deleteStdQIDs := map[string][]string{}
+	for idx := range tagInfos {
+		info := tagInfos[idx]
+		if info.Answers == nil || len(info.Answers) <= 0 {
+			if _, ok := deleteStdQIDs[info.AppID]; !ok {
+				deleteStdQIDs[info.AppID] = []string{}
+			}
+			deleteStdQIDs[info.AppID] = append(deleteStdQIDs[info.AppID], info.SolrID)
+		}
+	}
+	if len(deleteStdQIDs) > 0 {
+		body, err = Service.DeleteInSolr("robot", deleteStdQIDs)
+		if err != nil {
+			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			return
+		}
+	}
+
 	if len(deleteRQIDs) > 0 {
 		body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
 		if err != nil {
