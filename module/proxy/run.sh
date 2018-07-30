@@ -10,7 +10,7 @@ CONTAINER=goproxy-uid
 # </EDIT_ME>
 # Stable version before 2018/06/05
 #TAG=20180321001
-TAG=20180720001
+TAG=20180730001
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 # Check if docker image exists (locally or on the registry)
