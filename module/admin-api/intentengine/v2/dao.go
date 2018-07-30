@@ -458,8 +458,10 @@ func (dao intentDaoV2) CommitIntent(appid string) (version int, ret []*IntentV2,
 		util.LogTrace.Println("No need commit, version:", version)
 		return
 	}
-	intents, err := getIntents(tx, appid, &version, true)
+	intents, err := getIntents(tx, appid, nil, true)
 	now := time.Now().Unix()
+
+	util.LogTrace.Printf("Commit %d intents\n", len(intents))
 	version, err = commitNewVersion(tx, appid, intents, now)
 	if err != nil {
 		return
@@ -661,7 +663,7 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 
 	if len(sentenceValues) > 0 {
 		queryStr = fmt.Sprintf(`
-			INSAERT INTO intent_train_sets (sentence, intent, type)
+			INSERT INTO intent_train_sets (sentence, intent, type)
 			VALUES (?, ?, ?)%s`, strings.Repeat(",(?, ?, ?)", len(sentenceValues)/3-1))
 		_, err = tx.Exec(queryStr, sentenceValues...)
 		if err != nil {

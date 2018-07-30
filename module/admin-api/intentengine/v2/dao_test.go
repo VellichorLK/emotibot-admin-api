@@ -65,6 +65,8 @@ func setupTestDB(db *sql.DB) error {
 			"`commit_time` int(20) NOT NULL," +
 			"`start_train` int(20) DEFAULT NULL," +
 			"`end_train` int(20) DEFAULT NULL," +
+			"`sentence_count` int(20) NOT NULL DEFAULT '0'," +
+			"`result` tinyint(1) NOT NULL DEFAULT '0'," +
 			"PRIMARY KEY (`version`)" +
 			") ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;")
 	if err != nil {
