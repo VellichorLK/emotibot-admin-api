@@ -35,7 +35,7 @@ func InitElasticsearch(host string, port string) (err error) {
 	}
 
 	if !exists {
-		// Create new records index
+		// Create records index
 		mapping, _err := ioutil.ReadFile(data.ESRecordsMappingFile)
 		if _err != nil {
 			err = _err
@@ -54,13 +54,13 @@ func InitElasticsearch(host string, port string) (err error) {
 		}
 	}
 
-	// Create new sessions index
 	exists, err = esClient.IndexExists(data.ESSessionsIndex).Do(esCtx)
 	if err != nil {
 		return
 	}
 
 	if !exists {
+		// Create sessions index
 		mapping, _err := ioutil.ReadFile(data.ESSessionsMappingFile)
 		if _err != nil {
 			err = _err
