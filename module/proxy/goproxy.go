@@ -78,7 +78,7 @@ func GoProxy(w http.ResponseWriter, r *http.Request) {
 
 	if k8sRedirectList[appid] {
 		r.Header.Set("X-Lb-K8s", "k8suser")
-	} else if ubitechLsit[userIP] {
+	} else if ubitechLsit[userIP] || ubitechLsit[appid] {
 		r.Header.Set("X-Lb-Ubitech", "ubituser")
 	} else if trafficManager.CheckOverFlowed(userid) {
 		log.Printf("userid:%s is overflowed\n", userid)
