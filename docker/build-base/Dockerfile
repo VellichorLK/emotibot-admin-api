@@ -15,3 +15,4 @@ RUN go get github.com/gorilla/mux
 RUN go get github.com/dgrijalva/jwt-go
 RUN go get github.com/siongui/gojianfan
 RUN go get github.com/satori/go.uuid
+RUN go get github.com/olivere/elastic
