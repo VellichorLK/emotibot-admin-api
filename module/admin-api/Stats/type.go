@@ -82,7 +82,7 @@ func (c *SessionCondition) JoinedSQLCondition(sessionTblName, recordTblName stri
 	var AndConditions = []string{}
 	values = []interface{}{}
 	if c.StartTime != 0 || c.EndTime != 0 {
-		query := sessionTblName + ".start_time >= ? AND " + sessionTblName + ".end_time <= ? "
+		query := sessionTblName + ".start_time BETWEEN ? AND ? "
 		AndConditions = append(AndConditions, query)
 		values = append(values, c.StartTime, c.EndTime)
 	}
