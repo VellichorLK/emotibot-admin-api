@@ -331,7 +331,7 @@ func updateRobotQAAnswerV3(appid string, qid, aid int, answer string) (err error
 		return
 	}
 
-	queryStr = `UPDATE robot_profile_answer SET content = ? AND status = 1
+	queryStr = `UPDATE robot_profile_answer SET content = ?, status = 1
 		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = t.Exec(queryStr, answer, appid, qid, aid)
 	if err != nil {
