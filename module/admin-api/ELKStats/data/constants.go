@@ -17,11 +17,11 @@ const (
 	AppIDHeaderKey = "X-AppID"
 )
 
-const ESRecordsMappingFile = "./configs/records_mapping.json"
+const ESRecordsMappingFile = "./InitFiles/elasticsearch/configs/records_mapping.json"
 const ESRecordsIndex = "records"
 const ESRecordType = "doc"
 
-const ESSessionsMappingFile = "./configs/sessions_mapping.json"
+const ESSessionsMappingFile = "./InitFiles/elasticsearch/configs/sessions_mapping.json"
 const ESSessionsIndex = "sessions"
 const ESSessionsType = "doc"
 
