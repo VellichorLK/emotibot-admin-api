@@ -316,6 +316,8 @@ func GetTrainStatus(appID string, version int) (statusResp StatusResponse, retCo
 			retCode = ApiError.WEB_REQUEST_ERROR
 			return
 		}
+		util.LogTrace.Printf("Query status with version %d: %+v\n", version, payload)
+		util.LogTrace.Printf("Get response from intent status: %+v\n", ieStatus)
 
 		switch ieStatus.Status {
 		case "training":

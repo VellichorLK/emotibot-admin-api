@@ -265,7 +265,7 @@ func getIntentEngineModelID(appID string, version int) (modelID []byte, err erro
 	err = db.QueryRow(`
 		SELECT ie_model_id
 		FROM intent_versions
-		WHERE intent_version_id = (SELECT MAX(intent_version_id) FROM intent_versions)`).Scan(&m)
+		WHERE intent_version_id = ?`, version).Scan(&m)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			modelID = []byte("")
