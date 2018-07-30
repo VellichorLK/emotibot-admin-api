@@ -28,21 +28,61 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.MustNot(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
+	groupBySessionsTermAggName := "group_by_sessions"
+	groupBySessionsTermAgg := elastic.NewTermsAggregation()
+	groupBySessionsTermAgg.Field("session_id").Size(data.ESTermAggSize)
+
+	extractConversationCountsByTime := func(result *elastic.SearchResult) (map[string]interface{}, error) {
+		counts := make(map[string]interface{})
+
+		if agg, found := result.Aggregations.DateHistogram(aggName); found {
+			for _, bucket := range agg.Buckets {
+				if groupBySessionsAgg, found := bucket.Terms(groupBySessionsTermAggName); found {
+					counts[*bucket.KeyAsString] = int64(len(groupBySessionsAgg.Buckets))
+				}
+			}
+		}
+
+		return counts, nil
+	}
+
+	extractConversationCountsByTag := func(result *elastic.SearchResult) (map[string]interface{}, error) {
+		counts := make(map[string]interface{})
+
+		if agg, found := result.Aggregations.Terms(aggName); found {
+			for _, bucket := range agg.Buckets {
+				if groupBySessionsAgg, found := bucket.Terms(groupBySessionsTermAggName); found {
+					counts[bucket.Key.(string)] = int64(len(groupBySessionsAgg.Buckets))
+				}
+			}
+		}
+
+		return normalizeTagCounts(counts, query.AggTagType)
+	}
+
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
-	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
-		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		dateHistogramAgg.SubAggregation(groupBySessionsTermAggName, groupBySessionsTermAgg)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
+		result, err := createVisitStatsSearchService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return extractConversationCountsByTime(result)
+	case data.AggByTag:
+		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		boolQuery = boolQuery.Filter(tagExistsQuery)
+		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg.SubAggregation(groupBySessionsTermAggName, groupBySessionsTermAgg)
+
+		result, err := createVisitStatsSearchService(ctx, client, boolQuery, aggName, tagTermAgg)
+		if err != nil {
+			return nil, err
+		}
+
+		return extractConversationCountsByTag(result)
 	default:
 		return nil, data.ErrInvalidAggType
 	}

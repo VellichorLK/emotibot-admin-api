@@ -4,7 +4,7 @@
 
 #### 各個時間區段的總會話數
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 不為 **`空字串`**，結果依照 **`day`** 分群：
+統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 不為 **`空字串`**，結果依照 **`day`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
 POST /records/_search
@@ -45,14 +45,22 @@ POST /records/_search
   "aggs": {
     "histogram": {
       "date_histogram": {
-        "field": "log_time",
-        "format": "yyyy-MM-dd HH:mm:ss",
-        "interval": "day",
-        "time_zone": "+08:00",
-        "min_doc_count": 0, 
-        "extended_bounds": {
-          "min": "2018-06-01 00:00:00",
-          "max": "2018-06-30 23:59:59"
+        "field":"log_time",
+        "format":"yyyy-MM-dd HH:mm:ss",
+        "interval":"day",
+        "time_zone":"+08:00",
+        "min_doc_count":0,
+        "extended_bounds":{
+          "min":"2018-06-01 00:00:00",
+          "max":"2018-06-30 23:59:59"
+        }
+      },
+      "aggs": {
+        "group_by_sessions": {
+          "terms":{
+            "field":"session_id",
+            "size":3000000
+          }
         }
       }
     }
@@ -74,7 +82,7 @@ POST /records/_search
     "failed": 0
   },
   "hits": {
-    "total": 110,
+    "total": 69,
     "max_score": 0,
     "hits": []
   },
@@ -83,153 +91,322 @@ POST /records/_search
       "buckets": [
         {
           "key_as_string": "2018-06-01 00:00:00",
-          "key": 1527811200000,
-          "doc_count": 0
+          "key": 1530374400000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-02 00:00:00",
-          "key": 1527897600000,
-          "doc_count": 0
+          "key": 1530460800000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-03 00:00:00",
-          "key": 1527984000000,
-          "doc_count": 0
+          "key": 1530547200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-04 00:00:00",
-          "key": 1528070400000,
-          "doc_count": 0
+          "key": 1530633600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-05 00:00:00",
-          "key": 1528156800000,
-          "doc_count": 0
+          "key": 1530720000000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-06 00:00:00",
-          "key": 1528243200000,
-          "doc_count": 0
+          "key": 1530806400000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-07 00:00:00",
-          "key": 1528329600000,
-          "doc_count": 0
+          "key": 1530892800000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-08 00:00:00",
-          "key": 1528416000000,
-          "doc_count": 0
+          "key": 1530979200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-09 00:00:00",
-          "key": 1528502400000,
-          "doc_count": 0
+          "key": 1531065600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-10 00:00:00",
-          "key": 1528588800000,
-          "doc_count": 0
+          "key": 1531152000000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-11 00:00:00",
-          "key": 1528675200000,
-          "doc_count": 0
+          "key": 1531238400000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-12 00:00:00",
-          "key": 1528761600000,
-          "doc_count": 0
+          "key": 1531324800000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-13 00:00:00",
-          "key": 1528848000000,
-          "doc_count": 0
+          "key": 1531411200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-14 00:00:00",
-          "key": 1528934400000,
-          "doc_count": 0
+          "key": 1531497600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-15 00:00:00",
-          "key": 1529020800000,
-          "doc_count": 0
+          "key": 1531584000000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-16 00:00:00",
-          "key": 1529107200000,
-          "doc_count": 0
+          "key": 1531670400000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-17 00:00:00",
-          "key": 1529193600000,
-          "doc_count": 0
+          "key": 1531756800000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-18 00:00:00",
-          "key": 1529280000000,
-          "doc_count": 0
+          "key": 1531843200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-19 00:00:00",
-          "key": 1529366400000,
-          "doc_count": 0
+          "key": 1531929600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-20 00:00:00",
-          "key": 1529452800000,
-          "doc_count": 8
+          "key": 1532016000000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-21 00:00:00",
-          "key": 1529539200000,
-          "doc_count": 17
+          "key": 1532102400000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-22 00:00:00",
-          "key": 1529625600000,
-          "doc_count": 0
+          "key": 1532188800000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-23 00:00:00",
-          "key": 1529712000000,
-          "doc_count": 0
+          "key": 1532275200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-24 00:00:00",
-          "key": 1529798400000,
-          "doc_count": 0
+          "key": 1532361600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-25 00:00:00",
-          "key": 1529884800000,
-          "doc_count": 85
+          "key": 1532448000000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-26 00:00:00",
-          "key": 1529971200000,
-          "doc_count": 0
+          "key": 1532534400000,
+          "doc_count": 12,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "4b21158a395311e88a710242ac110003",
+                "doc_count": 7
+              },
+              {
+                "key": "b6b0fdaf364647ae8445ea509007e05b",
+                "doc_count": 5
+              }
+            ]
+          }
         },
         {
           "key_as_string": "2018-06-27 00:00:00",
-          "key": 1530057600000,
-          "doc_count": 0
+          "key": 1532620800000,
+          "doc_count": 14,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "4b21158a395311e88a710242ac110003",
+                "doc_count": 14
+              }
+            ]
+          }
         },
         {
           "key_as_string": "2018-06-28 00:00:00",
-          "key": 1530144000000,
-          "doc_count": 0
+          "key": 1532707200000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-29 00:00:00",
-          "key": 1530230400000,
-          "doc_count": 0
+          "key": 1532793600000,
+          "doc_count": 0,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": []
+          }
         },
         {
           "key_as_string": "2018-06-30 00:00:00",
-          "key": 1530316800000,
-          "doc_count": 0
+          "key": 1532880000000,
+          "doc_count": 43,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "4b21158a395311e88a710242ac110003",
+                "doc_count": 43
+              }
+            ]
+          }
         }
       ]
     }
@@ -242,7 +419,7 @@ POST /records/_search
 #### 在所篩選的時間範圍內，各個維度的總會話數
 ##### (以平台 (platform) 維度為例)
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 及 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群：
+統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 及 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
 POST /records/_search
@@ -289,6 +466,14 @@ POST /records/_search
     "group_by_platform": {
       "terms": {
         "field": "custom_info.platform.keyword"
+      },
+      "aggs": {
+        "group_by_sessions": {
+          "terms":{
+            "field":"session_id",
+            "size":3000000
+          }
+        }
       }
     }
   },
@@ -300,7 +485,7 @@ POST /records/_search
 
 ```
 {
-  "took": 3,
+  "took": 2,
   "timed_out": false,
   "_shards": {
     "total": 5,
@@ -309,7 +494,7 @@ POST /records/_search
     "failed": 0
   },
   "hits": {
-    "total": 27,
+    "total": 2,
     "max_score": 0,
     "hits": []
   },
@@ -319,12 +504,32 @@ POST /records/_search
       "sum_other_doc_count": 0,
       "buckets": [
         {
-          "key": "android",
-          "doc_count": 25
+          "key": "ios",
+          "doc_count": 2,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "4b21158a395311e88a710242ac110003",
+                "doc_count": 2
+              }
+            ]
+          }
         },
         {
           "key": "微信",
-          "doc_count": 2
+          "doc_count": 5,
+          "group_by_sessions": {
+            "doc_count_error_upper_bound": 0,
+            "sum_other_doc_count": 0,
+            "buckets": [
+              {
+                "key": "5956818c88e811e882253d00999cd970",
+                "doc_count": 5
+              }
+            ]
+          }
         }
       ]
     }
