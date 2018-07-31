@@ -3,14 +3,13 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"github.com/olivere/elastic"
 )
-
-const RecordsPageLimit = 20
 
 func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 	query data.VisitRecordsQuery) (records []*data.VisitRecordsData, totalSize int64, limit int, err error) {
@@ -19,7 +18,7 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	if query.Question != "" {
-		userQTermQuery := elastic.NewTermQuery("user_q", query.Question)
+		userQTermQuery := elastic.NewMultiMatchQuery(query.Question, "user_q", "answer.value")
 		boolQuery = boolQuery.Filter(userQTermQuery)
 	}
 
@@ -47,7 +46,23 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		}
 	}
 
-	from := (query.Page - 1) * RecordsPageLimit
+	if query.Tags != nil && len(query.Tags) > 0 {
+		tagsShouldBoolQuery := elastic.NewBoolQuery()
+		tagsBoolQueries := make([]*elastic.BoolQuery, 0)
+		tags := make([]data.VisitRecordsTag, 0)
+		tagsBoolQueries, err = createTagsBoolQueries(tagsBoolQueries, query.Tags, 0, tags)
+		if err != nil {
+			return
+		}
+
+		for _, tagsBoolQuery := range tagsBoolQueries {
+			tagsShouldBoolQuery = tagsShouldBoolQuery.Should(tagsBoolQuery)
+		}
+
+		boolQuery.Filter(tagsShouldBoolQuery)
+	}
+
+	from := (query.Page - 1) * query.PageLimit
 	source := elastic.NewFetchSourceContext(true)
 	source.Include(
 		data.VisitRecordsMetricUserID,
@@ -65,7 +80,7 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		Type(data.ESRecordType).
 		Query(boolQuery).
 		From(from).
-		Size(RecordsPageLimit).
+		Size(query.PageLimit).
 		FetchSourceContext(source).
 		Sort(data.LogTimeFieldName, false).
 		Do(ctx)
@@ -74,7 +89,7 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 	}
 
 	totalSize = result.TotalHits()
-	limit = RecordsPageLimit
+	limit = query.PageLimit
 
 	records = make([]*data.VisitRecordsData, 0)
 
@@ -130,4 +145,124 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 	}
 
 	return
+}
+
+// createTagsBoolQueries converts queryTags = [
+//     {
+//         Type: "platform"
+//         Texts: ["android", "ios"]
+//     },
+//     {
+//         Type: "sex"
+//         Texts: ["男", "女"]	
+//     }
+// ]
+//
+// to the form:
+// {
+//   "bool": {
+//     "filter": [
+//       {
+//         "term": {
+//           "custom_info.platform": "android"
+//         }
+//       },
+//       {
+//         "term": {
+//       	"custom_info.sex": "男"
+//         }
+//       }
+//     ]
+//   }
+// },
+// {
+//   "bool": {
+//     "filter": [
+//       {
+//         "term": {
+//           "custom_info.platform": "android"
+//         }
+//       },
+//       {
+//         "term": {
+//           "custom_info.sex": "女"
+//         }
+//       }
+//     ]
+//   }
+// },
+// {
+//   "bool": {
+//     "filter": [
+//       {
+//         "term": {
+//           "custom_info.platform": "ios"
+//         }
+//       },
+//       {
+//         "term": {
+//           "custom_info.sex": "男"
+//         }
+//       }
+//     ]
+//   }
+// },
+// {
+//   "bool": {
+//     "filter": [
+//       {
+//         "term": {
+//           "custom_info.platform": "ios"
+//         }
+//       },
+//       {
+//         "term": {
+//           "custom_info.sex": "女"
+//         }
+//       }
+//     ]
+//   }
+// }
+func createTagsBoolQueries(tagsBoolQueries []*elastic.BoolQuery,
+	queryTags []data.VisitRecordsQueryTag, queryTagsIndex int, tags []data.VisitRecordsTag) ([]*elastic.BoolQuery, error) {
+	if queryTagsIndex != len(queryTags)-1 {
+		for _, tagText := range queryTags[queryTagsIndex].Texts {
+			tag := data.VisitRecordsTag{
+				Type: queryTags[queryTagsIndex].Type,
+				Text: tagText,
+			}
+			_tags := make([]data.VisitRecordsTag, len(tags)+1)
+			copy(_tags, tags)
+			_tags[len(tags)] = tag
+
+			boolQueries, err := createTagsBoolQueries(tagsBoolQueries, queryTags, queryTagsIndex+1, _tags)
+			if err != nil {
+				return nil, err
+			}
+
+			tagsBoolQueries = append(tagsBoolQueries, boolQueries...)
+		}
+	} else {
+		boolQueries := make([]*elastic.BoolQuery, 0)
+
+		for _, text := range queryTags[queryTagsIndex].Texts {
+			boolQuery := elastic.NewBoolQuery()
+
+			for _, tag := range tags {
+				field := fmt.Sprintf("custom_info.%s", tag.Type)
+				termQuery := elastic.NewTermQuery(field, tag.Text)
+				boolQuery = boolQuery.Filter(termQuery)
+			}
+
+			field := fmt.Sprintf("custom_info.%s", queryTags[queryTagsIndex].Type)
+			termQuery := elastic.NewTermQuery(field, text)
+			boolQuery = boolQuery.Filter(termQuery)
+
+			boolQueries = append(boolQueries, boolQuery)
+		}
+
+		return boolQueries, nil
+	}
+
+	return tagsBoolQueries, nil
 }
