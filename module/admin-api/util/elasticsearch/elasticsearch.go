@@ -113,7 +113,7 @@ func CreateTimeRangeFromTimestamp(startTimestamp int64,
 
 func createTimeRange(startTime time.Time,
 	endTime time.Time) (_startTime time.Time, _endTime time.Time) {
-	// Treat query times as local times,
+	// Treat query times as local times
 	_startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, time.Local)
 	_endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, time.Local)
 	return

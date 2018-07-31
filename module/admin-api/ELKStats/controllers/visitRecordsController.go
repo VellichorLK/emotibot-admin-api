@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
@@ -34,8 +35,8 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	startTime, endTime := elasticsearch.CreateTimeRangeFromTimestamp(VisitRecordsRequest.StartTime,
-		VisitRecordsRequest.EndTime)
+	startTime := time.Unix(VisitRecordsRequest.StartTime, 0).Local()
+	endTime := time.Unix(VisitRecordsRequest.EndTime, 0).Local()
 
 	query := data.VisitRecordsQuery{
 		CommonQuery: data.CommonQuery{
