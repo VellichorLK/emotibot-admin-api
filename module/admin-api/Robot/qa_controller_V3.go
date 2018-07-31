@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 )
 
 func handleRobotQAListV3(w http.ResponseWriter, r *http.Request) {
@@ -491,5 +492,13 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	go SyncRobotProfileToSolr()
+	return
+}
+
+func handleRebuildRobotQAV3(w http.ResponseWriter, r *http.Request) {
+	err := SyncRobotProfileToSolr()
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoAPIError, err.Error())
+	}
 	return
 }

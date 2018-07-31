@@ -42,6 +42,7 @@ func init() {
 			util.NewEntryPointWithVer("POST", "qa/{id}/question", []string{"create"}, handleAddRobotQARQuestionV3, 3),
 			util.NewEntryPointWithVer("PUT", "qa/{id}/question/{qid}", []string{"edit"}, handleUpdateRobotQARQuestionV3, 3),
 			util.NewEntryPointWithVer("DELETE", "qa/{id}/question/{qid}", []string{"delete"}, handleDeleteRobotQARQuestionV3, 3),
+			util.NewEntryPointWithVer("POST", "qa/build", []string{"edit"}, handleRebuildRobotQAV3, 3),
 
 			util.NewEntryPoint("GET", "chats", []string{"view"}, handleChatList),
 			util.NewEntryPoint("GET", "chat/{id}", []string{"view"}, handleGetChat),
@@ -60,7 +61,7 @@ func init() {
 			util.NewEntryPointWithCustom("POST", "data", []string{"edit"}, handleInitRobotData, 2, false),
 		},
 		OneTimeFunc: map[string]func(){
-			"SyncRobotProfileToSolr": SyncRobotProfileToSolr,
+			"SyncRobotProfileToSolr": SyncOnce,
 		},
 	}
 }

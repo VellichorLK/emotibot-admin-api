@@ -139,8 +139,11 @@ func DeleteRobotQARQuestionV3(appid string, qid, rQid int) (int, error) {
 	return ApiError.SUCCESS, nil
 }
 
-func SyncRobotProfileToSolr() {
-	var err error
+func SyncOnce() {
+	SyncRobotProfileToSolr()
+}
+
+func SyncRobotProfileToSolr() (err error) {
 	restart := false
 	body := ""
 	defer func() {
@@ -252,6 +255,7 @@ func SyncRobotProfileToSolr() {
 		util.LogError.Println("Reset status to 0 fail: ", err.Error())
 		return
 	}
+	return
 }
 
 func fillNLUInfoInTaggingInfos(tagInfos []*ManualTagging) error {
