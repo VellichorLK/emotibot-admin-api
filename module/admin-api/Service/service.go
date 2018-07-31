@@ -86,17 +86,18 @@ func BatchGetNLUResults(appid string, sentences []string) (map[string]*NLUResult
 		}(idx)
 	}
 
-	packetNum := 0
-	for idx := 0; idx < len(sentences); idx += sentencePerReq {
-		ending := idx + sentencePerReq
-		if ending > len(sentences) {
-			ending = len(sentences)
+	packetNum := (len(sentences)-1)/sentencePerReq + 1
+	go func() {
+		for idx := 0; idx < len(sentences); idx += sentencePerReq {
+			ending := idx + sentencePerReq
+			if ending > len(sentences) {
+				ending = len(sentences)
+			}
+			util.LogTrace.Printf("Send sentence %d-%d into channel\n", idx, ending)
+			dataChan <- sentences[idx:ending]
 		}
-		util.LogTrace.Printf("Send sentence %d-%d into channel\n", idx, ending)
-		dataChan <- sentences[idx:ending]
-		packetNum++
-	}
-	util.LogTrace.Printf("Send %d packets into channel\n", packetNum)
+		util.LogTrace.Printf("Send %d packets into channel\n", packetNum)
+	}()
 
 	for packetNum > 0 {
 		groupResult := <-resultsChan
