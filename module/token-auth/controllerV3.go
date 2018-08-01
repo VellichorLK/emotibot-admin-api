@@ -587,6 +587,8 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		var password string
 
 		switch requester.Type {
+		case enum.SuperAdminUser:
+			fallthrough
 		case enum.AdminUser:
 			password, err = service.GetUserPasswordV3(requester.ID)
 			if err != nil {
