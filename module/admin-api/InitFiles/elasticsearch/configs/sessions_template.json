@@ -1,4 +1,7 @@
 {
+    "index_patterns": [
+    	"emotibot-sessions-*"
+  	],
     "mappings": {
         "doc": {
             "properties": {

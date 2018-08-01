@@ -17,11 +17,13 @@ const (
 	AppIDHeaderKey = "X-AppID"
 )
 
-const ESRecordsMappingFile = "./InitFiles/elasticsearch/configs/records_mapping.json"
+const ESRecordsTemplate = "emotibot_records_template"
+const ESRecordsTemplateFile = "./InitFiles/elasticsearch/configs/records_template.json"
 const ESRecordsIndex = "emotibot-records-*"
 const ESRecordType = "doc"
 
-const ESSessionsMappingFile = "./InitFiles/elasticsearch/configs/sessions_mapping.json"
+const ESSessionsTemplate = "emotibot_sessions_template"
+const ESSessionsTemplateFile = "./InitFiles/elasticsearch/configs/sessions_template.json"
 const ESSessionsIndex = "emotibot-sessions-*"
 const ESSessionsType = "doc"
 
