@@ -18,11 +18,11 @@ const (
 )
 
 const ESRecordsMappingFile = "./InitFiles/elasticsearch/configs/records_mapping.json"
-const ESRecordsIndex = "records"
+const ESRecordsIndex = "emotibot-records-*"
 const ESRecordType = "doc"
 
 const ESSessionsMappingFile = "./InitFiles/elasticsearch/configs/sessions_mapping.json"
-const ESSessionsIndex = "sessions"
+const ESSessionsIndex = "emotibot-sessions-*"
 const ESSessionsType = "doc"
 
 const ESTimeFormat = "2006-01-02 15:04:05"
