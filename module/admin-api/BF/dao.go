@@ -72,6 +72,18 @@ func addEnterprise(id, name string) error {
 	return nil
 }
 
+func updateEnterprise(id, name string) (err error) {
+	defer util.ShowError(err)
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := "UPDATE api_enterprise SET enterprise_name = ? WHERE id = ?"
+	_, err = mySQL.Exec(queryStr, name, id)
+	return err
+}
+
 func deleteEnterprise(id string) (err error) {
 	defer util.ShowError(err)
 	mySQL := util.GetMainDB()
@@ -148,6 +160,17 @@ func addApp(appid, userid, name string) error {
 		return err
 	}
 	return nil
+}
+
+func updateApp(appid, name string) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := "UPDATE api_userkey SET PreductName = ? WHERE ApiKey = ?"
+	_, err := mySQL.Exec(queryStr, name, appid)
+	return err
 }
 
 func deleteApp(appid string) error {
