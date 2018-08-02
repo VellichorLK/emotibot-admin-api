@@ -1,5 +1,8 @@
 package data
 
+const VisitRecordsPageLimit = 20
+const VisitRecordsExportPageLimit = 1000
+
 const (
 	CategoryBusiness = "business"
 	CategoryChat     = "chat"
@@ -17,17 +20,24 @@ const (
 	VisitRecordsMetricQType   = "qtype"
 )
 
+type VisitRecordsTag struct {
+	Type string
+	Text string
+}
+
 type VisitRecordsRequest struct {
 	StartTime int64                      `json:"start_time"`
 	EndTime   int64                      `json:"end_time"`
 	Filter    *VisitRecordsRequestFilter `json:"filter"`
 	Page      int                        `json:"page"`
+	Export    bool                       `json:"export"`
 }
 
 type VisitRecordsRequestFilter struct {
 	Contains *VisitRecordsRequestFilterContains `json:"contains"`
 	Emotions []VisitRecordsRequestFilterEmotion `json:"emotions"`
 	QTypes   []VisitRecordsRequestFilterQType   `json:"qtypes"`
+	Tags     []VisitRecordsRequestFilterTag     `json:"categories"`
 	UserID   string                             `json:"uid"`
 }
 
@@ -56,13 +66,30 @@ type VisitRecordsRequestFilterQTypeGroup struct {
 	Text string `json:"text"`
 }
 
+type VisitRecordsRequestFilterTag struct {
+	Type  string                              `json:"type"`
+	Group []VisitRecordsRequestFilterTagGroup `json:"group"`
+}
+
+type VisitRecordsRequestFilterTagGroup struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
 type VisitRecordsQuery struct {
 	CommonQuery
-	Question string
-	UserID   string
-	Emotion  string
-	QType    string
-	Page     int
+	Question  string
+	UserID    string
+	Emotion   string
+	QType     string
+	Tags      []VisitRecordsQueryTag
+	Page      int
+	PageLimit int
+}
+
+type VisitRecordsQueryTag struct {
+	Type  string
+	Texts []string
 }
 
 type VisitRecordsResponse struct {
@@ -133,4 +160,15 @@ var VisitRecordsTableHeader = []TableHeaderItem{
 		Text: "问答类别",
 		ID:   VisitRecordsMetricQType,
 	},
+}
+
+var VisitRecordsExportHeader = []string{
+	"用户ID",
+	"用户问题",
+	"匹配分数",
+	"标准问题",
+	"机器人回答",
+	"访问时间",
+	"情感",
+	"问答类别",
 }
