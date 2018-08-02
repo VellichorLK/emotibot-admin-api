@@ -47,6 +47,8 @@ func init() {
 			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
 			util.NewEntryPointWithVer("GET", "mapping-tables", []string{}, handleGetMapTableListV2, 2),
 			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableAllV2, 2),
+
+			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
 		},
 	}
 }
@@ -128,14 +130,6 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
 		io.WriteString(w, content)
-	}
-	// FIXME: trick here, task-engine will call update almost every click on UI
-	// it will cause too much audit log into database
-	// As a result, use get API to audit start edit only.
-	// BUG: TE use this API to export for now...
-	if scenarioid != "all" {
-		auditMsg := fmt.Sprintf("%s%s%s ID: %s", util.Msg["Start"], util.Msg["Modify"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationEdit, auditMsg, err == nil)
 	}
 }
 
@@ -633,4 +627,32 @@ func handleIntentV1(w http.ResponseWriter, r *http.Request) {
 	default:
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no match type"), http.StatusBadRequest)
 	}
+}
+
+func handleAudit(w http.ResponseWriter, r *http.Request) {
+	util.LogTrace.Println("Run: handleAudit")
+	action := r.FormValue("action")
+	msg := r.FormValue("msg")
+	userID := util.GetUserID(r)
+	userIP := util.GetUserIP(r)
+	appid := util.GetAppID(r)
+
+	auditOp := ""
+	switch action {
+	case "edit":
+		auditOp = util.AuditOperationEdit
+	case "export":
+		auditOp = util.AuditOperationExport
+	default:
+		util.WriteJSON(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Unknown action"))
+		return
+	}
+
+	err := util.AddAuditLog(appid, userID, userIP, util.AuditModuleTaskEngine, auditOp, msg, 1)
+	if err != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+	} else {
+		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	}
+	return
 }
