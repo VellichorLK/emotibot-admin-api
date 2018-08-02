@@ -26,8 +26,9 @@ func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
 	}
 
 	for idx := range sheets {
-		if sheets[idx].Name == localemsg.Get("zh-cn", "IntentBF2Sheet1Name") ||
-			sheets[idx].Name == localemsg.Get("zh-tw", "IntentBF2Sheet1Name") {
+		name := strings.TrimSpace(sheets[idx].Name)
+		if name == localemsg.Get("zh-cn", "IntentBF2Sheet1Name") ||
+			name == localemsg.Get("zh-tw", "IntentBF2Sheet1Name") {
 			return parseBF2IntentsFormat(sheets[idx])
 		}
 	}
@@ -35,6 +36,7 @@ func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
 }
 
 func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err error) {
+	util.LogTrace.Println("Parse xlsx with bf2 format")
 	ret = make(map[string][]string)
 
 	rows := sheet.Rows
@@ -68,11 +70,11 @@ func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err erro
 			intent := strings.TrimSpace(cells[nameIdx].String())
 			sentence := strings.TrimSpace(cells[sentenceIdx].String())
 			if intent != "" && sentence != "" {
-				if _, ok := ret[gojianfan.T2S(sheet.Name)]; !ok {
-					ret[gojianfan.T2S(sheet.Name)] = []string{}
+				if _, ok := ret[gojianfan.T2S(intent)]; !ok {
+					ret[gojianfan.T2S(intent)] = []string{}
 				}
-				ret[gojianfan.T2S(sheet.Name)] = append(
-					ret[gojianfan.T2S(sheet.Name)], gojianfan.T2S(sentence))
+				ret[gojianfan.T2S(intent)] = append(
+					ret[gojianfan.T2S(intent)], gojianfan.T2S(sentence))
 			}
 		}
 	}
@@ -81,6 +83,7 @@ func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err erro
 }
 
 func parseBFOPIntentsFormat(sheets []*xlsx.Sheet) (ret map[string][]string, err error) {
+	util.LogTrace.Println("Parse xlsx with bfop format")
 	ret = make(map[string][]string)
 
 	for _, sheet := range sheets {
