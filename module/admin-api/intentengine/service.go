@@ -9,11 +9,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"github.com/tealeg/xlsx"
 )
 
@@ -88,7 +90,7 @@ func UploadIntents(appID string, file multipart.File, info *multipart.FileHeader
 	return
 }
 
-func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) {
+func GetDownloadIntents(appID string, version int, format string) ([]byte, string, int, error) {
 	if version == 0 {
 		// Use latest version of intents dataset
 		ver, err := getLatestIntentsVersion(appID)
@@ -110,16 +112,18 @@ func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) 
 	}
 
 	intents, err := getIntentDetails(appID, version)
+	if err != nil {
+		return nil, "", ApiError.DB_ERROR, err
+	}
+
 	xlsxFile := xlsx.NewFile()
-	for idx := range intents {
-		intent := intents[idx]
-		sheet, err := xlsxFile.AddSheet(intent.Name)
-		if err != nil {
-			return nil, "", ApiError.IO_ERROR, err
-		}
-		for _, sentence := range intent.Sentences {
-			sheet.AddRow().AddCell().SetString(sentence)
-		}
+	if strings.ToLower(format) == "bfop" {
+		err = fillBFOPExport(xlsxFile, intents)
+	} else {
+		err = fillBF2Export(xlsxFile, intents)
+	}
+	if err != nil {
+		return nil, "", ApiError.IO_ERROR, err
 	}
 
 	var buf bytes.Buffer
@@ -129,6 +133,40 @@ func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) 
 		return nil, "", ApiError.IO_ERROR, err
 	}
 	return buf.Bytes(), string(origFileName), ApiError.SUCCESS, nil
+}
+
+func fillBFOPExport(xlsxFile *xlsx.File, intents []*Intent) error {
+	for idx := range intents {
+		intent := intents[idx]
+		sheet, err := xlsxFile.AddSheet(intent.Name)
+		if err != nil {
+			return err
+		}
+		for _, sentence := range intent.Sentences {
+			sheet.AddRow().AddCell().SetString(sentence)
+		}
+	}
+	return nil
+}
+
+func fillBF2Export(xlsxFile *xlsx.File, intents []*Intent) error {
+	sheet, err := xlsxFile.AddSheet(localemsg.Get("zh-cn", "IntentBF2Sheet1Name"))
+	row := sheet.AddRow()
+	row.AddCell().SetString(localemsg.Get("zh-cn", "IntentName"))
+	row.AddCell().SetString(localemsg.Get("zh-cn", "IntentSentence"))
+
+	if err != nil {
+		return err
+	}
+	for idx := range intents {
+		intent := intents[idx]
+		for _, sentence := range intent.Sentences {
+			row := sheet.AddRow()
+			row.AddCell().SetString(intent.Name)
+			row.AddCell().SetString(sentence)
+		}
+	}
+	return nil
 }
 
 func Train(appID string, version int, autoReload bool, trainEngine int) (retCode int, err error) {

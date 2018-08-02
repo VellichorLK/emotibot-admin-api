@@ -37,11 +37,36 @@ func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
 func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err error) {
 	ret = make(map[string][]string)
 
+	rows := sheet.Rows
+	if len(rows) <= 1 {
+		return ret, nil
+	}
+
+	headerRow := rows[0]
+	if len(headerRow.Cells) != 2 {
+		return nil, errors.New("Invalid header")
+	}
+	nameIdx := -1
+	sentenceIdx := -1
+	nameHeader := localemsg.Get("zh-cn", "IntentName")
+	setenceHeader := localemsg.Get("zh-cn", "IntentSentence")
+	for idx := range headerRow.Cells {
+		switch headerRow.Cells[idx].String() {
+		case nameHeader:
+			nameIdx = idx
+		case setenceHeader:
+			sentenceIdx = idx
+		}
+	}
+	if nameIdx == -1 || sentenceIdx == -1 {
+		return nil, errors.New("Invalid header")
+	}
+
 	for _, row := range sheet.Rows {
 		cells := row.Cells
 		if cells != nil && len(cells) > 1 {
-			intent := strings.TrimSpace(cells[0].String())
-			sentence := strings.TrimSpace(cells[1].String())
+			intent := strings.TrimSpace(cells[nameIdx].String())
+			sentence := strings.TrimSpace(cells[sentenceIdx].String())
 			if intent != "" && sentence != "" {
 				if _, ok := ret[gojianfan.T2S(sheet.Name)]; !ok {
 					ret[gojianfan.T2S(sheet.Name)] = []string{}

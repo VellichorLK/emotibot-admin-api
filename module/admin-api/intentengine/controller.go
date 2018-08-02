@@ -136,6 +136,7 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 	appID := util.GetAppID(r)
 	v := r.URL.Query().Get("version")
+	format := r.URL.Query().Get("format")
 	auditMsg := util.Msg["ExportIntentEngine"]
 
 	var version int
@@ -153,7 +154,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		version = ver
 	}
 
-	content, filename, errno, err := GetDownloadIntents(appID, version)
+	content, filename, errno, err := GetDownloadIntents(appID, version, format)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
@@ -289,7 +290,7 @@ func handleGetData(w http.ResponseWriter, r *http.Request) {
 
 	trainingData, retCode, err := GetTrainingData(appID, flag)
 	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR  {
+		if retCode == ApiError.REQUEST_ERROR {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
