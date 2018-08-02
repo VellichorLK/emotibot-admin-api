@@ -24,6 +24,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/System"
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
+	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
@@ -95,7 +96,6 @@ func main() {
 	util.SetLogLevel(logLevel)
 	router := setRoute()
 	initDB()
-	Stats.InitDB()
 
 	err := initElasticsearch()
 	if err != nil {
@@ -274,6 +274,8 @@ func initDB() {
 	util.InitAuditDB(url, user, pass, db)
 
 	SelfLearning.InitDB()
+	Stats.InitDB()
+	auth.InitDB()
 }
 
 func initElasticsearch() (err error) {
