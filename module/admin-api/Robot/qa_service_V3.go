@@ -210,13 +210,21 @@ func SyncRobotProfileToSolr() (err error) {
 	}
 
 	if len(tagInfos) > 0 {
-		err = fillNLUInfoInTaggingInfos(tagInfos)
+		validInfos := []*ManualTagging{}
+
+		for idx := range tagInfos {
+			if tagInfos[idx].Answers != nil && len(tagInfos[idx].Answers) > 0 {
+				validInfos = append(validInfos, tagInfos[idx])
+			}
+		}
+
+		err = fillNLUInfoInTaggingInfos(validInfos)
 		if err != nil {
 			util.LogError.Printf("Get NLUInfo fail: %s\n", err.Error())
 			return
 		}
 
-		jsonStr, _ := json.Marshal(tagInfos)
+		jsonStr, _ := json.Marshal(validInfos)
 		util.LogTrace.Printf("JSON send to solr: %s\n", jsonStr)
 		body, err = Service.IncrementAddSolr(jsonStr)
 		if err != nil {
