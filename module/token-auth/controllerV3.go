@@ -251,6 +251,7 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		UserV3: data.UserV3{
 			UserName:    adminReq.Account,
 			DisplayName: adminReq.Name,
+			Email:       adminReq.Email,
 			Type:        enum.AdminUser,
 		},
 		Password: &adminReq.Password,

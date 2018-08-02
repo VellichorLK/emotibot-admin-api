@@ -144,6 +144,18 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	}
 	defer util.ClearTransition(t)
 
+	queryStr := fmt.Sprintf("SELECT user_name, email FROM %s WHERE user_name = ? OR email = ?", userTableV3)
+	mail, name := "", ""
+	err = t.QueryRow(queryStr, adminUser.UserName, adminUser.Email).Scan(&name, &mail)
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	if mail == adminUser.Email {
+		return "", util.ErrUserEmailExists
+	} else if name == adminUser.UserName {
+		return "", util.ErrUserNameExists
+	}
+
 	adminUserUUID, err := uuid.NewV4()
 	if err != nil {
 		util.LogDBError(err)
@@ -152,7 +164,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	adminUserID := hex.EncodeToString(adminUserUUID[:])
 
 	// Insert human table entry
-	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr = fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, adminUserID)
 	if err != nil {
 		util.LogDBError(err)

@@ -18,4 +18,5 @@ type EnterpriseAdminRequestV3 struct {
 	Account  string `json:"account"`
 	Name     string `json:"name"`
 	Password string `json:"password"`
+	Email    string `json:"email"`
 }
