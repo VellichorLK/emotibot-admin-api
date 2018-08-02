@@ -1,7 +1,8 @@
 {
     "index_patterns": [
-    	"emotibot-sessions-*"
-  	],
+        "emotibot-sessions-*"
+    ],
+    "version": 20180802,
     "mappings": {
         "doc": {
             "properties": {
