@@ -2,25 +2,21 @@
     "index_patterns": [
         "emotibot-sessions-*"
     ],
-    "version": 20180802,
+    "version": 20180803,
     "mappings": {
         "doc": {
             "properties": {
-                "session_id": {
+                "enterprise_id": {
                     "type": "keyword"
                 },
-                "status": {
-                    "type": "byte"
+                "app_id": {
+                    "type": "keyword"
                 },
-                "data": {
-                    "type": "text",
-                    "analyzer": "ik_max_word",
-                    "search_analyzer": "ik_max_word",
-                    "fields": {
-                        "keyword": {
-                            "type": "keyword"
-                        }
-                    }
+                "user_id": {
+                    "type": "keyword"
+                },
+                "session_id": {
+                    "type": "keyword"
                 },
                 "start_time": {
                     "type": "date",

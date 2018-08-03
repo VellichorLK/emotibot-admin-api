@@ -27,8 +27,8 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		boolQuery = boolQuery.Filter(userIDTermQuery)
 	}
 
-	if query.Emotion != "" {
-		emotionQuery := elastic.NewTermQuery("emotion", query.Emotion)
+	if query.Emotions != nil {
+		emotionQuery := elastic.NewTermsQuery("emotion", query.Emotions...)
 		boolQuery = boolQuery.Filter(emotionQuery)
 	}
 
@@ -151,12 +151,12 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 
 // createTagsBoolQueries converts queryTags = [
 //     {
-//         Type: "platform"
+//         Type: "platform",
 //         Texts: ["android", "ios"]
 //     },
 //     {
-//         Type: "sex"
-//         Texts: ["男", "女"]	
+//         Type: "sex",
+//         Texts: ["男", "女"]
 //     }
 // ]
 //
@@ -166,12 +166,12 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 //     "filter": [
 //       {
 //         "term": {
-//           "custom_info.platform": "android"
+//           "custom_info.platform.keyword": "android"
 //         }
 //       },
 //       {
 //         "term": {
-//       	"custom_info.sex": "男"
+//       	"custom_info.sex.keyword": "男"
 //         }
 //       }
 //     ]
@@ -182,12 +182,12 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 //     "filter": [
 //       {
 //         "term": {
-//           "custom_info.platform": "android"
+//           "custom_info.platform.keyword": "android"
 //         }
 //       },
 //       {
 //         "term": {
-//           "custom_info.sex": "女"
+//           "custom_info.sex.keyword": "女"
 //         }
 //       }
 //     ]
@@ -198,12 +198,12 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 //     "filter": [
 //       {
 //         "term": {
-//           "custom_info.platform": "ios"
+//           "custom_info.platform.keyword": "ios"
 //         }
 //       },
 //       {
 //         "term": {
-//           "custom_info.sex": "男"
+//           "custom_info.sex.keyword": "男"
 //         }
 //       }
 //     ]
@@ -214,12 +214,12 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 //     "filter": [
 //       {
 //         "term": {
-//           "custom_info.platform": "ios"
+//           "custom_info.platform.keyword": "ios"
 //         }
 //       },
 //       {
 //         "term": {
-//           "custom_info.sex": "女"
+//           "custom_info.sex.keyword": "女"
 //         }
 //       }
 //     ]
@@ -251,12 +251,12 @@ func createTagsBoolQueries(tagsBoolQueries []*elastic.BoolQuery,
 			boolQuery := elastic.NewBoolQuery()
 
 			for _, tag := range tags {
-				field := fmt.Sprintf("custom_info.%s", tag.Type)
+				field := fmt.Sprintf("custom_info.%s.keyword", tag.Type)
 				termQuery := elastic.NewTermQuery(field, tag.Text)
 				boolQuery = boolQuery.Filter(termQuery)
 			}
 
-			field := fmt.Sprintf("custom_info.%s", queryTags[queryTagsIndex].Type)
+			field := fmt.Sprintf("custom_info.%s.keyword", queryTags[queryTagsIndex].Type)
 			termQuery := elastic.NewTermQuery(field, text)
 			boolQuery = boolQuery.Filter(termQuery)
 

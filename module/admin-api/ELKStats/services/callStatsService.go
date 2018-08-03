@@ -19,7 +19,7 @@ func TotalCallCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CompleteCallCounts(ctx context.Context, client *elastic.Client,
@@ -32,7 +32,7 @@ func CompleteCallCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CompleteCallRates(completeCallCounts map[string]interface{},
@@ -50,7 +50,7 @@ func ToHumanCallCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func ToHumanCallRates(toHumanCounts map[string]interface{},
@@ -68,7 +68,7 @@ func TimeoutCallCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func TimeoutCallRates(timeoutCallCounts map[string]interface{},
@@ -86,7 +86,7 @@ func CancelCallCounts(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CancelCallRates(cancelCallCounts map[string]interface{},
@@ -105,7 +105,7 @@ func Unknowns(ctx context.Context, client *elastic.Client,
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
 func TopToHumanAnswers(ctx context.Context, client *elastic.Client,
@@ -122,8 +122,10 @@ func TopToHumanAnswers(ctx context.Context, client *elastic.Client,
 		Field("session_id").
 		Size(data.ESTermAggSize)
 
+	index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
+
 	result, err := client.Search().
-		Index(data.ESSessionsIndex).
+		Index(index).
 		Type(data.ESSessionsType).
 		Query(boolQuery).
 		Aggregation(groupBySessionsAggName, groupBySessionsAgg).
@@ -155,7 +157,7 @@ func TopToHumanAnswers(ctx context.Context, client *elastic.Client,
 	latestRecordsTopHitAgg := elastic.NewTopHitsAggregation().Sort(data.LogTimeFieldName, false).Size(vaildRecordCount)
 	groupBySessionsAgg.SubAggregation(latestRecordsAggName, latestRecordsTopHitAgg)
 
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	index = fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
 
 	result, err = client.Search().
 		Index(index).
@@ -220,9 +222,10 @@ func createCallStatsDateHistogramAggregation(query data.CallStatsQuery) *elastic
 	return agg
 }
 
-func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
-	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	result, err := createSearchService(ctx, client, query, data.ESSessionsIndex, data.ESSessionsType, aggName, agg)
+func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, appID string,
+	query elastic.Query, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
+	index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, appID)
+	result, err := createSearchService(ctx, client, query, index, data.ESSessionsType, aggName, agg)
 	if err != nil {
 		return nil, err
 	}

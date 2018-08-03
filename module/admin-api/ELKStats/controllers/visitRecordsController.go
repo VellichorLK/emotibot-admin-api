@@ -59,9 +59,9 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		emotions := visitRecordsRequest.Filter.Emotions
 		if emotions != nil && len(emotions) > 0 && emotions[0].Type == "emotion" {
-			group := emotions[0].Group
-			if group != nil && len(group) > 0 {
-				query.Emotion = group[0].Text
+			query.Emotions = make([]interface{}, 0)
+			for _, group := range emotions[0].Group {
+				query.Emotions = append(query.Emotions, group.Text)
 			}
 		}
 

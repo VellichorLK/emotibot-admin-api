@@ -4,10 +4,10 @@
 
 #### 各個時間區段的總會話數
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 不為 **`空字串`**，結果依照 **`day`** 分群後，再依 **`(group_by_sessions)`** 分群：
+統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，結果依照 **`day`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-sessions-*/_search
 {
   "query": {
     "bool": {
@@ -24,19 +24,12 @@ POST /emotibot-records-*/_search
         },
         {
           "range": {
-            "log_time": {
+            "end_time": {
               "gte": "2018-06-01 00:00:00",
               "lte": "2018-06-30 23:59:59",
               "format": "yyyy-MM-dd HH:mm:ss",
               "time_zone": "+08:00"
             }
-          }
-        }
-      ],
-      "must_not": [
-        {
-          "term": {
-            "session_id": ""
           }
         }
       ]
@@ -45,7 +38,7 @@ POST /emotibot-records-*/_search
   "aggs": {
     "histogram": {
       "date_histogram": {
-        "field":"log_time",
+        "field":"end_time",
         "format":"yyyy-MM-dd HH:mm:ss",
         "interval":"day",
         "time_zone":"+08:00",
@@ -419,10 +412,10 @@ POST /emotibot-records-*/_search
 #### 在所篩選的時間範圍內，各個維度的總會話數
 ##### (以平台 (platform) 維度為例)
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `session_id` 及 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群後，再依 **`(group_by_sessions)`** 分群：
+統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-sessions-*/_search
 {
   "query": {
     "bool": {
@@ -439,7 +432,7 @@ POST /emotibot-records-*/_search
         },
         {
           "range": {
-            "log_time": {
+            "end_time": {
               "gte": "2018-06-01 00:00:00",
               "lte": "2018-06-30 23:59:59",
               "format": "yyyy-MM-dd HH:mm:ss",
@@ -450,13 +443,6 @@ POST /emotibot-records-*/_search
         {
           "exists": {
             "field": "custom_info.platform.keyword"
-          }
-        }
-      ],
-      "must_not": [
-        {
-          "term": {
-            "session_id": ""
           }
         }
       ]
