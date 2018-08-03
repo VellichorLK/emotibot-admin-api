@@ -24,7 +24,7 @@ const ESRecordType = "doc"
 
 const ESSessionsTemplate = "emotibot_sessions_template"
 const ESSessionsTemplateFile = "./InitFiles/elasticsearch/configs/sessions_template.json"
-const ESSessionsIndex = "emotibot-sessions-*"
+const ESSessionsIndex = "emotibot-sessions"
 const ESSessionsType = "doc"
 
 const ESTimeFormat = "2006-01-02 15:04:05"
