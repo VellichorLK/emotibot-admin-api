@@ -80,7 +80,7 @@ type VisitRecordsQuery struct {
 	CommonQuery
 	Question  string
 	UserID    string
-	Emotion   string
+	Emotions  []interface{}
 	QType     string
 	Tags      []VisitRecordsQueryTag
 	Page      int

@@ -27,8 +27,8 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		boolQuery = boolQuery.Filter(userIDTermQuery)
 	}
 
-	if query.Emotion != "" {
-		emotionQuery := elastic.NewTermQuery("emotion", query.Emotion)
+	if query.Emotions != nil {
+		emotionQuery := elastic.NewTermsQuery("emotion", query.Emotions...)
 		boolQuery = boolQuery.Filter(emotionQuery)
 	}
 
