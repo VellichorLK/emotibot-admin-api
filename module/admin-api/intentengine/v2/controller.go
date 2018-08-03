@@ -239,6 +239,7 @@ func handleGetIntentStatusV2(w http.ResponseWriter, r *http.Request) {
 	status, err := GetIntentEngineStatus(appid)
 	if err != nil {
 		util.Return(w, err, nil)
+		return
 	}
 	util.Return(w, nil, status)
 }

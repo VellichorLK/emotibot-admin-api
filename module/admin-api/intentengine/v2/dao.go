@@ -453,6 +453,7 @@ func (dao intentDaoV2) CommitIntent(appid string) (version int, ret []*IntentV2,
 	if err != nil {
 		return
 	}
+	util.LogTrace.Println("Check if need commit: ", need)
 	if !need {
 		version, err = getLatestVersion(tx, appid)
 		util.LogTrace.Println("No need commit, version:", version)
@@ -692,7 +693,10 @@ func needCommit(tx db, appid string) (ret bool, err error) {
 	if err != nil && err != sql.ErrNoRows {
 		return
 	}
-	if count == 0 || err == sql.ErrNoRows {
+	if err == sql.ErrNoRows {
+		return true, nil
+	}
+	if count == 0 {
 		return false, nil
 	}
 	return true, nil
@@ -702,13 +706,17 @@ func getLatestVersion(tx db, appid string) (version int, err error) {
 		return 0, util.ErrDBNotInit
 	}
 
+	var value *int
 	queryStr := `
 		SELECT max(version) as commit_time
 		FROM intent_versions
 		WHERE appid = ?`
-	err = tx.QueryRow(queryStr, appid).Scan(&version)
+	err = tx.QueryRow(queryStr, appid).Scan(&value)
 	if err != nil {
 		return
+	}
+	if value == nil {
+		err = sql.ErrNoRows
 	}
 	return
 }
