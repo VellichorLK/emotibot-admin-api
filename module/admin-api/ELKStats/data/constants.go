@@ -19,7 +19,7 @@ const (
 
 const ESRecordsTemplate = "emotibot_records_template"
 const ESRecordsTemplateFile = "./InitFiles/elasticsearch/configs/records_template.json"
-const ESRecordsIndex = "emotibot-records-*"
+const ESRecordsIndex = "emotibot-records"
 const ESRecordType = "doc"
 
 const ESSessionsTemplate = "emotibot_sessions_template"
