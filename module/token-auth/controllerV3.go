@@ -279,6 +279,10 @@ func EnterpriseAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case util.ErrEnterpriseInfoExists:
 			returnBadRequest(w, "name")
+		case util.ErrUserEmailExists:
+			returnBadRequest(w, "admin username")
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "admin email")
 		default:
 			returnInternalError(w, err.Error())
 		}
