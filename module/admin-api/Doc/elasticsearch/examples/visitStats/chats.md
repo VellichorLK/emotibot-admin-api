@@ -7,7 +7,7 @@
 統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，`module` 為 **`chat`**，結果依照 **`day`** 分群：
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {
@@ -243,7 +243,7 @@ POST /records/_search
 統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，`module` 為 **`chat`**，且 `platform` 欄位不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群：
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {

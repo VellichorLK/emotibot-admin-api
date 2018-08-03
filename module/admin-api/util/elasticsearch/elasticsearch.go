@@ -28,21 +28,21 @@ func Init(host string, port string) (err error) {
 	esClient = client
 	esCtx = context.Background()
 
-	// Check existence of index
-	exists, err := esClient.IndexExists(data.ESRecordsIndex).Do(esCtx)
+	// Check existence of records index template
+	exists, err := client.IndexTemplateExists(data.ESRecordsTemplate).Do(esCtx)
 	if err != nil {
 		return
 	}
 
 	if !exists {
-		// Create records index
-		mapping, _err := ioutil.ReadFile(data.ESRecordsMappingFile)
+		// Create records index template
+		template, _err := ioutil.ReadFile(data.ESRecordsTemplateFile)
 		if _err != nil {
 			err = _err
 			return
 		}
 
-		service, _err := esClient.CreateIndex(data.ESRecordsIndex).BodyString(string(mapping)).Do(esCtx)
+		service, _err := client.IndexPutTemplate(data.ESRecordsTemplate).BodyString(string(template)).Do(esCtx)
 		if _err != nil {
 			err = _err
 			return
@@ -54,20 +54,21 @@ func Init(host string, port string) (err error) {
 		}
 	}
 
-	exists, err = esClient.IndexExists(data.ESSessionsIndex).Do(esCtx)
+	// Check existence of sessions index template
+	exists, err = client.IndexTemplateExists(data.ESSessionsTemplate).Do(esCtx)
 	if err != nil {
 		return
 	}
 
 	if !exists {
-		// Create sessions index
-		mapping, _err := ioutil.ReadFile(data.ESSessionsMappingFile)
+		// Create sessions index template
+		template, _err := ioutil.ReadFile(data.ESSessionsTemplateFile)
 		if _err != nil {
 			err = _err
 			return
 		}
 
-		service, _err := esClient.CreateIndex(data.ESSessionsIndex).BodyString(string(mapping)).Do(esCtx)
+		service, _err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(esCtx)
 		if _err != nil {
 			err = _err
 			return

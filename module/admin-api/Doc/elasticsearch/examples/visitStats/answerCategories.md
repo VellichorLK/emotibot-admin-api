@@ -14,7 +14,7 @@
     - (`module` 不為 **`faq`**、**`task_engine`** 及 **`chat`**)
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {

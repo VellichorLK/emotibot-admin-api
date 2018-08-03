@@ -10,7 +10,7 @@
 - `平台 (platform)` 為 **`ios`** 及 `性別 (sex)` 為 **`女`**
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {

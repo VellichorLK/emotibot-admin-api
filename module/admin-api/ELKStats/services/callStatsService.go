@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strconv"
 
@@ -154,8 +155,10 @@ func TopToHumanAnswers(ctx context.Context, client *elastic.Client,
 	latestRecordsTopHitAgg := elastic.NewTopHitsAggregation().Sort(data.LogTimeFieldName, false).Size(vaildRecordCount)
 	groupBySessionsAgg.SubAggregation(latestRecordsAggName, latestRecordsTopHitAgg)
 
+	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+
 	result, err = client.Search().
-		Index(data.ESRecordsIndex).
+		Index(index).
 		Type(data.ESRecordType).
 		Query(termsQuery).
 		Aggregation(groupBySessionsAggName, groupBySessionsAgg).

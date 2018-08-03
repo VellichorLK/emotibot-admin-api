@@ -7,7 +7,7 @@
 此數據無法直接透過 ElasticSearch 計算，因此先統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`**，結果依各使用者 **`(new_users)`** 分群，並取得各使用者的第一筆資料。最後再透過程式統計各使用者的第一筆資料是否落在所統計的各個時間區段中而得到新增用戶數：
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {
@@ -132,7 +132,7 @@ POST /records/_search
 此數據無法直接透過 ElasticSearch 計算，因此先統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`**，且 `platform` 欄位不為 **`空字串`**，結果依各使用者 **`(new_users)`** 分群後，再依各平台 **`(group_by_platform)`** 分群，並取得各使用者在各平台下的第一筆資料。最後再透過程式統計各使用者在各平台下的第一筆資料是否落在所篩選的時間範圍內而得到新增用戶數：
 
 ```
-POST /records/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {

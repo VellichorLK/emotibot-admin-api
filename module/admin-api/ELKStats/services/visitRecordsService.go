@@ -75,8 +75,10 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		"module",
 	)
 
+	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+
 	result, err := client.Search().
-		Index(data.ESRecordsIndex).
+		Index(index).
 		Type(data.ESRecordType).
 		Query(boolQuery).
 		From(from).
