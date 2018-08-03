@@ -649,6 +649,9 @@ func AnswerCategoryCounts(ctx context.Context, client *elastic.Client,
 	}
 
 	answerCategoryCounts := make(map[string]interface{})
+	answerCategoryCounts[businessFilterName] = 0
+	answerCategoryCounts[chatFilterName] = 0
+	answerCategoryCounts[otherFilterName] = 0
 
 	if agg, found := result.Aggregations.Filters(aggName); found {
 		businessBucket, ok := agg.NamedBuckets[businessFilterName]
