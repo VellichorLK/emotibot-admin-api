@@ -708,7 +708,7 @@ func getLatestVersion(tx db, appid string) (version int, err error) {
 
 	var value *int
 	queryStr := `
-		SELECT max(version) as commit_time
+		SELECT max(version)
 		FROM intent_versions
 		WHERE appid = ?`
 	err = tx.QueryRow(queryStr, appid).Scan(&value)
@@ -718,6 +718,7 @@ func getLatestVersion(tx db, appid string) (version int, err error) {
 	if value == nil {
 		err = sql.ErrNoRows
 	}
+	version = *value
 	return
 }
 func getIntents(tx db, appid string, version *int, detail bool) (ret []*IntentV2, err error) {
