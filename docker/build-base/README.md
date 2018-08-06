@@ -5,10 +5,16 @@
 並且理論上可以保證這個版本不會使不同版本互斥
 
 ## How we build
+```
+./build.sh
+Which platform you want to build ?
+0: alpine (default)
+1: suse
+0
+Build base for platform [alpine] with go ver [1.10]
+```
 
-`./build.sh <sub-folder>`
-
-sub-folder為不同的，參考章節[different OS for the build base](##different-os-for-the-build-base)
+sub-folder為不同的平台，參考章節[different OS for the build base](##different-os-for-the-build-base)
 產生的docker image 格式為 sha1sum 前八碼-subFolderName
 並產生一個VERSION檔案可供查看最新的版本號
 
