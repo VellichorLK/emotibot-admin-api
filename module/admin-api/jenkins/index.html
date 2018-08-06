@@ -1,0 +1,168 @@
+<html>
+  <head>
+    <script type="text/javascript" src='tests.js'></script>
+    <style>
+table {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+table td, table th {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+table tr:nth-child(even){background-color: #f2f2f2;}
+
+table tr:hover {background-color: #ddd;}
+
+table th {
+    padding-top: 12px;
+    padding-bottom: 12px;
+    text-align: left;
+    background-color: #4CAF50;
+    color: white;
+}
+    </style>
+  </head>
+  <body>
+
+  <script>
+    const headers = [
+      {
+        key: 'Time',
+        text: '測試時間',
+        nowrap: true,
+      },
+      // {
+      //   key: 'NoTest',
+      //   text: '無測試資料',
+      // },
+      {
+        key: 'Pass',
+        text: '通過',
+        color: {
+          'O': '#00B2B2',
+          'X': '#FF3232',
+        }
+      },
+      {
+        key: 'Elapsed',
+        text: '測試耗時',
+        nowrap: true,
+      },
+      {
+        key: 'Package',
+        text: '測試模組',
+        nowrap: true,
+      },
+      {
+        key: 'Coverage',
+        text: '覆蓋率',
+      },
+      {
+        key: 'Output',
+        text: '輸出',
+      },
+    ]
+    const filtered = [];
+
+    tests.forEach(test => {
+      if (test.Output && test.Output.indexOf('no test files') >= 0) {
+        test.NoTest = true;
+      } else {
+        test.NoTest = false;
+      }
+
+      if (test.Output && test.Output.indexOf('PASS' >= 0)) {
+        test.Output = test.Output.replace(/PASS\n/g, '');
+        test.Pass = 'O';
+      } else if (test.NoTest) {
+        test.Pass = '-';
+      }
+
+      const re = RegExp('coverage: ([0-9]+\.[0-9]+)%');
+      const result = re.exec(test.Output);
+      if (result) {
+        test.Output = test.Output.replace(/coverage: [0-9]+\.[0-9]+% of statements/g, '')
+        test.Coverage = result[1];
+      }
+      if (test.Output) {
+        test.Output = test.Output.replace(/[0-9]+\.[0-9]+s/g, '');
+      }
+
+      if (!test.Elapsed) {
+        test.Elapsed = 0;
+      }
+    })
+
+    let current = tests[0];
+    for (let idx = 1; idx < tests.length; idx += 1) {
+      const now = tests[idx];
+      if (current.Package === now.Package) {
+        if (current.Output && now.Output) {
+          current.Output += "\n"+now.Output;
+        } else if (now.Output) {
+          current.Output = now.Output;
+        }
+        current.Elapsed = parseFloat(current.Elapsed, 10) + parseFloat(now.Elapsed, 10);
+        current.NoTest = current.NoTest && now.NoTest;
+        current.Pass = current.Pass === 'O' || now.Pass === 'O' ? 'O' : 'X';
+        current.Coverage = current.Coverage || now.Coverage;
+      } else {
+        filtered.push(current);
+        current = tests[idx];
+      }
+    }
+    if (filtered.indexOf(current) < 0) {
+      filtered.push(current);
+    }
+
+    filtered.forEach(d => {
+      const t = new Date(d.Time);
+      d.Time = `${t.getFullYear()}/${t.getMonth() + 1}/${t.getDate()} ${t.getHours()}:${t.getMinutes()}`
+
+      d.Package = d.Package.replace('emotibot.com/emotigo/module/', '');
+      d.Pass = d.Pass || 'X';
+      d.Output = d.Output.replace(/\n[\s]+\n/, '');
+    })
+
+    const table = document.createElement('table');
+    const createHeaderRow = function(header) {
+      const row = document.createElement('tr');
+      header.forEach(h => {
+        const cell = document.createElement('th');
+        cell.innerText = h.text || '';
+        row.appendChild(cell);
+      })
+      return row;
+    }
+    const createRow = function(headers, data) {
+      const row = document.createElement('tr');
+      headers.forEach(h => {
+        const cell = document.createElement('td');
+        cell.innerText = data[h.key] || '';
+        if (h.nowrap) {
+          cell.style.whiteSpace = 'nowrap';
+        }
+        if (h.color) {
+          cell.style.color = h.color[data[h.key]];
+        }
+        row.appendChild(cell);
+      })
+      return  row
+    }
+    const tableHeader = document.createElement('thead');
+    tableHeader.appendChild(createHeaderRow(headers));
+    const tableBody = document.createElement('tbody');
+    filtered.forEach(d => {
+      tableBody.appendChild(createRow(headers, d));
+    })
+    table.appendChild(tableHeader);
+    table.appendChild(tableBody);
+    document.body.appendChild(table);
+    console.log(filtered);
+  </script>
+  </body>
+</html>
