@@ -1,0 +1,122 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for switch RestAPIs
+  version: 1.0.0
+  title: 話術開關設置
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v1//switch-manage/
+components:
+  schemas:
+    switch:
+      type: object
+      description: 話術開關內容
+      properties:
+        id: 
+          type: integer
+          example: 1
+        code:
+          type: string
+          example: unsolve_ZRG
+        name:
+          type: string
+          description: 開關名稱
+          example:  "未解决转人工"
+        status:
+          type: integer
+          description: 開(1)或關(0)
+          enum: [0, 1]
+          example: 0
+        remark:
+          type: string
+          description: 開關功能說明
+          example: "这是一个关于未解决转人工的开关"
+        scenario:
+          type: string
+          description: 場景名稱
+          example: "机器人未解决"
+        num_type:
+          type: string
+          example: ""
+        num:
+          type: string
+          description: 次數設置
+          example: 2
+        msg:
+          type: string
+          description: 機器人對應回答內容
+          example: "你好，未解决问题，萌萌小宝提醒您点击[link js=\"ZRG();\"]人工服务[/link]即可进入在线人工客服哦！"
+        flow:
+          type: string
+          example: ""
+        white_list:
+          type: string
+          example: ""
+        black_list:
+          type: string
+          example: ""
+        update_time:
+          type: string
+          description: 最後更新時間
+          example: "2018-02-27T11:45:13+08:00"
+  parameters:
+    switch-id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: 單一開關id
+paths:
+  /switches:
+    get:
+      summary: "取得所有開關設置"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/switch'
+        500:
+          description: "Internal server error"
+  "/switch/{id}":
+    get:
+      summary: 取得單一開關設置
+      parameters:
+        - $ref: '#/components/parameters/switch-id'
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#/components/schemas/switch'
+        500:
+          description: "Internal server error"
+    post:
+      summary: 更新開關設置
+      parameters:
+        - $ref: '#/components/parameters/switch-id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              $ref: '#components/schemas/switch'
+      responses:
+        200:
+          description: "完成設定 或 ID不存在"
+          content:
+            application/json:
+              schema:
+                type: object
+                $ref: '#components/schemas/switch'
+        400:
+          description: "缺乏参数"
+        500:
+          description: "Internal server error"

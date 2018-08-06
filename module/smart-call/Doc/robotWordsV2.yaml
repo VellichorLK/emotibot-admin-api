@@ -1,0 +1,256 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for Wordbank V3
+  version: 3.0.0
+  title: Dictionary
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v2/robot/
+components:
+  schemas:
+    content:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID
+        content:
+          type: string
+          description: 話術內容
+      example:
+        id: 1
+        contente: 歡迎語內容
+    words:
+      type: object
+      properties:
+        "type":
+          type: integer
+          description: 話術ID
+        name:
+          type: string
+          description: 話術名稱
+        comment:
+          type: string
+          description: 話術描述
+        contents:
+          type: array
+          description: 話術內容
+          items:
+            $ref: '#/components/schemas/content'
+    ret-content:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/content'
+    ret-contents:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          type: array
+          description: 話術內容
+          items:
+            $ref: '#/components/schemas/content'
+          example:
+            - id: 1
+              contente: 歡迎語內容
+            - id: 2
+              contente: 歡迎語內容2
+    ret-words:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/words'
+paths:
+  /chats:
+    get:
+      summary: "取得所有話術資訊與內容"
+      description: "取得所有話術資訊與內容"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-words'
+        500:
+          description: "Internal server error"
+  /chat/{id}:
+    get:
+      summary: "取得單一話術資訊與內容"
+      description: "取得單一話術資訊與內容"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-words'
+        400:
+          description: "話術 ID 參數錯誤"
+        404:
+          description: "話術不存在"
+        500:
+          description: "Internal server error"
+    put:
+      summary: "更新單一話術的內容"
+      description: "更新單一話術的內容"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: 新增的句子列表，一個字串表示的
+                   JSON string array
+                  example: ['歡迎你1', '歡迎你2']
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-contents'
+        400:
+          description: "話術 ID 參數錯誤"
+        404:
+          description: "話術不存在"
+        500:
+          description: "Internal server error"
+  /chat/{id}/content:
+    post:
+      summary: "新增單句話至單一話術的內容"
+      description: "新增單句話至單一話術的內容"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: 新增的句子
+                  example: 新的歡迎語
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-content'
+        400:
+          description: "話術 ID 參數錯誤或是內容已存在"
+        404:
+          description: "話術不存在"
+        500:
+          description: "Internal server error"
+  /chat/{id}/content/{cid}:
+    put:
+      summary: "修改話術中單一句的內容"
+      description: "修改話術中單一句的內容"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - in: path
+          name: cid
+          description: 話術內容 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: 新增的句子
+                  example: 新的歡迎語
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-content'
+        400:
+          description: "話術 ID 參數錯誤或是內容已存在"
+        404:
+          description: "話術不存在"
+        500:
+          description: "Internal server error"
+    delete:
+      summary: "刪除單句話至單一話術的內容"
+      description: "刪除單句話至單一話術的內容"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+        - in: path
+          name: cid
+          description: 話術內容 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-content'
+        500:
+          description: "Internal server error"

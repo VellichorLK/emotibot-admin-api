@@ -1,0 +1,251 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for Cmd system in BFOP
+  version: 3.0.0
+  title: cmd and cmd-class
+  contact:
+    email: danielwu@emotibot.com
+servers:
+  - url: http://127.0.0.1:8182/api/v2/bf/
+components:
+  schemas:
+    rule:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [keyword, regex]
+          description: 規則類型，可以是 keyword 或是 regex
+        value:
+          type: array
+          description: 規則檢查內容，可以有多個
+          items:
+            type: string
+            example: 
+              - \d+
+              - 歡迎.*
+    cmd:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID
+          example: 1
+        name:
+          type: string
+          example: dir1
+          description: 目錄名稱
+        target:
+          type: integer
+          enum: [0, 1]
+          example: 1
+          description: 規則檢查對象，0 為問題，1 為答案
+        rule:
+          type: array
+          items:
+            $ref: '#/components/schemas/rule'
+        answer:
+          type: string
+          description: 指令內容，用來替換/附加答案
+          example: 指令內容
+        response_type:
+          type: integer
+          enum: [0, 1, 2]
+          description: 指令內容使用方式，0 為取代，1 為附加在前，2 為附加在後
+        status:
+          type: boolean
+          description: 是否開啟
+        begin_time:
+          type: string
+        end_time:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+            example:
+              - "1"
+              - "2"
+    cmd-class:
+      type: object
+      properties:
+        cid:
+          type: integer
+          example: -1
+        name:
+          type: string
+          example: dir1
+        cmds:
+          type: array
+          items:
+            $ref: '#/components/schemas/cmd'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/cmd-class'
+    ret-cmd-class:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        result:
+          $ref: '#/components/schemas/cmd-class'
+    ret-success-class:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+paths:
+  '/cmd/{id}/move':
+    put:
+      tags: 
+        - 指令
+      summary: "移動指令所在目錄名稱"
+      parameters: 
+        - in: path
+          name: id
+          description: 指令 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                cid:
+                  type: integer
+                  description: 目標指令目錄ID
+                  example: 10
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-success-class'
+        400:
+          description: "ID 參數錯誤"
+        404:
+          description: "目錄不存在"
+        500:
+          description: "Internal server error"
+  '/cmd-class/{id}':
+    get:
+      tags: 
+        - 指令目錄
+      summary: "取得單一指令目錄"
+      parameters: 
+        - in: path
+          name: id
+          description: 話術 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-cmd-class'
+        400:
+          description: "ID 參數錯誤"
+        404:
+          description: "目錄不存在"
+        500:
+          description: "Internal server error"
+    put:
+      tags: 
+        - 指令目錄
+      summary: "更新指令目錄名稱"
+      parameters: 
+        - in: path
+          name: id
+          description: 目錄 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 指令目錄名稱
+                  example: '目錄'
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-cmd-class'
+        400:
+          description: "ID 參數錯誤"
+        404:
+          description: "目錄不存在"
+        500:
+          description: "Internal server error"
+    delete:
+      tags: 
+        - 指令目錄
+      summary: "刪除指令目錄"
+      description: "刪除後會將底下的指令放至根目錄下"
+      parameters: 
+        - in: path
+          name: id
+          description: 目錄 ID
+          required: true
+          schema:
+            type: integer
+            example: 1
+      responses:
+        200:
+          description: "OK"
+        400:
+          description: "ID 參數錯誤"
+        500:
+          description: "Internal server error"
+          
+  '/cmd-class':
+    post:
+      tags: 
+        - 指令目錄
+      summary: "新增一個指令目錄"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 指令目錄名稱
+                  example: '目錄'
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ret-cmd-class'
+        400:
+          description: "ID 參數錯誤"
+        404:
+          description: "目錄不存在"
+        500:
+          description: "Internal server error"

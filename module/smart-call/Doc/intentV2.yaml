@@ -1,0 +1,753 @@
+openapi: 3.0.0
+info:
+  title: 意圖引擎模組 V2
+  description: 描述新版意圖引擎 API，支援 UI 編輯並訓練
+  version: 2.0.0
+  contact:
+    name: Daniel WU
+    email: danielwu@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v2/intents
+
+components:
+  parameters:
+    version:
+      name: version
+      in: query
+      description: 意圖版本號 (若未指定，則預設使用最新版本)
+      schema:
+        type: string
+    locale:
+      name: locale
+      in: header
+      description: 回傳資料使用語系，預設使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+    appid:
+      name: X-AppID
+      description: 操作的機器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    userid:
+      name: X-UserID
+      description: 操作的使用者ID
+      in: header
+      schema:
+        type: string
+    intentID:
+      name: intentID
+      description: 意圖 ID
+      in: path
+      required: true
+      schema:
+        type: integer
+    sentenceID:
+      name: sentenceID
+      description: 意圖語料 ID
+      in: path
+      required: true
+      schema:
+        type: integer
+    page:
+      name: page
+      description: 分頁頁碼，從 0 開始，預設為 0
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 0
+    limit:
+      name: limit
+      description: 單頁筆數，預設為 10
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 10
+    sentenceType:
+      name: type
+      description: |
+        語料類型
+        * 0: 正例
+        * 1: 反例
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/sentenceType'
+    showAll:
+      name: all
+      description: 若有設定為true時，則一次回傳全部不分頁
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+    keyword:
+      name: keyword
+      description: 若有設定關鍵字時，會回傳有符合關鍵字的意圖或是語料相關內容
+      in: query
+      required: false
+      schema:
+        type: string
+        example: 支出
+  schemas:
+    Message:
+      type: string
+      enum:
+        - success
+        - db error
+        - io error
+        - consul server unavailable
+        - Error when send request to other API server
+        - Uploaded file still processing
+        - File extension should be xlsx
+        - File size should smaller than 2MB
+        - Multicustomer is not available
+        - File format error
+        - Get no info of given id
+        - Return from openapi has error
+    
+    TrainStatus:
+      type: string
+      enum:
+        - NEED_TRAIN
+        - TRAINING
+        - TRAINED
+    version:
+      type: object
+      properties:
+        id:
+          description: 意圖版本號碼
+          type: integer
+          minimum: 1
+        ie_model_id:
+          description: 意圖引擎 Model ID
+          type: string
+        re_model_id:
+          description: 意圖引擎 Model ID
+          type: string
+        in_used:
+          description: 是否正使用這個版本
+          type: integer
+    sentence:
+      description: 語料內容
+      type: object
+      properties:
+        id:
+          description: 語料 ID
+          type: integer
+        content:
+          $ref: '#/components/schemas/sentenceContent'
+    sentenceContent:
+        description: 語料內容
+        type: string
+    sentenceType:
+      description: |
+        語料類型
+        * 0: 正例
+        * 1: 反例
+      type: integer
+      enum: [0, 1]
+      default: 0
+    sentenceWithType:
+      allOf:
+        - $ref: '#/components/schemas/sentence'
+        - properties:
+            type:
+              $ref: '#/components/schemas/sentenceType'
+    intent:
+      type: object
+      properties:
+        id:
+          description: 意圖 ID
+          type: integer
+          readOnly: true
+        name:
+          description: 意圖名稱
+          type: string
+    intentObj:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/intent'
+        - properties:
+            positive_count:
+              description: 正例語料量
+              type: integer
+              example: 2
+              readOnly: true
+            negative_count:
+              description: 反例語料量
+              type: integer
+              example: 5
+              readOnly: true
+    intentDetail:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/intentObj'
+        - properties:
+            positive:
+              description: 意圖語料正例
+              type: array
+              items:
+                $ref: '#/components/schemas/sentence'
+            negative:
+              description: 意圖語料反例
+              type: array
+              items:
+                $ref: '#/components/schemas/sentence'
+    basicReturn:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          $ref: '#/components/schemas/Message'
+  responses:
+    serverError:
+      description: 預料外的錯誤，完整原因請看回傳的內容
+    intentNotFound:
+      description: 請求的意圖不存在
+    intentOrSentenceNotFound:
+      description: 請求的意圖或語料不存在
+        
+paths:
+  /intents:
+    get:
+      tags:
+        - 已確認
+      summary: 意圖詳細內容
+      description: 回傳意圖列表
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/keyword'
+      responses:
+        200:
+          description: 意圖訓練名稱列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/components/schemas/Message'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/intentObj'
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+  /intent:
+    post:
+      tags:
+        - 已確認
+      summary: 新增意圖
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/keyword'
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                positive:
+                  type: string
+                  example: "['正例語料1', '正例語料2']"
+                negative:
+                  type: string
+                  example: "['反例語料1', '反例語料2']"
+      responses:
+        200:
+          description: 新增意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/intentDetail'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        500:
+          $ref: '#/components/responses/serverError'
+
+  /intent/{intentID}:
+    get:
+      tags:
+        - 已確認
+      summary: 獲取意圖細節
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+      responses:
+        200:
+          description: 更新意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/intentDetail'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+    put:
+      tags:
+        - 已確認
+      summary: 更新意圖名稱
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        200:
+          description: 更新意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/intent'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+    delete:
+      tags:
+        - 已確認
+      summary: 刪除意圖
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+      responses:
+        200:
+          description: 刪除意圖回覆
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/basicReturn'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        500:
+          description: 預料外的錯誤，完整原因請看回傳的內容
+
+  /intent/{intentID}/modify:
+    parameters:
+      - $ref: '#/components/parameters/appid'
+      - $ref: '#/components/parameters/userid'
+      - $ref: '#/components/parameters/intentID'
+    patch:
+      tags:
+        - 已確認
+      summary: 批次更新意圖內容
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: 意圖新名字
+                update:
+                  type: string
+                  description: JSON 字串，內容為新增的句子列表
+                  example: "[{'id': 1, 'content': '編輯語料', 'type': 0},{'id': 0, 'content': '新增語料', 'type': 0}]"
+                delete:
+                  type: string
+                  description: JSON 字串，內容為刪除的語料ID列表
+                  example: "[1,2,3]"
+      responses:
+        200:
+          description: 意圖語料回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        type: object
+                        properties:
+                          positive:
+                            description: 意圖語料正例
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/sentence'
+                          negative:
+                            description: 意圖語料反例
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/sentence'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+    get:
+      tags:
+        - 未實作
+      summary: 獲取特定意圖的語料
+      responses:
+        200:
+          description: 意圖語料回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        type: object
+                        properties:
+                          positive:
+                            description: 意圖語料正例
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/sentence'
+                          negative:
+                            description: 意圖語料反例
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/sentence'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+
+  /intent/{intentID}/sentence:
+    post:
+      tags:
+        - 未實作
+      summary: 新增意圖的語料
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              type: object
+              properties:
+                content:
+                  $ref: '#/components/schemas/sentenceContent'
+                type:
+                  $ref: '#/components/schemas/sentenceType'
+      responses:
+        200:
+          description: 新增意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/sentenceWithType'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+
+  /intent/{intentID}/sentence/{sentenceID}:
+    get:
+      tags:
+        - 未實作
+      summary: 獲取意圖的單一語料
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+        - $ref: '#/components/parameters/sentenceID'
+      responses:
+        200:
+          description: 更新意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/sentenceWithType'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentOrSentenceNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+    put:
+      tags:
+        - 未實作
+      summary: 更新意圖的單一語料
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+        - $ref: '#/components/parameters/sentenceID'
+      requestBody:
+        content:
+          'application/x-www-form-data':
+            schema:
+              type: object
+              properties:
+                content:
+                  $ref: '#/components/schemas/sentenceContent'
+      responses:
+        200:
+          description: 更新意圖回覆
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - properties:
+                      result:
+                        $ref: '#/components/schemas/sentenceWithType'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentOrSentenceNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+    delete:
+      tags:
+        - 未實作
+      summary: 刪除意圖的單一語料
+      parameters:
+        - $ref: '#/components/parameters/appid'
+        - $ref: '#/components/parameters/userid'
+        - $ref: '#/components/parameters/intentID'
+        - $ref: '#/components/parameters/sentenceID'
+      responses:
+        200:
+          description: 刪除意圖回覆
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/basicReturn'
+        400:
+          description: 請求錯誤，名稱為空或是其他參數不正確
+        404:
+          $ref: '#/components/responses/intentOrSentenceNotFound'
+        500:
+          $ref: '#/components/responses/serverError'
+
+  /upload:
+    post:
+      tags:
+        - 待確認
+      summary: 上傳新版本的意圖訓練資料
+      description: 上傳 Excel (*.xslx) 檔案，新增新版本的意圖訓練資料
+      requestBody:
+        description: 透過 formData 上傳 Excel 檔案
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/components/schemas/Message'
+                  result:
+                    type: object
+                    properties:
+                      version:
+                        type: integer
+                        description: 上傳意圖資料版本號
+        422:
+          description: 上傳失敗
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/components/schemas/Message'
+        500:
+          description: Internal server error
+
+  /download:
+    get:
+      tags:
+        - 待確認
+      summary: 下載意圖訓練資料
+      description: 下載意圖訓練資料 Excel (*.xslx) 檔案
+      parameters:
+        - $ref: "#/components/parameters/version"
+      responses:
+        200:
+          description: 下載成功
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binaray
+        400:
+          description: Bad request
+        404:
+          description: 找不到檔案
+        500:
+          description: Internal server error
+          
+  /train:
+    post:
+      tags:
+        - 待確認
+      summary: 訓練意圖
+      description: 訓練所指定版本的意圖
+      parameters:
+        - $ref: "#/components/parameters/version"
+        - name: auto_reload
+          in: query
+          description: 訓練完後是否自動載入 model
+          schema:
+            type: boolean
+            default: true
+        - name: engine
+          in: query
+          description: 指定所要訓練的 engine (若未指定，則預設為同時訓練 Intent Engine 及 Rule Engine)
+          schema:
+            type: string
+            enum:
+              - intent_engine
+              - rule_engine
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+  /status:
+    get:
+      tags:
+        - 待確認
+      summary: 目前意圖訓練狀態
+      description: 回傳目前意圖訓練的狀態值
+      parameters:
+        - $ref: "#/components/parameters/version"
+      responses:
+        200:
+          description: 訓練狀態值
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/components/schemas/Message'
+                  result:
+                    type: object
+                    properties:
+                      ie_status:
+                        allOf:
+                          - $ref: '#/components/schemas/TrainStatus'
+                          - description: Intent Engine 訓練狀態
+                      re_status:
+                        allOf:
+                          - $ref: '#/components/schemas/TrainStatus'
+                          - description: Rule Engine 訓練狀態
+        400:
+          description: Bad request
+        404:
+          description: 所指定的意圖版本不存在
+        500:
+          description: Internal server error
+
+  /versions:
+    get:
+      tags:
+        - 待確認
+      summary: 目前被訓練過的所有意圖版本
+      description: 回傳目前訓練過的意圖的版本以及其 Model 的資訊
+      responses:
+        200:
+          description: 訓練版本列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                  message:
+                    $ref: '#/components/schemas/Message'
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/version'
+                    example:
+                      - id: 1
+                        ie_model_id: 5b4c41df90376a0008126419
+                        re_model_id: ""
+                        in_used: 0
+                      - id: 2
+                        ie_model_id: 5b4d674290376a000812641a
+                        re_model_id: ""
+                        in_used: 0
