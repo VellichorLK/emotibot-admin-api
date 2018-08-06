@@ -2,24 +2,17 @@ package consul
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
-	"time"
 
-	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"github.com/hashicorp/consul/api"
 )
-
-// ConsulAPI define the method should be implemented by ConsulClient.
-// By defining the ConsulAPI interface, we can mock the ConsulClient for Unit Test.
-// TODO: Put Get Method into it.
-type ConsulAPI interface {
-	update(key string, val interface{}) (int, error)
-}
 
 type Locker interface {
 	Lock(stopCh <-chan struct{}) (<-chan struct{}, error)
@@ -37,25 +30,29 @@ type ConsulLockHandler func(key string) (Locker, error)
 
 // ConsulUpdateHandler should handle update kv store in consul.
 // val should be json encoded and return int as ApiError defined for backword compability.
-type ConsulUpdateHandler func(key string, val interface{}) (int, error)
+type ConsulUpdateHandler func(key string, val interface{}) error
+
+// ConsulGetHandler should handle get kv store in consul.
+type ConsulGetHandler func(key string) (string, error)
+
+// ConsulGetTreeHandler should handle get kv store recursively in consul.
+type ConsulGetTreeHandler func(key string) (map[string]string, error)
 
 // ConsulClient is an adapter used for communicate with Consul API.
 type ConsulClient struct {
-	Address       *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
-	TraceLogger   *log.Logger
-	ErrorLogger   *log.Logger
-	lockHandler   ConsulLockHandler
-	updateHandler ConsulUpdateHandler
-	client        *http.Client
-}
-
-var localURL = &url.URL{
-	Host:   "127.0.0.1:8500",
-	Scheme: "http",
+	lockHandler    ConsulLockHandler
+	updateHandler  ConsulUpdateHandler
+	getHandler     ConsulGetHandler
+	getTreeHandler ConsulGetTreeHandler
+	Address        *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
+	client         *http.Client
 }
 
 // DefaultConsulClient is a used for convenient function packed in package.
-var DefaultConsulClient = NewConsulClient(localURL)
+var DefaultConsulClient = NewConsulClient(&url.URL{
+	Host:   "127.0.0.1:8500",
+	Scheme: "http",
+})
 
 // NewConsulClient create a consul client with http.DefaultClient in http package.
 // Be care with the DefaultClient's Timeout value.
@@ -66,42 +63,150 @@ func NewConsulClient(address *url.URL) *ConsulClient {
 // NewConsulClientWithCustomHTTP create a client with given http.Client.
 func NewConsulClientWithCustomHTTP(address *url.URL, client *http.Client) *ConsulClient {
 	c := &ConsulClient{
-		Address:     address,
-		client:      client,
-		TraceLogger: log.New(os.Stdout, "[CONSUL]", log.LstdFlags),
-		ErrorLogger: log.New(os.Stderr, "[CONSUL]", log.Ldate|log.Ltime|log.Llongfile),
+		Address: address,
+		client:  client,
 	}
 	c.updateHandler = newDefaultUpdateHandler(client, address)
 	c.lockHandler = newDefaultLockHandler(client, address)
+	c.getHandler = newDefaultGetHandler(client, address)
+	c.getTreeHandler = newDefaultGetTreeHandler(client, address)
 	return c
 }
 
 //SetLockHandler set the handler function for the func Lock in this ConsulClient.
-func (c *ConsulClient) SetLockHandler(handler func(key string) (Locker, error)) {
+func (c *ConsulClient) SetLockHandler(handler ConsulLockHandler) {
 	c.lockHandler = handler
 }
 
 //SetUpdateHandler set the handler for the Update value operation in ConsulClient.
-func (c *ConsulClient) SetUpdateHandler(handler func(key string, val interface{}) (int, error)) {
+func (c *ConsulClient) SetUpdateHandler(handler ConsulUpdateHandler) {
 	c.updateHandler = handler
 }
 
 func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
-	return func(key string, val interface{}) (int, error) {
+	return func(key string, val interface{}) error {
 		key = strings.TrimPrefix(key, "/")
-		k, _ := url.Parse(key)
+		k, err := url.Parse(key)
+		if err != nil {
+			return fmt.Errorf("Get error when parse url: %v", err)
+		}
 		temp := u.ResolveReference(k)
-		body, err := json.Marshal(val)
+		var body []byte
+		if str, ok := val.(string); ok {
+			body = []byte(str)
+		} else {
+			body, err = json.Marshal(val)
+		}
 		request, err := http.NewRequest(http.MethodPut, temp.String(), bytes.NewReader(body))
 		if err != nil {
-			return ApiError.REQUEST_ERROR, err
+			return err
 		}
 		_, err = c.Do(request)
 		if err != nil {
-			return ApiError.CONSUL_SERVICE_ERROR, err
+			return err
 		}
 
-		return ApiError.SUCCESS, nil
+		return nil
+	}
+}
+
+//ErrNotFound is an kind of error
+var ErrKeyNotFound = errors.New("consul: key not found")
+
+func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
+	return func(key string) (map[string]string, error) {
+		key = strings.TrimPrefix(key, "/")
+		k, err := url.Parse(key)
+		if err != nil {
+			return nil, err
+		}
+		temp := u.ResolveReference(k)
+		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
+		if err != nil {
+			return nil, err
+		}
+		q := request.URL.Query()
+		q.Add("recurse", "true")
+		request.URL.RawQuery = q.Encode()
+
+		response, err := c.Do(request)
+		if err != nil {
+			return nil, err
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return nil, err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			//TODO
+			return nil, ErrKeyNotFound
+		}
+
+		objs := []map[string]interface{}{}
+		err = json.Unmarshal(body, &objs)
+		if len(objs) <= 0 {
+			return nil, err
+		}
+
+		ret := map[string]string{}
+		for idx := range objs {
+			if b64Val, ok := objs[idx]["Value"]; ok {
+				value, err := base64.StdEncoding.DecodeString(b64Val.(string))
+				if err != nil {
+					continue
+				}
+				origKey := objs[idx]["Key"].(string)
+				moduleName := strings.TrimPrefix(origKey, key+"/")
+				strValue := strings.TrimPrefix(string(value), moduleName+":")
+
+				ret[moduleName] = strValue
+			}
+		}
+
+		return ret, nil
+	}
+}
+
+func newDefaultGetHandler(c *http.Client, u *url.URL) ConsulGetHandler {
+	return func(key string) (string, error) {
+		key = strings.TrimPrefix(key, "/")
+		k, err := url.Parse(key)
+		if err != nil {
+			return "", err
+		}
+		temp := u.ResolveReference(k)
+		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
+		if err != nil {
+			return "", err
+		}
+		response, err := c.Do(request)
+		if err != nil {
+			return "", err
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return "", err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			return "", nil
+		}
+
+		obj := []map[string]interface{}{}
+		err = json.Unmarshal(body, &obj)
+		if len(obj) <= 0 {
+			return "", err
+		}
+		if b64Val, ok := obj[0]["Value"]; ok {
+			value, err := base64.StdEncoding.DecodeString(b64Val.(string))
+			if err != nil {
+				return "", err
+			}
+			return string(value), nil
+		}
+
+		return string(body), nil
 	}
 }
 
@@ -109,8 +214,10 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler {
 	a, err := api.NewClient(&api.Config{
 		Address:    addr.Host,
+		Scheme:     addr.Scheme,
 		HttpClient: client,
 	})
+
 	if err != nil {
 		//Return a no-op handler
 		return func(key string) (Locker, error) {
@@ -121,11 +228,6 @@ func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler
 	return func(key string) (Locker, error) {
 		opt := &api.LockOptions{
 			Key: key,
-			//shorten LockWaitTime and LockTryOnce to avoid two quick work session become two sequence works.
-			LockTryOnce:  true,
-			LockWaitTime: time.Duration(3) * time.Second,
-			//Add MonitorRetries to avoid network issues.
-			MonitorRetries: 2,
 		}
 		return a.LockOpts(opt)
 	}
@@ -133,21 +235,33 @@ func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler
 
 // Lock will call the client's lockHandler which handle the implemented work.
 func (c *ConsulClient) Lock(key string) (Locker, error) {
-	c.TraceLogger.Printf("lock %s", key)
 	return c.lockHandler(key)
 }
 
 // ConsulUpdateVal update Consul KV Store by the given key, value pair.
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
-func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error) {
-	c.TraceLogger.Printf("update %s\n", key)
+func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) error {
 	return c.updateHandler(key, val)
+}
+
+// ConsulGetVal get Consul KV Store by the given key, return value in string format
+func (c ConsulClient) ConsulGetVal(key string) (string, error) {
+	return c.getHandler(key)
+}
+
+// ConsulGetVal get Consul KV Store by the given key, return value in string format
+func (c ConsulClient) ConsulGetTreeVal(key string) (map[string]string, error) {
+	return c.getTreeHandler(key)
 }
 
 // ConsulUpdateVal is a convenient function for updating Consul KV Store.
 // ConsulUpdateVal update Consul KV Store by the given key, value pair.
 // value will be formatted by json.Marshal(val), and send to consul's web api by PUT Method.
 // It is a wrapper around DefaultConsulClient.ConsulUpdateVal(key, val).
-func ConsulUpdateVal(key string, val interface{}) (int, error) {
+func ConsulUpdateVal(key string, val interface{}) error {
 	return DefaultConsulClient.ConsulUpdateVal(key, val)
+}
+
+func ConsulGetVal(key string) (string, error) {
+	return DefaultConsulClient.ConsulGetVal(key)
 }

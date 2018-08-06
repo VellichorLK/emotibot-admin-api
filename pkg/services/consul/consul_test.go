@@ -17,8 +17,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	retCode := m.Run()
-	os.Exit(retCode)
+	os.Exit(m.Run())
 }
 
 //TestConsulUpdateVal used mocked Http Server to verify the request is valid
@@ -96,6 +95,10 @@ func TestConsulUpdateVal(t *testing.T) {
 		})
 	}
 
+}
+
+func TestConsulGetVal(t *testing.T) {
+	// FIXME: add test for consul get
 }
 
 type mockedLocker struct {
