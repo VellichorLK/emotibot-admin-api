@@ -122,9 +122,13 @@ function loaded() {
     const t = new Date(d.Time);
     d.Time = `${t.getFullYear()}/${t.getMonth() + 1}/${t.getDate()} ${t.getHours()}:${t.getMinutes()}`
 
-    d.Package = d.Package.replace('emotibot.com/emotigo/module/', '');
+    if (d.Package) {
+      d.Package = d.Package.replace('emotibot.com/emotigo/module/', '');
+    }
     d.Pass = d.Pass || 'X';
-    d.Output = d.Output.replace(/\n[\s]+\n/, '');
+    if (d.Output) {
+      d.Output = d.Output.replace(/\n[\s]+\n/, '');
+    }
   })
 
   const table = document.createElement('table');
