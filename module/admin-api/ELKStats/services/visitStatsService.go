@@ -30,7 +30,8 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 
 	switch query.AggBy {
 	case data.AggByTime:
-		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName)
+		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName).
+			Interval(query.AggInterval)
 		dateHistogramAgg.SubAggregation(aggName, groupBySessionsTermAgg)
 
 		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
