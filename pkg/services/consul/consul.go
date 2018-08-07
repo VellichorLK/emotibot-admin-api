@@ -48,6 +48,23 @@ type ConsulClient struct {
 	client         *http.Client
 }
 
+//Error is a warp for origin api code & normal error
+type Error struct {
+	cause error
+	ID    int
+}
+
+func (e *Error) Error() string {
+	return "consul: " + e.cause.Error()
+}
+
+func newError(err error, ID int) *Error {
+	return &Error{
+		cause: err,
+		ID:    ID,
+	}
+}
+
 // DefaultConsulClient is a used for convenient function packed in package.
 var DefaultConsulClient = NewConsulClient(&url.URL{
 	Host:   "127.0.0.1:8500",
@@ -88,7 +105,7 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			return fmt.Errorf("Get error when parse url: %v", err)
+			return newError(fmt.Errorf("ur parse failed, %v", err), 0)
 		}
 		temp := u.ResolveReference(k)
 		var body []byte
@@ -96,34 +113,40 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 			body = []byte(str)
 		} else {
 			body, err = json.Marshal(val)
+			if err != nil {
+				return newError(err, -2)
+			}
 		}
 		request, err := http.NewRequest(http.MethodPut, temp.String(), bytes.NewReader(body))
 		if err != nil {
-			return err
+			return newError(err, -3)
 		}
 		_, err = c.Do(request)
 		if err != nil {
-			return err
+			return newError(err, -4)
 		}
 
 		return nil
 	}
 }
 
-//ErrNotFound is an kind of error
-var ErrKeyNotFound = errors.New("consul: key not found")
+//ErrKeyNotFound represent can not found consul KV Store's key error
+var ErrKeyNotFound = &Error{
+	cause: errors.New("key not found"),
+	ID:    -2,
+}
 
 func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
 	return func(key string) (map[string]string, error) {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			return nil, err
+			return nil, newError(err, -2)
 		}
 		temp := u.ResolveReference(k)
 		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
 		if err != nil {
-			return nil, err
+			return nil, newError(err, -2)
 		}
 		q := request.URL.Query()
 		q.Add("recurse", "true")
@@ -131,22 +154,24 @@ func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
 
 		response, err := c.Do(request)
 		if err != nil {
-			return nil, err
+			return nil, newError(err, -4)
 		}
 		defer response.Body.Close()
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return nil, err
+			return nil, newError(err, -2)
 		}
 		if response.StatusCode == http.StatusNotFound {
-			//TODO
 			return nil, ErrKeyNotFound
 		}
 
 		objs := []map[string]interface{}{}
 		err = json.Unmarshal(body, &objs)
+		if err != nil {
+			return nil, newError(err, -2)
+		}
 		if len(objs) <= 0 {
-			return nil, err
+			return nil, newError(fmt.Errorf("response length should be greater than 0"), -2)
 		}
 
 		ret := map[string]string{}
@@ -173,35 +198,35 @@ func newDefaultGetHandler(c *http.Client, u *url.URL) ConsulGetHandler {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			return "", err
+			return "", newError(err, -2)
 		}
 		temp := u.ResolveReference(k)
 		request, err := http.NewRequest(http.MethodGet, temp.String(), nil)
 		if err != nil {
-			return "", err
+			return "", newError(err, -3)
 		}
 		response, err := c.Do(request)
 		if err != nil {
-			return "", err
+			return "", newError(err, -4)
 		}
 		defer response.Body.Close()
 		body, err := ioutil.ReadAll(response.Body)
 		if err != nil {
-			return "", err
+			return "", newError(err, -2)
 		}
 		if response.StatusCode == http.StatusNotFound {
-			return "", nil
+			return "", ErrKeyNotFound
 		}
 
 		obj := []map[string]interface{}{}
 		err = json.Unmarshal(body, &obj)
 		if len(obj) <= 0 {
-			return "", err
+			return "", newError(err, -6)
 		}
 		if b64Val, ok := obj[0]["Value"]; ok {
 			value, err := base64.StdEncoding.DecodeString(b64Val.(string))
 			if err != nil {
-				return "", err
+				return "", newError(err, -9)
 			}
 			return string(value), nil
 		}
@@ -245,12 +270,14 @@ func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) error {
 }
 
 // ConsulGetVal get Consul KV Store by the given key, return value in string format
-func (c ConsulClient) ConsulGetVal(key string) (string, error) {
+// return error ErrKeyNotFound if key is not exist
+func (c *ConsulClient) ConsulGetVal(key string) (string, error) {
 	return c.getHandler(key)
 }
 
-// ConsulGetVal get Consul KV Store by the given key, return value in string format
-func (c ConsulClient) ConsulGetTreeVal(key string) (map[string]string, error) {
+// ConsulGetTreeVal get Consul KV Store by the given key, return value in string format
+// return error ErrKeyNotFound if key is not exist
+func (c *ConsulClient) ConsulGetTreeVal(key string) (map[string]string, error) {
 	return c.getTreeHandler(key)
 }
 
