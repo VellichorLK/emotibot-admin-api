@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	ErrInvalidRequestBody	  = errors.New("Invalid request body")
+	ErrInvalidRequestBody     = errors.New("Invalid request body")
 	ErrTagTypeNotFound        = errors.New("Tag type not found")
 	ErrInvalidAggType         = errors.New("Invalid aggregation type")
 	ErrInvalidAggTimeInterval = errors.New("Invalid aggregtaion time interval")
@@ -18,6 +18,7 @@ var (
 	ErrESCardinalityNotFound  = errors.New("Elasticsearch: Cardinality not found")
 	ErrESTopHitNotFound       = errors.New("Elasticsearch: TopHit not found")
 	ErrESNameBucketNotFound   = errors.New("Elasticsearch: Name bucket not found")
+	ErrNotInit                = errors.New("Elasticsearch client is not inited successfully")
 )
 
 const (

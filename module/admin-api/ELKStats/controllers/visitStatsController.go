@@ -134,6 +134,10 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		return
+	}
 
 	if statsType == data.VisitStatsTypeTime ||
 		(statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterCategory) {
@@ -234,6 +238,10 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		return
+	}
 
 	switch questionsType {
 	case data.VisitQuestionsTypeTop:
@@ -280,6 +288,9 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interface{}, error) {
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		return nil, data.ErrNotInit
+	}
 
 	var visitStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	visitStatsCounts := make(map[string]map[string]interface{})

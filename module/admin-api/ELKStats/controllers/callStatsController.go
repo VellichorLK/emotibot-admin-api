@@ -79,6 +79,10 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		return
+	}
 
 	switch statsType {
 	case data.CallStatsTypeTime:
@@ -115,6 +119,9 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 func fetchCallStats(query data.CallStatsQuery) (map[string]map[string]interface{}, error) {
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		return nil, data.ErrNotInit
+	}
 
 	var callStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	callStatsCounts := make(map[string]map[string]interface{})

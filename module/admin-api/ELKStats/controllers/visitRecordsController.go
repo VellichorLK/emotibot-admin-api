@@ -94,6 +94,10 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	esCtx, esClient := elasticsearch.GetClient()
+	if esClient == nil {
+		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		return
+	}
 
 	if !visitRecordsRequest.Export {
 		query.PageLimit = data.VisitRecordsPageLimit
