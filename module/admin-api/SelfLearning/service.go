@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/data"
+	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/model"
 	"emotibot.com/emotigo/module/admin-api/util"
 )

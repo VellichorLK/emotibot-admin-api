@@ -8,22 +8,14 @@ import (
 	"net/http"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 var (
-	// ModuleInfo is needed for module define
-	ModuleInfo        util.ModuleInfo
 	serviceNLUKey     = "NLU"
 	serviceSolrETLKey = "SOLRETL"
 )
-
-func init() {
-	ModuleInfo = util.ModuleInfo{
-		ModuleName:  "service",
-		EntryPoints: []util.EntryPoint{},
-	}
-}
 
 func GetNLUResult(appid string, sentence string) (*NLUResult, error) {
 	url := strings.TrimSpace(getEnvironment(serviceNLUKey))
@@ -200,4 +192,22 @@ func getEnvironment(key string) string {
 		}
 	}
 	return ""
+}
+
+func GetW2VResultFromSentence(src string, dst string) float64 {
+	resultMap, err := GetNLUResults("", []string{src, dst})
+	if err != nil {
+		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
+		return -1
+	}
+	srcResult := resultMap[src]
+	dstResult := resultMap[dst]
+	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), dstResult.Segment.ToList())
+	dstVector := data.GetSentenceVector(dstResult.Keyword.ToList(), dstResult.Segment.ToList())
+	var ret float64
+	ret = 0
+	for idx := range srcVector {
+		ret += srcVector[idx] * dstVector[idx]
+	}
+	return ret
 }

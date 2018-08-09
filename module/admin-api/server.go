@@ -19,6 +19,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning"
+	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
 	"emotibot.com/emotigo/module/admin-api/System"
@@ -50,6 +51,7 @@ var modules = []*util.ModuleInfo{
 	&BF.ModuleInfo,
 	&intentengine.ModuleInfo,
 	&ELKStats.ModuleInfo,
+	&Service.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -193,7 +195,8 @@ func setRoute() *mux.Router {
 		for idx := range info.EntryPoints {
 			entrypoint := info.EntryPoints[idx]
 			// entry will be api/v_/<module>/<entry>
-			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"], entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
+			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"],
+				entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
 			router.
 				Methods(entrypoint.AllowMethod).
 				Path(entryPath).

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/data"
+	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
