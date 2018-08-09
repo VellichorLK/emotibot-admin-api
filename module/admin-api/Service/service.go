@@ -204,6 +204,8 @@ func GetW2VResultFromSentence(src string, dst string) float64 {
 	dstResult := resultMap[dst]
 	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), dstResult.Segment.ToList())
 	dstVector := data.GetSentenceVector(dstResult.Keyword.ToList(), dstResult.Segment.ToList())
+	srcVector.Normalize()
+	dstVector.Normalize()
 	var ret float64
 	ret = 0
 	for idx := range srcVector {
