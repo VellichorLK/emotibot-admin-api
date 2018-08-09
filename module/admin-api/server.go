@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -81,6 +82,9 @@ func logAvailablePath(router *mux.Router) {
 }
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	util.LogInfo.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
+
 	serverEnvs := util.GetEnvOf("server")
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
