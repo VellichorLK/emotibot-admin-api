@@ -15,9 +15,14 @@ import (
 var (
 	serviceNLUKey     = "NLU"
 	serviceSolrETLKey = "SOLRETL"
+	cache             = map[string]*NLUResult{}
 )
 
 func GetNLUResult(appid string, sentence string) (*NLUResult, error) {
+	if _, ok := cache[sentence]; ok {
+		return cache[sentence], nil
+	}
+
 	url := strings.TrimSpace(getEnvironment(serviceNLUKey))
 	if url == "" {
 		return nil, errors.New("NLU Service not set")
@@ -40,6 +45,7 @@ func GetNLUResult(appid string, sentence string) (*NLUResult, error) {
 	if len(nluResult) < 1 {
 		return nil, errors.New("No result")
 	}
+	cache[sentence] = &nluResult[0]
 	return &nluResult[0], nil
 }
 
