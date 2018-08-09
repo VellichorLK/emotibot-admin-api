@@ -201,13 +201,16 @@ func getEnvironment(key string) string {
 }
 
 func GetW2VResultFromSentence(src string, dst string) float64 {
-	resultMap, err := GetNLUResults("", []string{src, dst})
+	srcResult, err := GetNLUResult("", src)
 	if err != nil {
 		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
 		return -1
 	}
-	srcResult := resultMap[src]
-	dstResult := resultMap[dst]
+	dstResult, err := GetNLUResult("", dst)
+	if err != nil {
+		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
+		return -1
+	}
 	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), dstResult.Segment.ToList())
 	dstVector := data.GetSentenceVector(dstResult.Keyword.ToList(), dstResult.Segment.ToList())
 	srcVector.Normalize()
