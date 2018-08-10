@@ -211,8 +211,21 @@ func GetW2VResultFromSentence(src string, dst string) float64 {
 		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
 		return -1
 	}
-	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), dstResult.Segment.ToList())
+	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), srcResult.Segment.ToList())
 	dstVector := data.GetSentenceVector(dstResult.Keyword.ToList(), dstResult.Segment.ToList())
+	srcVector.Normalize()
+	dstVector.Normalize()
+	var ret float64
+	ret = 0
+	for idx := range srcVector {
+		ret += srcVector[idx] * dstVector[idx]
+	}
+	return ret
+}
+
+func GetW2VResultFromSeg(src_seg, src_kw, tar_seg, tar_kw []string) float64 {
+	srcVector := data.GetSentenceVector(src_kw, src_seg)
+	dstVector := data.GetSentenceVector(tar_kw, tar_seg)
 	srcVector.Normalize()
 	dstVector.Normalize()
 	var ret float64
