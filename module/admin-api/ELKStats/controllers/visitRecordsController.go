@@ -100,7 +100,11 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !visitRecordsRequest.Export {
-		query.PageLimit = data.VisitRecordsPageLimit
+		if visitRecordsRequest.Limit != 0 {
+			query.PageLimit = visitRecordsRequest.Limit
+		} else {
+			query.PageLimit = data.VisitRecordsPageLimit
+		}
 
 		records, totalSize, limit, err := services.VisitRecordsQuery(esCtx, esClient, query)
 		if err != nil {
