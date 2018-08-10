@@ -30,6 +30,7 @@ type VisitRecordsRequest struct {
 	EndTime   int64                      `json:"end_time"`
 	Filter    *VisitRecordsRequestFilter `json:"filter"`
 	Page      int                        `json:"page"`
+	Limit     int                        `json:"limit"`
 	Export    bool                       `json:"export"`
 }
 
