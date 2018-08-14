@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
+	captcha "github.com/mojocn/base64Captcha"
 )
 
 var (
@@ -19,13 +21,23 @@ var (
 
 const validAppID = "vipshop"
 
+const (
+	StoreCollectNum = 1024
+	StoreExpireDur = 60 * time.Minute
+)
+
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "cas",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "login", []string{}, handleLogin),
+			util.NewEntryPoint("GET", "captcha", []string{}, handleGetCatpcha),
 		},
 	}
+
+	// init catpch store
+	store := captcha.NewMemoryStore(StoreCollectNum, StoreExpireDur)
+	captcha.SetCustomStore(store)
 }
 
 func handleLogin(ctx context.Context) {
@@ -43,6 +55,24 @@ func handleLogin(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "password is invalid"))
 		return
 	}
+
+	// verify captcha
+	captchaCode := ctx.FormValue("captcha")
+	captchaID := ctx.FormValue("captcha_id")
+	if captchaCode == "" || captchaID == "" {
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "captcha is invalid"))
+		return
+	}
+
+	verifyResult := captcha.VerifyCaptcha(captchaID, captchaCode)
+	if !verifyResult {
+		// verify failed
+		ctx.StatusCode(iris.StatusBadRequest)
+		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "captcha is incorrect"))
+		return
+	}
+
 
 	getURL := fmt.Sprintf("%s?type=json&appid=%s&ac=%s&pw=%s", getCASServer(), getCASAppid(), userID, pwd)
 
@@ -99,4 +129,36 @@ func handleLogin(ctx context.Context) {
 func casServerError(ctx context.Context, err error) {
 	ctx.StatusCode(iris.StatusBadGateway)
 	ctx.JSON(util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+}
+
+func handleGetCatpcha(ctx context.Context) {
+	config := captchaConfig()
+	captchaId, captcaInterfaceInstance := captcha.GenerateCaptcha("", *config)
+
+	base64blob := captcha.CaptchaWriteToBase64Encoding(captcaInterfaceInstance)
+
+	var response CaptchaRet = CaptchaRet{
+		Data: base64blob,
+		ID: captchaId,
+	}
+
+	ctx.JSON(response)
+}
+
+func captchaConfig() *captcha.ConfigCharacter {
+	return &captcha.ConfigCharacter{
+		Height:             60,
+		Width:              265,
+		//const CaptchaModeNumber:数字,CaptchaModeAlphabet:字母,CaptchaModeArithmetic:算术,CaptchaModeNumberAlphabet:数字字母混合.
+		Mode:               captcha.CaptchaModeNumber,
+		ComplexOfNoiseText: captcha.CaptchaComplexLower,
+		ComplexOfNoiseDot:  captcha.CaptchaComplexLower,
+		IsUseSimpleFont:    true,
+		IsShowHollowLine:   false,
+		IsShowNoiseDot:     false,
+		IsShowNoiseText:    false,
+		IsShowSlimeLine:    false,
+		IsShowSineLine:     false,
+		CaptchaLen:         5,
+	}
 }
