@@ -3,7 +3,7 @@ set -e
 
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=gobase-suse
-VERSION=$1
+GOVER=$1
 TAG=$GOVER-alpine
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
