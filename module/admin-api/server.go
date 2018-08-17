@@ -14,6 +14,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/ELKStats"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
@@ -25,6 +26,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
 // constant define all const used in server
@@ -46,6 +48,7 @@ var modules = []*util.ModuleInfo{
 	&System.ModuleInfo,
 	&BF.ModuleInfo,
 	&intentengine.ModuleInfo,
+	&ELKStats.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -93,6 +96,17 @@ func main() {
 	router := setRoute()
 	initDB()
 	Stats.InitDB()
+
+	err := initElasticsearch()
+	if err != nil {
+		util.LogError.Println("Init elastic search fail:", err.Error())
+	}
+
+	err = ELKStats.InitTags()
+	if err != nil {
+		util.LogError.Println("Init elastic search tags fail:", err.Error())
+	}
+
 	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
@@ -104,7 +118,7 @@ func main() {
 	go runOnetimeJob()
 
 	util.LogInfo.Println("Start server on", serverURL)
-	err := http.ListenAndServe(serverURL, router)
+	err = http.ListenAndServe(serverURL, router)
 	if err != nil {
 		util.LogError.Println("Start server fail: ", err.Error())
 	}
@@ -260,6 +274,12 @@ func initDB() {
 	util.InitAuditDB(url, user, pass, db)
 
 	SelfLearning.InitDB()
+}
+
+func initElasticsearch() (err error) {
+	host := getServerEnv("ELASTICSEARCH_HOST")
+	port := getServerEnv("ELASTICSEARCH_PORT")
+	return elasticsearch.Init(host, port)
 }
 
 func runOnetimeJob() {
