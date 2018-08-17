@@ -7,20 +7,36 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
 )
 
 func main() {
-	var ok bool
+	var (
+		ok    bool
+		level string
+	)
 	remoteURL, ok = os.LookupEnv("OPENAPI_URL")
 	if !ok {
 		log.Fatal("please specify openapi v2 remote url by os Env OPENAPI_URL")
 	}
+	_, err := url.Parse(remoteURL)
+	if err != nil {
+		log.Fatalf("remoteURL is not a valid URL, %v\n", err)
+	}
+	level, ok = os.LookupEnv("MODULE_LEVEL")
+
+	if l, err := strconv.ParseInt(level, 10, 64); ok && err == nil && l == 0 {
+		//level=0, equal to trace logger
+		logger = log.New(os.Stdout, "", log.Ltime|log.Lshortfile)
+	}
 	http.HandleFunc("/", OpenAPIAdapterHandler)
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
+
+var logger = log.New(ioutil.Discard, "", log.Ltime|log.Lshortfile)
 
 //ResponseV1 represent version 1 houta response
 type ResponseV1 struct {
@@ -37,7 +53,7 @@ type ResponseV2 struct {
 	Answers  []interface{} `json:"data"`
 	Info     struct {
 		EmotionCat   string `json:"emotion"`
-		emotionScore int    `json:"emotionScore"`
+		EmotionScore int    `json:"emotionScore"`
 	} `json:"info"`
 }
 
@@ -124,7 +140,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, v1 *http.Request) {
 	}
 	defer resp.Body.Close()
 	err = json.Unmarshal(data, &v2Resp)
-	// log.Printf("v2 response body: %s\n", data)
+	logger.Printf("v2 response body: %s\n", data)
 	if err != nil {
 		customError(w, "unmarshal version 2 body failed, "+err.Error(), 500)
 		return
@@ -136,6 +152,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, v1 *http.Request) {
 		newEmotion(v2Resp),
 	}
 	result, _ := json.Marshal(v1Resp)
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
 }
@@ -143,7 +160,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, v1 *http.Request) {
 func customError(w http.ResponseWriter, message string, code int) {
 	//Response need to be 200 OK all the time to mimic behavior in v1
 	w.WriteHeader(200)
-	w.Header().Set("content-type", "application/json")
+	w.Header().Set("Content-Type", "application/json")
 	var resp = ResponseV1{
 		ReturnCode: code,
 		Message:    message,
@@ -152,7 +169,7 @@ func customError(w http.ResponseWriter, message string, code int) {
 	}
 	data, err := json.Marshal(resp)
 	if err != nil {
-		log.Println("error json marshal failed. ", err)
+		logger.Println("error json marshal failed. ", err)
 	}
 	w.Write(data)
 }
@@ -162,7 +179,7 @@ func newEmotion(resp ResponseV2) Emotion {
 	if resp.Info.EmotionCat != "" {
 		e.Type = "text"
 		e.Value = resp.Info.EmotionCat
-		e.Score = strconv.Itoa(resp.Info.emotionScore)
+		e.Score = strconv.Itoa(resp.Info.EmotionScore)
 	}
 	return e
 }
