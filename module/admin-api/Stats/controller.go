@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/gorilla/mux"
 )
 
@@ -56,7 +57,7 @@ func InitDB() {
 	db := getEnvironment("MYSQL_DB")
 	dao, err := initStatDB(url, user, pass, db)
 	if err != nil {
-		util.LogError.Printf("Cannot init statistic db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		logger.Error.Printf("Cannot init statistic db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 	}
 
 	util.SetDB(ModuleInfo.ModuleName, dao)
@@ -148,7 +149,7 @@ func handleQuestionStatistic(w http.ResponseWriter, r *http.Request) {
 
 	appid := util.GetAppID(r)
 
-	util.LogTrace.Printf("Request Questions Statistic: days=[%d] type=[%s]", day, qType)
+	logger.Trace.Printf("Request Questions Statistic: days=[%d] type=[%s]", day, qType)
 
 	code := ApiError.SUCCESS
 	ret := getRetInCache(day, qType)
@@ -165,10 +166,10 @@ func handleQuestionStatistic(w http.ResponseWriter, r *http.Request) {
 
 func getRetInCache(day int, qType string) *StatRet {
 	if cacheTimeout == nil {
-		util.LogTrace.Printf("No cache")
+		logger.Trace.Printf("No cache")
 		return nil
 	} else if time.Now().After(*cacheTimeout) {
-		util.LogTrace.Printf("Cache timeout")
+		logger.Trace.Printf("Cache timeout")
 		return nil
 	}
 	key := fmt.Sprintf("%d-%s", day, qType)
@@ -183,7 +184,7 @@ func setRetCache(day int, qType string, ret *StatRet) {
 		now := time.Now().Local()
 		dayEnd := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 999, now.Location())
 		cacheTimeout = &dayEnd
-		util.LogTrace.Printf("Update cache of %s: %s", key, dayEnd.Format(time.RFC3339))
+		logger.Trace.Printf("Update cache of %s: %s", key, dayEnd.Format(time.RFC3339))
 	}
 }
 
@@ -501,7 +502,7 @@ func handleSessionDowload(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Println("io error, " + err.Error())
+		logger.Error.Println("io error, " + err.Error())
 	}
 }
 
@@ -526,7 +527,7 @@ func handleSessionsDownload(w http.ResponseWriter, r *http.Request) {
 	_, err = w.Write(body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Println("body io error, " + err.Error())
+		logger.Error.Println("body io error, " + err.Error())
 	}
 
 }
@@ -558,7 +559,7 @@ func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
 	}
 	err = util.WriteJSON(w, response)
 	if err != nil {
-		util.LogError.Printf("IO Error %v\n", err)
+		logger.Error.Printf("IO Error %v\n", err)
 	}
 }
 
@@ -577,6 +578,6 @@ func handleSessionRecords(w http.ResponseWriter, r *http.Request) {
 
 	err = util.WriteJSON(w, records)
 	if err != nil {
-		util.LogError.Println("write json failed, " + err.Error())
+		logger.Error.Println("write json failed, " + err.Error())
 	}
 }

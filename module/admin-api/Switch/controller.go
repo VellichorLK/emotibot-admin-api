@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -160,9 +161,9 @@ func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
 		ret, err = util.ConsulUpdateRobotChat(appid)
 	}
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul result: %d", ret)
+		logger.Info.Printf("Update consul result: %d", ret)
 	}
 }
 
@@ -185,7 +186,7 @@ func loadSwitchFromContext(w http.ResponseWriter, r *http.Request) *SwitchInfo {
 	input := &SwitchInfo{}
 	err := util.ReadJSON(r, input)
 	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		logger.Info.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 	input.UpdateTime = time.Now()

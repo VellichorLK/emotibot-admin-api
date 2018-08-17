@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 	defaultLocale        = "zh-cn"
 
 	ConstEnterpriseIDHeaderKey = "X-EnterpriseID"
-	ConstAppIDHeaderKey = "X-AppID"
+	ConstAppIDHeaderKey        = "X-AppID"
 )
 
 func GetAuthToken(r *http.Request) string {
@@ -137,7 +138,7 @@ func PrintRuntimeStack(maxStack int) {
 			break
 		}
 	}
-	LogTrace.Printf(buf.String())
+	logger.Trace.Printf(buf.String())
 }
 
 type RetObj struct {

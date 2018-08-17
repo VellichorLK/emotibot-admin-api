@@ -12,6 +12,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -100,7 +101,7 @@ func handleGetWordbank(w http.ResponseWriter, r *http.Request) {
 
 	wordbank, err := GetWordbank(appid, id)
 	if err != nil {
-		util.LogInfo.Printf("Error when get wordbank: %s\n", err.Error())
+		logger.Info.Printf("Error when get wordbank: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
@@ -250,7 +251,7 @@ func handleGetWordbanks(w http.ResponseWriter, r *http.Request) {
 
 	wordbanks, err := GetEntities(appid)
 	if err != nil {
-		util.LogInfo.Printf("Error when get entities: %s\n", err.Error())
+		logger.Info.Printf("Error when get entities: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, wordbanks))
@@ -260,7 +261,7 @@ func handleGetWordbanks(w http.ResponseWriter, r *http.Request) {
 func handleFileCheck(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	util.LogTrace.Printf("Check dictionary info from [%s]", appid)
+	logger.Trace.Printf("Check dictionary info from [%s]", appid)
 
 	ret, err := CheckProcessStatus(appid)
 	if err != nil {
@@ -274,7 +275,7 @@ func handleFileCheck(w http.ResponseWriter, r *http.Request) {
 func handleFullFileCheck(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetAppID(r)
 
-	util.LogTrace.Printf("Check dictionary full info from [%s]", appid)
+	logger.Trace.Printf("Check dictionary full info from [%s]", appid)
 
 	ret, err := CheckFullProcessStatus(appid)
 	if err != nil {
@@ -291,8 +292,8 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	file, info, err := r.FormFile("file")
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
-	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	// 1. receive upload file and check file
 	retFile, errCode, err := CheckUploadFile(appid, file, info)
@@ -313,7 +314,7 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
-		util.LogError.Printf("update wordbank with multicustomer error: %s", err.Error())
+		logger.Error.Printf("update wordbank with multicustomer error: %s", err.Error())
 	} else {
 		errCode = ApiError.SUCCESS
 		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
@@ -355,7 +356,7 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 	userID := util.GetUserID(r)
 	userIP := util.GetUserIP(r)
 	defer func() {
-		util.LogInfo.Println("Audit: ", errMsg)
+		logger.Info.Println("Audit: ", errMsg)
 		ret := 0
 		if err == nil {
 			ret = 1
@@ -368,8 +369,8 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 
 	file, info, err := r.FormFile("file")
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
-	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 	errMsg = fmt.Sprintf("%s%s: %s", util.Msg["UploadFile"], util.Msg["Wordbank"], info.Filename)
 
 	// 1. parseFile
@@ -723,7 +724,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 		} else {
 			errMsg += ": " + err.Error()
 		}
-		util.LogTrace.Println("Audit: ", errMsg)
+		logger.Trace.Println("Audit: ", errMsg)
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, importResult)
 
 		RecordDictionaryImportProcess(appid, filename, buf, err)
@@ -736,7 +737,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
 	errMsg = fmt.Sprintf("%s%s: %s", util.Msg["UploadFile"], util.Msg["Wordbank"], info.Filename)
 
 	// 1. parseFile

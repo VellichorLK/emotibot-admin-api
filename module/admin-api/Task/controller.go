@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -124,7 +125,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, params.Encode())
-	util.LogTrace.Printf("Get Scenario URL: %s", url)
+	logger.Trace.Printf("Get Scenario URL: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -157,7 +158,7 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 		params["publish"] = true
 	}
 	url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	util.LogTrace.Printf("Put scenarios: %s with params: %#v", url, params)
+	logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
 	content, err := util.HTTPPutForm(url, params, 0)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -202,7 +203,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		params["template"] = template
 	}
 	url := fmt.Sprintf("%s/%s", taskURL, taskScenarioEntry)
-	util.LogTrace.Printf("Post scenarios: %s", url)
+	logger.Trace.Printf("Post scenarios: %s", url)
 	content, err := util.HTTPPostForm(url, params, 0)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -269,7 +270,7 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 
 	// Hack in task-engine, use appid as userid
 	url := fmt.Sprintf("%s/%s/%s?userid=%s", taskURL, taskAppEntry, appid, appid)
-	util.LogTrace.Printf("Get apps: %s", url)
+	logger.Trace.Printf("Get apps: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -289,7 +290,7 @@ func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
 		userID = userInQuery
 	}
 
-	util.LogTrace.Printf("Get mapping list of %s, %s\n", appid, userID)
+	logger.Trace.Printf("Get mapping list of %s, %s\n", appid, userID)
 	list, errno, err := GetMapTableList(appid, userID)
 	if err != nil {
 		w.WriteHeader(ApiError.GetHttpStatus(errno))
@@ -314,7 +315,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	if userInQuery == "templateadmin" {
 		appID = userInQuery
 	}
-	util.LogTrace.Printf("appID: %+v", appID)
+	logger.Trace.Printf("appID: %+v", appID)
 
 	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
 	if err != nil {
@@ -382,7 +383,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
-		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		logger.Trace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
 		util.WriteJSONWithStatus(w, map[string]interface{}{
 			"error":  ret,
 			"return": errno,
@@ -404,7 +405,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
 	auditMsg.WriteString(info.Filename)
 
 	size := info.Size
@@ -462,9 +463,9 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	var result int
 	result, err = util.ConsulUpdateTaskEngineMappingTable()
 	if err != nil {
-		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d, %s", result, err.Error())
+		logger.Info.Printf("Update consul key:te/mapping_table result: %d, %s", result, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d", result)
+		logger.Info.Printf("Update consul key:te/mapping_table result: %d", result)
 	}
 }
 
@@ -477,7 +478,7 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
-		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		logger.Trace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
 		util.WriteJSONWithStatus(w, map[string]interface{}{
 			"error":  ret,
 			"return": errno,
@@ -510,9 +511,9 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 	var result int
 	result, err = util.ConsulUpdateTaskEngineMappingTableAll()
 	if err != nil {
-		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d, %s", result, err.Error())
+		logger.Info.Printf("Update consul key:te/mapping_table_all result: %d, %s", result, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d", result)
+		logger.Info.Printf("Update consul key:te/mapping_table_all result: %d", result)
 	}
 }
 
@@ -558,7 +559,7 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 		addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
 	}()
 
-	util.LogTrace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
+	logger.Trace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
 	if tableName == "" {
 		tableName = tableNameInQuery
 	}
@@ -630,7 +631,7 @@ func handleIntentV1(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAudit(w http.ResponseWriter, r *http.Request) {
-	util.LogTrace.Println("Run: handleAudit")
+	logger.Trace.Println("Run: handleAudit")
 	action := r.FormValue("action")
 	msg := r.FormValue("msg")
 	userID := util.GetUserID(r)

@@ -17,6 +17,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
 )
 
@@ -38,7 +39,7 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	// 2. Upload extension, and size should > 0 and < 2 * 1024 * 1024
 	// 3. save file in settings/appid/wordbank_YYYYMMDD.xlsx
 	ext := path.Ext(info.Filename)
-	util.LogTrace.Printf("upload file ext: [%s]", ext)
+	logger.Trace.Printf("upload file ext: [%s]", ext)
 	if ext != ".xlsx" {
 		errMsg := fmt.Sprintf("%s%s%s", util.Msg["File"], util.Msg["Format"], util.Msg["Error"])
 		insertProcess(appid, StatusFail, info.Filename, errMsg)
@@ -51,7 +52,7 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	if err != nil {
 		errMsg := fmt.Sprintf("%s%s%s", util.Msg["Save"], util.Msg["File"], util.Msg["Error"])
 		insertProcess(appid, StatusFail, filename, errMsg)
-		util.LogError.Printf("save dict io error: %s", err.Error())
+		logger.Error.Printf("save dict io error: %s", err.Error())
 		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 
@@ -67,14 +68,14 @@ func CheckUploadFile(appid string, file multipart.File, info *multipart.FileHead
 	if _, err := file.Read(buf); err != nil {
 		errMsg := fmt.Sprintf("%s%s%s", util.Msg["Read"], util.Msg["File"], util.Msg["Error"])
 		insertProcess(appid, StatusFail, filename, errMsg)
-		util.LogError.Printf("read dict io error: %s", err.Error())
+		logger.Error.Printf("read dict io error: %s", err.Error())
 		return "", ApiError.IO_ERROR, errors.New(errMsg)
 	}
 	_, err = xlsx.OpenBinary(buf)
 	if err != nil {
 		errMsg := fmt.Sprintf("%s%s%s, %s xlsx", util.Msg["File"], util.Msg["Format"], util.Msg["Error"], util.Msg["Not"])
 		insertProcess(appid, StatusFail, info.Filename, errMsg)
-		util.LogError.Printf("Not correct xlsx: %s", err.Error())
+		logger.Error.Printf("Not correct xlsx: %s", err.Error())
 		return "", ApiError.DICT_FORMAT_ERROR, errors.New(errMsg)
 	}
 	// 4. insert to db the running file
@@ -88,7 +89,7 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 		if r := recover(); r != nil {
 			_, file, line, _ := runtime.Caller(4)
 			err = fmt.Errorf("Panic error: %s", r)
-			util.LogError.Printf("Panic in parse xlsx @%s:%d, %s\n", file, line, r)
+			logger.Error.Printf("Panic in parse xlsx @%s:%d, %s\n", file, line, r)
 		}
 	}()
 	xlsxFile, err := xlsx.OpenBinary(buf)
@@ -129,7 +130,7 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 		}
 		wordbank := WordBankRow{}
 		if row.Cells == nil {
-			util.LogError.Printf("Cannot get cell from row %d\n", idx)
+			logger.Error.Printf("Cannot get cell from row %d\n", idx)
 			continue
 		}
 		if len(row.Cells) == 0 {
@@ -140,7 +141,7 @@ func parseDictionaryFromXLSX(buf []byte) (ret []*WordBankRow, err error) {
 			rowCellStr[cellIdx] = strings.TrimSpace(cell.Value)
 		}
 		if strings.Join(rowCellStr, "") == "" {
-			util.LogTrace.Printf("Skip empty row %d\n", idx+1)
+			logger.Trace.Printf("Skip empty row %d\n", idx+1)
 			continue
 		}
 
@@ -301,8 +302,8 @@ func GetWordDataFromWordbanks(wordbanks []*WordBankRow) (error, []string, []stri
 
 func SaveWordbankToFile(appid string, wordbanks []*WordBankRow) (error, string, string) {
 	err, words, synonyms := GetWordDataFromWordbanks(wordbanks)
-	util.LogTrace.Printf("word files %s.txt\n%s\n", appid, words)
-	util.LogTrace.Printf("synonym files %s_synonym.txt\n%s\n", appid, synonyms)
+	logger.Trace.Printf("word files %s.txt\n%s\n", appid, words)
+	logger.Trace.Printf("synonym files %s_synonym.txt\n%s\n", appid, synonyms)
 
 	err, md5Words, md5Synonyms := util.SaveNLUFileFromEntity(appid, words, synonyms)
 	if err != nil {
@@ -320,7 +321,7 @@ func RecordDictionaryImportProcess(appid string, filename string, buf []byte, im
 	insertImportProcess(appid, filename, importErr == nil, message)
 	err := insertEntityFile(appid, filename, buf)
 	if err != nil {
-		util.LogError.Println("Cannot write file into mysql: ", err.Error())
+		logger.Error.Println("Cannot write file into mysql: ", err.Error())
 	}
 }
 
@@ -350,7 +351,7 @@ func TriggerUpdateWordbank(appid string, wordbanks []*WordBankRow, version int) 
 		"timestamp":   now.UnixNano() / 1000000,
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)
-	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	logger.Info.Printf("Update to consul:\n%+v\n", consulJSON)
 	return
 }
 
@@ -377,10 +378,10 @@ func TriggerUpdateWordbankV3(appid string) (err error) {
 		"timestamp":   now.UnixNano() / 1000000,
 	}
 	util.ConsulUpdateEntity(appid, consulJSON)
-	util.LogInfo.Printf("Update to consul:\n%+v\n", consulJSON)
+	logger.Info.Printf("Update to consul:\n%+v\n", consulJSON)
 	// inform TE to reload mapping table
 	util.ConsulUpdateTaskEngineMappingTableAll()
-	util.LogInfo.Printf("Update consul key: te/mapping_table_all")
+	logger.Info.Printf("Update consul key: te/mapping_table_all")
 	return
 }
 
@@ -396,7 +397,7 @@ func GetWordData(appid string) (error, []string, []string) {
 func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	defer func() {
 		if err != nil {
-			util.LogError.Println("Parse xlsx fail: ", err.Error())
+			logger.Error.Println("Parse xlsx fail: ", err.Error())
 		}
 	}()
 
@@ -419,7 +420,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	wordbankRowList := []*WordBankRow{}
 	for idx, row := range rows {
 		if row.Cells == nil {
-			util.LogError.Printf("Cannot get cell from row %d\n", idx)
+			logger.Error.Printf("Cannot get cell from row %d\n", idx)
 			continue
 		}
 		if len(row.Cells) == 0 {
@@ -430,7 +431,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			rowCellStr[cellIdx] = strings.TrimSpace(cell.Value)
 		}
 		if strings.TrimSpace(strings.Join(rowCellStr, "")) == "" {
-			util.LogTrace.Printf("Skip empty row %d\n", idx+1)
+			logger.Trace.Printf("Skip empty row %d\n", idx+1)
 			continue
 		}
 
@@ -530,15 +531,15 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	}
 
 	// log for debug
-	util.LogTrace.Println("classReadOnly:")
+	logger.Trace.Println("classReadOnly:")
 	for path, readOnly := range classReadOnly {
-		util.LogTrace.Printf("\t%s: %t\n", path, readOnly)
+		logger.Trace.Printf("\t%s: %t\n", path, readOnly)
 	}
-	util.LogTrace.Println("classWordbank:")
+	logger.Trace.Println("classWordbank:")
 	for path, wbs := range classWordbank {
-		util.LogTrace.Printf("\t%s: \n", path)
+		logger.Trace.Printf("\t%s: \n", path)
 		for _, wb := range wbs {
-			util.LogTrace.Printf("\t\t%+v\n", *wb)
+			logger.Trace.Printf("\t\t%+v\n", *wb)
 		}
 	}
 
@@ -613,7 +614,7 @@ func fillV3RowWithLast(current *WordBankRow, last *WordBankRow) error {
 		break
 	}
 	if hasErr {
-		util.LogTrace.Printf("Check for %#v\n", current)
+		logger.Trace.Printf("Check for %#v\n", current)
 		return fmt.Errorf(util.Msg["ErrorPathLevelTpl"], level)
 	}
 
@@ -665,7 +666,7 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 	for classPath, wordbanks := range classWordbank {
 		class, ok := classMap[classPath]
 		if !ok {
-			util.LogError.Printf("Wordbank's class not exist: %s", classPath)
+			logger.Error.Printf("Wordbank's class not exist: %s", classPath)
 			continue
 		}
 
@@ -703,7 +704,7 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 			return
 		}
 
-		util.LogTrace.Printf("Get data of [%s] in [%s]\n", class.Name, strings.Join(path, "/"))
+		logger.Trace.Printf("Get data of [%s] in [%s]\n", class.Name, strings.Join(path, "/"))
 
 		inSensitive := false
 		if len(path) > 0 && path[0] == util.Msg["SensitiveWordbank"] {
@@ -724,7 +725,7 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 		}
 
 		for _, wordbank := range class.Wordbank {
-			util.LogTrace.Printf("Handle wordbank [%s]\n", wordbank.Name)
+			logger.Trace.Printf("Handle wordbank [%s]\n", wordbank.Name)
 			for _, word := range wordbank.SimilarWords {
 				var w string
 				if inSensitive {

@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleChatInfoList(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +60,7 @@ func handleMultiChatModify(w http.ResponseWriter, r *http.Request) {
 	inputs := []*ChatInfoInput{}
 	err := util.ReadJSON(r, &inputs)
 	if err != nil {
-		util.LogError.Println("Input invalid")
+		logger.Error.Println("Input invalid")
 		http.Error(w, "", http.StatusBadRequest)
 		util.WriteJSON(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 		return
@@ -73,7 +74,7 @@ func handleMultiChatModify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(validInput) <= 0 {
-		util.LogError.Println("No valid input")
+		logger.Error.Println("No valid input")
 		http.Error(w, "", http.StatusBadRequest)
 		util.WriteJSON(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Empty input"))
 		return
@@ -100,9 +101,9 @@ func handleMultiChatModify(w http.ResponseWriter, r *http.Request) {
 	}
 	ret, err := util.ConsulUpdateRobotChat(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul result: %d", ret)
+		logger.Info.Printf("Update consul result: %d", ret)
 	}
 }
 
@@ -357,8 +358,8 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 func updateWordsConsul(appid string) {
 	consulRet, consulErr := util.ConsulUpdateRobotChat(appid)
 	if consulErr != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, consulErr.Error())
+		logger.Info.Printf("Update consul result: %d, %s", consulRet, consulErr.Error())
 	} else {
-		util.LogInfo.Printf("Update consul result: %d", consulRet)
+		logger.Info.Printf("Update consul result: %d", consulRet)
 	}
 }

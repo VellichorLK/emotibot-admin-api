@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func GetRobotQuestionCnt(appid string, version int) (int, error) {
@@ -135,7 +136,7 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int) (*Chat
 	solrURL := getEnvironment("SOLR_URL")
 	if len(solrURL) <= 0 {
 		solrURL = "http://172.17.0.1:8081/solr/3rd_core/select?q=(database:appid_robot OR database:chat)"
-		util.LogTrace.Printf("ENV \"SOLR_URL\" not exist, use default url")
+		logger.Trace.Printf("ENV \"SOLR_URL\" not exist, use default url")
 	}
 	solrURL = strings.Replace(solrURL, "appid", appid, -1)
 	query := fmt.Sprintf("AND (sentence_original:*%s* OR related_sentences:*%s*)", keyword, keyword)
@@ -146,7 +147,7 @@ func GetChatQAList(appid string, keyword string, page int, pageLimit int) (*Chat
 		rows = pageLimit
 	}
 	url := fmt.Sprintf("%s%s&start=%d&rows=%d&wt=json&indent=true", solrURL, query, start, rows)
-	util.LogTrace.Printf("Solr query URL: %s", url)
+	logger.Trace.Printf("Solr query URL: %s", url)
 
 	//solr query
 	content, err := util.HTTPGetSimple(url)

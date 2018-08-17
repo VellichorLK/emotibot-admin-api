@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -36,13 +37,13 @@ func handleRobotQAList(w http.ResponseWriter, r *http.Request) {
 
 	page, err := util.GetParamInt(r, "page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 	listPerPage, err := util.GetParamInt(r, "per_page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -138,7 +139,7 @@ func loadQAInfoFromContext(r *http.Request) *QAInfo {
 	input := &QAInfo{}
 	err := util.ReadJSON(r, input)
 	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		logger.Info.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 
@@ -180,13 +181,13 @@ func handleRobotQAListV2(w http.ResponseWriter, r *http.Request) {
 
 	page, err := util.GetParamInt(r, "page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 	listPerPage, err := util.GetParamInt(r, "per_page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -264,6 +265,6 @@ func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
 		if mcErr != nil {
 			errMsg = mcErr.Error()
 		}
-		util.LogInfo.Printf("Call multicustomer result: %d, %s", mcCode, errMsg)
+		logger.Info.Printf("Call multicustomer result: %d, %s", mcCode, errMsg)
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // ==========================================
@@ -82,7 +83,7 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
 	}
 }
 
@@ -145,7 +146,7 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
 	}
 }
 
@@ -221,7 +222,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
 	}
 }
 
@@ -284,7 +285,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
 	}
 }
 
@@ -358,7 +359,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", consulRet, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
 	}
 }
 
@@ -420,7 +421,7 @@ func handleUpdateAllFunction(w http.ResponseWriter, r *http.Request) {
 	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateRobotChat(appid)
 	if err != nil {
-		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
+		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
 	}
 }
 
@@ -428,7 +429,7 @@ func loadFunctionFromContext(r *http.Request) *FunctionInfo {
 	input := &FunctionInfo{}
 	err := util.ReadJSON(r, input)
 	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		logger.Info.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 
@@ -439,7 +440,7 @@ func loadFunctionsFromContext(r *http.Request) map[string]*FunctionInfo {
 	input := make(map[string]*FunctionInfo)
 	err := util.ReadJSON(r, &input)
 	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		logger.Info.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 

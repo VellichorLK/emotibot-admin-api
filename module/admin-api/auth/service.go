@@ -2,6 +2,7 @@ package auth
 
 import (
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -24,7 +25,7 @@ func InitDB() {
 	db := envs["MYSQL_DB"]
 	dao, err := util.InitDB(url, user, pass, db)
 	if err != nil {
-		util.LogError.Printf("Cannot init auth db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		logger.Error.Printf("Cannot init auth db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 	}
 
 	util.SetDB(ModuleInfo.ModuleName, dao)

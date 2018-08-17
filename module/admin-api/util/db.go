@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"emotibot.com/emotigo/pkg/logger"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -65,7 +66,7 @@ func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) 
 	}
 
 	var err error
-	LogTrace.Println("Init DB: ", linkURL)
+	logger.Trace.Println("Init DB: ", linkURL)
 	openDB, err := sql.Open("mysql", linkURL)
 	if err != nil {
 		return nil, err
@@ -94,13 +95,13 @@ func SetDB(key string, db *sql.DB) {
 func ClearTransition(tx *sql.Tx) {
 	rollbackRet := tx.Rollback()
 	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
-		LogError.Printf("Critical db error in rollback: %s", rollbackRet.Error())
+		logger.Error.Printf("Critical db error in rollback: %s", rollbackRet.Error())
 	}
 }
 
 func ShowError(err error) {
 	if err != nil {
-		LogError.Printf("DB error: %s\n", err.Error())
+		logger.Error.Printf("DB error: %s\n", err.Error())
 		PrintRuntimeStack(5)
 	}
 }

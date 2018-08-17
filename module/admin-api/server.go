@@ -30,6 +30,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // constant define all const used in server
@@ -62,7 +63,7 @@ func init() {
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {
-			util.LogError.Printf(err.Error())
+			logger.Error.Printf(err.Error())
 			os.Exit(-1)
 		}
 	}
@@ -75,7 +76,7 @@ func logAvailablePath(router *mux.Router) {
 		if len(methods) == 0 {
 			methods = []string{"ANY"}
 		}
-		util.LogInfo.Printf("%6s ROUTE: %s\n", methods, pathTemplate)
+		logger.Info.Printf("%6s ROUTE: %s\n", methods, pathTemplate)
 
 		return nil
 	})
@@ -83,14 +84,14 @@ func logAvailablePath(router *mux.Router) {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	util.LogInfo.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
+	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
 	serverEnvs := util.GetEnvOf("server")
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
 		logLevel = "INFO"
 	}
-	util.LogInfo.Printf("Set log level %s\n", logLevel)
+	logger.Info.Printf("Set log level %s\n", logLevel)
 	initConsul()
 
 	accessLog := serverEnvs["ACCESS_LOG"]
@@ -99,18 +100,18 @@ func main() {
 		util.InitAccessLog(logChannel)
 	}
 
-	util.SetLogLevel(logLevel)
+	logger.SetLevel(logLevel)
 	router := setRoute()
 	initDB()
 
 	err := initElasticsearch()
 	if err != nil {
-		util.LogError.Println("Init elastic search fail:", err.Error())
+		logger.Error.Println("Init elastic search fail:", err.Error())
 	}
 
 	err = ELKStats.InitTags()
 	if err != nil {
-		util.LogError.Println("Init elastic search tags fail:", err.Error())
+		logger.Error.Println("Init elastic search tags fail:", err.Error())
 	}
 
 	logAvailablePath(router)
@@ -123,10 +124,10 @@ func main() {
 
 	go runOnetimeJob()
 
-	util.LogInfo.Println("Start server on", serverURL)
+	logger.Info.Println("Start server on", serverURL)
 	err = http.ListenAndServe(serverURL, router)
 	if err != nil {
-		util.LogError.Println("Start server fail: ", err.Error())
+		logger.Error.Println("Start server fail: ", err.Error())
 	}
 }
 
@@ -137,7 +138,7 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	cmd := paths[4]
 
 	if len(ep.Command) == 0 {
-		util.LogTrace.Printf("Path: %s need no auth check\n", ep.EntryPath)
+		logger.Trace.Printf("Path: %s need no auth check\n", ep.EntryPath)
 		return true
 	}
 
@@ -146,16 +147,16 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	token := util.GetAuthToken(r)
 
 	if len(userid) == 0 {
-		util.LogTrace.Printf("Unauthorized path[%s]: empty user", ep.EntryPath)
+		logger.Trace.Printf("Unauthorized path[%s]: empty user", ep.EntryPath)
 		return false
 	}
 	if ep.CheckAppID && !util.IsValidAppID(appid) {
-		util.LogTrace.Printf("Unauthorized path[%s]: appid[%s]", ep.EntryPath, appid)
+		logger.Trace.Printf("Unauthorized path[%s]: appid[%s]", ep.EntryPath, appid)
 		return false
 	}
 	if ep.CheckAuthToken {
 		if len(token) == 0 {
-			util.LogTrace.Printf("Unauthorized path[%s]: empty token", ep.EntryPath)
+			logger.Trace.Printf("Unauthorized path[%s]: empty token", ep.EntryPath)
 			return false
 		}
 		return checkPrivilegeWithAPI(module, cmd, token)
@@ -176,7 +177,7 @@ func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 
 		_, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
 		if err != nil {
-			util.LogTrace.Printf("Get content resp:%s\n", err.Error())
+			logger.Trace.Printf("Get content resp:%s\n", err.Error())
 		}
 
 		return true
@@ -242,7 +243,7 @@ func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 		if requestIP == "" {
 			requestIP = r.RemoteAddr
 		}
-		// util.LogInfo.Printf("REQ: [%s][%d] [%.3fs][%s@%s]",
+		// logger.Info.Printf("REQ: [%s][%d] [%.3fs][%s@%s]",
 		// 	r.RequestURI, code, time.Since(now).Seconds(), util.GetUserID(r), util.GetAppID(r))
 		if logChannel != nil {
 			logChannel <- util.AccessLog{
@@ -295,11 +296,11 @@ func runOnetimeJob() {
 	for _, module := range modules {
 		if module.OneTimeFunc != nil {
 			for key, fun := range module.OneTimeFunc {
-				util.LogInfo.Printf("Run func %s of module %s\n", key, module.ModuleName)
+				logger.Info.Printf("Run func %s of module %s\n", key, module.ModuleName)
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
-							util.LogError.Printf("Run func %s error: %s\n", key, r)
+							logger.Error.Printf("Run func %s error: %s\n", key, r)
 						}
 					}()
 					fun()
@@ -314,7 +315,7 @@ func initConsul() {
 	serverEnvs := util.GetEnvOf("server")
 	consulURL, ok := serverEnvs["CONSUL_URL"]
 	if !ok {
-		util.LogError.Printf("Can not init without server env:'CONSUL_URL env\n'")
+		logger.Error.Printf("Can not init without server env:'CONSUL_URL env\n'")
 		os.Exit(-1)
 	}
 	consulPrefix := serverEnvs["CONSUL_PREFIX"]
@@ -324,11 +325,11 @@ func initConsul() {
 
 	u, err := url.Parse(consulAddr)
 	if err != nil {
-		util.LogError.Printf("env parsing as URL failed, %v", err)
+		logger.Error.Printf("env parsing as URL failed, %v", err)
 	}
 	rootURL, err := url.Parse(consulRootAddr)
 	if err != nil {
-		util.LogError.Printf("env parsing as URL failed, %v", err)
+		logger.Error.Printf("env parsing as URL failed, %v", err)
 	}
 
 	customHTTPClient := &http.Client{
@@ -340,6 +341,6 @@ func initConsul() {
 
 	util.DefaultConsulClient = util.NewConsulClientWithCustomHTTP(u, customHTTPClient)
 	util.RootConsulClient = util.NewConsulClientWithCustomHTTP(rootURL, rootHTTPClient)
-	util.LogInfo.Printf("Init consul client with url: %s\n", u.String())
-	util.LogInfo.Printf("Init root consul client with url: %s\n", rootURL.String())
+	logger.Info.Printf("Init consul client with url: %s\n", u.String())
+	logger.Info.Printf("Init root consul client with url: %s\n", rootURL.String())
 }

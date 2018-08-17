@@ -9,6 +9,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -148,7 +149,7 @@ func SyncRobotProfileToSolr() (err error) {
 	body := ""
 	defer func() {
 		if err != nil {
-			util.LogError.Println("Error when sync to solr:", err.Error())
+			logger.Error.Println("Error when sync to solr:", err.Error())
 			return
 		}
 	}()
@@ -158,7 +159,7 @@ func SyncRobotProfileToSolr() (err error) {
 		return
 	}
 	if !start {
-		util.LogInfo.Println("Pass sync, there is still process running")
+		logger.Info.Println("Pass sync, there is still process running")
 		return
 	}
 	defer func() {
@@ -180,11 +181,11 @@ func SyncRobotProfileToSolr() (err error) {
 		}
 		restart, err = needProcessRobotData()
 		if err != nil {
-			util.LogError.Println("Check status fail: ", err.Error())
+			logger.Error.Println("Check status fail: ", err.Error())
 			return
 		}
 		if restart {
-			util.LogTrace.Println("Restart sync process")
+			logger.Trace.Println("Restart sync process")
 			time.Sleep(time.Second)
 			go SyncRobotProfileToSolr()
 		}
@@ -199,13 +200,13 @@ func SyncRobotProfileToSolr() (err error) {
 	if err != nil {
 		return
 	}
-	util.LogTrace.Printf("relate question: %+v", rqIDs)
-	util.LogTrace.Printf("update answers: %+v", ansIDs)
-	util.LogTrace.Printf("delete answers: %+v", delAnsIDs)
-	util.LogTrace.Printf("delete relate question: %+v", deleteRQIDs)
+	logger.Trace.Printf("relate question: %+v", rqIDs)
+	logger.Trace.Printf("update answers: %+v", ansIDs)
+	logger.Trace.Printf("delete answers: %+v", delAnsIDs)
+	logger.Trace.Printf("delete relate question: %+v", deleteRQIDs)
 
 	if len(tagInfos) == 0 && len(deleteRQIDs) == 0 && len(delAnsIDs) == 0 {
-		util.LogTrace.Println("No data need to update")
+		logger.Trace.Println("No data need to update")
 		return
 	}
 
@@ -220,15 +221,15 @@ func SyncRobotProfileToSolr() (err error) {
 
 		err = fillNLUInfoInTaggingInfos(validInfos)
 		if err != nil {
-			util.LogError.Printf("Get NLUInfo fail: %s\n", err.Error())
+			logger.Error.Printf("Get NLUInfo fail: %s\n", err.Error())
 			return
 		}
 
 		jsonStr, _ := json.Marshal(validInfos)
-		util.LogTrace.Printf("JSON send to solr: %s\n", jsonStr)
+		logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
 		body, err = Service.IncrementAddSolr(jsonStr)
 		if err != nil {
-			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
 			return
 		}
 	}
@@ -246,7 +247,7 @@ func SyncRobotProfileToSolr() (err error) {
 	if len(deleteStdQIDs) > 0 {
 		body, err = Service.DeleteInSolr("robot", deleteStdQIDs)
 		if err != nil {
-			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
 			return
 		}
 	}
@@ -254,13 +255,13 @@ func SyncRobotProfileToSolr() (err error) {
 	if len(deleteRQIDs) > 0 {
 		body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
 		if err != nil {
-			util.LogError.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
 			return
 		}
 	}
 	err = resetRobotQAData(rqIDs, deleteRQIDs, ansIDs, delAnsIDs)
 	if err != nil {
-		util.LogError.Println("Reset status to 0 fail: ", err.Error())
+		logger.Error.Println("Reset status to 0 fail: ", err.Error())
 		return
 	}
 	return

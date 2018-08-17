@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func getFunctionList(appid string) (map[string]*FunctionInfo, error) {
@@ -17,7 +18,7 @@ func getFunctionList(appid string) (map[string]*FunctionInfo, error) {
 
 	// If file not exist, return empty map
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		util.LogInfo.Printf("File of function setting not existed for appid = [%s]", filePath)
+		logger.Info.Printf("File of function setting not existed for appid = [%s]", filePath)
 		return ret, nil
 	}
 
@@ -55,7 +56,7 @@ func updateFunctionList(appid string, infos map[string]*FunctionInfo) error {
 	}
 	content := strings.Join(lines, "")
 	err := ioutil.WriteFile(filePath, []byte(content), 0644)
-	util.LogTrace.Printf("Upload function properties to %s", content)
+	logger.Trace.Printf("Upload function properties to %s", content)
 
 	tmpFilePath := util.GetFunctionSettingTmpPath(appid)
 	now := time.Now()
@@ -109,7 +110,7 @@ func getAllRobotQAList(appid string, version int) ([]*QAInfo, error) {
 	for rows.Next() {
 		err = rows.Scan(dest...)
 		if err != nil {
-			util.LogTrace.Printf("Scan row error: %s", err.Error())
+			logger.Trace.Printf("Scan row error: %s", err.Error())
 			return nil, err
 		}
 
@@ -331,7 +332,7 @@ func getRobotQAListPage(appid string, page int, listPerPage int, version int) ([
 	for rows.Next() {
 		err = rows.Scan(dest...)
 		if err != nil {
-			util.LogTrace.Printf("Scan row error: %s", err.Error())
+			logger.Trace.Printf("Scan row error: %s", err.Error())
 			return nil, err
 		}
 
@@ -439,7 +440,7 @@ func getRobotQA(appid string, id int, version int) (*QAInfo, error) {
 	if rows.Next() {
 		err = rows.Scan(dest...)
 		if err != nil {
-			util.LogTrace.Printf("Scan row error: %s", err.Error())
+			logger.Trace.Printf("Scan row error: %s", err.Error())
 			return nil, err
 		}
 
@@ -735,8 +736,8 @@ func updateMultiRobotChat(appid string, input []*ChatInfoInput) error {
 		ids = append(ids, info.Type)
 	}
 	deleteStr := fmt.Sprintf("DELETE FROM %s_robot_setting where type in (?%s)", appid, strings.Repeat(",?", len(ids)-1))
-	util.LogTrace.Printf("SQL: %s\n", deleteStr)
-	util.LogTrace.Printf("param: %#v\n", ids)
+	logger.Trace.Printf("SQL: %s\n", deleteStr)
+	logger.Trace.Printf("param: %#v\n", ids)
 	_, err = link.Exec(deleteStr, ids...)
 	if err != nil {
 		link.Rollback()

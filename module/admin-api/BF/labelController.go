@@ -11,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleGetCmds(w http.ResponseWriter, r *http.Request) {
@@ -202,7 +203,7 @@ func parseCmdFromRequest(r *http.Request) (cmd *Cmd, err error) {
 	}
 	defer func() {
 		if err != nil {
-			util.LogInfo.Printf("Parse cmd fail: %s\n", err.Error())
+			logger.Info.Printf("Parse cmd fail: %s\n", err.Error())
 		}
 	}()
 

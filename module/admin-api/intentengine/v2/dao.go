@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type intentDaoInterface interface {
@@ -453,21 +454,21 @@ func (dao intentDaoV2) CommitIntent(appid string) (version int, ret []*IntentV2,
 	if err != nil {
 		return
 	}
-	util.LogTrace.Println("Check if need commit: ", need)
+	logger.Trace.Println("Check if need commit: ", need)
 	if !need {
 		version, err = getLatestVersion(tx, appid)
-		util.LogTrace.Println("No need commit, version:", version)
+		logger.Trace.Println("No need commit, version:", version)
 		return
 	}
 	intents, err := getIntents(tx, appid, nil, true)
 	now := time.Now().Unix()
 
-	util.LogTrace.Printf("Commit %d intents\n", len(intents))
+	logger.Trace.Printf("Commit %d intents\n", len(intents))
 	version, err = commitNewVersion(tx, appid, intents, now)
 	if err != nil {
 		return
 	}
-	util.LogTrace.Println("Commit new intent, version:", version)
+	logger.Trace.Println("Commit new intent, version:", version)
 
 	err = tx.Commit()
 	if err != nil {

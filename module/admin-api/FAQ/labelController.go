@@ -11,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func parseLabelFromRequest(r *http.Request) (*Label, error) {
@@ -325,7 +326,7 @@ func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
 	}
 	defer func() {
 		if err != nil {
-			util.LogInfo.Printf("Parse rule fail: %s\n", err.Error())
+			logger.Info.Printf("Parse rule fail: %s\n", err.Error())
 		}
 	}()
 

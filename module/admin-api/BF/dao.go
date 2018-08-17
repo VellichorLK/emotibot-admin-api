@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func addUser(userid, account, password, enterprise string) error {
@@ -117,7 +118,7 @@ func deleteEnterprise(id string) (err error) {
 		users = append(users, userid)
 		qMarks = append(qMarks, "?")
 	}
-	util.LogTrace.Printf("Get users of enterprise [%s]: %+v\n", id, users)
+	logger.Trace.Printf("Get users of enterprise [%s]: %+v\n", id, users)
 
 	if len(users) > 0 {
 		queryStr = fmt.Sprintf("DELETE FROM api_userkey WHERE UserId in (%s)",
@@ -275,7 +276,7 @@ func updateRole(uuid string, commands []string) error {
 		return err
 	}
 
-	util.LogTrace.Printf("role: %s (%d), %+v\n", uuid, id, rightIDs)
+	logger.Trace.Printf("role: %s (%d), %+v\n", uuid, id, rightIDs)
 	queryStr = "INSERT tbl_role_right (ROLE_ID ,RIGHT_ID) VALUES (?, ?)"
 	for _, rightID := range rightIDs {
 		_, err = t.Exec(queryStr, id, rightID)
@@ -311,7 +312,7 @@ func deleteRole(uuid string) error {
 		return err
 	}
 
-	util.LogTrace.Printf("Delete bf role with id: %d, uuid: %s\n", id, uuid)
+	logger.Trace.Printf("Delete bf role with id: %d, uuid: %s\n", id, uuid)
 	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
 	_, err = t.Exec(queryStr, id)
 	if err != nil {

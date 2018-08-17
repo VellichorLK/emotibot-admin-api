@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func GetWordbank(appid string, id int) (*WordBank, error) {
@@ -78,7 +79,7 @@ func GetDownloadMeta(appid string) (map[string]*DownloadMeta, error) {
 	}
 
 	ret := make(map[string]*DownloadMeta)
-	util.LogTrace.Printf("Get download meta: (%d) %+v", len(ret), metas)
+	logger.Trace.Printf("Get download meta: (%d) %+v", len(ret), metas)
 
 	if len(metas) >= 1 {
 		ret["currentFile"] = metas[0]
@@ -87,7 +88,7 @@ func GetDownloadMeta(appid string) (map[string]*DownloadMeta, error) {
 	if len(metas) >= 2 {
 		ret["lastFile"] = metas[1]
 	}
-	util.LogInfo.Printf("Transfor finish")
+	logger.Info.Printf("Transfor finish")
 
 	return ret, nil
 }

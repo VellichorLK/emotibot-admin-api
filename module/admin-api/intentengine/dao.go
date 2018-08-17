@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // getIntents returns all intent names of given app ID
@@ -18,7 +19,7 @@ func getIntents(appID string, version int) ([]string, error) {
 	queryStr := fmt.Sprintf("SELECT name FROM intents WHERE app_id = ? AND intent_version_id = ?")
 	rows, err := db.Query(queryStr, appID, version)
 	if err != nil {
-		util.LogError.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
+		logger.Error.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -41,7 +42,7 @@ func getIntents(appID string, version int) ([]string, error) {
 
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		util.LogError.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
+		logger.Error.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
 		return nil, err
 	}
 
@@ -65,7 +66,7 @@ func getIntentDetails(appID string, version int) ([]*Intent, error) {
 
 	rows, err := db.Query(queryStr, appID, version)
 	if err != nil {
-		util.LogError.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
+		logger.Error.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
 		return nil, err
 	}
 	defer rows.Close()
@@ -117,7 +118,7 @@ func getIntentDetails(appID string, version int) ([]*Intent, error) {
 
 	rows.Close()
 	if err = rows.Err(); err != nil {
-		util.LogError.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
+		logger.Error.Printf("SQL: %s failed. %s\n", queryStr, err.Error())
 		return nil, err
 	}
 
@@ -145,13 +146,13 @@ func insertIntents(appID string, intents map[string][]string,
 	// Create new version, version ID is auto increment
 	result, err := tx.Exec("INSERT INTO intent_versions(app_id, orig_file_name, file_name) VALUES (?, ?, ?)", appID, fileName, renamedFileName)
 	if err != nil {
-		util.LogError.Printf("Insert intents failed. %s\n", err.Error())
+		logger.Error.Printf("Insert intents failed. %s\n", err.Error())
 		return
 	}
 
 	ver, err := result.LastInsertId()
 	if err != nil {
-		util.LogError.Printf("Insert intents failed. %s\n", err.Error())
+		logger.Error.Printf("Insert intents failed. %s\n", err.Error())
 		return version, err
 	}
 
@@ -174,13 +175,13 @@ func insertIntents(appID string, intents map[string][]string,
 	for name, sentences := range intents {
 		result, err := intentStmt.Exec(appID, name, version)
 		if err != nil {
-			util.LogError.Printf("Insert intents failed. %s\n", err.Error())
+			logger.Error.Printf("Insert intents failed. %s\n", err.Error())
 			return version, err
 		}
 
 		id, err := result.LastInsertId()
 		if err != nil {
-			util.LogError.Printf("Insert intents failed. %s\n", err.Error())
+			logger.Error.Printf("Insert intents failed. %s\n", err.Error())
 			return version, err
 		}
 
@@ -189,7 +190,7 @@ func insertIntents(appID string, intents map[string][]string,
 		for _, sentence := range sentences {
 			_, err = intentTrainStmt.Exec(sentence, intentID, version)
 			if err != nil {
-				util.LogError.Printf("Insert intents failed. %s\n", err.Error())
+				logger.Error.Printf("Insert intents failed. %s\n", err.Error())
 				return version, err
 			}
 		}
@@ -207,7 +208,7 @@ func deleteIntents(appID string) (err error) {
 
 	_, err = db.Exec("DELETE FROM intents WHERE app_id = ?", appID)
 	if err != nil {
-		util.LogError.Printf("Delete intents failed. %s\n", err.Error())
+		logger.Error.Printf("Delete intents failed. %s\n", err.Error())
 	}
 	return
 }

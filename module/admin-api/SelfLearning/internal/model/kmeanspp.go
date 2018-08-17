@@ -4,7 +4,7 @@ import (
 	"math"
 	"math/rand"
 
-	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // Vector: Data Abstraction for an N-dimensional
@@ -105,13 +105,13 @@ func near(
 func seedpp(data []ClusteredVector, k int) []Vector {
 	centroids := make([]Vector, k)
 	if len(data) == 0 {
-		util.LogError.Println("The seed generation fails, caused by: [data size is 0]")
+		logger.Error.Println("The seed generation fails, caused by: [data size is 0]")
 		return centroids
 	}
 
-	util.LogTrace.Println("Generate seed starts.")
+	logger.Trace.Println("Generate seed starts.")
 	centroids[0] = data[rand.Intn(len(data))].Vector
-	util.LogTrace.Printf("Generate seed[0] ends. Seed[0]: %v\n",
+	logger.Trace.Printf("Generate seed[0] ends. Seed[0]: %v\n",
 		centroids[0])
 	distPow2 := make([]float64, len(data))
 
@@ -131,7 +131,7 @@ func seedpp(data []ClusteredVector, k int) []Vector {
 		centroids[i] = data[j].Vector
 	}
 	/*
-		util.LogTrace.Printf("Generate seed ends, size:[%v], mean[%v]\n",
+		logger.Trace.Printf("Generate seed ends, size:[%v], mean[%v]\n",
 			len(centroids),
 			mean(centroids))
 	*/
@@ -144,12 +144,12 @@ func kmeanspp(
 	centroids []Vector,
 	threshold int) []ClusteredVector {
 	counter := 0
-	util.LogTrace.Println("Start clustering with k-means")
+	logger.Trace.Println("Start clustering with k-means")
 	for idx, clusteredVector := range data {
 		closestCluster, _ := near(clusteredVector, centroids)
 		data[idx].ClusterNumber = closestCluster
 	}
-	util.LogTrace.Println("Initialize the clusters finished")
+	logger.Trace.Println("Initialize the clusters finished")
 	sizeCentroids := make([]int, len(centroids))
 	dimension := len(data[0].Vector)
 	for {
@@ -157,7 +157,7 @@ func kmeanspp(
 			calc new centroids
 		*/
 
-		util.LogTrace.Printf("Start the [%v]th loop\n", counter)
+		logger.Trace.Printf("Start the [%v]th loop\n", counter)
 		for i := range centroids {
 			centroids[i] = make(Vector, dimension)
 			sizeCentroids[i] = 0
@@ -171,7 +171,7 @@ func kmeanspp(
 		for i := range centroids {
 			centroids[i].mul(1 / float64(sizeCentroids[i]))
 		}
-		util.LogTrace.Printf("In loop [%v], update the centroids finished\n", counter)
+		logger.Trace.Printf("In loop [%v], update the centroids finished\n", counter)
 		/*
 			find centroid for each node
 		*/
@@ -185,12 +185,12 @@ func kmeanspp(
 			data[i].ClusterNumber = closestCluster
 			data[i].Distance = distance
 		}
-		util.LogTrace.Printf("In loop [%v], clustering finished. With [%v] changes.\n",
+		logger.Trace.Printf("In loop [%v], clustering finished. With [%v] changes.\n",
 			counter,
 			changes)
 		counter++
 		if changes < 5 {
-			util.LogTrace.Println("Finish clustering!!")
+			logger.Trace.Println("Finish clustering!!")
 			return data
 		}
 	}

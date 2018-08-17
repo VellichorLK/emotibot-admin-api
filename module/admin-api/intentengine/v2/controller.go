@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func init() {
@@ -49,7 +50,7 @@ func handleGetIntentV2(w http.ResponseWriter, r *http.Request) {
 	keyword := strings.TrimSpace(r.URL.Query().Get("keyword"))
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
@@ -90,7 +91,7 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID"))
 		return
 	}
@@ -199,14 +200,14 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 	}()
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
-		util.LogTrace.Println("Error name param in request")
+		logger.Trace.Println("Error name param in request")
 		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentName"))
 		return
 	}

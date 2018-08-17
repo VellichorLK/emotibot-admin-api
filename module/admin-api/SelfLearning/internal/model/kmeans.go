@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 /*
@@ -44,7 +44,7 @@ func Kmeans(
 }
 
 func seed(data []ClusteredVector, k int) []Vector {
-	util.LogTrace.Println("Generate seed starts.")
+	logger.Trace.Println("Generate seed starts.")
 	centroids := make([]Vector, k)
 	costs := make([]float64, len(data))
 
@@ -56,21 +56,21 @@ func seed(data []ClusteredVector, k int) []Vector {
 	tmpCentroids = append(tmpCentroids, data[rand.Intn(len(data))].Vector)
 	for i := 0; i < initializationSteps; i++ {
 		var sum float64
-		util.LogTrace.Printf("Loop [%v] for centroids generation.\n", i+1)
+		logger.Trace.Printf("Loop [%v] for centroids generation.\n", i+1)
 		for idx, vec := range data {
 			if newCost, _ := pointCost(vec.Vector, tmpCentroids); newCost < costs[idx] {
 				costs[idx] = newCost
 			}
 			sum += costs[idx]
 		}
-		util.LogTrace.Println("Start to sample centroids.")
+		logger.Trace.Println("Start to sample centroids.")
 		for idx := range data {
 			possibility := 2.0 * float64(k) * costs[idx] / sum
 			if rand.Float64() < possibility {
 				tmpCentroids = append(tmpCentroids, data[idx].Vector)
 			}
 		}
-		util.LogTrace.Printf("Centroids size: [%v]\n", len(tmpCentroids))
+		logger.Trace.Printf("Centroids size: [%v]\n", len(tmpCentroids))
 	}
 
 	if len(tmpCentroids) <= k {
@@ -82,10 +82,10 @@ func seed(data []ClusteredVector, k int) []Vector {
 		_, index := pointCost(vec.Vector, tmpCentroids)
 		weights[index]++
 	}
-	util.LogTrace.Printf("Start to re-sampling into [%v] centroids.\n", k)
+	logger.Trace.Printf("Start to re-sampling into [%v] centroids.\n", k)
 	start := time.Now()
 	centroids = localKMeans(tmpCentroids, weights, k, 30, len(data))
-	util.LogTrace.Printf("Re-sampling costs: [%v], centroids size: [%v]\n",
+	logger.Trace.Printf("Re-sampling costs: [%v], centroids size: [%v]\n",
 		time.Since(start).Seconds(),
 		len(centroids))
 	return centroids
@@ -124,7 +124,7 @@ func localKMeans(points []Vector, weights []int, k, threshold, size int) (center
 		}
 
 		if j == 0 {
-			util.LogWarn.Printf("kMeansPlusPlus initialization ran out of distinct points for centers."+
+			logger.Warn.Printf("kMeansPlusPlus initialization ran out of distinct points for centers."+
 				" Using duplicate point for center k = %v\n", i)
 			centers[i] = points[0]
 		} else {

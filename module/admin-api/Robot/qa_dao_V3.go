@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type scanners interface {
@@ -532,7 +533,7 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 
 	now := time.Now().Unix()
 	if running {
-		util.LogTrace.Printf("Previous still running from %d", start)
+		logger.Trace.Printf("Previous still running from %d", start)
 		if int(now)-start <= syncSolrTimeout {
 			return
 		}
@@ -856,7 +857,7 @@ func needProcessRobotData() (ret bool, err error) {
 	}
 
 	if count > 0 {
-		util.LogTrace.Println("New modify in robot profile extend")
+		logger.Trace.Println("New modify in robot profile extend")
 		ret = true
 		return
 	}
@@ -872,7 +873,7 @@ func needProcessRobotData() (ret bool, err error) {
 	}
 
 	if count > 0 {
-		util.LogTrace.Println("New modify in robot profile answer")
+		logger.Trace.Println("New modify in robot profile answer")
 		ret = true
 		return
 	}
