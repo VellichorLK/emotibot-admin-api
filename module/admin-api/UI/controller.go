@@ -6,6 +6,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -58,20 +60,20 @@ func handleDecrypt(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDumpUISetting(w http.ResponseWriter, r *http.Request) {
-	util.LogTrace.Println("Run: handleDumpUISetting")
+	logger.Trace.Println("Run: handleDumpUISetting")
 	envs := getEnvironments()
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, envs))
 	return
 }
 
 func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
-	util.LogTrace.Println("Run: handleExportAuditLog")
+	logger.Trace.Println("Run: handleExportAuditLog")
 	module := r.FormValue("module")
 	fileName := r.FormValue("filename")
 	extMsg := r.FormValue("info")
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
-	appid := util.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
 
 	moduleID := ""
 	switch module {
@@ -97,7 +99,7 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 
 	if moduleID == "" || fileName == "" {
 		http.Error(w, "", http.StatusBadRequest)
-		util.LogInfo.Printf("Bad request: module:[%s] file:[%s]", moduleID, fileName)
+		logger.Info.Printf("Bad request: module:[%s] file:[%s]", moduleID, fileName)
 		return
 	}
 

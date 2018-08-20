@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/binary"
 	"fmt"
-	"github.com/gonum/blas/blas64"
 	"io"
 	"math"
 	"math/rand"
@@ -13,7 +12,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"emotibot.com/emotigo/module/admin-api/util"
+
+	"emotibot.com/emotigo/pkg/logger"
+	"github.com/gonum/blas/blas64"
 )
 
 var StopWordList map[string]int
@@ -22,7 +23,7 @@ func SetStopWords(path string) {
 	StopWordList = make(map[string]int)
 	file, err := os.Open(path + "resources/stoplist.txt")
 	if err != nil {
-		util.LogError.Println("Cannot load from file path stoplist.txt")
+		logger.Error.Println("Cannot load from file path stoplist.txt")
 		return
 	}
 	defer file.Close()
@@ -191,7 +192,7 @@ func loadStopWords(path string) {
 
 	file, err := os.Open(path + "resources/stoplist.txt")
 	if err != nil {
-		util.LogError.Printf("Read stop list error: %s\n", err)
+		logger.Error.Printf("Read stop list error: %s\n", err)
 		initialize = false
 		return
 	}
@@ -199,7 +200,7 @@ func loadStopWords(path string) {
 
 	file0, err := os.Open(path + "resources/stoplist_0.txt")
 	if err != nil {
-		util.LogError.Printf("Read stop list 0 error: %s\n", err)
+		logger.Error.Printf("Read stop list 0 error: %s\n", err)
 		initialize = false
 		return
 	}
@@ -207,7 +208,7 @@ func loadStopWords(path string) {
 
 	file1, err := os.Open(path + "resources/stoplist_1.txt")
 	if err != nil {
-		util.LogError.Printf("Read stop list 1 error:%s\n ", err)
+		logger.Error.Printf("Read stop list 1 error:%s\n ", err)
 		initialize = false
 		return
 	}
@@ -215,7 +216,7 @@ func loadStopWords(path string) {
 
 	time, err := os.Open(path + "resources/timelist.txt")
 	if err != nil {
-		util.LogError.Printf("Read time list error: %s\n", err)
+		logger.Error.Printf("Read time list error: %s\n", err)
 		initialize = false
 		return
 	}
@@ -247,7 +248,7 @@ func loadPunctuation(path string) {
 
 	file, err := os.Open(path + "resources/symbol.txt")
 	if err != nil {
-		util.LogError.Printf("Read punctuation list error:%s\n ", err)
+		logger.Error.Printf("Read punctuation list error:%s\n ", err)
 		initialize = false
 		return
 	}
@@ -262,7 +263,7 @@ func loadPunctuation(path string) {
 func loadIDFCache(path string) {
 	file, err := os.Open(path + "resources/idf_cache.txt")
 	if err != nil {
-		util.LogError.Printf("Read idf-cache error: %s\n", err)
+		logger.Error.Printf("Read idf-cache error: %s\n", err)
 		initialize = false
 		return
 	}
@@ -273,7 +274,7 @@ func loadIDFCache(path string) {
 		line := strings.Split(scanner.Text(), " ")
 		num, err := strconv.ParseFloat(line[1], 64)
 		if err != nil {
-			util.LogWarn.Printf("Convert to float64 fail: %s\n", line[1])
+			logger.Warn.Printf("Convert to float64 fail: %s\n", line[1])
 			continue
 		}
 		IDFCache.Store(line[0], num)
@@ -283,7 +284,7 @@ func loadIDFCache(path string) {
 func loadModel(path string) {
 	file, err := os.Open(path + "resources/w2v_model.bin")
 	if err != nil {
-		util.LogError.Printf("Read w2v-model error:%s\n ", err)
+		logger.Error.Printf("Read w2v-model error:%s\n ", err)
 		initialize = false
 		return
 	}
@@ -292,7 +293,7 @@ func loadModel(path string) {
 	br := bufio.NewReader(file)
 	n, err := fmt.Fscanln(file, &size, &dim)
 	if err != nil || n != 2 {
-		util.LogError.Printf("Read model size & dimension parameters error:%s\n ", err)
+		logger.Error.Printf("Read model size & dimension parameters error:%s\n ", err)
 		initialize = false
 		return
 	}
@@ -306,7 +307,7 @@ func loadModel(path string) {
 	for i = 0; i < size; i++ {
 		bytes, err := br.ReadBytes(' ')
 		if err != nil {
-			util.LogError.Printf("Read model data error: %s\n", err)
+			logger.Error.Printf("Read model data error: %s\n", err)
 			initialize = false
 			return
 		}
@@ -315,7 +316,7 @@ func loadModel(path string) {
 		v := []float32(raw[dim*i : dim*(i+1)])
 		vv := make(Vector, dim)
 		if err := binary.Read(br, binary.LittleEndian, v); err != nil {
-			util.LogError.Printf("Read word vector error: %s\n", err)
+			logger.Error.Printf("Read word vector error: %s\n", err)
 			initialize = false
 			return
 		}
@@ -332,13 +333,13 @@ func loadModel(path string) {
 			if i == size-1 && err == io.EOF {
 				break
 			}
-			util.LogError.Printf("Read w2v-model error:%s\n ", err)
+			logger.Error.Printf("Read w2v-model error:%s\n ", err)
 			initialize = false
 			return
 		}
 		if b != byte('\n') {
 			if err := br.UnreadByte(); err != nil {
-				util.LogError.Printf("Read w2v-model error:%s\n ", err)
+				logger.Error.Printf("Read w2v-model error:%s\n ", err)
 				initialize = false
 				return
 			}

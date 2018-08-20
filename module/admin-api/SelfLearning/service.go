@@ -11,6 +11,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/model"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string, qType int) error {
@@ -19,7 +20,7 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster,
 	//update the status
 	defer func() {
 		if r := recover(); r != nil {
-			util.LogError.Printf("do clustering panic. %s: %s\n ", r, debug.Stack())
+			logger.Error.Printf("do clustering panic. %s: %s\n ", r, debug.Stack())
 			status = S_PANIC
 		}
 		sql := "update " + TableProps.report.name + " set " + TableProps.report.status + "=? where " + TableProps.report.id + "=?"
@@ -29,7 +30,7 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster,
 	feedbackQs, feedbackQID, err := getFeedbackQ(s, e, appid, qType)
 	if err != nil {
 		status = S_PANIC
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		return err
 	}
 
@@ -40,17 +41,17 @@ func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster,
 		if cluster == nil {
 			status = S_PANIC
 		} else {
-			util.LogTrace.Printf("Num of clusters %v,%v\n", cluster.numClustered, len(cluster.clusters))
+			logger.Trace.Printf("Num of clusters %v,%v\n", cluster.numClustered, len(cluster.clusters))
 			cluster.reportID = reportID
 			err = storeClusterData(store, cluster)
 			if err != nil {
 				status = S_PANIC
-				util.LogError.Println(err)
+				logger.Error.Println(err)
 			}
 		}
 
 	} else {
-		util.LogInfo.Println("Empty feedback question.")
+		logger.Info.Println("Empty feedback question.")
 	}
 
 	return err
@@ -60,12 +61,12 @@ func createOneReport(s time.Time, e time.Time, appid string, rType int) (uint64,
 	sql := "insert into " + TableProps.report.name + " (" + TableProps.report.startTime + "," + TableProps.report.endTime + "," + TableProps.report.appid + "," + TableProps.report.rType + ") values (?,?,?,?)"
 	result, err := sqlExec(sql, s, e, appid, rType)
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		return 0, err
 	}
 	reportID, err := result.LastInsertId()
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		return 0, err
 	}
 	return uint64(reportID), nil
@@ -131,10 +132,10 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 	var nativeLog data.NativeLog
 	nativeLog.Init()
 
-	util.LogTrace.Printf("The size of sentences to cluster is [%v]\n", len(feedbackQs))
+	logger.Trace.Printf("The size of sentences to cluster is [%v]\n", len(feedbackQs))
 
 	nativeLog.GetWordPos(NluURL, feedbackQs, feedbackQID)
-	util.LogTrace.Println("Calculate embeddings starts.")
+	logger.Trace.Println("Calculate embeddings starts.")
 	embeddingStart := time.Now()
 	embeddingBatch := time.Now()
 	for i := 0; i < len(nativeLog.Logs); i++ {
@@ -142,20 +143,20 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 		dalItem.Embedding = model.Vector(data.GetSentenceVector(dalItem.KeyWords, dalItem.Tokens))
 		embeddings = append(embeddings, dalItem.Embedding)
 		if i%500 == 0 {
-			util.LogTrace.Printf("Cal: [%v]/[%v] vectors, time consuming for this batch: [%v]s\n",
+			logger.Trace.Printf("Cal: [%v]/[%v] vectors, time consuming for this batch: [%v]s\n",
 				i,
 				len(nativeLog.Logs),
 				time.Since(embeddingBatch).Seconds())
 			embeddingBatch = time.Now()
 		}
 	}
-	util.LogTrace.Printf("Calculate embeddings ends. Time consuming: [%v]s\n",
+	logger.Trace.Printf("Calculate embeddings ends. Time consuming: [%v]s\n",
 		time.Since(embeddingStart).Seconds())
 
 	clusters := make([]clustering, 0)
 
 	if len(embeddings) == 0 {
-		util.LogError.Println("This task is going to be closed, because: [effective embedding size is 0]")
+		logger.Error.Println("This task is going to be closed, because: [effective embedding size is 0]")
 		clusters = append(clusters, clustering{feedbackID: feedbackQID, tags: make([]string, 0)})
 	} else {
 		clusterIdxes := doCluster(embeddings, 10)
@@ -203,7 +204,7 @@ func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringR
 }
 
 func doCluster(vectors []model.Vector, topN int) [][]int {
-	util.LogTrace.Println("Clustering starts.")
+	logger.Trace.Println("Clustering starts.")
 
 	numClusters := len(vectors) / ClusteringBatch
 
@@ -281,7 +282,7 @@ func getRecommend(appid string, sentence []string) ([]*RecommendQ, error) {
 				case s = <-stringChannel:
 					r, err := response.Post(appid, s)
 					if err != nil {
-						util.LogError.Println(err)
+						logger.Error.Println(err)
 					}
 
 					select {
@@ -341,7 +342,7 @@ func getRecommend(appid string, sentence []string) ([]*RecommendQ, error) {
 			rQ := &RecommendQ{QID: id, Content: sorter.sliceData[i].(string)}
 			recommend = append(recommend, rQ)
 		} else {
-			util.LogWarn.Printf("[SelfLearn][Recommend] has %s question but doesn't have id\n", sorter.sliceData[i].(string))
+			logger.Warn.Printf("[SelfLearn][Recommend] has %s question but doesn't have id\n", sorter.sliceData[i].(string))
 		}
 	}
 

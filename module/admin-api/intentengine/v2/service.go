@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
 )
 
@@ -173,7 +174,7 @@ func trainIntent(appid string) (modelID string, err error) {
 	if err != nil {
 		return "", err
 	}
-	util.LogTrace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Println("Get response when training intent-engine:", body)
 
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
@@ -201,7 +202,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	if err != nil {
 		return
 	}
-	util.LogTrace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Println("Get response when training intent-engine:", body)
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
 	if err != nil {
@@ -322,10 +323,10 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 	}
 
 	if format == typeBFOP {
-		util.LogTrace.Println("Parse file with BFOP type")
+		logger.Trace.Println("Parse file with BFOP type")
 		return parseBFOPSheets(sheets, locale)
 	} else if format == typeBF2 {
-		util.LogTrace.Println("Parse file with BF2 type")
+		logger.Trace.Println("Parse file with BF2 type")
 		return parseBF2Sheets(sheets, locale)
 	}
 	// this line must not happen

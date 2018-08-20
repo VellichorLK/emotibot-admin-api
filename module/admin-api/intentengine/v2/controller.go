@@ -13,6 +13,9 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/validate"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func init() {
@@ -24,7 +27,7 @@ func initV2Dao() {
 }
 
 func handleGetIntentsV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	versionStr := r.URL.Query().Get("version")
 	keyword := strings.TrimSpace(r.URL.Query().Get("keyword"))
 
@@ -44,12 +47,12 @@ func handleGetIntentsV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetIntentV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	locale := util.GetLocale(r)
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	keyword := strings.TrimSpace(r.URL.Query().Get("keyword"))
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
@@ -63,8 +66,8 @@ func handleGetIntentV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	locale := util.GetLocale(r)
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	var err AdminErrors.AdminError
 	var ret interface{}
@@ -90,7 +93,7 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID"))
 		return
 	}
@@ -105,8 +108,8 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	locale := util.GetLocale(r)
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	var err AdminErrors.AdminError
 	var ret interface{}
 	var newIntent *IntentV2
@@ -166,8 +169,8 @@ func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	locale := util.GetLocale(r)
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	var err AdminErrors.AdminError
 	var ret interface{}
 	var newIntent *IntentV2
@@ -199,14 +202,14 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 	}()
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
 	if convertErr != nil {
-		util.LogTrace.Println("Transform to int fail: ", convertErr.Error())
+		logger.Trace.Println("Transform to int fail: ", convertErr.Error())
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID")), nil)
 		return
 	}
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	if name == "" {
-		util.LogTrace.Println("Error name param in request")
+		logger.Trace.Println("Error name param in request")
 		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentName"))
 		return
 	}
@@ -234,7 +237,7 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetIntentStatusV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	status, err := GetIntentEngineStatus(appid)
 	if err != nil {
@@ -245,7 +248,7 @@ func handleGetIntentStatusV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleStartTrain(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	version, err := StartTrain(appid)
 	if err != nil {
@@ -271,8 +274,8 @@ func handleGetTrainDataV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	locale := util.GetLocale(r)
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	var err AdminErrors.AdminError
 	var auditMsg bytes.Buffer
 
@@ -320,7 +323,7 @@ func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {
 
 func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
 	appid := r.URL.Query().Get("appid")
-	locale := util.GetLocale(r)
+	locale := requestheader.GetLocale(r)
 	var err AdminErrors.AdminError
 	var ret []byte
 	var auditMsg bytes.Buffer
@@ -344,7 +347,7 @@ func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
 	}()
 	auditMsg.WriteString(localemsg.Get(locale, "IntentExport"))
 
-	if !util.IsValidAppID(appid) {
+	if !validate.IsValidAppID(appid) {
 		err = AdminErrors.New(AdminErrors.ErrnoRequestError, "APPID")
 		return
 	}

@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -72,13 +73,13 @@ func BatchGetNLUResults(appid string, sentences []string) (map[string]*NLUResult
 				if !ok {
 					return
 				}
-				util.LogTrace.Printf("Worker %d receive %d sentences\n", workNo, len(sentencesGroup))
+				logger.Trace.Printf("Worker %d receive %d sentences\n", workNo, len(sentencesGroup))
 				ret, err := GetNLUResults(appid, sentencesGroup)
 				if err != nil {
-					util.LogError.Println("Get NLU Result error:", err.Error())
+					logger.Error.Println("Get NLU Result error:", err.Error())
 					ret = map[string]*NLUResult{}
 				}
-				util.LogTrace.Printf("Worker %d finish query NLU, get %#v\n", workNo, ret)
+				logger.Trace.Printf("Worker %d finish query NLU, get %#v\n", workNo, ret)
 				resultsChan <- &ret
 			}
 		}(idx)
@@ -91,16 +92,16 @@ func BatchGetNLUResults(appid string, sentences []string) (map[string]*NLUResult
 			if ending > len(sentences) {
 				ending = len(sentences)
 			}
-			util.LogTrace.Printf("Send sentence %d-%d into channel\n", idx, ending)
+			logger.Trace.Printf("Send sentence %d-%d into channel\n", idx, ending)
 			dataChan <- sentences[idx:ending]
 		}
-		util.LogTrace.Printf("Send %d packets into channel\n", packetNum)
+		logger.Trace.Printf("Send %d packets into channel\n", packetNum)
 	}()
 
 	for packetNum > 0 {
 		groupResult := <-resultsChan
 		packetNum--
-		util.LogTrace.Printf("Master get %#v\n", groupResult)
+		logger.Trace.Printf("Master get %#v\n", groupResult)
 		for k, v := range *groupResult {
 			allResult[k] = v
 		}
@@ -126,7 +127,7 @@ func GetNLUResults(appid string, sentences []string) (map[string]*NLUResult, err
 	}
 
 	nluResult := []*NLUResult{}
-	util.LogTrace.Println("NLU Response:", body)
+	logger.Trace.Println("NLU Response:", body)
 	err = json.Unmarshal([]byte(body), &nluResult)
 	if err != nil {
 		return nil, err
@@ -171,8 +172,8 @@ func DeleteInSolr(typeInSolr string, deleteSolrIDs map[string][]string) (string,
 		if err != nil {
 			return "", err
 		}
-		util.LogTrace.Println("Send to solr-etl: ", params)
-		util.LogTrace.Println("Get from delete in solr: ", content)
+		logger.Trace.Println("Send to solr-etl: ", params)
+		logger.Trace.Println("Get from delete in solr: ", content)
 	}
 	return "", nil
 }
@@ -203,12 +204,12 @@ func getEnvironment(key string) string {
 func GetW2VResultFromSentence(src string, dst string) float64 {
 	srcResult, err := GetNLUResult("", src)
 	if err != nil {
-		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
+		logger.Error.Printf("Call NLU fail: %s\n", err.Error())
 		return -1
 	}
 	dstResult, err := GetNLUResult("", dst)
 	if err != nil {
-		util.LogError.Printf("Call NLU fail: %s\n", err.Error())
+		logger.Error.Printf("Call NLU fail: %s\n", err.Error())
 		return -1
 	}
 	srcVector := data.GetSentenceVector(srcResult.Keyword.ToList(), srcResult.Segment.ToList())

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -57,17 +59,17 @@ var (
 
 // AddAuditFromRequest will get userID, userIP and appid from request, and add audit log to mysql-audit
 func AddAuditFromRequest(r *http.Request, module string, operation string, msg string, result int) {
-	userID := GetUserID(r)
-	userIP := GetUserIP(r)
-	appid := GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
 
 	AddAuditLog(appid, userID, userIP, module, operation, msg, result)
 }
 
 func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
-	userID := GetUserID(r)
-	userIP := GetUserIP(r)
-	appid := GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
 
 	module := r.Header.Get(AuditCustomHeader)
 	operation := ""
@@ -110,22 +112,19 @@ func logRoutine() {
 func addAuditLog(log auditLog) {
 	auditDB := GetAuditDB()
 	if auditDB == nil {
-		LogError.Printf("Audit DB connection hasn't init")
+		logger.Error.Printf("Audit DB connection hasn't init")
 		return
-	}
-	if minShowLevel >= levelTrace {
-		LogTrace.Println("AUDIT: ", log.toString())
 	}
 	_, errWithAppID := auditDB.Exec("insert audit_record(appid, user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?, ?)",
 		log.AppID, log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
 	if errWithAppID == nil {
 		return
 	}
-	LogWarn.Println("Schema of audit_record should be upgraded")
+	logger.Warn.Println("Schema of audit_record should be upgraded")
 
 	_, errWithoutAppID := auditDB.Exec("insert audit_record(user_id, ip_source, module, operation, content, result) values (?, ?, ?, ?, ?, ?)",
 		log.UserID, log.UserIP, log.Module, log.Operation, log.Content, log.Result)
 	if errWithAppID != nil && errWithoutAppID != nil {
-		LogError.Printf("insert audit fail: %s", errWithoutAppID.Error())
+		logger.Error.Printf("insert audit fail: %s", errWithoutAppID.Error())
 	}
 }

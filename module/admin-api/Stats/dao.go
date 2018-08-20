@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -50,8 +51,8 @@ func getAuditList(appid string, input *AuditInput) ([]*AuditLog, error) {
 	args = append(args, input.End)
 
 	queryStr := fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc", strings.Join(columns, ","), strings.Join(conditions, " and "))
-	util.LogTrace.Printf("Query for audit: %s", queryStr)
-	util.LogTrace.Printf("Query param: %#v", args)
+	logger.Trace.Printf("Query for audit: %s", queryStr)
+	logger.Trace.Printf("Query param: %#v", args)
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
@@ -76,7 +77,7 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 		return nil, 0, errors.New("DB is not inited")
 	}
 
-	util.LogTrace.Printf("Search for audit: %#v", input.Filter)
+	logger.Trace.Printf("Search for audit: %#v", input.Filter)
 
 	columns := []string{"id", "user_id", "ip_source", "UNIX_TIMESTAMP(create_time)", "module", "operation", "content", "result"}
 
@@ -112,12 +113,12 @@ func getAuditListData(appid string, input *AuditInput, page int, listPerPage int
 		args = append(args, shift)
 	}
 
-	util.LogTrace.Printf("Query for audit: %s", queryStr)
-	util.LogTrace.Printf("Query param: %#v", args)
+	logger.Trace.Printf("Query for audit: %s", queryStr)
+	logger.Trace.Printf("Query param: %#v", args)
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
-		util.LogError.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
+		logger.Error.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
 		return nil, 0, err
 	}
 	defer rows.Close()
@@ -170,12 +171,12 @@ func getAuditListCnt(appid string, input *AuditInput) (int, error) {
 	args = append(args, appid)
 
 	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM audit_record WHERE %s", strings.Join(conditions, " and "))
-	util.LogTrace.Printf("Query for audit: %s", queryStr)
-	util.LogTrace.Printf("Query param: %#v", args)
+	logger.Trace.Printf("Query for audit: %s", queryStr)
+	logger.Trace.Printf("Query param: %#v", args)
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
-		util.LogError.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
+		logger.Error.Println("It may need to update sql with emotibot.audit_record_20180604.sql")
 		return 0, err
 	}
 	defer rows.Close()
@@ -207,7 +208,7 @@ func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*St
 
 	queryStr := queryPart + " " + condition
 
-	util.LogTrace.Printf("Query for stats unresolve question: %s, with [%d, %d]", queryStr, start, end)
+	logger.Trace.Printf("Query for stats unresolve question: %s, with [%d, %d]", queryStr, start, end)
 	rows, err := mySQL.Query(queryStr, start, end)
 	if err != nil {
 		return nil, err
@@ -218,7 +219,7 @@ func getUnresolveQuestionsStatistic(appid string, start int64, end int64) ([]*St
 	for rows.Next() {
 		temp := StatRow{}
 		rows.Scan(&temp.UserQuery, &temp.Count, &temp.Answer, &temp.Score, &temp.StandardQuestion)
-		util.LogTrace.Printf("==== %#v", temp)
+		logger.Trace.Printf("==== %#v", temp)
 		ret = append(ret, &temp)
 	}
 	return ret, nil
@@ -351,7 +352,7 @@ func getFAQStats(appID string, start, end time.Time, brandName string, eq ...whe
 	}
 	rows, err := db.Query(query, input...)
 	if err != nil {
-		util.LogError.Printf("query: %s\n", query)
+		logger.Error.Printf("query: %s\n", query)
 		return nil, fmt.Errorf("query failed, %v", err)
 	}
 	defer rows.Close()
@@ -425,7 +426,7 @@ func getSessionCount(appID string, cond SessionCondition) (totalSize int, err er
 	values = append([]interface{}{appID}, values...)
 	err = db.QueryRow(selectCount, values...).Scan(&totalSize)
 	if err != nil {
-		util.LogError.Println("Error SQL: ", selectCount)
+		logger.Error.Println("Error SQL: ", selectCount)
 		return 0, fmt.Errorf("session sql query error, %v", err.Error())
 	}
 
@@ -453,7 +454,7 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 
 	rows, err := db.Query(selectColumns, values...)
 	if err != nil {
-		util.LogError.Println("Error SQL: ", selectColumns, " values ", values)
+		logger.Error.Println("Error SQL: ", selectColumns, " values ", values)
 		return nil, fmt.Errorf("session sql query error, %v", err.Error())
 	}
 	defer rows.Close()
@@ -508,7 +509,7 @@ func records(appID, sessionID string) ([]record, error) {
 	}
 	rows, err := db.Query(query, sessionID, appID)
 	if err != nil {
-		util.LogError.Printf("Error SQL: %s\n", query)
+		logger.Error.Printf("Error SQL: %s\n", query)
 		return nil, fmt.Errorf("query failed, %v", err)
 	}
 	defer rows.Close()

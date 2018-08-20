@@ -8,6 +8,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -15,7 +17,7 @@ const (
 )
 
 func handleRobotQA(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil || id <= 0 {
@@ -32,17 +34,17 @@ func handleRobotQA(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotQAList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	page, err := util.GetParamInt(r, "page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 	listPerPage, err := util.GetParamInt(r, "per_page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -71,7 +73,7 @@ func handleRobotQAList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotQAModelRebuild(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	auditLog := ""
 	result := 0
 
@@ -90,7 +92,7 @@ func handleRobotQAModelRebuild(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateRobotQA(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	auditLog := ""
 	result := 0
 	errCode := ApiError.SUCCESS
@@ -138,7 +140,7 @@ func loadQAInfoFromContext(r *http.Request) *QAInfo {
 	input := &QAInfo{}
 	err := util.ReadJSON(r, input)
 	if err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		logger.Info.Printf("Bad request when loading from input: %s", err.Error())
 		return nil
 	}
 
@@ -159,7 +161,7 @@ func diffQAInfo(origInfo *QAInfo, newInfo *QAInfo) string {
 }
 
 func handleRobotQAV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil || id <= 0 {
@@ -176,17 +178,17 @@ func handleRobotQAV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotQAListV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	page, err := util.GetParamInt(r, "page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 	listPerPage, err := util.GetParamInt(r, "per_page")
 	if err != nil {
-		util.LogInfo.Printf("Param error: %s", err.Error())
+		logger.Info.Printf("Param error: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -215,7 +217,7 @@ func handleRobotQAListV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	auditLog := ""
 	result := 0
 	errCode := ApiError.SUCCESS
@@ -264,6 +266,6 @@ func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
 		if mcErr != nil {
 			errMsg = mcErr.Error()
 		}
-		util.LogInfo.Printf("Call multicustomer result: %d, %s", mcCode, errMsg)
+		logger.Info.Printf("Call multicustomer result: %d, %s", mcCode, errMsg)
 	}
 }

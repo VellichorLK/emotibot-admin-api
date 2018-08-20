@@ -3,7 +3,8 @@ FROM docker-reg.emotibot.com.cn:55688/go-build:650dbada-alpine AS build-env
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
 
-COPY . /go/src/emotibot.com/emotigo/module
+COPY ./module/${PROJECT} /go/src/emotibot.com/emotigo/module/${PROJECT}
+COPY ./pkg /go/src/emotibot.com/emotigo/pkg
 WORKDIR /go/src/emotibot.com/emotigo/module/${PROJECT}
 RUN go test ./...
 RUN go get -v && go install

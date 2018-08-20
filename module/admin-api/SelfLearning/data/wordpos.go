@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/model"
-	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 	json2 "github.com/bitly/go-simplejson"
 )
 
@@ -28,7 +28,7 @@ const nluQuerySize = 20
 
 func (l *NativeLog) GetWordPos(nluURL string, questions []string, questionIDs []uint64) {
 	start := time.Now()
-	util.LogTrace.Println("Load Word-Pos start.")
+	logger.Trace.Println("Load Word-Pos start.")
 
 	size := len(questions)
 	for i := 0; i < size/nluQuerySize; i++ {
@@ -46,13 +46,13 @@ func (l *NativeLog) GetWordPos(nluURL string, questions []string, questionIDs []
 
 			id, ok := contentIDMap[dalItem.Content]
 			if !ok {
-				util.LogError.Printf("Cannot find the question (%s) index\n", dalItem.Content)
+				logger.Error.Printf("Cannot find the question (%s) index\n", dalItem.Content)
 			}
 			dalItem.ContentID = id
 			l.Logs = append(l.Logs, dalItem)
 		}
 	}
-	util.LogTrace.Printf("Load Word-Pos ends. Time consuming: [%v]s",
+	logger.Trace.Printf("Load Word-Pos ends. Time consuming: [%v]s",
 		time.Since(start).Seconds())
 }
 
@@ -77,14 +77,14 @@ func callWordPosService(request string, nluURL string) []byte {
 		strings.NewReader(request))
 
 	if err != nil {
-		util.LogError.Printf("Cannot fetch NLU service:%s, %+v\n ", nluURL, err)
+		logger.Error.Printf("Cannot fetch NLU service:%s, %+v\n ", nluURL, err)
 		return nil
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 
 	if err != nil {
-		util.LogError.Printf("IO read error %s\n", err)
+		logger.Error.Printf("IO read error %s\n", err)
 	}
 
 	return body
@@ -93,7 +93,7 @@ func callWordPosService(request string, nluURL string) []byte {
 func parseFromWordPosRsp(rsp []byte) []*DalItem {
 	jsonRsp, err := json2.NewJson(rsp)
 	if err != nil {
-		util.LogWarn.Println("fail to parse response")
+		logger.Warn.Println("fail to parse response")
 		return nil
 	}
 	var dalItems []*DalItem
@@ -107,7 +107,7 @@ func parseFromWordPosRsp(rsp []byte) []*DalItem {
 
 		segment := singleResult.Get("segment").MustArray()
 		if err != nil {
-			util.LogWarn.Println("parse_segment_fail")
+			logger.Warn.Println("parse_segment_fail")
 			continue
 		}
 		var wordPos []string
@@ -124,7 +124,7 @@ func parseFromWordPosRsp(rsp []byte) []*DalItem {
 
 		keyword := singleResult.Get("keyword").MustArray()
 		if err != nil {
-			util.LogWarn.Println("parse_segment_fail")
+			logger.Warn.Println("parse_segment_fail")
 			continue
 		}
 		var keys []string
@@ -145,7 +145,7 @@ func parseFromWordPosRsp(rsp []byte) []*DalItem {
 
 		dalItem.Content, err = singleResult.Get("query").String()
 		if err != nil {
-			util.LogWarn.Println("parse_query_fail: ", singleResult)
+			logger.Warn.Println("parse_query_fail: ", singleResult)
 			continue
 		}
 

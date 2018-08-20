@@ -5,14 +5,15 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func main() {
-	util.LogInit("SYNC", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	logger.Init("SYNC", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {
-			util.LogError.Printf(err.Error())
+			logger.Error.Printf(err.Error())
 			os.Exit(-1)
 		}
 	}
@@ -27,7 +28,7 @@ func initDB() {
 	db := getServerEnv("MYSQL_DB")
 	err := util.InitMainDB(url, user, pass, db)
 	if err != nil {
-		util.LogTrace.Printf("Init DB Error: %s\n", err.Error())
+		logger.Trace.Printf("Init DB Error: %s\n", err.Error())
 	}
 }
 

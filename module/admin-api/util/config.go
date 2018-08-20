@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var envs = make(map[string]interface{})
@@ -63,17 +65,17 @@ func LoadConfigFromFile(path string) error {
 		if useEntryptedPassword && isSQLPasswordKey(newKey) {
 			newSetValue, err := DesDecrypt(setValue, []byte(DesEncryptKey))
 			if err == nil {
-				LogTrace.Printf("Decrypt password %s => %s\n", setValue, newSetValue)
+				logger.Trace.Printf("Decrypt password %s => %s\n", setValue, newSetValue)
 				setValue = newSetValue
 			} else {
-				LogError.Printf("Decrypt password error %s: %s\n", setValue, err.Error())
+				logger.Error.Printf("Decrypt password error %s: %s\n", setValue, err.Error())
 			}
 		}
 		moduleEnv[newKey] = setValue
 	}
 
 	envsStr, err := json.MarshalIndent(envs, "", "  ")
-	LogInfo.Printf("Load config: %s\n", envsStr)
+	logger.Info.Printf("Load config: %s\n", envsStr)
 
 	return nil
 }

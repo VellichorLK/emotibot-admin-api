@@ -11,6 +11,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func parseLabelFromRequest(r *http.Request) (*Label, error) {
@@ -26,7 +28,7 @@ func parseLabelFromRequest(r *http.Request) (*Label, error) {
 
 func handleDeleteLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -59,7 +61,7 @@ func handleDeleteLabel(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -94,7 +96,7 @@ func handleUpdateLabel(w http.ResponseWriter, r *http.Request) {
 
 func handleAddLabel(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -122,7 +124,7 @@ func handleAddLabel(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetLabels(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	tags, err := GetQuestionLabels(appid)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -146,7 +148,7 @@ func handleGetRules(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	rules, err := GetRules(appid)
 	if err != nil {
@@ -168,7 +170,7 @@ func handleGetRule(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status = http.StatusBadRequest
@@ -191,7 +193,7 @@ func handleGetRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleUpdateRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -236,7 +238,7 @@ func handleUpdateRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleAddRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -268,7 +270,7 @@ func handleAddRule(w http.ResponseWriter, r *http.Request) {
 }
 func handleDeleteRule(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	status := http.StatusOK
 	retCode := ApiError.SUCCESS
 	defer func() {
@@ -303,7 +305,7 @@ func handleGetRulesOfLabel(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	labelID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
@@ -325,7 +327,7 @@ func parseRuleFromRequest(r *http.Request) (rule *Rule, err error) {
 	}
 	defer func() {
 		if err != nil {
-			util.LogInfo.Printf("Parse rule fail: %s\n", err.Error())
+			logger.Info.Printf("Parse rule fail: %s\n", err.Error())
 		}
 	}()
 
@@ -416,7 +418,7 @@ func handleGetLabelsOfRule(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	ruleID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR

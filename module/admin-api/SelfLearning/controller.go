@@ -11,6 +11,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -51,37 +53,37 @@ func checkNeedEnvs() {
 
 	ClusteringBatch, err = strconv.Atoi(util.GetEnviroment(Envs, "CLUSTER_BATCH"))
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		ClusteringBatch = 50
 	}
 
 	EarlyStopThreshold, err = strconv.Atoi(util.GetEnviroment(Envs, "EARLY_STOP_THRESHOLD"))
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		EarlyStopThreshold = 3
 	}
 
 	MaxNumToCluster, err = strconv.Atoi(util.GetEnviroment(Envs, "MAX_NUM_TO_CLUSTER"))
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		MaxNumToCluster = 10000
 	}
 
 	MinSizeCluster, err = strconv.Atoi(util.GetEnviroment(Envs, "MIN_SIZE_CLUSTER"))
 	if err != nil {
-		util.LogError.Println(err)
+		logger.Error.Println(err)
 		MinSizeCluster = 10
 	}
 
 	NluURL = util.GetEnviroment(Envs, "NLU_URL")
 	if NluURL == "" {
-		util.LogError.Println("cant found NLU_URL, use local NLU URL")
+		logger.Error.Println("cant found NLU_URL, use local NLU URL")
 		NluURL = "http://172.17.0.1:13901"
 	}
 
 	responseURL = util.GetEnviroment(Envs, "RESPONSE_URL")
 	if responseURL == "" {
-		util.LogError.Println("cant found RESPONSE_URL")
+		logger.Error.Println("cant found RESPONSE_URL")
 
 	}
 }
@@ -98,13 +100,13 @@ func InitDB() {
 
 	dao, err := initSelfLearningDB(url, user, pass, db)
 	if err != nil {
-		util.LogError.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		logger.Error.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 		return
 	}
 	util.SetDB(ModuleInfo.ModuleName, dao)
 
 	if ok := data.InitializeWord2Vec(util.GetEnviroment(Envs, "RESOURCES_PATH")); !ok {
-		util.LogError.Println("Load self learning caches failed!")
+		logger.Error.Println("Load self learning caches failed!")
 		return
 	}
 }
@@ -135,7 +137,7 @@ func handleClustering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -202,7 +204,7 @@ func getQuestionType(r *http.Request) (int, error) {
 
 func handleGetReports(w http.ResponseWriter, r *http.Request) {
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -227,7 +229,7 @@ func handleGetReports(w http.ResponseWriter, r *http.Request) {
 	reports, err = GetReports("", limit, appid, pType)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Printf("%s\n", err)
+		logger.Error.Printf("%s\n", err)
 		return
 	}
 	util.WriteJSON(w, reports)
@@ -242,7 +244,7 @@ func handleGetReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -253,7 +255,7 @@ func handleGetReport(w http.ResponseWriter, r *http.Request) {
 	reports, err := GetReports(reportID, 1, appid, -1)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Printf("%s\n", err)
+		logger.Error.Printf("%s\n", err)
 		return
 	}
 	if len(reports) == 0 {
@@ -271,7 +273,7 @@ func handleGetClusters(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -313,7 +315,7 @@ func handleGetUserQuestions(w http.ResponseWriter, r *http.Request) {
 		limit, err = strconv.Atoi(l)
 	}
 	if err != nil {
-		util.LogError.Printf("input [limit] can't parseInt. %s\n", err)
+		logger.Error.Printf("input [limit] can't parseInt. %s\n", err)
 		util.WriteWithStatus(w, fmt.Sprintf("input [limit] can't parseInt. %s\n", err), http.StatusBadRequest)
 		return
 	}
@@ -324,14 +326,14 @@ func handleGetUserQuestions(w http.ResponseWriter, r *http.Request) {
 		page, err = strconv.Atoi(p)
 	}
 	if err != nil {
-		util.LogError.Printf("input [page] can't parseInt. %s\n", err)
+		logger.Error.Printf("input [page] can't parseInt. %s\n", err)
 		util.WriteWithStatus(w, fmt.Sprintf("input [page] can't parseInt. %s\n", err), http.StatusBadRequest)
 		return
 	}
 
 	questions, err := GetUserQuestions(reportID, clusterID, page, limit)
 	if err != nil {
-		util.LogError.Printf("Can't get report: [%s] of cluster:[%s]'s userQuestions. limit=%d, page=%d. err: %s\n", reportID, clusterID, limit, page, err)
+		logger.Error.Printf("Can't get report: [%s] of cluster:[%s]'s userQuestions. limit=%d, page=%d. err: %s\n", reportID, clusterID, limit, page, err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -365,7 +367,7 @@ func handleUpdateUserQuestion(w http.ResponseWriter, r *http.Request) {
 	err := util.ReadJSON(r, &request)
 	if err != nil {
 		util.WriteWithStatus(w, "", http.StatusBadRequest)
-		util.LogError.Printf("Request's body cant parse as JSON Data. %s\n", err)
+		logger.Error.Printf("Request's body cant parse as JSON Data. %s\n", err)
 		return
 	}
 	if request.StdQuestion == "" {
@@ -388,7 +390,7 @@ func handleUpdateUserQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Printf("Update id [%d] failed, %s\n", qid, err)
+		logger.Error.Printf("Update id [%d] failed, %s\n", qid, err)
 		return
 	}
 
@@ -418,7 +420,7 @@ func handleUpdateUserQuestions(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Printf("update User Question failed. %s\n", err)
+		logger.Error.Printf("update User Question failed. %s\n", err)
 		return
 	}
 }
@@ -455,7 +457,7 @@ func handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -469,7 +471,7 @@ func handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.LogError.Printf("delete report [%d] failed, %v", id, err)
+		logger.Error.Printf("delete report [%d] failed, %v", id, err)
 		return
 	}
 
@@ -477,7 +479,7 @@ func handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 
 func handleRecommend(w http.ResponseWriter, r *http.Request) {
 	sentence := make([]string, 0)
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	err := util.ReadJSON(r, &sentence)
 	if err != nil {
 		util.WriteWithStatus(w, fmt.Sprintf("%s\n", err), http.StatusBadRequest)

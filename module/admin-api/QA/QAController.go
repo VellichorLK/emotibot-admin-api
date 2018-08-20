@@ -10,6 +10,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // ModuleInfo is web info of questions entrypoints
@@ -49,9 +51,9 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		Action  string `json:"action,omitempty"`
 	}
 	var jsonResponse returnJSON
-	var userID = util.GetUserID(r)
-	var userIP = util.GetUserIP(r)
-	var appid = util.GetAppID(r)
+	var userID = requestheader.GetUserID(r)
+	var userIP = requestheader.GetUserIP(r)
+	var appid = requestheader.GetAppID(r)
 	var status = 0 // 0 == failed, 1 == success
 	var fileName, reason string
 
@@ -123,14 +125,14 @@ func exportExcel(w http.ResponseWriter, r *http.Request) {
 		UserID  string `json:"user_id,omitempty"`
 	}
 	var err error
-	var userID = util.GetUserID(r)
-	var userIP = util.GetUserIP(r)
-	var appid = util.GetAppID(r)
+	var userID = requestheader.GetUserID(r)
+	var userIP = requestheader.GetUserIP(r)
+	var appid = requestheader.GetAppID(r)
 
 	// check if we need should do any db query
 	condition, err := FAQ.ParseCondition(r)
 	if err != nil {
-		util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
+		logger.Error.Printf("Error happened while parsing conditions: %s", err.Error())
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -145,7 +147,7 @@ func exportExcel(w http.ResponseWriter, r *http.Request) {
 		condition.CategoryId = originCategoryId
 		_, aids, err := FAQ.DoFilter(condition, appid)
 		if err != nil {
-			util.LogError.Printf("Error happened while fetch question ids & answer ids: %s", err.Error())
+			logger.Error.Printf("Error happened while fetch question ids & answer ids: %s", err.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
@@ -168,7 +170,7 @@ func exportExcel(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSON(w, successJSON{StateID: mcResponse.SyncInfo.StatID})
 		auditLogContent, err := genQAExportAuditLog(appid, &condition, mcResponse.SyncInfo.StatID)
 		if err != nil {
-			util.LogError.Printf("Error happened while parsing conditions: %s", err.Error())
+			logger.Error.Printf("Error happened while parsing conditions: %s", err.Error())
 		}
 		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationExport, auditLogContent, 1)
 	case util.ErrorMCLock: //503 MCError
@@ -184,7 +186,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 	id := util.GetMuxVar(r, "id")
 	db := util.GetMainDB()
 	if db == nil {
-		util.LogError.Println("Main DB Connection failed")
+		logger.Error.Println("Main DB Connection failed")
 		util.WriteJSONWithStatus(w, errorJSON{"Main DB Connection failed"}, http.StatusInternalServerError)
 	}
 	rows, err := db.Query("SELECT content, status FROM state_machine WHERE state_id = ?", id)
@@ -194,8 +196,8 @@ func download(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	// var userID = util.GetUserID(r)
-	// var userIP = util.GetUserIP(r)
+	// var userID = requestheader.GetUserID(r)
+	// var userIP = requestheader.GetUserIP(r)
 	var content []byte
 	var status string
 
@@ -226,7 +228,7 @@ func progress(w http.ResponseWriter, r *http.Request) {
 
 	db := util.GetMainDB()
 	if db == nil {
-		util.LogError.Println("Main DB Connection failed")
+		logger.Error.Println("Main DB Connection failed")
 		util.WriteJSONWithStatus(w, errorJSON{"Main DB Connection failed"}, http.StatusInternalServerError)
 		return
 	}
@@ -268,7 +270,7 @@ func viewOperations(w http.ResponseWriter, r *http.Request) {
 
 	db := util.GetMainDB()
 	if db == nil {
-		util.LogError.Println("Main DB Connection failed")
+		logger.Error.Println("Main DB Connection failed")
 		util.WriteJSONWithStatus(w, errorJSON{"Main DB Connection failed"}, http.StatusInternalServerError)
 		return
 	}

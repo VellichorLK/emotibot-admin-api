@@ -11,6 +11,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleGetCmds(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +26,7 @@ func handleGetCmds(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	cmds, err := GetCmds(appid)
 	if err != nil {
@@ -44,7 +46,7 @@ func handleGetCmd(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
@@ -68,7 +70,7 @@ func handleGetCmd(w http.ResponseWriter, r *http.Request) {
 func handleUpdateCmd(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
 	var err error
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if err == nil {
@@ -113,7 +115,7 @@ func handleUpdateCmd(w http.ResponseWriter, r *http.Request) {
 func handleAddCmd(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
 	var err error
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if err == nil {
@@ -146,7 +148,7 @@ func handleAddCmd(w http.ResponseWriter, r *http.Request) {
 func handleDeleteCmd(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
 	var err error
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if err == nil {
@@ -180,7 +182,7 @@ func handleGetCmdsOfLabel(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, retObj), status)
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	labelID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		status, retCode = http.StatusBadRequest, ApiError.REQUEST_ERROR
@@ -202,7 +204,7 @@ func parseCmdFromRequest(r *http.Request) (cmd *Cmd, err error) {
 	}
 	defer func() {
 		if err != nil {
-			util.LogInfo.Printf("Parse cmd fail: %s\n", err.Error())
+			logger.Info.Printf("Parse cmd fail: %s\n", err.Error())
 		}
 	}()
 
@@ -288,7 +290,7 @@ func handleGetLabelsOfCmd(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	cmdID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		retCode = ApiError.REQUEST_ERROR
@@ -313,7 +315,7 @@ func handleGetCmdClass(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		retCode, err = ApiError.REQUEST_ERROR, util.GenBadRequestError("ID")
@@ -334,7 +336,7 @@ func handleDeleteCmdClass(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError(util.Msg["CmdParentID"])
@@ -359,7 +361,7 @@ func handleAddCmdClass(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	className := r.FormValue("name")
 	if strings.TrimSpace(className) == "" {
 		retCode, err = ApiError.REQUEST_ERROR, util.GenBadRequestError(util.Msg["CmdClassName"])
@@ -396,7 +398,7 @@ func handleUpdateCmdClass(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
 		}
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	classID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError(util.Msg["CmdParentID"])
@@ -420,7 +422,7 @@ func handleUpdateCmdClass(w http.ResponseWriter, r *http.Request) {
 func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
 	var err error
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	retCode := ApiError.SUCCESS
 	defer func() {
 		if err == nil {
