@@ -10,8 +10,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
@@ -28,8 +28,8 @@ var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 }
 
 func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	appID := requestheader.GetAppID(r)
 	statsType := r.URL.Query().Get("type")
 	statsFilter := r.URL.Query().Get("filter")
 	t1 := r.URL.Query().Get("t1")
@@ -193,8 +193,8 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	appID := requestheader.GetAppID(r)
 	questionsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")

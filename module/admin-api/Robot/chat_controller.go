@@ -9,11 +9,12 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleChatInfoList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	errCode := ApiError.SUCCESS
 
 	chatList, errCode, err := GetRobotChatInfoList(appid)
@@ -25,7 +26,7 @@ func handleChatInfoList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetChat(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	errCode := ApiError.SUCCESS
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil || id <= 0 {
@@ -42,7 +43,7 @@ func handleGetChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleChatList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	errCode := ApiError.SUCCESS
 
 	chatList, errCode, err := GetRobotChatList(appid)
@@ -54,7 +55,7 @@ func handleChatList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMultiChatModify(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	errCode := ApiError.SUCCESS
 
 	inputs := []*ChatInfoInput{}
@@ -128,7 +129,7 @@ func auditMultiChatModify(r *http.Request, origInfos []*ChatInfo, newInfos []*Ch
 }
 
 func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	httpStatus := http.StatusOK
 	var ret interface{}
 	var errno int
@@ -148,7 +149,7 @@ func handleGetRobotWord(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
@@ -167,7 +168,7 @@ func handleUpdateRobotWord(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
@@ -211,7 +212,7 @@ func handleAddRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		}
 		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		ret, errno, httpStatus = "Invalid type ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
@@ -261,7 +262,7 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		}
 		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationEdit, auditBuffer.String(), retVal)
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest
@@ -326,7 +327,7 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		}
 		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationDelete, auditBuffer.String(), retVal)
 	}()
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		ret, errno, httpStatus = "Invalid ID", ApiError.REQUEST_ERROR, http.StatusBadRequest

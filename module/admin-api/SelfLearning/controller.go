@@ -11,6 +11,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -136,7 +137,7 @@ func handleClustering(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -203,7 +204,7 @@ func getQuestionType(r *http.Request) (int, error) {
 
 func handleGetReports(w http.ResponseWriter, r *http.Request) {
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -243,7 +244,7 @@ func handleGetReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -272,7 +273,7 @@ func handleGetClusters(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -456,7 +457,7 @@ func handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status := -999
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w,
 			util.GenRetObj(status, "No permission"),
@@ -478,7 +479,7 @@ func handleDeleteReport(w http.ResponseWriter, r *http.Request) {
 
 func handleRecommend(w http.ResponseWriter, r *http.Request) {
 	sentence := make([]string, 0)
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	err := util.ReadJSON(r, &sentence)
 	if err != nil {
 		util.WriteWithStatus(w, fmt.Sprintf("%s\n", err), http.StatusBadRequest)

@@ -9,11 +9,12 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleRobotQAListV3(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	logger.Trace.Println("Get robot qa list of", appid)
 	qainfos, errno, err := GetRobotQAListV3(appid)
@@ -28,7 +29,7 @@ func handleRobotQAListV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotQAV3(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err := util.GenBadRequestError("ID")
@@ -84,7 +85,7 @@ func handleAddRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")
@@ -151,7 +152,7 @@ func handleUpdateRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")
@@ -234,7 +235,7 @@ func handleDeleteRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")
@@ -304,7 +305,7 @@ func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")
@@ -371,7 +372,7 @@ func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")
@@ -453,7 +454,7 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		err = util.GenBadRequestError("ID")

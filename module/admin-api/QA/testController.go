@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var (
@@ -57,8 +58,8 @@ func getGlobalEnv(key string) string {
 }
 
 func hadleChatTest(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	user := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	user := requestheader.GetUserID(r)
 	input, err := loadQATestInput(r)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusBadRequest)

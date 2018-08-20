@@ -3,13 +3,14 @@ package Robot
 import (
 	"net/http"
 	"strconv"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
-
 func handleChatQAList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	keyword := r.FormValue("keyword")
 	curPageStr := r.FormValue("curPage")
 	pageLimitStr := r.FormValue("pageLimit")
@@ -22,7 +23,7 @@ func handleChatQAList(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		pageLimit = 10
 	}
-	
+
 	chatDataList, errCode, err := GetChatQAList(appid, keyword, curPage, pageLimit)
 
 	if err != nil {
@@ -31,4 +32,3 @@ func handleChatQAList(w http.ResponseWriter, r *http.Request) {
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, chatDataList))
 }
-

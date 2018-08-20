@@ -11,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -67,9 +68,9 @@ func init() {
 }
 
 func handleAddCategory(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
 
 	name := r.FormValue("categoryname")
 	parentID, err := strconv.Atoi(r.FormValue("parentid"))
@@ -106,9 +107,9 @@ func handleAddCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
 	categoryID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -143,9 +144,9 @@ func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateCategories(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
 	categoryID, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -180,7 +181,7 @@ func handleUpdateCategories(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetCategories(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	categories, err := GetAPICategories(appid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -193,15 +194,15 @@ func handleQuerySimilarQuestions(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateSimilarQuestions(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	qid, err := util.GetMuxIntVar(r, "qid")
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 	proccessStatus := 0
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
 
 	questions, err := selectQuestions([]int{qid}, appid)
 	if err != nil {
@@ -287,7 +288,7 @@ func handleDeleteSimilarQuestions(w http.ResponseWriter, r *http.Request) {
 // search question by exactly matching content
 func handleSearchQuestion(w http.ResponseWriter, r *http.Request) {
 	content := r.FormValue("content")
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	question, err := searchQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
 		http.Error(w, "", http.StatusNotFound)
@@ -302,7 +303,7 @@ func handleSearchQuestion(w http.ResponseWriter, r *http.Request) {
 
 //Retrun JSON Formatted RFQuestion array, if question is invalid, id & categoryId will be 0
 func handleGetRFQuestions(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	questions, err := GetRFQuestions(appid)
 	if err != nil {
 		logger.Error.Printf("Get RFQuestions failed, %v\n", err)
@@ -314,7 +315,7 @@ func handleGetRFQuestions(w http.ResponseWriter, r *http.Request) {
 
 func handleSetRFQuestions(w http.ResponseWriter, r *http.Request) {
 	var args UpdateRFQuestionsArgs
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	err := util.ReadJSON(r, &args)
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
@@ -329,7 +330,7 @@ func handleSetRFQuestions(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCategoryQuestions(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "cid")
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
@@ -368,7 +369,7 @@ func handleCategoryQuestions(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleQuestionFilter(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	// parse QueryCondition
 	condition, err := ParseCondition(r)
 	if err != nil {
@@ -440,7 +441,7 @@ func handleQuestionFilter(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetTagTypes(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	tag, err := GetTagTypes(appid, 1)
 	if err != nil {
@@ -450,7 +451,7 @@ func handleGetTagTypes(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleGetTagType(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusBadRequest)
@@ -466,7 +467,7 @@ func handleGetTagType(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetTagTypesV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	tag, err := GetTagTypes(appid, 2)
 	if err != nil {
@@ -476,7 +477,7 @@ func handleGetTagTypesV2(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func handleGetTagTypeV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusBadRequest)
@@ -505,7 +506,7 @@ func handleUpdateQuestionLabel(w http.ResponseWriter, r *http.Request) {
 		// TODO: add audit log here
 	}()
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	questionID, err := util.GetMuxIntVar(r, "qid")
 	if err != nil {
 		status, errno, ret = http.StatusBadRequest, ApiError.REQUEST_ERROR, "invalid qid"

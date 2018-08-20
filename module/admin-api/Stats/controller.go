@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/gorilla/mux"
 )
@@ -92,7 +93,7 @@ func getGlobalEnv(key string) string {
 }
 
 func handleListAudit(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	input, err := loadFilter(r)
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
@@ -147,7 +148,7 @@ func handleQuestionStatistic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	logger.Trace.Printf("Request Questions Statistic: days=[%d] type=[%s]", day, qType)
 
@@ -207,7 +208,7 @@ func getQuestionParam(r *http.Request) (int, string, error) {
 }
 
 func handleDialogOneDayStatistic(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	start, end, err := getInputTime(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -223,7 +224,7 @@ func handleDialogOneDayStatistic(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotsTraffic(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		http.Error(w, "appid is empty", http.StatusBadRequest)
 		return
@@ -261,7 +262,7 @@ func handleRobotsTraffic(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRobotsResponse(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		http.Error(w, "appid is empty", http.StatusBadRequest)
 		return
@@ -298,7 +299,7 @@ func handleRobotsResponse(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleMonitor(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	if appid == "" {
 		http.Error(w, "appid is empty", http.StatusBadRequest)
 		return
@@ -360,7 +361,7 @@ func handleMonitor(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLastVisit(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	start, end, err := getInputTime(r)
 	if err != nil {
 		http.Error(w, "Bad Request: "+err.Error(), http.StatusBadRequest)
@@ -426,7 +427,7 @@ func handleLastVisit(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRecords(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	start, end, err := getInputTime(r)
 	if err != nil {
 		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
@@ -450,7 +451,7 @@ func handleRecords(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleFAQStats(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	start, end, err := getInputTime(r)
 	if err != nil {
 		http.Error(w, "bad request: "+err.Error(), http.StatusBadRequest)
@@ -484,7 +485,7 @@ func handleFAQStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSessionDowload(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	sid, ok := mux.Vars(r)["sid"]
 	if !ok {
 		http.Error(w, "{sid} in path can not found", http.StatusBadRequest)
@@ -507,7 +508,7 @@ func handleSessionDowload(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSessionsDownload(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	var cond SessionCondition
 	err := util.ReadJSON(r, &cond)
 	if err != nil {
@@ -533,7 +534,7 @@ func handleSessionsDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	var condition SessionCondition
 	err := util.ReadJSON(r, &condition)
 	if err != nil {
@@ -564,7 +565,7 @@ func handleSessionQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSessionRecords(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	sessionID, ok := mux.Vars(r)["sid"]
 	if !ok {
 		http.Error(w, "path {sid} is empty", http.StatusBadRequest)

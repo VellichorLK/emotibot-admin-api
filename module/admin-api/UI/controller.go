@@ -6,6 +6,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -70,9 +71,9 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	module := r.FormValue("module")
 	fileName := r.FormValue("filename")
 	extMsg := r.FormValue("info")
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
-	appid := util.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
 
 	moduleID := ""
 	switch module {

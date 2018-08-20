@@ -10,13 +10,13 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	appID := requestheader.GetAppID(r)
 
 	if enterpriseID == "" && appID == "" {
 		errResp := data.ErrorResponse{

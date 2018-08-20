@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -58,7 +59,7 @@ func handleUploadScenario(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	useNewID := r.FormValue("useNewId") == "true"
 	file, info, err := r.FormFile("scenario_json")
 
@@ -103,7 +104,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.URL.Query().Get("scenarioid")
@@ -135,7 +136,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 }
 
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.FormValue("scenarioid")
@@ -186,7 +187,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	template := r.FormValue("template")
 	scenarioName := r.FormValue("scenarioName")
@@ -216,7 +217,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	enable := r.FormValue("enable")
 	scenarioID := r.FormValue("scenarioid")
@@ -264,8 +265,8 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetApps(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	// userID := util.GetUserID(ctx)
+	appid := requestheader.GetAppID(r)
+	// userID := requestheader.GetUserID(ctx)
 	taskURL := getEnvironment("SERVER_URL")
 
 	// Hack in task-engine, use appid as userid
@@ -283,8 +284,8 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	userInQuery := r.URL.Query().Get("user")
 	if userInQuery != "" {
 		userID = userInQuery
@@ -309,7 +310,7 @@ func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMapTableListV2 load mapping table list by appid from wordbank
 func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	// if the user in query url is templateadmin, get the template scenario mapping tables
 	userInQuery := r.URL.Query().Get("user")
 	if userInQuery == "templateadmin" {
@@ -351,8 +352,8 @@ func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := util.GetMuxVar(r, "name")
 	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
 
@@ -376,8 +377,8 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	errno := ApiError.SUCCESS
 	var auditMsg bytes.Buffer
 	var ret string
@@ -470,8 +471,8 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := r.FormValue("table_name")
 	errno := ApiError.SUCCESS
 	var auditMsg bytes.Buffer
@@ -532,9 +533,9 @@ func getEnvironment(key string) string {
 }
 
 func addAuditLog(r *http.Request, op string, msg string, ret bool) {
-	appid := util.GetAppID(r)
-	user := util.GetUserID(r)
-	ip := util.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	user := requestheader.GetUserID(r)
+	ip := requestheader.GetUserIP(r)
 	retVal := 0
 	if ret {
 		retVal = 1
@@ -543,8 +544,8 @@ func addAuditLog(r *http.Request, op string, msg string, ret bool) {
 }
 
 func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := util.GetMuxVar(r, "name")
 	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
 	var auditMsg bytes.Buffer
@@ -634,9 +635,9 @@ func handleAudit(w http.ResponseWriter, r *http.Request) {
 	logger.Trace.Println("Run: handleAudit")
 	action := r.FormValue("action")
 	msg := r.FormValue("msg")
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
-	appid := util.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
 
 	auditOp := ""
 	switch action {

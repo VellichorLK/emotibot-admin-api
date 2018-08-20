@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -50,9 +51,9 @@ func importExcel(w http.ResponseWriter, r *http.Request) {
 		Action  string `json:"action,omitempty"`
 	}
 	var jsonResponse returnJSON
-	var userID = util.GetUserID(r)
-	var userIP = util.GetUserIP(r)
-	var appid = util.GetAppID(r)
+	var userID = requestheader.GetUserID(r)
+	var userIP = requestheader.GetUserIP(r)
+	var appid = requestheader.GetAppID(r)
 	var status = 0 // 0 == failed, 1 == success
 	var fileName, reason string
 
@@ -124,9 +125,9 @@ func exportExcel(w http.ResponseWriter, r *http.Request) {
 		UserID  string `json:"user_id,omitempty"`
 	}
 	var err error
-	var userID = util.GetUserID(r)
-	var userIP = util.GetUserIP(r)
-	var appid = util.GetAppID(r)
+	var userID = requestheader.GetUserID(r)
+	var userIP = requestheader.GetUserIP(r)
+	var appid = requestheader.GetAppID(r)
 
 	// check if we need should do any db query
 	condition, err := FAQ.ParseCondition(r)
@@ -195,8 +196,8 @@ func download(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	// var userID = util.GetUserID(r)
-	// var userIP = util.GetUserIP(r)
+	// var userID = requestheader.GetUserID(r)
+	// var userIP = requestheader.GetUserIP(r)
 	var content []byte
 	var status string
 

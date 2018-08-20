@@ -8,6 +8,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/intentengine/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"github.com/siongui/gojianfan"
 )
 
@@ -45,7 +46,7 @@ func init() {
 }
 
 func handleGetIntents(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	zhTW := r.URL.Query().Get("zh_tw")
 
@@ -96,7 +97,7 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 			auditMsg, ret)
 	}()
 
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	file, info, err := r.FormFile("file")
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.INTENT_FORMAT_ERROR,
@@ -134,7 +135,7 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	format := r.URL.Query().Get("format")
 	auditMsg := util.Msg["ExportIntentEngine"]
@@ -173,7 +174,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleTrain(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	auto := r.URL.Query().Get("auto_reload")
 	engine := r.URL.Query().Get("engine")
@@ -233,7 +234,7 @@ func handleTrain(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetTrainStatus(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 
 	var version int

@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -15,7 +16,7 @@ import (
 // Functions for using mysql, all in one table function_switch
 // ==========================================
 func handleDBFunctionListV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	ret, errCode, err := GetDBFunctions(appid, 2)
 	if errCode != ApiError.SUCCESS {
@@ -26,7 +27,7 @@ func handleDBFunctionListV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	function := util.GetMuxVar(r, "name")
 	result := 0
 
@@ -88,7 +89,7 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	result := 0
 
 	origFunctions, errCode, err := GetDBFunctions(appid, 2)
@@ -154,7 +155,7 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 // Functions for using mysql, table split by appid
 // ==========================================
 func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	ret, errCode, err := GetDBFunctions(appid, 1)
 	if errCode != ApiError.SUCCESS {
@@ -165,7 +166,7 @@ func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	function := util.GetMuxVar(r, "name")
 	result := 0
 
@@ -227,7 +228,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	result := 0
 
 	origFunctions, errCode, err := GetDBFunctions(appid, 1)
@@ -293,7 +294,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 // Functions for old method, mount files
 // ==========================================
 func handleFunctionList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 
 	ret, errCode, err := GetFunctions(appid)
 	if errCode != ApiError.SUCCESS {
@@ -304,7 +305,7 @@ func handleFunctionList(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	function := util.GetMuxVar(r, "name")
 	result := 0
 
@@ -364,7 +365,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateAllFunction(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	result := 0
 
 	origInfos, errCode, err := GetFunctions(appid)

@@ -30,6 +30,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -142,15 +144,15 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 		return true
 	}
 
-	appid := util.GetAppID(r)
-	userid := util.GetUserID(r)
-	token := util.GetAuthToken(r)
+	appid := requestheader.GetAppID(r)
+	userid := requestheader.GetUserID(r)
+	token := requestheader.GetAuthToken(r)
 
 	if len(userid) == 0 {
 		logger.Trace.Printf("Unauthorized path[%s]: empty user", ep.EntryPath)
 		return false
 	}
-	if ep.CheckAppID && !util.IsValidAppID(appid) {
+	if ep.CheckAppID && !validate.IsValidAppID(appid) {
 		logger.Trace.Printf("Unauthorized path[%s]: appid[%s]", ep.EntryPath, appid)
 		return false
 	}
@@ -244,14 +246,14 @@ func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 			requestIP = r.RemoteAddr
 		}
 		// logger.Info.Printf("REQ: [%s][%d] [%.3fs][%s@%s]",
-		// 	r.RequestURI, code, time.Since(now).Seconds(), util.GetUserID(r), util.GetAppID(r))
+		// 	r.RequestURI, code, time.Since(now).Seconds(), requestheader.GetUserID(r), requestheader.GetAppID(r))
 		if logChannel != nil {
 			logChannel <- util.AccessLog{
 				Path:       r.RequestURI,
 				Time:       time.Since(now).Seconds(),
-				UserID:     util.GetUserID(r),
+				UserID:     requestheader.GetUserID(r),
 				UserIP:     requestIP,
-				AppID:      util.GetAppID(r),
+				AppID:      requestheader.GetAppID(r),
 				StatusCode: code,
 			}
 		}
