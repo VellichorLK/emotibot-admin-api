@@ -1,3 +1,7 @@
+// Package logger is the basic library of writing log.
+// There are four level in logger, Error(0), Warn(1), Info(2) and Trace(3).
+// If show level is set to 'n', only level smaller or equal to 'n' will
+// print to standard output.
 package logger
 
 import (
@@ -79,7 +83,9 @@ func SetPrefix(prefix string) {
 	Init(logPrefix, output...)
 }
 
-// SetLevel will set minimum level output to stdout
+// SetLevel will set minimum level output to stdout.
+// Level can be one of "ERROR", "WARN", "INFO", "TRACE".
+// If input is not one of above, level will set to INFO
 func SetLevel(level string) {
 	var ok bool
 	showLevel, ok = logLevel[level]
