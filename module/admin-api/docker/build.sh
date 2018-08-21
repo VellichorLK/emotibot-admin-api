@@ -19,8 +19,6 @@ DIR=`bash -c "cd -P $(pwd) && pwd"`
 GOSRCPATH="$(cd "$DIR/../" && pwd )"
 MODULE=${GOSRCPATH##/*/}
 BUILDROOT=$DIR/../../..
-echo $BUILDROOT;
-exit 0;
 
 # Build docker
 cmd="docker build \
