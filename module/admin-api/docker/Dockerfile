@@ -25,9 +25,9 @@ RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
 COPY --from=build-env /go/bin /usr/local/bin
 
 WORKDIR /usr/local/bin
-COPY ${PROJECT}/docker/entrypoint.sh entrypoint.sh
-COPY ${PROJECT}/docker/env.template env.template
-COPY ${PROJECT}/docker/files_init.sh files_init.sh
-COPY ${PROJECT}/InitFiles InitFiles
+COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh
+COPY ./module/${PROJECT}/docker/env.template env.template
+COPY ./module/${PROJECT}/docker/files_init.sh files_init.sh
+COPY ./module/${PROJECT}/InitFiles InitFiles
 
 CMD ["./entrypoint.sh", "env.template"]
