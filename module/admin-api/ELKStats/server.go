@@ -17,7 +17,10 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "visit", []string{}, controllers.VisitStatsGetHandler),
 			util.NewEntryPoint("GET", "question", []string{}, controllers.QuestionStatsGetHandler),
-			util.NewEntryPoint("POST", "record", []string{}, controllers.VisitRecordsGetHandler),
+			util.NewEntryPoint("POST", "records/query", []string{}, controllers.VisitRecordsGetHandler),
+			util.NewEntryPoint("POST", "records/download", []string{}, controllers.RecordsDownloadHandler),
+			util.NewEntryPoint("POST", "records/mark", []string{}, controllers.RecordsMarkUpdateHandler),
+			util.NewEntryPoint("POST", "records/ignore", []string{}, controllers.RecordsIgnoredUpdateHandler),
 			util.NewEntryPoint("GET", "call", []string{}, controllers.CallStatsGetHandler),
 		},
 	}

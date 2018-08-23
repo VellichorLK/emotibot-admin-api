@@ -1,8 +1,10 @@
 package SelfLearning
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -33,17 +35,17 @@ func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "selfLearn",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("PUT", "doClustering", []string{}, handleClustering),
+			util.NewEntryPoint(http.MethodPost, "reports", []string{}, handleClustering),
 			util.NewEntryPoint("GET", "reports", []string{}, handleGetReports),
 			util.NewEntryPoint("GET", "reports/{id}", []string{}, handleGetReport),
 			util.NewEntryPoint("DELETE", "reports/{id}", []string{}, handleDeleteReport),
 			util.NewEntryPoint("GET", "reports/{id}/clusters", []string{}, handleGetClusters),
-			util.NewEntryPoint("GET", "userQuestions", []string{}, handleGetUserQuestions),
-			util.NewEntryPoint("POST", "userQuestions", []string{}, handleUpdateUserQuestions),
-			util.NewEntryPoint("GET", "userQuestions/{id}", []string{}, handleGetUserQuestion),
-			util.NewEntryPoint("POST", "userQuestions/{id}", []string{}, handleUpdateUserQuestion),
-			util.NewEntryPoint("POST", "userQuestions/{id}/revoke", []string{}, handleRevokeQuestion),
-			util.NewEntryPoint("POST", "recommend", []string{}, handleRecommend),
+			// util.NewEntryPoint("GET", "userQuestions", []string{}, handleGetUserQuestions),
+			// util.NewEntryPoint("POST", "userQuestions", []string{}, handleUpdateUserQuestions),
+			// util.NewEntryPoint("GET", "userQuestions/{id}", []string{}, handleGetUserQuestion),
+			// util.NewEntryPoint("POST", "userQuestions/{id}", []string{}, handleUpdateUserQuestion),
+			// util.NewEntryPoint("POST", "userQuestions/{id}/revoke", []string{}, handleRevokeQuestion),
+			// util.NewEntryPoint("POST", "recommend", []string{}, handleRecommend),
 		},
 	}
 }
@@ -112,29 +114,25 @@ func InitDB() {
 }
 
 func handleClustering(w http.ResponseWriter, r *http.Request) {
+	var query = RecordQuery{}
 	status := -999
-
-	s, err := strconv.ParseInt(r.FormValue(START_TIME), 10, 64)
+	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		util.WriteJSONWithStatus(w,
-			util.GenRetObj(status, "start time is not correct time format"),
-			http.StatusBadRequest)
+		logger.Error.Println("request body io error, " + err.Error())
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	e, err := strconv.ParseInt(r.FormValue(END_TIME), 10, 64)
+	err = json.Unmarshal(data, &query)
 	if err != nil {
-		util.WriteJSONWithStatus(w,
-			util.GenRetObj(status, "end time is not correct time format"),
-			http.StatusBadRequest)
+		logger.Warn.Println("json format failed, " + err.Error())
+		http.Error(w, "json format failed", http.StatusBadRequest)
 		return
 	}
-
-	if s >= e {
-		util.WriteJSONWithStatus(w,
-			util.GenRetObj(status, "start time >= end time"),
-			http.StatusBadRequest)
-		return
+	if query.StartTime != nil && query.EndTime != nil {
+		if *query.StartTime > *query.EndTime {
+			http.Error(w, "start time should be less than end time", http.StatusBadRequest)
+		}
 	}
 
 	appid := requestheader.GetAppID(r)
@@ -146,15 +144,15 @@ func handleClustering(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type respID struct {
-		ReportID uint64 `json:"reportID"`
+		ReportID uint64 `json:"report_id"`
 	}
 
 	respone := &respID{}
 	var isDup bool
 	var reportID uint64
 
-	st := time.Unix(s, 0)
-	et := time.Unix(e, 0)
+	st := time.Unix(*query.StartTime, 0)
+	et := time.Unix(*query.EndTime, 0)
 
 	pType, err := getQuestionType(r)
 	if err != nil {
