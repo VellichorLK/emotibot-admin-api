@@ -1,3 +1,4 @@
+//Package api used for api client
 package api
 
 import "net/http"
