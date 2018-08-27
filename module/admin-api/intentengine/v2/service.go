@@ -561,3 +561,27 @@ func GetExportIntentsBFFormat(appid string, locale string) (ret []byte, err Admi
 	}
 	return buf.Bytes(), nil
 }
+
+// SearchSentence will do search of intent contain the sentence equals to content, and return intent name, sentence type
+// If err happens, intentName will be empty string and sentenceType will be 0, err will be an not null Error
+func SearchSentence(appid string, version *int, content string) (intentName string, sentenceType int, err AdminErrors.AdminError) {
+	intent, sentence, dbErr := dao.SearchIntentOfSentence(appid, version, content)
+	if dbErr == sql.ErrNoRows {
+		err = AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+		return
+	}
+	return intent.Name, sentence.Type, nil
+}
+
+// SearchSentenceWithType will do same with SearchSentence, only add sentenceType as filter
+func SearchSentenceWithType(appid string, version *int, content string, sentenceType int) (intentName string, err AdminErrors.AdminError) {
+	intent, _, dbErr := dao.SearchIntentOfSentence(appid, version, content, sentenceType)
+	if dbErr == sql.ErrNoRows {
+		err = AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+		return
+	} else if dbErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+		return
+	}
+	return intent.Name, nil
+}

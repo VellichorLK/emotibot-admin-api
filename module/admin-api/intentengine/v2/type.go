@@ -9,7 +9,7 @@ type SentenceV2 struct {
 // SentenceV2WithType describe a sentence in trainint data
 type SentenceV2WithType struct {
 	SentenceV2
-	Type int64 `json:"type"`
+	Type int `json:"type"`
 }
 
 // IntentV2 describe a intent in V2

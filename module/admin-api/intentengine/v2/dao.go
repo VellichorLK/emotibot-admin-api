@@ -45,6 +45,11 @@ type intentDaoInterface interface {
 	UpdateLatestIntents(appid string, intents []*IntentV2) (err error)
 	UpdateVersionStart(version int, start int64, modelID string) (err error)
 	UpdateVersionStatus(version int, end int64, status int) (err error)
+
+	// SearchIntentOfSentence will check if sentence existed in specific version or not.
+	// If not existed, return err will be sql.ErrNoRows
+	// The extended params will at most only one, sentenceType(int)
+	SearchIntentOfSentence(appid string, version *int, content string, params ...interface{}) (intent *IntentV2, sentence *SentenceV2WithType, err error)
 }
 
 // intentDaoV2 implement interface of intentDaoInterface, which will store for service to use
@@ -600,6 +605,53 @@ func (dao intentDaoV2) UpdateVersionStatus(version int, end int64, status int) (
 	queryStr := "UPDATE intent_versions SET end_train = ?, result = ? WHERE version = ?"
 	_, err = dao.db.Exec(queryStr, end, status, version)
 	return
+}
+
+func (dao intentDaoV2) SearchIntentOfSentence(appid string, version *int, content string, params ...interface{}) (intent *IntentV2, sentence *SentenceV2WithType, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	queryParams := []interface{}{
+		appid,
+		content,
+	}
+	conditions := []string{
+		"i.appid = ?",
+		"s.sentence = ?",
+	}
+
+	if version == nil {
+		conditions = append(conditions, "i.version IS NULL")
+	} else {
+		conditions = append(conditions, "i.version = ?")
+		queryParams = append(queryParams, version)
+	}
+
+	if len(params) > 0 {
+		conditions = append(conditions, "s.type = ?")
+		queryParams = append(queryParams, params[0].(int))
+	}
+	queryStr := fmt.Sprintf(`
+		SELECT i.id, i.name, s.id, s.type
+		FROM intents AS i, intent_train_sets AS s
+		WHERE %s`, strings.Join(conditions, " AND "))
+
+	retIntent := IntentV2{}
+	retSentence := SentenceV2WithType{}
+	retSentence.Content = content
+
+	err = dao.db.QueryRow(queryStr, queryParams...).Scan(
+		&retIntent.ID, &retIntent.Name, &retSentence.ID, &retSentence.Type)
+	if err != nil {
+		return
+	}
+	return &retIntent, &retSentence, nil
 }
 
 func commitNewVersion(tx db, appid string, intents []*IntentV2, now int64) (version int, err error) {

@@ -26,6 +26,48 @@ func initV2Dao() {
 	dao = intentDaoV2{}
 }
 
+func handleSearchSentence(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	versionStr := r.URL.Query().Get("version")
+	content := r.URL.Query().Get("content")
+	sentenceTypeStr := r.URL.Query().Get("type")
+
+	if content == "" {
+		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "content empty"), nil)
+		return
+	}
+
+	var version *int
+	if versionStr == "" {
+		version = nil
+	} else {
+		val, convErr := strconv.Atoi(versionStr)
+		if convErr != nil {
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "version"), convErr.Error())
+			return
+		}
+		version = &val
+	}
+
+	var name string
+	var err AdminErrors.AdminError
+	sentenceType, convErr := strconv.Atoi(sentenceTypeStr)
+	if convErr != nil {
+		name, sentenceType, err = SearchSentence(appid, version, content)
+	} else {
+		name, err = SearchSentenceWithType(appid, version, content, sentenceType)
+	}
+
+	if err != nil {
+		util.Return(w, err, nil)
+	} else {
+		util.Return(w, nil, map[string]interface{}{
+			"name": name,
+			"type": sentenceType,
+		})
+	}
+}
+
 func handleGetIntentsV2(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	versionStr := r.URL.Query().Get("version")

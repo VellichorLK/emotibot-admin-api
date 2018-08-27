@@ -53,6 +53,9 @@ var (
 		util.NewEntryPointWithVer("PATCH", "intent/{intentID}", []string{"view"}, handleUpdateIntentV2, 2),
 		util.NewEntryPointWithVer("DELETE", "intent/{intentID}", []string{"view"}, handleDeleteIntentV2, 2),
 
+		util.NewEntryPointWithVer("GET", "intent/{intentID}/sentence/search", []string{"view"}, handleSearchSentence, 2),
+		util.NewEntryPointWithVer("GET", "sentence/search", []string{"view"}, handleSearchSentence, 2),
+
 		util.NewEntryPointWithVer("POST", "train", []string{"view"}, handleStartTrain, 2),
 		util.NewEntryPointWithVer("GET", "status", []string{"view"}, handleGetIntentStatusV2, 2),
 
