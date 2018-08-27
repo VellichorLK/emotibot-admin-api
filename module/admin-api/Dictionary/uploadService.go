@@ -726,6 +726,10 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 
 		for _, wordbank := range class.Wordbank {
 			logger.Trace.Printf("Handle wordbank [%s]\n", wordbank.Name)
+
+			if wordbank.Name != "" {
+				words = append(words, wordbank.Name)
+			}
 			for _, word := range wordbank.SimilarWords {
 				var w string
 				if inSensitive {
