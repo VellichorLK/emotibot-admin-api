@@ -29,6 +29,8 @@ const (
 	ConsulEntityKey            = "cnlu/%s"
 	ConsulRuleKey              = "rule/%s"
 	ConsulCmdKey               = "cmd/%s"
+	ConsulProfileKey           = "profile/%s"
+	ConsulIntentKey            = "intent/%s"
 	ConsulControllerSettingKey = "setting/controller"
 	ConsulReleaseInfoKey       = "release_versions"
 )
@@ -357,6 +359,20 @@ func ConsulUpdateRule(appid string) (int, error) {
 //ConsulUpdateCmd is a convenient function for updating Robot Chat's Consul Key
 func ConsulUpdateCmd(appid string) (int, error) {
 	key := fmt.Sprintf(ConsulCmdKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
+}
+
+//ConsulUpdateProfile is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateProfile(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulProfileKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
+}
+
+//ConsulUpdateIntent is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateIntent(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulIntentKey, appid)
 	now := time.Now().Unix()
 	return ConsulUpdateVal(key, now)
 }

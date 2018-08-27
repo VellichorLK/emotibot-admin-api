@@ -179,6 +179,7 @@ func SyncRobotProfileToSolr() (err error) {
 		} else {
 			finishSyncProcess(pid, true, "")
 		}
+
 		restart, err = needProcessRobotData()
 		if err != nil {
 			logger.Error.Println("Check status fail: ", err.Error())
@@ -191,7 +192,7 @@ func SyncRobotProfileToSolr() (err error) {
 		}
 	}()
 
-	rqIDs, ansIDs, delAnsIDs, tagInfos, err := getProcessModifyRobotQA()
+	rqIDs, ansIDs, delAnsIDs, tagInfos, appids, err := getProcessModifyRobotQA()
 	if err != nil {
 		return
 	}
@@ -264,6 +265,18 @@ func SyncRobotProfileToSolr() (err error) {
 		logger.Error.Println("Reset status to 0 fail: ", err.Error())
 		return
 	}
+
+	for _, appid := range appids {
+		if appid == "" {
+			continue
+		}
+		logger.Trace.Printf("Update profile consul of appid [%s]\n", appid)
+		_, consulErr := util.ConsulUpdateProfile(appid)
+		if err != nil {
+			logger.Error.Println("Update consul error:", consulErr.Error())
+		}
+	}
+
 	return
 }
 
