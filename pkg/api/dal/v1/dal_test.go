@@ -52,11 +52,22 @@ func TestIsStandardQuestion(t *testing.T) {
 }
 
 func TestSetSimilarQuestions(t *testing.T) {
-	err := client.SetSimilarQuestion("csbot", "e家保理赔", "一年期综合意外险保障时间")
+	err := client.SetSimilarQuestion("csbot", "e家保理赔", "APP无法付款怎么办?")
 	if err != nil {
 		if detail, ok := err.(*DetailError); ok {
 			t.Fatalf("got detail error, %s, results: %v", detail.Error(), detail.Results)
 		}
 		t.Fatal(err)
 	}
+}
+
+func TestDeleteSimilarQuestion(t *testing.T) {
+	err := client.DeleteSimilarQuestion("csbot", "APP无法付款怎么办?")
+	if err != nil {
+		if detail, ok := err.(*DetailError); ok {
+			t.Fatalf("got detail error, %s, results: %v", detail.Error(), detail.Results)
+		}
+		t.Fatal(err)
+	}
+
 }

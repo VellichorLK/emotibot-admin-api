@@ -250,20 +250,6 @@ func traceQuery(bq *elastic.BoolQuery) {
 	logger.Trace.Printf("query: %s\n", d)
 }
 
-// func UpdateRecord(appID, uniqueID string) error {
-// 	ctx, client := elasticsearch.GetClient()
-// 	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, appID)
-// 	ss := elastic.NewSearchService()
-// 	ss.Index(index)
-// 	ss.Query(elastic.NewTermQuery("unique_id", uniqueID))
-// 	result, err := ss.Do(ctx)
-
-// 	us := elastic.NewUpdateService()
-// 	us.Index(index)
-// 	us.Id()
-// 	us.Doc()
-// }
-
 //VisitRecordsQuery will fetch raw and aggregation data from Data store.
 //input query decide which raw data to fetchand & aggs will decided Result's aggs
 //In the return, result.Aggs may contain isMarked or isIgnored key if correspond ElasticSearchCommand have bee given in aggs

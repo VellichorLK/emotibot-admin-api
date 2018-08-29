@@ -263,3 +263,42 @@ func (c *Client) SetSimilarQuestion(appID, sq string, lq ...string) error {
 	}
 	return nil
 }
+
+// DeleteSimilarQuestion Delete lq from the ssm datastore.
+func (c *Client) DeleteSimilarQuestion(appID, lq string) error {
+	var buffer bytes.Buffer
+	json.NewEncoder(&buffer).Encode(request{
+		Op:           "delete",
+		Category:     "lq",
+		AppID:        appID,
+		UserRecordID: 0,
+		Data: data{
+			Subop: "conditionsSubop",
+			Conditions: &conditions{
+				Content: lq,
+			},
+		},
+	})
+	r, err := http.NewRequest(http.MethodPost, c.address, &buffer)
+	if err != nil {
+		return fmt.Errorf("new request error, %v", err)
+	}
+	var resp *http.Response
+	resp, err = c.client.Do(r)
+	if err != nil {
+		return fmt.Errorf("do request failed, %v", err)
+	}
+	defer resp.Body.Close()
+	var respBody response
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	if err != nil {
+		return fmt.Errorf("decode dal body failed")
+	}
+	if respBody.ErrNo != "OK" {
+		return &DetailError{
+			ErrMsg:  "response error " + respBody.ErrNo + " with msg " + respBody.ErrMessage,
+			Results: respBody.Operation,
+		}
+	}
+	return nil
+}

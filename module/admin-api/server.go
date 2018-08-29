@@ -93,8 +93,10 @@ func main() {
 	if !ok {
 		logLevel = "INFO"
 	}
+	logger.SetLevel(logLevel)
 	logger.Info.Printf("Set log level %s\n", logLevel)
 	initConsul()
+	initDB()
 
 	accessLog := serverEnvs["ACCESS_LOG"]
 	if accessLog == "1" {
@@ -102,20 +104,16 @@ func main() {
 		util.InitAccessLog(logChannel)
 	}
 
-	logger.SetLevel(logLevel)
-	router := setRoute()
-	initDB()
-
 	err := initElasticsearch()
 	if err != nil {
 		logger.Error.Println("Init elastic search fail:", err.Error())
 	}
 
-	err = ELKStats.InitTags()
+	err = ELKStats.Init()
 	if err != nil {
-		logger.Error.Println("Init elastic search tags fail:", err.Error())
+		logger.Error.Println("Init ELKStats module failed: ", err.Error())
 	}
-
+	router := setRoute()
 	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")

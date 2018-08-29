@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"emotibot.com/emotigo/pkg/api/dal/v1"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -177,44 +179,85 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-//RecordsMarkUpdateHandler handle records mark & unmark request.
-func RecordsMarkUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		Content string   `json:"content"`
-		Mark    *bool    `json:"mark"`
-		Records []string `json:"records"`
-	}
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&request)
-	if err != nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
-		return
-	}
-	if request.Mark == nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "mark is required."))
-		return
-	}
-	if request.Records == nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
-		return
-	}
-	q := data.RecordQuery{
-		AppID:   requestheader.GetAppID(r),
-		Records: make([]interface{}, len(request.Records)),
-	}
-	for i, r := range request.Records {
-		q.Records[i] = r
+//NewRecordsMarkUpdateHandler create a handler to handle records mark & unmark request.
+//The handler will update record store & ssm store.
+//Because we separate the Init() function and Controller, the only way to pass dal.Client is from parameters.
+func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Content string   `json:"content"`
+			Mark    *bool    `json:"mark"`
+			Records []string `json:"records"`
+		}
+		defer r.Body.Close()
+		err := json.NewDecoder(r.Body).Decode(&request)
+		if err != nil {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
+			return
+		}
+		if request.Mark == nil {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "mark is required."))
+			return
+		}
+		if request.Records == nil {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
+			return
+		}
+		appID := requestheader.GetAppID(r)
+		q := data.RecordQuery{
+			AppID:   appID,
+			Records: make([]interface{}, len(request.Records)),
+		}
+		for i, r := range request.Records {
+			q.Records[i] = r
+		}
+
+		if *request.Mark {
+			for _, record := range request.Records {
+				var (
+					isLQ bool
+					isSQ bool
+				)
+				isLQ, err = client.IsSimilarQuestion(appID, record)
+				if err != nil {
+					returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
+					return
+				}
+				isSQ, err := client.IsStandardQuestion(appID, record)
+				if err != nil {
+					returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
+					return
+				}
+				if isSQ {
+					w.WriteHeader(http.StatusConflict)
+					json.NewEncoder(w).Encode(map[string]string{
+						"conflicted_content": record,
+					})
+					return
+				}
+				if isLQ {
+					err = client.DeleteSimilarQuestion(appID, record)
+					if err != nil {
+						logger.Error.Printf("dal error %+v", err)
+						returnInternalServerError(w, data.NewErrorResponse("dal internal server error"))
+						return
+					}
+				}
+			}
+			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, request.Records...)
+			if err != nil {
+				returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
+				return
+			}
+		}
+		err = services.UpdateRecords(q, services.UpdateRecordMark(*request.Mark))
+		if err != nil {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError, "update records failed, "+err.Error()))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	}
 
-	if *request.Mark {
-		//FIXME: Implement DAL accessing
-	}
-	err = services.UpdateRecords(q, services.UpdateRecordMark(*request.Mark))
-	if err != nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError, "update records failed, "+err.Error()))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
 }
 
 //newRecordQuery create a new *data.RecordQuery with given r.
