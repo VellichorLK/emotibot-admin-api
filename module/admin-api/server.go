@@ -211,6 +211,12 @@ func setRoute() *mux.Router {
 				HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					defer logHandleRuntime(w, r)()
 					clientNoStoreCache(w)
+					defer func() {
+						if err := recover(); err != nil {
+							util.WriteWithStatus(w, fmt.Sprintf("%#v", err), http.StatusInternalServerError)
+						}
+					}()
+
 					if checkPrivilege(r, entrypoint) {
 						r.Header.Set(util.AuditCustomHeader, info.ModuleName)
 						entrypoint.Callback(w, r)
@@ -291,7 +297,7 @@ func initDB() {
 func initElasticsearch() (err error) {
 	host := getServerEnv("ELASTICSEARCH_HOST")
 	port := getServerEnv("ELASTICSEARCH_PORT")
-	return elasticsearch.Init(host, port)
+	return elasticsearch.Setup(host, port)
 }
 
 func runOnetimeJob() {
