@@ -8,14 +8,43 @@ import (
 var client, _ = NewClientWithHTTPClient("http://172.16.101.98:8885/", http.DefaultClient)
 
 func TestNewClientWithHTTPClient(t *testing.T) {
+	type testCase struct {
+		address string
+		expect  *Client
+	}
+	var testTable = map[string]testCase{
+		"url with last slash": testCase{
+			address: "http://127.0.0.1:8080/",
+			expect: &Client{
+				address: "http://127.0.0.1:8080/dal",
+			},
+		},
+		"url without last slash": testCase{
+			address: "http://127.0.0.1:8080",
+			expect: &Client{
+				address: "http://127.0.0.1:8080/dal",
+			},
+		},
+		"url with path": testCase{
+			address: "http://127.0.0.1:8080/WRONGURL",
+			expect: &Client{
+				address: "http://127.0.0.1:8080/dal",
+			},
+		},
+	}
 
-	c, err := NewClientWithHTTPClient("http://127.0.0.1:8080/", http.DefaultClient)
-	if err != nil {
-		t.Fatal(err)
+	for name, tc := range testTable {
+		t.Run(name, func(tt *testing.T) {
+			c, err := NewClientWithHTTPClient(tc.address, http.DefaultClient)
+			if err != nil {
+				tt.Fatal(err)
+			}
+			if c.address != tc.expect.address {
+				t.Fatalf("expect address to be %s but got %s", tc.expect.address, c.address)
+			}
+		})
 	}
-	if c.address != "http://127.0.0.1:8080/dal" {
-		t.Fatalf("expect address to be http://127.0.0.1:8080/dal but got %s", c.address)
-	}
+
 }
 func TestSimilarQuestions(t *testing.T) {
 	sq := "APP无法付款怎么办?"
@@ -61,8 +90,18 @@ func TestSetSimilarQuestions(t *testing.T) {
 	}
 }
 
-func TestDeleteSimilarQuestion(t *testing.T) {
-	err := client.DeleteSimilarQuestion("csbot", "APP无法付款怎么办?")
+func TestQuestion(t *testing.T) {
+	sq, err := client.Question("csbot", "APP无法付款怎么办?")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sq != "e家保理赔" {
+		t.Fatalf("expect sq to be e家保理赔 but got %s", sq)
+	}
+}
+
+func TestDeleteSimilarQuestions(t *testing.T) {
+	err := client.DeleteSimilarQuestions("csbot", "APP无法付款怎么办?")
 	if err != nil {
 		if detail, ok := err.(*DetailError); ok {
 			t.Fatalf("got detail error, %s, results: %v", detail.Error(), detail.Results)

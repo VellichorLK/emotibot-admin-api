@@ -264,8 +264,14 @@ func (c *Client) SetSimilarQuestion(appID, sq string, lq ...string) error {
 	return nil
 }
 
-// DeleteSimilarQuestion Delete lq from the ssm datastore.
-func (c *Client) DeleteSimilarQuestion(appID, lq string) error {
+// DeleteSimilarQuestions Delete lq from the ssm datastore.
+func (c *Client) DeleteSimilarQuestions(appID string, lq ...string) error {
+	var entities = make([]entity, len(lq))
+	for i, q := range lq {
+		entities[i] = entity{
+			Content: q,
+		}
+	}
 	var buffer bytes.Buffer
 	json.NewEncoder(&buffer).Encode(request{
 		Op:           "delete",
@@ -273,10 +279,8 @@ func (c *Client) DeleteSimilarQuestion(appID, lq string) error {
 		AppID:        appID,
 		UserRecordID: 0,
 		Data: data{
-			Subop: "conditionsSubop",
-			Conditions: &conditions{
-				Content: lq,
-			},
+			Subop:    "defaultSubop",
+			Entities: entities,
 		},
 	})
 	r, err := http.NewRequest(http.MethodPost, c.address, &buffer)
@@ -301,4 +305,42 @@ func (c *Client) DeleteSimilarQuestion(appID, lq string) error {
 		}
 	}
 	return nil
+}
+
+// Question retrive sq based on given lq and appID.
+func (c *Client) Question(appID, lq string) (string, error) {
+	var buffer bytes.Buffer
+	json.NewEncoder(&buffer).Encode(request{
+		Op:           "query",
+		Category:     "lq",
+		AppID:        appID,
+		UserRecordID: 0,
+		Data: data{
+			Subop: "conditionsSubop",
+			Conditions: &conditions{
+				Content: lq,
+			},
+			Segments: []string{"parentContent"},
+		},
+	})
+	req, err := http.NewRequest(http.MethodPost, c.address, &buffer)
+	if err != nil {
+		return "", fmt.Errorf("new request error, %v", err)
+	}
+	resp, err := c.client.Do(req)
+	defer resp.Body.Close()
+	var respBody response
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	if err != nil {
+		return "", fmt.Errorf("decode dal body failed")
+	}
+	r, ok := respBody.Results[0].(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("response convert failed")
+	}
+	content, ok := r["parentContent"].(string)
+	if !ok {
+		return "", fmt.Errorf("result content is not string")
+	}
+	return content, nil
 }

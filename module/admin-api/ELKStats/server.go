@@ -40,6 +40,7 @@ func Init() error {
 			util.NewEntryPoint("POST", "records/download", []string{}, controllers.RecordsDownloadHandler),
 			util.NewEntryPoint("POST", "records/mark", []string{}, controllers.NewRecordsMarkUpdateHandler(dalClient)),
 			util.NewEntryPoint("POST", "records/ignore", []string{}, controllers.RecordsIgnoredUpdateHandler),
+			util.NewEntryPoint("GET", "records/{id}/marked", []string{}, controllers.NewRecordSSMHandler(dalClient)),
 			util.NewEntryPoint("GET", "call", []string{}, controllers.CallStatsGetHandler),
 		},
 	}

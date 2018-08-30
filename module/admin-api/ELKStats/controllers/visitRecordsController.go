@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/api/dal/v1"
+	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
@@ -144,6 +145,7 @@ type markResponse struct {
 	Records []string `json:"records"`
 }
 
+// RecordsIgnoredUpdateHandler handle the request for updating record's ignore column
 func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		Ignore  *bool
@@ -183,6 +185,9 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 //The handler will update record store & ssm store.
 //Because we separate the Init() function and Controller, the only way to pass dal.Client is from parameters.
 func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter, r *http.Request) {
+	type internalError struct {
+		IsRollbacked bool `json:"rollbacked"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Content string   `json:"content"`
@@ -211,21 +216,19 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		for i, r := range request.Records {
 			q.Records[i] = r
 		}
-
 		if *request.Mark {
 			for _, record := range request.Records {
 				var (
 					isLQ bool
 					isSQ bool
 				)
-				isLQ, err = client.IsSimilarQuestion(appID, record)
+				isSQ, err = client.IsStandardQuestion(appID, record)
 				if err != nil {
-					returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
-					return
-				}
-				isSQ, err := client.IsStandardQuestion(appID, record)
-				if err != nil {
-					returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
+					logger.Error.Printf("Get isStd failed, %v\n", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(internalError{
+						IsRollbacked: true,
+					})
 					return
 				}
 				if isSQ {
@@ -235,29 +238,133 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 					})
 					return
 				}
+				isLQ, err = client.IsSimilarQuestion(appID, record)
+				if err != nil {
+					logger.Error.Printf("Get isSimQ failed, %v\n", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(internalError{
+						IsRollbacked: true,
+					})
+					return
+				}
 				if isLQ {
-					err = client.DeleteSimilarQuestion(appID, record)
+					err = client.DeleteSimilarQuestions(appID, record)
 					if err != nil {
-						logger.Error.Printf("dal error %+v", err)
-						returnInternalServerError(w, data.NewErrorResponse("dal internal server error"))
+						//TODO: FIX AS ROLLBACKABLE
+						logger.Error.Printf("delete sim q %v\n", err)
+						w.WriteHeader(http.StatusInternalServerError)
+						json.NewEncoder(w).Encode(internalError{
+							IsRollbacked: false,
+						})
 						return
 					}
 				}
 			}
 			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, request.Records...)
 			if err != nil {
-				returnInternalServerError(w, data.NewErrorResponse("dal internal server error, "+err.Error()))
+				logger.Error.Printf("set simQ failed, %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(internalError{
+					IsRollbacked: false,
+				})
+				return
+			}
+		} else { //unmarking should remove the records from ssm store
+			for _, record := range request.Records {
+				var isSQ bool
+				isSQ, err = client.IsStandardQuestion(appID, record)
+				if err != nil {
+					logger.Error.Printf("Get isStd failed, %v\n", err)
+					w.WriteHeader(http.StatusInternalServerError)
+					json.NewEncoder(w).Encode(internalError{
+						IsRollbacked: false,
+					})
+					return
+				}
+
+				if isSQ {
+					w.WriteHeader(http.StatusConflict)
+					json.NewEncoder(w).Encode(map[string]string{
+						"conflicted_content": record,
+					})
+					return
+				}
+			}
+			err = client.DeleteSimilarQuestions(appID, request.Records...)
+			if err != nil {
+				logger.Error.Printf("delete sim q failed, %v", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(internalError{
+					IsRollbacked: false,
+				})
 				return
 			}
 		}
+
 		err = services.UpdateRecords(q, services.UpdateRecordMark(*request.Mark))
 		if err != nil {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError, "update records failed, "+err.Error()))
+			logger.Error.Printf("service update record failed, %v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(internalError{
+				IsRollbacked: true,
+			})
 			return
 		}
 		w.WriteHeader(http.StatusOK)
 	}
 
+}
+
+// NewRecordSSMHandler create a handler for retriving ssm info of certain record.
+func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, ok := mux.Vars(r)["id"]
+		if !ok {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "no path variable id"))
+			return
+		}
+		appID := requestheader.GetAppID(r)
+		query := data.RecordQuery{
+			AppID:   appID,
+			Records: []interface{}{id},
+		}
+		result, err := services.VisitRecordsQuery(query)
+		if err != nil {
+			logger.Error.Printf("fetch es records failed, %v\n", err)
+			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			return
+		}
+		if size := len(result.Hits); size == 0 || size > 1 {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusNotFound, "record id is ambiguous(results: "+strconv.Itoa(size)+")"))
+			return
+		}
+		if !result.Hits[0].IsMarked {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record is not marked"))
+		}
+		content := result.Hits[0].UserQ
+		var response = struct {
+			Content string `json:"marked_content"`
+		}{}
+		isLQ, err := client.IsSimilarQuestion(appID, content)
+		if err != nil {
+			logger.Error.Printf("get isSimilarQ failed, %v", err)
+			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			return
+		}
+		if !isLQ {
+			response.Content = ""
+			returnOK(w, response)
+		}
+
+		response.Content, err = client.Question(appID, content)
+		if err != nil {
+			logger.Error.Printf("get question for lq %s failed, %v", content, err)
+			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			return
+		}
+
+		returnOK(w, response)
+	}
 }
 
 //newRecordQuery create a new *data.RecordQuery with given r.
