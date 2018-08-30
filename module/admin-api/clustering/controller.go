@@ -1,4 +1,4 @@
-package SelfLearning
+package clustering
 
 import (
 	"errors"
@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
@@ -33,7 +32,7 @@ func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "clusters",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("POST", "reports", []string{}, handleNewReport),
+			// util.NewEntryPoint("POST", "reports", []string{}, handleNewReport),
 			util.NewEntryPoint("GET", "reports", []string{}, handleGetReports),
 			util.NewEntryPoint("GET", "reports/{id}", []string{}, handleGetReport),
 			util.NewEntryPoint("DELETE", "reports/{id}", []string{}, handleDeleteReport),
@@ -98,11 +97,6 @@ func InitDB() {
 		return
 	}
 	util.SetDB(ModuleInfo.ModuleName, dao)
-
-	if ok := data.InitializeWord2Vec(util.GetEnviroment(Envs, "RESOURCES_PATH")); !ok {
-		logger.Error.Println("Load self learning caches failed!")
-		return
-	}
 }
 
 func handleClustering(w http.ResponseWriter, r *http.Request) {

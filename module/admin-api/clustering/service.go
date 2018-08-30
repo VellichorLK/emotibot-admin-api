@@ -1,15 +1,12 @@
-package SelfLearning
+package clustering
 
 import (
 	"context"
 	"net/http"
 	"runtime/debug"
 	"sort"
-	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
-	"emotibot.com/emotigo/module/admin-api/SelfLearning/internal/model"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -132,129 +129,7 @@ func getFeedbackQ(s time.Time, e time.Time, appid string, qType int) ([]string, 
 }
 
 func getClusteringResult(feedbackQs []string, feedbackQID []uint64) *clusteringResult {
-	embeddings := make([]model.Vector, 0)
-	var nativeLog data.NativeLog
-	nativeLog.Init()
-
-	logger.Trace.Printf("The size of sentences to cluster is [%v]\n", len(feedbackQs))
-
-	nativeLog.GetWordPos(NluURL, feedbackQs, feedbackQID)
-	logger.Trace.Println("Calculate embeddings starts.")
-	embeddingStart := time.Now()
-	embeddingBatch := time.Now()
-	for i := 0; i < len(nativeLog.Logs); i++ {
-		dalItem := nativeLog.Logs[i]
-		dalItem.Embedding = model.Vector(data.GetSentenceVector(dalItem.KeyWords, dalItem.Tokens))
-		embeddings = append(embeddings, dalItem.Embedding)
-		if i%500 == 0 {
-			logger.Trace.Printf("Cal: [%v]/[%v] vectors, time consuming for this batch: [%v]s\n",
-				i,
-				len(nativeLog.Logs),
-				time.Since(embeddingBatch).Seconds())
-			embeddingBatch = time.Now()
-		}
-	}
-	logger.Trace.Printf("Calculate embeddings ends. Time consuming: [%v]s\n",
-		time.Since(embeddingStart).Seconds())
-
-	clusters := make([]clustering, 0)
-
-	if len(embeddings) == 0 {
-		logger.Error.Println("This task is going to be closed, because: [effective embedding size is 0]")
-		clusters = append(clusters, clustering{feedbackID: feedbackQID, tags: make([]string, 0)})
-	} else {
-		clusterIdxes := doCluster(embeddings, 10)
-		clusterMap := make(map[string]clustering, 0)
-
-		for _, idxes := range clusterIdxes {
-			feedbackQIDs := make([]uint64, 0)
-			clusterTags := make([]string, 0)
-			clusterPos := make([]string, 0)
-
-			for _, idx := range idxes {
-
-				feedbackQIDs = append(feedbackQIDs, nativeLog.Logs[idx].ContentID)
-				for _, v := range nativeLog.Logs[idx].KeyWords {
-					clusterPos = append(clusterPos, v)
-				}
-			}
-			tags := data.ExtractTags(clusterPos, 2)
-			for _, v := range tags {
-				clusterTags = append(clusterTags, v.Text())
-			}
-
-			sort.Strings(clusterTags)
-
-			tagKey := strings.Join(clusterTags, "|")
-
-			if c, ok := clusterMap[tagKey]; ok {
-				c.feedbackID = append(c.feedbackID, feedbackQIDs...)
-				clusterMap[tagKey] = c
-			} else {
-				var c clustering
-				c.feedbackID = feedbackQIDs
-				c.tags = clusterTags
-				clusterMap[tagKey] = c
-			}
-
-			//clusters = append(clusters, clustering{feedbackID: feedbackQIDs, tags: clusterTags})
-		}
-
-		for _, v := range clusterMap {
-			clusters = append(clusters, clustering{feedbackID: v.feedbackID, tags: v.tags})
-		}
-	}
-	return &clusteringResult{numClustered: len(nativeLog.Logs), clusters: clusters}
-}
-
-func doCluster(vectors []model.Vector, topN int) [][]int {
-	logger.Trace.Println("Clustering starts.")
-
-	numClusters := len(vectors) / ClusteringBatch
-
-	if numClusters == 0 {
-		numClusters = 1
-	}
-
-	clusteredVectors := model.KmeansPP(
-		vectors,
-		numClusters,
-		EarlyStopThreshold)
-
-	sizeClusters := make([]int, numClusters)
-	avgDistance := make([]float64, numClusters)
-	for _, clusteredVector := range clusteredVectors {
-		sizeClusters[clusteredVector.ClusterNumber]++
-		avgDistance[clusteredVector.ClusterNumber] += clusteredVector.Distance
-	}
-
-	r := ranker{}
-	for idx := range sizeClusters {
-		if sizeClusters[idx] >= MinSizeCluster {
-			avgDistance[idx] = avgDistance[idx] / float64(sizeClusters[idx])
-			r = append(r, rankerElm{idx, avgDistance[idx]})
-		}
-	}
-
-	sort.Sort(r)
-
-	results := make([][]int, 0)
-	cnt := 0
-	for _, elm := range r {
-		if cnt >= numClusters {
-			break
-		}
-
-		targetLabel := make([]int, 0)
-		for idx, vector := range clusteredVectors {
-			if vector.ClusterNumber == elm.idx {
-				targetLabel = append(targetLabel, idx)
-			}
-		}
-		results = append(results, targetLabel)
-		cnt++
-	}
-	return results
+	return &clusteringResult{numClustered: 0, clusters: nil}
 }
 
 func storeClusterData(sc StoreCluster, clusters *clusteringResult) error {
