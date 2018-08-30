@@ -1,58 +1,177 @@
 package services
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/olivere/elastic"
 )
 
-func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
-	query data.VisitRecordsQuery) (records []*data.VisitRecordsData, totalSize int64, limit int, err error) {
-	boolQuery := createBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
-	boolQuery = boolQuery.Filter(rangeQuery)
+//RecordResult is the result fetched from Datastore,
+//which will include the Hits raw data and aggregation static data
+//Aggs always contain total_size, and may contain stats info like total_marked_size ...
+type RecordResult struct {
+	Hits []*data.VisitRecordsData
+	Aggs map[string]interface{}
+}
 
-	if query.Question != "" {
-		userQTermQuery := elastic.NewMultiMatchQuery(query.Question, "user_q", "answer.value")
+type ElasticSearchCommand func(*elastic.SearchService) *elastic.SearchService
+
+func ElasticFilterMarkedRecord(ss *elastic.SearchService) *elastic.SearchService {
+	markFilter := elastic.NewFilterAggregation().Filter(elastic.NewTermQuery("isMarked", true))
+	ss = ss.Aggregation("isMarked", markFilter)
+	return ss
+}
+
+func ElasticFilterIgnoredRecord(ss *elastic.SearchService) *elastic.SearchService {
+	ignoreFilter := elastic.NewFilterAggregation().Filter(elastic.NewTermQuery("isIgnored", true))
+	ss = ss.Aggregation("isIgnored", ignoreFilter)
+	return ss
+}
+
+var platformDict = map[string]string{
+	"wechat": "微信",
+	"app":    "App",
+	"web":    "Web",
+	"ios":    "ios",
+}
+
+var genderDict = map[string]string{
+	"0": "男",
+	"1": "女",
+}
+var emotionDict = map[string]string{
+	"angry":         "愤怒",
+	"not_satisfied": "不满",
+	"satisfied":     "满意",
+	"neutral":       "中性",
+}
+
+//NewBoolQueryWithRecordQuery create a *elastic.BoolQuery with the Record condition.
+func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
+	boolQuery := elastic.NewBoolQuery()
+	if query.Records != nil {
+		//Executing a Terms Query request with a lot of terms can be quite slow, as each additional term demands extra processing and memory.
+		//To safeguard against this, the maximum number of terms that can be used in a Terms Query both directly or through lookup has been limited to 65536.
+		boolQuery.Filter(elastic.NewTermsQuery("unique_id", query.Records...))
+		return boolQuery
+	}
+	if query.StartTime != nil && query.EndTime != nil {
+		start := time.Unix(*query.StartTime, 0).Local()
+		end := time.Unix(*query.EndTime, 0).Local()
+		var rq = elastic.NewRangeQuery("log_time")
+		rq.Gte(start.Format(data.ESTimeFormat))
+		rq.Lte(end.Format(data.ESTimeFormat))
+		rq.Format("yyyy-MM-dd HH:mm:ss")
+		rq.TimeZone(timezone)
+		boolQuery = boolQuery.Filter(rq)
+	}
+
+	if query.Keyword != nil {
+		userQTermQuery := elastic.NewMultiMatchQuery(*query.Keyword, "user_q", "answer.value")
 		boolQuery = boolQuery.Filter(userQTermQuery)
 	}
 
-	if query.UserID != "" {
-		userIDTermQuery := elastic.NewTermQuery("user_id", query.UserID)
+	if query.UserID != nil {
+		userIDTermQuery := elastic.NewTermQuery("user_id", *query.UserID)
 		boolQuery = boolQuery.Filter(userIDTermQuery)
 	}
 
 	if query.Emotions != nil {
-		emotionQuery := elastic.NewTermsQuery("emotion", query.Emotions...)
-		boolQuery = boolQuery.Filter(emotionQuery)
+		emotions := make([]interface{}, 0)
+		for _, emotion := range query.Emotions {
+			e, ok := emotionDict[emotion]
+			if ok {
+				emotions = append(emotions, e)
+			}
+		}
+		if len(emotions) > 0 {
+			emotionQuery := elastic.NewTermsQuery("emotion", emotions...)
+			boolQuery = boolQuery.Filter(emotionQuery)
+		}
 	}
 
-	if query.QType != "" {
-		switch query.QType {
-		case data.CategoryBusiness:
-			businessTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
-			boolQuery = boolQuery.Filter(businessTermsQuery)
-		case data.CategoryChat:
-			chatTermQuery := elastic.NewTermQuery("module", "chat")
-			boolQuery = boolQuery.Filter(chatTermQuery)
-		case data.CategoryOther:
+	//the BFBS origin one is a bug, which
+	//Optimize skip if qtype is all included, which will be meaningless to use this condition
+	if query.QTypes != nil && len(query.QTypes) < 3 {
+		terms := make(map[string]bool, 0)
+		haveOther := false
+
+		for _, typ := range query.QTypes {
+			switch typ {
+
+			case data.CategoryBusiness:
+				terms["faq"] = true
+				terms["task_engine"] = true
+			case data.CategoryChat:
+				terms["chat"] = true
+			case data.CategoryOther:
+				haveOther = true
+			}
+
+		}
+		if len(terms) > 0 {
+			var inputs = make([]interface{}, 0)
+			for name := range terms {
+				inputs = append(inputs, name)
+			}
+			boolQuery = boolQuery.Filter(elastic.NewTermsQuery("module", inputs...))
+		}
+
+		if haveOther {
 			otherTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "chat")
 			boolQuery = boolQuery.MustNot(otherTermsQuery)
 		}
 	}
 
-	if query.Tags != nil && len(query.Tags) > 0 {
+	//  tags should contain following category info
+	//{
+	//   "type": "platform",
+	// },
+	// {
+	//   "type": "brand",
+	// },
+	// {
+	//   "type": "sex",
+	// },
+	// {
+	//   "type": "age",
+	//   "type_text": "年龄段",
+	// },
+	// {
+	//   "type": "hobbies",
+	// }
+	tags := make([]data.VisitRecordsQueryTag, 0)
+	if query.Platforms != nil {
+		var tag = data.VisitRecordsQueryTag{
+			Type:  "platform",
+			Texts: query.Platforms,
+		}
+		tags = append(tags, tag)
+	}
+	if query.Genders != nil {
+		inputs := make([]string, len(query.Genders))
+		for i, v := range query.Genders {
+			inputs[i] = genderDict[v]
+		}
+		tags = append(tags, data.VisitRecordsQueryTag{
+			Type:  "sex",
+			Texts: inputs,
+		})
+	}
+	if len(tags) > 0 {
 		tagsShouldBoolQuery := elastic.NewBoolQuery()
-		tagsBoolQueries := make([]*elastic.BoolQuery, 0)
-		tags := make([]data.VisitRecordsTag, 0)
-		tagsBoolQueries, err = createTagsBoolQueries(tagsBoolQueries, query.Tags, 0, tags)
+		tagsBoolQueries, err := createTagsBoolQueries(make([]*elastic.BoolQuery, 0), tags, 0, make([]data.VisitRecordsTag, 0))
 		if err != nil {
-			return
+			//Temp log report
+			log.Printf("err %v", err)
+			return boolQuery
 		}
 
 		for _, tagsBoolQuery := range tagsBoolQueries {
@@ -61,8 +180,84 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 
 		boolQuery.Filter(tagsShouldBoolQuery)
 	}
+	if query.IsMarked != nil {
+		if *query.IsMarked {
+			boolQuery.Filter(elastic.NewTermQuery("isMarked", true))
+		} else {
+			q := elastic.NewBoolQuery()
+			q.Should(elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery("isMarked")))
+			q.Should(elastic.NewBoolQuery().Filter(elastic.NewTermQuery("isMarked", false)))
+			boolQuery.Filter(q)
+		}
+	}
+	if query.IsIgnored != nil {
+		if *query.IsIgnored {
+			boolQuery.Filter(elastic.NewTermQuery("isIgnored", true))
+		} else {
+			q := elastic.NewBoolQuery()
+			q.Should(elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery("isIgnored")))
+			q.Should(elastic.NewBoolQuery().Filter(elastic.NewTermQuery("isIgnored", false)))
+			boolQuery.Filter(q)
+		}
+	}
+	return boolQuery
+}
 
-	from := (query.Page - 1) * query.PageLimit
+type UpdateCommand func(*elastic.UpdateByQueryService) *elastic.UpdateByQueryService
+
+func UpdateRecordMark(status bool) UpdateCommand {
+	return func(qs *elastic.UpdateByQueryService) *elastic.UpdateByQueryService {
+		script := elastic.NewScript("ctx._source.isMarked = params.mark")
+		script.Param("mark", status)
+		qs.Script(script)
+		return qs
+	}
+}
+
+func UpdateRecordIgnore(status bool) UpdateCommand {
+	return func(qs *elastic.UpdateByQueryService) *elastic.UpdateByQueryService {
+		script := elastic.NewScript("ctx._source.isIgnored = params.ignore")
+		script.Param("ignore", status)
+		qs.Script(script)
+		return qs
+	}
+}
+
+//UpdateRecords will update the records based on given query
+//It will return error if any problem occur.
+func UpdateRecords(query data.RecordQuery, cmd UpdateCommand) error {
+	ctx, client := elasticsearch.GetClient()
+	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	bq := NewBoolQueryWithRecordQuery(query)
+	traceQuery(bq)
+	s := client.UpdateByQuery(index)
+	s.Type(data.ESRecordType)
+	s.Query(bq)
+	s.ProceedOnVersionConflict()
+	s = cmd(s)
+
+	resp, err := s.Do(ctx)
+	if err != nil {
+		return fmt.Errorf("do update by query failed, %v", err)
+	}
+	logger.Trace.Printf("response: %+v\n", resp)
+	return nil
+}
+
+func traceQuery(bq *elastic.BoolQuery) {
+	src, _ := bq.Source()
+	d, _ := json.Marshal(src)
+	logger.Trace.Printf("query: %s\n", d)
+}
+
+//VisitRecordsQuery will fetch raw and aggregation data from Data store.
+//input query decide which raw data to fetchand & aggs will decided Result's aggs
+//In the return, result.Aggs may contain isMarked or isIgnored key if correspond ElasticSearchCommand have bee given in aggs
+func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*RecordResult, error) {
+	ctx, client := elasticsearch.GetClient()
+	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	boolQuery := NewBoolQueryWithRecordQuery(query)
+	traceQuery(boolQuery)
 	source := elastic.NewFetchSourceContext(true)
 	source.Include(
 		data.VisitRecordsMetricUserID,
@@ -73,46 +268,53 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 		data.VisitRecordsMetricLogTime,
 		data.VisitRecordsMetricEmotion,
 		"module",
+		"unique_id",
+		"isMarked",
+		"isIgnored",
 	)
-
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
-
-	result, err := client.Search().
+	ss := client.Search()
+	for _, agg := range aggs {
+		agg(ss)
+	}
+	result, err := ss.
 		Index(index).
 		Type(data.ESRecordType).
 		Query(boolQuery).
-		From(from).
-		Size(query.PageLimit).
+		From(int(query.From)).
+		Size(query.Limit).
 		FetchSourceContext(source).
 		Sort(data.LogTimeFieldName, false).
 		Do(ctx)
 	if err != nil {
-		return
+		return nil, fmt.Errorf("elastic search service error, %v", err)
 	}
 
-	totalSize = result.TotalHits()
-	limit = query.PageLimit
-
-	records = make([]*data.VisitRecordsData, 0)
+	var r = &RecordResult{
+		Hits: make([]*data.VisitRecordsData, 0),
+		Aggs: map[string]interface{}{
+			"total_size": result.TotalHits(),
+		},
+	}
+	if markedSize, found := result.Aggregations.Filter("isMarked"); found {
+		r.Aggs["isMarked"] = markedSize.DocCount
+	}
+	if ignoredSize, found := result.Aggregations.Filter("isIgnored"); found {
+		r.Aggs["isIgnored"] = ignoredSize.DocCount
+	}
 
 	for _, hit := range result.Hits.Hits {
 		hitResult := data.VisitRecordsHitResult{}
-		jsonStr, _err := hit.Source.MarshalJSON()
-		if _err != nil {
-			err = _err
-			return
-		}
-
+		jsonStr, _ := hit.Source.MarshalJSON()
 		err = json.Unmarshal(jsonStr, &hitResult)
 		if err != nil {
-			return
+			return nil, fmt.Errorf("hit result unmarshal failed, %v", err)
 		}
 
 		// Note: We have to convert log_time (UTC+0) to local time and reformat
 		logTime, _err := time.Parse(data.LogTimeFormat, hitResult.LogTime)
 		if _err != nil {
-			err = _err
-			return
+			err = fmt.Errorf("Result LogTime cant not parse into time, reason: %v", _err)
+			return nil, err
 		}
 		logTime = logTime.Local()
 		hitResult.LogTime = logTime.Format("2006-01-02 15:04:05")
@@ -132,21 +334,24 @@ func VisitRecordsQuery(ctx context.Context, client *elastic.Client,
 			rawRecord.QType = "其他类"
 		}
 
-		record := data.VisitRecordsData{
-			UserID:  rawRecord.UserID,
-			UserQ:   rawRecord.UserQ,
-			Score:   rawRecord.Score,
-			StdQ:    rawRecord.StdQ,
-			Answer:  strings.Join(answers, ", "),
-			LogTime: rawRecord.LogTime,
-			Emotion: rawRecord.Emotion,
-			QType:   rawRecord.QType,
+		record := &data.VisitRecordsData{
+			UniqueID:  rawRecord.UniqueID,
+			UserID:    rawRecord.UserID,
+			UserQ:     rawRecord.UserQ,
+			Score:     rawRecord.Score,
+			StdQ:      rawRecord.StdQ,
+			Answer:    strings.Join(answers, ", "),
+			LogTime:   rawRecord.LogTime,
+			Emotion:   rawRecord.Emotion,
+			QType:     rawRecord.QType,
+			IsMarked:  rawRecord.IsMarked,
+			IsIgnored: rawRecord.IsIgnored,
 		}
 
-		records = append(records, &record)
+		r.Hits = append(r.Hits, record)
 	}
 
-	return
+	return r, nil
 }
 
 // createTagsBoolQueries converts queryTags = [
