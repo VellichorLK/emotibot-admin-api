@@ -2,18 +2,29 @@ package clustering
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"runtime/debug"
 	"sort"
 	"time"
 
+	statData "emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-type service interface {
-	NewReport() (Report, error)
+//Service define the operations
+type Service interface {
+	NewReport([]*statData.VisitRecordsData) (Report, error)
+	Report(id string) (Report, error)
+	Reports(query ReportQuery) ([]Report, error)
+	CancelReport(appID string, id string) error
 }
+
+var service Service = sqlService{}
+
+// ErrNotAvailable is used for indicating out of resource, since clustering is a resource intensive operation.
+var ErrNotAvailable = errors.New("clustering error: resource is not available yet. please try again")
 
 func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string, qType int) error {
 

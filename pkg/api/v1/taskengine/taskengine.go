@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"emotibot.com/emotigo/pkg/api/v1"
+	"emotibot.com/emotigo/pkg/api"
 )
 
 //Client is api tool for taskengine

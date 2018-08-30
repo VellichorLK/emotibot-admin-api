@@ -1,12 +1,11 @@
 package faqcluster
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
-	"log"
+	"io/ioutil"
 	"net/url"
 	"testing"
-	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -20,13 +19,11 @@ func TestNewClient(t *testing.T) {
 	testcases := map[string]testCase{
 		"normal": testCase{
 			Address:           "http://127.0.0.1",
-			ExpectClusterAddr: "http://127.0.0.1/clustering/post",
-			ExpectResultAddr:  "http://127.0.0.1/get_result",
+			ExpectClusterAddr: "http://127.0.0.1/clustering/",
 		},
 		"custom port": testCase{
 			Address:           "http://172.17.0.1:13014",
-			ExpectClusterAddr: "http://172.17.0.1:13014/clustering/post",
-			ExpectResultAddr:  "http://172.17.0.1:13014/get_result",
+			ExpectClusterAddr: "http://172.17.0.1:13014/clustering/",
 		},
 	}
 
@@ -37,16 +34,13 @@ func TestNewClient(t *testing.T) {
 			if client.clusterEndpoint != tc.ExpectClusterAddr {
 				tt.Fatalf("expect cluster endpoint to be %s but got %s", tc.ExpectClusterAddr, client.clusterEndpoint)
 			}
-			if client.resultEndpoint != tc.ExpectResultAddr {
-				tt.Fatalf("expect result endpoint to be %s but got %s", tc.ExpectResultAddr, client.resultEndpoint)
-			}
 		})
 	}
 }
 
 func TestIntergratedAPI(t *testing.T) {
 	db, _ := sql.Open("mysql", "root:password@tcp(172.16.101.98:3306)/backend_log?parseTime=true&loc=Asia%2FShanghai")
-	rows, _ := db.Query("SELECT id, user_q FROM records LIMIT 10000")
+	rows, _ := db.Query("SELECT id, user_q FROM records LIMIT 30")
 	defer rows.Close()
 	var data = make([]interface{}, 0)
 	for rows.Next() {
@@ -62,27 +56,19 @@ func TestIntergratedAPI(t *testing.T) {
 	}
 	addr, _ := url.Parse("http://127.0.0.1:13014")
 	var client = NewClient(*addr)
-	resp, err := client.Clustering(data)
+	ctx := context.Background()
+	paramas := map[string]interface{}{
+		"model_version": "unknown_20180830143445",
+	}
+	result, err := client.Clustering(ctx, paramas, data)
+	if rawErr, ok := err.(*RawError); ok {
+		errData, _ := ioutil.ReadAll(rawErr.Body)
+		t.Fatalf("client error %s with request para %s, raw body %s", rawErr.Error(), rawErr.Input, errData)
+	}
 	if err != nil {
-		log.Printf("response: %+v", resp)
-		t.Fatal("got clustering error: ", err)
+		t.Fatalf("do cluster failed, %v", err)
 	}
-	if resp.Status != StatusSuccess {
-		log.Printf("response: %+v", resp)
-		t.Fatal("expect response status to be ", StatusSuccess, "but got ", resp.Status)
+	if len(result.Clusters) != 0 {
+		t.Fatal("expect clustering result > 0 ")
 	}
-	var (
-		result *Result
-	)
-	fmt.Println(resp.TaskID)
-	for {
-		result, err = client.GetResult(resp.TaskID)
-		if err == nil {
-			break
-		} else if err != ErrNotDone {
-			t.Fatalf("got result error, %v", err)
-		}
-		time.Sleep(time.Duration(2) * time.Second)
-	}
-	log.Printf("sucess result: %+v", result)
 }
