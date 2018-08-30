@@ -14,6 +14,10 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type service interface {
+	NewReport() (Report, error)
+}
+
 func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string, qType int) error {
 
 	status := S_SUCCESS

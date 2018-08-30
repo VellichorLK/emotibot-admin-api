@@ -31,19 +31,13 @@ var (
 
 func init() {
 	ModuleInfo = util.ModuleInfo{
-		ModuleName: "selfLearn",
+		ModuleName: "clusters",
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("PUT", "doClustering", []string{}, handleClustering),
+			util.NewEntryPoint("POST", "reports", []string{}, handleNewReport),
 			util.NewEntryPoint("GET", "reports", []string{}, handleGetReports),
 			util.NewEntryPoint("GET", "reports/{id}", []string{}, handleGetReport),
 			util.NewEntryPoint("DELETE", "reports/{id}", []string{}, handleDeleteReport),
 			util.NewEntryPoint("GET", "reports/{id}/clusters", []string{}, handleGetClusters),
-			util.NewEntryPoint("GET", "userQuestions", []string{}, handleGetUserQuestions),
-			util.NewEntryPoint("POST", "userQuestions", []string{}, handleUpdateUserQuestions),
-			util.NewEntryPoint("GET", "userQuestions/{id}", []string{}, handleGetUserQuestion),
-			util.NewEntryPoint("POST", "userQuestions/{id}", []string{}, handleUpdateUserQuestion),
-			util.NewEntryPoint("POST", "userQuestions/{id}/revoke", []string{}, handleRevokeQuestion),
-			util.NewEntryPoint("POST", "recommend", []string{}, handleRecommend),
 		},
 	}
 }
