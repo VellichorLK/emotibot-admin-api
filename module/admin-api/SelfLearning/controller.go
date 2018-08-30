@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	ed "emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/SelfLearning/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -114,7 +115,7 @@ func InitDB() {
 }
 
 func handleClustering(w http.ResponseWriter, r *http.Request) {
-	var query = RecordQuery{}
+	var query = ed.RecordQuery{}
 	status := -999
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
