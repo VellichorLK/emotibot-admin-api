@@ -256,6 +256,7 @@ func traceQuery(bq *elastic.BoolQuery) {
 func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*RecordResult, error) {
 	ctx, client := elasticsearch.GetClient()
 	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	logger.Trace.Printf("index: %s\n", index)
 	boolQuery := NewBoolQueryWithRecordQuery(query)
 	traceQuery(boolQuery)
 	source := elastic.NewFetchSourceContext(true)
@@ -347,7 +348,6 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 			IsMarked:  rawRecord.IsMarked,
 			IsIgnored: rawRecord.IsIgnored,
 		}
-
 		r.Hits = append(r.Hits, record)
 	}
 

@@ -212,33 +212,47 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		q := data.RecordQuery{
 			AppID:   appID,
 			Records: make([]interface{}, len(request.Records)),
+			Limit:   len(request.Records),
 		}
 		for i, r := range request.Records {
 			q.Records[i] = r
 		}
+		//Need retrive record's userq
+		result, err := services.VisitRecordsQuery(q)
+		if err != nil {
+			logger.Error.Printf("check record content failed, %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(internalError{
+				IsRollbacked: true,
+			})
+			return
+		}
+		records_content := make([]string, 0)
+		for _, record := range result.Hits {
+			var isSQ bool
+			isSQ, err = client.IsStandardQuestion(appID, record.UserQ)
+			if err != nil {
+				logger.Error.Printf("Get isStd failed, %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(internalError{
+					IsRollbacked: false,
+				})
+				return
+			}
+
+			if isSQ {
+				w.WriteHeader(http.StatusConflict)
+				json.NewEncoder(w).Encode(map[string]string{
+					"conflicted_content": record.UserQ,
+				})
+				return
+			}
+			records_content = append(records_content, record.UserQ)
+		}
 		if *request.Mark {
-			for _, record := range request.Records {
-				var (
-					isLQ bool
-					isSQ bool
-				)
-				isSQ, err = client.IsStandardQuestion(appID, record)
-				if err != nil {
-					logger.Error.Printf("Get isStd failed, %v\n", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(internalError{
-						IsRollbacked: true,
-					})
-					return
-				}
-				if isSQ {
-					w.WriteHeader(http.StatusConflict)
-					json.NewEncoder(w).Encode(map[string]string{
-						"conflicted_content": record,
-					})
-					return
-				}
-				isLQ, err = client.IsSimilarQuestion(appID, record)
+			for _, content := range records_content {
+				var isLQ bool
+				isLQ, err = client.IsSimilarQuestion(appID, content)
 				if err != nil {
 					logger.Error.Printf("Get isSimQ failed, %v\n", err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -248,7 +262,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 					return
 				}
 				if isLQ {
-					err = client.DeleteSimilarQuestions(appID, record)
+					err = client.DeleteSimilarQuestions(appID, content)
 					if err != nil {
 						//TODO: FIX AS ROLLBACKABLE
 						logger.Error.Printf("delete sim q %v\n", err)
@@ -260,7 +274,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 					}
 				}
 			}
-			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, request.Records...)
+			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, records_content...)
 			if err != nil {
 				logger.Error.Printf("set simQ failed, %v\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -270,27 +284,8 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				return
 			}
 		} else { //unmarking should remove the records from ssm store
-			for _, record := range request.Records {
-				var isSQ bool
-				isSQ, err = client.IsStandardQuestion(appID, record)
-				if err != nil {
-					logger.Error.Printf("Get isStd failed, %v\n", err)
-					w.WriteHeader(http.StatusInternalServerError)
-					json.NewEncoder(w).Encode(internalError{
-						IsRollbacked: false,
-					})
-					return
-				}
 
-				if isSQ {
-					w.WriteHeader(http.StatusConflict)
-					json.NewEncoder(w).Encode(map[string]string{
-						"conflicted_content": record,
-					})
-					return
-				}
-			}
-			err = client.DeleteSimilarQuestions(appID, request.Records...)
+			err = client.DeleteSimilarQuestions(appID, records_content...)
 			if err != nil {
 				logger.Error.Printf("delete sim q failed, %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -327,6 +322,7 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 		query := data.RecordQuery{
 			AppID:   appID,
 			Records: []interface{}{id},
+			Limit:   1,
 		}
 		result, err := services.VisitRecordsQuery(query)
 		if err != nil {
@@ -335,17 +331,17 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 			return
 		}
 		if size := len(result.Hits); size == 0 || size > 1 {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusNotFound, "record id is ambiguous(results: "+strconv.Itoa(size)+")"))
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record id "+id+" is ambiguous(results: "+strconv.Itoa(size)+")"))
 			return
 		}
 		if !result.Hits[0].IsMarked {
 			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record is not marked"))
 		}
-		content := result.Hits[0].UserQ
+		lq := result.Hits[0].UserQ
 		var response = struct {
 			Content string `json:"marked_content"`
 		}{}
-		isLQ, err := client.IsSimilarQuestion(appID, content)
+		isLQ, err := client.IsSimilarQuestion(appID, lq)
 		if err != nil {
 			logger.Error.Printf("get isSimilarQ failed, %v", err)
 			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
@@ -354,15 +350,15 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 		if !isLQ {
 			response.Content = ""
 			returnOK(w, response)
-		}
-
-		response.Content, err = client.Question(appID, content)
-		if err != nil {
-			logger.Error.Printf("get question for lq %s failed, %v", content, err)
-			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
 			return
 		}
 
+		response.Content, err = client.Question(appID, lq)
+		if err != nil {
+			logger.Error.Printf("get question for lq %s failed, %v", lq, err)
+			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			return
+		}
 		returnOK(w, response)
 	}
 }
