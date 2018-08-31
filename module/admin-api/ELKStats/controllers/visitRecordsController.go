@@ -286,7 +286,20 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		} else { //unmarking should remove the records from ssm store
 
 			err = client.DeleteSimilarQuestions(appID, records_content...)
-			if err != nil {
+			//Note: because ssm wont sync with record, so it can be someone delete the ssm
+			//We only need to return error if the problem is not "not exist"
+			if dErr, ok := err.(*dal.DetailError); ok {
+				for _, op := range dErr.Results {
+					if op != "NOT_EXIST" {
+						logger.Error.Printf("delete sim q failed, %v", err)
+						w.WriteHeader(http.StatusInternalServerError)
+						json.NewEncoder(w).Encode(internalError{
+							IsRollbacked: false,
+						})
+						return
+					}
+				}
+			} else if err != nil {
 				logger.Error.Printf("delete sim q failed, %v", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(internalError{
