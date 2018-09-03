@@ -1594,6 +1594,7 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 	email := strings.TrimSpace(r.FormValue("email"))
 	phone := r.FormValue("phone")
 	password := r.FormValue("password")
+	products := r.FormValue("product")
 
 	user := data.UserDetailV3{}
 	user.Email = email
@@ -1601,6 +1602,14 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 	user.DisplayName = name
 	user.Password = &password
 	user.UserName = username
+
+	user.Products = []string{}
+	if products != "" {
+		err := json.Unmarshal([]byte(products), &user.Products)
+		if err != nil {
+			user.Products = []string{}
+		}
+	}
 
 	userType, err := strconv.Atoi(r.FormValue("type"))
 	if err != nil {

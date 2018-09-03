@@ -10,6 +10,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
+	"emotibot.com/emotigo/pkg/logger"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -445,13 +446,13 @@ func (controller MYSQLController) GetUsersV3(enterpriseID string, admin bool) ([
 
 	if admin {
 		queryStr = fmt.Sprintf(`
-			SELECT uuid, user_name, display_name, email, phone, type
+			SELECT uuid, user_name, display_name, email, phone, type, product
 			FROM %s
 			WHERE type = %d`, userTableV3, enum.SuperAdminUser)
 		queryParams = []interface{}{}
 	} else {
 		queryStr = fmt.Sprintf(`
-			SELECT uuid, user_name, display_name, email, phone, type
+			SELECT uuid, user_name, display_name, email, phone, type, product
 			FROM %s
 			WHERE enterprise = ? AND type != %d`, userTableV3, enum.SuperAdminUser)
 		queryParams = []interface{}{enterpriseID}
@@ -466,10 +467,16 @@ func (controller MYSQLController) GetUsersV3(enterpriseID string, admin bool) ([
 
 	for rows.Next() {
 		user := data.UserV3{}
-		err := rows.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type)
+		productStr := ""
+		err := rows.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type, &productStr)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
+		}
+		if productStr != "" {
+			user.Products = strings.Split(productStr, ",")
+		} else {
+			user.Products = []string{}
 		}
 
 		users = append(users, &user)
@@ -502,13 +509,13 @@ func (controller MYSQLController) GetUserV3(enterpriseID string,
 
 	if enterpriseID == "" {
 		queryStr = fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password, product
 		FROM %s
 		WHERE uuid = ?`, userTableV3)
 		queryParams = []interface{}{userID}
 	} else {
 		queryStr = fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password, product
 		FROM %s
 		WHERE enterprise = ? AND uuid = ?`, userTableV3)
 		queryParams = []interface{}{enterpriseID, userID}
@@ -517,8 +524,15 @@ func (controller MYSQLController) GetUserV3(enterpriseID string,
 	row := controller.connectDB.QueryRow(queryStr, queryParams...)
 
 	user := data.UserDetailV3{}
+	productStr := ""
 	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
-		&user.Enterprise, &user.Status, &user.Password)
+		&user.Enterprise, &user.Status, &user.Password, &productStr)
+
+	if productStr == "" {
+		user.Products = []string{}
+	} else {
+		user.Products = strings.Split(productStr, ",")
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -547,15 +561,16 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 	}
 
 	queryStr := fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, product
 		FROM %s
 		WHERE (user_name = ? OR email = ?) AND password = ?`,
 		userTableV3)
 	row := controller.connectDB.QueryRow(queryStr, account, account, passwd)
 
 	user := data.UserDetailV3{}
+	productStr := ""
 	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
-		&user.Enterprise, &user.Status)
+		&user.Enterprise, &user.Status, &productStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -563,6 +578,12 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 
 		util.LogDBError(err)
 		return nil, err
+	}
+
+	if productStr == "" {
+		user.Products = []string{}
+	} else {
+		user.Products = strings.Split(productStr, ",")
 	}
 
 	roles, err := controller.getUserRolesV3(user.ID)
@@ -603,15 +624,16 @@ func (controller MYSQLController) GetUserPasswordV3(userID string) (string, erro
 
 func (controller MYSQLController) AddUserV3(enterpriseID string,
 	user *data.UserDetailV3) (userID string, err error) {
+	defer func() {
+		util.LogDBError(err)
+	}()
 	ok, err := controller.checkDB()
 	if !ok {
-		util.LogDBError(err)
 		return
 	}
 
 	t, err := controller.connectDB.Begin()
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 	defer util.ClearTransition(t)
@@ -623,7 +645,6 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
@@ -638,25 +659,30 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
 			user.Email, user.Phone, user.Type, user.Password}
 	case enum.AdminUser:
-		fallthrough
-	case enum.NormalUser:
 		queryStr = fmt.Sprintf(`
 			INSERT INTO %s
 			(uuid, user_name, display_name, email, phone, enterprise, type, password)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, userTableV3)
 		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
 			user.Email, user.Phone, enterpriseID, user.Type, user.Password}
+	case enum.NormalUser:
+		queryStr = fmt.Sprintf(`
+			INSERT INTO %s
+			(uuid, user_name, display_name, email, phone, enterprise, type, password, product)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, userTableV3)
+		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
+			user.Email, user.Phone, enterpriseID, user.Type, user.Password, strings.Join(user.Products, ",")}
 	}
+
+	logger.Trace.Printf("%+v\n", queryParams)
 
 	_, err = t.Exec(queryStr, queryParams...)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
 	err = addUserPrivilegesWithTxV3(userID, user, t)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
@@ -664,7 +690,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	if user.CustomInfo == nil {
 		err = t.Commit()
 		if err != nil {
-			util.LogDBError(err)
+
 			return
 		}
 		return
@@ -672,13 +698,11 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 
 	err = insertCustomInfoWithTxV3(enterpriseID, userID, *user.CustomInfo, t)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
 	err = t.Commit()
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
