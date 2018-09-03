@@ -586,6 +586,9 @@ func returnSuccess(w http.ResponseWriter, retData interface{}) {
 	ret := data.Return{
 		ReturnMessage: "success",
 		ReturnObj:     &retData,
+		BFErrorCode:   0,
+		BFErrorMsg:    "",
+		BFData:        &retData,
 	}
 
 	writeResponseJSON(w, &ret)
