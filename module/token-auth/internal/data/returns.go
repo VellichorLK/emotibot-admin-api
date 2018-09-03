@@ -3,7 +3,10 @@ package data
 type Return struct {
 	ReturnMessage string      `json:"ret_msg"`
 	ReturnObj     interface{} `json:"result"`
-	BFErrorCode   int         `json:"error_code"`
-	BFErrorMsg    string      `json:"error_message"`
-	BFData        interface{} `json:"data"`
+}
+
+type BFReturn struct {
+	ErrorCode int         `json:"error_code"`
+	ErrorMsg  string      `json:"error_message"`
+	Data      interface{} `json:"data"`
 }

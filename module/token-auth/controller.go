@@ -582,13 +582,20 @@ func returnInternalError(w http.ResponseWriter, errMsg string) {
 	writeErrJSON(w, errMsg)
 }
 
+func returnBFSuccess(w http.ResponseWriter, retData interface{}) {
+	ret := data.BFReturn{
+		ErrorCode: 0,
+		ErrorMsg:  "success",
+		Data:      &retData,
+	}
+
+	writeResponseJSON(w, &ret)
+}
+
 func returnSuccess(w http.ResponseWriter, retData interface{}) {
 	ret := data.Return{
 		ReturnMessage: "success",
 		ReturnObj:     &retData,
-		BFErrorCode:   0,
-		BFErrorMsg:    "",
-		BFData:        &retData,
 	}
 
 	writeResponseJSON(w, &ret)
@@ -610,9 +617,9 @@ func writeErrJSONWithObj(w http.ResponseWriter, errMsg string, obj interface{}) 
 	writeResponseJSON(w, &ret)
 }
 
-func writeResponseJSON(w http.ResponseWriter, ret *data.Return) {
+func writeResponseJSON(w http.ResponseWriter, ret interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(&ret)
+	json.NewEncoder(w).Encode(ret)
 }
 
 func addUserTryCount(userID string) {

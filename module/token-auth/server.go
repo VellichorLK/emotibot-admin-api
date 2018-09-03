@@ -110,6 +110,11 @@ func setUpRoutes() {
 
 		Route{"GetEnterpriseId", "GET", 3, "getEnterpriseId", []string{"app-id", "{app-id}"}, EnterpriseIDGetHandlerV3, []interface{}{}},
 		Route{"GetUserBelong", "GET", 3, "user/{userID}/info", nil, UserInfoGetHandler, []interface{}{0, 1, 2}},
+
+		Route{"AddIMUser", "POST", 3, "enterprise/{enterpriseID}/imuser", nil, IMUserAddHandlerV3, []interface{}{0, 1}},
+		Route{"UpdateIMUser", "PUT", 3, "enterprise/{enterpriseID}/imuser/{userID}", nil, IMUserUpdateHandlerV3, []interface{}{0, 1, 2}},
+		Route{"ValidateIMToken", "GET", 3, "imtoken", nil, IMValidateTokenHandler, []interface{}{}},
+		Route{"GetIMRobots", "GET", 3, "enterprise/{enterpriseID}/imrobots", nil, IMAppsGetHandlerV3, []interface{}{0, 1, 2}},
 	}
 }
 
