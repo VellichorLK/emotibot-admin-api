@@ -43,7 +43,7 @@ type clusteringResponse struct {
 	Operation  string                 `json:"errno"`
 	ErrorMsg   string                 `json:"error_message"`
 	Parameters map[string]interface{} `json:"para"`
-	Result     Result                 `json:"results"`
+	Result     result                 `json:"results"`
 }
 
 //clusterRequest is the request struct indicate in the [document](http://wiki.emotibot.com/pages/viewpage.action?pageId=9574324).
@@ -54,21 +54,31 @@ type clusterRequest struct {
 
 //Result is a Clustering result which contains of several Clusters and Filtered data which does not used in
 type Result struct {
-	Clusters []Cluster     `json:"data"`
-	Filtered []interface{} `json:"removed"`
+	Clusters []Cluster
+	Filtered []Data
 }
 
 //Cluster represent multiple similar data points, which will have zero to many Tags. the center points will be in CenterQuestions
 type Cluster struct {
-	CenterQuestions []string      `json:"centerQuestion"`
-	Data            []interface{} `json:"cluster"`
-	Tags            []string      `json:"clusterTag"`
+	CenterQuestions map[string]struct{}
+	Data            []Data
+	Tags            []string
 }
 
-type resultRawResponse struct {
-	ErrorCode int    `json:"error"`
-	Done      bool   `json:"processDone"`
-	Result    Result `json:"results"`
+type Data struct {
+	Value  string
+	Others map[string]interface{}
+}
+
+type result struct {
+	Clusters []cluster                `json:"data"`
+	Filtered []map[string]interface{} `json:"removed"`
+}
+
+type cluster struct {
+	CenterQuestions []string                 `json:"centerQuestion"`
+	Data            []map[string]interface{} `json:"cluster"`
+	Tags            []string                 `json:"clusterTag"`
 }
 
 type RawError struct {
@@ -85,7 +95,6 @@ func (e *RawError) Error() string {
 //Context ctx will be used with http request.
 //parameters list can be found at [here](http://wiki.emotibot.com/pages/viewpage.action?pageId=9574324)
 func (c *Client) Clustering(ctx context.Context, parameters map[string]interface{}, data []interface{}) (*Result, error) {
-	var response clusteringResponse
 	input := clusterRequest{
 		Parameters: parameters,
 		Data:       data}
@@ -111,6 +120,7 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 			Body:  rawBody,
 		}
 	}
+	var response clusteringResponse
 	err = json.NewDecoder(rawBody).Decode(&response)
 	if err != nil {
 		return nil, &RawError{
@@ -127,5 +137,48 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 		}
 	}
 
-	return &response.Result, nil
+	var result = Result{
+		Clusters: []Cluster{},
+		Filtered: []Data{},
+	}
+	for _, c := range response.Result.Clusters {
+		var centralQuestions = map[string]struct{}{}
+		for _, q := range c.CenterQuestions {
+			centralQuestions[q] = struct{}{}
+		}
+		var receivedData = []Data{}
+		for _, d := range c.Data {
+			value, found := d["value"]
+			if !found {
+				return nil, fmt.Errorf("data no value")
+			} else {
+				delete(d, "value")
+			}
+			valueStr, ok := value.(string)
+			if !ok {
+				return nil, fmt.Errorf("data's value is not string")
+			}
+			receivedData = append(receivedData, Data{Value: valueStr, Others: d})
+		}
+		cluster := Cluster{
+			CenterQuestions: centralQuestions,
+			Data:            receivedData,
+			Tags:            c.Tags,
+		}
+		result.Clusters = append(result.Clusters, cluster)
+	}
+	for _, d := range response.Result.Filtered {
+		value, found := d["value"]
+		if !found {
+			return nil, fmt.Errorf("data no value")
+		} else {
+			delete(d, "value")
+		}
+		valueStr, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("data's value is not string")
+		}
+		result.Filtered = append(result.Filtered, Data{Value: valueStr, Others: d})
+	}
+	return &result, nil
 }
