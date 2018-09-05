@@ -68,6 +68,12 @@ func init() {
 			logger.Error.Printf(err.Error())
 			os.Exit(-1)
 		}
+	} else {
+		err := util.LoadConfigFromOSEnv()
+		if err != nil {
+			logger.Error.Printf(err.Error())
+			os.Exit(-1)
+		}
 	}
 }
 

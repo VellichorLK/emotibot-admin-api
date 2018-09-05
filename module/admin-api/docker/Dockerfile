@@ -18,16 +18,15 @@ ARG PROJECT
 ENV GOPREFIX /go/src/emotibot.com
 RUN apk add --no-cache tzdata
 
-ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
-RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz 
-RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
+#ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
+#RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz 
+#RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
 
 COPY --from=build-env /go/bin /usr/local/bin
 
 WORKDIR /usr/local/bin
 COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh
-COPY ./module/${PROJECT}/docker/env.template env.template
 COPY ./module/${PROJECT}/docker/files_init.sh files_init.sh
 COPY ./module/${PROJECT}/InitFiles InitFiles
 
-CMD ["./entrypoint.sh", "env.template"]
+CMD ["./entrypoint.sh"]

@@ -2,16 +2,12 @@ package model
 
 import (
 	"math/rand"
-	"os"
 	"testing"
 	"time"
-
-	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 func TestKmeans(t *testing.T) {
 	rand.Seed(time.Now().UnixNano())
-	util.LogInit("LEARNING", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
 	rawData := []Vector{
 		{0, 2},
 		{1, 1},

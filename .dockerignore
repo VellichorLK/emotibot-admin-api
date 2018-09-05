@@ -3,3 +3,4 @@
 **/*_test.go
 **/testdata
 .git
+Dockerfile
