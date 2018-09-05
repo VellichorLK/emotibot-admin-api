@@ -219,7 +219,10 @@ func setRoute() *mux.Router {
 					clientNoStoreCache(w)
 					defer func() {
 						if err := recover(); err != nil {
-							util.WriteWithStatus(w, fmt.Sprintf("%#v", err), http.StatusInternalServerError)
+							errMsg := fmt.Sprintf("%#v", err)
+							util.WriteWithStatus(w, errMsg, http.StatusInternalServerError)
+							util.PrintRuntimeStack(10)
+							logger.Error.Println("Panic error:", errMsg)
 						}
 					}()
 
