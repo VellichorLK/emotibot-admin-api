@@ -1,163 +1,91 @@
 package clustering
 
-import "time"
-
-const (
-	//START_TIME input parameter, search starting time in UTC time format
-	START_TIME = "start_time"
-	//END_TIME input parameter, search end time in UTC time format
-	END_TIME = "end_time"
+import (
+	"encoding/json"
 )
 
-//status code of clustering
+//ReportStatus is a set of status code define for clustering report.
+type ReportStatus int
+
+//defined status code of clustering report
 const (
-	S_PANIC = -1 + iota
-	S_PROCESSING
-	S_SUCCESS
+	ReportStatusError     = -1
+	ReportStatusRunning   = 0
+	ReportStatusCompleted = 1
 )
 
-type clusterTable struct {
-	feedback      feedbackProps
-	clusterTag    tagProps
-	clusterResult resultProps
-	report        reportProps
-}
-
-type tagProps struct {
-	name         string
-	id           string
-	reportID     string
-	clusteringID string
-	tag          string
-}
-
-type resultProps struct {
-	name       string
-	id         string
-	reportID   string
-	feedbackID string
-	clusterID  string
-}
-
-type reportProps struct {
-	name        string
-	id          string
-	createdTime string
-	startTime   string
-	endTime     string
-	status      string
-	appid       string
-	rType       string
-}
-
-type feedbackProps struct {
-	name        string
-	id          string
-	question    string
-	stdQuestion string
-	createdTime string
-	updatedTime string
-	appid       string
-	qType       string
-}
-
-//table properties name in database
-var TableProps = clusterTable{
-	feedback:      feedbackProps{name: "user_feedback", id: "id", question: "question", stdQuestion: "std_question", createdTime: "created_time", updatedTime: "updated_time", appid: "appid", qType: "type"},
-	clusterTag:    tagProps{name: "clustering_tag", id: "id", reportID: "report_id", clusteringID: "clustering_id", tag: "tag"},
-	clusterResult: resultProps{name: "clustering_result", id: "id", reportID: "unresolved_report_id", feedbackID: "feedback_id", clusterID: "cluster_id"},
-	report:        reportProps{name: "unresolved_report", id: "id", createdTime: "created_time", startTime: "start_time", endTime: "end_time", status: "status", appid: "appid", rType: "type"},
-}
-
-// Report represent a clustering task
+// Report represent a clustering task.
+// It is a one to one mapping of the RDB table `reports`
 type Report struct {
-	ID               uint64    `json:"id"`
-	StartTime        time.Time `json:"start_time"`
-	EndTime          time.Time `json:"end_time"`
-	ClusterSize      int       `json:"clusterSize"`
-	UserQuestionSize int       `json:"userQuestionSize"`
-	Status           int       `json:"status"`
+	ID          uint64
+	CreatedTime int64
+	UpdatedTime int64
+	Condition   string
+	UserID      string
+	AppID       string
+	//IgnoredSize represent counts of how many records status is ignored, which will not be included in the task.
+	IgnoredSize int64
+	//MarkedSize represent counts of how many records status is marked, which will not be included in the task too.
+	MarkedSize int64
+	//Status default as 0 (running), 1(completed), -1 (error)
+	Status ReportStatus
 }
 
 // Cluster is a subset of Report, contains userQuestions as a group
 type Cluster struct {
-	ID               int      `json:"id"`
-	UserQuestionSize int      `json:"userQuestionSize"`
-	Tags             []string `json:"tags"`
+	ID          uint64
+	ReportID    uint64
+	Tags        string
+	CreatedTime int64
 }
 
-// UserQuestion is user's unsolved question
-type UserQuestion struct {
-	ID          uint64    `json:"id"`
-	Question    string    `json:"question"`
-	StdQuestion string    `json:"std_question"`
-	CreatedTime time.Time `json:"created_time"`
-	UpdatedTime time.Time `json:"updated_time"`
+//ReportRecord is Report's record. an one to one mapping to RDB `report_records`
+type ReportRecord struct {
+	ID            uint64
+	ReportID      uint64
+	ClusterID     uint64
+	ChatRecordID  string
+	Content       string
+	CreatedTime   int64
+	IsCentralNode bool
 }
 
-type clusteringResult struct {
-	numClustered int
-	clusters     []clustering
-	reportID     uint64
-}
-
-type clustering struct {
-	feedbackID []uint64
-	tags       []string
-}
-
-type rankerElm struct {
-	idx     int
-	avgDist float64
-}
-
-type ranker []rankerElm
-
-func (r ranker) Len() int {
-	return len(r)
-}
-
-func (r ranker) Swap(i, j int) {
-	r[i], r[j] = r[j], r[i]
-}
-
-func (r ranker) Less(i, j int) bool {
-	return r[i].avgDist < r[j].avgDist
-}
-
-//StoreCluster store the cluster result
-type StoreCluster interface {
-	Store(cr *clusteringResult) error
-}
-
-//column name of <appid>_question
-const (
-	NQuestionID         = "Question_Id"
-	NContent            = "Content"
-	QuestionTableFormat = "%s_question"
-)
-
-//parameter name
-const (
-	PType = "type"
-)
-
-func isValidType(pType int) bool {
-
-	switch pType {
-	case 0:
-		fallthrough
-	case 1:
-		return true
-	default:
-		return false
-	}
+type searchPeriod struct {
+	StartTime *int64 `json:"start_time"`
+	EndTime   *int64 `json:"end_time"`
 }
 
 //ReportQuery is a complex condition for querying reports
 type ReportQuery struct {
-	Reports   []string `json:"reports"`
-	StartTime *int64   `json:"start_time"`
-	EndTime   *int64   `json:"end_time"`
-	UserID    *string  `json:"user_id"`
+	Reports     []uint64      `json:"reports"`
+	CreatedTime *searchPeriod `json:"created_time"`
+	UpdatedTime *searchPeriod `json:"updated_time"`
+	UserID      *string       `json:"user_id"`
+	Status      *int          `json:"status"`
+	AppID       string
+}
+
+/*
+SSMConfig is a highly dynamic struct that is very hard to parse.
+All we need is the simpleft trained module. so we use interface{} with switching to minify struct fields.
+*/
+type ssmConfig struct {
+	Items []ssmItem `json:"items"`
+}
+
+type ssmItem struct {
+	Name string `json:"name"`
+	//Value can contain multiple struct, we only want to parse as ssmValueElement
+	Value *json.RawMessage `json:"value"`
+}
+
+type ssmValueElement struct {
+	Name string `json:"name"`
+	//Parameters can contains multiple struct, which we only want the ssmParameters struct
+	Parameters *json.RawMessage `json:"parameters"`
+}
+type ssmParameters struct {
+	Candidate string `json:"candidate,omitempty"`
+	Data      string `json:"data,omitempty"`
+	Model     string `json:"model,omitempty"`
 }

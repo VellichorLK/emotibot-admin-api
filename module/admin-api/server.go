@@ -106,12 +106,16 @@ func main() {
 
 	err := initElasticsearch()
 	if err != nil {
-		logger.Error.Println("Init elastic search fail:", err.Error())
+		logger.Error.Println("Init elastic search failed:", err.Error())
 	}
 
 	err = ELKStats.Init()
 	if err != nil {
 		logger.Error.Println("Init ELKStats module failed: ", err.Error())
+	}
+	err = clustering.Init()
+	if err != nil {
+		logger.Error.Println("Init Clustering module failed: ", err.Error())
 	}
 	router := setRoute()
 	logAvailablePath(router)
