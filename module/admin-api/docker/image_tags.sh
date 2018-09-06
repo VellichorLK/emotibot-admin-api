@@ -3,8 +3,8 @@
 GIT_HEAD="$(git rev-parse --short HEAD)"
 GIT_DATE=$(git log HEAD -n1 --pretty='format:%cd' --date=format:'%Y%m%d-%H%M')
 
-ADMIN_REPO="harbor.emotibot.com/bfop"
-#ADMIN_REPO="docker-reg.emotibot.com.cn:55688"
+# ADMIN_REPO="harbor.emotibot.com/bfop"
+ADMIN_REPO="docker-reg.emotibot.com.cn:55688"
 ADMIN_CONTAINER="admin-api"
 ADMIN_TAG="${GIT_HEAD}_${GIT_DATE}"
 
