@@ -1,0 +1,27 @@
+## ADMIN_BUILD_IMAGE_NAME 为 build stage 所编译出来包含 binary 的 docker image 
+ARG ADMIN_BUILD_IMAGE_NAME=${ADMIN_BUILD_IMAGE_NAME}
+FROM ${ADMIN_BUILD_IMAGE_NAME} AS build
+
+## 将 build stage 所编译出来的 binary 复制至可执行环境
+FROM centos:centos7.4.1708
+
+ARG PROJECT
+
+## 安装 musl-libc
+RUN yum update -y && yum install -y wget tzdata \
+    && wget https://copr.fedorainfracloud.org/coprs/ngompa/musl-libc/repo/epel-7/ngompa-musl-libc-epel-7.repo \
+    && mv ngompa-musl-libc-epel-7.repo /etc/yum.repos.d/ \
+    && yum update -y && yum install -y musl-libc
+
+#ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
+#RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz
+#RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
+
+WORKDIR /usr/bin/app
+COPY --from=build /usr/bin/app/${PROJECT} .
+COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh
+COPY ./module/${PROJECT}/docker/files_init.sh files_init.sh
+COPY ./module/${PROJECT}/InitFiles InitFiles
+## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
+
+CMD ["./entrypoint.sh"]
