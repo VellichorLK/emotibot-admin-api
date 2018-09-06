@@ -11,6 +11,7 @@ import (
 	"net/url"
 
 	"emotibot.com/emotigo/pkg/api"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 //StatusSuccess is the status for ClusteringResponse
@@ -43,7 +44,7 @@ type clusteringResponse struct {
 	Operation  string                 `json:"errno"`
 	ErrorMsg   string                 `json:"error_message"`
 	Parameters map[string]interface{} `json:"para"`
-	Result     result                 `json:"results"`
+	Result     *result                `json:"result"`
 }
 
 //clusterRequest is the request struct indicate in the [document](http://wiki.emotibot.com/pages/viewpage.action?pageId=9574324).
@@ -102,6 +103,7 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 	if err != nil {
 		return nil, fmt.Errorf("body marshal failed, %v", err)
 	}
+	logger.Trace.Printf("faqcluster: send request, %s\n", reqbody)
 	req, err := http.NewRequest(http.MethodPost, c.clusterEndpoint, bytes.NewBuffer(reqbody))
 	if err != nil {
 		return nil, fmt.Errorf("new cluster request failed, %v", err)
@@ -113,7 +115,7 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 	}
 	defer resp.Body.Close()
 	rawBody, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println("Request Done, body: ", string(rawBody))
+	logger.Trace.Println("faqcluster: Request Done, detail body. ", string(rawBody))
 	if resp.StatusCode != http.StatusOK {
 		return nil, &RawError{
 			Msg:   fmt.Sprintf("request status code is not OK, but %d", resp.StatusCode),
@@ -137,7 +139,13 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 			Body:  rawBody,
 		}
 	}
-
+	if response.Result == nil {
+		return nil, &RawError{
+			Msg:   "result is null",
+			Input: reqbody,
+			Body:  rawBody,
+		}
+	}
 	var result = Result{
 		Clusters: []Cluster{},
 		Filtered: []Data{},
