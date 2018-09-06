@@ -83,4 +83,5 @@ services:
       - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
       - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
     restart: always
-
+    volumes:
+      - /etc/localtime:/etc/localtime
