@@ -44,12 +44,13 @@ const (
 )
 
 func init() {
-	Init("", os.Stdout, os.Stdout, os.Stdout, os.Stdout)
+	Init("", os.Stdout, os.Stdout, os.Stdout, ioutil.Discard)
 }
 
 // Init will init logger package with specific prefix and outputs.
-// First parameter is prefix, and after second will be output of different level in order of
-// TRACE, INFO, WARN, ERROR. If parameter less then 5, level without output will use ioutil.Discard
+// First parameter is prefix, and after second will be output of different level in order of:
+// 	ERROR, WARN, INFO, TRACE.
+// If parameter less then 5, level without output will use ioutil.Discard
 func Init(
 	prefix string,
 	handler ...io.Writer) {
