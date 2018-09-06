@@ -4,7 +4,7 @@ set -e
 REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=gobase
 VERSION=$1
-TAG=$VERSION-alpine
+TAG=$VERSION
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )

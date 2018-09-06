@@ -1,0 +1,4 @@
+ARG VERSION
+FROM golang:${VERSION}
+
+#DO NOTHING BECAUSE THIS OFFICAL IMAGE have done everything we need.

@@ -7,16 +7,6 @@ FROM centos:centos7.4.1708
 
 ARG PROJECT
 
-## 安装 musl-libc
-RUN yum update -y && yum install -y wget tzdata \
-    && wget https://copr.fedorainfracloud.org/coprs/ngompa/musl-libc/repo/epel-7/ngompa-musl-libc-epel-7.repo \
-    && mv ngompa-musl-libc-epel-7.repo /etc/yum.repos.d/ \
-    && yum update -y && yum install -y musl-libc
-
-#ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
-#RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz
-#RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
-
 WORKDIR /usr/bin/app
 COPY --from=build /usr/bin/app/${PROJECT} .
 COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh

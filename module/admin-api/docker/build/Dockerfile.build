@@ -1,5 +1,5 @@
 ## 编译 binary
-FROM docker-reg.emotibot.com.cn:55688/go-build:650dbada-alpine AS build
+FROM docker-reg.emotibot.com.cn:55688/go-build:650dbada-1.10-standard AS build
 
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
