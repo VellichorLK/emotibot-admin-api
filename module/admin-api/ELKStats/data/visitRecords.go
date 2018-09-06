@@ -81,20 +81,20 @@ type VisitRecordsRequestFilterTagGroup struct {
 //All pointer variables including slice are optional conditions
 //Any non-pointer variable SHOULD BE initialized properly.
 type RecordQuery struct {
-	Keyword   *string       `json:"keyword"`
-	StartTime *int64        `json:"start_time"`
-	EndTime   *int64        `json:"end_time"`
-	Emotions  []string      `json:"emotions"`
-	QTypes    []string      `json:"question_types"`
-	Platforms []string      `json:"platforms"`
-	Genders   []string      `json:"genders"`
-	UserID    *string       `json:"uid"`
-	Records   []interface{} `json:"records"`
-	IsIgnored *bool         `json:"is_ignored"`
-	IsMarked  *bool         `json:"is_marked"`
-	From      int64
-	Limit     int
-	AppID     string
+	Keyword   *string       `json:"keyword,omitempty"`
+	StartTime *int64        `json:"start_time,omitempty"`
+	EndTime   *int64        `json:"end_time,omitempty"`
+	Emotions  []string      `json:"emotions,omitempty"`
+	QTypes    []string      `json:"question_types,omitempty"`
+	Platforms []string      `json:"platforms,omitempty"`
+	Genders   []string      `json:"genders,omitempty"`
+	UserID    *string       `json:"uid,omitempty"`
+	Records   []interface{} `json:"records,omitempty"`
+	IsIgnored *bool         `json:"is_ignored,omitempty"`
+	IsMarked  *bool         `json:"is_marked,omitempty"`
+	From      int64         `json:"-"`
+	Limit     int           `json:"-"`
+	AppID     string        `json:"-"`
 }
 
 type VisitRecordsQuery struct {

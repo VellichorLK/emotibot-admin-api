@@ -291,7 +291,6 @@ func initDB() {
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	util.InitAuditDB(url, user, pass, db)
 
-	clustering.InitDB()
 	Stats.InitDB()
 	auth.InitDB()
 }

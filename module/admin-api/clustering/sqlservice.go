@@ -131,9 +131,9 @@ func (s *sqlService) NewCluster(cluster Cluster) (uint64, error) {
 func (s *sqlService) GetCluster(id uint64) (Cluster, error) {
 	query := "SELECT `id`, `report_id`, `tags`, `created_time` FROM `report_clusters` WHERE id = ?"
 	var c Cluster
-	err := s.db.QueryRow(query).Scan(&c.ID, &c.ReportID, &c.Tags, &c.CreatedTime)
+	err := s.db.QueryRow(query, id).Scan(&c.ID, &c.ReportID, &c.Tags, &c.CreatedTime)
 	if err != nil {
-		return c, fmt.Errorf("get cluster failed, %v", err)
+		return c, fmt.Errorf("sql query clusters row failed, %v", err)
 	}
 	return c, nil
 }
@@ -161,7 +161,7 @@ func (s *sqlService) NewRecords(records ...ReportRecord) error {
 }
 
 func (s *sqlService) GetRecords(reportID uint64) ([]ReportRecord, error) {
-	query := "SELECT `id`, `report_id`, `cluster_id`, `chat_record_id`, `content`, `is_central_node`, `created_time` FROM `reports_records` WHERE report_id = ? "
+	query := "SELECT `id`, `report_id`, `cluster_id`, `chat_record_id`, `content`, `is_central_node`, `created_time` FROM `report_records` WHERE report_id = ? "
 	rows, err := s.db.Query(query, reportID)
 	if err != nil {
 		return nil, fmt.Errorf("sql query failed, %v", err)

@@ -103,28 +103,6 @@ func checkNeedEnvs() {
 	}
 }
 
-//InitDB init the database connection
-func InitDB() {
-	Envs = util.GetModuleEnvironments(ModuleInfo.ModuleName)
-	checkNeedEnvs()
-
-	url := util.GetEnviroment(Envs, "MYSQL_URL")
-	user := util.GetEnviroment(Envs, "MYSQL_USER")
-	pass := util.GetEnviroment(Envs, "MYSQL_PASS")
-	db := util.GetEnviroment(Envs, "MYSQL_DB")
-
-	dao, err := initSelfLearningDB(url, user, pass, db)
-	if err != nil {
-		logger.Error.Printf("Cannot init self learning db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
-		return
-	}
-	util.SetDB(ModuleInfo.ModuleName, dao)
-}
-
-func initSelfLearningDB(url string, user string, pass string, db string) (*sql.DB, error) {
-	return util.InitDB(url, user, pass, db)
-}
-
 //NewDoReportHandler create a DoReport Handler with given reportSerivce & faqClient.
 func NewDoReportHandler(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client) http.HandlerFunc {
 	type request struct {
@@ -140,6 +118,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 			http.Error(w, "input format error", http.StatusBadRequest)
 			return
 		}
+		rawRequestQuery, _ := json.Marshal(query)
 		query.AppID = appid
 		query.Limit = 10000
 		result, err := statService.VisitRecordsQuery(query, statService.ElasticFilterMarkedRecord, statService.ElasticFilterMarkedRecord)
@@ -174,7 +153,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		newReport := Report{
 			CreatedTime: time.Now().Unix(),
 			UpdatedTime: time.Now().Unix(),
-			Condition:   string(requestBody),
+			Condition:   string(rawRequestQuery),
 			UserID:      requestheader.GetUserID(r),
 			AppID:       appid,
 			IgnoredSize: ignoredSize,
@@ -223,7 +202,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 			for _, c := range clusterResult.Clusters {
 				fmt.Printf("test %+v", c)
 				var records = []ReportRecord{}
-				tags, _ := json.Marshal(c)
+				tags, _ := json.Marshal(c.Tags)
 				cID, err := clusterService.NewCluster(Cluster{
 					ReportID:    id,
 					Tags:        string(tags),
@@ -239,12 +218,14 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 						reportError(reportService, "data id is not string", id)
 						return
 					}
+					_, isCenterQ := c.CenterQuestions[d.Value]
 					r := ReportRecord{
-						ClusterID:    cID,
-						ReportID:     id,
-						ChatRecordID: chID,
-						Content:      d.Value,
-						CreatedTime:  time.Now().Unix(),
+						ClusterID:     cID,
+						ReportID:      id,
+						ChatRecordID:  chID,
+						Content:       d.Value,
+						IsCentralNode: isCenterQ,
+						CreatedTime:   time.Now().Unix(),
 					}
 					records = append(records, r)
 				}
@@ -317,6 +298,7 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("20")
 		reportID, err := strconv.ParseUint(util.GetMuxVar(r, "id"), 10, 64)
 		if err != nil {
 			http.Error(w, "id is invalid", http.StatusBadRequest)
@@ -365,6 +347,8 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 				if !found {
 					c, err = cs.GetCluster(rc.ClusterID)
 					if err != nil {
+						logger.Error.Println(err.Error())
+						http.Error(w, "internal server error", http.StatusInternalServerError)
 						return
 					}
 					clusters[rc.ClusterID] = c
@@ -389,7 +373,16 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 
 				for _, record := range clusterRecords[id] {
 					if record.IsCenterQ {
-						respCluster.CenterQ = append(respCluster.CenterQ, record.Value)
+						var alreadyCenterQ = false
+						for _, q := range respCluster.CenterQ {
+							if record.Value == q {
+								alreadyCenterQ = true
+								break
+							}
+						}
+						if !alreadyCenterQ {
+							respCluster.CenterQ = append(respCluster.CenterQ, record.Value)
+						}
 					}
 					respCluster.Records = append(respCluster.Records, record)
 				}
