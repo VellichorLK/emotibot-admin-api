@@ -1,4 +1,4 @@
-package SelfLearning
+package clustering
 
 // import (
 // 	"bytes"

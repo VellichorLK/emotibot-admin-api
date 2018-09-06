@@ -19,7 +19,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/Robot"
-	"emotibot.com/emotigo/module/admin-api/SelfLearning"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/Stats"
 	"emotibot.com/emotigo/module/admin-api/Switch"
@@ -27,6 +26,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/auth"
+	"emotibot.com/emotigo/module/admin-api/clustering"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
@@ -50,7 +50,7 @@ var modules = []*util.ModuleInfo{
 	&Task.ModuleInfo,
 	&Stats.ModuleInfo,
 	&UI.ModuleInfo,
-	&SelfLearning.ModuleInfo,
+	&clustering.ModuleInfo,
 	&System.ModuleInfo,
 	&BF.ModuleInfo,
 	&intentengine.ModuleInfo,
@@ -112,12 +112,16 @@ func main() {
 
 	err := initElasticsearch()
 	if err != nil {
-		logger.Error.Println("Init elastic search fail:", err.Error())
+		logger.Error.Println("Init elastic search failed:", err.Error())
 	}
 
 	err = ELKStats.Init()
 	if err != nil {
 		logger.Error.Println("Init ELKStats module failed: ", err.Error())
+	}
+	err = clustering.Init()
+	if err != nil {
+		logger.Error.Println("Init Clustering module failed: ", err.Error())
 	}
 	router := setRoute()
 	logAvailablePath(router)
@@ -296,7 +300,6 @@ func initDB() {
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	util.InitAuditDB(url, user, pass, db)
 
-	SelfLearning.InitDB()
 	Stats.InitDB()
 	auth.InitDB()
 }
