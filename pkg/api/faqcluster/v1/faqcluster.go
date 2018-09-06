@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -25,12 +25,12 @@ type Client struct {
 // NewClient create a Client with given address.
 // It is a convention Client creation which will use http.DefaultClient as delegator.
 // Not recommend use in production, because the issues with http.DefaultClient.
-func NewClient(address url.URL) *Client {
+func NewClient(address *url.URL) *Client {
 	return NewClientWithHTTPClient(address, http.DefaultClient)
 }
 
 //NewClientWithHTTPClient create a Client with given address & custom HTTPClient.
-func NewClientWithHTTPClient(address url.URL, delegator api.HTTPClient) *Client {
+func NewClientWithHTTPClient(address *url.URL, delegator api.HTTPClient) *Client {
 	clusterAddr, _ := address.Parse("clustering")
 	return &Client{
 		client:          delegator,
@@ -84,7 +84,7 @@ type cluster struct {
 type RawError struct {
 	Msg   string
 	Input interface{}
-	Body  io.Reader
+	Body  []byte
 }
 
 func (e *RawError) Error() string {
@@ -111,8 +111,9 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 	if err != nil {
 		return nil, fmt.Errorf("http request failed, %v", err)
 	}
-	var rawBody = &bytes.Buffer{}
-	io.Copy(rawBody, resp.Body)
+	defer resp.Body.Close()
+	rawBody, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("Request Done, body: ", string(rawBody))
 	if resp.StatusCode != http.StatusOK {
 		return nil, &RawError{
 			Msg:   fmt.Sprintf("request status code is not OK, but %d", resp.StatusCode),
@@ -121,7 +122,7 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 		}
 	}
 	var response clusteringResponse
-	err = json.NewDecoder(rawBody).Decode(&response)
+	err = json.Unmarshal(rawBody, &response)
 	if err != nil {
 		return nil, &RawError{
 			Msg:   fmt.Sprintf("body decode failed, %v", err),

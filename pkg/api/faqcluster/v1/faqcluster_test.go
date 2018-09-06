@@ -19,18 +19,18 @@ func TestNewClient(t *testing.T) {
 	testcases := map[string]testCase{
 		"normal": testCase{
 			Address:           "http://127.0.0.1",
-			ExpectClusterAddr: "http://127.0.0.1/clustering/",
+			ExpectClusterAddr: "http://127.0.0.1/clustering",
 		},
 		"custom port": testCase{
 			Address:           "http://172.17.0.1:13014",
-			ExpectClusterAddr: "http://172.17.0.1:13014/clustering/",
+			ExpectClusterAddr: "http://172.17.0.1:13014/clustering",
 		},
 	}
 
 	for name, tc := range testcases {
 		t.Run(name, func(tt *testing.T) {
 			addr, _ := url.Parse(tc.Address)
-			client := NewClient(*addr)
+			client := NewClient(addr)
 			if client.clusterEndpoint != tc.ExpectClusterAddr {
 				tt.Fatalf("expect cluster endpoint to be %s but got %s", tc.ExpectClusterAddr, client.clusterEndpoint)
 			}
@@ -55,7 +55,7 @@ func TestIntergratedAPI(t *testing.T) {
 		t.Fatal(err)
 	}
 	addr, _ := url.Parse("http://127.0.0.1:13014")
-	var client = NewClient(*addr)
+	var client = NewClient(addr)
 	ctx := context.Background()
 	paramas := map[string]interface{}{
 		"model_version": "unknown_20180830143445",
