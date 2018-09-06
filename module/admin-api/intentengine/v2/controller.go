@@ -312,7 +312,16 @@ func handleGetTrainDataV2(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, err, nil)
 		return
 	}
-	util.Return(w, nil, rsp)
+	js, jsonErr := json.Marshal(rsp)
+	if jsonErr != nil {
+		return
+	}
+
+	w.Header().Set("X-Status", fmt.Sprintf("%d", http.StatusOK))
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(js)
+	return
 }
 
 func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {

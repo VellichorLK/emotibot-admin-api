@@ -734,17 +734,21 @@ func needCommit(tx db, appid string) (ret bool, err error) {
 	}
 
 	queryStr := `
-	SELECT count(*) FROM intents as i,
+	SELECT count(*), max(v.cnt) FROM intents as i,
 		(
-			SELECT max(version) as version, max(commit_time) as commit_time
+			SELECT count(*) as cnt, max(commit_time) as commit_time
 			FROM intent_versions
 			WHERE appid = ?
 		) as v
 	WHERE i.updatetime > v.commit_time AND i.version is NULL`
 	count := 0
-	err = tx.QueryRow(queryStr, appid).Scan(&count)
+	var versionCnt *int
+	err = tx.QueryRow(queryStr, appid).Scan(&count, &versionCnt)
 	if err != nil && err != sql.ErrNoRows {
 		return
+	}
+	if versionCnt == nil {
+		return true, nil
 	}
 	if err == sql.ErrNoRows {
 		return true, nil
@@ -758,6 +762,7 @@ func getLatestVersion(tx db, appid string) (version int, err error) {
 	if tx == nil {
 		return 0, util.ErrDBNotInit
 	}
+	fmt.Println("1")
 
 	var value *int
 	queryStr := `
@@ -770,8 +775,9 @@ func getLatestVersion(tx db, appid string) (version int, err error) {
 	}
 	if value == nil {
 		err = sql.ErrNoRows
+	} else {
+		version = *value
 	}
-	version = *value
 	return
 }
 func getIntents(tx db, appid string, version *int, detail bool) (ret []*IntentV2, err error) {

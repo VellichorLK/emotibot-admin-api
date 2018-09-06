@@ -211,12 +211,12 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 
 	now := time.Now().Unix()
 	switch ret.Status {
-	case statusIETraining:
-		go checkIntentModelStatus(appid, modelID, version)
 	case statusIETrainError:
 		dao.UpdateVersionStatus(version, now, trainResultFail)
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(version, now, trainResultSuccess)
+	default:
+		go checkIntentModelStatus(appid, modelID, version)
 	}
 }
 
@@ -244,9 +244,13 @@ func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
 		temp.Load(intents[idx])
 		ret.Intent = append(ret.Intent, &temp)
 	}
-	ret.IntentDict, err = getIntentDictResp(wordbanks, []string{})
+	intentDict, err := getIntentDictResp(wordbanks, []string{})
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoIOError, err.Error())
+	}
+
+	if intentDict != nil {
+		ret.IntentDict = intentDict
 	}
 
 	return ret, nil
