@@ -1,20 +1,16 @@
-#!/bin/bash
-set -eu
+#!/bin/sh
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-BUILDROOT=$DIR/../
-REPO=docker-reg.emotibot.com.cn:55688
-#Use Build root as container name since our dir name should match the binary name too.
-CONTAINER=$(cd $BUILDROOT;echo "${PWD##*/}")
-TAG=$(cat "$DIR/VERSION")
-DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
+# Exit immediately if a command exits with a non-zero status
+set -e
 
-# Build docker
-cmd="docker build \
-  -t $DOCKER_IMAGE \
-  -f $DIR/Dockerfile $BUILDROOT"
-echo $cmd
-eval $cmd
-cmd="docker tag $DOCKER_IMAGE $REPO/$CONTAINER:latest"
-echo $cmd
-eval $cmd
+DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Get docker image tags and export to environment variables
+set -a
+source ${DIR}/image_tags.sh
+
+# Start building docker image
+${DIR}/build/build.sh
+
+# Start to pack
+${DIR}/pack/build.sh

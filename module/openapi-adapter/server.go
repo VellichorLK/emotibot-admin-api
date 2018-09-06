@@ -3,40 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strconv"
 	"time"
 )
-
-func main() {
-	var (
-		ok    bool
-		level string
-	)
-	remoteURL, ok = os.LookupEnv("OPENAPI_URL")
-	if !ok {
-		log.Fatal("please specify openapi v2 remote url by os Env OPENAPI_URL")
-	}
-	_, err := url.Parse(remoteURL)
-	if err != nil {
-		log.Fatalf("remoteURL is not a valid URL, %v\n", err)
-	}
-	level, ok = os.LookupEnv("MODULE_LEVEL")
-
-	if l, err := strconv.ParseInt(level, 10, 64); ok && err == nil && l == 0 {
-		//level=0, equal to trace logger
-		logger = log.New(os.Stdout, "", log.Ltime|log.Lshortfile)
-	}
-	http.HandleFunc("/", OpenAPIAdapterHandler)
-	log.Fatal(http.ListenAndServe(":80", nil))
-}
-
-var logger = log.New(ioutil.Discard, "", log.Ltime|log.Lshortfile)
 
 //ResponseV1 represent version 1 houta response
 type ResponseV1 struct {
@@ -47,14 +24,10 @@ type ResponseV1 struct {
 }
 
 type ResponseV2 struct {
-	Code     int           `json:"status"`
-	Message  string        `json:"message"`
-	Duration int           `json:"tspan"`
-	Answers  []interface{} `json:"data"`
-	Info     struct {
-		EmotionCat   string `json:"emotion"`
-		EmotionScore int    `json:"emotionScore"`
-	} `json:"info"`
+	Code    int           `json:"status"`
+	Message string        `json:"message"`
+	Answers []interface{} `json:"data"`
+	Info    Info          `json:"info"`
 }
 
 //Data represent version 1 Answer response structure
@@ -73,6 +46,11 @@ type Emotion struct {
 	Data  interface{} `json:"data"`
 }
 
+type Info struct {
+	EmotionCat   string `json:"emotion"`
+	EmotionScore int    `json:"emotionScore"`
+}
+
 type v2Body struct {
 	Text       string                 `json:"text"`
 	SourceID   string                 `json:"sourceId,omitempty"`
@@ -81,9 +59,49 @@ type v2Body struct {
 	ExtendData map[string]interface{} `json:"extendData,omitempty"`
 }
 
-var remoteURL string
+var remoteHost string
 var client = &http.Client{
 	Timeout: time.Duration(2) * time.Second,
+}
+var proxy *httputil.ReverseProxy
+
+var logger = log.New(ioutil.Discard, "", log.Ltime|log.Lshortfile)
+
+func main() {
+	var (
+		ok    bool
+		level string
+	)
+
+	port, ok := os.LookupEnv("OPENAPI_ADAPTER_SERVER_PORT")
+	if !ok {
+		port = "8080"
+	}
+
+	remoteHost, ok = os.LookupEnv("OPENAPI_ADAPTER_EC_HOST")
+	if !ok {
+		log.Fatal("please specify openapi v2 remote url by os Env OPENAPI_ADAPTER_EC_HOST")
+	}
+
+	remoteHostURL, err := url.Parse(remoteHost)
+	if err != nil {
+		log.Fatalf("remoteHost is not a valid URL, %v\n", err)
+	}
+
+	level, ok = os.LookupEnv("OPENAPI_LOG_LEVEL")
+	if l, err := strconv.ParseInt(level, 10, 64); ok && err == nil && l == 0 {
+		//level=0, equal to trace logger
+		logger = log.New(os.Stdout, "", log.Ltime|log.Lshortfile)
+	}
+
+	// Reserve proxy
+	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
+
+	http.HandleFunc("/api/ApiKey/", OpenAPIAdapterHandler)
+	http.HandleFunc("/v1/openapi", OpenAPIHandler)
+
+	logger.Printf("Starting server at port: %s", port)
+	logger.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), nil))
 }
 
 // OpenAPIAdapterHandler will translate v1 request into v2 Request and then send to BFOP Server
@@ -120,6 +138,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, v1 *http.Request) {
 	}
 	body = bytes.NewBuffer(data)
 
+	remoteURL := fmt.Sprintf("%s/v1/openapi", remoteHost)
 	v2Req, err = http.NewRequest(http.MethodPost, remoteURL, body)
 	if err != nil {
 		customError(w, "transform request failed, "+err.Error(), 500)
@@ -155,6 +174,12 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, v1 *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(result)
+}
+
+// OpenAPIHandler will do nothing but proxy the request/response
+// to/from BFOP server directly
+func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
+	proxy.ServeHTTP(w, r)
 }
 
 func customError(w http.ResponseWriter, message string, code int) {
