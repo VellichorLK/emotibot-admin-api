@@ -252,5 +252,11 @@ func IMAppsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnNotFound(w)
 	}
 
-	returnBFSuccess(w, retData)
+	bfData := make([]*data.BFAppV3, len(retData))
+	for idx := range retData {
+		bfData[idx] = &data.BFAppV3{}
+		bfData[idx].CopyFromApp(retData[idx])
+	}
+
+	returnBFSuccess(w, bfData)
 }
