@@ -2,6 +2,7 @@ package faqcluster
 
 import (
 	"context"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"emotibot.com/emotigo/pkg/logger"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -53,52 +53,60 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestOutputParsing(t *testing.T) {
-	example := `{
-		"errno":"success",
-		"error_message":"",
-		"para":{
-			"model_version":"unknown_20180830143445",
-			"deduplicate":false
-		},
-		"result":{
-			"data":[
-				{
-					"centerQuestion":["1.6高，体重120穿多大号"],
-					"clusterTag": ["測試"],
-					"cluster":[{"id":"9","value":"1.6高，体重120穿多大号"}]
-				},
-				{
-					"centerQuestion":["測試B"],
-					"clusterTag": ["測試"],
-					"cluster":[{"id":"1", "value":"測試B"}]
-				}
-			],
-			"removed": [{"id":"1","value":"1"},{"id":"2","value":"1,76"},{"id":"12","value":"1.8床"}]
-		}
+	type testCase struct {
+		input              string
+		expectClustersSize int
+		expectRemovedSize  int
+		expectTotalSize    int
 	}
-		`
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, example)
-	}))
-	defer server.Close()
-	addr, _ := url.Parse(server.URL)
-	client := NewClientWithHTTPClient(addr, server.Client())
-	result, err := client.Clustering(context.Background(), map[string]interface{}{}, nil)
+	f, err := os.Open("./testdata/outputexample.csv")
 	if err != nil {
-		t.Fatal("err: ", err)
+		t.Fatal(err)
 	}
-	if len(result.Clusters) != 2 {
-		t.Fatal("expect cluster size as 2 but got ", len(result.Clusters))
+	reader := csv.NewReader(f)
+	rows, _ := reader.ReadAll()
+	var testcases = map[string]testCase{}
+	for _, row := range rows {
+		var t testCase
+		name := row[0]
+		t.input = row[1]
+		t.expectClustersSize, _ = strconv.Atoi(row[2])
+		t.expectRemovedSize, _ = strconv.Atoi(row[3])
+		t.expectTotalSize, _ = strconv.Atoi(row[4])
+		testcases[name] = t
 	}
-	if tag := result.Clusters[0].Tags[0]; tag != "測試" {
-		t.Fatal("expect tags to be 測試 but got ", tag)
-	}
-	if len(result.Filtered) != 3 {
-		t.Fatal("expect filtered size as 3 but got ", len(result.Filtered))
+	for name, tc := range testcases {
+		t.Run(name, func(tt *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, tc.input)
+			}))
+			defer server.Close()
+			addr, _ := url.Parse(server.URL)
+			client := NewClientWithHTTPClient(addr, server.Client())
+			result, err := client.Clustering(context.Background(), map[string]interface{}{}, nil)
+			if err != nil {
+				tt.Fatal("clustering err: ", err)
+			}
+			if len(result.Clusters) != tc.expectClustersSize {
+				tt.Fatal("expect cluster size as ", tc.expectClustersSize, " but got ", len(result.Clusters))
+			}
+			if len(result.Filtered) != tc.expectRemovedSize {
+				tt.Fatal("expect filtered size as ", tc.expectRemovedSize, " but got ", len(result.Filtered))
+			}
+			sum := 0
+			for _, c := range result.Clusters {
+				sum += len(c.Data)
+			}
+			sum += len(result.Filtered)
+			if sum != tc.expectTotalSize {
+				tt.Fatal("expect total sentences size to be ", tc.expectTotalSize, " but got ", sum)
+			}
+			server.Close()
+		})
 	}
 
 }
-func TestIntergratedAPI(t *testing.T) {
+func TestIntegratedAPI(t *testing.T) {
 	if !isIntegrationTest {
 		t.Skip("integration test flag is not setted. skip it")
 	}
@@ -113,7 +121,7 @@ func TestIntergratedAPI(t *testing.T) {
 			"id":    strconv.Itoa(id),
 			"value": row,
 		})
-		if id > 1000 {
+		if id >= 1000 {
 			break
 		}
 	}
@@ -124,7 +132,7 @@ func TestIntergratedAPI(t *testing.T) {
 	paramas := map[string]interface{}{
 		"model_version": "unknown_20180830143445",
 	}
-	logger.SetLevel("TRACE")
+	// logger.SetLevel("TRACE")
 	result, err := client.Clustering(ctx, paramas, data)
 	if rawErr, ok := err.(*RawError); ok {
 		t.Fatalf("client error %s with request para %s, raw body %s", rawErr.Error(), rawErr.Input, rawErr.Body)
@@ -135,5 +143,13 @@ func TestIntergratedAPI(t *testing.T) {
 	if len(result.Clusters) <= 0 {
 		t.Fatal("expect clustering result > 0 ")
 	}
-	t.Fatalf("%v", result.Clusters)
+	sum := 0
+	for _, c := range result.Clusters {
+		sum += len(c.Data)
+	}
+	sum += len(result.Filtered)
+	if sum != len(data) {
+		t.Fatal("data sum expect to be ", len(data), " but got ", sum)
+	}
+	// t.Fatalf("%v", result.Clusters)
 }
