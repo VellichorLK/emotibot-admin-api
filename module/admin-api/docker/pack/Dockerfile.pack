@@ -13,14 +13,10 @@ RUN yum update -y && yum install -y wget tzdata \
     && mv ngompa-musl-libc-epel-7.repo /etc/yum.repos.d/ \
     && yum update -y && yum install -y musl-libc
 
-#ENV SELF_RESOURCES http://docker-build01.emotibot.com:8000/selfLearnResources.tar.gz
-#RUN wget ${SELF_RESOURCES} -O /usr/local/share/resouc.tar.gz
-#RUN cd /usr/local/share && tar -zxvf resouc.tar.gz && rm resouc.tar.gz
-
 WORKDIR /usr/bin/app
 COPY --from=build /usr/bin/app/${PROJECT} .
-COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh
-COPY ./module/${PROJECT}/docker/files_init.sh files_init.sh
+COPY ./module/${PROJECT}/entrypoint.sh entrypoint.sh
+COPY ./module/${PROJECT}/files_init.sh files_init.sh
 COPY ./module/${PROJECT}/InitFiles InitFiles
 ## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
 

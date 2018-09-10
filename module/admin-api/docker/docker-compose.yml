@@ -10,8 +10,9 @@ services:
         max-file: '10'
         max-size: 5M
     ports:
-      - ${ADMIN_PORT}:8181/tcp
+      - 80:8181/tcp
     environment:
+      - TZ=Asia/Taipei
       # - port admin-api running in docker
       - ADMIN_SERVER_PORT=8181
       # - URL which will used by admin-api to verify the token
@@ -82,6 +83,8 @@ services:
       # - env for setting elasticsearch entrypoint
       - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
       - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
+      # - env for DAL module host
+      - ADMIN_STATS_DAL_URL=http://${DAL_HOST}:8885/
+      # - env for Clustering tool host
+      - ADMIN_CLUSTERING_TOOL_URL=http://${CLUSTER_HOST}:13014/
     restart: always
-    volumes:
-      - /etc/localtime:/etc/localtime
