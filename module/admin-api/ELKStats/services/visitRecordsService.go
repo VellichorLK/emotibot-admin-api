@@ -60,7 +60,6 @@ func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
 		//Executing a Terms Query request with a lot of terms can be quite slow, as each additional term demands extra processing and memory.
 		//To safeguard against this, the maximum number of terms that can be used in a Terms Query both directly or through lookup has been limited to 65536.
 		boolQuery.Filter(elastic.NewTermsQuery("unique_id", query.Records...))
-		return boolQuery
 	}
 	if query.StartTime != nil && query.EndTime != nil {
 		start := time.Unix(*query.StartTime, 0).Local()
