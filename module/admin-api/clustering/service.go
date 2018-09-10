@@ -2,6 +2,7 @@ package clustering
 
 import (
 	"errors"
+	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -12,6 +13,7 @@ type ReportsService interface {
 	GetReport(id uint64) (Report, error)
 	QueryReports(query ReportQuery) ([]Report, error)
 	UpdateReportStatus(id uint64, status ReportStatus) error
+	NewReportError(err ReportError) (uint64, error)
 }
 
 //ReportClusterService define the operations of the clusters.
@@ -37,9 +39,15 @@ var ErrNotAvailable = errors.New("clustering error: resource is not available ye
 
 const nonClusterID uint64 = 0
 
-func reportError(s ReportsService, errMsg string, id uint64) {
+func newReportError(s ReportsService, errMsg string, id uint64) {
 	logger.Error.Println("Report handle error: " + errMsg)
 	s.UpdateReportStatus(id, ReportStatusError)
+	err := ReportError{
+		ReportID:   id,
+		Cause:      errMsg,
+		CreateTime: time.Now().Unix(),
+	}
+	s.NewReportError(err)
 }
 
 // func doClustering(s time.Time, e time.Time, reportID uint64, store StoreCluster, appid string, qType int) error {

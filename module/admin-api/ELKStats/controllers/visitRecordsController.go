@@ -59,7 +59,7 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	result, err := services.VisitRecordsQuery(*query, services.ElasticFilterIgnoredRecord, services.ElasticFilterMarkedRecord)
+	result, err := services.VisitRecordsQuery(*query, services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
 	if err != nil {
 		errResponse := data.NewErrorResponse(err.Error())
 		returnInternalServerError(w, errResponse)

@@ -23,13 +23,13 @@ type RecordResult struct {
 
 type ElasticSearchCommand func(*elastic.SearchService) *elastic.SearchService
 
-func ElasticFilterMarkedRecord(ss *elastic.SearchService) *elastic.SearchService {
+func AggregateFilterMarkedRecord(ss *elastic.SearchService) *elastic.SearchService {
 	markFilter := elastic.NewFilterAggregation().Filter(elastic.NewTermQuery("isMarked", true))
 	ss = ss.Aggregation("isMarked", markFilter)
 	return ss
 }
 
-func ElasticFilterIgnoredRecord(ss *elastic.SearchService) *elastic.SearchService {
+func AggregateFilterIgnoredRecord(ss *elastic.SearchService) *elastic.SearchService {
 	ignoreFilter := elastic.NewFilterAggregation().Filter(elastic.NewTermQuery("isIgnored", true))
 	ss = ss.Aggregation("isIgnored", ignoreFilter)
 	return ss

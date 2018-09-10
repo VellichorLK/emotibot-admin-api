@@ -57,6 +57,16 @@ func (s *sqlService) QueryReports(query ReportQuery) ([]Report, error) {
 	return reports, nil
 }
 
+func (s *sqlService) NewReportError(rErr ReportError) (uint64, error) {
+	query := "INSERT INTO `report_errors` (`report_id`,`cause`, `created_time`) VALUE(?, ?, ?)"
+	result, err := s.db.Exec(query, rErr.ReportID, rErr.Cause, rErr.CreateTime)
+	if err != nil {
+		return 0, fmt.Errorf("sql exec failed, %v", err)
+	}
+	id, err := result.LastInsertId()
+	return uint64(id), err
+}
+
 func asRawSQL(query ReportQuery) (string, []interface{}) {
 	var preparedInput = []interface{}{}
 	var condition = ""

@@ -31,6 +31,16 @@ type Report struct {
 	Status ReportStatus
 }
 
+// ReportError represent error of a report.
+// It is an one to one mapping for RDB table.
+// BE CARE: **IT IS NOT A GOLANG ERROR SYNTAX!!**
+type ReportError struct {
+	ID         uint64
+	ReportID   uint64
+	Cause      string
+	CreateTime int64
+}
+
 // Cluster is a subset of Report, contains userQuestions as a group
 type Cluster struct {
 	ID          uint64

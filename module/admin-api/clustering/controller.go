@@ -62,8 +62,6 @@ func Init() error {
 
 //NewDoReportHandler create a DoReport Handler with given reportSerivce & faqClient.
 func NewDoReportHandler(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client) http.HandlerFunc {
-	type request struct {
-	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		appid := requestheader.GetAppID(r)
 		var query statData.RecordQuery
@@ -77,11 +75,21 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		}
 		rawRequestQuery, _ := json.Marshal(query)
 		query.AppID = appid
-		query.Limit = 10000
-		result, err := statService.VisitRecordsQuery(query, statService.ElasticFilterMarkedRecord, statService.ElasticFilterMarkedRecord)
+		query.Limit = 0
+		result, err := statService.VisitRecordsQuery(query, statService.AggregateFilterMarkedRecord, statService.AggregateFilterIgnoredRecord)
 		if err != nil {
 			logger.Error.Printf("get records failed, %v", err)
 		}
+		markedSize, _ := result.Aggs["isMarked"].(int64)
+		ignoredSize, _ := result.Aggs["isIgnored"].(int64)
+		logger.Trace.Printf("agg info: %+v\n", result.Aggs)
+		//Because we need to query a user query first to see if aggregation result
+		//than we change query condition to match the spec of new report(do not include marked & ignored records)
+		//limit 10000 is the limitation of elastic search.
+		query.Limit = 10000
+		query.IsIgnored = new(bool)
+		query.IsMarked = new(bool)
+		result, err = statService.VisitRecordsQuery(query)
 		now := time.Now().Unix()
 		thirtyMinAgo := now - 1800
 		s := int(ReportStatusRunning)
@@ -105,8 +113,6 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 			return
 		}
 
-		ignoredSize, _ := result.Aggs["isMarked"].(int64)
-		markedSize, _ := result.Aggs["isIgnored"].(int64)
 		newReport := Report{
 			CreatedTime: time.Now().Unix(),
 			UpdatedTime: time.Now().Unix(),
@@ -296,8 +302,7 @@ func newClusteringWork(rs ReportsService, rrs ReportRecordsService, cs ReportClu
 			if ok {
 				logger.Error.Printf("raw http error, %s", rawError.Body)
 			}
-			reportError(rs, "faq clustering failed, "+err.Error(), reportID)
-			rs.UpdateReportStatus(reportID, ReportStatusError)
+			newReportError(rs, "faq clustering failed, "+err.Error(), reportID)
 			return err
 		}
 		for _, c := range clusterResult.Clusters {
