@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"math"
+	//"math"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
@@ -112,12 +112,12 @@ func handleQueryWhite(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	total, err := QueryTotalWhite(condition, appid)
+	/**total, err := QueryTotalWhite(condition, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	fmt.Println("total = ", total);
+	fmt.Println("total = ", total);*/
 
 	whites, err := FetchWhites(condition, appid)
 	if err != nil {
@@ -135,13 +135,13 @@ func handleQueryWhite(ctx context.Context) {
 		TotalNum    int        `json:"TotalNum"`
 	}
 
-	totalPage := math.Floor(float64(total / condition.Limit))
+	//totalPage := math.Floor(float64(total / condition.Limit))
 
 	response := successJSON{
-		CurPage:      strconv.Itoa(condition.CurPage),
+		CurPage:      "0",
 		QueryResult:  whites,
-		TotalPage:    totalPage,
-		TotalNum: 	  total,
+		TotalPage:    0,
+		TotalNum: 	  0,
 	}
 
 	ctx.JSON(response)
@@ -152,6 +152,7 @@ func handleCreateWhite(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
 	userId := ctx.FormValue("userIds")
+	fmt.Println("create userId", userId);
 	
 	total, err := BatchInsertWhite(userId, appid);
 	fmt.Println("total = ", total)
@@ -167,6 +168,7 @@ func handleDeleteWhite(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
 	userId := ctx.FormValue("userIds")
+	fmt.Println("del userId", userId);
 	
 	total, err := BatchDeleteWhite(userId, appid);
 	fmt.Println("total = ", total)

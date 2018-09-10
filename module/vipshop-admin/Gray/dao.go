@@ -34,12 +34,13 @@ func FetchWhites(condition QueryCondition, appid string) ([]White, error) {
 		return nil, fmt.Errorf("DB not init")
 	}
 
-	query := "select user_id as UserId from white_list limit ?, ? "
+	query := "select user_id as UserId from white_list where is_deleted = 0 order by user_id "
 
 	// fetch
-	x := condition.CurPage
-	y := condition.Limit
-	rows, err := db.Query(query, (x * y), &condition.Limit)
+	//x := condition.CurPage
+	//y := condition.Limit
+	//rows, err := db.Query(query, (x * y), &condition.Limit)
+	rows, err := db.Query(query)
 	if err != nil {
 		return whites, err
 	}
@@ -69,7 +70,7 @@ func BatchInsertWhite(userId string, appid string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	userIds := strings.Split(userId, ";")
+	userIds := strings.Split(userId, ",")
 	for i:=0; i<len(userIds); i++ {
 		_, err := insertSmtm.Exec(userIds[i])
 		if err != nil {
@@ -103,7 +104,7 @@ func BatchDeleteWhite(userId string, appid string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	userIds := strings.Split(userId, ";")
+	userIds := strings.Split(userId, ",")
 	for i:=0; i<len(userIds); i++ {
 		_, err := delSmtm.Exec(userIds[i])
 		if err != nil {
