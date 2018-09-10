@@ -87,7 +87,7 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	}
 	version, daoErr := dao.GetLatestVersion(appid)
 	if daoErr == sql.ErrNoRows {
-		// No any version, return "NEED_TRAIN"
+		logger.Trace.Println("No any version, NEED_TRAIN")
 		return
 	} else if daoErr != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
@@ -101,14 +101,15 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	ret.Progress = latestInfo.Progress
 	ret.Version = latestInfo.Version
 	if ret.CurrentStartTime == nil && ret.LastFinishTime == nil {
-		// Version hasn't start, return "NEED_TRAIN"
+		logger.Trace.Println("Version hasn't start, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	} else if ret.LastFinishTime == nil {
-		// Version hasn't end, return "TRAINING"
+		logger.Trace.Println("Version hasn't end, return TRAINING")
 		ret.Status = statusTraining
 		return
 	} else if latestInfo.TrainResult == trainResultFail {
+		logger.Trace.Println("Version fail, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	}
@@ -119,8 +120,10 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
 	}
 	if needTrain {
+		logger.Trace.Println("Some intents has modified, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 	} else {
+		logger.Trace.Println("No intent modified, return TRAINED")
 		ret.Status = statusFinish
 	}
 	return

@@ -734,35 +734,41 @@ func needCommit(tx db, appid string) (ret bool, err error) {
 	}
 
 	queryStr := `
-	SELECT count(*), max(v.cnt) FROM intents as i,
-		(
-			SELECT count(*) as cnt, max(commit_time) as commit_time
-			FROM intent_versions
-			WHERE appid = ?
-		) as v
-	WHERE i.updatetime > v.commit_time AND i.version is NULL`
-	count := 0
-	var versionCnt *int
-	err = tx.QueryRow(queryStr, appid).Scan(&count, &versionCnt)
+		SELECT count(*) as cnt, max(commit_time) as commit_time
+		FROM intent_versions
+		WHERE appid = ?
+	`
+	lastUpdate := 0
+	versionCnt := 0
+	err = tx.QueryRow(queryStr, appid).Scan(&versionCnt, &lastUpdate)
 	if err != nil && err != sql.ErrNoRows {
-		return
+		return false, err
 	}
-	if versionCnt == nil {
+	if err == sql.ErrNoRows || versionCnt == 0 {
+		logger.Trace.Println("No any version, need commit")
 		return true, nil
 	}
-	if err == sql.ErrNoRows {
-		return true, nil
+
+	queryStr = `
+		SELECT count(*) FROM intents
+		WHERE appid = ? AND updatetime > ? AND version is NULL
+	`
+	count := 0
+	err = tx.QueryRow(queryStr, appid, lastUpdate).Scan(&count)
+	if err != nil && err != sql.ErrNoRows {
+		return false, err
 	}
-	if count == 0 {
+	if err == sql.ErrNoRows || count == 0 {
+		logger.Trace.Printf("No any intents is modified after %d, no need commit\n", lastUpdate)
 		return false, nil
 	}
+	logger.Trace.Printf("Get %d intents update time bigger then %d\n", count, lastUpdate)
 	return true, nil
 }
 func getLatestVersion(tx db, appid string) (version int, err error) {
 	if tx == nil {
 		return 0, util.ErrDBNotInit
 	}
-	fmt.Println("1")
 
 	var value *int
 	queryStr := `
