@@ -19,6 +19,7 @@ import (
 	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/websocket"
+	"emotibot.com/emotigo/module/vipshop-admin/Gray"
 
 	"github.com/kataras/iris"
 	"github.com/kataras/iris/context"
@@ -135,6 +136,7 @@ func setRoute(app *iris.Application) {
 		QA.TestModuleInfo,
 		SelfLearning.ModuleInfo,
 		imagesManager.ModuleInfo,
+		Gray.ModuleInfo,
 	}
 
 	for _, module := range modules {
