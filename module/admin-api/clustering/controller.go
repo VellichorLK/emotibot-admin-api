@@ -14,6 +14,7 @@ import (
 	statData "emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	statService "emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/api/faqcluster/v1"
 	"emotibot.com/emotigo/pkg/logger"
@@ -70,7 +71,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		err := json.Unmarshal(requestBody, &query)
 		if err != nil {
 			logger.Warn.Printf("PUT /reports: request body can not be decoded, %s", requestBody)
-			http.Error(w, "input format error", http.StatusBadRequest)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "input format error"), nil)
 			return
 		}
 		rawRequestQuery, _ := json.Marshal(query)
@@ -105,7 +106,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		reports, err := reportService.QueryReports(rQuery)
 		if err != nil {
 			logger.Error.Printf("PUT /reports: new request error, %v\n", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 			return
 		}
 		if len(reports) > 0 {
@@ -126,18 +127,18 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		id, err := reportService.NewReport(newReport)
 		if err != nil {
 			logger.Error.Printf("Failed to create new report, %v", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 			return
 		}
 		model, err := simpleFTService.GetFTModel(appid)
 		if err == sql.ErrNoRows {
-			reportError(reportService, "bad request, need train model before use", id)
-			http.Error(w, "bad request, need train model before use", http.StatusBadRequest)
+			newReportError(reportService, "bad request, need train model before use", id)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "找不到Model，请先透过SSM训练"), nil)
 			return
 		}
 		if err != nil {
-			reportError(reportService, "Failed to get simpleFT model, "+err.Error(), id)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			newReportError(reportService, "Failed to get simpleFT model, "+err.Error(), id)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 			return
 		}
 		var inputs = []interface{}{}
@@ -192,18 +193,18 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 		fmt.Println("20")
 		reportID, err := strconv.ParseUint(util.GetMuxVar(r, "id"), 10, 64)
 		if err != nil {
-			http.Error(w, "id is invalid", http.StatusBadRequest)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "id is invalid"), nil)
 			return
 		}
 		appid := requestheader.GetAppID(r)
 		report, err := rs.GetReport(reportID)
 		if err != nil {
 			logger.Error.Printf("get report failed, %v\n", err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 			return
 		}
 		if report.AppID != appid {
-			http.Error(w, "permission denied", http.StatusBadRequest)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "permission denied"), nil)
 			return
 		}
 		var response = response{
@@ -218,7 +219,8 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 		if report.Status == ReportStatusCompleted {
 			records, err := rrs.GetRecords(report.ID)
 			if err != nil {
-				http.Error(w, "get records failed, "+err.Error(), http.StatusInternalServerError)
+				logger.Error.Println("get records failed, " + err.Error())
+				util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 				return
 			}
 			clusters := map[uint64]Cluster{}
@@ -239,7 +241,7 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 					c, err = cs.GetCluster(rc.ClusterID)
 					if err != nil {
 						logger.Error.Println(err.Error())
-						http.Error(w, "internal server error", http.StatusInternalServerError)
+						util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 						return
 					}
 					clusters[rc.ClusterID] = c
@@ -314,13 +316,13 @@ func newClusteringWork(rs ReportsService, rrs ReportRecordsService, cs ReportClu
 				CreatedTime: time.Now().Unix(),
 			})
 			if err != nil {
-				reportError(rs, "new cluster failed, "+err.Error(), reportID)
+				newReportError(rs, "new cluster failed, "+err.Error(), reportID)
 				return err
 			}
 			for _, data := range c.Data {
 				chID, ok := data.Others["id"].(string)
 				if !ok {
-					reportError(rs, "data id is not string", reportID)
+					newReportError(rs, "data id is not string", reportID)
 					return err
 				}
 				_, isCenterQ := c.CenterQuestions[data.Value]
@@ -336,7 +338,7 @@ func newClusteringWork(rs ReportsService, rrs ReportRecordsService, cs ReportClu
 			}
 			err = rrs.NewRecords(records...)
 			if err != nil {
-				reportError(rs, "new report_records failed, "+err.Error(), reportID)
+				newReportError(rs, "new report_records failed, "+err.Error(), reportID)
 				return err
 			}
 		}
@@ -355,7 +357,7 @@ func newClusteringWork(rs ReportsService, rrs ReportRecordsService, cs ReportClu
 		}
 		err = rrs.NewRecords(records...)
 		if err != nil {
-			reportError(rs, "new report_records for filtered sentences failed, "+err.Error(), reportID)
+			newReportError(rs, "new report_records for filtered sentences failed, "+err.Error(), reportID)
 			return err
 		}
 		logger.Trace.Printf("task %d finished", reportID)
