@@ -1,10 +1,8 @@
 package Gray
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
-	//"math"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
@@ -46,7 +44,7 @@ func handleUpdateGray(ctx context.Context) {
 		ctx.JSON("Audit DB Connection failed")
 	}
 	percent, err := strconv.Atoi(ctx.Params().Get("percent"))
-	fmt.Println("percent=", percent);
+	util.LogInfo.Println("percent=", percent);
 	ret, err := db.Exec("update gray set percent = ?", percent)
 	var returnJSON = successJSON{}
 	if err != nil {
@@ -54,15 +52,8 @@ func handleUpdateGray(ctx context.Context) {
 		ctx.JSON(errorJSON{Message: err.Error()})
 		return
 	}
-	
-	//rows.Scan()
-	//defer rows.Close()
-
-	/**if err = rows.Err(); err != nil {
-		ctx.StatusCode(http.StatusInternalServerError)
-	}*/
-	fmt.Println("ret = ", ret);
-	fmt.Println("returnJSON = ", returnJSON);
+	util.LogInfo.Println("ret = ", ret);
+	util.LogInfo.Println("returnJSON = ", returnJSON);
 
 	ctx.JSON(returnJSON)
 }
@@ -98,7 +89,7 @@ func handleQueryGray(ctx context.Context) {
 	if err = rows.Err(); err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
-	fmt.Println("returnJSON = ", returnJSON);
+	util.LogInfo.Println("returnJSON = ", returnJSON);
 
 	ctx.JSON(returnJSON)
 }
@@ -112,36 +103,24 @@ func handleQueryWhite(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	/**total, err := QueryTotalWhite(condition, appid)
-	if err != nil {
-		ctx.StatusCode(http.StatusBadRequest)
-		return
-	}
-	fmt.Println("total = ", total);*/
 
 	whites, err := FetchWhites(condition, appid)
 	if err != nil {
-		fmt.Println(err);
+		util.LogError.Printf("Error FetchWhites %s", err.Error())
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-	fmt.Println("whites = ", whites);
+	util.LogInfo.Println("whites = ", whites);
 
 
 	type successJSON struct {
-		CurPage     string     `json:"CurPage"`
 		QueryResult []White    `json:"QueryResult"`
-		TotalPage   float64        `json:"TotalPage"`
-		TotalNum    int        `json:"TotalNum"`
 	}
 
 	//totalPage := math.Floor(float64(total / condition.Limit))
 
 	response := successJSON{
-		CurPage:      "0",
 		QueryResult:  whites,
-		TotalPage:    0,
-		TotalNum: 	  0,
 	}
 
 	ctx.JSON(response)
@@ -152,10 +131,10 @@ func handleCreateWhite(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
 	userId := ctx.FormValue("userIds")
-	fmt.Println("create userId", userId);
+	util.LogInfo.Println("create userId", userId);
 	
 	total, err := BatchInsertWhite(userId, appid);
-	fmt.Println("total = ", total)
+	util.LogInfo.Println("total = ", total)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
@@ -168,10 +147,10 @@ func handleDeleteWhite(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
 	userId := ctx.FormValue("userIds")
-	fmt.Println("del userId", userId);
+	util.LogInfo.Println("del userId", userId);
 	
 	total, err := BatchDeleteWhite(userId, appid);
-	fmt.Println("total = ", total)
+	util.LogInfo.Println("total = ", total)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return

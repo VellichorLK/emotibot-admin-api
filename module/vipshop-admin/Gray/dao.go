@@ -37,9 +37,6 @@ func FetchWhites(condition QueryCondition, appid string) ([]White, error) {
 	query := "select user_id as UserId from white_list where is_deleted = 0 order by user_id "
 
 	// fetch
-	//x := condition.CurPage
-	//y := condition.Limit
-	//rows, err := db.Query(query, (x * y), &condition.Limit)
 	rows, err := db.Query(query)
 	if err != nil {
 		return whites, err
