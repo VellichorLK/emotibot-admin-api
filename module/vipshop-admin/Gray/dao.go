@@ -34,7 +34,7 @@ func FetchWhites(condition QueryCondition, appid string) ([]White, error) {
 		return nil, fmt.Errorf("DB not init")
 	}
 
-	query := "select q.userId from white_list limit ? ? "
+	query := "select user_id as UserId from white_list limit ?, ? "
 
 	// fetch
 	x := condition.CurPage
@@ -79,6 +79,40 @@ func BatchInsertWhite(userId string, appid string) (int, error) {
         }
 	}
 	defer insertSmtm.Close()
+	err = begin.Commit()
+	if err != nil {
+		defer begin.Rollback()
+		return 0, err
+	}
+
+	return len(userIds), nil
+}
+
+func BatchDeleteWhite(userId string, appid string) (int, error) {
+	db := util.GetAuditDB()
+	if db == nil {
+		return 0, fmt.Errorf("DB not init")
+	}
+
+	delSql := "update white_list set is_deleted=1 where user_id=? "
+	delSmtm, err := db.Prepare(delSql)
+	if err != nil {
+		return 0, err
+	}
+	begin , err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	userIds := strings.Split(userId, ";")
+	for i:=0; i<len(userIds); i++ {
+		_, err := delSmtm.Exec(userIds[i])
+		if err != nil {
+			defer delSmtm.Close()
+			defer begin.Rollback()
+            return 0, err
+        }
+	}
+	defer delSmtm.Close()
 	err = begin.Commit()
 	if err != nil {
 		defer begin.Rollback()

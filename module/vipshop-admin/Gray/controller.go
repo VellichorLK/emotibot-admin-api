@@ -28,7 +28,7 @@ func init() {
 			util.NewEntryPoint("POST", "te/gray/query", []string{"edit"}, handleQueryGray),
 			util.NewEntryPoint("POST", "te/white/query", []string{"edit"}, handleQueryWhite),
 			util.NewEntryPoint("POST", "te/white/create", []string{"edit"}, handleCreateWhite),
-			//util.NewEntryPoint("POST", "te/white/delete", []string{"edit"}, handleDeleteWhite),
+			util.NewEntryPoint("POST", "te/white/delete", []string{"edit"}, handleDeleteWhite),
 		},
 	}
 
@@ -113,9 +113,19 @@ func handleQueryWhite(ctx context.Context) {
 		return
 	}
 	total, err := QueryTotalWhite(condition, appid)
-
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	fmt.Println("total = ", total);
 
 	whites, err := FetchWhites(condition, appid)
+	if err != nil {
+		fmt.Println(err);
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+	fmt.Println("whites = ", whites);
 
 
 	type successJSON struct {
@@ -144,6 +154,21 @@ func handleCreateWhite(ctx context.Context) {
 	userId := ctx.FormValue("userIds")
 	
 	total, err := BatchInsertWhite(userId, appid);
+	fmt.Println("total = ", total)
+	if err != nil {
+		ctx.StatusCode(http.StatusBadRequest)
+		return
+	}
+
+	//ctx.JSON("{}")
+}
+
+func handleDeleteWhite(ctx context.Context) {
+	appid := util.GetAppID(ctx)
+	// parse QueryCondition
+	userId := ctx.FormValue("userIds")
+	
+	total, err := BatchDeleteWhite(userId, appid);
 	fmt.Println("total = ", total)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
