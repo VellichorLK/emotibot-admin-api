@@ -17,4 +17,4 @@ RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool
 ## 复制上一个 stage 所编译出的 binary 至 scratch image
 FROM scratch
 
-COPY --from=build /go/bin/${PROJECT} /usr/bin/app/${PROJECT}
+COPY --from=build /go/bin /usr/bin/app
