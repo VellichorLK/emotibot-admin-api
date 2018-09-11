@@ -3,6 +3,7 @@ package Gray
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
@@ -32,6 +33,14 @@ func init() {
 
 }
 
+func updateConsul() {
+	unixTime := time.Now().UnixNano() / 1000000
+	_, err := util.ConsulUpdateVal("te/gray", unixTime)
+	if err != nil {
+		util.LogError.Println("consul update failed, %v", err)
+	}
+}
+
 func handleUpdateGray(ctx context.Context) {
 	type successJSON struct {
 		
@@ -54,7 +63,7 @@ func handleUpdateGray(ctx context.Context) {
 	}
 	util.LogInfo.Println("ret = ", ret);
 	util.LogInfo.Println("returnJSON = ", returnJSON);
-
+	updateConsul()
 	ctx.JSON(returnJSON)
 }
 
@@ -139,7 +148,7 @@ func handleCreateWhite(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-
+	updateConsul()
 	//ctx.JSON("{}")
 }
 
@@ -155,6 +164,6 @@ func handleDeleteWhite(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
-
+	updateConsul()
 	//ctx.JSON("{}")
 }
