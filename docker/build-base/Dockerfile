@@ -16,4 +16,4 @@ RUN go get github.com/dgrijalva/jwt-go
 RUN go get github.com/siongui/gojianfan
 RUN go get github.com/satori/go.uuid
 RUN go get github.com/olivere/elastic
-RUN go get github.com/DATA-DOG/go-sqlmock
+RUN go get gopkg.in/DATA-DOG/go-sqlmock.v1

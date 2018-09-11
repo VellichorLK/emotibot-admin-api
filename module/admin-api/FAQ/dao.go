@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const SEPARATOR = "#SEPARATE_TOKEN#"
@@ -1004,7 +1005,7 @@ func getTagTypes(appid string, version int) (ret []*TagType, err error) {
 			valueCode := *valueCodePtr
 			// Note: format is always #<value>#, so trim the # here
 			if len(value) <= 2 {
-				util.LogError.Println("Strange value in tag value: ", value)
+				logger.Error.Println("Strange value in tag value: ", value)
 				continue
 			}
 			if value[0] == '#' {
@@ -1100,7 +1101,7 @@ func getTagType(appid string, id int, version int) (ret *TagType, err error) {
 			valueCode := *valueCodePtr
 			// FIXME: format is always #<value>#, so trim the # here
 			if len(value) <= 2 {
-				util.LogError.Println("Strange value in tag value: ", value)
+				logger.Error.Println("Strange value in tag value: ", value)
 				continue
 			}
 			if value[0] == '#' {
@@ -1195,8 +1196,8 @@ func updateAnswerLabel(appid string, answerID int, labelIDs []int) (err error) {
 	}
 
 	queryStr = fmt.Sprintf("INSERT INTO %s_answerlabel (Answer_Id, Label_Id) VALUES (?, ?)", appid)
-	util.LogTrace.Println(queryStr)
-	util.LogTrace.Println(appid, answerID, labelIDs)
+	logger.Trace.Println(queryStr)
+	logger.Trace.Println(appid, answerID, labelIDs)
 	for _, id := range labelIDs {
 		_, err = t.Exec(queryStr, answerID, id)
 		if err != nil {

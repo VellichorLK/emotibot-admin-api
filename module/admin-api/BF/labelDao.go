@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var errDuplicate = errors.New("duplicate item")
@@ -441,7 +442,7 @@ func getLabelsOfCmd(appid string, cmdID int) ([]*Label, error) {
 		var name string
 		err := rows.Scan(&id, &name)
 		if err != nil {
-			util.LogError.Printf("Error when parse row: %s", err.Error())
+			logger.Error.Printf("Error when parse row: %s", err.Error())
 			return nil, err
 		}
 		obj := &Label{ID: fmt.Sprintf("%d", id), Name: name}

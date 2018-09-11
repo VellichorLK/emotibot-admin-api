@@ -1,39 +1,32 @@
-#!/bin/bash
+#!/bin/sh
 
-REPO=docker-reg.emotibot.com.cn:55688
-# The name of the container, should use the name of the repo is possible
-CONTAINER=admin-api
-#TAG="$(git rev-parse --short HEAD)"
-LAST_RELEASE_TAG="latest"
-DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+# Exit immediately if a command exits with a non-zero status
+set -e
 
-TAG=$1
-if [ "$TAG" == "" ]; then
-    TAG="$LAST_RELEASE_TAG"
-fi
-DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
+DIR="$( cd -P "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ ${USER} == "deployer" ]; then
-globalConf="
-    -e TZ=Asia/Taipei \
-    --restart always \
-"
+if [ -z "$1" ]; then
+    ENV_FILE="${DIR}/run.env"
+    echo "Using default environment file: ${ENV_FILE}"
+else
+    ENV_FILE=$1
 fi
 
-# entrypoint rewrite & env is dev only
-# DO NOT DO THIS IN PRODUCTION
-moduleConf="
-    -p 8182:8182
-    -v $DIR/entrypoint-dev.sh:/usr/local/bin/entrypoint.sh:ro
-    -v $DIR/../test.env:/usr/local/bin/.env:ro
-"
+source ${DIR}/utils.sh
 
-docker rm -f $CONTAINER
-cmd="docker run -d --name $CONTAINER \
-    $globalConf \
-    $moduleConf \
-    $DOCKER_IMAGE
-"
+# Get docker image tags and export to environment variables
+set -a
+source ${DIR}/image_tags.sh
 
-echo $cmd
-eval $cmd
+# Export environment variables from ${ENV_FILE}
+ENV_PATH="${DIR}/${ENV_FILE}"
+
+while read line
+do
+    eval ${line}
+done < ${ENV_FILE}
+
+valid_config "${DIR}/docker-compose.yml"
+
+# Run docker image
+docker-compose -f ${DIR}/docker-compose.yml up -d

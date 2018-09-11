@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func DoChatRequestWithBFOPController(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
@@ -38,7 +39,7 @@ func DoChatRequestWithBFOPController(appid string, user string, inputData *QATes
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
-	util.LogTrace.Printf("Raw response from Controller: %s", response)
+	logger.Trace.Printf("Raw response from Controller: %s", response)
 
 	controllerRet := BFOPControllerResponse{}
 	err = json.Unmarshal([]byte(response), &controllerRet)
@@ -94,7 +95,7 @@ func DoChatRequestWithController(appid string, user string, inputData *QATestInp
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
-	util.LogTrace.Printf("Raw response from Controller: %s", response)
+	logger.Trace.Printf("Raw response from Controller: %s", response)
 
 	controllerRet := ControllerResponse{}
 	err = json.Unmarshal([]byte(response), &controllerRet)
@@ -168,7 +169,7 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
-	util.LogTrace.Printf("Raw response from OpenAPI: %s", response)
+	logger.Trace.Printf("Raw response from OpenAPI: %s", response)
 
 	DCRet := DCResponse{}
 	err = json.Unmarshal([]byte(response), &DCRet)
@@ -221,7 +222,7 @@ func DoChatRequestWithDC(appid string, user string, inputData *QATestInput) (*Re
 func getFirstCUData(input interface{}) *CUDataFromDC {
 	defer func() {
 		if r := recover(); r != nil {
-			util.LogError.Printf("Parse cudata error from %#v", input)
+			logger.Error.Printf("Parse cudata error from %#v", input)
 			return
 		}
 	}()
@@ -231,11 +232,11 @@ func getFirstCUData(input interface{}) *CUDataFromDC {
 
 	switch t := input.(type) {
 	case map[string]interface{}:
-		util.LogTrace.Printf("Parse %v for hash", t)
+		logger.Trace.Printf("Parse %v for hash", t)
 		json.Unmarshal(jsonByte, &ret)
 		return &ret
 	case []interface{}:
-		util.LogTrace.Printf("Parse %v for array", t)
+		logger.Trace.Printf("Parse %v for array", t)
 		temp := []*CUDataFromDC{}
 		json.Unmarshal(jsonByte, &temp)
 		if len(temp) > 0 {
@@ -282,14 +283,14 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 	input["customInfo"] = customInfo
 	input["customReturn"] = customReturn
 
-	util.LogTrace.Printf("CustomInfo: %s\n", customInfoStr)
-	util.LogTrace.Printf("CustomReturn: %s\n", customReturnStr)
+	logger.Trace.Printf("CustomInfo: %s\n", customInfoStr)
+	logger.Trace.Printf("CustomReturn: %s\n", customReturnStr)
 
 	response, err := util.HTTPPostJSON(openAPIURL, input, 10)
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
-	util.LogTrace.Printf("Raw response from OpenAPI: %s", response)
+	logger.Trace.Printf("Raw response from OpenAPI: %s", response)
 
 	openAPIRet := OpenAPIResponse{}
 	err = json.Unmarshal([]byte(response), &openAPIRet)
@@ -328,7 +329,7 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 func getSimilarFromOpenAPICustomReturn(customReturn *map[string]interface{}) []*QuestionInfo {
 	defer func() {
 		if r := recover(); r != nil {
-			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
+			logger.Info.Println("Parse from openapi's customReturn error: ", r)
 		}
 	}()
 
@@ -356,7 +357,7 @@ func getSimilarFromOpenAPICustomReturn(customReturn *map[string]interface{}) []*
 func getTokensFromOpenAPICustomReturn(customReturn *map[string]interface{}) []*string {
 	defer func() {
 		if r := recover(); r != nil {
-			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
+			logger.Info.Println("Parse from openapi's customReturn error: ", r)
 		}
 	}()
 
@@ -381,7 +382,7 @@ func getSimilarFromDCCustomReturn(customReturn *map[string]interface{}) []*Quest
 func getTokensFromDCCustomReturn(customReturn *map[string]interface{}) []*string {
 	defer func() {
 		if r := recover(); r != nil {
-			util.LogInfo.Println("Parse from openapi's customReturn error: ", r)
+			logger.Info.Println("Parse from openapi's customReturn error: ", r)
 		}
 	}()
 

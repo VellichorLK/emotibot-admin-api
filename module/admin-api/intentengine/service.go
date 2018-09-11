@@ -14,8 +14,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
 )
 
@@ -53,8 +53,8 @@ func GetIntents(appID string, version int) (intents []string, retCode int, err e
 }
 
 func UploadIntents(appID string, file multipart.File, info *multipart.FileHeader) (version int, retCode int, err error) {
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
-	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	buf := make([]byte, info.Size)
 	_, err = file.Read(buf)
@@ -107,7 +107,7 @@ func GetDownloadIntents(appID string, version int, format string) ([]byte, strin
 	_, origFileName, err := getIntentsXSLXFileName(appID, version)
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
-		util.LogError.Printf(errMsg)
+		logger.Error.Printf(errMsg)
 		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
 	}
 
@@ -354,8 +354,8 @@ func GetTrainStatus(appID string, version int) (statusResp StatusResponse, retCo
 			retCode = ApiError.WEB_REQUEST_ERROR
 			return
 		}
-		util.LogTrace.Printf("Query status with version %d: %+v\n", version, payload)
-		util.LogTrace.Printf("Get response from intent status: %+v\n", ieStatus)
+		logger.Trace.Printf("Query status with version %d: %+v\n", version, payload)
+		logger.Trace.Printf("Get response from intent status: %+v\n", ieStatus)
 
 		switch ieStatus.Status {
 		case "training":
@@ -607,21 +607,21 @@ func saveIntentsFile(file []byte, fileName string) (err error) {
 	if _, err = os.Stat(intentFilesPath); os.IsNotExist(err) {
 		err = os.Mkdir(intentFilesPath, os.ModePerm)
 		if err != nil {
-			util.LogError.Printf("Fail to ./statics directory")
+			logger.Error.Printf("Fail to ./statics directory")
 			return
 		}
 	}
 
 	f, err := os.OpenFile(intentFilesPath+"/"+fileName, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		util.LogError.Printf("Fail to save uploaded intents file %s", fileName)
+		logger.Error.Printf("Fail to save uploaded intents file %s", fileName)
 		return
 	}
 	defer f.Close()
 
 	_, err = f.Write(file)
 	if err != nil {
-		util.LogError.Printf("Fail to save uploaded intents file %s", fileName)
+		logger.Error.Printf("Fail to save uploaded intents file %s", fileName)
 		return
 	}
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func saveWordbankRows(appid string, wordbanks []*WordBankRow) (err error) {
@@ -120,7 +121,7 @@ func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
 	}
 	c, err := result.RowsAffected()
 	if err == nil {
-		util.LogTrace.Printf("Delete %d rows\n", c)
+		logger.Trace.Printf("Delete %d rows\n", c)
 	}
 
 	queryStr = fmt.Sprintf(`
@@ -137,7 +138,7 @@ func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
 	}
 	c, err = result.RowsAffected()
 	if err == nil {
-		util.LogTrace.Printf("Delete %d rows\n", c)
+		logger.Trace.Printf("Delete %d rows\n", c)
 	}
 
 	err = saveWordbankClassV3WithTransaction(appid, nil, root, t)

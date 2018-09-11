@@ -2,7 +2,8 @@ FROM docker-reg.emotibot.com.cn:55688/base/sles12sp3-golang1.9:20180416 AS build
 ENV GOPATH /go/
 ARG PROJECT
 
-COPY . /go/src/emotibot.com/emotigo/module
+COPY ./module/${PROJECT} /go/src/emotibot.com/emotigo/module/${PROJECT}
+COPY ./pkg /go/src/emotibot.com/emotigo/pkg
 
 RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go get -v && go install
 

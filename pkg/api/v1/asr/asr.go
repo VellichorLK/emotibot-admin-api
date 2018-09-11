@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"emotibot.com/emotigo/pkg/api/v1"
+	"emotibot.com/emotigo/pkg/api"
 )
 
 //API is for communicate with ASR Module for Systex project.

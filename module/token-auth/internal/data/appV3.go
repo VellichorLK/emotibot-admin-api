@@ -11,3 +11,13 @@ type AppDetailV3 struct {
 	AppV3
 	Description string `json:"description"`
 }
+
+type BFAppV3 struct {
+	ID   string `json:"appid"`
+	Name string `json:"nickname"`
+}
+
+func (BFApp *BFAppV3) CopyFromApp(app *AppV3) {
+	BFApp.ID = app.ID
+	BFApp.Name = app.Name
+}

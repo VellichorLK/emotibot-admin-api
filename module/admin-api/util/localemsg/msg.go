@@ -1,6 +1,6 @@
 package localemsg
 
-import "emotibot.com/emotigo/module/admin-api/util"
+import "emotibot.com/emotigo/pkg/logger"
 
 var localeMsg = map[string]map[string]string{
 	"zh-cn": map[string]string{
@@ -59,7 +59,7 @@ func Get(locale string, key string) string {
 	}
 
 	if _, ok := localeMsg[locale][key]; !ok {
-		util.LogTrace.Printf("Key [%s] in locale [%s] is not existed\n", key, locale)
+		logger.Trace.Printf("Key [%s] in locale [%s] is not existed\n", key, locale)
 		return ""
 	}
 	return localeMsg[locale][key]

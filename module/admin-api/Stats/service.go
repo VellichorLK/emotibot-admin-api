@@ -11,7 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/auth"
-	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
@@ -19,7 +19,7 @@ func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
 	if input.Filter != nil && input.Filter.UserID != "" {
 		userid, err := auth.GetUserID(input.Filter.UserID)
 		if err == nil {
-			util.LogTrace.Printf("Change username to id: %s -> %s\n", input.Filter.UserID, userid)
+			logger.Trace.Printf("Change username to id: %s -> %s\n", input.Filter.UserID, userid)
 			input.Filter.UserID = userid
 		}
 	}

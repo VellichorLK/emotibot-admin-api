@@ -6,6 +6,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/siongui/gojianfan"
 	"github.com/tealeg/xlsx"
 )
@@ -36,7 +37,7 @@ func ParseIntentsFromXLSX(file []byte) (ret map[string][]string, err error) {
 }
 
 func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err error) {
-	util.LogTrace.Println("Parse xlsx with bf2 format")
+	logger.Trace.Println("Parse xlsx with bf2 format")
 	ret = make(map[string][]string)
 
 	rows := sheet.Rows
@@ -83,7 +84,7 @@ func parseBF2IntentsFormat(sheet *xlsx.Sheet) (ret map[string][]string, err erro
 }
 
 func parseBFOPIntentsFormat(sheets []*xlsx.Sheet) (ret map[string][]string, err error) {
-	util.LogTrace.Println("Parse xlsx with bfop format")
+	logger.Trace.Println("Parse xlsx with bfop format")
 	ret = make(map[string][]string)
 
 	for _, sheet := range sheets {

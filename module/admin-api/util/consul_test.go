@@ -14,11 +14,12 @@ import (
 	"testing"
 	"time"
 
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/hashicorp/consul/api"
 )
 
 func TestMain(m *testing.M) {
-	LogInit("TEST", bytes.NewBuffer([]byte{}), os.Stdout, os.Stdout, os.Stdout)
+	logger.Init("TEST", bytes.NewBuffer([]byte{}), os.Stdout, os.Stdout, os.Stdout)
 	retCode := m.Run()
 	os.Exit(retCode)
 }

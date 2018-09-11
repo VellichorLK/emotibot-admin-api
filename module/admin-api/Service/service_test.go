@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -14,12 +15,12 @@ var (
 )
 
 func setup() {
-	util.LogInit("TRACE")
+	logger.SetLevel("TRACE")
 	tempFile, err := ioutil.TempFile("/tmp", "test")
 	if err != nil {
 		panic("Init temp file fail")
 	}
-	tempFile.WriteString(fmt.Sprintln("SERVICE_NLU=http://172.16.101.98:13901/"))
+	tempFile.WriteString(fmt.Sprintln("ADMIN_SERVICE_NLU=http://172.16.101.98:13901/"))
 	tempFile.Close()
 	tempFileName = tempFile.Name()
 	err = util.LoadConfigFromFile(tempFile.Name())

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 //StatTable represent a sql table as a HTML table.
@@ -223,7 +224,7 @@ func NewStatsSelector(st StatTable, dateCol string) func(appID string, start, en
 
 		rows, err := db.Query(query, input...)
 		if err != nil {
-			util.LogError.Printf("query failed, detail query: %s. input: %v \n", query, input)
+			logger.Error.Printf("query failed, detail query: %s. input: %v \n", query, input)
 			return nil, fmt.Errorf("query failed, %v", err)
 		}
 		defer rows.Close()

@@ -66,9 +66,15 @@
                 "host": {
                     "type": "ip"
                 },
+                "marked": {
+                    "type": "boolean"
+                },
+                "ignored": {
+                    "type": "boolean"
+                },
                 "unique_id": {
                     "type": "keyword"
-		        },
+                },
                 "note": {
                     "type": "text",
                     "analyzer": "ik_max_word",
@@ -78,10 +84,10 @@
                             "type": "keyword"
                         }
                     }
-		        },
-		        "platform": {
+                },
+                "platform": {
                     "type": "keyword"
-		        },
+                },
                 "brand": {
                     "type": "keyword"
                 },

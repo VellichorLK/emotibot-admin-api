@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/pkg/logger"
 
 	"github.com/olivere/elastic"
 )
@@ -14,22 +15,39 @@ import (
 var (
 	esClient *elastic.Client
 	esCtx    context.Context
+	host     string
+	port     string
 )
 
-func Init(host string, port string) (err error) {
+func Setup(envHost string, envPort string) (err error) {
+	host = envHost
+	port = envPort
+	ctx, client, err := initClient()
+	if err == nil {
+		esClient = client
+		esCtx = ctx
+	}
+	return
+}
+
+func initClient() (ctx context.Context, client *elastic.Client, err error) {
+	defer func() {
+		if err != nil {
+			ctx = nil
+			client = nil
+		}
+	}()
 	esURL := fmt.Sprintf("http://%s:%s", host, port)
 
 	// Turn-off sniffing
-	client, err := elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false))
+	client, err = elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false))
 	if err != nil {
 		return
 	}
-
-	esClient = client
-	esCtx = context.Background()
+	ctx = context.Background()
 
 	// Check existence of records index template
-	exists, err := client.IndexTemplateExists(data.ESRecordsTemplate).Do(esCtx)
+	exists, err := client.IndexTemplateExists(data.ESRecordsTemplate).Do(ctx)
 	if err != nil {
 		return
 	}
@@ -42,7 +60,7 @@ func Init(host string, port string) (err error) {
 			return
 		}
 
-		service, _err := client.IndexPutTemplate(data.ESRecordsTemplate).BodyString(string(template)).Do(esCtx)
+		service, _err := client.IndexPutTemplate(data.ESRecordsTemplate).BodyString(string(template)).Do(ctx)
 		if _err != nil {
 			err = _err
 			return
@@ -55,7 +73,7 @@ func Init(host string, port string) (err error) {
 	}
 
 	// Check existence of sessions index template
-	exists, err = client.IndexTemplateExists(data.ESSessionsTemplate).Do(esCtx)
+	exists, err = client.IndexTemplateExists(data.ESSessionsTemplate).Do(ctx)
 	if err != nil {
 		return
 	}
@@ -68,7 +86,7 @@ func Init(host string, port string) (err error) {
 			return
 		}
 
-		service, _err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(esCtx)
+		service, _err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(ctx)
 		if _err != nil {
 			err = _err
 			return
@@ -84,6 +102,16 @@ func Init(host string, port string) (err error) {
 }
 
 func GetClient() (context.Context, *elastic.Client) {
+	if esClient == nil {
+		ctx, client, err := initClient()
+		if err != nil {
+			logger.Error.Println("Init es client fail:", err.Error())
+			return nil, nil
+		}
+		esClient = client
+		esCtx = ctx
+		return ctx, client
+	}
 	return esCtx, esClient
 }
 

@@ -13,6 +13,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -108,7 +109,7 @@ func (m MultiCustomerHttpClient) McManualBusiness(appid string) (int, error) {
 }
 
 func logTraceMC(function string, msg string) {
-	LogTrace.Printf("[MC][%s]:%s", function, msg)
+	logger.Trace.Printf("[MC][%s]:%s", function, msg)
 }
 
 func logMCError(err error) {
@@ -155,7 +156,7 @@ func (m MultiCustomerHttpClient) McImportExcel(fileHeader multipart.FileHeader, 
 		return response, err
 	case http.StatusBadRequest:
 		body, _ := ioutil.ReadAll(res.Body)
-		LogInfo.Println(string(body))
+		logger.Info.Println(string(body))
 		return response, errors.New("Multicustomer return Bad Request")
 	case http.StatusServiceUnavailable:
 		data, _ := ioutil.ReadAll(res.Body)

@@ -7,6 +7,8 @@ import (
 	"mime/multipart"
 	"os"
 	"strings"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -37,36 +39,36 @@ func SaveDictionaryFile(appid string, filename string, file multipart.File) (int
 	filePath := fmt.Sprintf("%s/%s", dirPath, filename)
 	output, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
-		LogError.Printf("Cannot create file (%s)", err.Error())
+		logger.Error.Printf("Cannot create file (%s)", err.Error())
 		return 0, err
 	}
 	defer output.Close()
 
 	written, err := io.Copy(output, file)
 	if err != nil {
-		LogError.Printf("Cannot copy file into system (%s)", err.Error())
+		logger.Error.Printf("Cannot copy file into system (%s)", err.Error())
 		return 0, err
 	}
 
-	LogTrace.Printf("Write to file [%s] [%d] bytes successfully", filePath, written)
+	logger.Trace.Printf("Write to file [%s] [%d] bytes successfully", filePath, written)
 	return written, nil
 }
 
 func getAppidDir(appid string) (string, error) {
 	mountPath := getGlobalEnv(mountDirPathKey)
-	LogTrace.Printf("Mount path: %s", mountPath)
+	logger.Trace.Printf("Mount path: %s", mountPath)
 
 	dirPath := fmt.Sprintf("%s/settings/%s", mountPath, appid)
 	mkdirErr := os.MkdirAll(dirPath, ModePerm)
 	if mkdirErr != nil {
-		LogError.Printf("Cannot create appid dir into system (%s)", mkdirErr.Error())
+		logger.Error.Printf("Cannot create appid dir into system (%s)", mkdirErr.Error())
 	}
 	return dirPath, mkdirErr
 }
 
 func GetMountDir() string {
 	mountPath := getGlobalEnv(mountDirPathKey)
-	LogTrace.Printf("Mount path: %s", mountPath)
+	logger.Trace.Printf("Mount path: %s", mountPath)
 	return mountPath
 }
 
@@ -83,7 +85,7 @@ func SaveNLUFileFromEntity(appid string, wordLines []string, synonyms []string) 
 
 	outputWords, err := os.OpenFile(wordsFilePath, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
-		LogError.Printf("Cannot create file (%s)", err.Error())
+		logger.Error.Printf("Cannot create file (%s)", err.Error())
 		return
 	}
 	defer outputWords.Close()
@@ -97,7 +99,7 @@ func SaveNLUFileFromEntity(appid string, wordLines []string, synonyms []string) 
 
 	outputSynonyms, err := os.OpenFile(synonymsFilePath, os.O_WRONLY|os.O_CREATE, 0777)
 	if err != nil {
-		LogError.Printf("Cannot create file (%s)", err.Error())
+		logger.Error.Printf("Cannot create file (%s)", err.Error())
 		return
 	}
 	defer outputSynonyms.Close()
