@@ -1751,3 +1751,22 @@ func UserInfoGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	returnSuccess(w, userInfo)
 }
+
+func EnterpriseAppGetHandlerV3(w http.ResponseWriter, r *http.Request) {
+	requester := getRequesterV3(r)
+
+	var ret []*data.EnterpriseAppListV3
+	var err error
+	if requester.Type == enum.SuperAdminUser {
+		ret, err = service.GetEnterpriseApp(nil, nil)
+	} else if requester.Type == enum.AdminUser {
+		ret, err = service.GetEnterpriseApp(requester.Enterprise, nil)
+	} else if requester.Type == enum.NormalUser {
+		ret, err = service.GetEnterpriseApp(requester.Enterprise, &requester.ID)
+	}
+	if err != nil {
+		returnInternalError(w, err.Error())
+	} else {
+		returnSuccess(w, ret)
+	}
+}

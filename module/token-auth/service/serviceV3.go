@@ -676,3 +676,7 @@ func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
 
 	return nil
 }
+
+func GetEnterpriseApp(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error) {
+	return useDB.GetEnterpriseAppListV3(enterpriseID, userID)
+}

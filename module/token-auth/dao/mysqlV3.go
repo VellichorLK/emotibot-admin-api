@@ -2079,3 +2079,72 @@ func (controller MYSQLController) AddAuditLog(auditLog data.AuditLog) error {
 
 	return nil
 }
+
+func (controller MYSQLController) GetEnterpriseAppListV3(enterpriseID *string, userID *string) (ret []*data.EnterpriseAppListV3, err error) {
+	defer func() {
+		util.LogDBError(err)
+	}()
+	var ok bool
+	ok, err = controller.checkDB()
+	if !ok {
+		return
+	}
+
+	var rows *sql.Rows
+	if enterpriseID != nil {
+		queryStr := `
+		SELECT temp.*, apps.uuid, apps.name, apps.status
+		FROM (
+			SELECT enterprises.uuid as uuid, enterprises.name as name
+			FROM enterprises
+			WHERE enterprises.uuid = ?
+		) as temp
+		LEFT JOIN apps
+		ON apps.enterprise = temp.uuid
+		`
+		rows, err = controller.connectDB.Query(queryStr, *enterpriseID)
+	} else {
+		queryStr := `
+			SELECT enterprises.uuid, enterprises.name, apps.uuid, apps.name, apps.status
+			FROM enterprises
+			LEFT JOIN apps
+			ON apps.enterprise = enterprises.uuid
+		`
+		rows, err = controller.connectDB.Query(queryStr)
+	}
+	if err != nil {
+		return
+	}
+
+	enterpriseMap := map[string]*data.EnterpriseAppListV3{}
+	for rows.Next() {
+		enterpriseID, enterpriseName := "", ""
+		var appID *string
+		var appName *string
+		var appStatus *int
+		err = rows.Scan(&enterpriseID, &enterpriseName, &appID, &appName, &appStatus)
+		if err != nil {
+			return
+		}
+		if _, ok := enterpriseMap[enterpriseID]; !ok {
+			e := &data.EnterpriseAppListV3{}
+			e.Name = enterpriseName
+			e.ID = enterpriseID
+			enterpriseMap[enterpriseID] = e
+		}
+		if appID == nil || appName == nil {
+			continue
+		}
+		robot := &data.AppV3{
+			ID:     *appID,
+			Name:   *appName,
+			Status: *appStatus,
+		}
+		enterpriseMap[enterpriseID].Robots = append(enterpriseMap[enterpriseID].Robots, robot)
+	}
+
+	for id := range enterpriseMap {
+		ret = append(ret, enterpriseMap[id])
+	}
+	return
+}

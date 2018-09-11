@@ -40,6 +40,7 @@ type DB interface {
 	DeleteApp(enterpriseID string, AppID string) (bool, error)
 
 	// v3
+	GetEnterpriseAppListV3(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error)
 	GetEnterprisesV3() ([]*data.EnterpriseV3, error)
 	GetEnterpriseV3(enterpriseID string) (*data.EnterpriseDetailV3, error)
 	AddEnterpriseV3(enterprise *data.EnterpriseV3, modules []string, adminUser *data.UserDetailV3) (string, error)

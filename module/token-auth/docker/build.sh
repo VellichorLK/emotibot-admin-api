@@ -3,7 +3,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=token-auth
 # TAG="$(git rev-parse --short HEAD)"
 LAST_RELEASE_TAG="20171212-2c95de7"
-GIT_HEAD="$(git rev-parse --short HEAD)"
+GIT_HEAD="$(git rev-parse --short=7 HEAD)"
 DATE=`date +%Y%m%d`
 TAG=$1
 
