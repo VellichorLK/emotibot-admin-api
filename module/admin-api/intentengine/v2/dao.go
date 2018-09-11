@@ -552,7 +552,7 @@ func (dao intentDaoV2) UpdateLatestIntents(appid string, intents []*IntentV2) (e
 	defer util.ClearTransition(tx)
 
 	queryStr := "DELETE FROM intents WHERE version is NULL AND appid = ?"
-	_, err = tx.Exec(queryStr)
+	_, err = tx.Exec(queryStr, appid)
 	if err != nil {
 		return
 	}

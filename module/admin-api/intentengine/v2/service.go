@@ -322,12 +322,20 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 		return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
 	}
 
-	if len(sheets) == 2 {
-		if sheets[0].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") &&
-			sheets[1].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
+	for idx := range sheets {
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") ||
+			sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
 			format = typeBF2
+			break
 		}
 	}
+
+	// if len(sheets) == 2 {
+	// 	if sheets[0].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") &&
+	// 		sheets[1].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
+	// 		format = typeBF2
+	// 	}
+	// }
 
 	if format == typeBFOP {
 		logger.Trace.Println("Parse file with BFOP type")
@@ -407,19 +415,24 @@ func getBF2ColumnIdx(row *xlsx.Row, locale string) (nameIdx, sentenceIdx int) {
 			sentenceIdx = idx
 		}
 	}
+	logger.Trace.Printf("Uplaod column idx: %d %d\n", nameIdx, sentenceIdx)
 	return
 }
 
 func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, err error) {
-	if len(sheets) != 2 {
-		return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
-	}
+	// if len(sheets) != 2 {
+	// 	return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
+	// }
 
 	intentMap := map[string]*IntentV2{}
 	for idx := range sheets {
-		sentenceType := typePositive
-		if idx == 1 {
+		var sentenceType int
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") {
+			sentenceType = typePositive
+		} else if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
 			sentenceType = typeNegative
+		} else {
+			continue
 		}
 		rows := sheets[idx].Rows
 		if len(rows) == 0 {
