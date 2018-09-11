@@ -3,14 +3,15 @@ package util
 import "emotibot.com/emotigo/pkg/logger"
 
 type AccessLog struct {
-	Path       string
-	UserID     string
-	UserIP     string
-	AppID      string
-	Time       float64
-	Input      string
-	Output     string
-	StatusCode int
+	Path         string
+	UserID       string
+	UserIP       string
+	AppID        string
+	EnterpriseID string
+	Time         float64
+	Input        string
+	Output       string
+	StatusCode   int
 }
 
 func InitAccessLog(channel chan AccessLog) {

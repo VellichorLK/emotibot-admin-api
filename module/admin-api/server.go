@@ -266,12 +266,13 @@ func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 		// 	r.RequestURI, code, time.Since(now).Seconds(), requestheader.GetUserID(r), requestheader.GetAppID(r))
 		if logChannel != nil {
 			logChannel <- util.AccessLog{
-				Path:       r.RequestURI,
-				Time:       time.Since(now).Seconds(),
-				UserID:     requestheader.GetUserID(r),
-				UserIP:     requestIP,
-				AppID:      requestheader.GetAppID(r),
-				StatusCode: code,
+				Path:         r.RequestURI,
+				Time:         time.Since(now).Seconds(),
+				UserID:       requestheader.GetUserID(r),
+				UserIP:       requestIP,
+				AppID:        requestheader.GetAppID(r),
+				EnterpriseID: requestheader.GetEnterpriseID(r),
+				StatusCode:   code,
 			}
 		}
 	}
