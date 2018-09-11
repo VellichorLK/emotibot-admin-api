@@ -62,13 +62,12 @@ func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
 		boolQuery.Filter(elastic.NewTermsQuery("unique_id", query.Records...))
 	}
 	if query.StartTime != nil && query.EndTime != nil {
-		start := time.Unix(*query.StartTime, 0).Local()
-		end := time.Unix(*query.EndTime, 0).Local()
 		var rq = elastic.NewRangeQuery("log_time")
-		rq.Gte(start.Format(data.ESTimeFormat))
-		rq.Lte(end.Format(data.ESTimeFormat))
+		rq.Gte(time.Unix(*query.StartTime, 0).Format(data.ESTimeFormat))
+		rq.Lte(time.Unix(*query.EndTime, 0).Format(data.ESTimeFormat))
 		rq.Format("yyyy-MM-dd HH:mm:ss")
-		rq.TimeZone(timezone)
+		//Since ElasticSearch will transfer the timezone for us, it is no need to transfer the timezone by ourself
+		rq.TimeZone("+00:00")
 		boolQuery = boolQuery.Filter(rq)
 	}
 

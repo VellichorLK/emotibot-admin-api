@@ -62,7 +62,7 @@ func TestNewBoolQueryWithRecordQuery(t *testing.T) {
 		},
 		"searchByTime": {
 			input: `{"start_time":1530439260,"end_time":1535364060}`,
-			query: `{"bool":{"filter":{"range":{"log_time":{"format":"yyyy-MM-dd HH:mm:ss","from":"2018-07-01 18:01:00","include_lower":true,"include_upper":true,"time_zone":"+08:00","to":"2018-08-27 18:01:00"}}}}}`,
+			query: `{"bool":{"filter":{"range":{"log_time":{"format":"yyyy-MM-dd HH:mm:ss","from":"2018-07-01 10:01:00","include_lower":true,"include_upper":true,"time_zone":"+00:00","to":"2018-08-27 10:01:00"}}}}}`,
 		},
 	}
 	for name, tc := range testTable {
