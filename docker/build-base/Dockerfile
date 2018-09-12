@@ -17,3 +17,6 @@ RUN go get github.com/siongui/gojianfan
 RUN go get github.com/satori/go.uuid
 RUN go get github.com/olivere/elastic
 RUN go get gopkg.in/DATA-DOG/go-sqlmock.v1
+RUN go get github.com/rubenv/sql-migrate/...
+RUN go get github.com/coreos/go-semver/semver
+RUN go get gopkg.in/yaml.v2
