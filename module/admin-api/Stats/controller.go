@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	statsV2 "emotibot.com/emotigo/module/admin-api/Stats/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
@@ -29,7 +30,7 @@ const (
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "statistic",
-		EntryPoints: []util.EntryPoint{
+		EntryPoints: append([]util.EntryPoint{
 			util.NewEntryPoint("POST", "audit", []string{"view"}, handleListAudit),
 
 			util.NewEntryPoint("GET", "question", []string{"view"}, handleQuestionStatistic),
@@ -45,7 +46,7 @@ func init() {
 			util.NewEntryPoint("POST", "sessions/download", []string{}, handleSessionsDownload),
 			util.NewEntryPoint("POST", "sessions/{sid}/download", []string{}, handleSessionDowload),
 			util.NewEntryPoint("GET", "sessions/{sid}/records", []string{}, handleSessionRecords),
-		},
+		}, statsV2.EntryList...),
 	}
 	cacheTimeout = nil
 	cache = make(map[string]*StatRet)
