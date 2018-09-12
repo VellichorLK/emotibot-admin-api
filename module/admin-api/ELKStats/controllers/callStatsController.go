@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -25,21 +24,12 @@ var callStatsQueryHandlers = map[string]data.CallStatsQueryHandler{
 }
 
 func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
 	statsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if statsType == "" {
+	if statsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -70,7 +60,6 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.CallStatsQuery{
 		CommonQuery: data.CommonQuery{
-			EnterpriseID: enterpriseID,
 			AppID:        appID,
 			StartTime:    startTime,
 			EndTime:      endTime,

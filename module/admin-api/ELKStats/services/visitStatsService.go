@@ -22,7 +22,7 @@ const ActiveUsersThreshold = 30
 func ConversationCounts(ctx context.Context, client *elastic.Client,
 	query data.VisitStatsQuery) (map[string]interface{}, error) {
 	aggName := "conversations"
-	boolQuery := createBoolQuery(query.CommonQuery)
+	boolQuery := elastic.NewBoolQuery()
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -679,11 +679,9 @@ func AnswerCategoryCounts(ctx context.Context, client *elastic.Client,
 }
 
 func createVisitStatsBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
-	boolQuery := createBoolQuery(query)
-
+	boolQuery := elastic.NewBoolQuery()
 	welcomeTagTermQuery := elastic.NewTermQuery("user_q.keyword", "welcome_tag")
 	boolQuery = boolQuery.MustNot(welcomeTagTermQuery)
-
 	return boolQuery
 }
 

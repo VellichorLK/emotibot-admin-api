@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -28,22 +27,13 @@ var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 }
 
 func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
 	statsType := r.URL.Query().Get("type")
 	statsFilter := r.URL.Query().Get("filter")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if statsType == "" {
+	if statsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -78,7 +68,6 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.VisitStatsTypeTime:
 		query = data.VisitStatsQuery{
 			CommonQuery: data.CommonQuery{
-				EnterpriseID: enterpriseID,
 				AppID:        appID,
 				StartTime:    startTime,
 				EndTime:      endTime,
@@ -104,7 +93,6 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					EnterpriseID: enterpriseID,
 					AppID:        appID,
 					StartTime:    startTime,
 					EndTime:      endTime,
@@ -116,7 +104,6 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsFilterQType:
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					EnterpriseID: enterpriseID,
 					AppID:        appID,
 					StartTime:    startTime,
 					EndTime:      endTime,
@@ -193,21 +180,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
 	questionsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if questionsType == "" {
+	if questionsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -230,7 +208,6 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.VisitStatsQuery{
 		CommonQuery: data.CommonQuery{
-			EnterpriseID: enterpriseID,
 			AppID:        appID,
 			StartTime:    startTime,
 			EndTime:      endTime,

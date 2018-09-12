@@ -5,7 +5,7 @@
 - 聊天類
 - 其他類
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，其中：
+統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，其中：
 - 業務類 = 標準回覆數
     - (`module` 為 **`faq`** 或 **`task_engine`**)
 - 聊天類 = 聊天數
@@ -14,21 +14,11 @@
     - (`module` 不為 **`faq`**、**`task_engine`** 及 **`chat`**)
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-records-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "log_time": {

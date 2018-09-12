@@ -14,22 +14,6 @@ import (
 var tags map[string][]data.Tag
 var timezone = getSystemTimezone()
 
-func createBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
-	boolQuery := elastic.NewBoolQuery()
-
-	if query.EnterpriseID != "" {
-		enterpriseTermQuery := elastic.NewTermQuery("enterprise_id", query.EnterpriseID)
-		boolQuery = boolQuery.Filter(enterpriseTermQuery)
-	}
-
-	if query.AppID != "" {
-		appTermQuery := elastic.NewTermQuery("app_id", query.AppID)
-		boolQuery = boolQuery.Filter(appTermQuery)
-	}
-
-	return boolQuery
-}
-
 func createRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(queryField).
 		Gte(query.StartTime.Format(data.ESTimeFormat)).

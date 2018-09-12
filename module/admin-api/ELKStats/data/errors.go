@@ -22,9 +22,7 @@ var (
 )
 
 const (
-	ErrCodeInvalidHeaderEnterpriseID = iota
-	ErrCodeInvalidHeaderAppID
-	ErrCodeInvalidParameterType
+	ErrCodeInvalidParameterType = iota
 	ErrCodeInvalidParameterT1
 	ErrCodeInvalidParameterT2
 	ErrCodeInvalidParameterCategory

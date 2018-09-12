@@ -19,16 +19,6 @@ import (
 //VisitRecordsGetHandler handle advanced query for records.
 //Limit & Page should be given by r's query string.
 func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
-	// DISCARD THIS SINCE appID and enterpriseID should be handled by middleware
-	// if enterpriseID == "" && appID == "" {
-	// 	errResp := data.ErrorResponse{
-	// 		Message: fmt.Sprintf("Both headers %s and %s are not specified",
-	// 			data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-	// 	}
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	writeResponseJSON(w, errResp)
-	// 	return
-	// }
 	defer r.Body.Close()
 	query, err := newRecordQuery(r)
 	if err != nil {
@@ -381,7 +371,6 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 //the only error should be returned is if request itself is invalided.
 //It handled the limit & page logic for now, should move up to controller level.
 func newRecordQuery(r *http.Request) (*data.RecordQuery, error) {
-	// enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
 	var query data.RecordQuery
 	err := json.NewDecoder(r.Body).Decode(&query)

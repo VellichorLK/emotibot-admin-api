@@ -1,6 +1,6 @@
 # 日誌管理
 
-搜尋 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-08-01 00:00:00`** 與 **`2018-08-31 23:59:59`**，`搜尋關鍵字` 為 **`APP无法付款`**，`問答類別` 為 **`業務類`** (`module` 為 **`faq`** 或 **`task_engine`**)，篩選條件為：`平台 (platform)` 為 **`android`** 或 **`ios`**，且 `性別 (sex)` 為 **`男`** 或 **`女`** 的對話日誌：
+搜尋 `app_id` 為 **`csbot`** 且資料介於 **`2018-08-01 00:00:00`** 與 **`2018-08-31 23:59:59`**，`搜尋關鍵字` 為 **`APP无法付款`**，`問答類別` 為 **`業務類`** (`module` 為 **`faq`** 或 **`task_engine`**)，篩選條件為：`平台 (platform)` 為 **`android`** 或 **`ios`**，且 `性別 (sex)` 為 **`男`** 或 **`女`** 的對話日誌：
 
 針對篩選條件為：`平台 (platform)` 為 **`android`** 或 **`ios`**，且 `性別 (sex)` 為 **`男`** 或 **`女`**，對話日誌需同時符合：
 
@@ -10,21 +10,11 @@
 - `平台 (platform)` 為 **`ios`** 及 `性別 (sex)` 為 **`女`**
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-records-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "log_time": {

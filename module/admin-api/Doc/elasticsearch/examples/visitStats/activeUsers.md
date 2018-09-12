@@ -4,24 +4,14 @@
 
 #### 各個時間區段的活躍用戶數
 
-此數據無法直接透過 ElasticSearch 計算，因此先統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，結果依照 **`day`** 分群。在各時間分群的結果中，再依各使用者 **`(group_by_users)`** 分群。在各使用者分群中，再篩選出記錄超過 *`activeUsersThreshold (10)`* 的使用者。最後再解析 ElasticSearch 所統計出來的使用者列表，個別計算各個時間分群中的使用者個數而得到活躍用戶數：
+此數據無法直接透過 ElasticSearch 計算，因此先統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，結果依照 **`day`** 分群。在各時間分群的結果中，再依各使用者 **`(group_by_users)`** 分群。在各使用者分群中，再篩選出記錄超過 *`activeUsersThreshold (10)`* 的使用者。最後再解析 ElasticSearch 所統計出來的使用者列表，個別計算各個時間分群中的使用者個數而得到活躍用戶數：
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-records-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "log_time": {
@@ -465,24 +455,14 @@ POST /emotibot-records-*/_search
 #### 在所篩選的時間範圍內，各個維度的活躍用戶數
 ##### (以平台 (platform) 維度為例)
 
-此數據無法直接透過 ElasticSearch 計算，因此先統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `platform` 欄位不為 **`空字串`**，結果依各平台 **`(group_by_platforms)`** 分群後，再依各使用者 **`(group_by_users)`** 分群。在各使用者分群中，再篩選出記錄超過 *`activeUsersThreshold (10)`* 的使用者。最後再解析 ElasticSearch 所統計出來的使用者列表，個別計算各個平台分群中的使用者個數而得到活躍用戶數：
+此數據無法直接透過 ElasticSearch 計算，因此先統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `platform` 欄位不為 **`空字串`**，結果依各平台 **`(group_by_platforms)`** 分群後，再依各使用者 **`(group_by_users)`** 分群。在各使用者分群中，再篩選出記錄超過 *`activeUsersThreshold (10)`* 的使用者。最後再解析 ElasticSearch 所統計出來的使用者列表，個別計算各個平台分群中的使用者個數而得到活躍用戶數：
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-records-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "log_time": {
