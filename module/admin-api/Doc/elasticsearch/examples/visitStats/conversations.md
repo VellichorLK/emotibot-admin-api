@@ -4,24 +4,14 @@
 
 #### 各個時間區段的總會話數
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，結果依照 **`day`** 分群後，再依 **`(group_by_sessions)`** 分群：
+統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，結果依照 **`day`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
-POST /emotibot-sessions-*/_search
+POST /emotibot-sessions-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "end_time": {
@@ -412,24 +402,14 @@ POST /emotibot-sessions-*/_search
 #### 在所篩選的時間範圍內，各個維度的總會話數
 ##### (以平台 (platform) 維度為例)
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群後，再依 **`(group_by_sessions)`** 分群：
+統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，且 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群後，再依 **`(group_by_sessions)`** 分群：
 
 ```
-POST /emotibot-sessions-*/_search
+POST /emotibot-sessions-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-          }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "end_time": {

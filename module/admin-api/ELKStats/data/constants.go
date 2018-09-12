@@ -10,9 +10,6 @@ const (
 	// UserIPHeaderKey is user IP in request header
 	UserIPHeaderKey = "X-Real-IP"
 
-	// EnterpriseIDHeaderKey is Enterprise ID in requqest header
-	EnterpriseIDHeaderKey = "X-EnterpriseID"
-
 	// AppIDHeaderKey is App ID in requqest header
 	AppIDHeaderKey = "X-AppID"
 )

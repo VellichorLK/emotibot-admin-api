@@ -3,24 +3,14 @@
 #### 前 N 個熱點問題
 ##### (以 N = 20 為例)
 
-統計 `enterprise_id` 為 **`emotibot`**、`app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，數量總和前 **20** 個的使用者問題：
+統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-06-01 00:00:00`** 與 **`2018-06-30 23:59:59`**，數量總和前 **20** 個的使用者問題：
 
 ```
-POST /emotibot-records-*/_search
+POST /emotibot-records-csbot-*/_search
 {
   "query": {
     "bool": {
       "filter": [
-        {
-          "term": {
-            "enterprise_id": "emotibot"
-        }
-        },
-        {
-          "term": {
-            "app_id": "csbot"
-          }
-        },
         {
           "range": {
             "log_time": {
