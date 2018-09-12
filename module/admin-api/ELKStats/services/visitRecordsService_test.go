@@ -58,7 +58,7 @@ func TestNewBoolQueryWithRecordQuery(t *testing.T) {
 	var testTable = map[string]testCase{
 		"keyword": {
 			input: `{"keyword": "test"}`,
-			query: `{"bool":{"filter":{"multi_match":{"fields":["user_q","answer.value"],"query":"test"}}}}`,
+			query: `{"bool":{"filter":{"bool":{"should":[{"match":{"user_q":{"query":"test"}}},{"nested":{"path":"answer","query":{"match":{"answer.value":{"query":"test"}}}}}]}}}}`,
 		},
 		"searchByTime": {
 			input: `{"start_time":1530439260,"end_time":1535364060}`,

@@ -72,8 +72,11 @@ func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
 	}
 
 	if query.Keyword != nil {
-		userQTermQuery := elastic.NewMultiMatchQuery(*query.Keyword, "user_q", "answer.value")
-		boolQuery = boolQuery.Filter(userQTermQuery)
+		userQMatchQuery := elastic.NewMatchQuery("user_q", *query.Keyword)
+		answerMatchQuery := elastic.NewMatchQuery("answer.value", *query.Keyword)
+		answerNestedQuery := elastic.NewNestedQuery("answer", answerMatchQuery)
+		keywordBoolQuery := elastic.NewBoolQuery().Should(userQMatchQuery, answerNestedQuery)
+		boolQuery = boolQuery.Filter(keywordBoolQuery)
 	}
 
 	if query.UserID != nil {
