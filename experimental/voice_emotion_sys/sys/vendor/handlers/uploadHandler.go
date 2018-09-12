@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -209,7 +210,14 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 
 	//now := time.Now()
 	//fi.UPTime = now.Unix()
-	err := updateDatabase(fi)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	defer tx.Rollback()
+
+	err = updateDatabase(tx, fi)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -230,6 +238,8 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 		return http.StatusInternalServerError, err
 	}
 
+	tx.Commit()
+
 	return http.StatusOK, nil
 }
 
@@ -243,8 +253,8 @@ func pacakgeTask(fi *FileInfo) (string, error) {
 	return string(encodeTask), nil
 }
 
-func updateDatabase(fi *FileInfo) error {
-	return InsertFileRecord(fi)
+func updateDatabase(tx *sql.Tx, fi *FileInfo) error {
+	return InsertFileRecord(tx, fi)
 }
 
 func goTaskOnFail(sid string) {
