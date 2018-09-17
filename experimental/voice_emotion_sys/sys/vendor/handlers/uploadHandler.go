@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -25,17 +26,40 @@ var FilePrefix string
 
 //Upload handler to store the file and start the task
 func Upload(w http.ResponseWriter, r *http.Request) {
+
+	var logStatus int
+
+	var fi *FileInfo
+	defer func() {
+
+		var appid, fileName, tag1, tag2 string
+		var createTime uint64
+		if fi != nil {
+			appid = fi.Appid
+			fileName = fi.FileName
+			tag1 = fi.Tag
+			tag2 = fi.Tag2
+			createTime = fi.CreateTime
+		}
+
+		fmt.Printf("[%s] ret code:%d, appid:%s, file_name:%s, tag1:%s, tag2:%s, create_time:%s   ",
+			time.Now().Format(time.RFC3339), logStatus, appid, fileName, tag1, tag2, time.Unix(int64(createTime), 0).Format(time.RFC3339))
+	}()
+
 	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
+		logStatus = http.StatusUnauthorized
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if r.Method == "POST" {
 		r.ParseMultipartForm(512 << 10)
+		var err error
 
-		fi, err := parseParms(r)
+		fi, err = parseParms(r)
 		if err != nil {
+			logStatus = http.StatusBadRequest
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -43,29 +67,35 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		status, err := uploadFile(r, fi)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		status, err = sendTask(fi, appid)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		res, status, err := packageUploadReturn(fi)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		contentType := "application/json; charset=utf-8"
 
+		logStatus = http.StatusOK
+
 		w.Header().Set("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		w.Write(res)
 
 	} else {
+		logStatus = http.StatusMethodNotAllowed
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
