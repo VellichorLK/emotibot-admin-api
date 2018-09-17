@@ -42,7 +42,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 			createTime = fi.CreateTime
 		}
 
-		fmt.Printf("[%s] ret code:%d, appid:%s, file_name:%s, tag1:%s, tag2:%s, create_time:%s   ",
+		fmt.Printf("[%s] ret code:%d, appid:%s, file_name:%s, tag1:%s, tag2:%s, create_time:%s\n",
 			time.Now().Format(time.RFC3339), logStatus, appid, fileName, tag1, tag2, time.Unix(int64(createTime), 0).Format(time.RFC3339))
 	}()
 
