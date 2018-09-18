@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -92,10 +93,10 @@ func handleNewSwitch(w http.ResponseWriter, r *http.Request) {
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
+		addAudit(r, audit.AuditOperationAdd, fmt.Sprintf("Add fail: %s (%s)", errMsg, err.Error()), 0)
 	} else {
 		util.WriteJSON(w, util.GenRetObj(errCode, input))
-		addAudit(r, util.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
+		addAudit(r, audit.AuditOperationAdd, fmt.Sprintf("Add success %#v", input), 1)
 	}
 }
 
@@ -136,7 +137,7 @@ func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
 	errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
+		addAudit(r, audit.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
 			util.Msg["Modify"], util.Msg["Error"], input.Code, errMsg, err.Error()), 0)
 	} else {
 		util.WriteJSON(w, util.GenRetObj(errCode, input))
@@ -152,7 +153,7 @@ func handleUpdateSwitch(w http.ResponseWriter, r *http.Request) {
 				"%s%s code[%s]",
 				util.Msg["Modify"], util.Msg["Success"], input.Code)
 		}
-		addAudit(r, util.AuditOperationEdit, msg, 1)
+		addAudit(r, audit.AuditOperationEdit, msg, 1)
 	}
 
 	var ret int
@@ -176,10 +177,10 @@ func handleDeleteSwitch(w http.ResponseWriter, r *http.Request) {
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
+		addAudit(r, audit.AuditOperationDelete, fmt.Sprintf("Delete id %d fail: %s (%s)", id, errMsg, err.Error()), 0)
 	} else {
 		util.WriteJSON(w, util.GenRetObj(errCode, nil))
-		addAudit(r, util.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
+		addAudit(r, audit.AuditOperationDelete, fmt.Sprintf("Delete id %d success", id), 1)
 	}
 }
 
@@ -198,6 +199,7 @@ func addAudit(r *http.Request, operation string, msg string, result int) {
 	userID := requestheader.GetUserID(r)
 	userIP := requestheader.GetUserIP(r)
 	appid := requestheader.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleRobotFunction, operation, msg, result)
 }

@@ -18,8 +18,8 @@ func InitAccessLog(channel chan AccessLog) {
 	go func() {
 		for {
 			log := <-channel
-			logger.Info.Printf("REQ: [%s][%d] [%.3fs][%s@%s]@[%s]",
-				log.Path, log.StatusCode, log.Time, log.UserID, log.AppID, log.UserIP)
+			logger.Info.Printf("REQ: [%s][%d] [%.3fs][%s]@[%s][%s] [%s]",
+				log.Path, log.StatusCode, log.Time, log.UserID, log.EnterpriseID, log.AppID, log.UserIP)
 		}
 	}()
 }

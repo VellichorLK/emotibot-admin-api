@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -125,7 +126,7 @@ func auditMultiChatModify(r *http.Request, origInfos []*ChatInfo, newInfos []*Ch
 		}
 	}
 
-	addAudit(r, util.AuditModuleBotMessage, util.AuditOperationEdit, strings.Join(msgs, "\n"), result)
+	addAudit(r, audit.AuditModuleRobotChatSkill, audit.AuditOperationEdit, strings.Join(msgs, "\n"), result)
 }
 
 func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +211,7 @@ func handleAddRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		if errno == ApiError.SUCCESS {
 			retVal = 1
 		}
-		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationAdd, auditBuffer.String(), retVal)
+		addAudit(r, audit.AuditModuleRobotChatSkill, audit.AuditOperationAdd, auditBuffer.String(), retVal)
 	}()
 	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
@@ -260,7 +261,7 @@ func handleUpdateRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		if errno == ApiError.SUCCESS {
 			retVal = 1
 		}
-		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationEdit, auditBuffer.String(), retVal)
+		addAudit(r, audit.AuditModuleRobotChatSkill, audit.AuditOperationEdit, auditBuffer.String(), retVal)
 	}()
 	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")
@@ -325,7 +326,7 @@ func handleDeleteRobotWordContent(w http.ResponseWriter, r *http.Request) {
 		if errno == ApiError.SUCCESS {
 			retVal = 1
 		}
-		addAudit(r, util.AuditModuleBotMessage, util.AuditOperationDelete, auditBuffer.String(), retVal)
+		addAudit(r, audit.AuditModuleRobotChatSkill, audit.AuditOperationDelete, auditBuffer.String(), retVal)
 	}()
 	appid := requestheader.GetAppID(r)
 	id, err := util.GetMuxIntVar(r, "id")

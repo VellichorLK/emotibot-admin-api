@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -86,7 +87,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("invalid json: %s, %s", err.Error(), err2.Error())),
 			http.StatusBadRequest)
 		auditMsg := util.Msg["AuditImportJSONError"]
-		addAuditLog(r, util.AuditOperationImport, auditMsg, true)
+		addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 		return
 	}
 	ret := map[string]interface{}{
@@ -99,7 +100,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
 	}
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
-	addAuditLog(r, util.AuditOperationImport, auditMsg, true)
+	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 	util.WriteJSON(w, ret)
 }
 
@@ -168,12 +169,12 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 	if publish != "" {
 		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, util.AuditOperationPublish, auditMsg, err == nil)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
 	}
 
 	if delete != "" {
 		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
+		addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
 	}
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +214,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 
 	auditMsg := fmt.Sprintf("%s%s: %s", util.Msg["Add"], util.Msg["TaskEngineScenario"], scenarioName)
-	addAuditLog(r, util.AuditOperationAdd, auditMsg, err == nil)
+	addAuditLog(r, audit.AuditOperationAdd, auditMsg, err == nil)
 }
 
 func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +242,7 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 
 	auditTpl := ""
 	target := scenarioID
-	operation := util.AuditOperationActive
+	operation := audit.AuditOperationActive
 	if enable == "true" {
 		auditTpl = util.Msg["AuditActiveTpl"]
 		if scenarioID == "all" {
@@ -252,7 +253,7 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		auditTpl = util.Msg["AuditDeactiveTpl"]
-		operation = util.AuditOperationDeactive
+		operation = audit.AuditOperationDeactive
 		if scenarioID == "all" {
 			DisableAllScenario(appid)
 			target = util.Msg["All"]
@@ -391,10 +392,10 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 		}, status)
 
 		if errno == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["MappingTable"]))
@@ -486,10 +487,10 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 		}, status)
 
 		if errno == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["MappingTable"]))
@@ -536,11 +537,12 @@ func addAuditLog(r *http.Request, op string, msg string, ret bool) {
 	appid := requestheader.GetAppID(r)
 	user := requestheader.GetUserID(r)
 	ip := requestheader.GetUserIP(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 	retVal := 0
 	if ret {
 		retVal = 1
 	}
-	util.AddAuditLog(appid, user, ip, util.AuditModuleTaskEngine, op, msg, retVal)
+	audit.AddAuditLog(enterprise, appid, user, ip, audit.AuditModuleTaskEngine, op, msg, retVal)
 }
 
 func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
@@ -557,7 +559,7 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		w.Write(outputBuf.Bytes())
 
-		addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
+		addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
 	}()
 
 	logger.Trace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
@@ -642,15 +644,16 @@ func handleAudit(w http.ResponseWriter, r *http.Request) {
 	auditOp := ""
 	switch action {
 	case "edit":
-		auditOp = util.AuditOperationEdit
+		auditOp = audit.AuditOperationEdit
 	case "export":
-		auditOp = util.AuditOperationExport
+		auditOp = audit.AuditOperationExport
 	default:
 		util.WriteJSON(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Unknown action"))
 		return
 	}
 
-	err := util.AddAuditLog(appid, userID, userIP, util.AuditModuleTaskEngine, auditOp, msg, 1)
+	enterprise := requestheader.GetEnterpriseID(r)
+	err := audit.AddAuditLog(enterprise, appid, userID, userIP, audit.AuditModuleTaskEngine, auditOp, msg, 1)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {

@@ -12,6 +12,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
@@ -130,7 +131,7 @@ func handleDeleteIntentV2(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ret = auditMsg
 		}
-		util.AddAuditFromRequestAuto(r, auditMsg, result)
+		audit.AddAuditFromRequestAuto(r, auditMsg, result)
 		util.Return(w, err, ret)
 	}()
 
@@ -176,7 +177,7 @@ func handleAddIntentV2(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ret = auditMsg
 		}
-		util.AddAuditFromRequestAuto(r, auditMsg, result)
+		audit.AddAuditFromRequestAuto(r, auditMsg, result)
 		util.Return(w, err, ret)
 	}()
 
@@ -239,7 +240,7 @@ func handleUpdateIntentV2(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ret = auditMsg
 		}
-		util.AddAuditFromRequestAuto(r, auditMsg, result)
+		audit.AddAuditFromRequestAuto(r, auditMsg, result)
 		util.Return(w, err, ret)
 	}()
 	intentID, convertErr := util.GetMuxInt64Var(r, "intentID")
@@ -339,7 +340,7 @@ func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {
 			auditMsg.WriteString(err.Error())
 		}
 
-		util.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+		audit.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
 		util.Return(w, err, auditMsg.String())
 	}()
 	auditMsg.WriteString(util.Msg["UploadIntentEngine"])
@@ -394,7 +395,7 @@ func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
 			auditMsg.WriteString(err.Error())
 			util.Return(w, err, nil)
 		}
-		util.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+		audit.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
 	}()
 	auditMsg.WriteString(localemsg.Get(locale, "IntentExport"))
 

@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -27,10 +28,10 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 		}, status)
 
 		if retCode == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["Spreadsheet"]))

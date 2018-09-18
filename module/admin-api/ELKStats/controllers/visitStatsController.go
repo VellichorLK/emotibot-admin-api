@@ -68,9 +68,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.VisitStatsTypeTime:
 		query = data.VisitStatsQuery{
 			CommonQuery: data.CommonQuery{
-				AppID:        appID,
-				StartTime:    startTime,
-				EndTime:      endTime,
+				AppID:     appID,
+				StartTime: startTime,
+				EndTime:   endTime,
 			},
 			AggBy:       data.AggByTime,
 			AggInterval: aggInterval,
@@ -93,9 +93,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					AppID:        appID,
-					StartTime:    startTime,
-					EndTime:      endTime,
+					AppID:     appID,
+					StartTime: startTime,
+					EndTime:   endTime,
 				},
 				AggBy:       data.AggByTag,
 				AggInterval: aggInterval,
@@ -104,9 +104,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsFilterQType:
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					AppID:        appID,
-					StartTime:    startTime,
-					EndTime:      endTime,
+					AppID:     appID,
+					StartTime: startTime,
+					EndTime:   endTime,
 				},
 			}
 		default:
@@ -208,9 +208,9 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.VisitStatsQuery{
 		CommonQuery: data.CommonQuery{
-			AppID:        appID,
-			StartTime:    startTime,
-			EndTime:      endTime,
+			AppID:     appID,
+			StartTime: startTime,
+			EndTime:   endTime,
 		},
 	}
 

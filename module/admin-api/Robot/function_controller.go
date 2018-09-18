@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -40,7 +41,7 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit,
 			errMsg, result)
 	}
 
@@ -81,7 +82,7 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 			util.Msg["Modify"], util.Msg["Success"], funcName, origStatus, newStatus)
 		result = 1
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
@@ -96,7 +97,7 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, errMsg, result)
 		return
 	}
 	origFunctionMap := map[string]*Function{}
@@ -108,7 +109,7 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	activeMap := map[string]bool{}
 	err = json.Unmarshal([]byte(activeMapStr), &activeMap)
 	if err != nil {
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, "Bad request", result)
 		http.Error(w, "", http.StatusBadRequest)
 	}
 
@@ -144,7 +145,7 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 			util.Msg["Modify"], util.Msg["Success"], buffer.String())
 		result = 1
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
@@ -179,7 +180,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit,
 			errMsg, result)
 	}
 
@@ -220,7 +221,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 			util.Msg["Modify"], util.Msg["Success"], funcName, origStatus, newStatus)
 		result = 1
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
@@ -235,7 +236,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, errMsg, result)
 		return
 	}
 	origFunctionMap := map[string]*Function{}
@@ -247,7 +248,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 	activeMap := map[string]bool{}
 	err = json.Unmarshal([]byte(activeMapStr), &activeMap)
 	if err != nil {
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, "Bad request", result)
 		http.Error(w, "", http.StatusBadRequest)
 	}
 
@@ -283,7 +284,7 @@ func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 			util.Msg["Modify"], util.Msg["Success"], buffer.String())
 		result = 1
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
@@ -318,7 +319,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit,
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit,
 			errMsg, result)
 	}
 
@@ -326,7 +327,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	newInfo := loadFunctionFromContext(r)
 	if newInfo == nil {
 		errMsg := fmt.Sprintf("%s%s", util.Msg["Request"], util.Msg["Error"])
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, errMsg, result)
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -357,7 +358,7 @@ func handleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	consulRet, err := util.ConsulUpdateFunctionStatus(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", consulRet, err.Error())
@@ -372,13 +373,13 @@ func handleUpdateAllFunction(w http.ResponseWriter, r *http.Request) {
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, errMsg, result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, errMsg, result)
 		return
 	}
 
 	newInfos := loadFunctionsFromContext(r)
 	if newInfos == nil {
-		addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, "Bad request", result)
+		addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, "Bad request", result)
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -419,7 +420,7 @@ func handleUpdateAllFunction(w http.ResponseWriter, r *http.Request) {
 		result = 1
 		util.McUpdateFunction(appid)
 	}
-	addAudit(r, util.AuditModuleFunctionSwitch, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotFunction, audit.AuditOperationEdit, auditLog, result)
 	ret, err := util.ConsulUpdateRobotChat(appid)
 	if err != nil {
 		logger.Info.Printf("Update consul result: %d, %s", ret, err.Error())
