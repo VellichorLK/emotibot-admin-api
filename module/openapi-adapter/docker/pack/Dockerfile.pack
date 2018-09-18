@@ -1,15 +1,13 @@
-## OPENAPI_ADAPTER_BUILD_IMAGE_NAME 为 build stage 所编译出来包含 binary 的 docker image 
-ARG OPENAPI_ADAPTER_BUILD_IMAGE_NAME=${OPENAPI_ADAPTER_BUILD_IMAGE_NAME}
-FROM ${OPENAPI_ADAPTER_BUILD_IMAGE_NAME} AS build
+## BUILD_IMAGE_NAME 为 build stage 所编译出来包含 binary 及其他执行时所需要的设定档的 docker image 
+ARG BUILD_IMAGE_NAME=${BUILD_IMAGE_NAME}
+FROM ${BUILD_IMAGE_NAME} AS build
 
-## 将 build stage 所编译出来的 binary 复制至可执行环境
+## 将 build stage 所编译出来的 binary 及其他执行时所需要的设定档复制至可执行环境
 FROM centos:centos7.4.1708
 
 ARG PROJECT
 
 WORKDIR /usr/bin/app
-COPY --from=build /usr/bin/app/${PROJECT} .
-COPY ./module/${PROJECT}/docker/entrypoint.sh entrypoint.sh
-## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
+COPY --from=build /usr/bin/app/ .
 
 CMD ["./entrypoint.sh"]

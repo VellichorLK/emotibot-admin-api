@@ -20,4 +20,4 @@ valid_config "${DIR}/docker-compose.yml"
 
 # Build docker image
 # 透过传入 OPENAPI_ADAPTER_BUILD_IMAGE_NAME build arg 来指定在 build stage 所生成的 docker image name
-docker-compose -f ${DIR}/docker-compose.yml build --build-arg=OPENAPI_ADAPTER_BUILD_IMAGE_NAME=${OPENAPI_ADAPTER_BUILD_IMAGE_NAME} --build-arg=PROJECT=${MODULE}
+docker-compose -f ${DIR}/docker-compose.yml build --build-arg=BUILD_IMAGE_NAME=${BUILD_IMAGE_NAME} --build-arg=PROJECT=${MODULE}
