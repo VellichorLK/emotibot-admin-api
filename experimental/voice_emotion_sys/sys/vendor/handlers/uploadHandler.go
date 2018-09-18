@@ -32,18 +32,21 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 	var fi *FileInfo
 	defer func() {
 
-		var appid, fileName, tag1, tag2 string
+		var fileName string
 		var createTime uint64
-		if fi != nil {
-			appid = fi.Appid
-			fileName = fi.FileName
-			tag1 = fi.Tag
-			tag2 = fi.Tag2
-			createTime = fi.CreateTime
+
+		_, handler, err := r.FormFile(NFILE)
+		if err == nil {
+			fileName = handler.Filename
+		}
+
+		createTimeInt64, err := strconv.ParseInt(r.FormValue(NFILET), 10, 64)
+		if err == nil {
+			createTime = uint64(createTimeInt64)
 		}
 
 		fmt.Printf("[%s] ret code:%d, appid:%s, file_name:%s, tag1:%s, tag2:%s, create_time:%s\n",
-			time.Now().Format(time.RFC3339), logStatus, appid, fileName, tag1, tag2, time.Unix(int64(createTime), 0).Format(time.RFC3339))
+			time.Now().Format(time.RFC3339), logStatus, r.Header.Get(NUAPPID), fileName, r.FormValue(NTAG), r.FormValue(NTAG2), time.Unix(int64(createTime), 0).Format(time.RFC3339))
 	}()
 
 	appid := r.Header.Get(NUAPPID)
