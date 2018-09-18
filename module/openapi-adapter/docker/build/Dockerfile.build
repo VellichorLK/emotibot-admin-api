@@ -5,13 +5,21 @@ ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
 
 COPY ./module/${PROJECT} ${GOPREFIX}/module/${PROJECT}
+COPY ./pkg ${GOPREFIX}/pkg
 ## 如有需要加上其他编译时所需要的设定档可在此加上额外的指令
 
 WORKDIR ${GOPREFIX}/module/${PROJECT}
-RUN go test ./...
 RUN go get -v && go install
+RUN go test ./...
 
-## 复制上一个 stage 所编译出的 binary 至 scratch image
+## 复制上一个 stage 所编译出的 binary 及其他执行时所需要的设定档至 scratch image
 FROM scratch
 
-COPY --from=build /go/bin/${PROJECT} /usr/bin/app/${PROJECT}
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+WORKDIR /usr/bin/app
+COPY --from=build /go/bin/${PROJECT} .
+COPY --from=build ${GOPREFIX}/module/${PROJECT}/k8slist .
+COPY --from=build ${GOPREFIX}/module/${PROJECT}/docker/entrypoint.sh .
+## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
