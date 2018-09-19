@@ -402,7 +402,7 @@ func createVisitStatsTagResponse(query data.VisitStatsQuery,
 	tagData := make([]data.VisitStatsTagData, 0)
 
 	for tagName, q := range visitStatsQ {
-		tagID, found := services.GetTagIDByName(query.AggTagType, tagName)
+		tagID, found := services.GetTagIDByName(query.AppID, query.AggTagType, tagName)
 		if !found {
 			continue
 		}

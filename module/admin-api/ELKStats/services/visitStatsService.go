@@ -55,7 +55,7 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 		}
 
 		counts := extractCountsFromAggTermsBuckets(result, aggName)
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -376,7 +376,7 @@ func TotalAskCounts(ctx context.Context, client *elastic.Client,
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -405,7 +405,7 @@ func NormalResponseCounts(ctx context.Context, client *elastic.Client,
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -434,7 +434,7 @@ func ChatCounts(ctx context.Context, client *elastic.Client,
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -463,7 +463,7 @@ func OtherCounts(ctx context.Context, client *elastic.Client,
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -492,7 +492,7 @@ func UnknownQnACounts(ctx context.Context, client *elastic.Client,
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AggTagType)
+		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -727,8 +727,9 @@ func doVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, ap
 
 func createTagCountsMap(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	counts := make(map[string]interface{})
+	availableTags := getAvailableTags(query.AppID)
 
-	aggTags, ok := tags[query.AggTagType]
+	aggTags, ok := availableTags[query.AggTagType]
 	if !ok {
 		return nil, data.ErrTagTypeNotFound
 	}
@@ -741,10 +742,11 @@ func createTagCountsMap(query data.VisitStatsQuery) (map[string]interface{}, err
 }
 
 // normalizeTagCounts returns a new counts map with missing tags and without redundant tags
-func normalizeTagCounts(counts map[string]interface{}, tagType string) (map[string]interface{}, error) {
+func normalizeTagCounts(counts map[string]interface{}, appID string, tagType string) (map[string]interface{}, error) {
 	tagCounts := make(map[string]interface{})
+	availableTags := getAvailableTags(appID)
 
-	if aggTags, ok := tags[tagType]; ok {
+	if aggTags, ok := availableTags[tagType]; ok {
 		for _, aggTag := range aggTags {
 			if count, ok := counts[aggTag.Name]; ok {
 				tagCounts[aggTag.Name] = count
