@@ -9,10 +9,11 @@ DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 printf $DOCKER_IMAGE > $DIR/DOCKER_IMAGE
-set +e
-echo -n "Trying to pull image: $DOCKER_IMAGE...";
-docker pull $DOCKER_IMAGE > /dev/null 2>&1 && echo "OK" && exit 0;
-set -e
+# Remove the pulling because if old one already exist on docker-registry, it will alway skip the new one.
+# set +e
+# echo -n "Trying to pull image: $DOCKER_IMAGE...";
+# docker pull $DOCKER_IMAGE > /dev/null 2>&1 && echo "OK" && exit 0;
+# set -e
 echo "FAIL";
 echo "Start to build base platform image"
 
