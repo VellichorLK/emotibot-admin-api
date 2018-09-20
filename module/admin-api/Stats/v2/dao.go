@@ -9,25 +9,30 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-func getAuditList(enterprise *string, appid *string, userid *string, module *string, operation *string, start int, end int, page int, listPerPage int) ([]*AuditLog, error) {
+func getAuditList(enterprise []string, appid []string, userid *string, module []string, operation *string, start int, end int, page int, listPerPage int) ([]*AuditLog, int, error) {
 	mySQL := util.GetAuditDB()
 	if mySQL == nil {
-		return nil, errors.New("DB is not inited")
+		return nil, 0, errors.New("DB is not inited")
 	}
 
 	columns := []string{"enterprise", "appid", "user_id", "ip_source", "create_time", "module", "operation", "content", "result"}
-
 	conditions := []string{}
 	args := []interface{}{}
 
-	if enterprise != nil {
-		conditions = append(conditions, "enterprise = ?")
-		args = append(args, *enterprise)
+	if enterprise != nil && len(enterprise) > 0 {
+		orCond := fmt.Sprintf("( enterprise = ? %s )", strings.Repeat("OR enterprise = ?", len(enterprise)-1))
+		conditions = append(conditions, orCond)
+		for idx := range enterprise {
+			args = append(args, enterprise[idx])
+		}
 	}
 
-	if appid != nil {
-		conditions = append(conditions, "appid = ?")
-		args = append(args, *appid)
+	if appid != nil && len(appid) > 0 {
+		orCond := fmt.Sprintf("( appid = ? %s )", strings.Repeat("OR appid = ?", len(appid)-1))
+		conditions = append(conditions, orCond)
+		for idx := range appid {
+			args = append(args, appid[idx])
+		}
 	}
 
 	if userid != nil {
@@ -35,14 +40,17 @@ func getAuditList(enterprise *string, appid *string, userid *string, module *str
 		args = append(args, *userid)
 	}
 
-	if module != nil && *module != "all" {
-		conditions = append(conditions, "module = ?")
-		args = append(args, *userid)
+	if module != nil && len(module) > 0 {
+		orCond := fmt.Sprintf("( module = ? %s )", strings.Repeat("OR module = ?", len(module)-1))
+		conditions = append(conditions, orCond)
+		for idx := range module {
+			args = append(args, module[idx])
+		}
 	}
 
 	if operation != nil && *operation != "all" {
 		conditions = append(conditions, "operation = ?")
-		args = append(args, *userid)
+		args = append(args, *operation)
 	}
 
 	conditions = append(conditions, "(UNIX_TIMESTAMP(create_time) BETWEEN ? and ?)")
@@ -50,7 +58,9 @@ func getAuditList(enterprise *string, appid *string, userid *string, module *str
 	args = append(args, end)
 
 	queryStr := ""
-	if page <= 0 {
+	getAll := page <= 0
+	total := 0
+	if getAll {
 		queryStr = fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc", strings.Join(columns, ","), strings.Join(conditions, " and "))
 	} else {
 		queryStr = fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(columns, ","), strings.Join(conditions, " and "))
@@ -63,7 +73,7 @@ func getAuditList(enterprise *string, appid *string, userid *string, module *str
 
 	rows, err := mySQL.Query(queryStr, args...)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -74,5 +84,15 @@ func getAuditList(enterprise *string, appid *string, userid *string, module *str
 		ret = append(ret, &temp)
 	}
 
-	return ret, nil
+	if getAll {
+		total = len(ret)
+	} else {
+		queryStr = fmt.Sprintf("SELECT count(*) FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(conditions, " and "))
+		err = mySQL.QueryRow(queryStr, args...).Scan(&total)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return ret, total, nil
 }

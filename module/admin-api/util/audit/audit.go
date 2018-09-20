@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
@@ -42,6 +44,54 @@ var moduleMap = map[string]string{
 	"dictionary": AuditModuleWordbank,
 }
 
+var operationLocaleKeyMap = map[string]string{
+	"0": "AuditOperationAdd",
+	"1": "AuditOperationEdit",
+	"2": "AuditOperationDelete",
+	"3": "AuditOperationImport",
+	"4": "AuditOperationExport",
+	"6": "AuditOperationLogin",
+	"7": "AuditOperationPublish",
+	"8": "AuditOperationActive",
+	"9": "AuditOperationDeactive",
+
+	AuditOperationAdd:      "AuditOperationAdd",
+	AuditOperationEdit:     "AuditOperationEdit",
+	AuditOperationDelete:   "AuditOperationDelete",
+	AuditOperationImport:   "AuditOperationImport",
+	AuditOperationExport:   "AuditOperationExport",
+	AuditOperationLogin:    "AuditOperationLogin",
+	AuditOperationPublish:  "AuditOperationPublish",
+	AuditOperationActive:   "AuditOperationActive",
+	AuditOperationDeactive: "AuditOperationDeactive",
+}
+
+var moduleLocalKeyMap = map[string]string{
+	"2":  "AuditModuleSSM",
+	"9":  "AuditModuleTaskEngine",
+	"10": "AuditModuleIntentManage",
+	"5":  "AuditModuleWordbank",
+	"6":  "AuditModuleStatisticAnalysis",
+	"3":  "AuditModuleRobotProfile",
+	"0":  "AuditModuleRobotChatSkill",
+	"1":  "AuditModuleRobotFunction",
+
+	AuditModuleSSM:               "AuditModuleSSM",
+	AuditModuleFAQ:               "AuditModuleFAQ",
+	AuditModuleQALabel:           "AuditModuleQALabel",
+	AuditModuleTaskEngine:        "AuditModuleTaskEngine",
+	AuditModuleIntentManage:      "AuditModuleIntentManage",
+	AuditModuleWordbank:          "AuditModuleWordbank",
+	AuditModuleStatisticDaily:    "AuditModuleStatisticDaily",
+	AuditModuleStatisticAnalysis: "AuditModuleStatisticAnalysis",
+	AuditModuleAudit:             "AuditModuleAudit",
+	AuditModuleRobotProfile:      "AuditModuleRobotProfile",
+	AuditModuleRobotChatSkill:    "AuditModuleRobotChatSkill",
+	AuditModuleRobotFunction:     "AuditModuleRobotFunction",
+	AuditModuleRobotCommand:      "AuditModuleRobotCommand",
+	AuditModuleIntegration:       "AuditModuleIntegration",
+}
+
 type auditLog struct {
 	EnterpriseID string
 	AppID        string
@@ -77,8 +127,8 @@ func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
 	userIP := requestheader.GetUserIP(r)
 	appid := requestheader.GetAppID(r)
 	enterpriseID := requestheader.GetEnterpriseID(r)
-
 	module := r.Header.Get(AuditCustomHeader)
+
 	operation := ""
 	switch r.Method {
 	case http.MethodPost:
@@ -94,7 +144,6 @@ func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
 	}
 
 	moduleCode := moduleMap[module]
-
 	AddAuditLog(enterpriseID, appid, userID, userIP, moduleCode, operation, msg, result)
 }
 
@@ -144,4 +193,26 @@ func addAuditLog(log auditLog) {
 	if errWithAppID != nil && errWithoutAppID != nil {
 		logger.Error.Printf("insert audit fail: %s", errWithoutAppID.Error())
 	}
+}
+
+// GetAuditModuleName will get module name by locale
+func GetAuditModuleName(locale, module string) string {
+	if localeKey, ok := moduleLocalKeyMap[module]; ok {
+		msg := localemsg.Get(locale, localeKey)
+		if msg != "" {
+			return msg
+		}
+	}
+	return module
+}
+
+// GetAuditOperationName will get operation name by locale
+func GetAuditOperationName(locale, operation string) string {
+	if localeKey, ok := operationLocaleKeyMap[operation]; ok {
+		msg := localemsg.Get(locale, localeKey)
+		if msg != "" {
+			return msg
+		}
+	}
+	return operation
 }

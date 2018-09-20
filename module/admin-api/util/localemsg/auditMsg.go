@@ -1,0 +1,58 @@
+package localemsg
+
+var auditMsg = map[string]map[string]string{
+	"zh-cn": map[string]string{
+		// Modules
+		"AuditModuleSSM":               "问答库",
+		"AuditModuleFAQ":               "问答库",
+		"AuditModuleQALabel":           "标签管理",
+		"AuditModuleTaskEngine":        "任务引擎",
+		"AuditModuleIntentManage":      "意图引擎",
+		"AuditModuleWordbank":          "词库",
+		"AuditModuleStatisticDaily":    "日志管理",
+		"AuditModuleStatisticAnalysis": "统计分析",
+		"AuditModuleStatisticAudit":    "操作日志",
+		"AuditModuleRobotProfile":      "机器人形象",
+		"AuditModuleRobotChatSkill":    "话术设置",
+		"AuditModuleRobotFunction":     "技能设置",
+		"AuditModuleRobotCommand":      "指令设置",
+		"AuditModuleIntegration":       "接入部署",
+		// Operation
+		"AuditOperationAdd":      "新增",
+		"AuditOperationEdit":     "修改",
+		"AuditOperationDelete":   "删除",
+		"AuditOperationImport":   "导入",
+		"AuditOperationExport":   "导出",
+		"AuditOperationLogin":    "登入",
+		"AuditOperationPublish":  "发布",
+		"AuditOperationActive":   "启动",
+		"AuditOperationDeactive": "关闭",
+	},
+	"zh-tw": map[string]string{
+		// Modules
+		"AuditModuleSSM":               "問答庫",
+		"AuditModuleFAQ":               "問答庫",
+		"AuditModuleQALabel":           "標籤管理",
+		"AuditModuleTaskEngine":        "任務引擎",
+		"AuditModuleIntentManage":      "意圖引擎",
+		"AuditModuleWordbank":          "詞庫",
+		"AuditModuleStatisticDaily":    "日誌管理",
+		"AuditModuleStatisticAnalysis": "統計分析",
+		"AuditModuleStatisticAudit":    "操作日誌",
+		"AuditModuleRobotProfile":      "機器人形象",
+		"AuditModuleRobotChatSkill":    "話術設置",
+		"AuditModuleRobotFunction":     "技能設置",
+		"AuditModuleRobotCommand":      "指令設置",
+		"AuditModuleIntegration":       "接入部署",
+		// Operation
+		"AuditOperationAdd":      "新增",
+		"AuditOperationEdit":     "修改",
+		"AuditOperationDelete":   "删除",
+		"AuditOperationImport":   "导入",
+		"AuditOperationExport":   "导出",
+		"AuditOperationLogin":    "登入",
+		"AuditOperationPublish":  "發布",
+		"AuditOperationActive":   "啟動",
+		"AuditOperationDeactive": "關閉",
+	},
+}

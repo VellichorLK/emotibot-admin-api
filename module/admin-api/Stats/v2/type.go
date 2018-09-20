@@ -7,26 +7,38 @@ type AuditInput struct {
 	ListPerPage  int          `json:"limit"`
 	Start        int          `json:"start_time"`
 	End          int          `json:"end_time"`
-	EnterpriseID string       `json:"enterprise_id"`
-	RobotID      string       `json:"robot_id"`
+	EnterpriseID []string     `json:"enterprise_id"`
+	RobotID      []string     `json:"robot_id"`
 	UserID       string       `json:"user_id"`
 	Filter       *AuditFilter `json:"operation"`
 	Export       bool
 }
 
 type AuditFilter struct {
-	Module    string `json:"module"`
-	Operation string `json:"type"`
+	Module    []string `json:"module"`
+	Operation string   `json:"type"`
 }
 
 type AuditLog struct {
-	EnterpriseID string    `json:"enterprise"`
-	AppID        string    `json:"appid"`
-	UserID       string    `json:"user"`
-	Module       string    `json:"module"`
-	Operation    string    `json:"operation"`
-	Result       int       `json:"result"`
+	EnterpriseID string `json:"enterprise"`
+	AppID        string `json:"appid"`
+	UserID       string `json:"user"`
+	Module       string `json:"module"`
+	Operation    string `json:"operation"`
+	Result       int
+	ResultStr    string    `json:"result"`
 	CreateTime   time.Time `json:"create_time"`
 	UserIP       string    `json:"user_ip"`
 	Content      string    `json:"content"`
+}
+
+type AuditHeader struct {
+	ID   string `json:"key"`
+	Text string `json:"text"`
+}
+
+type AuditResult struct {
+	Total  int            `json:"total_size"`
+	Header []*AuditHeader `json:"table_header"`
+	Logs   []*AuditLog    `json:"data"`
 }
