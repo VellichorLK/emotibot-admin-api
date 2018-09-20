@@ -12,6 +12,7 @@ func handleListRobotAudit(w http.ResponseWriter, r *http.Request) {
 	jsonErr := util.ReadJSON(r, &filter)
 	if jsonErr != nil {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
+		return
 	}
 	records, err := GetRobotAuditRecord(&filter)
 	if err != nil {
@@ -25,6 +26,7 @@ func handleListEnterpriseAudit(w http.ResponseWriter, r *http.Request) {
 	jsonErr := util.ReadJSON(r, &filter)
 	if jsonErr != nil {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
+		return
 	}
 	records, err := GetEnterpriseAuditRecord(&filter)
 	if err != nil {
@@ -38,6 +40,7 @@ func handleListSystemAudit(w http.ResponseWriter, r *http.Request) {
 	jsonErr := util.ReadJSON(r, &filter)
 	if jsonErr != nil {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
+		return
 	}
 	records, err := GetSystemAuditRecord(&filter)
 	if err != nil {

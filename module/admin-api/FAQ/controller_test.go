@@ -87,7 +87,7 @@ package FAQ
 // 				SimilarQuestion{"相似问题4", "3"},
 // 			},
 // 			200,
-// 			util.AuditOperationEdit,
+// 			audit.AuditOperationEdit,
 // 			//預期audit log結果為：相似問題1 => 2,3  4號因為兩邊都有所以移除了
 // 			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题1=>相似问题2;相似问题3",
 // 		},
@@ -99,7 +99,7 @@ package FAQ
 // 				SimilarQuestion{"相似问题4", "3"},
 // 			},
 // 			200,
-// 			util.AuditOperationAdd,
+// 			audit.AuditOperationAdd,
 // 			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题3",
 // 		},
 // 		{
@@ -108,7 +108,7 @@ package FAQ
 // 				SimilarQuestion{"相似问题1", "1"},
 // 			},
 // 			200,
-// 			util.AuditOperationDelete,
+// 			audit.AuditOperationDelete,
 // 			"[相似问题]:[/LEVEL1/LEVEL2/LEVEL3][标准问题1]:相似问题4",
 // 		},
 // 	}
@@ -134,7 +134,7 @@ package FAQ
 // 			mockedMainDB.ExpectPrepare("INSERT INTO vipshop_squestion").ExpectExec().WillReturnResult(sqlmock.NewResult(1, 1))
 // 			mockedMainDB.ExpectExec("UPDATE ").WillReturnResult(sqlmock.NewResult(1, 1))
 // 			mockedMainDB.ExpectCommit()
-// 			mockedAuditDB.ExpectExec("insert audit_record").WithArgs("userX", "0.0.0.0", util.AuditModuleQA, tt.ExpectedAuditOperation, tt.ExpectedAuditLog, 1).WillReturnResult(sqlmock.NewResult(1, 1))
+// 			mockedAuditDB.ExpectExec("insert audit_record").WithArgs("userX", "0.0.0.0", audit.AuditModuleQA, tt.ExpectedAuditOperation, tt.ExpectedAuditLog, 1).WillReturnResult(sqlmock.NewResult(1, 1))
 // 			e.POST("/question/{qid}/similar-questions").WithPath("qid", qid).WithJSON(SimilarQuestionReqBody{tt.Body}).WithHeaders(mHeader).Expect().Status(http.StatusOK)
 // 			if err := mockedMainDB.ExpectationsWereMet(); err != nil {
 // 				t.Fatal(err)

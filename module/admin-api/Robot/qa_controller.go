@@ -8,6 +8,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -88,7 +89,7 @@ func handleRobotQAModelRebuild(w http.ResponseWriter, r *http.Request) {
 			util.Msg["RobotProfile"], util.Msg["Rebuild"], util.Msg["Success"])
 		result = 1
 	}
-	addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditLog, result)
 }
 
 func handleUpdateRobotQA(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +111,7 @@ func handleUpdateRobotQA(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusBadRequest)
 		auditLog = fmt.Sprintf("%s: %s%s", failMsg, util.Msg["Request"], util.Msg["Error"])
 		errCode = ApiError.REQUEST_ERROR
-		addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
+		addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditLog, result)
 		util.WriteJSON(w, util.GenRetObj(errCode, retObj))
 		return
 	}
@@ -132,7 +133,7 @@ func handleUpdateRobotQA(w http.ResponseWriter, r *http.Request) {
 			result = 1
 		}
 	}
-	addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditLog, result)
 	util.WriteJSON(w, util.GenRetObj(errCode, retObj))
 }
 
@@ -235,7 +236,7 @@ func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusBadRequest)
 		auditLog = fmt.Sprintf("%s: %s%s", failMsg, util.Msg["Request"], util.Msg["Error"])
 		errCode = ApiError.REQUEST_ERROR
-		addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
+		addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditLog, result)
 		util.WriteJSON(w, util.GenRetObj(errCode, retObj))
 		return
 	}
@@ -257,7 +258,7 @@ func handleUpdateRobotQAV2(w http.ResponseWriter, r *http.Request) {
 			result = 1
 		}
 	}
-	addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditLog, result)
+	addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditLog, result)
 	util.WriteJSON(w, util.GenRetObj(errCode, retObj))
 
 	mcCode, mcErr := util.McRebuildRobotQA(appid)

@@ -6,6 +6,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -74,26 +75,27 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	userID := requestheader.GetUserID(r)
 	userIP := requestheader.GetUserIP(r)
 	appid := requestheader.GetAppID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 
 	moduleID := ""
 	switch module {
 	case "qalist":
-		moduleID = util.AuditModuleQA // = "2" // "问答库"
+		moduleID = audit.AuditModuleSSM // = "2" // "问答库"
 		break
 	case "dictionary":
-		moduleID = util.AuditModuleDictionary // = "5" // "词库管理"
+		moduleID = audit.AuditModuleWordbank // = "5" // "词库管理"
 		break
 	case "statistic-analysis":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleStatisticAnalysis // = "6" // "数据管理"
 		break
 	case "statistic-daily":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleStatisticDaily // = "6" // "数据管理"
 		break
 	case "statistic-audit":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleAudit // = "6" // "数据管理"
 		break
 	case "task-engine":
-		moduleID = util.AuditModuleTaskEngine // 任務引擎
+		moduleID = audit.AuditModuleTaskEngine // 任務引擎
 		break
 	}
 
@@ -108,7 +110,7 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	if extMsg != "" {
 		log = fmt.Sprintf("%s: %s", log, extMsg)
 	}
-	err := util.AddAuditLog(appid, userID, userIP, moduleID, util.AuditOperationExport, log, 1)
+	err := audit.AddAuditLog(enterprise, appid, userID, userIP, moduleID, audit.AuditOperationExport, log, 1)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {

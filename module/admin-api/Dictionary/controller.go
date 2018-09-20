@@ -12,6 +12,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -115,8 +116,6 @@ func handleGetWordbank(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 
 	updatedWordbank := &WordBank{}
 	err := util.ReadJSON(r, updatedWordbank)
@@ -154,13 +153,12 @@ func handleUpdateWordbank(w http.ResponseWriter, r *http.Request) {
 	}
 
 	auditMessage := buffer.String()
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationEdit, auditMessage, auditRet)
+	// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationEdit, auditMessage, auditRet)
+	audit.AddAuditFromRequestAuto(r, auditMessage, auditRet)
 }
 
 func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 
 	paths, newWordBank, err := getWordbankFromReq(r)
 	if err != nil {
@@ -201,7 +199,8 @@ func handlePutWordbank(w http.ResponseWriter, r *http.Request) {
 	if newWordBank != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, newWordBank))
 	}
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMessage, auditRet)
+	// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMessage, auditRet)
+	audit.AddAuditFromRequestAuto(r, auditMessage, auditRet)
 }
 
 func checkLevel1Valid(dir string) bool {
@@ -301,12 +300,14 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errMsg := ApiError.GetErrorMsg(errCode)
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		audit.AddAuditFromRequestAuto(r, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	} else if errCode != ApiError.SUCCESS {
 		errMsg := ApiError.GetErrorMsg(errCode)
 		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, fmt.Sprintf("%s: %s", errMsg, err.Errorfmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
+		audit.AddAuditFromRequestAuto(r, fmt.Sprintf("%s: %s", errMsg, err.Error()), 0)
 		return
 	}
 
@@ -314,12 +315,14 @@ func handleUpload(w http.ResponseWriter, r *http.Request) {
 	errCode, err = util.McUpdateWordBank(appid, userID, userIP, retFile)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
+		audit.AddAuditFromRequestAuto(r, fmt.Sprintf("%s %s", util.Msg["Server"], util.Msg["Error"]), 0)
 		logger.Error.Printf("update wordbank with multicustomer error: %s", err.Error())
 	} else {
 		errCode = ApiError.SUCCESS
 		util.WriteJSON(w, util.GenSimpleRetObj(errCode))
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
+		audit.AddAuditFromRequestAuto(r, fmt.Sprintf("%s %s", util.Msg["UploadFile"], info.Filename), 1)
 	}
 }
 
@@ -354,15 +357,14 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	var err error
 	buf := []byte{}
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	defer func() {
 		logger.Info.Println("Audit: ", errMsg)
 		ret := 0
 		if err == nil {
 			ret = 1
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, errMsg, ret)
+		audit.AddAuditFromRequestAuto(r, errMsg, ret)
 
 		filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 		RecordDictionaryImportProcess(appid, filename, buf, err)
@@ -402,12 +404,11 @@ func handleUploadToMySQL(w http.ResponseWriter, r *http.Request) {
 func handleDownloadFromMySQL(w http.ResponseWriter, r *http.Request) {
 	ret := 0
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	filename := util.GetMuxVar(r, "file")
 	errMsg := fmt.Sprintf("%s%s: %s", util.Msg["DownloadFile"], util.Msg["Wordbank"], filename)
 	defer func() {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationExport, errMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationExport, errMsg, ret)
+		audit.AddAuditFromRequestAuto(r, errMsg, ret)
 	}()
 
 	if filename == "" {
@@ -469,12 +470,11 @@ func handleGetSynonyms(w http.ResponseWriter, r *http.Request) {
 
 func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
 	ret := 0
 	defer func() {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationDelete, errMsg, ret)
+		audit.AddAuditFromRequestAuto(r, errMsg, ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")
@@ -509,14 +509,13 @@ func handleDeleteWordbank(w http.ResponseWriter, r *http.Request) {
 
 func handleDeleteWordbankDir(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	path := r.URL.Query().Get("path")
 	paths := strings.Split(path, "/")
 	errMsg := fmt.Sprintf("%s%s %s", util.Msg["Delete"], util.Msg["WordbankDir"], path)
 	ret := 0
 	defer func() {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationDelete, errMsg, ret)
+		audit.AddAuditFromRequestAuto(r, errMsg, ret)
 	}()
 
 	if appid == "" {
@@ -610,8 +609,6 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 	var err error
 	errno := ApiError.SUCCESS
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["Wordbank"])
 	result := 0
 	defer func() {
@@ -620,7 +617,8 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 		} else {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, result)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationDelete, errMsg, result)
+		audit.AddAuditFromRequestAuto(r, errMsg, result)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")
@@ -654,12 +652,11 @@ func handleDeleteWordbankV3(w http.ResponseWriter, r *http.Request) {
 }
 func handleDeleteWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	errMsg := fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["WordbankDir"])
 	ret := 0
 	defer func() {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationDelete, errMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationDelete, errMsg, ret)
+		audit.AddAuditFromRequestAuto(r, errMsg, ret)
 	}()
 	id, err := util.GetMuxIntVar(r, "id")
 	if err != nil {
@@ -706,8 +703,6 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	now := time.Now()
 	buf := []byte{}
-	userID := requestheader.GetUserID(r)
-	userIP := requestheader.GetUserIP(r)
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("Recovered in %v", r)
@@ -726,7 +721,8 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 			errMsg += ": " + err.Error()
 		}
 		logger.Trace.Println("Audit: ", errMsg)
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationImport, errMsg, importResult)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationImport, errMsg, importResult)
+		audit.AddAuditFromRequestAuto(r, errMsg, importResult)
 
 		RecordDictionaryImportProcess(appid, filename, buf, err)
 	}()
@@ -841,8 +837,6 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	var className string
 	defer func() {
-		userID := requestheader.GetUserID(r)
-		userIP := requestheader.GetUserIP(r)
 		ret := 0
 
 		auditMsg := fmt.Sprintf("%s%s %s", util.Msg["Add"], util.Msg["WordbankDir"], className)
@@ -862,7 +856,8 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 			}
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
 	}()
 	pid, err := strconv.Atoi(r.FormValue("pid"))
 	if err != nil {
@@ -912,8 +907,6 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 
 	appid := requestheader.GetAppID(r)
 	defer func() {
-		userID := requestheader.GetUserID(r)
-		userIP := requestheader.GetUserIP(r)
 		ret := 0
 
 		auditMsg := fmt.Sprintf("%s%s %s -> %s", util.Msg["Modify"], util.Msg["WordbankDir"], origName, newName)
@@ -931,7 +924,8 @@ func handleUpdateWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
 	}()
 
 	newName = r.FormValue("name")
@@ -976,8 +970,6 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	appid := requestheader.GetAppID(r)
 	defer func() {
-		userID := requestheader.GetUserID(r)
-		userIP := requestheader.GetUserIP(r)
 		ret := 0
 
 		name := ""
@@ -1001,7 +993,8 @@ func handleAddWordbankV3(w http.ResponseWriter, r *http.Request) {
 				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 			}
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
 	}()
 
 	cid, err := strconv.Atoi(r.FormValue("cid"))
@@ -1044,8 +1037,6 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 
 	appid := requestheader.GetAppID(r)
 	defer func() {
-		userID := requestheader.GetUserID(r)
-		userIP := requestheader.GetUserIP(r)
 		ret := 0
 
 		name := ""
@@ -1069,7 +1060,8 @@ func handleUpdateWordbankV3(w http.ResponseWriter, r *http.Request) {
 				auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 			}
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")
@@ -1124,8 +1116,6 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	var parentName string
 	appid := requestheader.GetAppID(r)
 	defer func() {
-		userID := requestheader.GetUserID(r)
-		userIP := requestheader.GetUserIP(r)
 		ret := 0
 
 		auditMsg := fmt.Sprintf("%s%s %s %s %s",
@@ -1142,7 +1132,8 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
 		}
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleDictionary, util.AuditOperationAdd, auditMsg, ret)
+		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")

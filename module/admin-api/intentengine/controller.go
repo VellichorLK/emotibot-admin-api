@@ -8,6 +8,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/intentengine/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"github.com/siongui/gojianfan"
 )
@@ -93,7 +94,7 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			ret = 0
 		}
-		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationImport,
+		audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationImport,
 			auditMsg, ret)
 	}()
 
@@ -147,7 +148,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		ver, err := strconv.Atoi(v)
 		if err != nil {
 			http.Error(w, "Invalid intent dataset version", http.StatusBadRequest)
-			util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+			audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 				fmt.Sprintf("%s: %s", auditMsg, util.Msg["IntentVersionError"]), 0)
 			return
 		}
@@ -158,7 +159,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 	content, filename, errno, err := GetDownloadIntents(appID, version, format)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
-		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+		audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 			auditMsg, 0)
 		return
 	}
@@ -169,7 +170,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
 	w.Write(content)
-	util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+	audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 		auditMsg, 1)
 }
 

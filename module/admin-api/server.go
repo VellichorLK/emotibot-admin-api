@@ -29,6 +29,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/clustering"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
@@ -229,7 +230,7 @@ func setRoute() *mux.Router {
 					}()
 
 					if checkPrivilege(r, entrypoint) {
-						r.Header.Set(util.AuditCustomHeader, info.ModuleName)
+						r.Header.Set(audit.AuditCustomHeader, info.ModuleName)
 						entrypoint.Callback(w, r)
 					} else {
 						http.Error(w, "Unauthorized", http.StatusUnauthorized)

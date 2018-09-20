@@ -11,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -103,7 +104,8 @@ func handleAddCategory(w http.ResponseWriter, r *http.Request) {
 	} else {
 		util.WriteJSON(w, newCatetory)
 	}
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleFAQ, audit.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +141,8 @@ func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		auditRet = 0
 	}
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleFAQ, audit.AuditOperationEdit, auditMessage, auditRet)
 	util.ConsulUpdateFAQ(appid)
 }
 
@@ -177,7 +180,8 @@ func handleUpdateCategories(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		auditRet = 0
 	}
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleFAQ, audit.AuditOperationEdit, auditMessage, auditRet)
 }
 
 func handleGetCategories(w http.ResponseWriter, r *http.Request) {
@@ -241,7 +245,8 @@ func handleUpdateSimilarQuestions(w http.ResponseWriter, r *http.Request) {
 	// update similar questions
 	err = updateSimilarQuestions(qid, appid, userID, sqs)
 	if err != nil {
-		util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, "更新相似问失败", proccessStatus)
+		enterpriseID := requestheader.GetEnterpriseID(r)
+		audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleFAQ, audit.AuditOperationEdit, "更新相似问失败", proccessStatus)
 		logger.Error.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
 		return
@@ -265,19 +270,20 @@ contentMatching:
 	sort.Strings(sqsStr)
 
 	proccessStatus = 1
-	operation := util.AuditOperationEdit
+	operation := audit.AuditOperationEdit
 	//當全部都是新的(原始的被扣完)行為要改成新增, 全部都是舊的(新的是空的)行為要改成刪除
 	if len(originSimilarityQuestions) == 0 {
-		operation = util.AuditOperationAdd
+		operation = audit.AuditOperationAdd
 		auditMessage += fmt.Sprintf("%s", strings.Join(sqsStr, ";"))
 	} else if len(sqsStr) == 0 {
-		operation = util.AuditOperationDelete
+		operation = audit.AuditOperationDelete
 		auditMessage += fmt.Sprintf("%s", strings.Join(originSimilarityQuestions, ";"))
 	} else {
 		auditMessage += fmt.Sprintf("%s=>%s", strings.Join(originSimilarityQuestions, ";"), strings.Join(sqsStr, ";"))
 
 	}
-	util.AddAuditLog(appid, userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, audit.AuditModuleFAQ, operation, auditMessage, proccessStatus)
 
 }
 

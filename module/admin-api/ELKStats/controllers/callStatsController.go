@@ -60,9 +60,9 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.CallStatsQuery{
 		CommonQuery: data.CommonQuery{
-			AppID:        appID,
-			StartTime:    startTime,
-			EndTime:      endTime,
+			AppID:     appID,
+			StartTime: startTime,
+			EndTime:   endTime,
 		},
 		AggInterval: aggInterval,
 	}

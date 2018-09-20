@@ -9,6 +9,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -81,7 +82,7 @@ func handleAddRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationAdd, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationAdd, auditMsg, result)
 		}
 	}()
 
@@ -148,7 +149,7 @@ func handleUpdateRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditMsg, result)
 		}
 	}()
 
@@ -231,7 +232,7 @@ func handleDeleteRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationDelete, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationDelete, auditMsg, result)
 		}
 	}()
 
@@ -301,7 +302,7 @@ func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationAdd, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationAdd, auditMsg, result)
 		}
 	}()
 
@@ -368,7 +369,7 @@ func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationEdit, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationEdit, auditMsg, result)
 		}
 	}()
 
@@ -450,7 +451,7 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 
 		auditMsg := auditBuffer.String()
 		if auditMsg != "" {
-			addAudit(r, util.AuditModuleRobotProfile, util.AuditOperationDelete, auditMsg, result)
+			addAudit(r, audit.AuditModuleRobotProfile, audit.AuditOperationDelete, auditMsg, result)
 		}
 	}()
 
