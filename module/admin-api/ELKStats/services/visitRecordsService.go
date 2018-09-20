@@ -63,8 +63,8 @@ func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
 	}
 	if query.StartTime != nil && query.EndTime != nil {
 		var rq = elastic.NewRangeQuery("log_time")
-		rq.Gte(time.Unix(*query.StartTime, 0).Format(data.ESTimeFormat))
-		rq.Lte(time.Unix(*query.EndTime, 0).Format(data.ESTimeFormat))
+		rq.Gte(time.Unix(*query.StartTime, 0).In(time.UTC).Format(data.ESTimeFormat))
+		rq.Lte(time.Unix(*query.EndTime, 0).In(time.UTC).Format(data.ESTimeFormat))
 		rq.Format("yyyy-MM-dd HH:mm:ss")
 		//Since ElasticSearch will transfer the timezone for us, it is no need to transfer the timezone by ourself
 		rq.TimeZone("+00:00")
