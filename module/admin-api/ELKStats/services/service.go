@@ -11,7 +11,7 @@ import (
 	"github.com/olivere/elastic"
 )
 
-var tags map[string][]data.Tag
+var tags map[string]map[string][]data.Tag
 var timezone = getSystemTimezone()
 
 func createRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQuery {
@@ -164,9 +164,11 @@ func InitTags() (err error) {
 	return
 }
 
-func GetTagIDByName(tagType string, tagName string) (tagID string, found bool) {
-	_tags := tags[tagType]
-	for _, tag := range _tags {
+func GetTagIDByName(appID string, tagType string, tagName string) (tagID string, found bool) {
+	availableTags := getAvailableTags(appID)
+
+	_availableTags := availableTags[tagType]
+	for _, tag := range _availableTags {
 		if tag.Name == tagName {
 			tagID = tag.Code
 			found = true
@@ -176,4 +178,24 @@ func GetTagIDByName(tagType string, tagName string) (tagID string, found bool) {
 
 	found = false
 	return
+}
+
+func getAvailableTags(appID string) map[string][]data.Tag {
+	availableTags := make(map[string][]data.Tag, 0)
+
+	_tags, ok := tags["system"]
+	if ok {
+		for _tagType, _tag := range _tags {
+			availableTags[_tagType] = _tag
+		}
+	}
+
+	_tags, ok = tags[appID]
+	if ok {
+		for _tagType, _tag := range _tags {
+			availableTags[_tagType] = append(availableTags[_tagType], _tag...)
+		}
+	}
+
+	return availableTags
 }
