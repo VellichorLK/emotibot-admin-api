@@ -218,6 +218,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 		dao.UpdateVersionStatus(version, now, trainResultFail)
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(version, now, trainResultSuccess)
+		util.ConsulUpdateIntent(appid)
 	default:
 		go checkIntentModelStatus(appid, modelID, version)
 	}
