@@ -14,6 +14,9 @@ const (
 
 	// ConstAppIDHeaderKey is header record the appid
 	ConstAppIDHeaderKey = "X-AppID"
+
+	// ConstEnterpriseIDHeaderKey is header record the appid
+	ConstEnterpriseIDHeaderKey = "X-EnterpriseID"
 )
 
 // GetAppID will get AppID from http header
@@ -34,4 +37,9 @@ func GetUserID(r *http.Request) string {
 // GetUserIP will get User addr from http header
 func GetUserIP(r *http.Request) string {
 	return r.Header.Get(ConstUserIPHeaderKey)
+}
+
+// GetEnterpriseID will get User addr from http header
+func GetEnterpriseID(r *http.Request) string {
+	return r.Header.Get(ConstEnterpriseIDHeaderKey)
 }

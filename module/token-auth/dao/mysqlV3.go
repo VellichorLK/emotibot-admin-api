@@ -2068,9 +2068,9 @@ func (controller MYSQLController) AddAuditLog(auditLog data.AuditLog) error {
 
 	queryStr := fmt.Sprintf(`
 		INSERT INTO %s
-		(appid, user_id, ip_source, module, operation, content, result)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, auditTableV3)
-	_, err = controller.auditDB.Exec(queryStr, auditLog.AppID, auditLog.UserID, auditLog.UserIP,
+		(enterprise, appid, user_id, ip_source, module, operation, content, result)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, auditTableV3)
+	_, err = controller.auditDB.Exec(queryStr, auditLog.EnterpriseID, auditLog.AppID, auditLog.UserID, auditLog.UserIP,
 		auditLog.Module, auditLog.Operation, auditLog.Content, auditLog.Result)
 	if err != nil {
 		util.LogDBError(err)
