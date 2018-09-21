@@ -10,10 +10,10 @@ type ResponseV1 struct {
 
 //Data represent version 1 Answer response structure
 type DataV1 struct {
-	Type  string        `json:"type"`
-	Cmd   string        `json:"cmd"`
-	Value string        `json:"value"`
-	Data  []Answer 		`json:"data"`
+	Type  string   `json:"type"`
+	Cmd   string   `json:"cmd"`
+	Value string   `json:"value"`
+	Data  []Answer `json:"data"`
 }
 
 type ResponseV2 struct {
@@ -50,4 +50,8 @@ type V2Body struct {
 	ClientID   string                 `json:"clientId,omitempty"`
 	CustomInfo map[string]string      `json:"customInfo,omitempty"`
 	ExtendData map[string]interface{} `json:"extendData,omitempty"`
+}
+
+type ErrorResponse struct {
+	Message string `json:"message"`
 }

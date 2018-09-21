@@ -20,6 +20,5 @@ ARG PROJECT
 
 WORKDIR /usr/bin/app
 COPY --from=build /go/bin/${PROJECT} .
-COPY --from=build ${GOPREFIX}/module/${PROJECT}/k8slist .
 COPY --from=build ${GOPREFIX}/module/${PROJECT}/docker/entrypoint.sh .
 ## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
