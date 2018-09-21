@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -28,12 +27,7 @@ var client = &http.Client{
 }
 var proxy *httputil.ReverseProxy
 
-var addTrafficChan chan string
-var appidChan chan *traffic.AppidIP
 var trafficManager *traffic.TrafficManager
-
-var k8sRedirectList = make(map[string]bool, 0)
-var ubitechList = make(map[string]bool, 0)
 
 func init() {
 	envFile := flag.String("f", "", "environment variables file")
@@ -92,18 +86,6 @@ func main() {
 		"banned period: %d seconds, log period: %d seconds\n",
 		maxRequests, duration, banPeriod, logPeriod)
 
-	f, err := os.Open("./k8slist")
-	if err != nil {
-		logger.Warn.Printf("read ./k8slist failed, %v", err)
-	}
-
-	k8sRedirectList, err = readList(f)
-	if err != nil {
-		logger.Warn.Printf("readList failed, %v", err)
-	} else {
-		logger.Info.Printf("K8S List readed:\n%+v\n", k8sRedirectList)
-	}
-
 	// Check statsd host
 	monitorTraffic := true
 
@@ -126,13 +108,8 @@ func main() {
 	}
 
 	// Make traffic channel
-	addTrafficChan = make(chan string)
-	appidChan = make(chan *traffic.AppidIP, 1024)
-	trafficManager = traffic.NewTrafficManager(duration, int64(maxRequests), int64(banPeriod))
-
-	if monitorTraffic {
-		go traffic.AppidCounter(appidChan, logPeriod, statsdHost, statsdPortInt)
-	}
+	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
+		duration, int64(maxRequests), int64(banPeriod), int64(logPeriod))
 
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
@@ -150,7 +127,7 @@ func main() {
 func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	err := goProxy(r)
+	err := extractHeadersFromBody(r)
 	if err != nil {
 		switch err {
 		case data.ErrUnsupportedMethod:
@@ -158,6 +135,11 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		default:
 			customError(w, err.Error(), http.StatusBadRequest)
 		}
+		return
+	}
+
+	ok := trafficManager.Monitor(w, r)
+	if !ok {
 		return
 	}
 
@@ -197,6 +179,10 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 	v2Req.Header.Set("appId", r.FormValue("appid"))
 	v2Req.Header.Set("userId", r.FormValue("userid"))
 
+	// Add headers for load balancing
+	v2Req.Header.Set("X-Lb-Uid", r.Header.Get("X-Lb-Uid"))
+	v2Req.Header.Set("X-Openapi-Appid", r.Header.Get("X-Openapi-Appid"))
+
 	resp, err = client.Do(v2Req)
 	if err != nil {
 		customError(w, "http request failed, "+err.Error(), http.StatusInternalServerError)
@@ -226,7 +212,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		for j, d := range answer.Data {
 			if str, ok := d.(string); ok {
 				dataStr += fmt.Sprintf("%d.%s", index, str)
-				if j != len(answer.Data) - 1 {
+				if j != len(answer.Data)-1 {
 					dataStr += " "
 				}
 				index++
@@ -262,6 +248,19 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 // OpenAPIHandler will do nothing but proxy the request/response
 // to/from BFOP server directly
 func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	userID := r.Header.Get("userId")
+	appID := r.Header.Get("appId")
+
+	r.Header.Set("X-Lb-Uid", userID)
+	r.Header.Set("X-Openapi-Appid", appID)
+
+	ok := trafficManager.Monitor(w, r)
+	if !ok {
+		return
+	}
+
 	proxy.ServeHTTP(w, r)
 }
 
@@ -270,9 +269,9 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
 }
 
-// goProxy will extract the neccessary fields from request body and add to headers
-// goProxy is used only in v1 API
-func goProxy(r *http.Request) error {
+// extractHeadersFromBody will extract the neccessary fields from request body and add to headers
+// extractHeadersFromBody is only called by OpenAPI v1
+func extractHeadersFromBody(r *http.Request) error {
 	buf, _ := ioutil.ReadAll(r.Body)
 
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
@@ -308,34 +307,7 @@ func goProxy(r *http.Request) error {
 		return data.ErrUnsupportedMethod
 	}
 
-	userIP, err := parseRemoteIP(r.RemoteAddr)
-	if err == nil {
-		appidIP := new(traffic.AppidIP)
-		appidIP.Appid = appid
-		appidIP.IP = userIP
-		appidIP.Userid = userid
-		appidIP.RequestURI = r.RequestURI
-		appidChan <- appidIP
-	} else {
-		logger.Warn.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
-	}
-
 	logger.Info.Printf("%+v\n", r)
-
-	if _, ok := k8sRedirectList[appid]; ok {
-		logger.Info.Printf("appid:%s, userid:%s, onk8sList:%v\n", appid, userid, k8sRedirectList[appid])
-	} else {
-		logger.Info.Printf("appid:%s, userid:%s\n", appid, userid)
-	}
-
-	if k8sRedirectList[appid] {
-		r.Header.Set("X-Lb-K8s", "k8suser")
-	} else if ubitechList[userIP] || ubitechList[appid] {
-		r.Header.Set("X-Lb-Ubitech", "ubituser")
-	} else if trafficManager.CheckOverFlowed(userid) {
-		logger.Warn.Printf("userid:%s is overflowed\n", userid)
-		userid = userid + strconv.Itoa(rand.Intn(1000))
-	}
 
 	r.Header.Set("X-Lb-Uid", userid)
 	r.Header.Set("X-Openapi-Appid", appid)
@@ -349,15 +321,6 @@ func checkerr(err error, who string) {
 	if err != nil {
 		logger.Error.Fatalf("No %s env variable, %v\n", who, err)
 	}
-}
-
-func parseRemoteIP(remoteAddr string) (string, error) {
-	ipPort := strings.Split(remoteAddr, ":")
-	if len(ipPort) != 2 {
-		return "", fmt.Errorf("Not format of ip:port. %s", remoteAddr)
-	}
-
-	return ipPort[0], nil
 }
 
 func readList(r io.Reader) (map[string]bool, error) {

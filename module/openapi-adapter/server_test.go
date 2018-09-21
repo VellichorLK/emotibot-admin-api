@@ -25,14 +25,14 @@ func TestMain(m *testing.M) {
 		log.Fatalf("remoteURL is not a valid URL, %v\n", err)
 	}
 
-	// Make traffic channel
+	statsdHost := "172.16.101.98"
+	statsdPort := 8125
 	duration := 10
 	maxRequests := 20
 	banPeriod := 300
-
-	addTrafficChan = make(chan string)
-	appidChan = make(chan *traffic.AppidIP, 1024)
-	trafficManager = traffic.NewTrafficManager(duration, int64(maxRequests), int64(banPeriod))
+	logPeriod := 300
+	trafficManager = traffic.NewTrafficManager(true, statsdHost, statsdPort,
+		duration, int64(maxRequests), int64(banPeriod), int64(logPeriod))
 
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
 	log.SetFlags(log.Ltime | log.Lshortfile)
@@ -92,16 +92,13 @@ func TestAdapter(t *testing.T) {
 					data.DataV1{
 						Type:  "text",
 						Cmd:   "",
-						Value: "近似问: 1.办信用卡有什么优惠 2.办理信用卡有佣金吗",
+						Value: "记得还款哦。",
 						Data: []data.Answer{
 							data.Answer{
 								Type:    "text",
-								SubType: "guslist",
-								Value:   "近似问",
-								Data: []interface{}{
-									"办信用卡有什么优惠",
-									"办理信用卡有佣金吗",
-								},
+								SubType: "text",
+								Value: "记得还款哦。",
+								Data: []interface{}{},
 								ExtendData: "",
 							},
 						},
@@ -223,12 +220,9 @@ func TestProxy(t *testing.T) {
 				Answers: []data.Answer{
 					data.Answer{
 						Type:    "text",
-						SubType: "guslist",
-						Value:   "近似问",
-						Data: []interface{}{
-							"办信用卡有什么优惠",
-							"办理信用卡有佣金吗",
-						},
+						SubType: "text",
+						Value:   "记得还款哦。",
+						Data: []interface{}{},
 						ExtendData: "",
 					},
 				},
