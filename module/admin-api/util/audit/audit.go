@@ -37,6 +37,10 @@ const (
 	AuditModuleRobotFunction     = "robot_function"   //  "技能設置"
 	AuditModuleRobotCommand      = "robot_command"    //  "指令設置"
 	AuditModuleIntegration       = "integration"      //  "接入部署"
+	AuditModuleManageUser        = "manage_user"
+	AuditModuleManageRobot       = "manage_robot"
+	AuditModuleManageAdmin       = "manage_admin"
+	AuditModuleManageEnterprise  = "manage_enterprise"
 )
 
 var moduleMap = map[string]string{
@@ -90,6 +94,10 @@ var moduleLocalKeyMap = map[string]string{
 	AuditModuleRobotFunction:     "AuditModuleRobotFunction",
 	AuditModuleRobotCommand:      "AuditModuleRobotCommand",
 	AuditModuleIntegration:       "AuditModuleIntegration",
+	AuditModuleManageUser:        "AuditModuleManageUser",
+	AuditModuleManageRobot:       "AuditModuleManageRobot",
+	AuditModuleManageAdmin:       "AuditModuleManageAdmin",
+	AuditModuleManageEnterprise:  "AuditModuleManageEnterprise",
 }
 
 type auditLog struct {

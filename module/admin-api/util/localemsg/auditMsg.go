@@ -17,6 +17,10 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleRobotFunction":     "技能设置",
 		"AuditModuleRobotCommand":      "指令设置",
 		"AuditModuleIntegration":       "接入部署",
+		"AuditModuleManageUser":        "企业用户管理",
+		"AuditModuleManageRobot":       "机器人列表",
+		"AuditModuleManageAdmin":       "系统管理人员",
+		"AuditModuleManageEnterprise":  "企业列表",
 		// Operation
 		"AuditOperationAdd":      "新增",
 		"AuditOperationEdit":     "修改",
@@ -44,6 +48,10 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleRobotFunction":     "技能設置",
 		"AuditModuleRobotCommand":      "指令設置",
 		"AuditModuleIntegration":       "接入部署",
+		"AuditModuleManageUser":        "企業用戶管理",
+		"AuditModuleManageRobot":       "機器人列表",
+		"AuditModuleManageAdmin":       "系統管理人員",
+		"AuditModuleManageEnterprise":  "企業列表",
 		// Operation
 		"AuditOperationAdd":      "新增",
 		"AuditOperationEdit":     "修改",
