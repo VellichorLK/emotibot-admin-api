@@ -61,8 +61,8 @@ func (m *mockClient) Do(*http.Request) (*http.Response, error) {
 }
 
 // List of need support command
-// 	DeleteSimilarQuestions(appID string, lq ...string) error
-// 	IsSimilarQuestion(appID, lq string) (bool, error)
+// 	[*] DeleteSimilarQuestions(appID string, lq ...string) error
+// 	[*] IsSimilarQuestion(appID, lq string) (bool, error)
 // 	IsStandardQuestion(appID, content string) (bool, error)
 // 	Question(appID, lq string) (string, error)
 // 	Questions(appID string) ([]string, error)
@@ -70,10 +70,19 @@ func (m *mockClient) Do(*http.Request) (*http.Response, error) {
 // 	SimilarQuestions(appID string, sq string) ([]string, error)
 
 // ExpectDeleteSimilarQuestions expect delete similar question(相似問、擴寫) from dal client.
+// Since we can not verify the result yet, the input is not used.
 func (m *Mocker) ExpectDeleteSimilarQuestions(appID string, lq ...string) {
 	var test = &deleteSimilarQuestionsCmd{
 		appID: appID,
 		lq:    lq,
 	}
 	m.expectCommands = append(m.expectCommands, test)
+}
+
+// ExpectIsSimilarQuestion expect matching similar question from dal client
+// It will return a result for injecting match result
+func (m *Mocker) ExpectIsSimilarQuestion(appID, lq string) (result *ExpectResult) {
+	result = &ExpectResult{}
+	m.expectCommands = append(m.expectCommands, &matchCommand{result: result})
+	return result
 }

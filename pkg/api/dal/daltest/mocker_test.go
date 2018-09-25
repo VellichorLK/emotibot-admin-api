@@ -31,3 +31,15 @@ func TestMockShouldFailAtWrongExpects(t *testing.T) {
 		t.Fatal("only one expect called with two actual behavior should produce error but got no one.")
 	}
 }
+
+func TestMockerExpectIsSimilarQuestion(t *testing.T) {
+	client, mocker, _ := New()
+	mocker.ExpectIsSimilarQuestion("csbot", "subjectA").WillReturn(nil, []string{"OK"})
+	isSimQ, err := client.IsSimilarQuestion("csbot", "subjectA")
+	if err != nil {
+		t.Fatal("expect no error but got, ", err)
+	}
+	if isSimQ != true {
+		t.Fatal("expect is sim q is true, but got ", isSimQ)
+	}
+}
