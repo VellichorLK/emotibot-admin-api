@@ -178,6 +178,10 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 	type internalError struct {
 		IsRollbacked bool `json:"rollbacked"`
 	}
+	type response struct {
+		Done []string `json:"done"`
+		Skip []string `json:"skip"`
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Content string   `json:"content"`
@@ -217,7 +221,8 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			})
 			return
 		}
-		records_content := make([]string, 0)
+		todoRecords := make([]*data.VisitRecordsData, 0)
+		skipRecordsID := make([]string, 0)
 		for _, record := range result.Hits {
 			var isSQ bool
 			isSQ, err = client.IsStandardQuestion(appID, record.UserQ)
@@ -225,24 +230,24 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				logger.Error.Printf("Get isStd failed, %v\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
 				json.NewEncoder(w).Encode(internalError{
-					IsRollbacked: false,
+					IsRollbacked: true,
 				})
 				return
 			}
 
 			if isSQ {
-				w.WriteHeader(http.StatusConflict)
-				json.NewEncoder(w).Encode(map[string]string{
-					"conflicted_content": record.UserQ,
-				})
-				return
+				skipRecordsID = append(skipRecordsID, record.UniqueID)
+				continue
 			}
-			records_content = append(records_content, record.UserQ)
+			todoRecords = append(todoRecords, record)
 		}
+
 		if *request.Mark {
-			for _, content := range records_content {
+			var deletedContent = map[string]struct{}{}
+			var todoContents = []string{}
+			for _, r := range todoRecords {
 				var isLQ bool
-				isLQ, err = client.IsSimilarQuestion(appID, content)
+				isLQ, err = client.IsSimilarQuestion(appID, r.UserQ)
 				if err != nil {
 					logger.Error.Printf("Get isSimQ failed, %v\n", err)
 					w.WriteHeader(http.StatusInternalServerError)
@@ -252,7 +257,10 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 					return
 				}
 				if isLQ {
-					err = client.DeleteSimilarQuestions(appID, content)
+					if _, found := deletedContent[r.UserQ]; found {
+						continue
+					}
+					err = client.DeleteSimilarQuestions(appID, r.UserQ)
 					if err != nil {
 						//TODO: FIX AS ROLLBACKABLE
 						logger.Error.Printf("delete sim q %v\n", err)
@@ -262,9 +270,11 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 						})
 						return
 					}
+					deletedContent[r.UserQ] = struct{}{}
 				}
+				todoContents = append(todoContents, r.UserQ)
 			}
-			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, records_content...)
+			err = client.SetSimilarQuestion(requestheader.GetAppID(r), request.Content, todoContents...)
 			if err != nil {
 				logger.Error.Printf("set simQ failed, %v\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -273,9 +283,18 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				})
 				return
 			}
-		} else { //unmarking should remove the records from ssm store
-
-			err = client.DeleteSimilarQuestions(appID, records_content...)
+		} else {
+			//unmarking should remove the records from ssm store
+			var userq = make([]string, len(todoRecords))
+			for i, r := range todoRecords {
+				for _, q := range userq {
+					if r.UserQ == q {
+						continue
+					}
+				}
+				userq[i] = r.UserQ
+			}
+			err = client.DeleteSimilarQuestions(appID, userq...)
 			//Note: because ssm wont sync with record, so it can be someone delete the ssm
 			//We only need to return error if the problem is not "not exist"
 			if dErr, ok := err.(*dal.DetailError); ok {
@@ -298,7 +317,15 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				return
 			}
 		}
-
+		q.Records = make([]interface{}, len(todoRecords))
+		resp := response{
+			Done: make([]string, len(todoRecords)),
+			Skip: skipRecordsID,
+		}
+		for i, r := range todoRecords {
+			q.Records[i] = r.UniqueID
+			resp.Done[i] = r.UniqueID
+		}
 		err = services.UpdateRecords(q, services.UpdateRecordMark(*request.Mark))
 		if err != nil {
 			logger.Error.Printf("service update record failed, %v\n", err)
@@ -308,7 +335,10 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			})
 			return
 		}
+
 		w.WriteHeader(http.StatusOK)
+		data, _ := json.Marshal(resp)
+		w.Write(data)
 	}
 
 }
