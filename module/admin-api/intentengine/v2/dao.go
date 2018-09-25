@@ -589,7 +589,7 @@ func (dao intentDaoV2) UpdateVersionStart(version int, start int64, modelID stri
 		return util.ErrDBNotInit
 	}
 
-	queryStr := "UPDATE intent_versions SET ie_model_id = ?, start_train = ? WHERE version = ?"
+	queryStr := "UPDATE intent_versions SET ie_model_id = ?, start_train = ?, end_train = NULL, result = 0 WHERE version = ?"
 	_, err = dao.db.Exec(queryStr, modelID, start, version)
 	return
 }
