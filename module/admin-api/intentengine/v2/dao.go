@@ -521,7 +521,7 @@ func (dao intentDaoV2) GetVersionInfo(appid string, version int) (ret *VersionIn
 			info.Progress = 99
 		} else {
 			now := time.Now().Unix()
-			info.Progress = int(now-*info.TrainEndTime) * 100 / predictSeconds
+			info.Progress = int(now-*info.TrainStartTime) * 100 / predictSeconds
 		}
 	}
 	return &info, nil
