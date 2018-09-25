@@ -2,8 +2,8 @@ version: '3'
 
 services:
   admin-api:
-    image: ${ADMIN_IMAGE_NAME}
-    container_name: ${ADMIN_CONTAINER_NAME}
+    image: ${IMAGE_NAME}
+    container_name: ${CONTAINER_NAME}
     logging:
       driver: json-file
       options:

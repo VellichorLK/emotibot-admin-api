@@ -15,10 +15,9 @@ RUN go test ./...
 ## 复制上一个 stage 所编译出的 binary 及其他执行时所需要的设定档至 scratch image
 FROM scratch
 
-ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
 
 WORKDIR /usr/bin/app
 COPY --from=build /go/bin/${PROJECT} .
-COPY --from=build ${GOPREFIX}/module/${PROJECT}/docker/entrypoint.sh .
+COPY ./module/${PROJECT}/docker/entrypoint.sh .
 ## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
