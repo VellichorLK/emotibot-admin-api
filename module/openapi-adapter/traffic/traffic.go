@@ -1,11 +1,11 @@
 package traffic
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sync"
 	"time"
 
@@ -24,20 +24,14 @@ type RouteMap struct {
 
 type TrafficStat struct {
 	AppID      string
+	UserID     string
 	IP         string
 	RequestURI string
-	UserID     string
 }
 
 type AppIDCount struct {
 	FromWho  map[string]uint64 //ip -> count
 	FromUser map[string]uint64 //userid -> count
-	Counter  uint64            //counter in assigned period
-}
-
-type RequestCount struct {
-	URI     string
-	Counter uint64
 }
 
 // TrafficManager is a manager to determine which user is overload.
@@ -50,10 +44,7 @@ type TrafficManager struct {
 	BanPeriod        int64
 	LogPeriod        int64
 	TrafficStatsChan chan *TrafficStat
-	AppIDCountChan   chan *AppIDCount
 }
-
-const statsdNamespace = "emotibot.goproxy"
 
 // NewTrafficManager init a new TrafficManager by setting
 // duration RateCounter計算的時間長度
@@ -75,7 +66,6 @@ func NewTrafficManager(monitorTraffic bool, statsdHost string, statsdPort int,
 		BanPeriod:        banPeriod,
 		LogPeriod:        logPeriod,
 		TrafficStatsChan: make(chan *TrafficStat),
-		AppIDCountChan:   make(chan *AppIDCount),
 	}
 
 	go m.trafficStats()
@@ -83,36 +73,16 @@ func NewTrafficManager(monitorTraffic bool, statsdHost string, statsdPort int,
 	return &m
 }
 
-func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) bool {
-	userID := r.Header.Get("X-Lb-Uid")
+func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) (bool, error) {
 	appID := r.Header.Get("X-Openapi-Appid")
-
-	if userID == "" {
-		resp, err := json.Marshal(data.ErrorResponse{
-			Message: "User ID not specified",
-		})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return false
-		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(resp)
-		return false
-	}
+	userID := r.Header.Get("X-Lb-Uid")
 
 	if appID == "" {
-		resp, err := json.Marshal(data.ErrorResponse{
-			Message: "App ID not specified",
-		})
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return false
-		}
+		return false, data.ErrAppIDNotSpecified
+	}
 
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(resp)
-		return false
+	if userID == "" {
+		return false, data.ErrUserIDNotSpecified
 	}
 
 	logger.Info.Printf("Header [X-Lb-Uid]: %s\n", r.Header.Get("X-Lb-Uid"))
@@ -138,7 +108,34 @@ func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	m.TrafficStatsChan <- &trafficStat
-	return true
+	return true, nil
+}
+
+func (m *TrafficManager) Summarize(appID string, w *data.ResponseLogger, r *http.Request, responseTime float64) {
+	var metric string
+	re := regexp.MustCompile("\\.")
+	requestURI := re.ReplaceAllString(r.RequestURI, "-")
+
+	// Request count
+	metric = fmt.Sprintf("%s.%s.%s.%s", data.StatsdNamespace, appID, requestURI, "request.count")
+	m.StatsdClient.IncrementCounter(metric)
+
+	// Response time
+	metric = fmt.Sprintf("%s.%s.%s.%s", data.StatsdNamespace, appID, requestURI, "response.time")
+	m.StatsdClient.Timing(metric, int64(responseTime))
+
+	// Response status code
+	switch {
+	case w.StatusCode >= 200 && w.StatusCode < 300:
+		metric = fmt.Sprintf("%s.%s.%s.%s", data.StatsdNamespace, appID, requestURI, "response.2xx")
+		m.StatsdClient.IncrementCounter(metric)
+	case w.StatusCode >= 400 && w.StatusCode < 500:
+		metric = fmt.Sprintf("%s.%s.%s.%s", data.StatsdNamespace, appID, requestURI, "response.4xx")
+		m.StatsdClient.IncrementCounter(metric)
+	case w.StatusCode >= 500 && w.StatusCode < 600:
+		metric = fmt.Sprintf("%s.%s.%s.%s", data.StatsdNamespace, appID, requestURI, "response.5xx")
+		m.StatsdClient.IncrementCounter(metric)
+	}
 }
 
 // checkOverFlowed 檢查該使用者是否已經超過流量
@@ -158,12 +155,13 @@ func (m *TrafficManager) trafficStats() {
 	var trafficStat *TrafficStat
 
 	flowCount := make(map[string]*AppIDCount)
-	requestCount := make(map[string]*RequestCount)
+	flowCountLock := &sync.Mutex{}
 	timeCh := time.After(time.Duration(m.LogPeriod) * time.Second)
 
 	for {
 		select {
 		case trafficStat = <-m.TrafficStatsChan:
+			flowCountLock.Lock()
 			ac, ok := flowCount[trafficStat.AppID]
 			if !ok {
 				ac = new(AppIDCount)
@@ -172,66 +170,56 @@ func (m *TrafficManager) trafficStats() {
 				flowCount[trafficStat.AppID] = ac
 			}
 
-			// Here we don't count how many times the ip or useid used this request
-			// so simply set it to zero
+			// We count only the number of unique source IPs and users within log period,
+			// not the exact value of the counters, so simply set them with zeros
 			ac.FromUser[trafficStat.UserID] = 0
 			ac.FromWho[trafficStat.IP] = 0
-
-			ac.Counter++
-
-			metric := fmt.Sprintf("%s.%s.%s", statsdNamespace, trafficStat.AppID, "request.count")
-			m.StatsdClient.IncrementCounter(metric)
-
-			req, ok := requestCount[trafficStat.AppID]
-			if !ok {
-				req = new(RequestCount)
-				req.URI = trafficStat.RequestURI
-				requestCount[trafficStat.AppID] = req
-			}
-
-			req.Counter++
+			flowCountLock.Unlock()
 		case <-timeCh:
-			goStatsd(m.StatsdClient, flowCount, requestCount)
+			goStatsd(m.StatsdClient, flowCount)
+
+			// Reset flow counter
+			flowCountLock.Lock()
+			flowCount = make(map[string]*AppIDCount)
+			flowCountLock.Unlock()
+
 			timeCh = time.After(time.Duration(m.LogPeriod) * time.Second)
 		}
 	}
 }
 
-func goStatsd(c *statsd.Client, flowCount map[string]*AppIDCount,
-	requestCount map[string]*RequestCount) {
-
+func goStatsd(c *statsd.Client, flowCount map[string]*AppIDCount) {
 	if c == nil {
 		return
 	}
 
 	var metric string
 
-	for appid, v := range flowCount {
+	for appID, v := range flowCount {
+		// Number of unique source IPs within log period
 		numOfIP := len(v.FromWho)
-		v.Counter = 0
-
-		metric = fmt.Sprintf("%s.%s.%s", statsdNamespace, appid, "num.source")
-		c.IncrementGaugeByValue(metric, numOfIP)
+		metric = fmt.Sprintf("%s.%s.%s", data.StatsdNamespace, appID, "num.source")
+		c.IncrementCounterByValue(metric, numOfIP)
 
 		if numOfIP > 0 {
-			log.Printf("[%s] has below ip (%d):\n", appid, numOfIP)
+			log.Printf("[%s] has following unique IPs (%d):\n", appID, numOfIP)
 			for ip := range v.FromWho {
 				log.Printf("%s\n", ip)
 			}
 			log.Printf("-----------------------------------------\n")
 		}
 
+		// Number of unique users within log period
 		numOfUserID := len(v.FromUser)
+		metric = fmt.Sprintf("%s.%s.%s", data.StatsdNamespace, appID, "num.userid")
+		c.IncrementCounterByValue(metric, numOfUserID)
 
-		metric = fmt.Sprintf("%s.%s.%s", statsdNamespace, appid, "num.userid")
-		c.IncrementGaugeByValue(metric, numOfUserID)
-	}
-
-	for appid, req := range requestCount {
-		metric = fmt.Sprintf("%s.%s.%s.%s", statsdNamespace, appid, req.URI, "num.uri.request")
-		c.IncrementGaugeByValue(metric, int(req.Counter))
-
-		// Reset the counter
-		req.Counter = 0
+		if numOfUserID > 0 {
+			log.Printf("[%s] has following unique users (%d):\n", appID, numOfUserID)
+			for userID := range v.FromUser {
+				log.Printf("%s\n", userID)
+			}
+			log.Printf("-----------------------------------------\n")
+		}
 	}
 }

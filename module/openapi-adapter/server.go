@@ -114,8 +114,10 @@ func main() {
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
 
-	http.HandleFunc("/api/ApiKey/", OpenAPIAdapterHandler)
-	http.HandleFunc("/v1/openapi", OpenAPIHandler)
+	middleWares := chainMiddleWares(logSummarize)
+
+	http.HandleFunc("/api/ApiKey/", middleWares(OpenAPIAdapterHandler))
+	http.HandleFunc("/v1/openapi", middleWares(OpenAPIHandler))
 	http.HandleFunc("/_health_check", HealthCheck)
 
 	logger.Info.Printf("Starting server at port: %s\n", port)
@@ -138,8 +140,16 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ok := trafficManager.Monitor(w, r)
+	ok, err := trafficManager.Monitor(w, r)
 	if !ok {
+		switch err {
+		case data.ErrAppIDNotSpecified:
+			customError(w, err.Error(), http.StatusBadRequest)
+		case data.ErrUserIDNotSpecified:
+			customError(w, err.Error(), http.StatusBadRequest)
+		default:
+			customError(w, err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -241,7 +251,6 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result, _ := json.Marshal(v1Resp)
-	w.WriteHeader(http.StatusOK)
 	w.Write(result)
 }
 
@@ -256,8 +265,28 @@ func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
 	r.Header.Set("X-Lb-Uid", userID)
 	r.Header.Set("X-Openapi-Appid", appID)
 
-	ok := trafficManager.Monitor(w, r)
+	ok, err := trafficManager.Monitor(w, r)
 	if !ok {
+		switch err {
+		case data.ErrAppIDNotSpecified:
+			resp, _ := json.Marshal(data.ErrorResponse{
+				Message: err.Error(),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(resp)
+		case data.ErrUserIDNotSpecified:
+			resp, _ := json.Marshal(data.ErrorResponse{
+				Message: err.Error(),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(resp)
+		default:
+			resp, _ := json.Marshal(data.ErrorResponse{
+				Message: err.Error(),
+			})
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(resp)
+		}
 		return
 	}
 
@@ -266,7 +295,7 @@ func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
 
 // HealtCheck returns service health status
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 // extractHeadersFromBody will extract the neccessary fields from request body and add to headers
