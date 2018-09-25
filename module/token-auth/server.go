@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
+	"emotibot.com/emotigo/pkg/logger"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -242,6 +243,15 @@ func main() {
 			Path(path).
 			Name(route.Name).
 			HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				defer func() {
+					if err := recover(); err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						util.PrintRuntimeStack(10)
+
+						errMsg := fmt.Sprintf("%#v", err)
+						logger.Error.Println("Panic error:", errMsg)
+					}
+				}()
 				if checkAuth(r, route) {
 					if route.HandlerFunc != nil {
 						route.HandlerFunc(w, r)
