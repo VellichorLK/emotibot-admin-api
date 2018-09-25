@@ -1574,7 +1574,7 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 		enterpriseID := ""
 		appID := ""
-		userID := util.GetUserID(r)
+		userID := ""
 		userIP := util.GetUserIP(r)
 		module := audit.AuditModuleManageUser
 		ret := 1
