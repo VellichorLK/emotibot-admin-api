@@ -12,3 +12,5 @@
 * refactor middleware handle
 * Save audit file and log detail info
 * format of csv log is now {{timestamp, UniqueID, Payload, TOTAL_TIME, ASR_TIME, TE_TIME}}
+[0.0.8]
+* Fix V2Text api
