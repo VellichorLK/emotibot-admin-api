@@ -19,4 +19,11 @@ RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool
 ## 复制上一个 stage 所编译出的 binary 至 scratch image
 FROM scratch
 
-COPY --from=build /go/bin /usr/bin/app
+ARG PROJECT
+
+WORKDIR /usr/bin/app
+COPY --from=build /go/bin/${PROJECT} .
+COPY ./module/${PROJECT}/entrypoint.sh .
+COPY ./module/${PROJECT}/files_init.sh .
+COPY ./module/${PROJECT}/InitFiles .
+## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令
