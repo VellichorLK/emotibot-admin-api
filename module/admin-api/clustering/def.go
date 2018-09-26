@@ -27,6 +27,8 @@ type Report struct {
 	IgnoredSize int64
 	//MarkedSize represent counts of how many records status is marked, which will not be included in the task too.
 	MarkedSize int64
+	//SkippedSize represent counts of how many records already is standard Question, which will not be included in the task.
+	SkippedSize int64
 	//Status default as 0 (running), 1(completed), -1 (error)
 	Status ReportStatus
 }
