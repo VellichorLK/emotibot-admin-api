@@ -2,7 +2,7 @@ version: '3'
 
 services:
   openapi-adapter:
-    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:5cd710f-20180921-1817
+    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:59a1d30-20180926-1148
     container_name: openapi-adapter
     network_mode: host
     ports:
@@ -17,7 +17,7 @@ services:
       - OPENAPI_ADAPTER_MAXREQUESTS=20
       - OPENAPI_ADAPTER_BANPERIOD=300
       - OPENAPI_ADAPTER_LOGPERIOD=300
-      # statsd service (Non-essential service) 
+      # statsd service (Non-essential service)
       - OPENAPI_ADAPTER_STATSD_HOST=10.0.0.112
       - OPENAPI_ADAPTER_STATSD_PORT=8125
       - TZ=Asia/Taipei
