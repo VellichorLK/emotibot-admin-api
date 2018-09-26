@@ -1,5 +1,9 @@
 package dal
 
+import (
+	"strings"
+)
+
 type request struct {
 	Op           string `json:"op"`
 	Category     string `json:"category"`
@@ -44,5 +48,9 @@ type DetailError struct {
 }
 
 func (e *DetailError) Error() string {
-	return "dal error: " + e.ErrMsg
+	msg := "dal error: " + e.ErrMsg
+	if e.Results != nil && len(e.Results) > 0 {
+		msg += " with result [" + strings.Join(e.Results, ", ") + "]"
+	}
+	return msg
 }
