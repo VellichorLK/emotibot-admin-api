@@ -7,8 +7,8 @@ GIT_DATE=$(git log HEAD -n1 --pretty='format:%cd' --date=format:'%Y%m%d-%H%M')
 # REPO="harbor.emotibot.com/bfop"
 REPO="docker-reg.emotibot.com.cn:55688"
 CONTAINER="admin-api"
-TAG="${GIT_HEAD}_${GIT_DATE}"
+TAG="${GIT_HEAD}-${GIT_DATE}"
 
-BUILD_IMAGE_NAME="${REPO}/${CONTAINER}_build:${TAG}"
+BUILD_IMAGE_NAME="${REPO}/${CONTAINER}-build:${TAG}"
 IMAGE_NAME="${REPO}/${CONTAINER}:${TAG}"
 CONTAINER_NAME=${CONTAINER}
