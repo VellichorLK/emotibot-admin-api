@@ -58,6 +58,8 @@ services:
       - ./huawei-ssl/Nginx/2_huawei-chat.emotibot.com.key:/etc/nginx/ssl/2_huawei-chat.emotibot.com.key
       - ./ifly-ssl/Nginx/1_ifly-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_ifly-chat.emotibot.com_bundle.crt
       - ./ifly-ssl/Nginx/2_ifly-chat.emotibot.com.key:/etc/nginx/ssl/2_ifly-chat.emotibot.com.key
+      - ./bfop-ssl/Nginx/2_bfop-chat.emotibot.com.key:/etc/nginx/ssl/2_bfop-chat.emotibot.com.key
+      - ./bfop-ssl/Nginx/1_bfop-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_bfop-chat.emotibot.com_bundle.crt
     logging:
       driver: json-file
       options:
