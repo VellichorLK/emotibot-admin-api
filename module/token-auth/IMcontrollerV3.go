@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
-	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
@@ -128,50 +127,6 @@ func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, err.Error())
 		return
 	}
-	if newUser.DisplayName == "" {
-		err = util.ErrInvalidParameter
-		returnBadRequest(w, "name")
-		return
-	}
-
-	if *newUser.Password != "" {
-		verifyPassword := r.FormValue("verify_password")
-
-		if verifyPassword == "" {
-			err = util.ErrOperationForbidden
-			returnForbidden(w)
-			return
-		}
-
-		var password string
-
-		switch requester.Type {
-		case enum.SuperAdminUser:
-			fallthrough
-		case enum.AdminUser:
-			password, err = service.GetUserPasswordV3(requester.ID)
-			if err != nil {
-				returnInternalError(w, err.Error())
-				return
-			} else if password == "" {
-				err = util.ErrOperationForbidden
-				returnForbidden(w)
-				return
-			}
-		case enum.NormalUser:
-			password = *origUser.Password
-		default:
-			err = util.ErrOperationForbidden
-			returnForbidden(w)
-			return
-		}
-
-		if verifyPassword != password {
-			err = util.ErrOperationForbidden
-			returnForbidden(w)
-			return
-		}
-	}
 
 	err = service.UpdateUserV3(enterpriseID, userID, origUser, newUser)
 	if err != nil {
@@ -193,6 +148,56 @@ func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 			returnInternalError(w, err.Error())
 			return
 		}
+	}
+
+	returnBFSuccess(w, true)
+}
+
+func IMUserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
+	requester := getRequesterV3(r)
+	vars := mux.Vars(r)
+
+	var userID string
+	var user *data.UserDetailV3
+	var err error
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+	userID = vars["userID"]
+	if !util.IsValidUUID(userID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "user-id")
+		return
+	}
+
+	user, err = service.GetUserV3(enterpriseID, userID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if user == nil {
+		err = util.ErrResourceNotFound
+		returnNotFound(w)
+		return
+	}
+
+	if requester.Type > user.Type {
+		err = util.ErrOperationForbidden
+		returnForbidden(w)
+		return
+	}
+
+	result, err := service.DeleteUserV3(enterpriseID, userID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if !result {
+		err = util.ErrResourceNotFound
+		returnNotFound(w)
+		return
 	}
 
 	returnBFSuccess(w, true)
