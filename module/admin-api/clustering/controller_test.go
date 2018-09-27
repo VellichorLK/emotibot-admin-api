@@ -15,26 +15,27 @@ import (
 //We need a way to mock es service, skip
 func TestNewDoReportHandler(t *testing.T) {
 	t.Skip("do not have a way to mock elastic search for now, so skip the test.")
-	db, writer, _ := sqlmock.New()
-	ss := &sqlService{db: db}
-	writer.ExpectQuery("SELECT .+ FROM `reports`").WillReturnRows(sqlmock.NewRows([]string{}))
-	writer.ExpectQuery("")
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mockContent := ``
-		fmt.Fprint(w, mockContent)
-	}))
-	defer server.Close()
-	addr, _ := url.Parse(server.URL)
-	faqClient := faqcluster.NewClientWithHTTPClient(addr, server.Client())
-	handler := NewDoReportHandler(ss, ss, ss, ss, faqClient)
-	worker = newMockWorker()
-	w := httptest.NewRecorder()
-	handler(w, httptest.NewRequest(http.MethodPut, "/test", nil))
-	//TODO: NOT VERIFY YET
+	// db, writer, _ := sqlmock.New()
+	// ss := &sqlService{db: db}
+	// writer.ExpectQuery("SELECT .+ FROM `reports`").WillReturnRows(sqlmock.NewRows([]string{}))
+	// writer.ExpectQuery("")
+	// server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	mockContent := ``
+	// 	fmt.Fprint(w, mockContent)
+	// }))
+	// defer server.Close()
+	// addr, _ := url.Parse(server.URL)
+	// faqClient := faqcluster.NewClientWithHTTPClient(addr, server.Client())
+	// dalClient := dal.NewClientWithHTTPClient
+	// handler := NewDoReportHandler(ss, ss, ss, ss, faqClient, )
+	// worker = newMockWorker()
+	// w := httptest.NewRecorder()
+	// handler(w, httptest.NewRequest(http.MethodPut, "/test", nil))
+	// //TODO: NOT VERIFY YET
 
-	if err := writer.ExpectationsWereMet(); err != nil {
-		t.Fatal(err)
-	}
+	// if err := writer.ExpectationsWereMet(); err != nil {
+	// 	t.Fatal(err)
+	// }
 }
 
 func newMockWorker() cluster {

@@ -84,7 +84,7 @@ services:
       - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
       - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
       # - env for DAL module host
-      - ADMIN_STATS_DAL_URL=http://${DAL_HOST}:8885/
+      - ADMIN_SERVER_DAL_URL=http://${DAL_HOST}:8885/
       # - env for Clustering tool host
       - ADMIN_CLUSTERING_TOOL_URL=http://${CLUSTER_HOST}:13014/
     restart: always

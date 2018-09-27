@@ -52,10 +52,20 @@ func Init() error {
 		return fmt.Errorf("parse env failed, %v", err)
 	}
 	clusterClient := faqcluster.NewClientWithHTTPClient(addr, httpClient)
+	dalURL, found := util.GetEnvOf("server")["DAL_URL"]
+	if !found {
+		return fmt.Errorf("CAN NOT FOUND SERVER ENV \"DAL_URL\"")
+	}
+
+	dalClient, err := dal.NewClientWithHTTPClient(dalURL, &http.Client{Timeout: time.Duration(5) * time.Second})
+	if err != nil {
+		return fmt.Errorf("new dal client failed, %v", err)
+	}
+
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient)),
+			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient, dalClient)),
 			util.NewEntryPoint(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss)),
 		},
 	}

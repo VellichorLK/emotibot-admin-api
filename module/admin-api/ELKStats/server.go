@@ -19,8 +19,7 @@ var (
 // Init init the package ModuleInfo & other essential data
 func Init() error {
 	var moduleName = "stats"
-	envs := util.GetModuleEnvironments(moduleName)
-	dalAddress, ok := envs["DAL_URL"]
+	dalAddress, ok := util.GetEnvOf("server")["DAL_URL"]
 	if !ok {
 		return fmt.Errorf("Require Module Env DAL_URL")
 	}
