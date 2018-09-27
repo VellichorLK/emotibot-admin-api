@@ -150,7 +150,7 @@ func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	returnBFSuccess(w, true)
+	returnBFSuccess(w, newUser)
 }
 
 func IMUserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
