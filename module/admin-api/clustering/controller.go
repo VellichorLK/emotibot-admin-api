@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"time"
 
+	"emotibot.com/emotigo/pkg/api/dal/v1"
+
 	statData "emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	statService "emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -50,10 +52,20 @@ func Init() error {
 		return fmt.Errorf("parse env failed, %v", err)
 	}
 	clusterClient := faqcluster.NewClientWithHTTPClient(addr, httpClient)
+	dalURL, found := util.GetEnvOf("server")["DAL_URL"]
+	if !found {
+		return fmt.Errorf("CAN NOT FOUND SERVER ENV \"DAL_URL\"")
+	}
+
+	dalClient, err := dal.NewClientWithHTTPClient(dalURL, &http.Client{Timeout: time.Duration(5) * time.Second})
+	if err != nil {
+		return fmt.Errorf("new dal client failed, %v", err)
+	}
+
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient)),
+			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient, dalClient)),
 			util.NewEntryPoint(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss)),
 		},
 	}
@@ -62,7 +74,7 @@ func Init() error {
 }
 
 //NewDoReportHandler create a DoReport Handler with given reportSerivce & faqClient.
-func NewDoReportHandler(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client) http.HandlerFunc {
+func NewDoReportHandler(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client, dalClient *dal.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		appid := requestheader.GetAppID(r)
 		var query statData.RecordQuery
@@ -122,6 +134,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 			AppID:       appid,
 			IgnoredSize: ignoredSize,
 			MarkedSize:  markedSize,
+			SkippedSize: 0,
 			Status:      ReportStatusRunning,
 		}
 		id, err := reportService.NewReport(newReport)
@@ -143,6 +156,16 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		}
 		var inputs = []interface{}{}
 		for _, h := range result.Hits {
+			found, err := dalClient.IsStandardQuestion(appid, h.UserQ)
+			if err != nil {
+				newReportError(reportService, "dal client error"+err.Error(), id)
+				util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
+				return
+			}
+			if found {
+				newReport.SkippedSize++
+				continue
+			}
 			var input = map[string]string{
 				"id":    h.UniqueID,
 				"value": h.UserQ,
