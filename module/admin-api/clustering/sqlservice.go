@@ -39,7 +39,7 @@ func (s *sqlService) GetReport(id uint64) (Report, error) {
 
 func (s *sqlService) QueryReports(query ReportQuery) ([]Report, error) {
 	rawWhere, inputs := asRawSQL(query)
-	selectQuery := "SELECT `id`, `app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size`, `skpped_size` FROM `reports` WHERE " + rawWhere
+	selectQuery := "SELECT `id`, `app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size`, `skipped_size` FROM `reports` WHERE " + rawWhere
 	rows, err := s.db.Query(selectQuery, inputs...)
 	if err != nil {
 		return nil, fmt.Errorf("query sql failed, %v", err)
