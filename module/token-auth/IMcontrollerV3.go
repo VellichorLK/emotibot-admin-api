@@ -37,11 +37,6 @@ func IMUserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		returnBadRequest(w, "username")
 		return
 	}
-	if user.Email == "" {
-		err = util.ErrInvalidParameter
-		returnBadRequest(w, "email")
-		return
-	}
 	if user.DisplayName == "" {
 		err = util.ErrInvalidParameter
 		returnBadRequest(w, "name")
@@ -131,13 +126,6 @@ func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	newUser, err := parseUpdateUserFromRequestV3(r)
 	if err != nil {
 		returnBadRequest(w, err.Error())
-		return
-	}
-
-	newUser.UserName = origUser.UserName
-	if newUser.Email == "" {
-		err = util.ErrInvalidParameter
-		returnBadRequest(w, "email")
 		return
 	}
 	if newUser.DisplayName == "" {
