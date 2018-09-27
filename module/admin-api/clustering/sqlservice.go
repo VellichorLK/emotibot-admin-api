@@ -14,7 +14,7 @@ type sqlService struct {
 }
 
 func (s *sqlService) NewReport(r Report) (uint64, error) {
-	query := "INSERT INTO `reports`(`app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size`, `skipped_size`) VALUE( ?, ?, ?, ?, ?, ?, ?, ?)"
+	query := "INSERT INTO `reports`(`app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size`, `skipped_size`) VALUE( ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 	result, err := s.db.Exec(query, r.AppID, r.UserID, r.Condition, r.CreatedTime, r.UpdatedTime, r.Status, r.IgnoredSize, r.MarkedSize, r.SkippedSize)
 	if err != nil {
 		return 0, fmt.Errorf("insert report failed, %v", err)
@@ -39,7 +39,7 @@ func (s *sqlService) GetReport(id uint64) (Report, error) {
 
 func (s *sqlService) QueryReports(query ReportQuery) ([]Report, error) {
 	rawWhere, inputs := asRawSQL(query)
-	selectQuery := "SELECT `id`, `app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size` FROM `reports` WHERE " + rawWhere
+	selectQuery := "SELECT `id`, `app_id`, `user_id`, `condition`, `created_time`, `updated_time`, `status`, `ignored_size`, `marked_size`, `skpped_size` FROM `reports` WHERE " + rawWhere
 	rows, err := s.db.Query(selectQuery, inputs...)
 	if err != nil {
 		return nil, fmt.Errorf("query sql failed, %v", err)
@@ -48,7 +48,7 @@ func (s *sqlService) QueryReports(query ReportQuery) ([]Report, error) {
 	var reports = []Report{}
 	for rows.Next() {
 		var r Report
-		rows.Scan(&r.ID, &r.AppID, &r.UserID, &r.Condition, &r.CreatedTime, &r.UpdatedTime, &r.Status, &r.IgnoredSize, &r.MarkedSize)
+		rows.Scan(&r.ID, &r.AppID, &r.UserID, &r.Condition, &r.CreatedTime, &r.UpdatedTime, &r.Status, &r.IgnoredSize, &r.MarkedSize, &r.SkippedSize)
 		reports = append(reports, r)
 	}
 	if err = rows.Err(); err != nil {
