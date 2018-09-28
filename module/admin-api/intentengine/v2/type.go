@@ -90,6 +90,10 @@ func (intent *TrainIntent) Load(input *IntentV2) {
 			intent.Sentences.Positive = append(intent.Sentences.Positive, sentence.Content)
 		}
 	}
+	// At least add intent itself as positive sentence to avoid error in intent trainer
+	if len(intent.Sentences.Positive) == 0 {
+		intent.Sentences.Positive = append(intent.Sentences.Positive, input.Name)
+	}
 	intent.Features = &TrainFeature{}
 	intent.Features.Init()
 }

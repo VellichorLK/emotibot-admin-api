@@ -72,7 +72,7 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 	}
 	defer util.ClearTransition(tx)
 
-	conditions := []string{"appid = ?"}
+	conditions := []string{"appid = ?", "status = 0"}
 	params := []interface{}{appid}
 	if version != nil {
 		conditions = append(conditions, "version = ?")
@@ -182,7 +182,7 @@ func (dao intentDaoV2) GetIntent(appid string, intentID int64, keyword string) (
 		return nil, util.ErrDBNotInit
 	}
 
-	queryStr := "SELECT id, name FROM intents WHERE appid = ? AND id = ?"
+	queryStr := "SELECT id, name FROM intents WHERE appid = ? AND id = ? AND status = 0"
 	intentRow := dao.db.QueryRow(queryStr, appid, intentID)
 
 	intent := IntentV2{}
@@ -404,8 +404,10 @@ func (dao intentDaoV2) DeleteIntent(appid string, intentID int64) (err error) {
 		return err
 	}
 
-	queryStr = "DELETE FROM intents WHERE id = ? AND appid = ?"
-	_, err = tx.Exec(queryStr, intentID, appid)
+	now := time.Now().Unix()
+	fmt.Printf("\n\n%d, %s, %d\n\n", intentID, appid, now)
+	queryStr = "UPDATE intents SET status = -1, updatetime = ? WHERE id = ? AND appid = ?"
+	_, err = tx.Exec(queryStr, now, intentID, appid)
 	if err != nil {
 		return err
 	}
@@ -474,6 +476,12 @@ func (dao intentDaoV2) CommitIntent(appid string) (version int, ret []*IntentV2,
 		return
 	}
 	logger.Trace.Println("Commit new intent, version:", version)
+
+	queryStr := "DELETE FROM intents WHERE status = -1 AND appid = ?"
+	_, err = tx.Exec(queryStr, appid)
+	if err != nil {
+		return
+	}
 
 	err = tx.Commit()
 	if err != nil {
@@ -624,6 +632,7 @@ func (dao intentDaoV2) SearchIntentOfSentence(appid string, version *int, conten
 	conditions := []string{
 		"i.appid = ?",
 		"s.sentence = ?",
+		"i.status = 0",
 	}
 
 	if version == nil {
@@ -738,9 +747,9 @@ func needCommit(tx db, appid string) (ret bool, err error) {
 		FROM intent_versions
 		WHERE appid = ?
 	`
-	lastUpdate := 0
+	var lastUpdatePtr *int
 	versionCnt := 0
-	err = tx.QueryRow(queryStr, appid).Scan(&versionCnt, &lastUpdate)
+	err = tx.QueryRow(queryStr, appid).Scan(&versionCnt, &lastUpdatePtr)
 	if err != nil && err != sql.ErrNoRows {
 		return false, err
 	}
@@ -749,6 +758,10 @@ func needCommit(tx db, appid string) (ret bool, err error) {
 		return true, nil
 	}
 
+	lastUpdate := 0
+	if lastUpdatePtr != nil {
+		lastUpdate = *lastUpdatePtr
+	}
 	queryStr = `
 		SELECT count(*) FROM intents
 		WHERE appid = ? AND updatetime > ? AND version is NULL
@@ -805,7 +818,7 @@ func getIntentsNameOnly(tx db, appid string, version *int) (ret []*IntentV2, err
 	if tx == nil {
 		return nil, util.ErrDBNotInit
 	}
-	conditions := []string{"appid = ?"}
+	conditions := []string{"appid = ?", "status = 0"}
 	params := []interface{}{appid}
 	if version != nil {
 		conditions = append(conditions, "version = ?")
@@ -962,7 +975,7 @@ func checkIntent(tx db, appid string, intentID int64) (readOnly bool, err error)
 	if tx == nil {
 		return false, errors.New("error parameter")
 	}
-	queryStr := "SELECT version FROM intents WHERE appid = ? AND id = ?"
+	queryStr := "SELECT version FROM intents WHERE appid = ? AND id = ? AND status = 0"
 	row := tx.QueryRow(queryStr, appid, intentID)
 
 	var version *int
