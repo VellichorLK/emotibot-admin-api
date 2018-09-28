@@ -372,8 +372,14 @@ func updateUserPassword(enterprise, userid, password string) error {
 		return errors.New("DB not init")
 	}
 
-	queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id = ?"
-	_, err := mySQL.Exec(queryStr, password, userid, enterprise)
+	var err error
+	if enterprise != "" {
+		queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id = ?"
+		_, err = mySQL.Exec(queryStr, password, userid, enterprise)
+	} else {
+		queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id IS NULL"
+		_, err = mySQL.Exec(queryStr, password, userid)
+	}
 	if err != nil {
 		return err
 	}
