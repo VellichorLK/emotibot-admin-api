@@ -211,7 +211,9 @@ func parseCmdFromRequest(r *http.Request) (cmd *Cmd, err error) {
 	ret := Cmd{}
 	ret.Name = r.FormValue("name")
 	ret.Answer = r.FormValue("answer")
-	ret.Status = r.FormValue("status") != "0"
+	ret.Status = r.FormValue("status") == "true" ||
+		r.FormValue("status") == "T" ||
+		r.FormValue("status") == "1"
 	begin, err := time.Parse(time.RFC3339, r.FormValue("begin_time"))
 	if err != nil {
 		ret.Begin = nil
