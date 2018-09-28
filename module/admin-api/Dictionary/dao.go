@@ -449,7 +449,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	queryStr := `
 		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
 		FROM entity_class
-		WHERE appid = ?`
+		WHERE appid = ? ORDER BY id DESC`
 	rows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return

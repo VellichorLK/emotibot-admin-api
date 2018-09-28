@@ -82,7 +82,7 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 	}
 
 	// Get intents id and name
-	queryStr := fmt.Sprintf("SELECT id, name FROM intents WHERE %s", strings.Join(conditions, " AND "))
+	queryStr := fmt.Sprintf("SELECT id, name FROM intents WHERE %s ORDER BY id desc", strings.Join(conditions, " AND "))
 	intentRows, err := tx.Query(queryStr, params...)
 	if err != nil {
 		return
@@ -828,7 +828,7 @@ func getIntentsNameOnly(tx db, appid string, version *int) (ret []*IntentV2, err
 	}
 
 	// Get intents id and name
-	queryStr := fmt.Sprintf("SELECT id, name FROM intents WHERE %s", strings.Join(conditions, " AND "))
+	queryStr := fmt.Sprintf("SELECT id, name FROM intents WHERE %s ORDER BY id desc", strings.Join(conditions, " AND "))
 	intentRows, err := tx.Query(queryStr, params...)
 	if err != nil {
 		return
