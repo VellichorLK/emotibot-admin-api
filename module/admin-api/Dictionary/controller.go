@@ -1117,7 +1117,6 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	defer func() {
 		ret := 0
-
 		auditMsg := fmt.Sprintf("%s%s %s %s %s",
 			util.Msg["Move"], util.Msg["Wordbank"], wbName, util.Msg["To"], parentName)
 		if err == nil {
@@ -1131,6 +1130,9 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
 			}
 			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			if s, ok := result.(string); ok {
+				auditMsg += ", " + s
+			}
 		}
 		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
 		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
