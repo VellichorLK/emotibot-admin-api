@@ -1174,11 +1174,15 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	wbName = origWordbank.Name
 
 	err = MoveWordbankV3(appid, id, cid)
-	if err != nil {
+	if err == errDuplicated {
+		retCode = ApiError.REQUEST_ERROR
+		result = util.Msg["ErrorMoveTarget"]
+	} else if err != nil {
 		retCode = ApiError.DB_ERROR
 		result = err.Error()
+	} else {
+		go TriggerUpdateWordbankV3(appid)
 	}
-	go TriggerUpdateWordbankV3(appid)
 }
 
 func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {

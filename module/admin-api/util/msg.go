@@ -99,6 +99,7 @@ var (
 		"ErrorAPINameTooLong":    "词库名超过35字",
 		"ErrorAPISimilarTooLong": "同义词超过64字",
 		"ErrorAPIPathTooLong":    "目录名超过20字",
+		"ErrorMoveTarget":        "目标目录已有相同名称的词库",
 
 		// Used in Command and command-class
 		"Cmd":                    "指令",
