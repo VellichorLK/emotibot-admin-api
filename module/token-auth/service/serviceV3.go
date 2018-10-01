@@ -64,9 +64,7 @@ func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetail
 		if err != nil {
 			return err
 		} else if exists {
-			if newAdmin.UserName == existedAdminName {
-				return util.ErrUserNameExists
-			} else if newAdmin.Email == existedAdminEmail {
+			if origAdmin.UserName != existedAdminName && newAdmin.Email == existedAdminEmail {
 				return util.ErrUserEmailExists
 			}
 		}
