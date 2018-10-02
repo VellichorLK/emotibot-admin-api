@@ -1,0 +1,30 @@
+pipeline {
+    agent {
+        node('docker-build01')
+    } 
+    stages {
+        stage('Unit testing') {
+            steps {
+                sh '''
+                docker rm -f admin-api-test || true;
+                docker run --name admin-api-test -v `pwd`:/go/src/emotibot.com/emotigo docker-reg.emotibot.com.cn:55688/go-build:5f20df99-1.10-alpine sh -c "cd /go/src/emotibot.com/emotigo/module/admin-api && sh jenkins/runTest.sh"
+                '''
+            }
+        }
+        stage('Build docker'){
+            steps {
+                sh "cd 'module/admin-api/docker' && bash build.sh;"
+            }
+        }
+        stage('Push docker'){
+            steps {
+                sh "cd 'module/admin-api/docker' && bash push_images.sh;"
+            }
+        }
+        stage('Clearout repo'){
+            steps {
+                sh 'docker rm -f admin-api-test || true'
+            }
+        }
+    }
+}
