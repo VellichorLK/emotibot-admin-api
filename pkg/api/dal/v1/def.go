@@ -34,7 +34,9 @@ type conditions struct {
 	ParentContent string   `json:"parentContent,omitempty"`
 }
 
-type response struct {
+// RawResponse is the general response retrive from dal api endpoint.
+// It is exported only for test package to avoid duplicated struct.
+type RawResponse struct {
 	ErrNo      string        `json:"errno"`
 	ErrMessage string        `json:"errmsg"`
 	Results    []interface{} `json:"actualResults"`

@@ -71,7 +71,7 @@ func (c *Client) IsStandardQuestion(appID, content string) (bool, error) {
 	if code := resp.StatusCode; code != http.StatusOK {
 		return false, fmt.Errorf("response status is %d(not healthy)", code)
 	}
-	var respContent response
+	var respContent RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respContent)
 	if err != nil {
 		return false, fmt.Errorf("response format error, %v", err)
@@ -116,7 +116,7 @@ func (c *Client) IsSimilarQuestion(appID, lq string) (bool, error) {
 	if code := resp.StatusCode; code != http.StatusOK {
 		return false, fmt.Errorf("response status is %d(not healthy)", code)
 	}
-	var respContent response
+	var respContent RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respContent)
 	if err != nil {
 		return false, fmt.Errorf("response format error, %v", err)
@@ -157,7 +157,7 @@ func (c *Client) Questions(appID string) ([]string, error) {
 	if code := resp.StatusCode; code != http.StatusOK {
 		return nil, fmt.Errorf("response status is %d(not healthy)", code)
 	}
-	var content response
+	var content RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&content)
 	if err != nil {
 		return nil, fmt.Errorf("response format error, %v", err)
@@ -202,7 +202,7 @@ func (c *Client) SimilarQuestions(appID string, sq string) ([]string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request status is %d(not healthy)", resp.StatusCode)
 	}
-	var respBody response
+	var respBody RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return nil, &DetailError{
@@ -250,7 +250,7 @@ func (c *Client) SetSimilarQuestion(appID, sq string, lq ...string) error {
 		return fmt.Errorf("do request failed, %v", err)
 	}
 	defer resp.Body.Close()
-	var respBody response
+	var respBody RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return fmt.Errorf("dal error: response body format failed, %v", err)
@@ -293,7 +293,7 @@ func (c *Client) DeleteSimilarQuestions(appID string, lq ...string) error {
 		return fmt.Errorf("do request failed, %v", err)
 	}
 	defer resp.Body.Close()
-	var respBody response
+	var respBody RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return fmt.Errorf("decode dal body failed")
@@ -329,7 +329,7 @@ func (c *Client) Question(appID, lq string) (string, error) {
 	}
 	resp, err := c.client.Do(req)
 	defer resp.Body.Close()
-	var respBody response
+	var respBody RawResponse
 	err = json.NewDecoder(resp.Body).Decode(&respBody)
 	if err != nil {
 		return "", fmt.Errorf("decode dal body failed")
