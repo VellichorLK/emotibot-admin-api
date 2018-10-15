@@ -19,17 +19,22 @@ var (
 // Init init the package ModuleInfo & other essential data
 func Init() error {
 	var moduleName = "stats"
+	var dalClient *dal.Client
+	var err error
+
 	dalAddress, ok := util.GetEnvOf("server")["DAL_URL"]
-	if !ok {
-		return fmt.Errorf("Require Module Env DAL_URL")
+	if ok {
+		var httpClient = &http.Client{
+			Timeout: time.Duration(5) * time.Second,
+		}
+		dalClient, err = dal.NewClientWithHTTPClient(dalAddress, httpClient)
+		if err != nil {
+			err = fmt.Errorf("init dal client failed, %v", err)
+		}
+	} else {
+		err = fmt.Errorf("Require Module Env DAL_URL")
 	}
-	var httpClient = &http.Client{
-		Timeout: time.Duration(5) * time.Second,
-	}
-	dalClient, err := dal.NewClientWithHTTPClient(dalAddress, httpClient)
-	if err != nil {
-		return fmt.Errorf("init dal client failed, %v", err)
-	}
+
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
 		EntryPoints: []util.EntryPoint{
@@ -43,5 +48,13 @@ func Init() error {
 			util.NewEntryPoint("GET", "call", []string{}, controllers.CallStatsGetHandler),
 		},
 	}
-	return services.InitTags()
+	tagInitErr := services.InitTags()
+
+	if err != nil && tagInitErr != nil {
+		return fmt.Errorf("dal init fail: [%s]; tag init fail: [%s]", err.Error(), tagInitErr.Error())
+	}
+	if err != nil {
+		return err
+	}
+	return tagInitErr
 }

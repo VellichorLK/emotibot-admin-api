@@ -175,6 +175,12 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 //The handler will update record store & ssm store.
 //Because we separate the Init() function and Controller, the only way to pass dal.Client is from parameters.
 func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter, r *http.Request) {
+	if client == nil {
+		return func(w http.ResponseWriter, r *http.Request) {
+			returnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
+		}
+	}
+
 	type internalError struct {
 		IsRollbacked bool `json:"rollbacked"`
 	}
@@ -325,6 +331,11 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 
 // NewRecordSSMHandler create a handler for retriving ssm info of certain record.
 func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Request) {
+	if client == nil {
+		return func(w http.ResponseWriter, r *http.Request) {
+			returnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
+		}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := mux.Vars(r)["id"]
 		if !ok {
