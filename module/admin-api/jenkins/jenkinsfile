@@ -4,51 +4,67 @@ pipeline {
         node('docker-build01')
     } 
     stages {
-        stage('testing') {
-            parallel{
-                stage('HTML report'){
-                    steps {
-                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh \"./jenkins/runTest.sh\""
-                        publishHTML (target: [
-                            allowMissing: false,
-                            alwaysLinkToLastBuild: false,
-                            keepAll: true,
-                            reportDir: 'module/admin-api/jenkins',
-                            reportFiles: 'index.html',
-                            reportName: "Unit-test Report"
-                        ])
-                    }
-                }
-                stage('Unit test report') {
-                    steps {
-                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/exportAsJUnit.sh"
-                    }
-                }
-                stage('Coverage report') {
-                    steps {
-                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/coverageTest.sh"
-                    }
+        stage('admin-api') {
+            when {
+                anyOf {
+                    changeset "module/admin-api/**"
+                    changeset "pkg/**"
+                    changelog '(#admin-api)'
                 }
             }
-        }
-        stage('Build docker'){
-            steps {
-                sh "cd 'module/admin-api/docker' && bash build.sh;"
-            }
-        }
-        stage('Push docker'){
-            steps {
-                sh "cd 'module/admin-api/docker' && bash push_images.sh;"
+            stages{
+                stage('testing') {
+                    steps {
+                        script{
+                            def tasks = [:]
+                            tasks["HTML report"] = {
+                                stage('HTML report'){
+                                    sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh \"./jenkins/runTest.sh\""
+                                    publishHTML (target: [
+                                        allowMissing: false,
+                                        alwaysLinkToLastBuild: false,
+                                        keepAll: true,
+                                        reportDir: 'module/admin-api/jenkins',
+                                        reportFiles: 'index.html',
+                                        reportName: "Unit-test Report"
+                                    ])
+                                }
+                            }
+                            tasks["Unit test report"] = {
+                                stage('Unit test report') {
+                                    sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/exportAsJUnit.sh"
+                                    junit 'module/admin-api/jenkins/unittest.xml'
+                                }
+                            }
+                            tasks["Coverage report"] = {
+                                stage('Coverage report') {
+                                    sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/coverageTest.sh"
+                                    step([$class:'CoberturaPublisher',
+                                        coberturaReportFile: 'module/admin-api/coverage.xml',
+                                    ])
+                                }
+                            }
+                            parallel tasks
+                        }
+                    }
+                    parallel{
+                        
+                    }
+                }
+                stage('Build docker'){
+                    steps {
+                        sh "cd 'module/admin-api/docker' && bash build.sh;"
+                    }
+                }
+                stage('Push docker'){
+                    steps {
+                        sh "cd 'module/admin-api/docker' && bash push_images.sh;"
+                    }
+                }
             }
         }
     }
     post {
-        always {
-            step([$class:'CoberturaPublisher',
-                coberturaReportFile: 'module/admin-api/coverage.xml',
-            ])
-            junit 'module/admin-api/jenkins/unittest.xml'
-        }
         failure {
             sh "bash module/admin-api/jenkins/send2slack.sh"
         }
