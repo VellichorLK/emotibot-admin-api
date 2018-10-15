@@ -1,13 +1,34 @@
+def TestBaseImage='docker-reg.emotibot.com.cn:55688/go-build:1a74d1b1-1.10-alpine'
 pipeline {
     agent {
         node('docker-build01')
     } 
     stages {
-        stage('Unit testing') {
-            steps {
-                sh '''
-                docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo docker-reg.emotibot.com.cn:55688/go-build:5f20df99-1.10-alpine sh -c "cd /go/src/emotibot.com/emotigo/module/admin-api && sh jenkins/runTest.sh"
-                '''
+        stage('testing') {
+            parallel{
+                stage('HTML report'){
+                    steps {
+                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh \"./jenkins/runTest.sh\""
+                        publishHTML (target: [
+                            allowMissing: false,
+                            alwaysLinkToLastBuild: false,
+                            keepAll: true,
+                            reportDir: 'module/admin-api/jenkins',
+                            reportFiles: 'index.html',
+                            reportName: "Unit-test Report"
+                        ])
+                    }
+                }
+                stage('Unit test report') {
+                    steps {
+                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/exportAsJUnit.sh"
+                    }
+                }
+                stage('Coverage report') {
+                    steps {
+                        sh "docker run --rm -v `pwd`:/go/src/emotibot.com/emotigo -w /go/src/emotibot.com/emotigo/module/admin-api ${TestBaseImage} sh ./jenkins/coverageTest.sh"
+                    }
+                }
             }
         }
         stage('Build docker'){
@@ -22,7 +43,16 @@ pipeline {
         }
     }
     post {
+        always {
+            step([$class:'CoberturaPublisher',
+                coberturaReportFile: 'module/admin-api/coverage.xml',
+            ])
+            junit 'module/admin-api/jenkins/unittest.xml'
+        }
         failure {
+            sh "bash module/admin-api/jenkins/send2slack.sh"
+        }
+        unstable {
             sh "bash module/admin-api/jenkins/send2slack.sh"
         }
         success {
