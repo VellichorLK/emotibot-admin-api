@@ -752,6 +752,10 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 					break
 				}
 			}
+
+			// Add wordbank name itself into similar words for NLU usage
+			wordbank.SimilarWords = append(wordbank.SimilarWords, wordbank.Name)
+
 			synonymLine := fmt.Sprintf("%s\t%s\t%s",
 				strings.Join(synonymPaths, ">"), wordbank.Name,
 				strings.Join(wordbank.SimilarWords, ","))
