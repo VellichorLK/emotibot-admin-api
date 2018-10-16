@@ -34,7 +34,7 @@ func FetchWhites(condition QueryCondition, appid string) ([]White, error) {
 		return nil, fmt.Errorf("DB not init")
 	}
 
-	query := "select user_id as UserId from white_list where is_deleted = 0 order by user_id "
+	query := "select user_id as UserId from white_list where is_deleted = 0 order by create_time desc "
 
 	// fetch
 	rows, err := db.Query(query)
