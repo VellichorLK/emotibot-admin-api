@@ -61,7 +61,7 @@ fi
 TAG="$VERSION-$GOVER-$platform"
 DOCKER_IMAGE=$REPO/$PROJECT/$CONTAINER:$TAG
 
-BUILDROOT=$DIR/..
+BUILDROOT=$DIR
 # Build docker
 cmd="docker build \
   -t $DOCKER_IMAGE \

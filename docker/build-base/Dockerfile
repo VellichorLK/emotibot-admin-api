@@ -1,5 +1,7 @@
 ARG baseImageName
 FROM ${baseImageName}
+
+COPY vendors ${GOPATH}/src/
 RUN go get github.com/go-sql-driver/mysql
 RUN go get github.com/kataras/iris
 RUN go get github.com/kataras/golog
