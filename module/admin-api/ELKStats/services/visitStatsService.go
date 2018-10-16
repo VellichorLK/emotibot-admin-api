@@ -26,13 +26,10 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
-	groupBySessionsTermAgg := elastic.NewTermsAggregation().Field("session_id").Size(data.ESTermAggSize)
-
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName).
 			Interval(query.AggInterval)
-		dateHistogramAgg.SubAggregation(aggName, groupBySessionsTermAgg)
 
 		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
 		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, dateHistogramAgg)
@@ -46,7 +43,6 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
-		tagTermAgg.SubAggregation(aggName, groupBySessionsTermAgg)
 
 		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
 		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, tagTermAgg)
