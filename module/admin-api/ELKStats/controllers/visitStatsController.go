@@ -16,7 +16,6 @@ import (
 var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 	data.VisitStatsMetricConversations:   services.ConversationCounts,
 	data.VisitStatsMetricUniqueUsers:     services.UniqueUserCounts,
-	data.VisitStatsMetricActiveUsers:     services.ActiveUserCounts,
 	data.VisitStatsMetricNewUsers:        services.NewUserCounts,
 	data.VisitStatsMetricTotalAsks:       services.TotalAskCounts,
 	data.VisitStatsMetricNormalResponses: services.NormalResponseCounts,
@@ -566,9 +565,6 @@ func createVisitStatsQ(statsCounts map[string]map[string]interface{}) (visitStat
 			case data.VisitStatsMetricUniqueUsers:
 				visitStatsQ[key].UniqueUsers = count.(int64)
 				totalVisitStatsQ.UniqueUsers += count.(int64)
-			case data.VisitStatsMetricActiveUsers:
-				visitStatsQ[key].ActiveUsers = count.(int64)
-				totalVisitStatsQ.ActiveUsers += count.(int64)
 			case data.VisitStatsMetricNewUsers:
 				visitStatsQ[key].NewUsers = count.(int64)
 				totalVisitStatsQ.NewUsers += count.(int64)

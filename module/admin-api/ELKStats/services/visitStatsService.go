@@ -15,8 +15,6 @@ const (
 	MinuteInSeconds = 60
 )
 
-const ActiveUsersThreshold = 30
-
 func ConversationCounts(ctx context.Context, client *elastic.Client,
 	query data.VisitStatsQuery) (map[string]interface{}, error) {
 	aggName := "conversations"
@@ -116,77 +114,6 @@ func UniqueUserCounts(ctx context.Context, client *elastic.Client,
 	}
 
 	return uniqueUserCounts, nil
-}
-
-func ActiveUserCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
-	aggName := "active_users"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
-	boolQuery = boolQuery.Filter(rangeQuery)
-
-	groupByUsersTermAggName := "group_by_users"
-	groupByUsersTermAgg := elastic.NewTermsAggregation()
-	groupByUsersTermAgg.Field("user_id").Size(data.ESTermAggSize)
-
-	activeUsersFilterAggName := "active_user_filter"
-	activeUsersFilterAgg := elastic.NewBucketSelectorAggregation()
-	activeUsersFilterAgg.AddBucketsPath("DocCount", "_count")
-	activeUsersThresholdScript := fmt.Sprintf("params.DocCount > %d", ActiveUsersThreshold)
-	activeUsersFilterScript := elastic.NewScript(activeUsersThresholdScript)
-	activeUsersFilterAgg.Script(activeUsersFilterScript)
-
-	groupByUsersTermAgg.SubAggregation(activeUsersFilterAggName, activeUsersFilterAgg)
-
-	var _agg elastic.Aggregation
-
-	switch query.AggBy {
-	case data.AggByTime:
-		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		dateHistogramAgg.SubAggregation(groupByUsersTermAggName, groupByUsersTermAgg)
-
-		_agg = dateHistogramAgg
-	case data.AggByTag:
-		boolQuery = boolQuery.Filter(rangeQuery)
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
-		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
-		tagTermAgg.SubAggregation(groupByUsersTermAggName, groupByUsersTermAgg)
-
-		_agg = tagTermAgg
-	default:
-		return nil, data.ErrInvalidAggType
-	}
-
-	result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, _agg)
-	if err != nil {
-		return nil, err
-	}
-
-	activeUserCounts := make(map[string]interface{})
-
-	if agg, found := result.Aggregations.Terms(aggName); found {
-		for _, bucket := range agg.Buckets {
-			var bucketKey string
-
-			switch query.AggBy {
-			case data.AggByTime:
-				bucketKey = *bucket.KeyAsString
-			case data.AggByTag:
-				bucketKey = bucket.Key.(string)
-			default:
-				return nil, data.ErrInvalidAggType
-			}
-
-			groupByUsersTermAgg, found := bucket.Terms(groupByUsersTermAggName)
-			if !found {
-				return nil, data.ErrESTermsNotFound
-			}
-			activeUserCounts[bucketKey] = int64(len(groupByUsersTermAgg.Buckets))
-		}
-	}
-
-	return activeUserCounts, nil
 }
 
 func NewUserCounts(ctx context.Context, client *elastic.Client,
