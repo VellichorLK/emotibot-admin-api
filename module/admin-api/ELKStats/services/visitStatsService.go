@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"github.com/olivere/elastic"
 )
 
@@ -15,8 +16,8 @@ const (
 	MinuteInSeconds = 60
 )
 
-func ConversationCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "conversations"
 	boolQuery := elastic.NewBoolQuery()
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
@@ -53,8 +54,8 @@ func ConversationCounts(ctx context.Context, client *elastic.Client,
 	}
 }
 
-func UniqueUserCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func UniqueUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "unique_users"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
@@ -116,8 +117,8 @@ func UniqueUserCounts(ctx context.Context, client *elastic.Client,
 	return uniqueUserCounts, nil
 }
 
-func NewUserCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "new_users"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.FirstLogTimeFieldName)
@@ -188,8 +189,8 @@ func NewUserCounts(ctx context.Context, client *elastic.Client,
 	return newUserCounts, nil
 }
 
-func TotalAskCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func TotalAskCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "total_asks"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
@@ -215,8 +216,8 @@ func TotalAskCounts(ctx context.Context, client *elastic.Client,
 	}
 }
 
-func NormalResponseCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func NormalResponseCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "normal_responses"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
@@ -244,8 +245,8 @@ func NormalResponseCounts(ctx context.Context, client *elastic.Client,
 	}
 }
 
-func ChatCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func ChatCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "chats"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "chat")
@@ -273,8 +274,8 @@ func ChatCounts(ctx context.Context, client *elastic.Client,
 	}
 }
 
-func OtherCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func OtherCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "others"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "chat", "backfill")
@@ -302,8 +303,8 @@ func OtherCounts(ctx context.Context, client *elastic.Client,
 	}
 }
 
-func UnknownQnACounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func UnknownQnACounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "unknown_qna"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "backfill")
@@ -363,8 +364,8 @@ func CoversationsPerSessionCounts(conversationCounts map[string]interface{},
 	return counts
 }
 
-func TopQuestions(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery, topN int) ([]*data.Question, error) {
+func TopQuestions(query data.VisitStatsQuery, topN int) ([]*data.Question, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "top_user_q"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
@@ -389,8 +390,8 @@ func TopQuestions(ctx context.Context, client *elastic.Client,
 	return questions, nil
 }
 
-func TopUnmatchQuestions(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery, topN int) ([]*data.UnmatchQuestion, error) {
+func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQuestion, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "top_unmatch_q"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "backfill")
@@ -451,8 +452,8 @@ func TopUnmatchQuestions(ctx context.Context, client *elastic.Client,
 	return unmatchQuestions, nil
 }
 
-func AnswerCategoryCounts(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery) (map[string]interface{}, error) {
+func AnswerCategoryCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "answer_categories"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)

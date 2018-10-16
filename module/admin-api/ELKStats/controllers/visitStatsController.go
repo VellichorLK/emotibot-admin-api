@@ -119,12 +119,6 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	esCtx, esClient := elasticsearch.GetClient()
-	if esClient == nil {
-		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
-		return
-	}
-
 	if statsType == data.VisitStatsTypeTime ||
 		(statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterCategory) {
 		statsCounts, err := fetchVisitStats(query)
@@ -158,7 +152,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterQType {
 		// Return answer category counts
-		statCounts, err := services.AnswerCategoryCounts(esCtx, esClient, query)
+		statCounts, err := services.AnswerCategoryCounts(query)
 		if err != nil {
 			errResponse := data.NewErrorResponse(err.Error())
 			returnInternalServerError(w, errResponse)
@@ -213,15 +207,9 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	esCtx, esClient := elasticsearch.GetClient()
-	if esClient == nil {
-		returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
-		return
-	}
-
 	switch questionsType {
 	case data.VisitQuestionsTypeTop:
-		questions, err := services.TopQuestions(esCtx, esClient, query, 20)
+		questions, err := services.TopQuestions(query, 20)
 		if err != nil {
 			errResponse := data.NewErrorResponse(err.Error())
 			returnInternalServerError(w, errResponse)
@@ -241,7 +229,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		query.AggInterval = aggInterval
 
-		questions, err := services.TopUnmatchQuestions(esCtx, esClient, query, 20)
+		questions, err := services.TopUnmatchQuestions(query, 20)
 		if err != nil {
 			errResponse := data.NewErrorResponse(err.Error())
 			returnInternalServerError(w, errResponse)
@@ -263,11 +251,6 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interface{}, error) {
-	esCtx, esClient := elasticsearch.GetClient()
-	if esClient == nil {
-		return nil, data.ErrNotInit
-	}
-
 	var visitStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	visitStatsCounts := make(map[string]map[string]interface{})
 	done := make(chan error, len(visitStatsQueryHandlers))
@@ -276,7 +259,7 @@ func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interfac
 	// Fetch statistics concurrently
 	for queryKey, queryHandler := range visitStatsQueryHandlers {
 		go func(key string, handler data.VisitStatsQueryHandler) {
-			counts, err := handler(esCtx, esClient, query)
+			counts, err := handler(query)
 			if err != nil {
 				done <- err
 				return
