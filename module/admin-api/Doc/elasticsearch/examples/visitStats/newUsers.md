@@ -4,28 +4,44 @@
 
 #### 各個時間區段的新增用戶數
 
-此數據無法直接透過 ElasticSearch 計算，因此先統計 `app_id` 為 **`csbot`**，結果依各使用者 **`(new_users)`** 分群，並取得各使用者的第一筆資料。最後再透過程式統計各使用者的第一筆資料是否落在所統計的各個時間區段中而得到新增用戶數：
+統計 `app_id` 為 **`csbot`**，且資料介於 **`2018-10-01 00:00:00`** 與 **`2018-10-31 23:59:59`**，結果依照 **`day`** 分群。但由於為了做到基於 `維度` 的統計，因此 `emotibot-users-*` 的 document ID 其實是透過 **`user_id` + `custom_info`** hash 過後得來的。因此有可能有同一個使用者，但維度不同而導致產生多個 documents，所以最後還必須再做一次 `cardinality aggregation` 排除重複的 `user_id` 後方可計算出正確的新增用戶數：
 
 ```
-POST /emotibot-records-csbot-*/_search
+POST /emotibot-users-csbot-*/_search
 {
+  "query": {
+    "bool": {
+      "filter": [
+        {
+          "range": {
+            "first_log_time": {
+              "gte": "2018-10-01 00:00:00",
+              "lte": "2018-10-31 23:59:59",
+              "format": "yyyy-MM-dd HH:mm:ss",
+              "time_zone": "+08:00"
+            }
+          }
+        }
+      ]
+    }
+  },
   "aggs": {
-    "new_users": {
-      "terms": {
-        "field": "user_id",
-        "size": 3000000
+    "histogram": {
+      "date_histogram": {
+        "field":"first_log_time",
+        "format":"yyyy-MM-dd HH:mm:ss",
+        "interval":"day",
+        "time_zone":"+08:00",
+        "min_doc_count":0,
+        "extended_bounds":{
+          "min":"2018-10-01 00:00:00",
+          "max":"2018-10-31 23:59:59"
+        }
       },
       "aggs": {
-        "user_first_chat": {
-          "top_hits": {
-            "size": 1,
-            "sort": [
-              {
-                "log_time": {
-                  "order": "asc"
-                }
-              }
-            ]
+        "unique_users_count": {
+          "cardinality": {
+            "field": "user_id"
           }
         }
       }
@@ -39,67 +55,268 @@ POST /emotibot-records-csbot-*/_search
 
 ```
 {
-  "took": 4,
+  "took": 2,
   "timed_out": false,
   "_shards": {
-    "total": 5,
-    "successful": 5,
+    "total": 10,
+    "successful": 10,
     "skipped": 0,
     "failed": 0
   },
   "hits": {
-    "total": 4,
+    "total": 12,
     "max_score": 0,
     "hits": []
   },
   "aggregations": {
-    "new_users": {
-      "doc_count_error_upper_bound": 0,
-      "sum_other_doc_count": 0,
+    "histogram": {
       "buckets": [
         {
-          "key": "9876",
-          "doc_count": 4,
-          "user_first_chat": {
-            "hits": {
-              "total": 4,
-              "max_score": null,
-              "hits": [
-                {
-                  "_index": "records",
-                  "_type": "doc",
-                  "_id": "cGgtjmQBuCoMdkfhVdMs",
-                  "_score": null,
-                  "_source": {
-                    "user_id": "9876",
-                    "message": """{"unique_id":"0188326a891a4e1c97c856ceebe6e857","user_id":"9876","app_id":"csbot","session_id":"test_session","user_q":"西雅图天气如何","std_q":"","module":"backfill","intent":"查，天气","intent_score":0,"emotion":"疑惑","emotion_score":0,"score":0,"host":"172.17.0.2","log_time":"2018-07-12T11:08:12.000Z","custom_info":{"platform":"android"},"note":""}""",
-                    "intent": "查，天气",
-                    "custom_info": {
-                      "platform": "android"
-                    },
-                    "emotion_score": 0,
-                    "session_id": "test_session",
-                    "app_id": "csbot",
-                    "emotion": "疑惑",
-                    "note": "",
-                    "std_q": "",
-                    "user_q": "西雅图天气如何",
-                    "log_time": "2018-07-12T11:08:12.000Z",
-                    "@timestamp": "2018-07-12T11:08:12.861Z",
-                    "unique_id": "0188326a891a4e1c97c856ceebe6e857",
-                    "module": "backfill",
-                    "host": "172.17.0.2",
-                    "intent_score": 0,
-                    "score": 0,
-                    "port": 33930,
-                    "@version": "1"
-                  },
-                  "sort": [
-                    1531393692000
-                  ]
-                }
-              ]
-            }
+          "key_as_string": "2018-10-01 00:00:00",
+          "key": 1538323200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-02 00:00:00",
+          "key": 1538409600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-03 00:00:00",
+          "key": 1538496000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-04 00:00:00",
+          "key": 1538582400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-05 00:00:00",
+          "key": 1538668800000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-06 00:00:00",
+          "key": 1538755200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-07 00:00:00",
+          "key": 1538841600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-08 00:00:00",
+          "key": 1538928000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-09 00:00:00",
+          "key": 1539014400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-10 00:00:00",
+          "key": 1539100800000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-11 00:00:00",
+          "key": 1539187200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-12 00:00:00",
+          "key": 1539273600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-13 00:00:00",
+          "key": 1539360000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-14 00:00:00",
+          "key": 1539446400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-15 00:00:00",
+          "key": 1539532800000,
+          "doc_count": 6,
+          "unique_users_count": {
+            "value": 2
+          }
+        },
+        {
+          "key_as_string": "2018-10-16 00:00:00",
+          "key": 1539619200000,
+          "doc_count": 6,
+          "unique_users_count": {
+            "value": 4
+          }
+        },
+        {
+          "key_as_string": "2018-10-17 00:00:00",
+          "key": 1539705600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-18 00:00:00",
+          "key": 1539792000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-19 00:00:00",
+          "key": 1539878400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-20 00:00:00",
+          "key": 1539964800000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-21 00:00:00",
+          "key": 1540051200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-22 00:00:00",
+          "key": 1540137600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-23 00:00:00",
+          "key": 1540224000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-24 00:00:00",
+          "key": 1540310400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-25 00:00:00",
+          "key": 1540396800000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-26 00:00:00",
+          "key": 1540483200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-27 00:00:00",
+          "key": 1540569600000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-28 00:00:00",
+          "key": 1540656000000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-29 00:00:00",
+          "key": 1540742400000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-30 00:00:00",
+          "key": 1540828800000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
+          }
+        },
+        {
+          "key_as_string": "2018-10-31 00:00:00",
+          "key": 1540915200000,
+          "doc_count": 0,
+          "unique_users_count": {
+            "value": 0
           }
         }
       ]
@@ -113,10 +330,10 @@ POST /emotibot-records-csbot-*/_search
 #### 在所篩選的時間範圍內，各個維度的新增用戶數
 ##### (以平台 (platform) 維度為例)
 
-此數據無法直接透過 ElasticSearch 計算，因此先統計 `app_id` 為 **`csbot`**，且 `platform` 欄位不為 **`空字串`**，結果依各使用者 **`(new_users)`** 分群後，再依各平台 **`(group_by_platform)`** 分群，並取得各使用者在各平台下的第一筆資料。最後再透過程式統計各使用者在各平台下的第一筆資料是否落在所篩選的時間範圍內而得到新增用戶數：
+統計 `app_id` 為 **`csbot`**，且資料介於 **`2018-10-01 00:00:00`** 與 **`2018-10-31 23:59:59`**，且 `platform` 欄位不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群。但由於為了做到基於 `維度` 的統計，因此 `emotibot-users-*` 的 document ID 其實是透過 **`user_id` + `custom_info`** hash 過後得來的。因此有可能有同一個使用者，但維度不同而導致產生多個 documents，所以最後還必須再做一次 `cardinality aggregation` 排除重複的 `user_id` 後方可計算出正確的新增用戶數：
 
 ```
-POST /emotibot-records-csbot-*/_search
+POST /emotibot-users-csbot-*/_search
 {
   "query": {
     "bool": {
@@ -125,35 +342,30 @@ POST /emotibot-records-csbot-*/_search
           "exists": {
             "field": "custom_info.platform.keyword"
           }
+        },
+        {
+          "range": {
+            "first_log_time": {
+              "gte": "2018-10-01 00:00:00",
+              "lte": "2018-10-31 23:59:59",
+              "format": "yyyy-MM-dd HH:mm:ss",
+              "time_zone": "+08:00"
+            }
+          }
         }
       ]
     }
   },
   "aggs": {
-    "new_users": {
+    "group_by_platform": {
       "terms": {
-        "field": "user_id",
+        "field": "custom_info.platform.keyword",
         "size": 3000000
       },
       "aggs": {
-        "group_by_platform": {
-          "terms": {
-            "field": "custom_info.platform.keyword",
-            "size": 3000000
-          },
-          "aggs": {
-            "user_first_chat": {
-              "top_hits": {
-                "size": 1,
-                "sort": [
-                  {
-                    "log_time": {
-                      "order": "asc"
-                    }
-                  }
-                ]
-              }
-            }
+        "unique_users_count": {
+          "cardinality": {
+            "field": "user_id"
           }
         }
       }
@@ -170,74 +382,40 @@ POST /emotibot-records-csbot-*/_search
   "took": 1,
   "timed_out": false,
   "_shards": {
-    "total": 5,
-    "successful": 5,
+    "total": 10,
+    "successful": 10,
     "skipped": 0,
     "failed": 0
   },
   "hits": {
-    "total": 3,
+    "total": 12,
     "max_score": 0,
     "hits": []
   },
   "aggregations": {
-    "new_users": {
+    "group_by_platform": {
       "doc_count_error_upper_bound": 0,
       "sum_other_doc_count": 0,
       "buckets": [
         {
-          "key": "9876",
-          "doc_count": 3,
-          "group_by_platform": {
-            "doc_count_error_upper_bound": 0,
-            "sum_other_doc_count": 0,
-            "buckets": [
-              {
-                "key": "android",
-                "doc_count": 3,
-                "user_first_chat": {
-                  "hits": {
-                    "total": 3,
-                    "max_score": null,
-                    "hits": [
-                      {
-                        "_index": "records",
-                        "_type": "doc",
-                        "_id": "cGgtjmQBuCoMdkfhVdMs",
-                        "_score": null,
-                        "_source": {
-                          "user_id": "9876",
-                          "message": """{"unique_id":"0188326a891a4e1c97c856ceebe6e857","user_id":"9876","app_id":"csbot","session_id":"test_session","user_q":"西雅图天气如何","std_q":"","module":"backfill","intent":"查，天气","intent_score":0,"emotion":"疑惑","emotion_score":0,"score":0,"host":"172.17.0.2","log_time":"2018-07-12T11:08:12.000Z","custom_info":{"platform":"android"},"note":""}""",
-                          "intent": "查，天气",
-                          "custom_info": {
-                            "platform": "android"
-                          },
-                          "emotion_score": 0,
-                          "session_id": "test_session",
-                          "app_id": "csbot",
-                          "emotion": "疑惑",
-                          "note": "",
-                          "std_q": "",
-                          "user_q": "西雅图天气如何",
-                          "log_time": "2018-07-12T11:08:12.000Z",
-                          "@timestamp": "2018-07-12T11:08:12.861Z",
-                          "unique_id": "0188326a891a4e1c97c856ceebe6e857",
-                          "module": "backfill",
-                          "host": "172.17.0.2",
-                          "intent_score": 0,
-                          "score": 0,
-                          "port": 33930,
-                          "@version": "1"
-                        },
-                        "sort": [
-                          1531393692000
-                        ]
-                      }
-                    ]
-                  }
-                }
-              }
-            ]
+          "key": "ios",
+          "doc_count": 6,
+          "unique_users_count": {
+            "value": 2
+          }
+        },
+        {
+          "key": "web",
+          "doc_count": 5,
+          "unique_users_count": {
+            "value": 5
+          }
+        },
+        {
+          "key": "android",
+          "doc_count": 1,
+          "unique_users_count": {
+            "value": 1
           }
         }
       ]

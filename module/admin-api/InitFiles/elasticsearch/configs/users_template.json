@@ -1,0 +1,30 @@
+{
+    "index_patterns": [
+        "emotibot-users-*"
+    ],
+    "version": 20181015,
+    "settings": {
+        "number_of_replicas": 1,
+        "number_of_shards": 1
+    },
+    "mappings": {
+        "doc": {
+            "properties": {
+                "app_id": {
+                    "type": "keyword"
+                },
+                "user_id": {
+                    "type": "keyword"
+                },
+                "first_log_time": {
+                    "type": "date",
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.000Z||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+                },
+                "log_time": {
+                    "type": "date",
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.000Z||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+                }
+            }
+        }
+    }
+}

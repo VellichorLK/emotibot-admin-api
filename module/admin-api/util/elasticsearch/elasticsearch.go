@@ -36,6 +36,7 @@ func Setup(envHost string, envPort string,
 
 	createRecordsIndexTemplateIfNeed()
 	createSessionsIndexTemplateIfNeed()
+	createUsersIndexTemplateIfNeed()
 
 	return
 }
@@ -128,6 +129,39 @@ func createSessionsIndexTemplateIfNeed() {
 		}
 
 		service, _err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(ctx)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		if !service.Acknowledged {
+			err = data.ErrESNotAcknowledged
+			return
+		}
+	}
+}
+
+func createUsersIndexTemplateIfNeed() {
+	ctx, client := GetClient()
+	if ctx == nil || client == nil {
+		return
+	}
+
+	// Check existence of users index template
+	exists, err := client.IndexTemplateExists(data.ESUsersTemplate).Do(ctx)
+	if err != nil {
+		return
+	}
+
+	if !exists {
+		// Create users index template
+		template, _err := ioutil.ReadFile(data.ESUsersTemplateFile)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		service, _err := client.IndexPutTemplate(data.ESUsersTemplate).BodyString(string(template)).Do(ctx)
 		if _err != nil {
 			err = _err
 			return

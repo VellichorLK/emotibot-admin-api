@@ -195,160 +195,72 @@ func NewUserCounts(ctx context.Context, client *elastic.Client,
 	query data.VisitStatsQuery) (map[string]interface{}, error) {
 	aggName := "new_users"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	rangeQuery := createRangeQuery(query.CommonQuery, data.FirstLogTimeFieldName)
+	boolQuery = boolQuery.Filter(rangeQuery)
 
-	termAgg := elastic.NewTermsAggregation().Field("user_id").Size(data.ESTermAggSize)
-	userFirstChatAggName := "user_first_chat"
-	userFirstChatAgg := elastic.NewTopHitsAggregation()
-	userFirstChatAgg.Size(1).Sort(data.LogTimeFieldName, true)
+	uniqueUserCountAggName := "unique_user_count"
+	uniqueUserCardinalityAgg := elastic.NewCardinalityAggregation()
+	uniqueUserCardinalityAgg.Field("user_id")
 
-	extractNewUserCountsByTime := func(result *elastic.SearchResult) (map[string]interface{}, error) {
-		newUserCounts, err := createTimeRangeCountsMap(query.CommonQuery, query.AggInterval)
-		if err != nil {
-			return nil, err
-		}
-
-		if agg, found := result.Aggregations.Terms(aggName); found {
-			for _, bucket := range agg.Buckets {
-				userFirstChat, found := bucket.TopHits(userFirstChatAggName)
-				if !found {
-					return nil, data.ErrESTopHitNotFound
-				}
-
-				record := data.Record{}
-				jsonStr, err := userFirstChat.Hits.Hits[0].Source.MarshalJSON()
-				if err != nil {
-					return nil, err
-				}
-
-				err = json.Unmarshal(jsonStr, &record)
-				if err != nil {
-					return nil, err
-				}
-
-				// Note: We have to convert log_time (UTC+0) to local time
-				logTime, err := time.Parse(data.LogTimeFormat, record.LogTime)
-				if err != nil {
-					return nil, err
-				}
-				logTime = logTime.Local()
-
-				if logTime.Before(query.StartTime) || logTime.After(query.EndTime) {
-					continue
-				}
-
-				// Find out corresponding countsMap key of the logTime
-				var countsMapTime time.Time
-
-				switch query.AggInterval {
-				case data.IntervalYear:
-					countsMapTime = time.Date(logTime.Year(), 0, 0, 0, 0, 0, 0, logTime.Location())
-				case data.IntervalMonth:
-					countsMapTime = time.Date(logTime.Year(), logTime.Month(), 0, 0, 0, 0, 0,
-						logTime.Location())
-				case data.IntervalDay:
-					countsMapTime = time.Date(logTime.Year(), logTime.Month(), logTime.Day(),
-						0, 0, 0, 0, logTime.Location())
-				case data.IntervalHour:
-					countsMapTime = time.Date(logTime.Year(), logTime.Month(), logTime.Day(),
-						logTime.Hour(), 0, 0, 0, logTime.Location())
-				case data.IntervalMinute:
-					countsMapTime = time.Date(logTime.Year(), logTime.Month(), logTime.Day(),
-						logTime.Hour(), logTime.Minute(), 0, 0, logTime.Location())
-				case data.IntervalSecond:
-					countsMapTime = logTime
-				default:
-					return nil, data.ErrInvalidAggTimeInterval
-				}
-
-				// Increase the counter
-				countsMapKey := countsMapTime.Format(data.ESTimeFormat)
-				if newUserCount, ok := newUserCounts[countsMapKey]; ok {
-					newUserCounts[countsMapKey] = newUserCount.(int64) + 1
-				}
-			}
-		}
-
-		return newUserCounts, nil
-	}
-
-	extractNewUserCountsByTag := func(result *elastic.SearchResult,
-		tagTermAggName string) (map[string]interface{}, error) {
-		newUserCounts, err := createTagCountsMap(query)
-		if err != nil {
-			return nil, err
-		}
-
-		if agg, found := result.Aggregations.Terms(aggName); found {
-			for _, bucket := range agg.Buckets {
-				if tagAgg, found := bucket.Aggregations.Terms(tagTermAggName); found {
-					for _, tagBucket := range tagAgg.Buckets {
-						userFirstChat, found := tagBucket.TopHits(userFirstChatAggName)
-						if !found {
-							return nil, data.ErrESTopHitNotFound
-						}
-
-						record := data.Record{}
-						jsonStr, err := userFirstChat.Hits.Hits[0].Source.MarshalJSON()
-						if err != nil {
-							return nil, err
-						}
-
-						err = json.Unmarshal(jsonStr, &record)
-						if err != nil {
-							return nil, err
-						}
-
-						logTime, err := time.Parse(data.LogTimeFormat, record.LogTime)
-						if err != nil {
-							return nil, err
-						}
-
-						// Increase the counter if user's first chat of the tag is within query time range
-						if !logTime.Before(query.StartTime) && !logTime.After(query.EndTime) {
-							// TagBucket.Key is the returned tag name
-							if _, ok := newUserCounts[tagBucket.Key.(string)]; ok {
-								counter := newUserCounts[tagBucket.Key.(string)].(int64)
-								newUserCounts[tagBucket.Key.(string)] = counter + 1
-							}
-						}
-					}
-				}
-			}
-		}
-
-		return newUserCounts, nil
-	}
+	var _agg elastic.Aggregation
 
 	switch query.AggBy {
 	case data.AggByTime:
-		termAgg.SubAggregation(userFirstChatAggName, userFirstChatAgg)
+		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.FirstLogTimeFieldName).
+			Interval(query.AggInterval)
+		dateHistogramAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
-		// Result will be the documents of users' first chat times (i.e. MIN(log_time))
-		result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, termAgg)
-		if err != nil {
-			return nil, err
-		}
-
-		return extractNewUserCountsByTime(result)
+		_agg = dateHistogramAgg
 	case data.AggByTag:
 		boolQuery := elastic.NewBoolQuery()
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAggName := "group_by_tag"
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
-		tagTermAgg.SubAggregation(userFirstChatAggName, userFirstChatAgg)
-		termAgg.SubAggregation(tagTermAggName, tagTermAgg)
+		tagTermAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
-		// Result will be the documents of users' first chat times (i.e. MIN(log_time)) group by each tag
-		result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, termAgg)
-		if err != nil {
-			return nil, err
-		}
-
-		return extractNewUserCountsByTag(result, tagTermAggName)
+		_agg = tagTermAgg
 	default:
 		return nil, data.ErrInvalidAggType
 	}
+
+	index := fmt.Sprintf("%s-%s-*", data.ESUsersIndex, query.AppID)
+	result, err := createSearchService(ctx, client, boolQuery, index, data.ESUsersType, aggName, _agg)
+	if err != nil {
+		return nil, err
+	}
+
+	newUserCounts := make(map[string]interface{})
+
+	if agg, found := result.Aggregations.Terms(aggName); found {
+		for _, bucket := range agg.Buckets {
+			uniqueUserCount, found := bucket.Cardinality(uniqueUserCountAggName)
+			if !found {
+				return nil, data.ErrESCardinalityNotFound
+			}
+
+			var bucketKey string
+
+			switch query.AggBy {
+			case data.AggByTime:
+				bucketKey = *bucket.KeyAsString
+			case data.AggByTag:
+				bucketKey = bucket.Key.(string)
+			default:
+				return nil, data.ErrInvalidAggType
+			}
+
+			newUserCounts[bucketKey] = int64(*uniqueUserCount.Value)
+		}
+	}
+
+	if query.AggBy == data.AggByTag {
+		newUserCounts, err = normalizeTagCounts(newUserCounts, query.AppID, query.AggTagType)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return newUserCounts, nil
 }
 
 func TotalAskCounts(ctx context.Context, client *elastic.Client,
