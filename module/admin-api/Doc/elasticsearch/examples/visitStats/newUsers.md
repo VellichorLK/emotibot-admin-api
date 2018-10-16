@@ -360,7 +360,7 @@ POST /emotibot-users-csbot-*/_search
     "group_by_platform": {
       "terms": {
         "field": "custom_info.platform.keyword",
-        "size": 3000000
+        "shard_size": 3000000
       },
       "aggs": {
         "unique_users_count": {

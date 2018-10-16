@@ -140,7 +140,7 @@ func NewUserCounts(ctx context.Context, client *elastic.Client,
 		boolQuery := elastic.NewBoolQuery()
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType).ShardSize(data.ESTermAggShardSize)
 		tagTermAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
 		_agg = tagTermAgg
@@ -529,7 +529,7 @@ func createVisitStatsDateHistogramAggregation(query data.VisitStatsQuery) *elast
 
 func createVisitStatsTagTermsAggregation(tag string) *elastic.TermsAggregation {
 	field := fmt.Sprintf("custom_info.%s.keyword", tag)
-	return elastic.NewTermsAggregation().Field(field).Size(data.ESTermAggSize)
+	return elastic.NewTermsAggregation().Field(field).Size(data.ESTermAggShardSize)
 }
 
 func createVisitStatsSearchService(ctx context.Context, client *elastic.Client, appID string,

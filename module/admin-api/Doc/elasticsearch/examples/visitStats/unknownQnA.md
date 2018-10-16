@@ -264,7 +264,8 @@ POST /emotibot-records-csbot-*/_search
   "aggs": {
     "group_by_platform": {
       "terms": {
-        "field": "custom_info.platform.keyword"
+        "field": "custom_info.platform.keyword",
+        "shard_size": 3000000
       }
     }
   },
