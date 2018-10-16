@@ -2,9 +2,7 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"time"
 
@@ -439,30 +437,28 @@ func CoversationsPerSessionCounts(conversationCounts map[string]interface{},
 }
 
 func TopQuestions(ctx context.Context, client *elastic.Client,
-	query data.VisitStatsQuery, topN int) ([]data.Question, error) {
+	query data.VisitStatsQuery, topN int) ([]*data.Question, error) {
 	aggName := "top_user_q"
 	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
-	topQTermAgg := elastic.NewTermsAggregation().Field("user_q.keyword").Size(topN).ShardSize(data.ESTermAggSize)
+	topQTermAgg := elastic.NewTermsAggregation().Field("user_q.keyword").Size(topN).ShardSize(10000)
 	result, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, topQTermAgg)
 	if err != nil {
 		return nil, err
 	}
 
-	questions := make(data.Questions, 0)
+	questions := make([]*data.Question, 0)
 	for question, count := range result {
 		q := data.Question{
 			Question: question,
 			Count:    count.(int64),
 		}
 
-		questions = append(questions, q)
+		questions = append(questions, &q)
 	}
 
-	// Sort by counts
-	sort.Sort(sort.Reverse(questions))
 	return questions, nil
 }
 
@@ -476,7 +472,7 @@ func TopUnmatchQuestions(ctx context.Context, client *elastic.Client,
 
 	maxLogTimeAggName := "max_log_time"
 	minLogTimeAggName := "min_log_time"
-	topUnmatchQTermAgg := elastic.NewTermsAggregation().Field("user_q.keyword").Size(topN).ShardSize(data.ESTermAggShardSize)
+	topUnmatchQTermAgg := elastic.NewTermsAggregation().Field("user_q.keyword").Size(topN).ShardSize(10000)
 	maxLogTimeAgg := elastic.NewMaxAggregation().Field(data.LogTimeFieldName).Format("yyyy-MM-dd HH:mm:ss")
 	minLogTimeAgg := elastic.NewMinAggregation().Field(data.LogTimeFieldName).Format("yyyy-MM-dd HH:mm:ss")
 	topUnmatchQTermAgg.SubAggregation(maxLogTimeAggName, maxLogTimeAgg)

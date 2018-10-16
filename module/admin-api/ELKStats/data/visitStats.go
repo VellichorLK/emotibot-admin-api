@@ -78,20 +78,6 @@ type Question struct {
 	Count    int64
 }
 
-type Questions []Question
-
-func (q Questions) Len() int {
-	return len(q)
-}
-
-func (q Questions) Swap(i, j int) {
-	q[i], q[j] = q[j], q[i]
-}
-
-func (q Questions) Less(i, j int) bool {
-	return q[i].Count < q[j].Count
-}
-
 type UnmatchQuestion struct {
 	Question   string
 	Count      int64

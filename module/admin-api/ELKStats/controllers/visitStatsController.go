@@ -450,7 +450,7 @@ func createAnswerCategoryStatsResponse(statCounts map[string]interface{}) (*data
 	return &response, nil
 }
 
-func createTopQuestionsResponse(questions data.Questions) *data.TopQuestionsResponse {
+func createTopQuestionsResponse(questions []*data.Question) *data.TopQuestionsResponse {
 	questionsData := make([]data.TopQuestionData, 0)
 	rank := 1
 
@@ -492,9 +492,9 @@ func createTopUnmatchedQuestionsResponse(query data.VisitStatsQuery,
 			Rank:          rank,
 			Q:             question.Count,
 			FirstTime:     strconv.FormatInt(firstTime.Unix(), 10),
-			FirstTimeText: firstTime.Format(data.ESTimeFormat),
+			FirstTimeText: question.MinLogTime,
 			LastTime:      strconv.FormatInt(lastTime.Unix(), 10),
-			LastTimeText:  lastTime.Format(data.ESTimeFormat),
+			LastTimeText:  question.MaxLogTime,
 		}
 
 		questionData = append(questionData, d)
