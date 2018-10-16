@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-REPO=docker-reg.emotibot.com.cn:55688
+REPO=harbor.emotibot.com
+PROJECT=library
 CONTAINER=go-build
 GOVER=1.10
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -58,7 +59,7 @@ else
   exit
 fi
 TAG="$VERSION-$GOVER-$platform"
-DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
+DOCKER_IMAGE=$REPO/$PROJECT/$CONTAINER:$TAG
 
 BUILDROOT=$DIR/..
 # Build docker
