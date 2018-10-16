@@ -512,7 +512,8 @@ func getWordbanksAllV3() (retRootMap map[string]*WordBankClassV3, err error) {
 
 	queryStr := `
 		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
-		FROM entity_class`
+		FROM entity_class
+		ORDER BY id`
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return

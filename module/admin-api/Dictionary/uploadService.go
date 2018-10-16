@@ -515,7 +515,8 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 					trimWord := strings.TrimSpace(word)
 
 					if trimWord != "" {
-						filteredWords = append(filteredWords, trimWord)
+						// add word in reverse order, because it will show in reversed order
+						filteredWords = append([]string{trimWord}, filteredWords...)
 					}
 				}
 
@@ -526,7 +527,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			if _, ok := classWordbank[path]; !ok {
 				classWordbank[path] = []*WordBankV3{}
 			}
-			classWordbank[path] = append(classWordbank[path], wordbank)
+			classWordbank[path] = append([]*WordBankV3{wordbank}, classWordbank[path]...)
 		}
 	}
 
