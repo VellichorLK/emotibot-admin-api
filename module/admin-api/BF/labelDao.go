@@ -33,7 +33,7 @@ func getCmds(appid string) (*CmdClass, error) {
 		return nil, err
 	}
 
-	queryStr := "SELECT id, name, parent FROM cmd_class WHERE appid = ?"
+	queryStr := "SELECT id, name, parent FROM cmd_class WHERE appid = ? ORDER BY id DESC"
 	classRows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func getCmds(appid string) (*CmdClass, error) {
 		SELECT
 			cid, cmd_id, name, target, rule, answer,
 			response_type, status, begin_time, end_time
-		FROM cmd WHERE appid = ?`
+		FROM cmd WHERE appid = ? ORDER BY cmd_id DESC`
 	rows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return nil, err
@@ -567,7 +567,7 @@ func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
 		SELECT
 			cid, cmd_id, name, target, rule, answer,
 			response_type, status, begin_time, end_time
-		FROM cmd WHERE appid = ? AND cid = ?`
+		FROM cmd WHERE appid = ? AND cid = ? ORDER BY cmd_id DESC`
 	rows, err := t.Query(queryStr, appid, classID)
 	if err != nil {
 		if err == sql.ErrNoRows {
