@@ -65,8 +65,7 @@ func getAuditList(enterprise []string, appid []string, userid *string, module []
 	} else {
 		queryStr = fmt.Sprintf("SELECT %s FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(columns, ","), strings.Join(conditions, " and "))
 		shift := (page - 1) * listPerPage
-		args = append(args, listPerPage)
-		args = append(args, shift)
+		args = append(args, listPerPage, shift)
 	}
 	logger.Trace.Printf("Query for audit: %s", queryStr)
 	logger.Trace.Printf("Query param: %#v", args)
@@ -87,8 +86,8 @@ func getAuditList(enterprise []string, appid []string, userid *string, module []
 	if getAll {
 		total = len(ret)
 	} else {
-		queryStr = fmt.Sprintf("SELECT count(*) FROM audit_record WHERE %s order by create_time desc limit ? offset ?", strings.Join(conditions, " and "))
-		err = mySQL.QueryRow(queryStr, args...).Scan(&total)
+		queryStr = fmt.Sprintf("SELECT count(*) FROM audit_record WHERE %s", strings.Join(conditions, " and "))
+		err = mySQL.QueryRow(queryStr, args[:len(args)-2]...).Scan(&total)
 		if err != nil {
 			return nil, 0, err
 		}
