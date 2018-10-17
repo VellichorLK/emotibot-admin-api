@@ -7,7 +7,7 @@ FROM centos:centos7.4.1708
 
 ARG PROJECT
 
-RUN yum update -y && yum install -y wget tzdata 
+RUN yum makecache fast && yum install -y wget tzdata && yum clean all
 ## 安装 musl-libc, only for running alpine binary
 #    && wget https://copr.fedorainfracloud.org/coprs/ngompa/musl-libc/repo/epel-7/ngompa-musl-libc-epel-7.repo \
 #    && mv ngompa-musl-libc-epel-7.repo /etc/yum.repos.d/ \
