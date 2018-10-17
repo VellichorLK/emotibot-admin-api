@@ -23,7 +23,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleManageEnterprise":  "企业列表",
 		// Operation
 		"AuditOperationAdd":      "新增",
-		"AuditOperationEdit":     "修改",
+		"AuditOperationEdit":     "编辑",
 		"AuditOperationDelete":   "删除",
 		"AuditOperationImport":   "导入",
 		"AuditOperationExport":   "导出",
@@ -54,7 +54,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleManageEnterprise":  "企業列表",
 		// Operation
 		"AuditOperationAdd":      "新增",
-		"AuditOperationEdit":     "修改",
+		"AuditOperationEdit":     "編輯",
 		"AuditOperationDelete":   "删除",
 		"AuditOperationImport":   "导入",
 		"AuditOperationExport":   "导出",
