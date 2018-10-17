@@ -4,7 +4,8 @@ overwrite_file="
   robot.properties
   FRConfig.properties
 "
-
+DIR=$( cd -- "$(dirname -- "$0")" && pwd )
+cd $DIR
 for file in `find InitFiles -type f`
 do
   target=`echo $file | sed "s#InitFiles#${ADMIN_SERVER_MOUNT_PATH}#g"`;
