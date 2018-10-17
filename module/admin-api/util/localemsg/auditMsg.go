@@ -3,8 +3,8 @@ package localemsg
 var auditMsg = map[string]map[string]string{
 	"zh-cn": map[string]string{
 		// Modules
-		"AuditModuleSSM":               "问答库",
-		"AuditModuleFAQ":               "问答库",
+		"AuditModuleSSM":               "问答管理",
+		"AuditModuleFAQ":               "问答管理",
 		"AuditModuleQALabel":           "标签管理",
 		"AuditModuleTaskEngine":        "任务引擎",
 		"AuditModuleIntentManage":      "意图引擎",
@@ -34,8 +34,8 @@ var auditMsg = map[string]map[string]string{
 	},
 	"zh-tw": map[string]string{
 		// Modules
-		"AuditModuleSSM":               "問答庫",
-		"AuditModuleFAQ":               "問答庫",
+		"AuditModuleSSM":               "問答管理",
+		"AuditModuleFAQ":               "問答管理",
 		"AuditModuleQALabel":           "標籤管理",
 		"AuditModuleTaskEngine":        "任務引擎",
 		"AuditModuleIntentManage":      "意圖引擎",
