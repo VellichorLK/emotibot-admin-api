@@ -724,10 +724,9 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 		}
 	}
 
-	fmt.Printf("SentenceValues: %d, %+v\n", len(sentenceValues), sentenceValues)
 	if len(sentenceValues) > 0 {
 		start := 0
-		recordPerOp := 60
+		recordPerOp := 30000
 		for {
 			end := start + recordPerOp
 			if end > len(sentenceValues) {
