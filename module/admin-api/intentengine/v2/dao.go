@@ -726,7 +726,7 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 
 	if len(sentenceValues) > 0 {
 		start := 0
-		recordPerOp := 20
+		recordPerOp := 60
 		for {
 			end := start + recordPerOp
 			if end >= len(sentenceValues) {
