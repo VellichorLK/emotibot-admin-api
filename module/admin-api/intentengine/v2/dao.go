@@ -745,6 +745,7 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 			if end == len(sentenceValues) {
 				break
 			}
+			start = end
 		}
 	}
 	return
