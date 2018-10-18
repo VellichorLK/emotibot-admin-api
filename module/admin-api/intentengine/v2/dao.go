@@ -725,12 +725,26 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 	}
 
 	if len(sentenceValues) > 0 {
-		queryStr = fmt.Sprintf(`
-			INSERT INTO intent_train_sets (sentence, intent, type)
-			VALUES (?, ?, ?)%s`, strings.Repeat(",(?, ?, ?)", len(sentenceValues)/3-1))
-		_, err = tx.Exec(queryStr, sentenceValues...)
-		if err != nil {
-			return
+		start := 0
+		recordPerOp := 20
+		for {
+			end := start + recordPerOp
+			if end >= len(sentenceValues) {
+				end = len(sentenceValues) - 1
+			}
+
+			useParam := sentenceValues[start:end]
+			queryStr = fmt.Sprintf(`
+				INSERT INTO intent_train_sets (sentence, intent, type)
+				VALUES (?, ?, ?)%s`, strings.Repeat(",(?, ?, ?)", len(useParam)/3-1))
+			_, err = tx.Exec(queryStr, useParam...)
+			if err != nil {
+				return
+			}
+
+			if end == len(sentenceValues)-1 {
+				break
+			}
 		}
 	}
 	return
