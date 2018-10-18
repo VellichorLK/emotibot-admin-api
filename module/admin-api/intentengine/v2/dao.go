@@ -726,11 +726,11 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 
 	if len(sentenceValues) > 0 {
 		start := 0
-		recordPerOp := 20
+		recordPerOp := 30000
 		for {
 			end := start + recordPerOp
-			if end >= len(sentenceValues) {
-				end = len(sentenceValues) - 1
+			if end > len(sentenceValues) {
+				end = len(sentenceValues)
 			}
 
 			useParam := sentenceValues[start:end]
@@ -742,9 +742,10 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 				return
 			}
 
-			if end == len(sentenceValues)-1 {
+			if end == len(sentenceValues) {
 				break
 			}
+			start = end
 		}
 	}
 	return
