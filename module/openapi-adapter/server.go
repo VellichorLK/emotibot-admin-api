@@ -298,9 +298,20 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// extractHeadersFromBody will extract the neccessary fields from request body and add to headers
-// extractHeadersFromBody is only called by OpenAPI v1
-func extractHeadersFromBody(r *http.Request) error {
+//MetaDataKey is the meta data defined which can be used after calling GetMetadata
+type MetaDataKey string
+
+const (
+	UserIDKey     MetaDataKey = "userId"
+	AppIDKey      MetaDataKey = "appId"
+	OpenAPICmdKey MetaDataKey = "openAPICmd"
+)
+
+// GetMetadata retrive metadata from request
+// It
+func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
+	var metadata = make(map[MetaDataKey]string)
+
 	buf, _ := ioutil.ReadAll(r.Body)
 
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
@@ -309,7 +320,7 @@ func extractHeadersFromBody(r *http.Request) error {
 	r.Body = rdr1
 	err := r.ParseForm()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	appid := ""
@@ -333,10 +344,28 @@ func extractHeadersFromBody(r *http.Request) error {
 	} else {
 		// FIXME: Should we drop non GET/POST requests?
 		logger.Warn.Printf("Unknown request type. %s %s %s\n", r.Host, r.Method, string(buf))
-		return data.ErrUnsupportedMethod
+		return nil, data.ErrUnsupportedMethod
 	}
+	metadata[AppIDKey] = appid
+	metadata[UserIDKey] = userid
+	metadata[OpenAPICmdKey] = openapiCmd
+	r.Body = rdr2
+	return metadata, nil
+}
 
+// extractHeadersFromBody will extract the neccessary fields from request body and add to headers
+// extractHeadersFromBody is only called by OpenAPI v1
+// It will change the request itself, be care when using it.
+func extractHeadersFromBody(r *http.Request) error {
+
+	data, err := GetMetadata(r)
+	if err != nil {
+		return err
+	}
 	logger.Info.Printf("%+v\n", r)
+	userid, _ := data[UserIDKey]
+	appid, _ := data[AppIDKey]
+	openapiCmd, _ := data[OpenAPICmdKey]
 
 	r.Header.Set("X-Lb-Uid", userid)
 	r.Header.Set("X-Openapi-Appid", appid)

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"emotibot.com/emotigo/module/openapi-adapter/data"
@@ -40,6 +43,39 @@ func logSummarize(next http.HandlerFunc) http.HandlerFunc {
 		if appID == "" {
 			return
 		}
+		//Because response can be delayed until function finished, it should be forked out as a go routine
 		trafficManager.Summarize(appID, responseLogger, r, responseTime)
+	}
+}
+
+func NewDailyLimitMiddleWare(next http.HandlerFunc, globalApps map[string]int64, maximum int64) http.HandlerFunc {
+	var lock = sync.Mutex{}
+	return func(w http.ResponseWriter, r *http.Request) {
+		metadata, err := GetMetadata(r)
+		appID, _ := metadata[AppIDKey]
+		if err != nil {
+			resp, _ := json.Marshal(data.ErrorResponse{
+				Message: fmt.Sprintf("get metad data failed, %v", err),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(resp)
+			return
+		} else if appID == "" {
+			resp, _ := json.Marshal(data.ErrorResponse{
+				Message: data.ErrAppIDNotSpecified.Error(),
+			})
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write(resp)
+			return
+		}
+
+		lock.Lock()
+		count, _ := globalApps[appID]
+		if count++; count > maximum {
+			r.Header.Set("X-Filtered", "true")
+		}
+		globalApps[appID] = count
+		lock.Unlock()
+		next.ServeHTTP(w, r)
 	}
 }
