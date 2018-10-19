@@ -35,13 +35,13 @@ type AppIDCount struct {
 }
 
 // TrafficManager is a manager to determine which user is overload.
+//	call Count(id) to check if the id counter has more count than MaxConnection in the time windows of BufferDuration seconds
+//  call AddStat(TrafficStat) for adding to statsd
 type TrafficManager struct {
-	MonitorTraffic   bool
 	StatsdClient     *statsd.Client
 	Stats            *sync.Map
 	BufferDuration   time.Duration
 	MaxConnection    int64
-	BanPeriod        int64
 	LogPeriod        int64
 	TrafficStatsChan chan *TrafficStat
 }
@@ -49,7 +49,7 @@ type TrafficManager struct {
 // NewTrafficManager init a new TrafficManager by setting
 // duration RateCounter計算的時間長度
 func NewTrafficManager(monitorTraffic bool, statsdHost string, statsdPort int,
-	duration int, maxConnection int64, banPeriod int64, logPeriod int64) *TrafficManager {
+	duration int, maxConnection int64, logPeriod int64) *TrafficManager {
 
 	var client *statsd.Client
 
@@ -58,12 +58,10 @@ func NewTrafficManager(monitorTraffic bool, statsdHost string, statsdPort int,
 	}
 
 	m := TrafficManager{
-		MonitorTraffic:   monitorTraffic,
 		StatsdClient:     client,
 		Stats:            new(sync.Map),
 		BufferDuration:   time.Duration(duration),
 		MaxConnection:    maxConnection,
-		BanPeriod:        banPeriod,
 		LogPeriod:        logPeriod,
 		TrafficStatsChan: make(chan *TrafficStat),
 	}
@@ -73,6 +71,9 @@ func NewTrafficManager(monitorTraffic bool, statsdHost string, statsdPort int,
 	return &m
 }
 
+// Monitor is deprecated, will be removed soon.
+// It try do two thing in one function, and the checkoverflow behavior is fixed.
+// Use Count & AddStat instead.
 func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) (bool, error) {
 	appID := r.Header.Get("X-Openapi-Appid")
 	userID := r.Header.Get("X-Lb-Uid")
@@ -88,9 +89,9 @@ func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) (bool, 
 	logger.Info.Printf("Header [X-Lb-Uid]: %s\n", r.Header.Get("X-Lb-Uid"))
 	logger.Info.Printf("Header [X-Openapi-Appid]: %s\n", r.Header.Get("X-Openapi-Appid"))
 
-	if m.checkOverFlowed(userID) {
+	if m.checkOverFlowed(appID) {
 		// TODO: Reject the connection
-		logger.Warn.Printf("User ID:%s is overflowed\n", userID)
+		logger.Warn.Printf("app ID:%s is overflowed\n", userID)
 		//w.WriteHeader(http.StatusTooManyRequests)
 		//return false
 	}
@@ -109,6 +110,16 @@ func (m *TrafficManager) Monitor(w http.ResponseWriter, r *http.Request) (bool, 
 
 	m.TrafficStatsChan <- &trafficStat
 	return true, nil
+}
+
+// Count will check TrafficManager.MaxConnection with the Stats
+func (m *TrafficManager) Count(id string) bool {
+	return m.checkOverFlowed(id)
+}
+
+func (m *TrafficManager) AddStat(stat *TrafficStat) {
+	m.TrafficStatsChan <- stat
+	return
 }
 
 func (m *TrafficManager) Summarize(appID string, w *data.ResponseLogger, r *http.Request, responseTime float64) {
@@ -139,8 +150,8 @@ func (m *TrafficManager) Summarize(appID string, w *data.ResponseLogger, r *http
 }
 
 // checkOverFlowed 檢查該使用者是否已經超過流量
-func (m *TrafficManager) checkOverFlowed(uid string) bool {
-	stat, _ := m.Stats.LoadOrStore(uid, ratecounter.NewRateCounter(m.BufferDuration*time.Second))
+func (m *TrafficManager) checkOverFlowed(id string) bool {
+	stat, _ := m.Stats.LoadOrStore(id, ratecounter.NewRateCounter(m.BufferDuration*time.Second))
 	counter := stat.(*ratecounter.RateCounter)
 	// FIXME: Counter must be increased and evaluated at the same time (or using mutex),
 	// otherwise, there might have some out of sync issue.

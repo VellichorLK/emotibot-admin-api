@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"emotibot.com/emotigo/module/openapi-adapter/data"
@@ -107,15 +108,30 @@ func main() {
 		monitorTraffic = false
 	}
 
+	dailyThreshold, err := util.GetIntEnv("DAILY_THRESHOLD")
+	if err != nil {
+		logger.Warn.Println("invalid DAILY_THRESHOLD, set to 10000, err: ", err)
+		dailyThreshold = 10000
+	}
 	// Make traffic channel
 	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
-		duration, int64(maxRequests), int64(banPeriod), int64(logPeriod))
-
+		duration, int64(maxRequests), int64(logPeriod))
+	var appCounters = map[string]int64{}
+	var lock = sync.Mutex{}
+	NewScheduler(func() error {
+		lock.Lock()
+		for app := range appCounters {
+			delete(appCounters, app)
+		}
+		lock.Unlock()
+		return nil
+	}).Start(&daily{})
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
-
-	middleWares := chainMiddleWares(logSummarize)
-
+	dailyLimiter := NewDailyLimitMiddleWare(appCounters, int64(dailyThreshold), &lock)
+	qpsLimiter := NewQueryThresholdMiddleware(trafficManager)
+	metadataValidator := NewMetadataValidateMiddleware()
+	middleWares := chainMiddleWares(metadataValidator, qpsLimiter, dailyLimiter, logSummarize)
 	http.HandleFunc("/api/ApiKey/", middleWares(OpenAPIAdapterHandler))
 	http.HandleFunc("/v1/openapi", middleWares(OpenAPIHandler))
 	http.HandleFunc("/_health_check", HealthCheck)
@@ -127,37 +143,25 @@ func main() {
 // OpenAPIAdapterHandler will translate v1 request into v2 Request and then send to BFOP Server
 // response will parse to v1 response format
 func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	err := extractHeadersFromBody(r)
-	if err != nil {
-		switch err {
-		case data.ErrUnsupportedMethod:
-			customError(w, err.Error(), http.StatusBadRequest)
-		default:
-			customError(w, err.Error(), http.StatusBadRequest)
-		}
-		return
-	}
-
-	ok, err := trafficManager.Monitor(w, r)
-	if !ok {
-		switch err {
-		case data.ErrAppIDNotSpecified:
-			customError(w, err.Error(), http.StatusBadRequest)
-		case data.ErrUserIDNotSpecified:
-			customError(w, err.Error(), http.StatusBadRequest)
-		default:
-			customError(w, err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		customError(w, "request body format error: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	userID := r.FormValue("userid")
+	appID := r.FormValue("appid")
+
+	userIP, err := util.ParseRemoteIP(r.RemoteAddr)
+	if err != nil {
+		logger.Warn.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
+	}
+	trafficStat := &traffic.TrafficStat{
+		AppID:      appID,
+		IP:         userIP,
+		UserID:     userID,
+		RequestURI: r.RequestURI,
+	}
+	trafficManager.AddStat(trafficStat)
 
 	var (
 		body     io.Reader
@@ -186,13 +190,12 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		customError(w, "transform request failed, "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	v2Req.Header.Set("appId", r.FormValue("appid"))
-	v2Req.Header.Set("userId", r.FormValue("userid"))
+
+	v2Req.Header.Set("appId", userID)
+	v2Req.Header.Set("userId", appID)
 
 	// Add headers for load balancing
-	v2Req.Header.Set("X-Lb-Uid", r.Header.Get("X-Lb-Uid"))
-	v2Req.Header.Set("X-Openapi-Appid", r.Header.Get("X-Openapi-Appid"))
-
+	v2Req.Header.Set("X-Lb-Uid", userID)
 	resp, err = client.Do(v2Req)
 	if err != nil {
 		customError(w, "http request failed, "+err.Error(), http.StatusInternalServerError)
@@ -204,10 +207,22 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer resp.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
 
 	err = json.Unmarshal(bodyData, &v2Resp)
 	logger.Info.Printf("v2 response body: %s\n", bodyData)
-	if err != nil {
+	if _, found := r.Header["X-Filtered"]; found && err != nil {
+		//if filtered, mean the return format most certainly will not be v2 response body
+		//copy header
+		for k, vv := range resp.Header {
+			for _, v := range vv {
+				w.Header().Add(k, v)
+			}
+		}
+		//copy body
+		w.Write(bodyData)
+		return
+	} else if err != nil {
 		customError(w, "unmarshal version 2 body failed, "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -258,38 +273,32 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 // to/from BFOP server directly
 func OpenAPIHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	userID := r.Header.Get("userId")
-	appID := r.Header.Get("appId")
-
-	r.Header.Set("X-Lb-Uid", userID)
-	r.Header.Set("X-Openapi-Appid", appID)
-
-	ok, err := trafficManager.Monitor(w, r)
-	if !ok {
-		switch err {
-		case data.ErrAppIDNotSpecified:
-			resp, _ := json.Marshal(data.ErrorResponse{
-				Message: err.Error(),
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(resp)
-		case data.ErrUserIDNotSpecified:
-			resp, _ := json.Marshal(data.ErrorResponse{
-				Message: err.Error(),
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(resp)
-		default:
-			resp, _ := json.Marshal(data.ErrorResponse{
-				Message: err.Error(),
-			})
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write(resp)
-		}
+	metadata, err := GetMetadata(r)
+	if err != nil {
+		resp, _ := json.Marshal(data.ErrorResponse{
+			Message: err.Error(),
+		})
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(resp)
 		return
 	}
-
+	userID := metadata[UserIDKey]
+	appID := metadata[AppIDKey]
+	r.Header.Set("X-Lb-Uid", userID)
+	r.Header.Set("X-Openapi-Appid", appID)
+	if _, found := r.Header["X-Filtered"]; !found {
+		userIP, err := util.ParseRemoteIP(r.RemoteAddr)
+		if err != nil {
+			logger.Warn.Printf("Warning: ip:port not fit. %s\n", r.RemoteAddr)
+		}
+		trafficStat := &traffic.TrafficStat{
+			AppID:      appID,
+			IP:         userIP,
+			UserID:     userID,
+			RequestURI: r.RequestURI,
+		}
+		trafficManager.AddStat(trafficStat)
+	}
 	proxy.ServeHTTP(w, r)
 }
 
@@ -311,6 +320,14 @@ const (
 // It
 func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	var metadata = make(map[MetaDataKey]string)
+	userid := r.Header.Get("userid")
+	appid := r.Header.Get("appid")
+	//Detect v2+ api(from header), no need to retrive metadata from body
+	if userid != "" || appid != "" {
+		metadata[UserIDKey] = userid
+		metadata[AppIDKey] = appid
+		return metadata, nil
+	}
 
 	buf, _ := ioutil.ReadAll(r.Body)
 
@@ -323,8 +340,8 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 		return nil, err
 	}
 
-	appid := ""
-	userid := ""
+	appid = ""
+	userid = ""
 	openapiCmd := ""
 
 	if r.Method == "GET" || r.Method == "POST" {
@@ -371,7 +388,6 @@ func extractHeadersFromBody(r *http.Request) error {
 	r.Header.Set("X-Openapi-Appid", appid)
 	r.Header.Set("X-Openapi-Cmd", openapiCmd)
 
-	r.Body = rdr2
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/openapi-adapter/data"
+	"emotibot.com/emotigo/module/openapi-adapter/traffic"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -48,34 +49,88 @@ func logSummarize(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func NewDailyLimitMiddleWare(next http.HandlerFunc, globalApps map[string]int64, maximum int64) http.HandlerFunc {
-	var lock = sync.Mutex{}
-	return func(w http.ResponseWriter, r *http.Request) {
-		metadata, err := GetMetadata(r)
-		appID, _ := metadata[AppIDKey]
-		if err != nil {
-			resp, _ := json.Marshal(data.ErrorResponse{
-				Message: fmt.Sprintf("get metad data failed, %v", err),
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(resp)
-			return
-		} else if appID == "" {
-			resp, _ := json.Marshal(data.ErrorResponse{
-				Message: data.ErrAppIDNotSpecified.Error(),
-			})
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write(resp)
-			return
-		}
+//NewInputValidatMIddleware will check if
+func NewMetadataValidateMiddleware() middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			metadata, err := GetMetadata(r)
+			if err != nil {
+				customError(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 
-		lock.Lock()
-		count, _ := globalApps[appID]
-		if count++; count > maximum {
-			r.Header.Set("X-Filtered", "true")
+			if metadata[AppIDKey] == "" {
+				customError(w, err.Error(), http.StatusBadRequest)
+				return
+			} else if metadata[UserIDKey] == "" {
+				customError(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			next.ServeHTTP(w, r)
 		}
-		globalApps[appID] = count
-		lock.Unlock()
-		next.ServeHTTP(w, r)
+	}
+}
+
+func NewDailyLimitMiddleWare(globalApps map[string]int64, maximum int64, lock *sync.Mutex) middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			metadata, err := GetMetadata(r)
+			appID, _ := metadata[AppIDKey]
+			if err != nil {
+				resp, _ := json.Marshal(data.ErrorResponse{
+					Message: fmt.Sprintf("get meta data failed, %v", err),
+				})
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(resp)
+				return
+			} else if appID == "" {
+				resp, _ := json.Marshal(data.ErrorResponse{
+					Message: data.ErrAppIDNotSpecified.Error(),
+				})
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(resp)
+				return
+			}
+
+			lock.Lock()
+			count, _ := globalApps[appID]
+			if count++; count > maximum {
+				r.Header.Set("X-Filtered", "true")
+			}
+			globalApps[appID] = count
+			lock.Unlock()
+			next.ServeHTTP(w, r)
+		}
+	}
+}
+
+// NewQueryThresholdMiddleware create a threshold middleware for http.HandlerFunc
+// It used manager
+func NewQueryThresholdMiddleware(manager *traffic.TrafficManager) middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			meta, err := GetMetadata(r)
+			appID, _ := meta[AppIDKey]
+			if err != nil {
+				resp, _ := json.Marshal(data.ErrorResponse{
+					Message: fmt.Sprintf("get meta data failed, %v", err),
+				})
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(resp)
+				return
+			} else if appID == "" {
+				resp, _ := json.Marshal(data.ErrorResponse{
+					Message: data.ErrAppIDNotSpecified.Error(),
+				})
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write(resp)
+				return
+			}
+			if !manager.Count(appID) {
+				r.Header.Set("X-Filtered", "true")
+			}
+			next.ServeHTTP(w, r)
+
+		}
 	}
 }

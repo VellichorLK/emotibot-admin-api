@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
 )
 
@@ -17,7 +18,7 @@ func TestDailyLimitMiddleWare(t *testing.T) {
 	}
 	var appGroup = map[string]int64{}
 	var limit int64 = 10
-	dailyLimit := NewDailyLimitMiddleWare(handler, appGroup, limit)
+	dailyLimit := NewDailyLimitMiddleWare(appGroup, limit, &sync.Mutex{})
 	var i int64
 	for ; i <= 1000; i++ {
 		w := httptest.NewRecorder()
@@ -28,7 +29,7 @@ func TestDailyLimitMiddleWare(t *testing.T) {
 		r := httptest.NewRequest(http.MethodPost, "/test", nil)
 		r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 		r.Form = form
-		dailyLimit(w, r)
+		dailyLimit(handler)(w, r)
 		if i > limit && r.Header.Get("X-Filtered") != "true" {
 			t.Fatal("expect it to be filtered out after ", limit)
 		}
