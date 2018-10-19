@@ -18,7 +18,7 @@ func TestScheduler(t *testing.T) {
 		log.Println("fired")
 		return nil
 	}).Start(&mockupClock{})
-	time.Sleep(time.Duration(3001) * time.Millisecond)
+	time.Sleep(time.Duration(3500) * time.Millisecond)
 	if s == 0 {
 		t.Fatal("task has not been fired")
 	} else if s < 3 {
