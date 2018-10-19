@@ -63,6 +63,7 @@ func GetSystemAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminEr
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
+	transformLogsWording(logs)
 
 	ret := AuditResult{
 		Total:  count,
