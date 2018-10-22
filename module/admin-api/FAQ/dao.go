@@ -1003,16 +1003,8 @@ func getTagTypes(appid string, version int) (ret []*TagType, err error) {
 			valueID := *valueIDPtr
 			value := *valuePtr
 			valueCode := *valueCodePtr
-			// Note: format is always #<value>#, so trim the # here
-			if len(value) <= 2 {
-				logger.Error.Println("Strange value in tag value: ", value)
-				continue
-			}
-			if value[0] == '#' {
-				value = value[1:]
-			}
-			if value[len(value)-1] == '#' {
-				value = value[0 : len(value)-1]
+			if len(value) > 2 && value[0] == '#' && value[len(value)-1] == '#' {
+				value = value[1 : len(value)-1]
 			}
 			newValue := &TagValue{
 				ID:    valueID,
