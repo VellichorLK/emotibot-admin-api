@@ -19,6 +19,7 @@ services:
       # statsd service (Non-essential service) 
       - OPENAPI_ADAPTER_STATSD_HOST=${STATSD_HOST}
       - OPENAPI_ADAPTER_STATSD_PORT=${STATSD_PORT}
+      - OPENAPI_ADAPTER_DAILY_THRESHOLD=${OPENAPI_ADAPTER_DAILY_THRESHOLD}
       - TZ=Asia/Taipei
     logging:
       driver: json-file
