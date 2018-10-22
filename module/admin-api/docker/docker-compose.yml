@@ -83,6 +83,8 @@ services:
       # - env for setting elasticsearch entrypoint
       - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
       - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
+      - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_USERNAME=${ES_BASIC_AUTH_USERNAME}
+      - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_PASSWORD=${ES_BASIC_AUTH_PASSWORD}
       # - env for DAL module host
       - ADMIN_SERVER_DAL_URL=http://${DAL_HOST}:8885/
       # - env for Clustering tool host
