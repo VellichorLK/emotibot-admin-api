@@ -191,8 +191,8 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v2Req.Header.Set("appId", userID)
-	v2Req.Header.Set("userId", appID)
+	v2Req.Header.Set("appId", appID)
+	v2Req.Header.Set("userId", userID)
 
 	// Add headers for load balancing
 	v2Req.Header.Set("X-Lb-Uid", userID)
@@ -330,7 +330,7 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	}
 
 	buf, _ := ioutil.ReadAll(r.Body)
-
+	fmt.Println("origin body ", string(buf))
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 	rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
 
@@ -343,7 +343,7 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	appid = ""
 	userid = ""
 	openapiCmd := ""
-
+	fmt.Println("extract form", r.Form.Encode())
 	if r.Method == "GET" || r.Method == "POST" {
 		appid = r.FormValue("appid")
 		openapiCmd = r.FormValue("cmd")

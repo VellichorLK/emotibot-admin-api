@@ -60,10 +60,10 @@ func NewMetadataValidateMiddleware() middleware {
 			}
 
 			if metadata[AppIDKey] == "" {
-				customError(w, err.Error(), http.StatusBadRequest)
+				customError(w, data.ErrAppIDNotSpecified.Error(), http.StatusBadRequest)
 				return
 			} else if metadata[UserIDKey] == "" {
-				customError(w, err.Error(), http.StatusBadRequest)
+				customError(w, data.ErrUserIDNotSpecified.Error(), http.StatusBadRequest)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -94,11 +94,11 @@ func NewDailyLimitMiddleWare(globalApps map[string]int64, maximum int64, lock *s
 
 			lock.Lock()
 			count, _ := globalApps[appID]
-			if count++; count > maximum {
+			globalApps[appID] = count + 1
+			lock.Unlock()
+			if count+1 > maximum {
 				r.Header.Set("X-Filtered", "true")
 			}
-			globalApps[appID] = count
-			lock.Unlock()
 			next.ServeHTTP(w, r)
 		}
 	}
@@ -126,7 +126,7 @@ func NewQueryThresholdMiddleware(manager *traffic.TrafficManager) middleware {
 				w.Write(resp)
 				return
 			}
-			if !manager.Count(appID) {
+			if manager.Count(appID) {
 				r.Header.Set("X-Filtered", "true")
 			}
 			next.ServeHTTP(w, r)
