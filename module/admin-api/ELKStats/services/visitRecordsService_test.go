@@ -31,7 +31,9 @@ func TestUpdateRecords(t *testing.T) {
 		// }
 	}))
 	addr, _ := url.Parse(server.URL)
-	err := elasticsearch.Setup(addr.Hostname(), addr.Port())
+	baseAuthUsername = "username"
+	baseAuthPassword = "password"
+	err := elasticsearch.Setup(addr.Hostname(), addr.Port(), baseAuthUsername, baseAuthPassword)
 	if err != nil {
 		t.Fatal(err)
 	}

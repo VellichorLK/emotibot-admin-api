@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -309,7 +310,26 @@ func initDB() {
 func initElasticsearch() (err error) {
 	host := getServerEnv("ELASTICSEARCH_HOST")
 	port := getServerEnv("ELASTICSEARCH_PORT")
-	return elasticsearch.Setup(host, port)
+	basicAuthUsername := getServerEnv("ELASTICSEARCH_BASIC_AUTH_USERNAME")
+	basicAuthPassword := getServerEnv("ELASTICSEARCH_BASIC_AUTH_PASSWORD")
+
+	if host == "" {
+		return errors.New("ELASTICSEARCH_HOST env missing")
+	}
+
+	if port == "" {
+		return errors.New("ELASTICSEARCH_PORT env missing")
+	}
+
+	if basicAuthUsername == "" {
+		return errors.New("ELASTICSEARCH_BASIC_AUTH_USERNAME env missing")
+	}
+
+	if basicAuthPassword == "" {
+		return errors.New("ELASTICSEARCH_BASIC_AUTH_PASSWORD env missing")
+	}
+
+	return elasticsearch.Setup(host, port, basicAuthUsername, basicAuthPassword)
 }
 
 func runOnetimeJob() {

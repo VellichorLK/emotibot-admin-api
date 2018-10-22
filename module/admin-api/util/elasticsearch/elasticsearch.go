@@ -13,15 +13,21 @@ import (
 )
 
 var (
-	esClient *elastic.Client
-	esCtx    context.Context
-	host     string
-	port     string
+	esClient          *elastic.Client
+	esCtx             context.Context
+	host              string
+	port              string
+	basicAuthUsername string
+	basicAuthPassword string
 )
 
-func Setup(envHost string, envPort string) (err error) {
+func Setup(envHost string, envPort string,
+	envBasicAuthUsername string, envBasicAuthPasword string) (err error) {
 	host = envHost
 	port = envPort
+	basicAuthUsername = envBasicAuthUsername
+	basicAuthPassword = envBasicAuthPasword
+
 	ctx, client, err := initClient()
 	if err == nil {
 		esClient = client
@@ -40,7 +46,8 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 	esURL := fmt.Sprintf("http://%s:%s", host, port)
 
 	// Turn-off sniffing
-	client, err = elastic.NewClient(elastic.SetURL(esURL), elastic.SetSniff(false))
+	client, err = elastic.NewClient(elastic.SetURL(esURL),
+		elastic.SetBasicAuth(basicAuthUsername, basicAuthPassword), elastic.SetSniff(false))
 	if err != nil {
 		return
 	}
