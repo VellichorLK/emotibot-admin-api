@@ -199,17 +199,17 @@ func createFilterConfig(data []byte) (*filterConfig, error) {
 		}
 		col := strings.SplitN(l, "\t", 3)
 		if len(col) < 3 {
-			return nil, fmt.Errorf("line %d parsed failed: column should contain at least 3 tab", i+1)
+			return nil, fmt.Errorf("line %d parsed failed: column %s should contain at least 3 tab", i+1, l)
 		}
 		fmt.Println("Columns: ", col)
 		appID := col[0]
 		dayLimit, err := strconv.ParseInt(col[1], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("line %d parsed failed: can not parse column 1 as int64, %v", i+1, err)
+			return nil, fmt.Errorf("line %d parsed failed: can not parse %s column 1 as int64, %v", i+1, l, err)
 		}
 		qpsLimit, err := strconv.ParseInt(col[2], 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("line %d parsed failed: can not parse column 2 as int64, %v", i+1, err)
+			return nil, fmt.Errorf("line %d parsed failed: can not parse %s column 2 as int64, %v", i+1, l, err)
 		}
 		app := appConfig{
 			DailyLimit: dayLimit,
