@@ -122,11 +122,13 @@ func main() {
 	var lock = sync.Mutex{}
 	filter, appCounters := newAppFilterByConfig(config, &lock)
 	NewScheduler(func() error {
+		fmt.Println("Start cleanup work in background")
 		lock.Lock()
 		for app := range appCounters {
 			delete(appCounters, app)
 		}
 		lock.Unlock()
+		fmt.Println("Finished background work")
 		return nil
 	}).Start(&daily{})
 
