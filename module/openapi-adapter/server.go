@@ -108,16 +108,19 @@ func main() {
 		monitorTraffic = false
 	}
 
-	dailyThreshold, err := util.GetIntEnv("DAILY_THRESHOLD")
+	rawdata, err := ioutil.ReadFile("./app.ini")
 	if err != nil {
-		logger.Warn.Println("invalid DAILY_THRESHOLD, set to 10000, err: ", err)
-		dailyThreshold = 10000
+		logger.Error.Fatalln("init error: can not read ini file, ", err)
+	}
+	config, err := createFilterConfig(rawdata)
+	if err != nil {
+		logger.Error.Fatalln("config create failed, ", err)
 	}
 	// Make traffic channel
 	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
 		duration, int64(maxRequests), int64(logPeriod))
-	var appCounters = map[string]int64{}
 	var lock = sync.Mutex{}
+	filter, appCounters := newAppFilterByConfig(config, &lock)
 	NewScheduler(func() error {
 		lock.Lock()
 		for app := range appCounters {
@@ -126,10 +129,64 @@ func main() {
 		lock.Unlock()
 		return nil
 	}).Start(&daily{})
+
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
-	dailyLimiter := NewDailyLimitMiddleWare(appCounters, int64(dailyThreshold), &lock)
-	qpsLimiter := NewQueryThresholdMiddleware(trafficManager)
+
+	dailyLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var resp interface{}
+
+		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
+			resp = data.ResponseV1{
+				ReturnCode: 400,
+				Message:    "too many request",
+				Data:       []data.DataV1{},
+				Emotion:    []data.Emotion{},
+			}
+		} else {
+			resp = data.ResponseV2{
+				Code:    400,
+				Message: "too many request",
+				Answers: []data.Answer{},
+				Info:    data.Info{},
+			}
+		}
+		result, _ := json.Marshal(resp)
+		w.WriteHeader(http.StatusTooManyRequests)
+		year, month, day := time.Now().Date()
+		tomorrow := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+		w.Header().Set("Retry-After", tomorrow.Format(time.RFC1123))
+		w.Write(result)
+		return
+	}, filter)
+
+	qpsFilter, _ := newQPSFilterByConfig(config)
+
+	qpsLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var resp interface{}
+
+		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
+			resp = data.ResponseV1{
+				ReturnCode: 400,
+				Message:    "too many request",
+				Data:       []data.DataV1{},
+				Emotion:    []data.Emotion{},
+			}
+		} else {
+			resp = data.ResponseV2{
+				Code:    400,
+				Message: "too many request",
+				Answers: []data.Answer{},
+				Info:    data.Info{},
+			}
+		}
+		result, _ := json.Marshal(resp)
+		w.WriteHeader(http.StatusTooManyRequests)
+		//Retry after fixed 10 second
+		w.Header().Set("Retry-After", "10")
+		w.Write(result)
+		return
+	}, qpsFilter)
 	metadataValidator := NewMetadataValidateMiddleware()
 	middleWares := chainMiddleWares(metadataValidator, qpsLimiter, dailyLimiter, logSummarize)
 	http.HandleFunc("/api/ApiKey/", middleWares(OpenAPIAdapterHandler))
@@ -211,18 +268,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyData, &v2Resp)
 	logger.Info.Printf("v2 response body: %s\n", bodyData)
-	if _, found := r.Header["X-Filtered"]; found && err != nil {
-		//if filtered, mean the return format most certainly will not be v2 response body
-		//copy header
-		for k, vv := range resp.Header {
-			for _, v := range vv {
-				w.Header().Add(k, v)
-			}
-		}
-		//copy body
-		w.Write(bodyData)
-		return
-	} else if err != nil {
+	if err != nil {
 		customError(w, "unmarshal version 2 body failed, "+err.Error(), http.StatusInternalServerError)
 		return
 	}
