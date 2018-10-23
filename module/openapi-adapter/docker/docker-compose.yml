@@ -27,5 +27,4 @@ services:
         max-file: '10'
         max-size: 5M
     volumes:
-      - ./app.ini:/usr/bin/app/app.config
-    restart: always
+      - ./app.ini:/usr/bin/app/app.ini
