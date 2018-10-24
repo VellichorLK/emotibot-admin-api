@@ -108,28 +108,103 @@ func main() {
 		monitorTraffic = false
 	}
 
-	dailyThreshold, err := util.GetIntEnv("DAILY_THRESHOLD")
+	rawdata, err := ioutil.ReadFile("./app.ini")
 	if err != nil {
-		logger.Warn.Println("invalid DAILY_THRESHOLD, set to 10000, err: ", err)
-		dailyThreshold = 10000
+		logger.Error.Fatalln("init error: can not read ini file, ", err)
+	}
+	config, err := createFilterConfig(rawdata)
+	if err != nil {
+		logger.Error.Fatalln("config create failed, ", err)
 	}
 	// Make traffic channel
 	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
 		duration, int64(maxRequests), int64(logPeriod))
-	var appCounters = map[string]int64{}
 	var lock = sync.Mutex{}
+	filter, appCounters := newAppFilterByConfig(config, &lock)
 	NewScheduler(func() error {
+		fmt.Println("Start cleanup work in background")
 		lock.Lock()
 		for app := range appCounters {
 			delete(appCounters, app)
 		}
 		lock.Unlock()
+		fmt.Println("Finished background work")
 		return nil
 	}).Start(&daily{})
+
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
-	dailyLimiter := NewDailyLimitMiddleWare(appCounters, int64(dailyThreshold), &lock)
-	qpsLimiter := NewQueryThresholdMiddleware(trafficManager)
+
+	dailyLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var resp interface{}
+
+		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
+			resp = data.ResponseV1{
+				ReturnCode: 400,
+				Message:    "too many request",
+				Data:       []data.DataV1{},
+				Emotion:    []data.Emotion{},
+			}
+		} else {
+			resp = data.ResponseV2{
+				Code:    400,
+				Message: "too many request",
+				Answers: []data.Answer{},
+				Info:    data.Info{},
+			}
+		}
+		year, month, day := time.Now().Date()
+		tomorrow := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+		result, _ := json.Marshal(resp)
+		w.Header().Set("Retry-After", tomorrow.Format(time.RFC1123))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write(result)
+		return
+	}, filter)
+
+	qpsFilter, qpsCount := newQPSFilterByConfig(config)
+	_ = qpsCount
+
+	qpsLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		var resp interface{}
+
+		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
+			resp = data.ResponseV1{
+				ReturnCode: 400,
+				Message:    "too many request",
+				Data:       []data.DataV1{},
+				Emotion:    []data.Emotion{},
+			}
+		} else {
+			resp = data.ResponseV2{
+				Code:    400,
+				Message: "too many request",
+				Answers: []data.Answer{},
+				Info:    data.Info{},
+			}
+		}
+		result, _ := json.Marshal(resp)
+		//Retry after fixed 10 second
+		w.Header().Set("Retry-After", "10")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write(result)
+		return
+	}, qpsFilter)
+	// uncomment this to observe counter in real time
+	// go func() {
+	// 	for {
+	// 		time.Sleep(time.Duration(3) * time.Second)
+	// 		fmt.Println("DAY: ", appCounters)
+	// 		fmt.Println("QPS: ")
+	// 		qpsCount.Range(func(key, value interface{}) bool {
+	// 			counter := value.(*ratecounter.RateCounter)
+	// 			fmt.Println(key, ": ", counter.Rate())
+	// 			return true
+	// 		})
+	// 	}
+	// }()
 	metadataValidator := NewMetadataValidateMiddleware()
 	middleWares := chainMiddleWares(metadataValidator, qpsLimiter, dailyLimiter, logSummarize)
 	http.HandleFunc("/api/ApiKey/", middleWares(OpenAPIAdapterHandler))
@@ -211,18 +286,7 @@ func OpenAPIAdapterHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(bodyData, &v2Resp)
 	logger.Info.Printf("v2 response body: %s\n", bodyData)
-	if _, found := r.Header["X-Filtered"]; found && err != nil {
-		//if filtered, mean the return format most certainly will not be v2 response body
-		//copy header
-		for k, vv := range resp.Header {
-			for _, v := range vv {
-				w.Header().Add(k, v)
-			}
-		}
-		//copy body
-		w.Write(bodyData)
-		return
-	} else if err != nil {
+	if err != nil {
 		customError(w, "unmarshal version 2 body failed, "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -330,7 +394,6 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	}
 
 	buf, _ := ioutil.ReadAll(r.Body)
-	fmt.Println("origin body ", string(buf))
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 	rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
 
@@ -343,7 +406,6 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	appid = ""
 	userid = ""
 	openapiCmd := ""
-	fmt.Println("extract form", r.Form.Encode())
 	if r.Method == "GET" || r.Method == "POST" {
 		appid = r.FormValue("appid")
 		openapiCmd = r.FormValue("cmd")
