@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -116,6 +117,9 @@ func main() {
 	if err != nil {
 		logger.Error.Fatalln("config create failed, ", err)
 	}
+
+	//answerSample provide all dummy answer for 429 Response
+	var answerSample = []string{"呵呵", "嗯嗯"}
 	// Make traffic channel
 	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
 		duration, int64(maxRequests), int64(logPeriod))
@@ -134,23 +138,36 @@ func main() {
 
 	// Reserve proxy
 	proxy = httputil.NewSingleHostReverseProxy(remoteHostURL)
-
 	dailyLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var resp interface{}
-
+		answerText := answerSample[rand.Intn(len(answerSample))]
 		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
 			resp = data.ResponseV1{
-				ReturnCode: 400,
+				ReturnCode: 429,
 				Message:    "too many request",
-				Data:       []data.DataV1{},
-				Emotion:    []data.Emotion{},
+				Data: []data.DataV1{
+					data.DataV1{
+						Type:  "text",
+						Value: answerText,
+						Data:  []data.Answer{},
+					},
+				},
+				Emotion: []data.Emotion{},
 			}
 		} else {
 			resp = data.ResponseV2{
-				Code:    400,
+				Code:    429,
 				Message: "too many request",
-				Answers: []data.Answer{},
-				Info:    data.Info{},
+				Answers: []data.Answer{
+					data.Answer{
+						Type:       "text",
+						SubType:    "text",
+						Value:      answerText,
+						Data:       []interface{}{},
+						ExtendData: "",
+					},
+				},
+				Info: data.Info{},
 			}
 		}
 		year, month, day := time.Now().Date()
@@ -168,20 +185,34 @@ func main() {
 
 	qpsLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var resp interface{}
-
+		answerText := answerSample[rand.Intn(len(answerSample))]
 		if strings.Contains(r.URL.RequestURI(), "api/ApiKey") {
 			resp = data.ResponseV1{
-				ReturnCode: 400,
+				ReturnCode: 429,
 				Message:    "too many request",
-				Data:       []data.DataV1{},
-				Emotion:    []data.Emotion{},
+				Data: []data.DataV1{
+					data.DataV1{
+						Type:  "text",
+						Value: answerText,
+						Data:  []data.Answer{},
+					},
+				},
+				Emotion: []data.Emotion{},
 			}
 		} else {
 			resp = data.ResponseV2{
-				Code:    400,
+				Code:    429,
 				Message: "too many request",
-				Answers: []data.Answer{},
-				Info:    data.Info{},
+				Answers: []data.Answer{
+					data.Answer{
+						Type:       "text",
+						SubType:    "text",
+						Value:      answerText,
+						Data:       []interface{}{},
+						ExtendData: "",
+					},
+				},
+				Info: data.Info{},
 			}
 		}
 		result, _ := json.Marshal(resp)
