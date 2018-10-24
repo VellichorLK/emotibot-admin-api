@@ -77,6 +77,30 @@ func TestNewAppFilterByConfig(t *testing.T) {
 	}
 
 }
+
+func TestNewAppFilterByConfigMultiple(t *testing.T) {
+	config := filterConfig{
+		Apps: map[string]appConfig{
+			"csbot": appConfig{
+				DailyLimit: 100,
+			},
+		},
+	}
+	lock := sync.Mutex{}
+	filter, counter := newAppFilterByConfig(&config, &lock)
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			filter("csbot")
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	if counter["csbot"] != 1000 {
+		t.Fatal("expect csbot count to 1000 but got ", counter["csbot"])
+	}
+}
 func TestCreateFilterConfig(t *testing.T) {
 	exampleConfig := `#This is a example Config
 csbot	100	10

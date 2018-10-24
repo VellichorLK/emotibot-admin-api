@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"testing"
 	"time"
 )
@@ -15,7 +14,6 @@ func TestScheduler(t *testing.T) {
 	var s = 0
 	NewScheduler(func() error {
 		s++
-		log.Println("fired")
 		return nil
 	}).Start(&mockupClock{})
 	time.Sleep(time.Duration(3500) * time.Millisecond)

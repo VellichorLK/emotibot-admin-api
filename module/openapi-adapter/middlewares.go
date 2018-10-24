@@ -201,7 +201,6 @@ func createFilterConfig(data []byte) (*filterConfig, error) {
 		if len(col) < 3 {
 			return nil, fmt.Errorf("line %d parsed failed: column %s should contain at least 3 tab", i+1, l)
 		}
-		fmt.Println("Columns: ", col)
 		appID := col[0]
 		dayLimit, err := strconv.ParseInt(col[1], 10, 64)
 		if err != nil {

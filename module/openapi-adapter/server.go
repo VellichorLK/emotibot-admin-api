@@ -153,16 +153,18 @@ func main() {
 				Info:    data.Info{},
 			}
 		}
-		result, _ := json.Marshal(resp)
-		w.WriteHeader(http.StatusTooManyRequests)
 		year, month, day := time.Now().Date()
 		tomorrow := time.Date(year, month, day, 0, 0, 0, 0, time.Local)
+		result, _ := json.Marshal(resp)
 		w.Header().Set("Retry-After", tomorrow.Format(time.RFC1123))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write(result)
 		return
 	}, filter)
 
-	qpsFilter, _ := newQPSFilterByConfig(config)
+	qpsFilter, qpsCount := newQPSFilterByConfig(config)
+	_ = qpsCount
 
 	qpsLimiter := newAppIDLimitMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var resp interface{}
@@ -183,12 +185,26 @@ func main() {
 			}
 		}
 		result, _ := json.Marshal(resp)
-		w.WriteHeader(http.StatusTooManyRequests)
 		//Retry after fixed 10 second
 		w.Header().Set("Retry-After", "10")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusTooManyRequests)
 		w.Write(result)
 		return
 	}, qpsFilter)
+	// uncomment this to observe counter in real time
+	// go func() {
+	// 	for {
+	// 		time.Sleep(time.Duration(3) * time.Second)
+	// 		fmt.Println("DAY: ", appCounters)
+	// 		fmt.Println("QPS: ")
+	// 		qpsCount.Range(func(key, value interface{}) bool {
+	// 			counter := value.(*ratecounter.RateCounter)
+	// 			fmt.Println(key, ": ", counter.Rate())
+	// 			return true
+	// 		})
+	// 	}
+	// }()
 	metadataValidator := NewMetadataValidateMiddleware()
 	middleWares := chainMiddleWares(metadataValidator, qpsLimiter, dailyLimiter, logSummarize)
 	http.HandleFunc("/api/ApiKey/", middleWares(OpenAPIAdapterHandler))
@@ -378,7 +394,6 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	}
 
 	buf, _ := ioutil.ReadAll(r.Body)
-	fmt.Println("origin body ", string(buf))
 	rdr1 := ioutil.NopCloser(bytes.NewBuffer(buf))
 	rdr2 := ioutil.NopCloser(bytes.NewBuffer(buf))
 
@@ -391,7 +406,6 @@ func GetMetadata(r *http.Request) (map[MetaDataKey]string, error) {
 	appid = ""
 	userid = ""
 	openapiCmd := ""
-	fmt.Println("extract form", r.Form.Encode())
 	if r.Method == "GET" || r.Method == "POST" {
 		appid = r.FormValue("appid")
 		openapiCmd = r.FormValue("cmd")
