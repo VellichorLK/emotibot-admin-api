@@ -119,7 +119,7 @@ func main() {
 	}
 
 	//answerSample provide all dummy answer for 429 Response
-	var answerSample = []string{"呵呵", "嗯嗯"}
+	var answerSample = []string{"呵呵", "嗯嗯", "我去洗澡了"}
 	// Make traffic channel
 	trafficManager = traffic.NewTrafficManager(monitorTraffic, statsdHost, statsdPortInt,
 		duration, int64(maxRequests), int64(logPeriod))
