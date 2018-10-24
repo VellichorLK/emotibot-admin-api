@@ -2,7 +2,9 @@ version: '3'
 
 services:
   openapi-adapter:
-    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:b534b38-20181024-1704
+    # old v1 image
+    # image: docker-reg.emotibot.com.cn:55688/openapi-adapter:59a1d30-20180926-1148
+    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:a11ae4c-20181024-1720
     container_name: openapi-adapter
     network_mode: host
     ports:
