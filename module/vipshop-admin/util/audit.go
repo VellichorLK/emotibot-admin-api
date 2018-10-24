@@ -26,6 +26,9 @@ const (
 	AuditModuleRole           = "8" // "角色管理"
 	AuditModuleRFQuestion     = "9" // "解決未解決"
 	AuditModuleMedia          = "10" // "图片素材"
+	AuditModuleTESwitch       = "11" // "TE白名单开关"
+	AuditModuleTEWhite        = "12" // "白名单"
+	AuditModuleTEGray         = "13" // "灰度发布"
 )
 
 // AddAuditLog will add audit log to mysql-audit
