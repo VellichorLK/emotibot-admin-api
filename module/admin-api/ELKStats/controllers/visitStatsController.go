@@ -432,7 +432,10 @@ func createAnswerCategoryStatsResponse(statCounts map[string]interface{}) (*data
 	return &response, nil
 }
 
-func createTopQuestionsResponse(questions []*data.Question) *data.TopQuestionsResponse {
+func createTopQuestionsResponse(questions data.Questions) *data.TopQuestionsResponse {
+	// Sort top questions
+	sort.Sort(sort.Reverse(questions))
+
 	questionsData := make([]data.TopQuestionData, 0)
 	rank := 1
 
