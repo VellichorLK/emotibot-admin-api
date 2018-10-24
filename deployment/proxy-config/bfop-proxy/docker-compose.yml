@@ -2,7 +2,7 @@ version: '3'
 
 services:
   openapi-adapter:
-    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:781f53b-20180927-1501
+    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:b534b38-20181024-1704
     container_name: openapi-adapter
     network_mode: host
     ports:
@@ -26,6 +26,8 @@ services:
       options:
         max-file: '10'
         max-size: 5M
+    volumes:
+      - ./openapi-adapter/app.ini:/usr/bin/app/app.ini
     restart: always
   haproxy-bfop:
     image: haproxy:1.6
