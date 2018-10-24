@@ -29,7 +29,7 @@ POST /emotibot-records-csbot-*/_search
       "terms": {
         "field": "user_q.keyword",
         "size": 20,
-        "shard_size": 3000000
+        "shard_size": 10000
       }
     }
   }, 

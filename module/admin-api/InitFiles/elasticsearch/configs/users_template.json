@@ -1,6 +1,6 @@
 {
     "index_patterns": [
-        "emotibot-sessions-*"
+        "emotibot-users-*"
     ],
     "version": 20181015,
     "settings": {
@@ -10,25 +10,19 @@
     "mappings": {
         "doc": {
             "properties": {
-                "enterprise_id": {
-                    "type": "keyword"
-                },
                 "app_id": {
                     "type": "keyword"
                 },
                 "user_id": {
                     "type": "keyword"
                 },
-                "session_id": {
-                    "type": "keyword"
-                },
-                "start_time": {
+                "first_log_time": {
                     "type": "date",
-                    "format": "epoch_second"
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.000Z||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
                 },
-                "end_time": {
+                "log_time": {
                     "type": "date",
-                    "format": "epoch_second"
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.000Z||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
                 }
             }
         }

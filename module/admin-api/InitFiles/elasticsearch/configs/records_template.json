@@ -2,7 +2,11 @@
     "index_patterns": [
         "emotibot-records-*"
     ],
-    "version": 20180802,
+    "version": 20181015,
+    "settings": {
+        "number_of_replicas": 1,
+        "number_of_shards": 1
+    },
     "mappings": {
         "doc": {
             "properties": {
@@ -84,15 +88,6 @@
                             "type": "keyword"
                         }
                     }
-                },
-                "platform": {
-                    "type": "keyword"
-                },
-                "brand": {
-                    "type": "keyword"
-                },
-                "sex": {
-                    "type": "keyword"
                 }
             }
         }

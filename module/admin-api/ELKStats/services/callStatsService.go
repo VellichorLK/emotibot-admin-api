@@ -8,11 +8,12 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"github.com/olivere/elastic"
 )
 
-func TotalCallCounts(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func TotalCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "total_calls"
 	boolQuery := elastic.NewBoolQuery()
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
@@ -22,8 +23,8 @@ func TotalCallCounts(ctx context.Context, client *elastic.Client,
 	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
-func CompleteCallCounts(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func CompleteCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "complete_calls"
 	boolQuery := elastic.NewBoolQuery()
 	termQuery := elastic.NewTermQuery("status", data.CallStatusComplete)
@@ -40,8 +41,8 @@ func CompleteCallRates(completeCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, completeCallCounts)
 }
 
-func ToHumanCallCounts(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func ToHumanCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "to_human_calls"
 	boolQuery := elastic.NewBoolQuery()
 	termQuery := elastic.NewTermQuery("status", data.CallStatusTranserToHuman)
@@ -58,8 +59,8 @@ func ToHumanCallRates(toHumanCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, toHumanCounts)
 }
 
-func TimeoutCallCounts(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func TimeoutCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "timeout_calls"
 	boolQuery := elastic.NewBoolQuery()
 	termQuery := elastic.NewTermQuery("status", data.CallStatusTimeout)
@@ -76,8 +77,8 @@ func TimeoutCallRates(timeoutCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, timeoutCallCounts)
 }
 
-func CancelCallCounts(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func CancelCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	aggName := "cancel_calls"
 	boolQuery := elastic.NewBoolQuery()
 	termQuery := elastic.NewTermQuery("status", data.CallStatusCancel)
@@ -94,8 +95,8 @@ func CancelCallRates(cancelCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, cancelCallCounts)
 }
 
-func Unknowns(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery) (map[string]interface{}, error) {
+func Unknowns(query data.CallStatsQuery) (map[string]interface{}, error) {
+	ctx, client := elasticsearch.GetClient()
 	// TODO: Metric definition not defined yet, return maps with all zero values now
 	aggName := "unknowns"
 	boolQuery := elastic.NewBoolQuery()
@@ -108,8 +109,8 @@ func Unknowns(ctx context.Context, client *elastic.Client,
 	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
 }
 
-func TopToHumanAnswers(ctx context.Context, client *elastic.Client,
-	query data.CallStatsQuery, topN int) (data.ToHumanAnswers, error) {
+func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers, error) {
+	ctx, client := elasticsearch.GetClient()
 	// Query all the session IDs in the query date range
 	groupBySessionsAggName := "group_by_sessions"
 	boolQuery := elastic.NewBoolQuery()

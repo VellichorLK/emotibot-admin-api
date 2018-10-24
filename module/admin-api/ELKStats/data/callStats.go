@@ -1,11 +1,8 @@
 package data
 
 import (
-	"context"
 	"strconv"
 	"time"
-
-	"github.com/olivere/elastic"
 )
 
 const (
@@ -194,5 +191,4 @@ func NewCallStatsQ() *CallStatsQ {
 	}
 }
 
-type CallStatsQueryHandler func(ctx context.Context, client *elastic.Client,
-	query CallStatsQuery) (map[string]interface{}, error)
+type CallStatsQueryHandler func(query CallStatsQuery) (map[string]interface{}, error)

@@ -33,6 +33,11 @@ func Setup(envHost string, envPort string,
 		esClient = client
 		esCtx = ctx
 	}
+
+	createRecordsIndexTemplateIfNeed()
+	createSessionsIndexTemplateIfNeed()
+	createUsersIndexTemplateIfNeed()
+
 	return
 }
 
@@ -52,6 +57,29 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 		return
 	}
 	ctx = context.Background()
+
+	return
+}
+
+func GetClient() (context.Context, *elastic.Client) {
+	if esClient == nil {
+		ctx, client, err := initClient()
+		if err != nil {
+			logger.Error.Println("Init es client fail:", err.Error())
+			return nil, nil
+		}
+		esClient = client
+		esCtx = ctx
+		return ctx, client
+	}
+	return esCtx, esClient
+}
+
+func createRecordsIndexTemplateIfNeed() {
+	ctx, client := GetClient()
+	if ctx == nil || client == nil {
+		return
+	}
 
 	// Check existence of records index template
 	exists, err := client.IndexTemplateExists(data.ESRecordsTemplate).Do(ctx)
@@ -78,9 +106,16 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 			return
 		}
 	}
+}
+
+func createSessionsIndexTemplateIfNeed() {
+	ctx, client := GetClient()
+	if ctx == nil || client == nil {
+		return
+	}
 
 	// Check existence of sessions index template
-	exists, err = client.IndexTemplateExists(data.ESSessionsTemplate).Do(ctx)
+	exists, err := client.IndexTemplateExists(data.ESSessionsTemplate).Do(ctx)
 	if err != nil {
 		return
 	}
@@ -104,22 +139,39 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 			return
 		}
 	}
-
-	return
 }
 
-func GetClient() (context.Context, *elastic.Client) {
-	if esClient == nil {
-		ctx, client, err := initClient()
-		if err != nil {
-			logger.Error.Println("Init es client fail:", err.Error())
-			return nil, nil
-		}
-		esClient = client
-		esCtx = ctx
-		return ctx, client
+func createUsersIndexTemplateIfNeed() {
+	ctx, client := GetClient()
+	if ctx == nil || client == nil {
+		return
 	}
-	return esCtx, esClient
+
+	// Check existence of users index template
+	exists, err := client.IndexTemplateExists(data.ESUsersTemplate).Do(ctx)
+	if err != nil {
+		return
+	}
+
+	if !exists {
+		// Create users index template
+		template, _err := ioutil.ReadFile(data.ESUsersTemplateFile)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		service, _err := client.IndexPutTemplate(data.ESUsersTemplate).BodyString(string(template)).Do(ctx)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		if !service.Acknowledged {
+			err = data.ErrESNotAcknowledged
+			return
+		}
+	}
 }
 
 func CreateTimeRangeFromString(startDate string,
