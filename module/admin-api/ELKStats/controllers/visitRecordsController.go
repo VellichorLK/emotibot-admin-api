@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"emotibot.com/emotigo/pkg/api/dal/v1"
 	"github.com/gorilla/mux"
@@ -51,7 +52,12 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	result, err := services.VisitRecordsQuery(*query, services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
 	if err != nil {
-		errResponse := data.NewErrorResponse(err.Error())
+		var errResponse data.ErrorResponse
+		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+		} else {
+			errResponse = data.NewErrorResponse(err.Error())
+		}
 		returnInternalServerError(w, errResponse)
 		return
 	}
@@ -86,7 +92,12 @@ func RecordsDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	//FIXME: use scroll API to rewrite
 	result, err := services.VisitRecordsQuery(*query)
 	if err != nil {
-		errResponse := data.NewErrorResponse(err.Error())
+		var errResponse data.ErrorResponse
+		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+		} else {
+			errResponse = data.NewErrorResponse(err.Error())
+		}
 		returnInternalServerError(w, errResponse)
 		return
 	}
@@ -164,7 +175,14 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = services.UpdateRecords(q, services.UpdateRecordIgnore(*request.Ignore))
 	if err != nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError, "update records failed, "+err.Error()))
+		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+			errResponse := data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			returnInternalServerError(w, errResponse)
+		} else {
+			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError,
+				"update records failed, "+err.Error()))
+		}
+
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -71,7 +72,12 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.CallStatsTypeTime:
 		callsCounts, err := fetchCallStats(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -87,7 +93,12 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.CallStatsTypeAnswers:
 		answers, err := services.TopToHumanAnswers(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
