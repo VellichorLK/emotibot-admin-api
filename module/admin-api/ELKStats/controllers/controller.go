@@ -5,7 +5,23 @@ import (
 	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"github.com/olivere/elastic"
 )
+
+func extractElasticsearchRootCauseErrors(err interface{}) ([]string, bool) {
+	if esErr, ok := err.(*elastic.Error); ok {
+		rootCause := esErr.Details.RootCause
+		reasons := make([]string, len(rootCause))
+		for i, cause := range rootCause {
+			reasons[i] = cause.Reason
+		}
+
+		return reasons, true
+	}
+
+	// Not instance of elastic.Error return false
+	return nil, false
+}
 
 func returnOK(w http.ResponseWriter, resp interface{}) {
 	w.Header().Set("Content-Type", "application/json")

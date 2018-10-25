@@ -239,7 +239,7 @@ func UpdateRecords(query data.RecordQuery, cmd UpdateCommand) error {
 
 	resp, err := s.Do(ctx)
 	if err != nil {
-		return fmt.Errorf("do update by query failed, %v", err)
+		return err
 	}
 	logger.Trace.Printf("response: %+v\n", resp)
 	return nil
@@ -288,7 +288,7 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 		Sort(data.LogTimeFieldName, false).
 		Do(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("elastic search service error, %v", err)
+		return nil, err
 	}
 
 	var r = &RecordResult{

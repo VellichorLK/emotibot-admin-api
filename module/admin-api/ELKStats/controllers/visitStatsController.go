@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -123,7 +124,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		(statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterCategory) {
 		statsCounts, err := fetchVisitStats(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -132,7 +138,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsTypeTime:
 			response, err := createVisitStatsResponse(query, statsCounts)
 			if err != nil {
-				errResponse := data.NewErrorResponse(err.Error())
+				var errResponse data.ErrorResponse
+				if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+					errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+				} else {
+					errResponse = data.NewErrorResponse(err.Error())
+				}
 				returnInternalServerError(w, errResponse)
 				return
 			}
@@ -140,7 +151,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsTypeBarchart:
 			response, err := createVisitStatsTagResponse(query, statsCounts)
 			if err != nil {
-				errResponse := data.NewErrorResponse(err.Error())
+				var errResponse data.ErrorResponse
+				if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+					errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+				} else {
+					errResponse = data.NewErrorResponse(err.Error())
+				}
 				returnInternalServerError(w, errResponse)
 				return
 			}
@@ -154,14 +170,24 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		// Return answer category counts
 		statCounts, err := services.AnswerCategoryCounts(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
 
 		response, err := createAnswerCategoryStatsResponse(statCounts)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -211,7 +237,12 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.VisitQuestionsTypeTop:
 		questions, err := services.TopQuestions(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -231,14 +262,24 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		questions, err := services.TopUnmatchQuestions(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
 
 		response, err := createTopUnmatchedQuestionsResponse(query, questions)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
