@@ -93,6 +93,7 @@ func bfbUpdateScenario(appid string, data interface{}) (string, error) {
 	}
 
 	postData := map[string]interface{}{
+		"appid":   appid,
 		"userid":  appid,
 		"content": content,
 		"layout":  layout,
@@ -116,6 +117,7 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 	_, name, content, layout := parseJSONData(data)
 
 	postData := map[string]string{
+		"appid":        appid,
 		"userid":       appid,
 		"scenarioname": name,
 	}
@@ -138,6 +140,7 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 	metadata["scenario_id"] = id
 
 	updateData := map[string]interface{}{
+		"appid":   appid,
 		"userid":  appid,
 		"content": content,
 		"layout":  layout,
