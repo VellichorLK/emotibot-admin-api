@@ -1,4 +1,4 @@
-FROM harbor.emotibot.com/library/go-build:80ac6858-1.10-standard AS build-env
+FROM harbor.emotibot.com/library/go-build:3409410d-1.10-standard AS build-env
 
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
