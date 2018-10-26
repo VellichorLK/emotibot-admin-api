@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
+	captcha "github.com/mojocn/base64Captcha"
 )
 
 func SystemAdminsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
@@ -1597,6 +1598,27 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 		err = util.ErrInvalidParameter
 		returnBadRequest(w, "")
 		return
+	}
+
+	if util.GetCaptchaStatus() {
+		util.LogTrace.Printf("Enable captcha")
+		captchaCode := r.Form.Get("captcha")
+		captchaID := r.Form.Get("captchaID")
+		if captchaCode == "" || captchaID == "" {
+			err = util.ErrInvalidParameter
+			returnBadRequest(w, "no captcha")
+			return
+		}
+
+		verifyResult := captcha.VerifyCaptcha(captchaID, captchaCode)
+		if !verifyResult {
+			// verify failed
+			err = util.ErrInvalidParameter
+			returnBadRequest(w, "invalid captcha")
+			return
+		}
+	} else {
+		util.LogTrace.Printf("Disable captcha")
 	}
 
 	// If user is banned, return Forbidden

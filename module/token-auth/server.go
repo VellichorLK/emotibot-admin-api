@@ -118,6 +118,8 @@ func setUpRoutes() {
 		Route{"DeleteIMUser", "DELETE", 3, "enterprise/{enterpriseID}/imuser/{userID}", nil, IMUserDeleteHandlerV3, []interface{}{0, 1, 2}},
 		Route{"ValidateIMToken", "GET", 3, "imtoken", nil, IMValidateTokenHandler, []interface{}{}},
 		Route{"GetIMRobots", "GET", 3, "enterprise/{enterpriseID}/imrobots", nil, IMAppsGetHandlerV3, []interface{}{0, 1, 2}},
+
+		Route{"GetCaptcha", "GET", 1, "captcha", nil, CaptchaGetHandler, []interface{}{}},
 	}
 }
 
