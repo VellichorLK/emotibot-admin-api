@@ -26,6 +26,7 @@ const (
 	AuditModuleRole           = "8" // "角色管理"
 	AuditModuleRFQuestion     = "9" // "解決未解決"
 	AuditModuleMedia          = "10" // "图片素材"
+	AuditModuleTE             = "11" // "任务引擎"
 )
 
 // AddAuditLog will add audit log to mysql-audit

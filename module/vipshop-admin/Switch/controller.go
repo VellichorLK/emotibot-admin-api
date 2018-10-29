@@ -125,21 +125,22 @@ func handleUpdateSwitch(ctx context.Context) {
 	}
 
 	orig, errCode, err := GetSwitch(appid, id)
-	errMsg := ApiError.GetErrorMsg(errCode)
+	//errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
 		return
 	}
 
 	errCode, err = UpdateSwitch(appid, id, input)
-	errMsg = ApiError.GetErrorMsg(errCode)
+	//errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
-		addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
-			util.Msg["Modify"], util.Msg["Error"], input.Code, errMsg, err.Error()), 0)
+		/**addAudit(ctx, util.AuditOperationEdit, fmt.Sprintf("%s%s code[%s]: %s (%s)",
+			util.Msg["Modify"], util.Msg["Error"], input.Code, errMsg, err.Error()), 0)*/
+			addAudit(ctx, util.AuditOperationEdit, safeLog(input,orig), 0)
 	} else {
 		ctx.JSON(util.GenRetObj(errCode, input))
-		diffMsg := diffSwitchInfo(orig, input)
+		/**diffMsg := diffSwitchInfo(orig, input)
 		var msg string
 
 		if diffMsg != "" {
@@ -150,8 +151,12 @@ func handleUpdateSwitch(ctx context.Context) {
 			msg = fmt.Sprintf(
 				"%s%s code[%s]",
 				util.Msg["Modify"], util.Msg["Success"], input.Code)
-		}
-		addAudit(ctx, util.AuditOperationEdit, msg, 1)
+		}*/
+
+		//addAudit(ctx, util.AuditOperationEdit, msg, 1)
+
+		updateConsul()
+		addAudit(ctx, util.AuditOperationEdit, safeLog(input,orig), 1)
 	}
 
 	var ret int
@@ -198,4 +203,65 @@ func addAudit(ctx context.Context, operation string, msg string, result int) {
 	userIP := util.GetUserIP(ctx)
 
 	util.AddAuditLog(userID, userIP, util.AuditModuleSwitchList, operation, msg, result)
+}
+
+func safeLog(input *SwitchInfo, dbInfo *SwitchInfo) (string){
+	var title = ""
+	var status = ""
+	if (dbInfo.Status != input.Status) {
+		var dbMsg = "开"
+		var msg = "开"
+		if(dbInfo.Status != 1) {
+			dbMsg = "关"
+		}
+		if(input.Status != 1) {
+			msg = "关"
+		}
+
+		status = fmt.Sprintf("[开关状态]%s => %s", dbMsg, msg)
+	}
+
+	var num = ""
+	if (dbInfo.Num != input.Num) {
+		var s = "；"
+		if(status == "") {
+			s = ""
+		}
+		num = fmt.Sprintf(s+"[次数设置]%d => %d", dbInfo.Num, input.Num)
+	}
+	var msg = ""
+	if (dbInfo.Msg != input.Msg) {
+		var s = "；"
+		if(status == "" && num == "") {
+			s = ""
+		}
+		msg = fmt.Sprintf(s+"[话术设置]%s => %s", dbInfo.Msg, input.Msg)
+	}
+
+	switch input.ID {
+		case 1:
+			title = "[未解决转人工]："+status+num+msg
+
+		case 2:
+			title = "[场景转人工]："+status+num+msg
+		case 3:
+			title = "[TE开关]："+status+num+msg
+		case 4:
+			title = "[未匹配转人工]："+status+num+msg
+		case 5:
+			title = "[TE白名单开关]："+status+num+msg
+		default:
+			title = ""
+	}
+
+	return title
+	
+}
+
+func updateConsul() {
+	unixTime := time.Now().UnixNano() / 1000000
+	_, err := util.ConsulUpdateVal("te/gray", unixTime)
+	if err != nil {
+		util.LogError.Println("consul update failed, %v", err)
+	}
 }

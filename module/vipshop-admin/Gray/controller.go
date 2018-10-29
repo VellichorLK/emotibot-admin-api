@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"fmt"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"github.com/kataras/iris/context"
@@ -53,13 +54,34 @@ func handleUpdateGray(ctx context.Context) {
 		ctx.JSON("Audit DB Connection failed")
 	}
 	percent, err := strconv.Atoi(ctx.Params().Get("percent"))
+
 	util.LogInfo.Println("percent=", percent);
+
+	rows, err := db.Query("select `percent` from gray")
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		ctx.JSON(errorJSON{Message: err.Error()})
+		return
+	}
+	
+	if !rows.Next() {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	}
+	var oldPercent = 0;
+	rows.Scan(oldPercent);
+
+	defer rows.Close()
+
 	ret, err := db.Exec("update gray set percent = ?", percent)
 	var returnJSON = successJSON{}
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{Message: err.Error()})
+		addAuditGray(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%d => %d", oldPercent, percent), 0)
 		return
+	} else {
+		addAuditGray(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%d => %d", oldPercent, percent), 1)
 	}
 	util.LogInfo.Println("ret = ", ret);
 	util.LogInfo.Println("returnJSON = ", returnJSON);
@@ -146,7 +168,10 @@ func handleCreateWhite(ctx context.Context) {
 	util.LogInfo.Println("total = ", total)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
+		addAuditWhite(ctx, util.AuditOperationAdd, fmt.Sprintf("[白名单]：%s", userId), 0);
 		return
+	} else {
+		addAuditWhite(ctx, util.AuditOperationAdd, fmt.Sprintf("[白名单]：%s", userId), 1);
 	}
 	updateConsul()
 	//ctx.JSON("{}")
@@ -162,8 +187,23 @@ func handleDeleteWhite(ctx context.Context) {
 	util.LogInfo.Println("total = ", total)
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
+		addAuditWhite(ctx, util.AuditOperationDelete, fmt.Sprintf("[白名单]：%s", userId), 0);
 		return
+	} else {
+		addAuditWhite(ctx, util.AuditOperationDelete, fmt.Sprintf("[白名单]：%s", userId), 1);
 	}
 	updateConsul()
-	//ctx.JSON("{}")
+	
+}
+
+func addAuditWhite(ctx context.Context, operation string, msg string, result int) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.AddAuditLog(userID, userIP, util.AuditModuleTE, operation, msg, result)
+}
+
+func addAuditGray(ctx context.Context, operation string, msg string, result int) {
+	userID := util.GetUserID(ctx)
+	userIP := util.GetUserIP(ctx)
+	util.AddAuditLog(userID, userIP, util.AuditModuleTE, operation, msg, result)
 }
