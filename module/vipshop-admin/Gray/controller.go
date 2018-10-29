@@ -78,10 +78,10 @@ func handleUpdateGray(ctx context.Context) {
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{Message: err.Error()})
-		addAuditWhite(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%s => %s", oldPercent, percent), 0)
+		addAuditGray(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%d => %d", oldPercent, percent), 0)
 		return
 	} else {
-		addAuditWhite(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%s => %s", oldPercent, percent), 1)
+		addAuditGray(ctx, util.AuditOperationEdit, fmt.Sprintf("[灰度发布]：%d => %d", oldPercent, percent), 1)
 	}
 	util.LogInfo.Println("ret = ", ret);
 	util.LogInfo.Println("returnJSON = ", returnJSON);
@@ -199,11 +199,11 @@ func handleDeleteWhite(ctx context.Context) {
 func addAuditWhite(ctx context.Context, operation string, msg string, result int) {
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
-	util.AddAuditLog(userID, userIP, util.AuditModuleTEWhite, operation, msg, result)
+	util.AddAuditLog(userID, userIP, util.AuditModuleTE, operation, msg, result)
 }
 
 func addAuditGray(ctx context.Context, operation string, msg string, result int) {
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
-	util.AddAuditLog(userID, userIP, util.AuditModuleTEGray, operation, msg, result)
+	util.AddAuditLog(userID, userIP, util.AuditModuleTE, operation, msg, result)
 }
