@@ -1,5 +1,8 @@
 package data
 
+const VisitRecordsPageLimit = 20
+const VisitRecordsExportPageLimit = 1000
+
 const (
 	CategoryBusiness = "business"
 	CategoryChat     = "chat"
@@ -17,17 +20,25 @@ const (
 	VisitRecordsMetricQType   = "qtype"
 )
 
+type VisitRecordsTag struct {
+	Type string
+	Text string
+}
+
 type VisitRecordsRequest struct {
 	StartTime int64                      `json:"start_time"`
 	EndTime   int64                      `json:"end_time"`
 	Filter    *VisitRecordsRequestFilter `json:"filter"`
 	Page      int                        `json:"page"`
+	Limit     int                        `json:"limit"`
+	Export    bool                       `json:"export"`
 }
 
 type VisitRecordsRequestFilter struct {
 	Contains *VisitRecordsRequestFilterContains `json:"contains"`
 	Emotions []VisitRecordsRequestFilterEmotion `json:"emotions"`
 	QTypes   []VisitRecordsRequestFilterQType   `json:"qtypes"`
+	Tags     []VisitRecordsRequestFilterTag     `json:"categories"`
 	UserID   string                             `json:"uid"`
 }
 
@@ -56,43 +67,89 @@ type VisitRecordsRequestFilterQTypeGroup struct {
 	Text string `json:"text"`
 }
 
-type VisitRecordsQuery struct {
-	CommonQuery
-	Question string
-	UserID   string
-	Emotion  string
-	QType    string
-	Page     int
+type VisitRecordsRequestFilterTag struct {
+	Type  string                              `json:"type"`
+	Group []VisitRecordsRequestFilterTagGroup `json:"group"`
 }
 
+type VisitRecordsRequestFilterTagGroup struct {
+	ID   string `json:"id"`
+	Text string `json:"text"`
+}
+
+//RecordQuery is the complete conditions for searching Records.
+//All pointer variables including slice are optional conditions
+//Any non-pointer variable SHOULD BE initialized properly.
+type RecordQuery struct {
+	Keyword   *string       `json:"keyword,omitempty"`
+	StartTime *int64        `json:"start_time,omitempty"`
+	EndTime   *int64        `json:"end_time,omitempty"`
+	Emotions  []string      `json:"emotions,omitempty"`
+	QTypes    []string      `json:"question_types,omitempty"`
+	Platforms []string      `json:"platforms,omitempty"`
+	Genders   []string      `json:"genders,omitempty"`
+	UserID    *string       `json:"uid,omitempty"`
+	Records   []interface{} `json:"records,omitempty"`
+	IsIgnored *bool         `json:"is_ignored,omitempty"`
+	IsMarked  *bool         `json:"is_marked,omitempty"`
+	From      int64         `json:"-"`
+	Limit     int           `json:"-"`
+	AppID     string        `json:"-"`
+}
+
+type VisitRecordsQuery struct {
+	CommonQuery
+	Question  string
+	UserID    string
+	Emotions  []interface{}
+	QType     string
+	Tags      []VisitRecordsQueryTag
+	Page      int
+	PageLimit int
+}
+
+type VisitRecordsQueryTag struct {
+	Type  string
+	Texts []string
+}
+
+//VisitRecordsResponse is the schema of /record/query api response
 type VisitRecordsResponse struct {
 	Data        []*VisitRecordsData `json:"data"`
 	Limit       int                 `json:"limit"`
 	Page        int                 `json:"page"`
+	MarkedSize  int64               `json:"marked_size"`
+	IgnoredSize int64               `json:"ignored_size"`
 	TableHeader []TableHeaderItem   `json:"table_header"`
 	TotalSize   int64               `json:"total_size"`
 }
 
 type VisitRecordsData struct {
-	UserID  string  `json:"user_id"`
-	UserQ   string  `json:"user_q"`
-	Score   float64 `json:"score"`
-	StdQ    string  `json:"std_q"`
-	Answer  string  `json:"answer"`
-	LogTime string  `json:"log_time"`
-	Emotion string  `json:"emotion"`
-	QType   string  `json:"qtype"`
+	UniqueID  string  `json:"id"`
+	UserID    string  `json:"user_id"`
+	UserQ     string  `json:"user_q"`
+	Score     float64 `json:"score"`
+	StdQ      string  `json:"std_q"`
+	Answer    string  `json:"answer"`
+	LogTime   string  `json:"log_time"`
+	Emotion   string  `json:"emotion"`
+	QType     string  `json:"qtype"`
+	IsMarked  bool    `json:"is_marked"`
+	IsIgnored bool    `json:"is_ignored"`
 }
 
 type VisitRecordsRawData struct {
-	UserID  string   `json:"user_id"`
-	UserQ   string   `json:"user_q"`
-	Score   float64  `json:"score"`
-	StdQ    string   `json:"std_q"`
-	Answer  []Answer `json:"answer"`
-	LogTime string   `json:"log_time"`
-	Emotion string   `json:"emotion"`
-	QType   string   `json:"qtype"`
+	UniqueID  string   `json:"unique_id"`
+	UserID    string   `json:"user_id"`
+	UserQ     string   `json:"user_q"`
+	Score     float64  `json:"score"`
+	StdQ      string   `json:"std_q"`
+	Answer    []Answer `json:"answer"`
+	LogTime   string   `json:"log_time"`
+	Emotion   string   `json:"emotion"`
+	QType     string   `json:"qtype"`
+	IsMarked  bool     `json:"isMarked"`
+	IsIgnored bool     `json:"isIgnored"`
 }
 
 type VisitRecordsHitResult struct {
@@ -133,4 +190,15 @@ var VisitRecordsTableHeader = []TableHeaderItem{
 		Text: "问答类别",
 		ID:   VisitRecordsMetricQType,
 	},
+}
+
+var VisitRecordsExportHeader = []string{
+	"用户ID",
+	"用户问题",
+	"匹配分数",
+	"标准问题",
+	"机器人回答",
+	"访问时间",
+	"情感",
+	"问答类别",
 }

@@ -1,0 +1,228 @@
+openapi: 3.0.0
+info:
+  description: This is api document page for robot setting RestAPIs
+  version: 1.0.0
+  title: 机器人设置API
+  contact:
+    email: danielwu@emotibot.com
+tags:
+  - name: 機器人技能
+  - name: 机器人形象
+  - name: 话术设置
+servers:
+  - url: http://127.0.0.1:8182/api/v1/robot/
+components:
+  schemas:
+    function-info:
+      type: object
+      properties:
+        status:
+          type: boolean
+    function:
+      type: object
+      properties:
+        FUNC_NAME:
+          $ref: '#/components/schemas/function-info'
+      example:
+        function_chengyumodule:
+          status:
+            true
+        function_computationmodule:
+          status:
+            true
+    qa:
+      type: object
+      properties:
+        id:
+          type: integer
+        main_questions:
+          type: array
+          items:
+            type: string
+            example: Question1
+        related_questions:
+          type: array
+          items:
+            type: string
+            example: RelatedQuestion1
+        answers:
+          type: array
+          items:
+            type: string
+            example: Answer1
+        created_time:
+          type: string
+          example: "2017-06-09T15:41:55+08:00"
+    qas:
+      type: object
+      properties:
+        count:
+          type: integer
+          description: 全部的 qa 数量
+        qa_infos:
+          type: array
+          items:
+            $ref: '#/components/schemas/qa'
+    chat-info:
+      type: object
+      properties:
+        type:
+          type: integer
+        contents:
+          type: array
+          items:
+            type: string
+          example:
+            - 话术1
+            - 话术2
+  responses:
+    200: 
+      description: "OK"
+    500:
+      description: "Internal server error"
+paths:
+  /functions:
+    get:
+      tags:
+        - 機器人技能
+      summary: "取得所有机器人技能开关状态"
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/function'
+        500:
+          $ref: '#/components/responses/500'
+    post:
+      tags:
+        - 機器人技能
+      summary: "统一设定机器人技能为开或关"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#components/schemas/function'
+      responses:
+        500:
+          $ref: '#/components/responses/500'
+  /function/{name}:
+    post:
+      tags:
+        - 機器人技能
+      summary: "更新特定技能开关"
+      parameters: 
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/function-info'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        500:
+          $ref: '#/components/responses/500'
+  /qas:
+    get:
+      tags:
+        - 机器人形象
+      description: 获取机器人形象之问答
+      parameters: 
+        - name: page
+          in: query
+          schema:
+            type: integer
+          description: 分页号码，若为0则不分页
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+          description: 每页显示之笔数
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/qas'
+        500:
+          $ref: '#/components/responses/500'
+  /qa/{id}:
+    get:
+      tags:
+        - 机器人形象
+      parameters: 
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/qa'
+        500:
+          $ref: '#/components/responses/500'
+    post:
+      tags:
+        - 机器人形象
+      parameters: 
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#components/schemas/qa'
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        500:
+          $ref: '#/components/responses/500'
+  /qabuild:
+    post:
+      tags:
+        - 机器人形象
+      description: 重新对机器人形象建模
+      responses:
+        200:
+          $ref: '#/components/responses/200'
+        500:
+          $ref: '#/components/responses/500'
+  /chats:
+    get:
+      tags:
+        - 话术设置
+      responses:
+        200:
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                $ref: '#components/schemas/chat-info'
+        500:
+          $ref: '#/components/responses/500'
+    post:
+      tags:
+        - 话术设置
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#components/schemas/chat-info'
+      responses:
+        500:
+          $ref: '#/components/responses/500'
+  

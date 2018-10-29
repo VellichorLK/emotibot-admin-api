@@ -18,4 +18,10 @@ type EnterpriseAdminRequestV3 struct {
 	Account  string `json:"account"`
 	Name     string `json:"name"`
 	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
+type EnterpriseAppListV3 struct {
+	EnterpriseV3
+	Robots []*AppV3 `json:"robots"`
 }

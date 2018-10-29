@@ -1,5 +1,9 @@
 FROM golang:1.8-alpine AS build-env
 
+RUN echo http://mirrors.ustc.edu.cn/alpine/v3.7/main > /etc/apk/repositories; \
+echo http://mirrors.ustc.edu.cn/alpine/v3.7/community >> /etc/apk/repositories
+RUN apk add --no-cache tzdata
+
 ARG PROJECT
 RUN apk add --no-cache git
 ENV MODULEPREFIX /go/src/emotibot.com/emotigo/module

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func addUser(userid, account, password, enterprise string) error {
@@ -72,6 +73,18 @@ func addEnterprise(id, name string) error {
 	return nil
 }
 
+func updateEnterprise(id, name string) (err error) {
+	defer util.ShowError(err)
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := "UPDATE api_enterprise SET enterprise_name = ? WHERE id = ?"
+	_, err = mySQL.Exec(queryStr, name, id)
+	return err
+}
+
 func deleteEnterprise(id string) (err error) {
 	defer util.ShowError(err)
 	mySQL := util.GetMainDB()
@@ -105,7 +118,7 @@ func deleteEnterprise(id string) (err error) {
 		users = append(users, userid)
 		qMarks = append(qMarks, "?")
 	}
-	util.LogTrace.Printf("Get users of enterprise [%s]: %+v\n", id, users)
+	logger.Trace.Printf("Get users of enterprise [%s]: %+v\n", id, users)
 
 	if len(users) > 0 {
 		queryStr = fmt.Sprintf("DELETE FROM api_userkey WHERE UserId in (%s)",
@@ -148,6 +161,17 @@ func addApp(appid, userid, name string) error {
 		return err
 	}
 	return nil
+}
+
+func updateApp(appid, name string) error {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := "UPDATE api_userkey SET PreductName = ? WHERE ApiKey = ?"
+	_, err := mySQL.Exec(queryStr, name, appid)
+	return err
 }
 
 func deleteApp(appid string) error {
@@ -252,7 +276,7 @@ func updateRole(uuid string, commands []string) error {
 		return err
 	}
 
-	util.LogTrace.Printf("role: %s (%d), %+v\n", uuid, id, rightIDs)
+	logger.Trace.Printf("role: %s (%d), %+v\n", uuid, id, rightIDs)
 	queryStr = "INSERT tbl_role_right (ROLE_ID ,RIGHT_ID) VALUES (?, ?)"
 	for _, rightID := range rightIDs {
 		_, err = t.Exec(queryStr, id, rightID)
@@ -288,7 +312,7 @@ func deleteRole(uuid string) error {
 		return err
 	}
 
-	util.LogTrace.Printf("Delete bf role with id: %d, uuid: %s\n", id, uuid)
+	logger.Trace.Printf("Delete bf role with id: %d, uuid: %s\n", id, uuid)
 	queryStr = "DELETE FROM tbl_role_right WHERE ROLE_ID = ?"
 	_, err = t.Exec(queryStr, id)
 	if err != nil {
@@ -348,8 +372,14 @@ func updateUserPassword(enterprise, userid, password string) error {
 		return errors.New("DB not init")
 	}
 
-	queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id = ?"
-	_, err := mySQL.Exec(queryStr, password, userid, enterprise)
+	var err error
+	if enterprise != "" {
+		queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id = ?"
+		_, err = mySQL.Exec(queryStr, password, userid, enterprise)
+	} else {
+		queryStr := "UPDATE api_user SET Password = ? WHERE UserId = ? AND enterprise_id IS NULL"
+		_, err = mySQL.Exec(queryStr, password, userid)
+	}
 	if err != nil {
 		return err
 	}

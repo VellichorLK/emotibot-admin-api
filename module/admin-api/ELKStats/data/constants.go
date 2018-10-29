@@ -10,20 +10,24 @@ const (
 	// UserIPHeaderKey is user IP in request header
 	UserIPHeaderKey = "X-Real-IP"
 
-	// EnterpriseIDHeaderKey is Enterprise ID in requqest header
-	EnterpriseIDHeaderKey = "X-EnterpriseID"
-
 	// AppIDHeaderKey is App ID in requqest header
 	AppIDHeaderKey = "X-AppID"
 )
 
-const ESRecordsMappingFile = "./InitFiles/elasticsearch/configs/records_mapping.json"
-const ESRecordsIndex = "records"
+const ESRecordsTemplate = "emotibot_records_template"
+const ESRecordsTemplateFile = "./InitFiles/elasticsearch/configs/records_template.json"
+const ESRecordsIndex = "emotibot-records"
 const ESRecordType = "doc"
 
-const ESSessionsMappingFile = "./InitFiles/elasticsearch/configs/sessions_mapping.json"
-const ESSessionsIndex = "sessions"
+const ESSessionsTemplate = "emotibot_sessions_template"
+const ESSessionsTemplateFile = "./InitFiles/elasticsearch/configs/sessions_template.json"
+const ESSessionsIndex = "emotibot-sessions"
 const ESSessionsType = "doc"
+
+const ESUsersTemplate = "emotibot_users_template"
+const ESUsersTemplateFile = "./InitFiles/elasticsearch/configs/users_template.json"
+const ESUsersIndex = "emotibot-users"
+const ESUsersType = "doc"
 
 const ESTimeFormat = "2006-01-02 15:04:05"
 
@@ -34,6 +38,7 @@ const LogTimeFieldName = "log_time"
 const LogTimeFormat = "2006-01-02T15:04:05.000Z"
 
 const SessionEndTimeFieldName = "end_time"
+const FirstLogTimeFieldName = "first_log_time"
 
 const (
 	IntervalYear   = "year"

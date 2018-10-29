@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,8 +10,7 @@ import (
 	"strconv"
 	"time"
 
-	"emotibot.com/emotigo/module/systex-controller/api/taskengine"
-
+	"emotibot.com/emotigo/pkg/api/v1/taskengine"
 	"github.com/siongui/gojianfan"
 )
 
@@ -26,13 +24,26 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Only support POST method.")
 		return
 	}
-	ctx := r.Context()
-	rawBody, ok := ctx.Value(RawBodyKey).([]byte)
-	if !ok || len(rawBody) == 0 {
-		rawBody, _ = ioutil.ReadAll(r.Body)
+	var (
+		data []byte
+		err  error
+	)
+	aw, ok := w.(*AudioResponseWriter)
+	if ok && aw.AudioFile != nil {
+		data = aw.AudioFile
+	} else {
+		data, err = ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	current := time.Now().UnixNano()
-	sentence, err := asrClient.Recognize(bytes.NewBuffer(rawBody))
+	if len(data) == 0 {
+		http.Error(w, "audil file is empty", http.StatusBadRequest)
+		return
+	}
+	sentence, err := asrClient.Recognize(bytes.NewBuffer(data))
 	asrTotalNanoTime := time.Now().UnixNano() - current
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -42,19 +53,18 @@ func voiceToTextHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var resp v2TextResponse
 	log.Printf("v2Text: %s\n", sentence)
-	logColumns := []string{sentence, strconv.FormatInt(asrTotalNanoTime, 10)}
-	context.WithValue(ctx, LogBodyKey, logColumns)
+	aw.Logs = []string{sentence, strconv.FormatInt(asrTotalNanoTime, 10)}
 	resp.Text = sentence
-	data, err := json.Marshal(resp)
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	data, err = json.Marshal(resp)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Println(err)
 		return
 	}
-	r = r.WithContext(ctx)
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintln(w, string(data))
+	w.Write(data)
 }
 
 func voiceToTaskHandler(w http.ResponseWriter, r *http.Request) {

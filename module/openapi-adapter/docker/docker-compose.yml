@@ -1,0 +1,29 @@
+version: '3'
+
+services:
+  openapi-adapter:
+    image: ${IMAGE_NAME}
+    container_name: ${CONTAINER_NAME}
+    ports:
+      - ${OPENAPI_ADAPTER_PORT}:${OPENAPI_ADAPTER_SERVER_PORT}/tcp
+    environment:
+      # port openapi adapter running in docker
+      - OPENAPI_ADAPTER_SERVER_PORT=${OPENAPI_ADAPTER_SERVER_PORT}
+      # openapi (controller) host url
+      - OPENAPI_ADAPTER_EC_HOST=http://${EC_HOST}:${EC_PORT}
+      # openapi traffic stats tracer parameters
+      - OPENAPI_ADAPTER_DURATION=${OPENAPI_ADAPTER_DURATION}
+      - OPENAPI_ADAPTER_MAXREQUESTS=${OPENAPI_ADAPTER_MAXREQUESTS}
+      - OPENAPI_ADAPTER_BANPERIOD=${OPENAPI_ADAPTER_BANPERIOD}
+      - OPENAPI_ADAPTER_LOGPERIOD=${OPENAPI_ADAPTER_LOGPERIOD}
+      # statsd service (Non-essential service) 
+      - OPENAPI_ADAPTER_STATSD_HOST=${STATSD_HOST}
+      - OPENAPI_ADAPTER_STATSD_PORT=${STATSD_PORT}
+      - TZ=Asia/Taipei
+    logging:
+      driver: json-file
+      options:
+        max-file: '10'
+        max-size: 5M
+    volumes:
+      - ./app.ini:/usr/bin/app/app.ini

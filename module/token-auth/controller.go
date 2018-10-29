@@ -15,13 +15,19 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
+	captcha "github.com/mojocn/base64Captcha"
 )
 
 var userTryCount map[string]int
+var captchaConfig captcha.ConfigCharacter
 
 const (
 	banRetryTimes = 5
 )
+
+func init() {
+	captchaConfig = initCaptchaConfig()
+}
 
 func EnterprisesGetHandler(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetEnterprises()
@@ -582,6 +588,16 @@ func returnInternalError(w http.ResponseWriter, errMsg string) {
 	writeErrJSON(w, errMsg)
 }
 
+func returnBFSuccess(w http.ResponseWriter, retData interface{}) {
+	ret := data.BFReturn{
+		ErrorCode: 0,
+		ErrorMsg:  "success",
+		Data:      &retData,
+	}
+
+	writeResponseJSON(w, &ret)
+}
+
 func returnSuccess(w http.ResponseWriter, retData interface{}) {
 	ret := data.Return{
 		ReturnMessage: "success",
@@ -607,9 +623,9 @@ func writeErrJSONWithObj(w http.ResponseWriter, errMsg string, obj interface{}) 
 	writeResponseJSON(w, &ret)
 }
 
-func writeResponseJSON(w http.ResponseWriter, ret *data.Return) {
+func writeResponseJSON(w http.ResponseWriter, ret interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(&ret)
+	json.NewEncoder(w).Encode(ret)
 }
 
 func addUserTryCount(userID string) {
@@ -632,4 +648,33 @@ func getUserTryCount(userID string) int {
 
 func resetUserTryCount(userID string) {
 	userTryCount[userID] = 0
+}
+
+func initCaptchaConfig() captcha.ConfigCharacter {
+	return captcha.ConfigCharacter{
+		Height:             60,
+		Width:              265,
+		Mode:               captcha.CaptchaModeNumber,
+		ComplexOfNoiseText: captcha.CaptchaComplexMedium,
+		ComplexOfNoiseDot:  captcha.CaptchaComplexMedium,
+		IsUseSimpleFont:    true,
+		IsShowHollowLine:   false,
+		IsShowNoiseDot:     true,
+		IsShowNoiseText:    false,
+		IsShowSlimeLine:    true,
+		IsShowSineLine:     false,
+		CaptchaLen:         6,
+	}
+}
+
+func CaptchaGetHandler(w http.ResponseWriter, r *http.Request) {
+	captchaID, captcaInterfaceInstance := captcha.GenerateCaptcha("", captchaConfig)
+	base64blob := captcha.CaptchaWriteToBase64Encoding(captcaInterfaceInstance)
+
+	response := map[string]string{
+		"data": base64blob,
+		"id":   captchaID,
+	}
+
+	writeResponseJSON(w, response)
 }

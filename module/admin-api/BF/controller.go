@@ -20,12 +20,16 @@ func init() {
 			// id must same with token-auth
 			// id, name
 			util.NewEntryPoint("POST", "enterprise", []string{}, handleAddEnterprise),
+			// id, name
+			util.NewEntryPoint("PATCH", "enterprise/{id}", []string{}, handleUpdateEnterprise),
 			// id
 			util.NewEntryPoint("DELETE", "enterprise/{id}", []string{}, handleDeleteEnterprise),
 
 			// id must same with token-auth
 			// appid 	userid 	name
 			util.NewEntryPoint("POST", "app", []string{}, handleAddApp),
+			// appid, name
+			util.NewEntryPoint("PATCH", "app/{id}", []string{}, handleUpdateApp),
 			// appid
 			util.NewEntryPoint("DELETE", "app/{id}", []string{}, handleDeleteApp),
 
@@ -81,6 +85,17 @@ func handleAddEnterprise(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleUpdateEnterprise(w http.ResponseWriter, r *http.Request) {
+	id := util.GetMuxVar(r, "id")
+	name := r.FormValue("name")
+
+	err := updateEnterprise(id, name)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+}
+
 func handleDeleteEnterprise(w http.ResponseWriter, r *http.Request) {
 	id := util.GetMuxVar(r, "id")
 
@@ -97,6 +112,17 @@ func handleAddApp(w http.ResponseWriter, r *http.Request) {
 	name := r.FormValue("name")
 
 	err := addApp(appid, userid, name)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+	}
+}
+
+func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "id")
+	name := r.FormValue("name")
+
+	err := updateApp(appid, name)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))

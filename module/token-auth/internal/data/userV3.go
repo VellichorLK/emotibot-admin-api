@@ -15,6 +15,7 @@ type UserV3 struct {
 	Phone       string       `json:"phone"`
 	Type        int          `json:"type"`
 	Roles       *UserRolesV3 `json:"roles"`
+	Products    []string     `json:"product"`
 }
 
 type UserDetailV3 struct {

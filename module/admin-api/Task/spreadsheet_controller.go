@@ -8,6 +8,8 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
@@ -19,17 +21,17 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(retCode)
-		util.LogTrace.Printf("Upload spreadsheet ret: %d, %s\n", retCode, ret)
+		logger.Trace.Printf("Upload spreadsheet ret: %d, %s\n", retCode, ret)
 		util.WriteJSONWithStatus(w, map[string]interface{}{
 			"error":  ret,
 			"return": retCode,
 		}, status)
 
 		if retCode == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["Spreadsheet"]))
@@ -41,7 +43,7 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
 	auditMsg.WriteString(info.Filename)
 
 	size := info.Size
@@ -69,7 +71,7 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 	// save scenario
 	content, err := json.Marshal(scenario.EditingContent)
 	layout, err := json.Marshal(scenario.EditingLayout)
-	util.LogTrace.Printf("Save scenario content: %s", string(content))
+	logger.Trace.Printf("Save scenario content: %s", string(content))
 	retCode, err = UpdateScenario(scenarioID, string(content), string(layout))
 	if err != nil {
 		retCode = ApiError.DB_ERROR

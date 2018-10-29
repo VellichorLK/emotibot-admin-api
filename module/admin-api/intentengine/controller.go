@@ -8,6 +8,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/intentengine/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"github.com/siongui/gojianfan"
 )
 
@@ -45,7 +47,7 @@ func init() {
 }
 
 func handleGetIntents(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	zhTW := r.URL.Query().Get("zh_tw")
 
@@ -92,11 +94,11 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			ret = 0
 		}
-		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationImport,
+		audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationImport,
 			auditMsg, ret)
 	}()
 
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	file, info, err := r.FormFile("file")
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.INTENT_FORMAT_ERROR,
@@ -134,8 +136,9 @@ func handleUploadIntents(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
+	format := r.URL.Query().Get("format")
 	auditMsg := util.Msg["ExportIntentEngine"]
 
 	var version int
@@ -145,7 +148,7 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		ver, err := strconv.Atoi(v)
 		if err != nil {
 			http.Error(w, "Invalid intent dataset version", http.StatusBadRequest)
-			util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+			audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 				fmt.Sprintf("%s: %s", auditMsg, util.Msg["IntentVersionError"]), 0)
 			return
 		}
@@ -153,10 +156,10 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		version = ver
 	}
 
-	content, filename, errno, err := GetDownloadIntents(appID, version)
+	content, filename, errno, err := GetDownloadIntents(appID, version, format)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
-		util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+		audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 			auditMsg, 0)
 		return
 	}
@@ -167,12 +170,12 @@ func handleDownloadIntents(w http.ResponseWriter, r *http.Request) {
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", len(content)))
 	w.Write(content)
-	util.AddAuditFromRequest(r, util.AuditModuleIntentEngine, util.AuditOperationExport,
+	audit.AddAuditFromRequest(r, audit.AuditModuleIntentManage, audit.AuditOperationExport,
 		auditMsg, 1)
 }
 
 func handleTrain(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 	auto := r.URL.Query().Get("auto_reload")
 	engine := r.URL.Query().Get("engine")
@@ -232,7 +235,7 @@ func handleTrain(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetTrainStatus(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	v := r.URL.Query().Get("version")
 
 	var version int
@@ -289,7 +292,7 @@ func handleGetData(w http.ResponseWriter, r *http.Request) {
 
 	trainingData, retCode, err := GetTrainingData(appID, flag)
 	if err != nil {
-		if retCode == ApiError.REQUEST_ERROR  {
+		if retCode == ApiError.REQUEST_ERROR {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

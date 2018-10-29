@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  openapi-adapter:
+    image: ${IMAGE_NAME}
+    build:
+      context: ${BUILD_CONTEXT}
+      dockerfile: ${DOCKER_FILE}

@@ -1,0 +1,72 @@
+version: '3'
+
+services:
+  openapi-adapter:
+    # old v1 image
+    # image: docker-reg.emotibot.com.cn:55688/openapi-adapter:59a1d30-20180926-1148
+    image: docker-reg.emotibot.com.cn:55688/openapi-adapter:a11ae4c-20181024-1720
+    container_name: openapi-adapter
+    network_mode: host
+    ports:
+      - 9002:9002/tcp
+    environment:
+      # port openapi adapter running in docker
+      - OPENAPI_ADAPTER_SERVER_PORT=9002
+      # openapi (controller) host ur
+      - OPENAPI_ADAPTER_EC_HOST=http://127.0.0.1:9010
+      # openapi traffic stats tracer parameters
+      - OPENAPI_ADAPTER_DURATION=10
+      - OPENAPI_ADAPTER_MAXREQUESTS=20
+      - OPENAPI_ADAPTER_BANPERIOD=300
+      - OPENAPI_ADAPTER_LOGPERIOD=300
+      # statsd service (Non-essential service)
+      - OPENAPI_ADAPTER_STATSD_HOST=10.0.0.112
+      - OPENAPI_ADAPTER_STATSD_PORT=8125
+      - TZ=Asia/Taipei
+    logging:
+      driver: json-file
+      options:
+        max-file: '10'
+        max-size: 5M
+    volumes:
+      - ./openapi-adapter/app.ini:/usr/bin/app/app.ini
+    restart: always
+  haproxy-bfop:
+    image: haproxy:1.6
+    network_mode: host
+    container_name: haproxy-bfop
+    ports:
+      - 9001:9001
+      - 9527:9527
+      - 9010:9010
+    volumes:
+      - ./haproxy.default.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    logging:
+      driver: json-file
+      options:
+        max-file: '10'
+        max-size: 5M
+    restart: always
+  bfop-nginx:
+    image: nginx
+    network_mode: host
+    container_name: bfop-nginx
+    ports: 
+      - 80:80
+      - 8080:8080
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./oppo-ssl/Nginx/1_oppo-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_oppo-chat.emotibot.com_bundle.crt
+      - ./oppo-ssl/Nginx/2_oppo-chat.emotibot.com.key:/etc/nginx/ssl/2_oppo-chat.emotibot.com.key
+      - ./huawei-ssl/Nginx/1_huawei-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_huawei-chat.emotibot.com_bundle.crt
+      - ./huawei-ssl/Nginx/2_huawei-chat.emotibot.com.key:/etc/nginx/ssl/2_huawei-chat.emotibot.com.key
+      - ./ifly-ssl/Nginx/1_ifly-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_ifly-chat.emotibot.com_bundle.crt
+      - ./ifly-ssl/Nginx/2_ifly-chat.emotibot.com.key:/etc/nginx/ssl/2_ifly-chat.emotibot.com.key
+      - ./bfop-ssl/Nginx/2_bfop-chat.emotibot.com.key:/etc/nginx/ssl/2_bfop-chat.emotibot.com.key
+      - ./bfop-ssl/Nginx/1_bfop-chat.emotibot.com_bundle.crt:/etc/nginx/ssl/1_bfop-chat.emotibot.com_bundle.crt
+    logging:
+      driver: json-file
+      options:
+        max-file: '10'
+        max-size: 5M
+    restart: always

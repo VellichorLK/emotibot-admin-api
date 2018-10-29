@@ -1,17 +1,13 @@
 package data
 
 import (
-	"context"
 	"strconv"
 	"time"
-
-	"github.com/olivere/elastic"
 )
 
 const (
 	VisitStatsMetricConversations           = "conversations"
 	VisitStatsMetricUniqueUsers             = "unique_users"
-	VisitStatsMetricActiveUsers             = "active_users"
 	VisitStatsMetricNewUsers                = "new_users"
 	VisitStatsMetricTotalAsks               = "total_asks"
 	VisitStatsMetricNormalResponses         = "normal_responses"
@@ -222,10 +218,6 @@ var VisitStatsTableHeader = []TableHeaderItem{
 		ID:   VisitStatsMetricUniqueUsers,
 	},
 	TableHeaderItem{
-		Text: "活跃用户数",
-		ID:   VisitStatsMetricActiveUsers,
-	},
-	TableHeaderItem{
 		Text: "新增用户数",
 		ID:   VisitStatsMetricNewUsers,
 	},
@@ -285,7 +277,6 @@ var AnswerCategoryTableHeader = []TableHeaderItem{
 type VisitStatsQ struct {
 	Conversations          int64  `json:"conversations"`
 	UniqueUsers            int64  `json:"unique_users"`
-	ActiveUsers            int64  `json:"active_users"`
 	NewUsers               int64  `json:"new_users"`
 	TotalAsks              int64  `json:"total_asks"`
 	NormalResponses        int64  `json:"normal_responses"`
@@ -303,7 +294,6 @@ func NewVisitStatsQ() *VisitStatsQ {
 	return &VisitStatsQ{
 		Conversations:          0,
 		UniqueUsers:            0,
-		ActiveUsers:            0,
 		NewUsers:               0,
 		TotalAsks:              0,
 		NormalResponses:        0,
@@ -318,5 +308,4 @@ func NewVisitStatsQ() *VisitStatsQ {
 	}
 }
 
-type VisitStatsQueryHandler func(ctx context.Context, client *elastic.Client,
-	query VisitStatsQuery) (map[string]interface{}, error)
+type VisitStatsQueryHandler func(query VisitStatsQuery) (map[string]interface{}, error)

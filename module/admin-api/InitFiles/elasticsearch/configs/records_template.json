@@ -1,0 +1,95 @@
+{
+    "index_patterns": [
+        "emotibot-records-*"
+    ],
+    "version": 20181015,
+    "settings": {
+        "number_of_replicas": 1,
+        "number_of_shards": 1
+    },
+    "mappings": {
+        "doc": {
+            "properties": {
+                "enterprise_id": {
+                    "type": "keyword"
+                },
+                "app_id": {
+                    "type": "keyword"
+                },
+                "user_id": {
+                    "type": "keyword"
+                },
+                "session_id": {
+                    "type": "keyword"
+                },
+                "user_q": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "std_q": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "answer": {
+                    "type": "nested"
+                },
+                "module": {
+                    "type": "keyword"
+                },
+                "emotion": {
+                    "type": "keyword"
+                },
+                "emotion_score": {
+                    "type": "double"
+                },
+                "intent": {
+                    "type": "keyword"
+                },
+                "intent_score": {
+                    "type": "double"
+                },
+                "log_time": {
+                    "type": "date",
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.000Z||yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+                },
+                "score": {
+                    "type": "double"
+                },
+                "host": {
+                    "type": "ip"
+                },
+                "marked": {
+                    "type": "boolean"
+                },
+                "ignored": {
+                    "type": "boolean"
+                },
+                "unique_id": {
+                    "type": "keyword"
+                },
+                "note": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -19,6 +19,8 @@ const (
 	serverPortKey = "ADMIN_AUTH_PORT"
 	serverURLKey  = "ADMIN_AUTH_URL"
 
+	authUseCaptchaKey = "ADMIN_UI_USE_CAPTCHA"
+
 	jwtTimeoutKey = "ADMIN_AUTH_TIMEOUT"
 )
 
@@ -67,4 +69,11 @@ func GetServerConfig() (url string, port int) {
 func GetJWTExpireTimeConfig() (timeout int) {
 	timeout = GetIntEnv(jwtTimeoutKey, 3600)
 	return
+}
+
+// GetCaptchaStatus will get status of captcha in auth system
+func GetCaptchaStatus() bool {
+	status := GetStrEnv(authUseCaptchaKey, "0")
+	status = strings.ToLower(status)
+	return status == "1" || status == "true"
 }

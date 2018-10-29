@@ -15,6 +15,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func EnableAllScenario(appid string) {
@@ -52,7 +53,7 @@ func ImportScenarios(appid string, newID bool, datas []interface{}) {
 }
 
 func ImportScenario(appid string, newID bool, data interface{}) {
-	// util.LogInfo.Printf("Import scenario, use new ID: %t \ndata: %#v\n", newID, data)
+	// logger.Info.Printf("Import scenario, use new ID: %t \ndata: %#v\n", newID, data)
 	if !newID {
 		bfbUpdateScenario(appid, data)
 	} else {
@@ -92,6 +93,7 @@ func bfbUpdateScenario(appid string, data interface{}) (string, error) {
 	}
 
 	postData := map[string]interface{}{
+		"appid":   appid,
 		"userid":  appid,
 		"content": content,
 		"layout":  layout,
@@ -115,28 +117,30 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 	_, name, content, layout := parseJSONData(data)
 
 	postData := map[string]string{
+		"appid":        appid,
 		"userid":       appid,
 		"scenarioname": name,
 	}
 	url := fmt.Sprintf("%s/%s", getEnvironment("SERVER_URL"), taskScenarioEntry)
 	retData, err := util.HTTPPostForm(url, postData, 0)
 	if err != nil {
-		util.LogTrace.Printf("Err: %s", err.Error())
+		logger.Trace.Printf("Err: %s", err.Error())
 		return "", err
 	}
 	retObj := map[string]interface{}{}
 	err = json.Unmarshal([]byte(retData), &retObj)
 	if err != nil {
-		util.LogTrace.Printf("Err: %s", err.Error())
+		logger.Trace.Printf("Err: %s", err.Error())
 		return "", err
 	}
 	id := retObj["scenarioID"].(string)
 	contentObj := content.(map[string]interface{})
 	metadata := contentObj["metadata"].(map[string]interface{})
-	util.LogInfo.Printf("metadata: %#v\n", metadata)
+	logger.Info.Printf("metadata: %#v\n", metadata)
 	metadata["scenario_id"] = id
 
 	updateData := map[string]interface{}{
+		"appid":   appid,
 		"userid":  appid,
 		"content": content,
 		"layout":  layout,
@@ -145,7 +149,7 @@ func addScenario(appid string, data interface{}) (retStr string, err error) {
 		getEnvironment("SERVER_URL"),
 		taskScenarioEntry,
 		id)
-	util.LogTrace.Printf("Call %s to addScenario\n", url)
+	logger.Trace.Printf("Call %s to addScenario\n", url)
 	retStr, err = util.HTTPPutForm(url, updateData, 0)
 	return
 }
@@ -161,22 +165,22 @@ func checkScenarioExist(appid string, id string) (bool, error) {
 		values.Encode())
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
-		util.LogInfo.Printf("Check scenario %s existed fail: %s", id, err.Error())
+		logger.Info.Printf("Check scenario %s existed fail: %s", id, err.Error())
 		return false, err
 	}
 
 	ret := map[string]*interface{}{}
 	err = json.Unmarshal([]byte(content), &ret)
 	if err != nil {
-		util.LogInfo.Printf("Check scenario %s existed fail: %s", id, err.Error())
+		logger.Info.Printf("Check scenario %s existed fail: %s", id, err.Error())
 		return false, err
 	}
 
 	if ret["result"] == nil {
-		util.LogTrace.Printf("Check scenario: %s not exist\n", id)
+		logger.Trace.Printf("Check scenario: %s not exist\n", id)
 		return false, nil
 	}
-	util.LogTrace.Printf("Check scenario: %s exist\n", id)
+	logger.Trace.Printf("Check scenario: %s exist\n", id)
 	return true, nil
 }
 
@@ -232,7 +236,7 @@ func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
 		mtList[i] = key
 		i++
 	}
-	util.LogTrace.Printf("GetMapTableListV2: %+v", mtList)
+	logger.Trace.Printf("GetMapTableListV2: %+v", mtList)
 	return mtList
 }
 
@@ -297,7 +301,7 @@ func ParseUploadMappingTable(buf []byte) ([]*MapTuple, error) {
 	for idx, line := range lines {
 		params := strings.Split(line, ",")
 		if len(params) != 2 {
-			util.LogTrace.Printf("Parse csv in line %d format error", idx+1)
+			logger.Trace.Printf("Parse csv in line %d format error", idx+1)
 			continue
 		}
 

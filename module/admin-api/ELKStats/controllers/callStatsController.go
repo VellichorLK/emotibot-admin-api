@@ -1,17 +1,17 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var callStatsQueryHandlers = map[string]data.CallStatsQueryHandler{
@@ -25,21 +25,12 @@ var callStatsQueryHandlers = map[string]data.CallStatsQueryHandler{
 }
 
 func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	statsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if statsType == "" {
+	if statsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -70,21 +61,23 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.CallStatsQuery{
 		CommonQuery: data.CommonQuery{
-			EnterpriseID: enterpriseID,
-			AppID:        appID,
-			StartTime:    startTime,
-			EndTime:      endTime,
+			AppID:     appID,
+			StartTime: startTime,
+			EndTime:   endTime,
 		},
 		AggInterval: aggInterval,
 	}
-
-	esCtx, esClient := elasticsearch.GetClient()
 
 	switch statsType {
 	case data.CallStatsTypeTime:
 		callsCounts, err := fetchCallStats(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -98,9 +91,14 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		returnOK(w, response)
 	case data.CallStatsTypeAnswers:
-		answers, err := services.TopToHumanAnswers(esCtx, esClient, query, 20)
+		answers, err := services.TopToHumanAnswers(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -114,8 +112,6 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchCallStats(query data.CallStatsQuery) (map[string]map[string]interface{}, error) {
-	esCtx, esClient := elasticsearch.GetClient()
-
 	var callStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	callStatsCounts := make(map[string]map[string]interface{})
 	done := make(chan error, len(callStatsQueryHandlers))
@@ -124,7 +120,7 @@ func fetchCallStats(query data.CallStatsQuery) (map[string]map[string]interface{
 	// Fetch statistics concurrently
 	for queryKey, queryHandler := range callStatsQueryHandlers {
 		go func(key string, handler data.CallStatsQueryHandler) {
-			counts, err := handler(esCtx, esClient, query)
+			counts, err := handler(query)
 			if err != nil {
 				done <- err
 				return

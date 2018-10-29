@@ -28,6 +28,13 @@ func (segments NLUSegments) ToString() string {
 	}
 	return strings.Join(temp, " ")
 }
+func (segments NLUSegments) ToList() []string {
+	ret := make([]string, len(segments))
+	for idx := range segments {
+		ret[idx] = segments[idx].Word
+	}
+	return ret
+}
 
 type NLUKeyword struct {
 	Word  string `json:"word"`
@@ -52,6 +59,13 @@ func (segments NLUKeywords) ToString() string {
 		temp = append(temp, seg.Word)
 	}
 	return strings.Join(temp, " ")
+}
+func (segments NLUKeywords) ToList() []string {
+	ret := make([]string, len(segments))
+	for idx := range segments {
+		ret[idx] = segments[idx].Word
+	}
+	return ret
 }
 
 type NLUResult struct {

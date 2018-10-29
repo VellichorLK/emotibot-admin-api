@@ -10,12 +10,48 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/auth"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func GetAuditList(appid string, input *AuditInput) (*AuditRet, int, error) {
+	// If query userid is real username, change it to userid
+	if input.Filter != nil && input.Filter.UserID != "" {
+		userid, err := auth.GetUserID(input.Filter.UserID)
+		if err == nil {
+			logger.Trace.Printf("Change username to id: %s -> %s\n", input.Filter.UserID, userid)
+			input.Filter.UserID = userid
+		}
+	}
+
 	list, totalCnt, err := getAuditListData(appid, input, input.Page, input.ListPerPage, input.Export)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
+	}
+
+	var usernameMap map[string]string
+	if input.Export {
+		usernameMap, err = auth.GetAllUserNames(appid)
+	} else {
+		userMap := map[string]bool{}
+		for idx := range list {
+			user := list[idx].UserID
+			if user != "" {
+				userMap[user] = true
+			}
+		}
+		users := []string{}
+		for key := range userMap {
+			users = append(users, key)
+		}
+		usernameMap, err = auth.GetUserNames(users)
+	}
+
+	for idx := range list {
+		username, ok := usernameMap[list[idx].UserID]
+		if ok {
+			list[idx].UserID = username
+		}
 	}
 
 	ret := &AuditRet{

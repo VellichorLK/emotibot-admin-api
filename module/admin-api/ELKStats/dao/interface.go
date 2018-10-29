@@ -6,5 +6,5 @@ import (
 
 // DB defines interface for different DAO modules
 type DB interface {
-	GetTags() (map[string][]data.Tag, error)
+	GetTags() (map[string]map[string][]data.Tag, error)
 }

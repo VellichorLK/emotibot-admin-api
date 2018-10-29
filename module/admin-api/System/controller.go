@@ -7,6 +7,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -30,7 +31,7 @@ func handleGetSetting(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(status, nil), http.StatusInternalServerError)
 		return
 	}
-	util.LogTrace.Println("Get setting from consul: ", str)
+	logger.Trace.Println("Get setting from consul: ", str)
 
 	controllerSetting := ControllerSetting{}
 	if str == "" {
@@ -80,7 +81,7 @@ func handleUpdateSetting(w http.ResponseWriter, r *http.Request) {
 		errno, status = ApiError.JSON_PARSE_ERROR, http.StatusInternalServerError
 		return
 	}
-	util.LogTrace.Println("Update controller setting with string: ", string(updatedStr))
+	logger.Trace.Println("Update controller setting with string: ", string(updatedStr))
 	errno, err = util.ConsulSetControllerSetting(string(updatedStr))
 	if err != nil {
 		status = http.StatusInternalServerError

@@ -1,0 +1,23 @@
+## 编译 binary
+FROM docker-reg.emotibot.com.cn:55688/go-build:650dbada-1.10-standard AS build
+
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+COPY ./module/${PROJECT} ${GOPREFIX}/module/${PROJECT}
+COPY ./pkg ${GOPREFIX}/pkg
+## 如有需要加上其他编译时所需要的设定档可在此加上额外的指令
+
+WORKDIR ${GOPREFIX}/module/${PROJECT}
+RUN go get -v && go install
+RUN go test ./...
+
+## 复制上一个 stage 所编译出的 binary 及其他执行时所需要的设定档至 scratch image
+FROM scratch
+
+ARG PROJECT
+
+WORKDIR /usr/bin/app
+COPY --from=build /go/bin/${PROJECT} .
+COPY ./module/${PROJECT}/docker/entrypoint.sh .
+## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令

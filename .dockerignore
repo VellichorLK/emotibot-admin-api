@@ -1,0 +1,6 @@
+**/*.bin
+**/*.test
+**/vendor/**/*_test.go
+**/testdata
+.git
+Dockerfile

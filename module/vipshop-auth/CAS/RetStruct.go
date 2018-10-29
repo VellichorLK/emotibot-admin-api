@@ -21,6 +21,11 @@ type CASRetStruct struct {
 	Code int `json:"code"`
 }
 
+type CaptchaRet struct {
+	Data string `json:"data"`
+	ID   string `json:"id"`
+}
+
 func getUserPrivs(userID string, pwd string) (*LoginRes, error) {
 	sres, err := CAuth.GetUserRoles(userID)
 	if err != nil {

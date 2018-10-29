@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/systex-controller/api/asr"
-	"emotibot.com/emotigo/module/systex-controller/api/cuservice"
-	"emotibot.com/emotigo/module/systex-controller/api/taskengine"
+	"emotibot.com/emotigo/pkg/api/v1/asr"
+	"emotibot.com/emotigo/pkg/api/v1/cuservice"
+	"emotibot.com/emotigo/pkg/api/v1/taskengine"
 )
 
 //api global client for ASR module

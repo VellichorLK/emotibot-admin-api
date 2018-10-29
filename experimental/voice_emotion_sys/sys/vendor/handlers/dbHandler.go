@@ -105,9 +105,9 @@ const QueryDetailSQL = "select * from (select " + NID + "," + NFILEID + "," + NF
 
 const QueryReportSQL = "select " + NFILENAME + ", " + NRDURATION + "," + NTAG + ", " + NTAG2 + ", " + NUPT + ", " + NANAST + "," + NANAET + " from " + MainTable
 
-func InsertFileRecord(fi *FileInfo) error {
+func InsertFileRecord(tx *sql.Tx, fi *FileInfo) error {
 
-	stmt, err := db.Prepare(InsertFileInfoSQL)
+	stmt, err := tx.Prepare(InsertFileInfoSQL)
 	if err != nil {
 		log.Println(err)
 		return err

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func getQuestionLabels(appid string) ([]*Label, error) {
@@ -29,7 +30,7 @@ func getQuestionLabels(appid string) ([]*Label, error) {
 		var name string
 		err := rows.Scan(&id, &name)
 		if err != nil {
-			util.LogError.Printf("Error when parse row: %s", err.Error())
+			logger.Error.Printf("Error when parse row: %s", err.Error())
 			return nil, err
 		}
 		obj := &Label{ID: id, Name: name}
@@ -465,7 +466,7 @@ func getLabelsOfRule(appid string, ruleID int) ([]*Label, error) {
 		var name string
 		err := rows.Scan(&id, &name)
 		if err != nil {
-			util.LogError.Printf("Error when parse row: %s", err.Error())
+			logger.Error.Printf("Error when parse row: %s", err.Error())
 			return nil, err
 		}
 		obj := &Label{ID: id, Name: name}

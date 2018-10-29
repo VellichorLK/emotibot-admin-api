@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var errDuplicated = errors.New("duplicate item")
@@ -267,7 +268,7 @@ func getEntities(appid string) ([]*WordBank, error) {
 			lastCategory = cache[idx][category.String]
 		}
 		if lastCategory == nil {
-			util.LogError.Printf("Level 1 should not be empty in wordbank, skip it")
+			logger.Error.Printf("Level 1 should not be empty in wordbank, skip it")
 			continue
 		}
 		if entityName.Valid && entityName.String != "" {
@@ -448,7 +449,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	queryStr := `
 		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
 		FROM entity_class
-		WHERE appid = ?`
+		WHERE appid = ? ORDER BY id DESC`
 	rows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return
@@ -511,7 +512,8 @@ func getWordbanksAllV3() (retRootMap map[string]*WordBankClassV3, err error) {
 
 	queryStr := `
 		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
-		FROM entity_class`
+		FROM entity_class
+		ORDER BY id`
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return
@@ -636,7 +638,7 @@ func getWordbankV3(appid string, id int) (ret *WordBankV3, cid int, err error) {
 		LEFT JOIN entity_class as c
 		ON e.cid = c.id`
 	row := mySQL.QueryRow(queryStr, id, appid)
-	util.LogTrace.Printf("Get wordbank of %d@%s", id, appid)
+	logger.Trace.Printf("Get wordbank of %d@%s", id, appid)
 
 	ret = &WordBankV3{}
 	similarWordsStr := ""
@@ -937,7 +939,7 @@ func deleteWordbankClassV3(appid string, id int) (err error) {
 		return nil
 	}
 
-	util.LogTrace.Printf("Delete id: %v\n", ids)
+	logger.Trace.Printf("Delete id: %v\n", ids)
 
 	queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE id in (%s)", strings.Join(qmark, ","))
 	_, err = t.Exec(queryStr, ids...)
@@ -958,7 +960,7 @@ func deleteWordbankClassV3(appid string, id int) (err error) {
 func showError(err error) {
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		util.LogError.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
+		logger.Error.Printf("DB error [%s:%d]: %s\n", file, line, err.Error())
 	}
 }
 

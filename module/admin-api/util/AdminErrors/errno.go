@@ -21,7 +21,7 @@ const (
 	// ErrnoOpenAPI means Openapi service is not available
 	ErrnoOpenAPI = -5
 
-	// ErrnoJsonParse means error when parse json string
+	// ErrnoJsonParse means error when parse json string from other service
 	ErrnoJSONParse = -6
 
 	// ErrnoAPIError means error when calling remote API

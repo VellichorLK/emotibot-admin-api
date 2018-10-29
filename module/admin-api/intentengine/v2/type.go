@@ -9,7 +9,7 @@ type SentenceV2 struct {
 // SentenceV2WithType describe a sentence in trainint data
 type SentenceV2WithType struct {
 	SentenceV2
-	Type int64 `json:"type"`
+	Type int `json:"type"`
 }
 
 // IntentV2 describe a intent in V2
@@ -89,6 +89,10 @@ func (intent *TrainIntent) Load(input *IntentV2) {
 			sentence := (*input.Positive)[idx]
 			intent.Sentences.Positive = append(intent.Sentences.Positive, sentence.Content)
 		}
+	}
+	// At least add intent itself as positive sentence to avoid error in intent trainer
+	if len(intent.Sentences.Positive) == 0 {
+		intent.Sentences.Positive = append(intent.Sentences.Positive, input.Name)
 	}
 	intent.Features = &TrainFeature{}
 	intent.Features.Init()

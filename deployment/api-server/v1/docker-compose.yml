@@ -296,13 +296,13 @@ services:
             - '80:80'
             - '443:443'
         logging:
-            #options:
-            #    max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
-            #    max-file: ${DOCKER_LOG_OPT_MAX_FILE}
-            driver: gelf
             options:
-                gelf-address: "udp://172.17.0.1:${LOG_PORT}"
-                tag: "nginx"
+                max-size: "${DOCKER_LOG_OPT_MAX_SIZE}"
+                max-file: ${DOCKER_LOG_OPT_MAX_FILE}
+            driver: json-file
+            #options:
+                #gelf-address: "udp://172.17.0.1:${LOG_PORT}"
+                #tag: "nginx"
         mem_limit: 2048m
         volumes:
             - /etc/localtime:/etc/localtime

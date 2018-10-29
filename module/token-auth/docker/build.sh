@@ -3,7 +3,7 @@ REPO=docker-reg.emotibot.com.cn:55688
 CONTAINER=token-auth
 # TAG="$(git rev-parse --short HEAD)"
 LAST_RELEASE_TAG="20171212-2c95de7"
-GIT_HEAD="$(git rev-parse --short HEAD)"
+GIT_HEAD="$(git rev-parse --short=7 HEAD)"
 DATE=`date +%Y%m%d`
 TAG=$1
 
@@ -15,10 +15,10 @@ fi
 
 DOCKER_IMAGE=$REPO/$CONTAINER:$TAG
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR=`bash -c "cd -P $(pwd) && pwd"`
 GOSRCPATH="$(cd "$DIR/../" && pwd )"
 MODULE=${GOSRCPATH##/*/}
-BUILDROOT=$DIR/../../
+BUILDROOT=$DIR/../../..
 
 # Build docker
 cmd="docker build \

@@ -1,23 +1,22 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 	data.VisitStatsMetricConversations:   services.ConversationCounts,
 	data.VisitStatsMetricUniqueUsers:     services.UniqueUserCounts,
-	data.VisitStatsMetricActiveUsers:     services.ActiveUserCounts,
 	data.VisitStatsMetricNewUsers:        services.NewUserCounts,
 	data.VisitStatsMetricTotalAsks:       services.TotalAskCounts,
 	data.VisitStatsMetricNormalResponses: services.NormalResponseCounts,
@@ -28,22 +27,13 @@ var visitStatsQueryHandlers = map[string]data.VisitStatsQueryHandler{
 }
 
 func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	statsType := r.URL.Query().Get("type")
 	statsFilter := r.URL.Query().Get("filter")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if statsType == "" {
+	if statsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -78,10 +68,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	case data.VisitStatsTypeTime:
 		query = data.VisitStatsQuery{
 			CommonQuery: data.CommonQuery{
-				EnterpriseID: enterpriseID,
-				AppID:        appID,
-				StartTime:    startTime,
-				EndTime:      endTime,
+				AppID:     appID,
+				StartTime: startTime,
+				EndTime:   endTime,
 			},
 			AggBy:       data.AggByTime,
 			AggInterval: aggInterval,
@@ -104,10 +93,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					EnterpriseID: enterpriseID,
-					AppID:        appID,
-					StartTime:    startTime,
-					EndTime:      endTime,
+					AppID:     appID,
+					StartTime: startTime,
+					EndTime:   endTime,
 				},
 				AggBy:       data.AggByTag,
 				AggInterval: aggInterval,
@@ -116,10 +104,9 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsFilterQType:
 			query = data.VisitStatsQuery{
 				CommonQuery: data.CommonQuery{
-					EnterpriseID: enterpriseID,
-					AppID:        appID,
-					StartTime:    startTime,
-					EndTime:      endTime,
+					AppID:     appID,
+					StartTime: startTime,
+					EndTime:   endTime,
 				},
 			}
 		default:
@@ -133,13 +120,16 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	esCtx, esClient := elasticsearch.GetClient()
-
 	if statsType == data.VisitStatsTypeTime ||
 		(statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterCategory) {
 		statsCounts, err := fetchVisitStats(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -148,7 +138,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsTypeTime:
 			response, err := createVisitStatsResponse(query, statsCounts)
 			if err != nil {
-				errResponse := data.NewErrorResponse(err.Error())
+				var errResponse data.ErrorResponse
+				if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+					errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+				} else {
+					errResponse = data.NewErrorResponse(err.Error())
+				}
 				returnInternalServerError(w, errResponse)
 				return
 			}
@@ -156,7 +151,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		case data.VisitStatsTypeBarchart:
 			response, err := createVisitStatsTagResponse(query, statsCounts)
 			if err != nil {
-				errResponse := data.NewErrorResponse(err.Error())
+				var errResponse data.ErrorResponse
+				if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+					errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+				} else {
+					errResponse = data.NewErrorResponse(err.Error())
+				}
 				returnInternalServerError(w, errResponse)
 				return
 			}
@@ -168,16 +168,26 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if statsType == data.VisitStatsTypeBarchart && statsFilter == data.VisitStatsFilterQType {
 		// Return answer category counts
-		statCounts, err := services.AnswerCategoryCounts(esCtx, esClient, query)
+		statCounts, err := services.AnswerCategoryCounts(query)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
 
 		response, err := createAnswerCategoryStatsResponse(statCounts)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -189,21 +199,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := util.GetEnterpriseID(r)
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	questionsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
 
-	if enterpriseID == "" && appID == "" {
-		errResp := data.ErrorResponse{
-			Message: fmt.Sprintf("Both headers %s and %s are not specified",
-				data.EnterpriseIDHeaderKey, data.AppIDHeaderKey),
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		writeResponseJSON(w, errResp)
-		return
-	} else if questionsType == "" {
+	if questionsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
 		returnBadRequest(w, errResponse)
 		return
@@ -226,20 +227,22 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query := data.VisitStatsQuery{
 		CommonQuery: data.CommonQuery{
-			EnterpriseID: enterpriseID,
-			AppID:        appID,
-			StartTime:    startTime,
-			EndTime:      endTime,
+			AppID:     appID,
+			StartTime: startTime,
+			EndTime:   endTime,
 		},
 	}
 
-	esCtx, esClient := elasticsearch.GetClient()
-
 	switch questionsType {
 	case data.VisitQuestionsTypeTop:
-		questions, err := services.TopQuestions(esCtx, esClient, query, 20)
+		questions, err := services.TopQuestions(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -257,16 +260,26 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		query.AggInterval = aggInterval
 
-		questions, err := services.TopUnmatchQuestions(esCtx, esClient, query, 20)
+		questions, err := services.TopUnmatchQuestions(query, 20)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
 
 		response, err := createTopUnmatchedQuestionsResponse(query, questions)
 		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
+			var errResponse data.ErrorResponse
+			if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+				errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			} else {
+				errResponse = data.NewErrorResponse(err.Error())
+			}
 			returnInternalServerError(w, errResponse)
 			return
 		}
@@ -279,8 +292,6 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interface{}, error) {
-	esCtx, esClient := elasticsearch.GetClient()
-
 	var visitStatsCountsSync sync.Map // Use sync.Map to avoid concurrent map writes
 	visitStatsCounts := make(map[string]map[string]interface{})
 	done := make(chan error, len(visitStatsQueryHandlers))
@@ -289,7 +300,7 @@ func fetchVisitStats(query data.VisitStatsQuery) (map[string]map[string]interfac
 	// Fetch statistics concurrently
 	for queryKey, queryHandler := range visitStatsQueryHandlers {
 		go func(key string, handler data.VisitStatsQueryHandler) {
-			counts, err := handler(esCtx, esClient, query)
+			counts, err := handler(query)
 			if err != nil {
 				done <- err
 				return
@@ -414,7 +425,7 @@ func createVisitStatsTagResponse(query data.VisitStatsQuery,
 	tagData := make([]data.VisitStatsTagData, 0)
 
 	for tagName, q := range visitStatsQ {
-		tagID, found := services.GetTagIDByName(query.AggTagType, tagName)
+		tagID, found := services.GetTagIDByName(query.AppID, query.AggTagType, tagName)
 		if !found {
 			continue
 		}
@@ -463,6 +474,9 @@ func createAnswerCategoryStatsResponse(statCounts map[string]interface{}) (*data
 }
 
 func createTopQuestionsResponse(questions data.Questions) *data.TopQuestionsResponse {
+	// Sort top questions
+	sort.Sort(sort.Reverse(questions))
+
 	questionsData := make([]data.TopQuestionData, 0)
 	rank := 1
 
@@ -504,9 +518,9 @@ func createTopUnmatchedQuestionsResponse(query data.VisitStatsQuery,
 			Rank:          rank,
 			Q:             question.Count,
 			FirstTime:     strconv.FormatInt(firstTime.Unix(), 10),
-			FirstTimeText: firstTime.Format(data.ESTimeFormat),
+			FirstTimeText: question.MinLogTime,
 			LastTime:      strconv.FormatInt(lastTime.Unix(), 10),
-			LastTimeText:  lastTime.Format(data.ESTimeFormat),
+			LastTimeText:  question.MaxLogTime,
 		}
 
 		questionData = append(questionData, d)
@@ -578,9 +592,6 @@ func createVisitStatsQ(statsCounts map[string]map[string]interface{}) (visitStat
 			case data.VisitStatsMetricUniqueUsers:
 				visitStatsQ[key].UniqueUsers = count.(int64)
 				totalVisitStatsQ.UniqueUsers += count.(int64)
-			case data.VisitStatsMetricActiveUsers:
-				visitStatsQ[key].ActiveUsers = count.(int64)
-				totalVisitStatsQ.ActiveUsers += count.(int64)
 			case data.VisitStatsMetricNewUsers:
 				visitStatsQ[key].NewUsers = count.(int64)
 				totalVisitStatsQ.NewUsers += count.(int64)

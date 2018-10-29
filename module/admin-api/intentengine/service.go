@@ -9,11 +9,13 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
-	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
 )
 
@@ -51,8 +53,8 @@ func GetIntents(appID string, version int) (intents []string, retCode int, err e
 }
 
 func UploadIntents(appID string, file multipart.File, info *multipart.FileHeader) (version int, retCode int, err error) {
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
-	util.LogTrace.Printf("Uploaded file info %#v", info.Header)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	buf := make([]byte, info.Size)
 	_, err = file.Read(buf)
@@ -88,7 +90,7 @@ func UploadIntents(appID string, file multipart.File, info *multipart.FileHeader
 	return
 }
 
-func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) {
+func GetDownloadIntents(appID string, version int, format string) ([]byte, string, int, error) {
 	if version == 0 {
 		// Use latest version of intents dataset
 		ver, err := getLatestIntentsVersion(appID)
@@ -105,21 +107,23 @@ func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) 
 	_, origFileName, err := getIntentsXSLXFileName(appID, version)
 	if err != nil {
 		errMsg := fmt.Sprintf("Cannot find intents file with version %v", version)
-		util.LogError.Printf(errMsg)
+		logger.Error.Printf(errMsg)
 		return nil, "", ApiError.NOT_FOUND_ERROR, errors.New(errMsg)
 	}
 
 	intents, err := getIntentDetails(appID, version)
+	if err != nil {
+		return nil, "", ApiError.DB_ERROR, err
+	}
+
 	xlsxFile := xlsx.NewFile()
-	for idx := range intents {
-		intent := intents[idx]
-		sheet, err := xlsxFile.AddSheet(intent.Name)
-		if err != nil {
-			return nil, "", ApiError.IO_ERROR, err
-		}
-		for _, sentence := range intent.Sentences {
-			sheet.AddRow().AddCell().SetString(sentence)
-		}
+	if strings.ToLower(format) == "bfop" {
+		err = fillBFOPExport(xlsxFile, intents)
+	} else {
+		err = fillBF2Export(xlsxFile, intents)
+	}
+	if err != nil {
+		return nil, "", ApiError.IO_ERROR, err
 	}
 
 	var buf bytes.Buffer
@@ -129,6 +133,40 @@ func GetDownloadIntents(appID string, version int) ([]byte, string, int, error) 
 		return nil, "", ApiError.IO_ERROR, err
 	}
 	return buf.Bytes(), string(origFileName), ApiError.SUCCESS, nil
+}
+
+func fillBFOPExport(xlsxFile *xlsx.File, intents []*Intent) error {
+	for idx := range intents {
+		intent := intents[idx]
+		sheet, err := xlsxFile.AddSheet(intent.Name)
+		if err != nil {
+			return err
+		}
+		for _, sentence := range intent.Sentences {
+			sheet.AddRow().AddCell().SetString(sentence)
+		}
+	}
+	return nil
+}
+
+func fillBF2Export(xlsxFile *xlsx.File, intents []*Intent) error {
+	sheet, err := xlsxFile.AddSheet(localemsg.Get("zh-cn", "IntentBF2Sheet1Name"))
+	row := sheet.AddRow()
+	row.AddCell().SetString(localemsg.Get("zh-cn", "IntentName"))
+	row.AddCell().SetString(localemsg.Get("zh-cn", "IntentSentence"))
+
+	if err != nil {
+		return err
+	}
+	for idx := range intents {
+		intent := intents[idx]
+		for _, sentence := range intent.Sentences {
+			row := sheet.AddRow()
+			row.AddCell().SetString(intent.Name)
+			row.AddCell().SetString(sentence)
+		}
+	}
+	return nil
 }
 
 func Train(appID string, version int, autoReload bool, trainEngine int) (retCode int, err error) {
@@ -316,8 +354,8 @@ func GetTrainStatus(appID string, version int) (statusResp StatusResponse, retCo
 			retCode = ApiError.WEB_REQUEST_ERROR
 			return
 		}
-		util.LogTrace.Printf("Query status with version %d: %+v\n", version, payload)
-		util.LogTrace.Printf("Get response from intent status: %+v\n", ieStatus)
+		logger.Trace.Printf("Query status with version %d: %+v\n", version, payload)
+		logger.Trace.Printf("Get response from intent status: %+v\n", ieStatus)
 
 		switch ieStatus.Status {
 		case "training":
@@ -569,21 +607,21 @@ func saveIntentsFile(file []byte, fileName string) (err error) {
 	if _, err = os.Stat(intentFilesPath); os.IsNotExist(err) {
 		err = os.Mkdir(intentFilesPath, os.ModePerm)
 		if err != nil {
-			util.LogError.Printf("Fail to ./statics directory")
+			logger.Error.Printf("Fail to ./statics directory")
 			return
 		}
 	}
 
 	f, err := os.OpenFile(intentFilesPath+"/"+fileName, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		util.LogError.Printf("Fail to save uploaded intents file %s", fileName)
+		logger.Error.Printf("Fail to save uploaded intents file %s", fileName)
 		return
 	}
 	defer f.Close()
 
 	_, err = f.Write(file)
 	if err != nil {
-		util.LogError.Printf("Fail to save uploaded intents file %s", fileName)
+		logger.Error.Printf("Fail to save uploaded intents file %s", fileName)
 		return
 	}
 

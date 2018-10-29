@@ -1,0 +1,36 @@
+{
+    "index_patterns": [
+        "emotibot-sessions-*"
+    ],
+    "version": 20181015,
+    "settings": {
+        "number_of_replicas": 1,
+        "number_of_shards": 1
+    },
+    "mappings": {
+        "doc": {
+            "properties": {
+                "enterprise_id": {
+                    "type": "keyword"
+                },
+                "app_id": {
+                    "type": "keyword"
+                },
+                "user_id": {
+                    "type": "keyword"
+                },
+                "session_id": {
+                    "type": "keyword"
+                },
+                "start_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                },
+                "end_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                }
+            }
+        }
+    }
+}

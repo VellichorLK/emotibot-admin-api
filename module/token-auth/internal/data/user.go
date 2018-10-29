@@ -71,9 +71,13 @@ func (user *User) SetValueWithToken(tokenString string) error {
 func (user *User) CopyValue(source User) {
 	user.ID = source.ID
 	user.DisplayName = source.DisplayName
+	user.UserName = source.UserName
 	user.Email = source.Email
 	user.Enterprise = source.Enterprise
 	user.Type = source.Type
 	user.Password = source.Password
 	user.Status = source.Status
+	user.CustomInfo = source.CustomInfo
+	user.Role = source.Role
+	user.Privilege = source.Privilege
 }

@@ -1,0 +1,29 @@
+## 编译 binary
+FROM harbor.emotibot.com/library/go-build:3409410d-1.10-standard AS build
+
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+COPY ./module/${PROJECT} ${GOPREFIX}/module/${PROJECT}
+COPY ./pkg ${GOPREFIX}/pkg
+## 如有需要加上其他编译时所需要的设定档可在此加上额外的指令
+
+#Use +8 Timezone for testing
+RUN cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime && echo "Asia/Taipe" > /etc/timezone
+WORKDIR ${GOPREFIX}/module/${PROJECT}
+RUN go get -v && go install
+RUN go test ./...
+RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && go install && cd ../; done;
+RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && CGO_ENABLED=0 GOOS=linux go build -o ${tool}_linux && cp ${tool}_linux /go/bin/ && cd ../; done;
+
+## 复制上一个 stage 所编译出的 binary 至 scratch image
+FROM scratch
+
+ARG PROJECT
+
+WORKDIR /usr/bin/app
+COPY --from=build /go/bin/${PROJECT} .
+COPY ./module/${PROJECT}/entrypoint.sh .
+COPY ./module/${PROJECT}/files_init.sh .
+COPY ./module/${PROJECT}/InitFiles InitFiles
+## 如有需要加上其他执行时所需要的设定档皆可在此加上额外的指令

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/hashicorp/consul/api"
 )
 
@@ -28,6 +29,8 @@ const (
 	ConsulEntityKey            = "cnlu/%s"
 	ConsulRuleKey              = "rule/%s"
 	ConsulCmdKey               = "cmd/%s"
+	ConsulProfileKey           = "profile/%s"
+	ConsulIntentKey            = "intent/%s"
 	ConsulControllerSettingKey = "setting/controller"
 	ConsulReleaseInfoKey       = "release_versions"
 )
@@ -119,7 +122,7 @@ func newDefaultUpdateHandler(c *http.Client, u *url.URL) ConsulUpdateHandler {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			logger.Error.Printf("Get error when parse url: %s\n", err.Error())
 			return 0, err
 		}
 		temp := u.ResolveReference(k)
@@ -151,7 +154,7 @@ func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			logger.Error.Printf("Get error when parse url: %s\n", err.Error())
 			return nil, 0, err
 		}
 		temp := u.ResolveReference(k)
@@ -197,7 +200,7 @@ func newDefaultGetTreeHandler(c *http.Client, u *url.URL) ConsulGetTreeHandler {
 				moduleName := strings.TrimPrefix(origKey, key+"/")
 				strValue := strings.TrimPrefix(string(value), moduleName+":")
 
-				LogTrace.Printf("Get [%s]: %s\n", key, string(value))
+				logger.Trace.Printf("Get [%s]: %s\n", key, string(value))
 				ret[moduleName] = strValue
 			}
 		}
@@ -211,7 +214,7 @@ func newDefaultGetHandler(c *http.Client, u *url.URL) ConsulGetHandler {
 		key = strings.TrimPrefix(key, "/")
 		k, err := url.Parse(key)
 		if err != nil {
-			LogError.Printf("Get error when parse url: %s\n", err.Error())
+			logger.Error.Printf("Get error when parse url: %s\n", err.Error())
 			return "", 0, err
 		}
 		temp := u.ResolveReference(k)
@@ -360,6 +363,20 @@ func ConsulUpdateCmd(appid string) (int, error) {
 	return ConsulUpdateVal(key, now)
 }
 
+//ConsulUpdateProfile is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateProfile(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulProfileKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
+}
+
+//ConsulUpdateIntent is a convenient function for updating Robot Chat's Consul Key
+func ConsulUpdateIntent(appid string) (int, error) {
+	key := fmt.Sprintf(ConsulIntentKey, appid)
+	now := time.Now().Unix()
+	return ConsulUpdateVal(key, now)
+}
+
 func ConsulGetControllerSetting() (string, int, error) {
 	key := ConsulControllerSettingKey
 	return ConsulGetVal(key)
@@ -391,7 +408,7 @@ func ConsulGetTreeFromRoot(key string) (map[string]string, int, error) {
 }
 
 func logTraceConsul(function string, msg string) {
-	LogTrace.Printf("[CONSUL][%s]:%s", function, msg)
+	logger.Trace.Printf("[CONSUL][%s]:%s", function, msg)
 }
 
 func logConsulError(err error) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type scanners interface {
@@ -532,7 +533,7 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 
 	now := time.Now().Unix()
 	if running {
-		util.LogTrace.Printf("Previous still running from %d", start)
+		logger.Trace.Printf("Previous still running from %d", start)
 		if int(now)-start <= syncSolrTimeout {
 			return
 		}
@@ -586,7 +587,7 @@ func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	return
 }
 
-func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, err error) {
+func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, appids []string, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -602,6 +603,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 	}
 	defer util.ClearTransition(t)
 
+	appidMap := map[string]bool{}
 	queryStr := `
 	SELECT id, qid, content, appid
 	FROM
@@ -643,6 +645,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 		rqMap[qid] = append(rqMap[qid], &temp)
 		rqInfos = append(rqInfos, &temp)
 		rqIDs = append(rqIDs, id)
+		appidMap[temp.AppID] = true
 	}
 
 	queryStr = `
@@ -666,6 +669,7 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 		}
 		rqMap[id] = append(rqMap[id], &temp)
 		rqInfos = append(rqInfos, &temp)
+		appidMap[temp.AppID] = true
 	}
 
 	if len(qids) == 0 {
@@ -701,10 +705,11 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 			}
 		}
 		ansIDs = append(ansIDs, id)
+		appidMap[appid] = true
 	}
 
 	queryStr = fmt.Sprintf(`
-		SELECT id FROM robot_profile_answer
+		SELECT id, appid FROM robot_profile_answer
 		WHERE qid in (?%s) AND status = -1`, strings.Repeat(",?", len(qids)-1))
 	delAnsRows, err := t.Query(queryStr, qids...)
 	if err != nil {
@@ -714,15 +719,22 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 
 	for delAnsRows.Next() {
 		id := 0
-		err = delAnsRows.Scan(&id)
+		appid := ""
+		err = delAnsRows.Scan(&id, &appid)
 		if err != nil {
 			return
 		}
 		deleteAnsIDs = append(deleteAnsIDs, id)
+		appidMap[appid] = true
 	}
 
 	ret = rqInfos
 	err = t.Commit()
+
+	for key := range appidMap {
+		appids = append(appids, key)
+	}
+
 	return
 }
 
@@ -856,7 +868,7 @@ func needProcessRobotData() (ret bool, err error) {
 	}
 
 	if count > 0 {
-		util.LogTrace.Println("New modify in robot profile extend")
+		logger.Trace.Println("New modify in robot profile extend")
 		ret = true
 		return
 	}
@@ -872,7 +884,7 @@ func needProcessRobotData() (ret bool, err error) {
 	}
 
 	if count > 0 {
-		util.LogTrace.Println("New modify in robot profile answer")
+		logger.Trace.Println("New modify in robot profile answer")
 		ret = true
 		return
 	}

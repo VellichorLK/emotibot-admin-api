@@ -1,8 +1,13 @@
 package util
 
 import (
+	"bytes"
+	"fmt"
 	"net/http"
 	"regexp"
+	"runtime"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -14,6 +19,9 @@ const (
 
 	// ConstAppIDHeaderKey is header record the appid
 	ConstAppIDHeaderKey = "X-AppID"
+
+	// ConstEnterpriseIDHeaderKey is header record the appid
+	ConstEnterpriseIDHeaderKey = "X-EnterpriseID"
 )
 
 // GetAppID will get AppID from http header
@@ -34,4 +42,31 @@ func GetUserID(r *http.Request) string {
 // GetUserIP will get User addr from http header
 func GetUserIP(r *http.Request) string {
 	return r.Header.Get(ConstUserIPHeaderKey)
+}
+
+// GetEnterpriseID will get User addr from http header
+func GetEnterpriseID(r *http.Request) string {
+	return r.Header.Get(ConstEnterpriseIDHeaderKey)
+}
+
+// PrintRuntimeStack will print run stack with most layer of maxStack
+func PrintRuntimeStack(maxStack int) {
+	pc := make([]uintptr, maxStack)
+	n := runtime.Callers(0, pc)
+	if n == 0 {
+		return
+	}
+	pc = pc[:n]
+	frames := runtime.CallersFrames(pc)
+	var buf bytes.Buffer
+
+	buf.WriteString("Stack: \n")
+	for {
+		frame, more := frames.Next()
+		buf.WriteString(fmt.Sprintf("\t[%s:%d]\n", frame.File, frame.Line))
+		if !more {
+			break
+		}
+	}
+	logger.Trace.Printf(buf.String())
 }

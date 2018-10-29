@@ -6,6 +6,9 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -58,46 +61,47 @@ func handleDecrypt(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDumpUISetting(w http.ResponseWriter, r *http.Request) {
-	util.LogTrace.Println("Run: handleDumpUISetting")
+	logger.Trace.Println("Run: handleDumpUISetting")
 	envs := getEnvironments()
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, envs))
 	return
 }
 
 func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
-	util.LogTrace.Println("Run: handleExportAuditLog")
+	logger.Trace.Println("Run: handleExportAuditLog")
 	module := r.FormValue("module")
 	fileName := r.FormValue("filename")
 	extMsg := r.FormValue("info")
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
-	appid := util.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 
 	moduleID := ""
 	switch module {
 	case "qalist":
-		moduleID = util.AuditModuleQA // = "2" // "问答库"
+		moduleID = audit.AuditModuleSSM // = "2" // "问答库"
 		break
 	case "dictionary":
-		moduleID = util.AuditModuleDictionary // = "5" // "词库管理"
+		moduleID = audit.AuditModuleWordbank // = "5" // "词库管理"
 		break
 	case "statistic-analysis":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleStatisticAnalysis // = "6" // "数据管理"
 		break
 	case "statistic-daily":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleStatisticDaily // = "6" // "数据管理"
 		break
 	case "statistic-audit":
-		moduleID = util.AuditModuleStatistics // = "6" // "数据管理"
+		moduleID = audit.AuditModuleAudit // = "6" // "数据管理"
 		break
 	case "task-engine":
-		moduleID = util.AuditModuleTaskEngine // 任務引擎
+		moduleID = audit.AuditModuleTaskEngine // 任務引擎
 		break
 	}
 
 	if moduleID == "" || fileName == "" {
 		http.Error(w, "", http.StatusBadRequest)
-		util.LogInfo.Printf("Bad request: module:[%s] file:[%s]", moduleID, fileName)
+		logger.Info.Printf("Bad request: module:[%s] file:[%s]", moduleID, fileName)
 		return
 	}
 
@@ -106,7 +110,7 @@ func handleExportAuditLog(w http.ResponseWriter, r *http.Request) {
 	if extMsg != "" {
 		log = fmt.Sprintf("%s: %s", log, extMsg)
 	}
-	err := util.AddAuditLog(appid, userID, userIP, moduleID, util.AuditOperationExport, log, 1)
+	err := audit.AddAuditLog(enterprise, appid, userID, userIP, moduleID, audit.AuditOperationExport, log, 1)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
 	} else {

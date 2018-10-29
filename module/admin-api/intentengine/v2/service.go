@@ -14,6 +14,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
 )
 
@@ -86,7 +87,7 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	}
 	version, daoErr := dao.GetLatestVersion(appid)
 	if daoErr == sql.ErrNoRows {
-		// No any version, return "NEED_TRAIN"
+		logger.Trace.Println("No any version, NEED_TRAIN")
 		return
 	} else if daoErr != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
@@ -100,14 +101,15 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	ret.Progress = latestInfo.Progress
 	ret.Version = latestInfo.Version
 	if ret.CurrentStartTime == nil && ret.LastFinishTime == nil {
-		// Version hasn't start, return "NEED_TRAIN"
+		logger.Trace.Println("Version hasn't start, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	} else if ret.LastFinishTime == nil {
-		// Version hasn't end, return "TRAINING"
+		logger.Trace.Println("Version hasn't end, return TRAINING")
 		ret.Status = statusTraining
 		return
 	} else if latestInfo.TrainResult == trainResultFail {
+		logger.Trace.Println("Version fail, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	}
@@ -118,8 +120,10 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
 	}
 	if needTrain {
+		logger.Trace.Println("Some intents has modified, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 	} else {
+		logger.Trace.Println("No intent modified, return TRAINED")
 		ret.Status = statusFinish
 	}
 	return
@@ -173,7 +177,7 @@ func trainIntent(appid string) (modelID string, err error) {
 	if err != nil {
 		return "", err
 	}
-	util.LogTrace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Println("Get response when training intent-engine:", body)
 
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
@@ -201,7 +205,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	if err != nil {
 		return
 	}
-	util.LogTrace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Println("Get response when training intent-engine:", body)
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
 	if err != nil {
@@ -210,12 +214,13 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 
 	now := time.Now().Unix()
 	switch ret.Status {
-	case statusIETraining:
-		go checkIntentModelStatus(appid, modelID, version)
 	case statusIETrainError:
 		dao.UpdateVersionStatus(version, now, trainResultFail)
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(version, now, trainResultSuccess)
+		util.ConsulUpdateIntent(appid)
+	default:
+		go checkIntentModelStatus(appid, modelID, version)
 	}
 }
 
@@ -243,9 +248,13 @@ func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
 		temp.Load(intents[idx])
 		ret.Intent = append(ret.Intent, &temp)
 	}
-	ret.IntentDict, err = getIntentDictResp(wordbanks, []string{})
+	intentDict, err := getIntentDictResp(wordbanks, []string{})
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoIOError, err.Error())
+	}
+
+	if intentDict != nil {
+		ret.IntentDict = intentDict
 	}
 
 	return ret, nil
@@ -314,18 +323,26 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 		return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
 	}
 
-	if len(sheets) == 2 {
-		if sheets[0].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") &&
-			sheets[1].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
+	for idx := range sheets {
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") ||
+			sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
 			format = typeBF2
+			break
 		}
 	}
 
+	// if len(sheets) == 2 {
+	// 	if sheets[0].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") &&
+	// 		sheets[1].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
+	// 		format = typeBF2
+	// 	}
+	// }
+
 	if format == typeBFOP {
-		util.LogTrace.Println("Parse file with BFOP type")
+		logger.Trace.Println("Parse file with BFOP type")
 		return parseBFOPSheets(sheets, locale)
 	} else if format == typeBF2 {
-		util.LogTrace.Println("Parse file with BF2 type")
+		logger.Trace.Println("Parse file with BF2 type")
 		return parseBF2Sheets(sheets, locale)
 	}
 	// this line must not happen
@@ -399,19 +416,24 @@ func getBF2ColumnIdx(row *xlsx.Row, locale string) (nameIdx, sentenceIdx int) {
 			sentenceIdx = idx
 		}
 	}
+	logger.Trace.Printf("Uplaod column idx: %d %d\n", nameIdx, sentenceIdx)
 	return
 }
 
 func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, err error) {
-	if len(sheets) != 2 {
-		return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
-	}
+	// if len(sheets) != 2 {
+	// 	return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
+	// }
 
 	intentMap := map[string]*IntentV2{}
 	for idx := range sheets {
-		sentenceType := typePositive
-		if idx == 1 {
+		var sentenceType int
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") {
+			sentenceType = typePositive
+		} else if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
 			sentenceType = typeNegative
+		} else {
+			continue
 		}
 		rows := sheets[idx].Rows
 		if len(rows) == 0 {
@@ -559,4 +581,28 @@ func GetExportIntentsBFFormat(appid string, locale string) (ret []byte, err Admi
 		return
 	}
 	return buf.Bytes(), nil
+}
+
+// SearchSentence will do search of intent contain the sentence equals to content, and return intent name, sentence type
+// If err happens, intentName will be empty string and sentenceType will be 0, err will be an not null Error
+func SearchSentence(appid string, version *int, content string) (intentName string, sentenceType int, err AdminErrors.AdminError) {
+	intent, sentence, dbErr := dao.SearchIntentOfSentence(appid, version, content)
+	if dbErr == sql.ErrNoRows {
+		err = AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+		return
+	}
+	return intent.Name, sentence.Type, nil
+}
+
+// SearchSentenceWithType will do same with SearchSentence, only add sentenceType as filter
+func SearchSentenceWithType(appid string, version *int, content string, sentenceType int) (intentName string, err AdminErrors.AdminError) {
+	intent, _, dbErr := dao.SearchIntentOfSentence(appid, version, content, sentenceType)
+	if dbErr == sql.ErrNoRows {
+		err = AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+		return
+	} else if dbErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+		return
+	}
+	return intent.Name, nil
 }

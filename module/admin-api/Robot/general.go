@@ -6,6 +6,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var (
@@ -91,11 +93,12 @@ func getGlobalEnv(key string) string {
 }
 
 func addAudit(r *http.Request, module string, operation string, msg string, result int) {
-	userID := util.GetUserID(r)
-	userIP := util.GetUserIP(r)
-	appid := util.GetAppID(r)
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
-	util.AddAuditLog(appid, userID, userIP, module, operation, msg, result)
+	audit.AddAuditLog(enterpriseID, appid, userID, userIP, module, operation, msg, result)
 }
 
 func handleInitRobotData(w http.ResponseWriter, r *http.Request) {

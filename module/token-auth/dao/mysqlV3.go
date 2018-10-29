@@ -10,6 +10,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
+	"emotibot.com/emotigo/pkg/logger"
 
 	uuid "github.com/satori/go.uuid"
 )
@@ -144,6 +145,18 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	}
 	defer util.ClearTransition(t)
 
+	queryStr := fmt.Sprintf("SELECT user_name, email FROM %s WHERE user_name = ? OR email = ?", userTableV3)
+	mail, name := "", ""
+	err = t.QueryRow(queryStr, adminUser.UserName, adminUser.Email).Scan(&name, &mail)
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	if mail == adminUser.Email {
+		return "", util.ErrUserEmailExists
+	} else if name == adminUser.UserName {
+		return "", util.ErrUserNameExists
+	}
+
 	adminUserUUID, err := uuid.NewV4()
 	if err != nil {
 		util.LogDBError(err)
@@ -152,7 +165,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	adminUserID := hex.EncodeToString(adminUserUUID[:])
 
 	// Insert human table entry
-	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
+	queryStr = fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, adminUserID)
 	if err != nil {
 		util.LogDBError(err)
@@ -433,13 +446,13 @@ func (controller MYSQLController) GetUsersV3(enterpriseID string, admin bool) ([
 
 	if admin {
 		queryStr = fmt.Sprintf(`
-			SELECT uuid, user_name, display_name, email, phone, type
+			SELECT uuid, user_name, display_name, email, phone, type, product
 			FROM %s
 			WHERE type = %d`, userTableV3, enum.SuperAdminUser)
 		queryParams = []interface{}{}
 	} else {
 		queryStr = fmt.Sprintf(`
-			SELECT uuid, user_name, display_name, email, phone, type
+			SELECT uuid, user_name, display_name, email, phone, type, product
 			FROM %s
 			WHERE enterprise = ? AND type != %d`, userTableV3, enum.SuperAdminUser)
 		queryParams = []interface{}{enterpriseID}
@@ -454,10 +467,16 @@ func (controller MYSQLController) GetUsersV3(enterpriseID string, admin bool) ([
 
 	for rows.Next() {
 		user := data.UserV3{}
-		err := rows.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type)
+		productStr := ""
+		err := rows.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type, &productStr)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
+		}
+		if productStr != "" {
+			user.Products = strings.Split(productStr, ",")
+		} else {
+			user.Products = []string{}
 		}
 
 		users = append(users, &user)
@@ -490,13 +509,13 @@ func (controller MYSQLController) GetUserV3(enterpriseID string,
 
 	if enterpriseID == "" {
 		queryStr = fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password, product
 		FROM %s
 		WHERE uuid = ?`, userTableV3)
 		queryParams = []interface{}{userID}
 	} else {
 		queryStr = fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password, product
 		FROM %s
 		WHERE enterprise = ? AND uuid = ?`, userTableV3)
 		queryParams = []interface{}{enterpriseID, userID}
@@ -505,8 +524,15 @@ func (controller MYSQLController) GetUserV3(enterpriseID string,
 	row := controller.connectDB.QueryRow(queryStr, queryParams...)
 
 	user := data.UserDetailV3{}
+	productStr := ""
 	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
-		&user.Enterprise, &user.Status, &user.Password)
+		&user.Enterprise, &user.Status, &user.Password, &productStr)
+
+	if productStr == "" {
+		user.Products = []string{}
+	} else {
+		user.Products = strings.Split(productStr, ",")
+	}
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -535,15 +561,16 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 	}
 
 	queryStr := fmt.Sprintf(`
-		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, product
 		FROM %s
 		WHERE (user_name = ? OR email = ?) AND password = ?`,
 		userTableV3)
 	row := controller.connectDB.QueryRow(queryStr, account, account, passwd)
 
 	user := data.UserDetailV3{}
+	productStr := ""
 	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
-		&user.Enterprise, &user.Status)
+		&user.Enterprise, &user.Status, &productStr)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
@@ -551,6 +578,12 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 
 		util.LogDBError(err)
 		return nil, err
+	}
+
+	if productStr == "" {
+		user.Products = []string{}
+	} else {
+		user.Products = strings.Split(productStr, ",")
 	}
 
 	roles, err := controller.getUserRolesV3(user.ID)
@@ -591,15 +624,16 @@ func (controller MYSQLController) GetUserPasswordV3(userID string) (string, erro
 
 func (controller MYSQLController) AddUserV3(enterpriseID string,
 	user *data.UserDetailV3) (userID string, err error) {
+	defer func() {
+		util.LogDBError(err)
+	}()
 	ok, err := controller.checkDB()
 	if !ok {
-		util.LogDBError(err)
 		return
 	}
 
 	t, err := controller.connectDB.Begin()
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 	defer util.ClearTransition(t)
@@ -611,7 +645,6 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", humanTableV3)
 	_, err = t.Exec(queryStr, userID)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
@@ -626,25 +659,30 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
 			user.Email, user.Phone, user.Type, user.Password}
 	case enum.AdminUser:
-		fallthrough
-	case enum.NormalUser:
 		queryStr = fmt.Sprintf(`
 			INSERT INTO %s
 			(uuid, user_name, display_name, email, phone, enterprise, type, password)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, userTableV3)
 		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
 			user.Email, user.Phone, enterpriseID, user.Type, user.Password}
+	case enum.NormalUser:
+		queryStr = fmt.Sprintf(`
+			INSERT INTO %s
+			(uuid, user_name, display_name, email, phone, enterprise, type, password, product)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, userTableV3)
+		queryParams = []interface{}{userID, user.UserName, user.DisplayName,
+			user.Email, user.Phone, enterpriseID, user.Type, user.Password, strings.Join(user.Products, ",")}
 	}
+
+	logger.Trace.Printf("%+v\n", queryParams)
 
 	_, err = t.Exec(queryStr, queryParams...)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
 	err = addUserPrivilegesWithTxV3(userID, user, t)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
@@ -652,7 +690,7 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 	if user.CustomInfo == nil {
 		err = t.Commit()
 		if err != nil {
-			util.LogDBError(err)
+
 			return
 		}
 		return
@@ -660,13 +698,11 @@ func (controller MYSQLController) AddUserV3(enterpriseID string,
 
 	err = insertCustomInfoWithTxV3(enterpriseID, userID, *user.CustomInfo, t)
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
 	err = t.Commit()
 	if err != nil {
-		util.LogDBError(err)
 		return
 	}
 
@@ -2032,9 +2068,9 @@ func (controller MYSQLController) AddAuditLog(auditLog data.AuditLog) error {
 
 	queryStr := fmt.Sprintf(`
 		INSERT INTO %s
-		(appid, user_id, ip_source, module, operation, content, result)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, auditTableV3)
-	_, err = controller.auditDB.Exec(queryStr, auditLog.AppID, auditLog.UserID, auditLog.UserIP,
+		(enterprise, appid, user_id, ip_source, module, operation, content, result)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, auditTableV3)
+	_, err = controller.auditDB.Exec(queryStr, auditLog.EnterpriseID, auditLog.AppID, auditLog.UserID, auditLog.UserIP,
 		auditLog.Module, auditLog.Operation, auditLog.Content, auditLog.Result)
 	if err != nil {
 		util.LogDBError(err)
@@ -2042,4 +2078,73 @@ func (controller MYSQLController) AddAuditLog(auditLog data.AuditLog) error {
 	}
 
 	return nil
+}
+
+func (controller MYSQLController) GetEnterpriseAppListV3(enterpriseID *string, userID *string) (ret []*data.EnterpriseAppListV3, err error) {
+	defer func() {
+		util.LogDBError(err)
+	}()
+	var ok bool
+	ok, err = controller.checkDB()
+	if !ok {
+		return
+	}
+
+	var rows *sql.Rows
+	if enterpriseID != nil {
+		queryStr := `
+		SELECT temp.*, apps.uuid, apps.name, apps.status
+		FROM (
+			SELECT enterprises.uuid as uuid, enterprises.name as name
+			FROM enterprises
+			WHERE enterprises.uuid = ?
+		) as temp
+		LEFT JOIN apps
+		ON apps.enterprise = temp.uuid
+		`
+		rows, err = controller.connectDB.Query(queryStr, *enterpriseID)
+	} else {
+		queryStr := `
+			SELECT enterprises.uuid, enterprises.name, apps.uuid, apps.name, apps.status
+			FROM enterprises
+			LEFT JOIN apps
+			ON apps.enterprise = enterprises.uuid
+		`
+		rows, err = controller.connectDB.Query(queryStr)
+	}
+	if err != nil {
+		return
+	}
+
+	enterpriseMap := map[string]*data.EnterpriseAppListV3{}
+	for rows.Next() {
+		enterpriseID, enterpriseName := "", ""
+		var appID *string
+		var appName *string
+		var appStatus *int
+		err = rows.Scan(&enterpriseID, &enterpriseName, &appID, &appName, &appStatus)
+		if err != nil {
+			return
+		}
+		if _, ok := enterpriseMap[enterpriseID]; !ok {
+			e := &data.EnterpriseAppListV3{}
+			e.Name = enterpriseName
+			e.ID = enterpriseID
+			enterpriseMap[enterpriseID] = e
+		}
+		if appID == nil || appName == nil {
+			continue
+		}
+		robot := &data.AppV3{
+			ID:     *appID,
+			Name:   *appName,
+			Status: *appStatus,
+		}
+		enterpriseMap[enterpriseID].Robots = append(enterpriseMap[enterpriseID].Robots, robot)
+	}
+
+	for id := range enterpriseMap {
+		ret = append(ret, enterpriseMap[id])
+	}
+	return
 }

@@ -1,6 +1,6 @@
 FROM golang:1.8-alpine AS buildEnv
 
-ADD ./ /go/src/emotibot.com/emotigo/module/systex-controller
+ADD ./ /go/src/emotibot.com/emotigo/
 WORKDIR /go/src/emotibot.com/emotigo/module/systex-controller
 RUN go build -o systex-controller
 

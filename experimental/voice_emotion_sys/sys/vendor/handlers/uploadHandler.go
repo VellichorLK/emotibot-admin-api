@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"crypto/md5"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -24,17 +26,43 @@ var FilePrefix string
 
 //Upload handler to store the file and start the task
 func Upload(w http.ResponseWriter, r *http.Request) {
+
+	var logStatus int
+
+	var fi *FileInfo
+	defer func() {
+
+		var fileName string
+		var createTime uint64
+
+		_, handler, err := r.FormFile(NFILE)
+		if err == nil {
+			fileName = handler.Filename
+		}
+
+		createTimeInt64, err := strconv.ParseInt(r.FormValue(NFILET), 10, 64)
+		if err == nil {
+			createTime = uint64(createTimeInt64)
+		}
+
+		fmt.Printf("[%s] ret code:%d, appid:%s, file_name:%s, tag1:%s, tag2:%s, create_time:%s\n",
+			time.Now().Format(time.RFC3339), logStatus, r.Header.Get(NUAPPID), fileName, r.FormValue(NTAG), r.FormValue(NTAG2), time.Unix(int64(createTime), 0).Format(time.RFC3339))
+	}()
+
 	appid := r.Header.Get(NUAPPID)
 	if appid == "" {
+		logStatus = http.StatusUnauthorized
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	if r.Method == "POST" {
 		r.ParseMultipartForm(512 << 10)
+		var err error
 
-		fi, err := parseParms(r)
+		fi, err = parseParms(r)
 		if err != nil {
+			logStatus = http.StatusBadRequest
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -42,29 +70,35 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 
 		status, err := uploadFile(r, fi)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		status, err = sendTask(fi, appid)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		res, status, err := packageUploadReturn(fi)
 		if err != nil {
+			logStatus = status
 			http.Error(w, err.Error(), status)
 			return
 		}
 
 		contentType := "application/json; charset=utf-8"
 
+		logStatus = http.StatusOK
+
 		w.Header().Set("Content-Type", contentType)
 		w.WriteHeader(http.StatusOK)
 		w.Write(res)
 
 	} else {
+		logStatus = http.StatusMethodNotAllowed
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
@@ -209,7 +243,14 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 
 	//now := time.Now()
 	//fi.UPTime = now.Unix()
-	err := updateDatabase(fi)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
+	defer tx.Rollback()
+
+	err = updateDatabase(tx, fi)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -230,6 +271,8 @@ func sendTask(fi *FileInfo, appid string) (int, error) {
 		return http.StatusInternalServerError, err
 	}
 
+	tx.Commit()
+
 	return http.StatusOK, nil
 }
 
@@ -243,8 +286,8 @@ func pacakgeTask(fi *FileInfo) (string, error) {
 	return string(encodeTask), nil
 }
 
-func updateDatabase(fi *FileInfo) error {
-	return InsertFileRecord(fi)
+func updateDatabase(tx *sql.Tx, fi *FileInfo) error {
+	return InsertFileRecord(tx, fi)
 }
 
 func goTaskOnFail(sid string) {

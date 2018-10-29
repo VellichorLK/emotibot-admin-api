@@ -14,6 +14,9 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -47,6 +50,8 @@ func init() {
 			util.NewEntryPoint("POST", "intent", []string{}, handleIntentV1),
 			util.NewEntryPointWithVer("GET", "mapping-tables", []string{}, handleGetMapTableListV2, 2),
 			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableAllV2, 2),
+
+			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
 		},
 	}
 }
@@ -55,7 +60,7 @@ func handleUploadScenario(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	useNewID := r.FormValue("useNewId") == "true"
 	file, info, err := r.FormFile("scenario_json")
 
@@ -82,7 +87,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 			util.GenRetObj(ApiError.REQUEST_ERROR, fmt.Sprintf("invalid json: %s, %s", err.Error(), err2.Error())),
 			http.StatusBadRequest)
 		auditMsg := util.Msg["AuditImportJSONError"]
-		addAuditLog(r, util.AuditOperationImport, auditMsg, true)
+		addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 		return
 	}
 	ret := map[string]interface{}{
@@ -95,12 +100,12 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
 	}
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
-	addAuditLog(r, util.AuditOperationImport, auditMsg, true)
+	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 	util.WriteJSON(w, ret)
 }
 
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.URL.Query().Get("scenarioid")
@@ -122,25 +127,17 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 
 	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, params.Encode())
-	util.LogTrace.Printf("Get Scenario URL: %s", url)
+	logger.Trace.Printf("Get Scenario URL: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
 	} else {
 		io.WriteString(w, content)
 	}
-	// FIXME: trick here, task-engine will call update almost every click on UI
-	// it will cause too much audit log into database
-	// As a result, use get API to audit start edit only.
-	// BUG: TE use this API to export for now...
-	if scenarioid != "all" {
-		auditMsg := fmt.Sprintf("%s%s%s ID: %s", util.Msg["Start"], util.Msg["Modify"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationEdit, auditMsg, err == nil)
-	}
 }
 
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.FormValue("scenarioid")
@@ -163,7 +160,7 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 		params["publish"] = true
 	}
 	url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	util.LogTrace.Printf("Put scenarios: %s with params: %#v", url, params)
+	logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
 	content, err := util.HTTPPutForm(url, params, 0)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -172,12 +169,12 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 	if publish != "" {
 		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, util.AuditOperationPublish, auditMsg, err == nil)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
 	}
 
 	if delete != "" {
 		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, util.AuditOperationDelete, auditMsg, err == nil)
+		addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
 	}
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +188,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	template := r.FormValue("template")
 	scenarioName := r.FormValue("scenarioName")
@@ -208,7 +205,7 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		params["template"] = template
 	}
 	url := fmt.Sprintf("%s/%s", taskURL, taskScenarioEntry)
-	util.LogTrace.Printf("Post scenarios: %s", url)
+	logger.Trace.Printf("Post scenarios: %s", url)
 	content, err := util.HTTPPostForm(url, params, 0)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -217,11 +214,11 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 
 	auditMsg := fmt.Sprintf("%s%s: %s", util.Msg["Add"], util.Msg["TaskEngineScenario"], scenarioName)
-	addAuditLog(r, util.AuditOperationAdd, auditMsg, err == nil)
+	addAuditLog(r, audit.AuditOperationAdd, auditMsg, err == nil)
 }
 
 func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
+	appid := requestheader.GetAppID(r)
 	userID := appid
 	enable := r.FormValue("enable")
 	scenarioID := r.FormValue("scenarioid")
@@ -245,7 +242,7 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 
 	auditTpl := ""
 	target := scenarioID
-	operation := util.AuditOperationActive
+	operation := audit.AuditOperationActive
 	if enable == "true" {
 		auditTpl = util.Msg["AuditActiveTpl"]
 		if scenarioID == "all" {
@@ -256,7 +253,7 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		auditTpl = util.Msg["AuditDeactiveTpl"]
-		operation = util.AuditOperationDeactive
+		operation = audit.AuditOperationDeactive
 		if scenarioID == "all" {
 			DisableAllScenario(appid)
 			target = util.Msg["All"]
@@ -269,13 +266,13 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetApps(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	// userID := util.GetUserID(ctx)
+	appid := requestheader.GetAppID(r)
+	// userID := requestheader.GetUserID(ctx)
 	taskURL := getEnvironment("SERVER_URL")
 
 	// Hack in task-engine, use appid as userid
 	url := fmt.Sprintf("%s/%s/%s?userid=%s", taskURL, taskAppEntry, appid, appid)
-	util.LogTrace.Printf("Get apps: %s", url)
+	logger.Trace.Printf("Get apps: %s", url)
 	content, err := util.HTTPGetSimple(url)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
@@ -288,14 +285,14 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	userInQuery := r.URL.Query().Get("user")
 	if userInQuery != "" {
 		userID = userInQuery
 	}
 
-	util.LogTrace.Printf("Get mapping list of %s, %s\n", appid, userID)
+	logger.Trace.Printf("Get mapping list of %s, %s\n", appid, userID)
 	list, errno, err := GetMapTableList(appid, userID)
 	if err != nil {
 		w.WriteHeader(ApiError.GetHttpStatus(errno))
@@ -314,13 +311,13 @@ func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMapTableListV2 load mapping table list by appid from wordbank
 func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
-	appID := util.GetAppID(r)
+	appID := requestheader.GetAppID(r)
 	// if the user in query url is templateadmin, get the template scenario mapping tables
 	userInQuery := r.URL.Query().Get("user")
 	if userInQuery == "templateadmin" {
 		appID = userInQuery
 	}
-	util.LogTrace.Printf("appID: %+v", appID)
+	logger.Trace.Printf("appID: %+v", appID)
 
 	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
 	if err != nil {
@@ -356,8 +353,8 @@ func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := util.GetMuxVar(r, "name")
 	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
 
@@ -381,24 +378,24 @@ func handleGetMapTable(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	errno := ApiError.SUCCESS
 	var auditMsg bytes.Buffer
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
-		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		logger.Trace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
 		util.WriteJSONWithStatus(w, map[string]interface{}{
 			"error":  ret,
 			"return": errno,
 		}, status)
 
 		if errno == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationImport, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationImport, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["UploadFile"], util.Msg["MappingTable"]))
@@ -410,7 +407,7 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	util.LogInfo.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
 	auditMsg.WriteString(info.Filename)
 
 	size := info.Size
@@ -468,32 +465,32 @@ func handleUploadMapTable(w http.ResponseWriter, r *http.Request) {
 	var result int
 	result, err = util.ConsulUpdateTaskEngineMappingTable()
 	if err != nil {
-		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d, %s", result, err.Error())
+		logger.Info.Printf("Update consul key:te/mapping_table result: %d, %s", result, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul key:te/mapping_table result: %d", result)
+		logger.Info.Printf("Update consul key:te/mapping_table result: %d", result)
 	}
 }
 
 func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := r.FormValue("table_name")
 	errno := ApiError.SUCCESS
 	var auditMsg bytes.Buffer
 	var ret string
 	defer func() {
 		status := ApiError.GetHttpStatus(errno)
-		util.LogTrace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
+		logger.Trace.Printf("Upload mapping table ret: %d, %s\n", errno, ret)
 		util.WriteJSONWithStatus(w, map[string]interface{}{
 			"error":  ret,
 			"return": errno,
 		}, status)
 
 		if errno == ApiError.SUCCESS {
-			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), true)
+			addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), true)
 		} else {
 			auditMsg.WriteString(fmt.Sprintf(", %s", ret))
-			addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), false)
+			addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), false)
 		}
 	}()
 	auditMsg.WriteString(fmt.Sprintf("%s%s", util.Msg["Delete"], util.Msg["MappingTable"]))
@@ -516,9 +513,9 @@ func handleDeleteMapTable(w http.ResponseWriter, r *http.Request) {
 	var result int
 	result, err = util.ConsulUpdateTaskEngineMappingTableAll()
 	if err != nil {
-		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d, %s", result, err.Error())
+		logger.Info.Printf("Update consul key:te/mapping_table_all result: %d, %s", result, err.Error())
 	} else {
-		util.LogInfo.Printf("Update consul key:te/mapping_table_all result: %d", result)
+		logger.Info.Printf("Update consul key:te/mapping_table_all result: %d", result)
 	}
 }
 
@@ -537,19 +534,20 @@ func getEnvironment(key string) string {
 }
 
 func addAuditLog(r *http.Request, op string, msg string, ret bool) {
-	appid := util.GetAppID(r)
-	user := util.GetUserID(r)
-	ip := util.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+	user := requestheader.GetUserID(r)
+	ip := requestheader.GetUserIP(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 	retVal := 0
 	if ret {
 		retVal = 1
 	}
-	util.AddAuditLog(appid, user, ip, util.AuditModuleTaskEngine, op, msg, retVal)
+	audit.AddAuditLog(enterprise, appid, user, ip, audit.AuditModuleTaskEngine, op, msg, retVal)
 }
 
 func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
-	appid := util.GetAppID(r)
-	userID := util.GetUserID(r)
+	appid := requestheader.GetAppID(r)
+	userID := requestheader.GetUserID(r)
 	tableName := util.GetMuxVar(r, "name")
 	tableNameInQuery := r.URL.Query().Get("mapping_table_name")
 	var auditMsg bytes.Buffer
@@ -561,10 +559,10 @@ func handleExportMapTable(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		w.Write(outputBuf.Bytes())
 
-		addAuditLog(r, util.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
+		addAuditLog(r, audit.AuditOperationDelete, auditMsg.String(), errno == ApiError.SUCCESS)
 	}()
 
-	util.LogTrace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
+	logger.Trace.Printf("Get mapping table: %s of %s, %s", tableName, userID, appid)
 	if tableName == "" {
 		tableName = tableNameInQuery
 	}
@@ -633,4 +631,33 @@ func handleIntentV1(w http.ResponseWriter, r *http.Request) {
 	default:
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no match type"), http.StatusBadRequest)
 	}
+}
+
+func handleAudit(w http.ResponseWriter, r *http.Request) {
+	logger.Trace.Println("Run: handleAudit")
+	action := r.FormValue("action")
+	msg := r.FormValue("msg")
+	userID := requestheader.GetUserID(r)
+	userIP := requestheader.GetUserIP(r)
+	appid := requestheader.GetAppID(r)
+
+	auditOp := ""
+	switch action {
+	case "edit":
+		auditOp = audit.AuditOperationEdit
+	case "export":
+		auditOp = audit.AuditOperationExport
+	default:
+		util.WriteJSON(w, util.GenRetObj(ApiError.REQUEST_ERROR, "Unknown action"))
+		return
+	}
+
+	enterprise := requestheader.GetEnterpriseID(r)
+	err := audit.AddAuditLog(enterprise, appid, userID, userIP, audit.AuditModuleTaskEngine, auditOp, msg, 1)
+	if err != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
+	} else {
+		util.WriteJSON(w, util.GenSimpleRetObj(ApiError.SUCCESS))
+	}
+	return
 }
