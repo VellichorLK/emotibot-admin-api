@@ -1,7 +1,7 @@
 package Gray
 
 type White struct {
-	UserId      int      `json:"userId"`
+	UserId      string      `json:"userId"`
 }
 
 type QueryCondition struct {
