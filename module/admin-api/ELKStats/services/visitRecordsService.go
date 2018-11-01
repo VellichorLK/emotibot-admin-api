@@ -262,6 +262,7 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 	traceQuery(boolQuery)
 	source := elastic.NewFetchSourceContext(true)
 	source.Include(
+		data.VisitRecordsMetricSessionID,
 		data.VisitRecordsMetricUserID,
 		data.VisitRecordsMetricUserQ,
 		data.VisitRecordsMetricScore,

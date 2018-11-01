@@ -10,14 +10,15 @@ const (
 )
 
 const (
-	VisitRecordsMetricUserID  = "user_id"
-	VisitRecordsMetricUserQ   = "user_q"
-	VisitRecordsMetricScore   = "score"
-	VisitRecordsMetricStdQ    = "std_q"
-	VisitRecordsMetricAnswer  = "answer"
-	VisitRecordsMetricLogTime = "log_time"
-	VisitRecordsMetricEmotion = "emotion"
-	VisitRecordsMetricQType   = "qtype"
+	VisitRecordsMetricSessionID = "session_id"
+	VisitRecordsMetricUserID    = "user_id"
+	VisitRecordsMetricUserQ     = "user_q"
+	VisitRecordsMetricScore     = "score"
+	VisitRecordsMetricStdQ      = "std_q"
+	VisitRecordsMetricAnswer    = "answer"
+	VisitRecordsMetricLogTime   = "log_time"
+	VisitRecordsMetricEmotion   = "emotion"
+	VisitRecordsMetricQType     = "qtype"
 )
 
 type VisitRecordsTag struct {
@@ -158,6 +159,10 @@ type VisitRecordsHitResult struct {
 }
 
 var VisitRecordsTableHeader = []TableHeaderItem{
+	TableHeaderItem{
+		Text: "會話ID",
+		ID:   VisitRecordsMetricSessionID,
+	},
 	TableHeaderItem{
 		Text: "用户ID",
 		ID:   VisitRecordsMetricUserID,
