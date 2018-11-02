@@ -138,7 +138,6 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 
 		_agg = dateHistogramAgg
 	case data.AggByTag:
-		boolQuery := elastic.NewBoolQuery()
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType).ShardSize(data.ESTermAggShardSize)
