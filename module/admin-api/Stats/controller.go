@@ -52,7 +52,7 @@ func init() {
 	cache = make(map[string]*StatRet)
 }
 
-func InitDB() {
+func InitDB() error {
 	url := getEnvironment("MYSQL_URL")
 	user := getEnvironment("MYSQL_USER")
 	pass := getEnvironment("MYSQL_PASS")
@@ -60,9 +60,11 @@ func InitDB() {
 	dao, err := initStatDB(url, user, pass, db)
 	if err != nil {
 		logger.Error.Printf("Cannot init statistic db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		return err
 	}
 
 	util.SetDB(ModuleInfo.ModuleName, dao)
+	return nil
 }
 
 func getStatsDB() *sql.DB {

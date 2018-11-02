@@ -105,3 +105,16 @@ func ShowError(err error) {
 		PrintRuntimeStack(5)
 	}
 }
+
+func GetDBStatus() map[string]string {
+	ret := map[string]string{}
+	for key := range allDB {
+		pingError := allDB[key].Ping()
+		if pingError == nil {
+			ret[key] = "health"
+		} else {
+			ret[key] = pingError.Error()
+		}
+	}
+	return ret
+}

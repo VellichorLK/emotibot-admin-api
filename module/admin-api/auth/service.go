@@ -17,7 +17,7 @@ func init() {
 	}
 }
 
-func InitDB() {
+func InitDB() error {
 	envs := getEnvironments()
 	url := envs["MYSQL_URL"]
 	user := envs["MYSQL_USER"]
@@ -26,9 +26,11 @@ func InitDB() {
 	dao, err := util.InitDB(url, user, pass, db)
 	if err != nil {
 		logger.Error.Printf("Cannot init auth db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
+		return err
 	}
 
 	util.SetDB(ModuleInfo.ModuleName, dao)
+	return nil
 }
 
 func getEnvironments() map[string]string {

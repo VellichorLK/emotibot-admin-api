@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -41,6 +40,8 @@ import (
 var constant = map[string]interface{}{
 	"API_PREFIX": "api",
 }
+
+var initErrors = []error{}
 
 var modules = []*util.ModuleInfo{
 	&Dictionary.ModuleInfo,
@@ -92,7 +93,7 @@ func logAvailablePath(router *mux.Router) {
 	})
 }
 
-func main() {
+func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
@@ -115,16 +116,22 @@ func main() {
 	err := initElasticsearch()
 	if err != nil {
 		logger.Error.Println("Init elastic search failed:", err.Error())
+		initErrors = append(initErrors, err)
 	}
 
 	err = ELKStats.Init()
 	if err != nil {
 		logger.Error.Println("Init ELKStats module failed: ", err.Error())
+		initErrors = append(initErrors, err)
 	}
 	err = clustering.Init()
 	if err != nil {
 		logger.Error.Println("Init Clustering module failed: ", err.Error())
+		initErrors = append(initErrors, err)
 	}
+}
+
+func main() {
 	router := setRoute()
 	logAvailablePath(router)
 
@@ -137,7 +144,7 @@ func main() {
 	go runOnetimeJob()
 
 	logger.Info.Println("Start server on", serverURL)
-	err = http.ListenAndServe(serverURL, router)
+	err := http.ListenAndServe(serverURL, router)
 	if err != nil {
 		logger.Error.Println("Start server fail: ", err.Error())
 	}
@@ -242,9 +249,8 @@ func setRoute() *mux.Router {
 	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
 	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
 		// A very simple health check.
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, "ok")
+		ret := healthCheck()
+		util.WriteJSON(w, ret)
 	})
 	return router
 }
@@ -295,16 +301,32 @@ func initDB() {
 	user := getServerEnv("MYSQL_USER")
 	pass := getServerEnv("MYSQL_PASS")
 	db := getServerEnv("MYSQL_DB")
-	util.InitMainDB(url, user, pass, db)
+	err := util.InitMainDB(url, user, pass, db)
+	if err != nil {
+		logger.Error.Println("Init main db fail")
+		initErrors = append(initErrors, err)
+	}
 
 	url = getServerEnv("AUDIT_MYSQL_URL")
 	user = getServerEnv("AUDIT_MYSQL_USER")
 	pass = getServerEnv("AUDIT_MYSQL_PASS")
 	db = getServerEnv("AUDIT_MYSQL_DB")
-	util.InitAuditDB(url, user, pass, db)
+	err = util.InitAuditDB(url, user, pass, db)
+	if err != nil {
+		logger.Error.Println("Init audit db fail")
+		initErrors = append(initErrors, err)
+	}
 
-	Stats.InitDB()
-	auth.InitDB()
+	err = Stats.InitDB()
+	if err != nil {
+		logger.Error.Println("Init stats db fail")
+		initErrors = append(initErrors, err)
+	}
+	err = auth.InitDB()
+	if err != nil {
+		logger.Error.Println("Init auth db fail")
+		initErrors = append(initErrors, err)
+	}
 }
 
 func initElasticsearch() (err error) {
@@ -383,4 +405,29 @@ func initConsul() {
 	util.RootConsulClient = util.NewConsulClientWithCustomHTTP(rootURL, rootHTTPClient)
 	logger.Info.Printf("Init consul client with url: %s\n", u.String())
 	logger.Info.Printf("Init root consul client with url: %s\n", rootURL.String())
+}
+
+type healthResult struct {
+	MemoryUsage uint64            `json:"memory"`
+	MaxProcess  int               `json:"max_process"`
+	NumCPU      int               `json:"num_cpu"`
+	InitErrors  []string          `json:"init_errors"`
+	DBHealth    map[string]string `json:"db_status"`
+}
+
+func healthCheck() *healthResult {
+	ret := healthResult{}
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	ret.MemoryUsage = m.Alloc
+	ret.MaxProcess = runtime.GOMAXPROCS(0)
+	ret.NumCPU = runtime.NumCPU()
+	ret.InitErrors = []string{}
+
+	for idx := range initErrors {
+		ret.InitErrors = append(ret.InitErrors, initErrors[idx].Error())
+	}
+
+	ret.DBHealth = util.GetDBStatus()
+	return &ret
 }
