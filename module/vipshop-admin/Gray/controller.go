@@ -69,7 +69,7 @@ func handleUpdateGray(ctx context.Context) {
 		return
 	}
 	var oldPercent = 0;
-	rows.Scan(oldPercent);
+	rows.Scan(&oldPercent);
 
 	defer rows.Close()
 
