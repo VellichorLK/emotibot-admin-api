@@ -125,13 +125,12 @@ type VisitRecordsResponse struct {
 	TotalSize   int64               `json:"total_size"`
 }
 
-type VisitRecordsData struct {
-	UniqueID  string  `json:"id"`
+type VisitRecordsDataBase struct {
+	SessionID string  `json:"session_id"`
 	UserID    string  `json:"user_id"`
 	UserQ     string  `json:"user_q"`
 	Score     float64 `json:"score"`
 	StdQ      string  `json:"std_q"`
-	Answer    string  `json:"answer"`
 	LogTime   string  `json:"log_time"`
 	Emotion   string  `json:"emotion"`
 	QType     string  `json:"qtype"`
@@ -139,18 +138,16 @@ type VisitRecordsData struct {
 	IsIgnored bool    `json:"is_ignored"`
 }
 
+type VisitRecordsData struct {
+	VisitRecordsDataBase
+	UniqueID  string  `json:"id"`
+	Answer    string  `json:"answer"`
+}
+
 type VisitRecordsRawData struct {
+	VisitRecordsDataBase
 	UniqueID  string   `json:"unique_id"`
-	UserID    string   `json:"user_id"`
-	UserQ     string   `json:"user_q"`
-	Score     float64  `json:"score"`
-	StdQ      string   `json:"std_q"`
 	Answer    []Answer `json:"answer"`
-	LogTime   string   `json:"log_time"`
-	Emotion   string   `json:"emotion"`
-	QType     string   `json:"qtype"`
-	IsMarked  bool     `json:"isMarked"`
-	IsIgnored bool     `json:"isIgnored"`
 }
 
 type VisitRecordsHitResult struct {

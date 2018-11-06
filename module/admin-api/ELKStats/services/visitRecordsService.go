@@ -338,17 +338,20 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 		}
 
 		record := &data.VisitRecordsData{
-			UniqueID:  rawRecord.UniqueID,
-			UserID:    rawRecord.UserID,
-			UserQ:     rawRecord.UserQ,
-			Score:     rawRecord.Score,
-			StdQ:      rawRecord.StdQ,
-			Answer:    strings.Join(answers, ", "),
-			LogTime:   rawRecord.LogTime,
-			Emotion:   rawRecord.Emotion,
-			QType:     rawRecord.QType,
-			IsMarked:  rawRecord.IsMarked,
-			IsIgnored: rawRecord.IsIgnored,
+			VisitRecordsDataBase: data.VisitRecordsDataBase{
+				SessionID: rawRecord.SessionID,
+				UserID:    rawRecord.UserID,
+				UserQ:     rawRecord.UserQ,
+				Score:     rawRecord.Score,
+				StdQ:      rawRecord.StdQ,
+				LogTime:   rawRecord.LogTime,
+				Emotion:   rawRecord.Emotion,
+				QType:     rawRecord.QType,
+				IsMarked:  rawRecord.IsMarked,
+				IsIgnored: rawRecord.IsIgnored,
+			},
+			UniqueID: rawRecord.UniqueID,
+			Answer:   strings.Join(answers, ", "),
 		}
 		r.Hits = append(r.Hits, record)
 	}
