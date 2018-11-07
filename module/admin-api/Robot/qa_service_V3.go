@@ -211,15 +211,14 @@ func SyncRobotProfileToSolr() (err error) {
 		return
 	}
 
-	if len(tagInfos) > 0 {
-		validInfos := []*ManualTagging{}
-
-		for idx := range tagInfos {
-			if tagInfos[idx].Answers != nil && len(tagInfos[idx].Answers) > 0 {
-				validInfos = append(validInfos, tagInfos[idx])
-			}
+	validInfos := []*ManualTagging{}
+	for idx := range tagInfos {
+		if tagInfos[idx].Answers != nil && len(tagInfos[idx].Answers) > 0 {
+			validInfos = append(validInfos, tagInfos[idx])
 		}
+	}
 
+	if len(validInfos) > 0 {
 		err = fillNLUInfoInTaggingInfos(validInfos)
 		if err != nil {
 			logger.Error.Printf("Get NLUInfo fail: %s\n", err.Error())
