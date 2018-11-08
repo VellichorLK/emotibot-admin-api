@@ -1,0 +1,358 @@
+openapi: 3.0.0
+info:
+  title: 数据管理/日志管理
+  description: 统计数据日志管理 API，包含日志搜寻及日志导出
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v1/stats/record
+
+components:
+  ###############################################################################
+  #                                   Schemas                                   #
+  ###############################################################################
+  schemas:
+    QueryRecordsBody:
+      type: object
+      properties:
+        start_time:
+          description: 日志搜寻/导出时间段开始时间
+          type: integer
+        end_time:
+          description: 日志搜寻/导出时间段结束时间
+          type: integer
+        filter:
+          description: 日志搜寻/导出筛选项
+          type: object
+          properties:
+            categories:
+              $ref: '#/components/schemas/FilterCategories'
+            contains:
+              $ref: '#/components/schemas/FilterContains'
+            emotions:
+              $ref: '#/components/schemas/FilterEmotions'
+            qtypes:
+              $ref: '#/components/schemas/FilterQtypes'
+            uid:
+              $ref: '#/components/schemas/FilterUid'
+        page:
+          description: 分页页码，从 0 开始，预设为 0
+          type: integer
+          default: 0
+        limit:
+          description: 单笔页数，预设为 20
+          type: integer
+          default: 20
+    FilterCategories:
+      description: 筛选条件组 - 维度
+      type: array
+      items:
+        type: object
+        properties:
+          group:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  description: 维度 ID
+                  type: string
+                text:
+                  description: 维度名称 
+                  type: string
+          type:
+              description: 维度类别 (platform, sex... etc)
+              type: string
+    FilterContains:
+      description: 筛选条件 - 关键字
+      type: object
+      properties:
+        text:
+          description: 搜寻关键字
+          type: string
+        type:
+          description: 关键字类别 (question)
+          type: string
+    FilterEmotions:
+      description: 筛选条件 - 情感
+      type: array
+      items:
+        type: object
+        properties:
+          group:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  description: 情感 ID
+                  type: string
+                text:
+                  description: 情感名称
+                  type: string
+          type:
+              description: 情感类别 (emotion)
+              type: string
+    FilterQtypes:
+      description: 筛选条件 - 问答类别
+      type: array
+      items:
+        type: object
+        properties:
+          group:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  description: 问答类别 ID
+                  type: string
+                  enum:
+                    - chat
+                    - faq
+                    - other
+                text:
+                  description: 问答类别名称
+                  type: string
+          type:
+              description: 问答类别 (qtype)
+              type: string
+    FilterUid:
+      description: 筛选条件 - User ID
+      type: string
+
+  ################################################################################
+  #                                  Parameters                                  #
+  ################################################################################
+  parameters:
+    EnterpriseId:
+      name: X-Enterpriseid
+      description: 企业 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    AppId:
+      name: X-Appid
+      description: 操作的机器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    userId:
+      name: X-Userid
+      description: 使用者 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    ExportId:
+      name: export_id
+      description: 日志导出档案下载 ID
+      in: path
+      required: true
+      schema:
+        type: string
+    locale:
+      name: locale
+      in: header
+      description: 回传资料使用语系，预设使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+  
+  ################################################################################
+  #                                 Request Bodies                               #
+  ################################################################################
+  requestBodies:
+    QueryRecords:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/QueryRecordsBody'
+
+paths:
+  /query:
+    post:
+      tags:
+        - Query
+      summary: 搜寻日志
+      description: 日志搜寻结果
+      parameters:
+        - $ref: '#/components/parameters/EnterpriseId'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        $ref: '#/components/requestBodies/QueryRecords'
+      responses:
+        200:
+          description: 日志搜寻结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tableheader:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        session_id:
+                          description: 会话 ID
+                          type: string
+                        userId:
+                          description: 用户 ID
+                          type: string
+                        user_q:
+                          description: 用户问题
+                          type: string
+                        score:
+                          description: 匹配分数
+                          type: integer
+                        std_q:
+                          description: 标准问题
+                          type: string
+                        answer:
+                          description: 机器人回答
+                          type: string
+                        log_time:
+                          description: 访问时间
+                          type: string
+                        emotion:
+                          description: 情感
+                          type: string
+                        qtype:
+                          description: 问答类别
+                          type: string
+                  limit:
+                    description: 单笔页数
+                    type: integer
+                  page:
+                    description: 分页页码
+                    type: integer
+                  total_sizes:
+                    description: 日志总条数
+                    type: integer
+        400:
+          description: Bad request
+        500:
+          description: Internal server error
+
+  /export:
+    post:
+      tags:
+        - Export
+      summary: 日志导出
+      description: 建立日志导出档案；同一企业同时间只能有一个日志导出任务在进行
+      parameters:
+        - $ref: '#/components/parameters/EnterpriseId'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        $ref: '#/components/requestBodies/QueryRecords'
+      responses:
+        200:
+          description: 成功建立日志导出任务
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  export_id:
+                    description: 日志导出任务 ID
+                    type: string
+        403:
+          description: 该企业目前已有导出任务在执行，无法再次建立日志导出任务
+        500:
+          description: Internal server error
+  
+  /export/{export_id}:
+    parameters:
+      - $ref: '#/components/parameters/ExportId'
+    get:
+      tags:
+        - Export
+      summary: 下载日志导出档案
+      description: 下载日志导出档案
+      parameters:
+        - $ref: '#/components/parameters/EnterpriseId'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        200:
+          description: 日志导出档案 (.zip 或 .csv 档)
+        204:
+          description: 日志导出无结果，因此无对应的日志导出档案可下载
+        403:
+          description: 导出任务仍在执行中，无法下载日志导出档案
+        404:
+          description: 日志导出任务或日志导出档案不存在
+        500:
+          description: Internal server error
+    delete:
+      tags:
+        - Export
+      summary: 删除日志导出档案
+      description: 删除日志导出档案
+      parameters:
+        - $ref: '#/components/parameters/EnterpriseId'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        200:
+          description: 成功删除日志导出档案
+        404:
+          description: 无相关日志导出档案可删除
+        500:
+          description: Internal server error
+
+  /export/{export_id}/status:
+    parameters:
+      - $ref: '#/components/parameters/ExportId'
+    get:
+      tags:
+        - Export
+      summary: 查询日志导出任务目前状态
+      description: 回传所查询日志导出任务目前状态
+      parameters:
+        - $ref: '#/components/parameters/EnterpriseId'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/userId'
+      responses:
+        200:
+          description: 日志导出任务目前状态
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    description: 日志导出任务目前状态
+                    type: string
+                    enum:
+                      - RUNNING
+                      - COMPLETED
+                      - FAILED
+                      - EMPTY
+        404:
+          description: 所查询日志导出任务不存在
+        500:
+          description: Internal server error
