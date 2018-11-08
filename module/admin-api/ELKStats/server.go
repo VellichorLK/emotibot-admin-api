@@ -34,6 +34,9 @@ func Init() error {
 	} else {
 		err = fmt.Errorf("Require Module Env DAL_URL")
 	}
+	if err != nil {
+		return err
+	}
 
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
@@ -41,20 +44,19 @@ func Init() error {
 			util.NewEntryPoint("GET", "visit", []string{}, controllers.VisitStatsGetHandler),
 			util.NewEntryPoint("GET", "question", []string{}, controllers.QuestionStatsGetHandler),
 			util.NewEntryPoint("POST", "records/query", []string{}, controllers.VisitRecordsGetHandler),
-			util.NewEntryPoint("POST", "records/download", []string{}, controllers.RecordsDownloadHandler),
+			util.NewEntryPoint("POST", "records/export", []string{}, controllers.VisitRecordsExportHandler),
+			util.NewEntryPoint("GET", "records/export/{export_id}",
+				[]string{}, controllers.VisitRecordsExportDownloadHandler),
+			util.NewEntryPoint("DELETE", "records/export/{export_id}",
+				[]string{}, controllers.VisitRecordsExportDeleteHandler),
+			util.NewEntryPoint("GET", "records/export/{export_id}/status",
+				[]string{}, controllers.VisitRecordsExportStatusHandler),
 			util.NewEntryPoint("POST", "records/mark", []string{}, controllers.NewRecordsMarkUpdateHandler(dalClient)),
 			util.NewEntryPoint("POST", "records/ignore", []string{}, controllers.RecordsIgnoredUpdateHandler),
 			util.NewEntryPoint("GET", "records/{id}/marked", []string{}, controllers.NewRecordSSMHandler(dalClient)),
 			util.NewEntryPoint("GET", "call", []string{}, controllers.CallStatsGetHandler),
 		},
 	}
-	tagInitErr := services.InitTags()
 
-	if err != nil && tagInitErr != nil {
-		return fmt.Errorf("dal init fail: [%s]; tag init fail: [%s]", err.Error(), tagInitErr.Error())
-	}
-	if err != nil {
-		return err
-	}
-	return tagInitErr
+	return services.InitTags()
 }

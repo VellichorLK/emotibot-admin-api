@@ -4,19 +4,20 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/util"
+
+	"github.com/satori/go.uuid"
 )
 
-type MySQL struct {
-	backendLogDB *sql.DB
-	emotibotDB   *sql.DB
-}
-
 const (
-	TagTypeTable = "tag_type"
-	TagsTable    = "tags"
+	TagTypeTable           = "tag_type"
+	TagsTable              = "tags"
+	RecordsExportTaskTable = "records_export_tasks"
+	RecordsExportTable     = "records_export"
 )
 
 func GetTags() (map[string]map[string][]data.Tag, error) {
@@ -61,4 +62,367 @@ func GetTags() (map[string]map[string][]data.Tag, error) {
 	}
 
 	return tags, nil
+}
+
+func TryCreateExportTask(enterpriseID string) (exportTaskID string, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	tx, _ := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	/* Try to create export task for given enterprise
+	 * We only allow a single exporting task in process
+	 * if there's already an exporting task in process, return error
+	 */
+	queryStr := fmt.Sprintf(`
+		INSERT INTO %s (enterprise_id)
+		VALUES (?)`, RecordsExportTaskTable)
+	queryParams := []interface{}{enterpriseID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		if strings.Contains(err.Error(), "1062") {
+			/* Error number: 1062; Symbol: ER_DUP_ENTRY; SQLSTATE: 23000
+			 * enterprise_id already exists:
+			 * Currently there's already an exporting task in process
+			 */
+			err = data.ErrExportTaskInProcess
+		}
+
+		return
+	}
+
+	// Create exporting task
+	taskUUID, err := uuid.NewV4()
+	if err != nil {
+		return
+	}
+
+	exportTaskID = taskUUID.String()
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s (uuid, status, created_at)
+		VALUEs (?, ?, ?)`, RecordsExportTable)
+	queryParams = []interface{}{exportTaskID, data.CodeExportTaskRunning, time.Now().Unix()}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET task_id = ?
+		WHERE enterprise_id = ?`, RecordsExportTaskTable)
+	queryParams = []interface{}{exportTaskID, enterpriseID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	return
+}
+
+func ExportTaskCompleted(taskID string, filePath string) (err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	/* Update RecordsExportTaskTableand and delete the correspond record in RecordsExportTable
+	 * to allow other records exporting tasks to be proccessed
+	 */
+	tx, _ := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	queryStr := fmt.Sprintf(`
+		UPDATE %s
+		SET path = ?, status = ?
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{filePath, data.CodeExportTaskCompleted, taskID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return
+	}
+
+	err = deleteExportTaskWithTx(tx, taskID)
+	return
+}
+
+func ExportTaskFailed(taskID string, errReason string) (err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	/* Update RecordsExportTaskTableand and delete the correspond record in RecordsExportTable
+	 * to allow other records exporting tasks to be proccessed
+	 */
+	tx, _ := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	queryStr := fmt.Sprintf(`
+		UPDATE %s
+		SET status = ?, err_reason = ?
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{data.CodeExportTaskFailed, errReason, taskID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return
+	}
+
+	err = deleteExportTaskWithTx(tx, taskID)
+	return err
+}
+
+func ExportTaskEmpty(taskID string) (err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	/* Update RecordsExportTaskTableand and delete the correspond record in RecordsExportTable
+	 * to allow other records exporting tasks to be proccessed
+	 */
+	tx, _ := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	queryStr := fmt.Sprintf(`
+		UPDATE %s
+		SET status = ?
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{data.CodeExportTaskEmpty, taskID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return
+	}
+
+	err = deleteExportTaskWithTx(tx, taskID)
+	return err
+}
+
+func DeleteExportTask(taskID string) (err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	tx, _ := db.Begin()
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		} else {
+			tx.Commit()
+		}
+	}()
+
+	queryStr := fmt.Sprintf(`
+		DELETE
+		FROM %s
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{taskID}
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		DELETE
+		FROM %s
+		WHERE task_id = ?`, RecordsExportTaskTable)
+
+	_, err = tx.Exec(queryStr, queryParams...)
+	return err
+}
+
+func deleteExportTaskWithTx(tx *sql.Tx, taskID string) error {
+	queryStr := fmt.Sprintf(`
+		DELETE
+		FROM %s
+		WHERE task_id = ?`, RecordsExportTaskTable)
+	queryParams := []interface{}{taskID}
+
+	_, err := tx.Exec(queryStr, queryParams...)
+	return err
+}
+
+// RemoveAllOutdatedExportTasks removes all records before timestamp
+func RemoveAllOutdatedExportTasks(timestamp int64) error {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	// Get all outdated tasks
+	queryStr := fmt.Sprintf(`
+		SELECT uuid
+		FROM %s
+		WHERE created_at < ?`, RecordsExportTable)
+	queryParams := []interface{}{timestamp}
+
+	rows, err := db.Query(queryStr, queryParams...)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+
+	deleteTaskIDs := make([]interface{}, 0)
+
+	for rows.Next() {
+		var taskID string
+
+		err = rows.Scan(&taskID)
+		if err != nil {
+			return err
+		}
+
+		deleteTaskIDs = append(deleteTaskIDs, taskID)
+	}
+
+	if len(deleteTaskIDs) > 0 {
+		// Delete all outdated tasks
+		tx, _ := db.Begin()
+		defer func() {
+			if err != nil {
+				tx.Rollback()
+			} else {
+				tx.Commit()
+			}
+		}()
+
+		queryStr = fmt.Sprintf(`
+		DELETE
+		FROM %s
+		WHERE uuid IN (?%s)`, RecordsExportTable, strings.Repeat(",?", len(deleteTaskIDs)-1))
+
+		_, err = tx.Exec(queryStr, deleteTaskIDs...)
+		if err != nil {
+			return err
+		}
+
+		queryStr = fmt.Sprintf(`
+		DELETE
+		FROM %s
+		WHERE task_id IN (?%s)`, RecordsExportTaskTable, strings.Repeat(",?", len(deleteTaskIDs)-1))
+
+		_, err = tx.Exec(queryStr, deleteTaskIDs...)
+		return err
+	}
+
+	return nil
+}
+
+func GetExportTaskStatus(taskID string) (status int, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT status
+		FROM %s
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{taskID}
+
+	row := db.QueryRow(queryStr, queryParams...)
+
+	err = row.Scan(&status)
+	if err != nil && err == sql.ErrNoRows {
+		err = data.ErrExportTaskNotFound
+	}
+
+	return
+}
+
+func GetExportRecordsFile(taskID string) (path string, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT path
+		FROM %s
+		WHERE uuid = ?`, RecordsExportTable)
+	queryParams := []interface{}{taskID}
+
+	row := db.QueryRow(queryStr, queryParams...)
+
+	var pathNullable sql.NullString
+	err = row.Scan(&pathNullable)
+	if err != nil && err == sql.ErrNoRows {
+		err = data.ErrExportTaskNotFound
+	}
+
+	path = pathNullable.String
+	return
+}
+
+// UnlockAllEnterprisesExportTask removes all records in RecordsExportTaskTable
+// to prevent any enterprise locked due to the crash of admin-api
+// This function should only be called at init() stage
+// Note: This scenario is not well-designed for distributed system,
+//       if any of admin-api node crash and restart, it will unlock all enterprises
+//		 We should replace this mechanism with distributed lock (e.g. Redis, Zookeeper)
+func UnlockAllEnterprisesExportTask() error {
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+
+	queryStr := fmt.Sprintf("TRUNCATE TABLE %s", RecordsExportTaskTable)
+	_, err := db.Exec(queryStr)
+	return err
+}
+
+func ExportRecordsExists(taskID string) (bool, error) {
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE uuid = ?",
+		RecordsExportTable)
+	return rowExists(queryStr, taskID)
+}
+
+func rowExists(query string, args ...interface{}) (bool, error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return false, errors.New("DB not init")
+	}
+
+	var exists bool
+	queryStr := fmt.Sprintf("SELECT EXISTS (%s)", query)
+	err := db.QueryRow(queryStr, args...).Scan(&exists)
+	if err != nil && err != sql.ErrNoRows {
+		return false, err
+	}
+
+	return exists, nil
 }

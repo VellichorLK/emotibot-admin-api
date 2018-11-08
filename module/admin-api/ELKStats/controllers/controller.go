@@ -35,6 +35,18 @@ func returnBadRequest(w http.ResponseWriter, errResp data.ErrorResponseWithCode)
 	writeResponseJSON(w, errResp)
 }
 
+func returnForbiddenRequest(w http.ResponseWriter, errResp data.ErrorResponse) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusForbidden)
+	writeResponseJSON(w, errResp)
+}
+
+func returnNotFoundRequest(w http.ResponseWriter, errResp data.ErrorResponse) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
+	writeResponseJSON(w, errResp)
+}
+
 func returnUnprocessableEntity(w http.ResponseWriter, errResp data.ErrorResponseWithCode) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnprocessableEntity)

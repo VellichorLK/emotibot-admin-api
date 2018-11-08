@@ -1,13 +1,22 @@
 package services
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/olivere/elastic"
@@ -53,8 +62,35 @@ var emotionDict = map[string]string{
 	"neutral":       "中性",
 }
 
-//NewBoolQueryWithRecordQuery create a *elastic.BoolQuery with the Record condition.
-func NewBoolQueryWithRecordQuery(query data.RecordQuery) *elastic.BoolQuery {
+const (
+	csvExportDir           = "exports"
+	csvDirTimestampFormat  = "20060102"
+	csvFileTimestampFormat = "20060102_150405"
+)
+
+var exportBaseDir string
+
+func VisitRecordsServiceInit() error {
+	err := createExportRecordsBaseDir()
+	if err != nil {
+		return err
+	}
+
+	// Unlock all enterprises export task
+	// to prevent any enterprise locked due to the crash of admin-api
+	err = dao.UnlockAllEnterprisesExportTask()
+	if err != nil {
+		return err
+	}
+
+	// Start a housekeeping goroutine to clean up outdated exported records
+	go exportedRecordsHousekeeping()
+
+	return nil
+}
+
+// newBoolQueryWithRecordQuery create a *elastic.BoolQuery with the Record condition.
+func newBoolQueryWithRecordQuery(query *data.RecordQuery) *elastic.BoolQuery {
 	boolQuery := elastic.NewBoolQuery()
 	if query.Records != nil {
 		//Executing a Terms Query request with a lot of terms can be quite slow, as each additional term demands extra processing and memory.
@@ -229,7 +265,7 @@ func UpdateRecordIgnore(status bool) UpdateCommand {
 func UpdateRecords(query data.RecordQuery, cmd UpdateCommand) error {
 	ctx, client := elasticsearch.GetClient()
 	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
-	bq := NewBoolQueryWithRecordQuery(query)
+	bq := newBoolQueryWithRecordQuery(&query)
 	traceQuery(bq)
 	s := client.UpdateByQuery(index)
 	s.Type(data.ESRecordType)
@@ -258,7 +294,7 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 	ctx, client := elasticsearch.GetClient()
 	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
 	logger.Trace.Printf("index: %s\n", index)
-	boolQuery := NewBoolQueryWithRecordQuery(query)
+	boolQuery := newBoolQueryWithRecordQuery(&query)
 	traceQuery(boolQuery)
 	source := elastic.NewFetchSourceContext(true)
 	source.Include(
@@ -270,11 +306,12 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 		"answer.value",
 		data.VisitRecordsMetricLogTime,
 		data.VisitRecordsMetricEmotion,
-		"module",
+		data.VisitRecordsMetricModule,
 		"unique_id",
 		"isMarked",
 		"isIgnored",
 	)
+
 	ss := client.Search()
 	for _, agg := range aggs {
 		agg(ss)
@@ -357,6 +394,99 @@ func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*R
 	}
 
 	return r, nil
+}
+
+func VisitRecordsExport(query *data.RecordQuery) (exportTaskID string, err error) {
+	// Try to create export task
+	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
+	if err != nil {
+		return
+	}
+
+	// Create a goroutine to exporting records in background
+	go exportTask(query, exportTaskID)
+	return
+}
+
+func VisitRecordsExportDownload(w http.ResponseWriter, exportTaskID string) error {
+	exists, err := dao.ExportRecordsExists(exportTaskID)
+	if !exists {
+		return data.ErrExportTaskNotFound
+	} else if err != nil {
+		return err
+	}
+
+	statusCode, err := dao.GetExportTaskStatus(exportTaskID)
+	if err != nil {
+		return err
+	}
+
+	switch statusCode {
+	case data.CodeExportTaskRunning:
+		return data.ErrExportTaskInProcess
+	case data.CodeExportTaskFailed:
+		return data.ErrExportTaskFailed
+	case data.CodeExportTaskEmpty:
+		return data.ErrExportTaskEmpty
+	}
+
+	filePath, err := dao.GetExportRecordsFile(exportTaskID)
+	if err != nil {
+		return err
+	}
+
+	switch path.Ext(filePath) {
+	case ".zip":
+		w.Header().Set("Content-type", "application/zip")
+	case ".csv":
+		w.Header().Set("Content-type", "text/csv;charset=utf-8")
+	default:
+		return fmt.Errorf("Invalid exported records file format: %s", filePath)
+	}
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(w, file)
+	if err != nil {
+		return err
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment;filename=%s", path.Base(filePath)))
+	return nil
+}
+
+func VisitRecordsExportDelete(exportTaskID string) error {
+	exists, err := dao.ExportRecordsExists(exportTaskID)
+	if !exists {
+		return data.ErrExportTaskNotFound
+	} else if err != nil {
+		return err
+	}
+
+	return dao.DeleteExportTask(exportTaskID)
+}
+
+func VisitRecordsExportStatus(exportTaskID string) (status string, err error) {
+	exists, _err := dao.ExportRecordsExists(exportTaskID)
+	if !exists {
+		err = data.ErrExportTaskNotFound
+		return
+	} else if _err != nil {
+		err = _err
+		return
+	}
+
+	statusCode, _err := dao.GetExportTaskStatus(exportTaskID)
+	if _err != nil {
+		err = _err
+		return
+	}
+
+	status = data.ExportTaskCodesMap[statusCode]
+	return
 }
 
 // createTagsBoolQueries converts queryTags = [
@@ -477,4 +607,336 @@ func createTagsBoolQueries(tagsBoolQueries []*elastic.BoolQuery,
 	}
 
 	return tagsBoolQueries, nil
+}
+
+// exportTask exports records to CSV file in background
+// TODO: Cancel the corresponding running exporting records task when:
+//		 DELETE /export/{export-id} API is called.
+func exportTask(query *data.RecordQuery, exportTaskID string) {
+	var err error
+	defer func() {
+		if err != nil {
+			logger.Error.Printf("Something goes wrong with exporting task: %s, error: %s\n",
+				exportTaskID, err.Error())
+			dao.ExportTaskFailed(exportTaskID, err.Error())
+		}
+	}()
+
+	ctx, client := elasticsearch.GetClient()
+
+	logger.Info.Printf("Start exporting task: %s\n", exportTaskID)
+
+	boolQuery := newBoolQueryWithRecordQuery(query)
+
+	source := elastic.NewFetchSourceContext(true)
+	source.Include(
+		data.VisitRecordsMetricSessionID,
+		data.VisitRecordsMetricAppID,
+		data.VisitRecordsMetricUserID,
+		data.VisitRecordsMetricUserQ,
+		data.VisitRecordsMetricStdQ,
+		"answer.value",
+		data.VisitRecordsMetricModule,
+		data.VisitRecordsMetricEmotion,
+		data.VisitRecordsMetricEmotionScore,
+		data.VisitRecordsMetricIntent,
+		data.VisitRecordsMetricIntentScore,
+		data.VisitRecordsMetricLogTime,
+		data.VisitRecordsMetricScore,
+		data.VisitRecordsMetricCustomInfo,
+		data.VisitRecordsMetricNote,
+		data.VisitRecordsMetricQType,
+	)
+
+	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+
+	service := client.Scroll().
+		Index(index).
+		Query(boolQuery).
+		Size(data.ESScrollSize).
+		FetchSourceContext(source).
+		Sort(data.LogTimeFieldName, false).
+		KeepAlive(data.ESScrollKeepAlive)
+
+	records := make([]*data.VisitRecordsExportData, 0)
+	csvFilePaths := make([]string, 0)
+	numOfRecords := 0
+	numOfRecordsPerCSV := 0
+	timestamp := time.Now().Format(csvFileTimestampFormat)
+	numOfCSVFiles := 0
+
+	for {
+		logger.Trace.Printf("Task %s: Fetching results..\n", exportTaskID)
+		results, _err := service.Do(ctx)
+		logger.Trace.Printf("Task %s: Fetch results completed!!\n", exportTaskID)
+		if _err != nil {
+			// No more data, scroll finished
+			if _err == io.EOF {
+				// Flush the remaining records in the buffer to CSV file, if any
+				if len(records) > 0 {
+					numOfCSVFiles++
+					csvFileName := fmt.Sprintf("%s_%d", timestamp, numOfCSVFiles)
+					logger.Info.Printf("Task %s: Create CSV file %s.csv\n", exportTaskID, csvFileName)
+					csvFilePath, _err := createExportRecordsCSV(records, csvFileName)
+					if _err != nil {
+						err = _err
+						return
+					}
+					csvFilePaths = append(csvFilePaths, csvFilePath)
+				}
+
+				if len(csvFilePaths) == 0 {
+					err = dao.ExportTaskEmpty(exportTaskID)
+					if err == nil {
+						logger.Info.Printf("Task %s: Exporting completed, no results\n", exportTaskID)
+					}
+				} else if len(csvFilePaths) == 1 {
+					err = dao.ExportTaskCompleted(exportTaskID, csvFilePaths[0])
+					if err == nil {
+						logger.Info.Printf("Task %s: Exporting completed, total %d records\n",
+							exportTaskID, numOfRecords)
+					}
+				} else {
+					// Multiple CSV files, zip the files
+					logger.Info.Printf("Task %s: Start compressing %d CSV files\n",
+						exportTaskID, len(csvFilePaths))
+
+					zipFilePath, _err := compressExportRecordsCSV(csvFilePaths, timestamp)
+					if _err != nil {
+						err = _err
+						return
+					}
+
+					logger.Info.Printf("Task %s: Compresion finished!!\n", exportTaskID)
+
+					err = dao.ExportTaskCompleted(exportTaskID, zipFilePath)
+					if err != nil {
+						return
+					}
+
+					// Delete CSV files
+					for _, csvFilePath := range csvFilePaths {
+						err = os.Remove(csvFilePath)
+						if err != nil {
+							return
+						}
+					}
+
+					logger.Info.Printf("Task %s: Exporting completed, total %d records\n",
+						exportTaskID, numOfRecords)
+				}
+
+				return
+			}
+
+			err = _err
+			return
+		}
+
+		logger.Trace.Printf("Task %s: Start converting %d hit results\n",
+			exportTaskID, len(results.Hits.Hits))
+
+		for _, hit := range results.Hits.Hits {
+			rawRecord := data.VisitRecordsExportRawData{}
+			jsonStr, _err := hit.Source.MarshalJSON()
+			if _err != nil {
+				err = _err
+				return
+			}
+
+			err = json.Unmarshal(jsonStr, &rawRecord)
+			if err != nil {
+				return
+			}
+
+			answers := make([]string, 0)
+
+			for _, answer := range rawRecord.Answer {
+				answers = append(answers, answer.Value)
+			}
+
+			customInfo, _err := json.Marshal(rawRecord.CustomInfo)
+			if _err != nil {
+				err = _err
+				return
+			}
+
+			record := data.VisitRecordsExportData{
+				VisitRecordsExportBase: data.VisitRecordsExportBase{
+					SessionID:    rawRecord.SessionID,
+					AppID:        rawRecord.AppID,
+					UserID:       rawRecord.UserID,
+					UserQ:        rawRecord.UserQ,
+					StdQ:         rawRecord.StdQ,
+					Module:       rawRecord.Module,
+					Emotion:      rawRecord.Emotion,
+					EmotionScore: rawRecord.EmotionScore,
+					Intent:       rawRecord.Intent,
+					IntentScore:  rawRecord.IntentScore,
+					LogTime:      rawRecord.LogTime,
+					Score:        rawRecord.Score,
+					Note:         rawRecord.Note,
+				},
+				Answer:     strings.Join(answers, ", "),
+				CustomInfo: string(customInfo),
+			}
+
+			records = append(records, &record)
+			numOfRecords++
+			numOfRecordsPerCSV++
+		}
+
+		logger.Trace.Printf("Task %s: Converting %d hit results finished!!\n",
+			exportTaskID, len(results.Hits.Hits))
+
+		if numOfRecordsPerCSV == data.MaxNumRecordsPerCSV {
+			numOfCSVFiles++
+			csvFileName := fmt.Sprintf("%s_%d", timestamp, numOfCSVFiles)
+			logger.Info.Printf("Task %s: Create CSV file %s.csv\n", exportTaskID, csvFileName)
+			csvFilePath, _err := createExportRecordsCSV(records, csvFileName)
+			if _err != nil {
+				err = _err
+				return
+			}
+			csvFilePaths = append(csvFilePaths, csvFilePath)
+
+			records = make([]*data.VisitRecordsExportData, 0)
+			numOfRecordsPerCSV = 0
+		}
+	}
+}
+
+func createExportRecordsCSV(records []*data.VisitRecordsExportData,
+	csvFileName string) (csvFilePath string, err error) {
+	dirPath, _err := getExportRecordsDir()
+	if _err != nil {
+		err = _err
+		return
+	}
+
+	csvFilePath = fmt.Sprintf("%s/%s.csv", dirPath, csvFileName)
+	csvFile, _err := os.Create(csvFilePath)
+	if _err != nil {
+		err = _err
+		return
+	}
+	defer csvFile.Close()
+
+	// FIXME: ADD windows byte mark for utf-8 support on old EXCEL
+	out := csv.NewWriter(csvFile)
+	out.Write(data.VisitRecordsExportHeader)
+
+	for _, record := range records {
+		csvData := []string{
+			record.SessionID,
+			record.UserID,
+			record.UserQ,
+			record.StdQ,
+			record.Answer,
+			strconv.FormatFloat(record.Score, 'f', -1, 64),
+			record.Module,
+			record.LogTime,
+			record.Emotion,
+			strconv.FormatFloat(record.EmotionScore, 'f', -1, 64),
+			record.Intent,
+			strconv.FormatFloat(record.IntentScore, 'f', -1, 64),
+			record.CustomInfo,
+			record.Note,
+		}
+
+		err = out.Write(csvData)
+	}
+
+	out.Flush()
+	err = out.Error()
+	return
+}
+
+func compressExportRecordsCSV(files []string, timestamp string) (zipFilePath string, err error) {
+	dirPath, _err := getExportRecordsDir()
+	if _err != nil {
+		err = _err
+		return
+	}
+
+	zipFilePath = fmt.Sprintf("%s/%s.zip", dirPath, timestamp)
+	err = util.CompressFiles(files, zipFilePath)
+	return
+}
+
+func createExportRecordsBaseDir() error {
+	curDir, err := util.GetCurDir()
+	if err != nil {
+		return err
+	}
+
+	exportBaseDir = fmt.Sprintf("%s/%s", curDir, csvExportDir)
+	return os.MkdirAll(exportBaseDir, 0755)
+}
+
+/* getExportRecordsDir returns the directory path of the exported records
+ * If the directory not existed, create one
+ */
+func getExportRecordsDir() (dirPath string, err error) {
+	dirName := time.Now().Format(csvDirTimestampFormat)
+	dirPath = fmt.Sprintf("%s/%s", exportBaseDir, dirName)
+	err = os.MkdirAll(dirPath, 0755)
+	return
+}
+
+/* exportedRecordsHousekeeping do the housekeeping everyday
+ * to removes all the outdated exported records,
+ * including files and database rows everyday
+ * Only output logs when encountering any errors
+ */
+func exportedRecordsHousekeeping() {
+	for {
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+		todayStr := today.Format("2006-01-02")
+
+		logger.Info.Printf("Start doing housekeeping of %s\n", todayStr)
+		logger.Info.Printf("Removing exported records before %s\n", todayStr)
+
+		// Remove all outdated exported records directories
+		files, err := filepath.Glob(fmt.Sprintf("%s/*", exportBaseDir))
+		if err != nil {
+			logger.Error.Println(err.Error())
+		} else {
+			for _, fPath := range files {
+				fInfo, err := os.Stat(fPath)
+				if err != nil {
+					logger.Error.Println(err.Error())
+					continue
+				}
+
+				if fInfo.IsDir() {
+					dirTimestamp, err := time.Parse(csvDirTimestampFormat, fInfo.Name())
+					if err != nil {
+						logger.Error.Println(err.Error())
+						continue
+					}
+
+					if dirTimestamp.Before(today) {
+						err = os.RemoveAll(fPath)
+						if err != nil {
+							logger.Error.Println(err.Error())
+							continue
+						}
+					}
+				}
+			}
+		}
+
+		// Remove all outdated database rows
+		err = dao.RemoveAllOutdatedExportTasks(today.Unix())
+		if err != nil {
+			logger.Error.Println(err.Error())
+		}
+
+		logger.Info.Printf("Housekeeping of %s has completed, see you tomorrow!!\n", todayStr)
+
+		// Too tired, sleep for a day for another exhausted housekeeping
+		time.Sleep(24 * time.Hour)
+	}
 }

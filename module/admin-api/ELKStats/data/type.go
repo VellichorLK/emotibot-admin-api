@@ -5,9 +5,10 @@ import (
 )
 
 type CommonQuery struct {
-	AppID     string
-	StartTime time.Time
-	EndTime   time.Time
+	EnterpriseID string
+	AppID        string
+	StartTime    time.Time
+	EndTime      time.Time
 }
 
 type Tag struct {

@@ -10,15 +10,22 @@ const (
 )
 
 const (
-	VisitRecordsMetricSessionID = "session_id"
-	VisitRecordsMetricUserID    = "user_id"
-	VisitRecordsMetricUserQ     = "user_q"
-	VisitRecordsMetricScore     = "score"
-	VisitRecordsMetricStdQ      = "std_q"
-	VisitRecordsMetricAnswer    = "answer"
-	VisitRecordsMetricLogTime   = "log_time"
-	VisitRecordsMetricEmotion   = "emotion"
-	VisitRecordsMetricQType     = "qtype"
+	VisitRecordsMetricSessionID    = "session_id"
+	VisitRecordsMetricAppID        = "app_id"
+	VisitRecordsMetricUserID       = "user_id"
+	VisitRecordsMetricUserQ        = "user_q"
+	VisitRecordsMetricStdQ         = "std_q"
+	VisitRecordsMetricAnswer       = "answer"
+	VisitRecordsMetricModule       = "module"
+	VisitRecordsMetricEmotion      = "emotion"
+	VisitRecordsMetricEmotionScore = "emotion_score"
+	VisitRecordsMetricIntent       = "intent"
+	VisitRecordsMetricIntentScore  = "intent_score"
+	VisitRecordsMetricLogTime      = "log_time"
+	VisitRecordsMetricScore        = "score"
+	VisitRecordsMetricCustomInfo   = "custom_info"
+	VisitRecordsMetricNote         = "note"
+	VisitRecordsMetricQType        = "qtype"
 )
 
 type VisitRecordsTag struct {
@@ -82,20 +89,21 @@ type VisitRecordsRequestFilterTagGroup struct {
 //All pointer variables including slice are optional conditions
 //Any non-pointer variable SHOULD BE initialized properly.
 type RecordQuery struct {
-	Keyword   *string       `json:"keyword,omitempty"`
-	StartTime *int64        `json:"start_time,omitempty"`
-	EndTime   *int64        `json:"end_time,omitempty"`
-	Emotions  []string      `json:"emotions,omitempty"`
-	QTypes    []string      `json:"question_types,omitempty"`
-	Platforms []string      `json:"platforms,omitempty"`
-	Genders   []string      `json:"genders,omitempty"`
-	UserID    *string       `json:"uid,omitempty"`
-	Records   []interface{} `json:"records,omitempty"`
-	IsIgnored *bool         `json:"is_ignored,omitempty"`
-	IsMarked  *bool         `json:"is_marked,omitempty"`
-	From      int64         `json:"-"`
-	Limit     int           `json:"-"`
-	AppID     string        `json:"-"`
+	Keyword      *string       `json:"keyword,omitempty"`
+	StartTime    *int64        `json:"start_time,omitempty"`
+	EndTime      *int64        `json:"end_time,omitempty"`
+	Emotions     []string      `json:"emotions,omitempty"`
+	QTypes       []string      `json:"question_types,omitempty"`
+	Platforms    []string      `json:"platforms,omitempty"`
+	Genders      []string      `json:"genders,omitempty"`
+	UserID       *string       `json:"uid,omitempty"`
+	Records      []interface{} `json:"records,omitempty"`
+	IsIgnored    *bool         `json:"is_ignored,omitempty"`
+	IsMarked     *bool         `json:"is_marked,omitempty"`
+	From         int64         `json:"-"`
+	Limit        int           `json:"-"`
+	EnterpriseID string        `json:"-"`
+	AppID        string        `json:"-"`
 }
 
 type VisitRecordsQuery struct {
@@ -140,19 +148,47 @@ type VisitRecordsDataBase struct {
 
 type VisitRecordsData struct {
 	VisitRecordsDataBase
-	UniqueID  string  `json:"id"`
-	Answer    string  `json:"answer"`
+	UniqueID string `json:"id"`
+	Answer   string `json:"answer"`
 }
 
 type VisitRecordsRawData struct {
 	VisitRecordsDataBase
-	UniqueID  string   `json:"unique_id"`
-	Answer    []Answer `json:"answer"`
+	UniqueID string   `json:"unique_id"`
+	Answer   []Answer `json:"answer"`
 }
 
 type VisitRecordsHitResult struct {
 	VisitRecordsRawData
 	Module string `json:"module"`
+}
+
+type VisitRecordsExportBase struct {
+	SessionID    string  `json:"session_id"`
+	AppID        string  `json:"app_id"`
+	UserID       string  `json:"user_id"`
+	UserQ        string  `json:"user_q"`
+	StdQ         string  `json:"std_q"`
+	Module       string  `json:"module"`
+	Emotion      string  `json:"emotion"`
+	EmotionScore float64 `json:"emotion_score"`
+	Intent       string  `json:"intent"`
+	IntentScore  float64 `json:"intent_score"`
+	LogTime      string  `json:"log_time"`
+	Score        float64 `json:"score"`
+	Note         string  `json:"note"`
+}
+
+type VisitRecordsExportData struct {
+	VisitRecordsExportBase
+	Answer     string `json:"answer"`
+	CustomInfo string `json:"custom_info"`
+}
+
+type VisitRecordsExportRawData struct {
+	VisitRecordsExportBase
+	Answer     []Answer               `json:"answer"`
+	CustomInfo map[string]interface{} `json:"custom_info"`
 }
 
 var VisitRecordsTableHeader = []TableHeaderItem{
@@ -195,12 +231,26 @@ var VisitRecordsTableHeader = []TableHeaderItem{
 }
 
 var VisitRecordsExportHeader = []string{
+	"会话ID",
 	"用户ID",
 	"用户问题",
-	"匹配分数",
 	"标准问题",
 	"机器人回答",
+	"匹配分数",
+	"出话模组",
 	"访问时间",
 	"情感",
-	"问答类别",
+	"情感分数",
+	"意图",
+	"意图分数",
+	"客制化资讯",
+	"附注",
+}
+
+type VisitRecordsExportResponse struct {
+	ExportID string `json:"export_id"`
+}
+
+type VisitRecordsExportStatusResponse struct {
+	Status string `json:"status"`
 }

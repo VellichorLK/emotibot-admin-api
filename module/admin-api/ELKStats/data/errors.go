@@ -19,6 +19,10 @@ var (
 	ErrESTopHitNotFound       = errors.New("Elasticsearch: TopHit not found")
 	ErrESNameBucketNotFound   = errors.New("Elasticsearch: Name bucket not found")
 	ErrNotInit                = errors.New("Elasticsearch client is not inited successfully")
+	ErrExportTaskInProcess    = errors.New("Exporting task is in process")
+	ErrExportTaskFailed       = errors.New("Exporting task failed")
+	ErrExportTaskEmpty        = errors.New("Empty results, nothing to do")
+	ErrExportTaskNotFound     = errors.New("Exporting task not found")
 )
 
 const (
@@ -28,6 +32,7 @@ const (
 	ErrCodeInvalidParameterCategory
 	ErrCodeInvalidParameterFilter
 	ErrCodeInvalidRequestBody
+	ErrCodeInvalidParameterExportID
 )
 
 type ErrorResponse struct {

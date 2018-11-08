@@ -1,11 +1,13 @@
 package util
 
 import (
+	"archive/zip"
 	"crypto/md5"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -17,6 +19,16 @@ const (
 	mountDirPathKey      string      = "MOUNT_PATH"
 	wordbankTemplateFile string      = "wordbank_template.xlsx"
 )
+
+// GetCurDir returns the current directory of the executable binary
+func GetCurDir() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Dir(exe), nil
+}
 
 // GetFunctionSettingPath will return <appid>.property path of appid
 func GetFunctionSettingPath(appid string) string {
@@ -116,4 +128,48 @@ func SaveNLUFileFromEntity(appid string, wordLines []string, synonyms []string) 
 func GetWordbankTemplatePath() string {
 	mountPath := getGlobalEnv(mountDirPathKey)
 	return fmt.Sprintf("%s/%s", mountPath, wordbankTemplateFile)
+}
+
+func CompressFiles(filePaths []string, outFilePath string) error {
+	zipFile, err := os.Create(outFilePath)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	zipWriter := zip.NewWriter(zipFile)
+	defer zipWriter.Close()
+
+	for _, fPath := range filePaths {
+		file, err := os.Open(fPath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// Get the file information
+		info, err := file.Stat()
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		// Use deflate compression
+		header.Method = zip.Deflate
+
+		// Compress the file
+		w, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		if _, err = io.Copy(w, file); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +12,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -21,12 +21,14 @@ import (
 //Limit & Page should be given by r's query string.
 func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	query, err := newRecordQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody, err.Error())
 		returnBadRequest(w, errResponse)
 		return
 	}
+
 	limit, found := r.URL.Query()["limit"]
 	if !found {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody, "limit should be greater than zero")
@@ -34,27 +36,22 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		query.Limit, _ = strconv.Atoi(limit[0])
-
 	}
+
 	page := r.URL.Query().Get("page")
 	p, _ := strconv.ParseInt(page, 10, 64)
 	if p <= 0 {
 		p = 1
 	}
+
 	query.From = (p - 1) * int64(query.Limit)
 
-	// TODO: merge esclient error into current design
-	// esCtx, esClient := elasticsearch.GetClient()
-	// if esClient == nil {
-	// 	returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
-	// 	return
-	// }
-
-	result, err := services.VisitRecordsQuery(*query, services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
+	result, err := services.VisitRecordsQuery(*query,
+		services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
 	if err != nil {
 		var errResponse data.ErrorResponse
 		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
-			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ", "))
 		} else {
 			errResponse = data.NewErrorResponse(err.Error())
 		}
@@ -71,14 +68,13 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		MarkedSize:  result.Aggs["isMarked"].(int64),
 		IgnoredSize: result.Aggs["isIgnored"].(int64),
 	}
-	w.Header().Set("content-type", "application/json")
+
 	returnOK(w, response)
 }
 
-//RecordsDownloadHandler handle record downloading request.
-//It ignore limit and page, and write csv format records to the response body
-func RecordsDownloadHandler(w http.ResponseWriter, r *http.Request) {
+func VisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	query, err := newRecordQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody,
@@ -87,59 +83,101 @@ func RecordsDownloadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query.Limit = 10000
-	query.From = 0
-	//FIXME: use scroll API to rewrite
-	result, err := services.VisitRecordsQuery(*query)
+	exportTaskID, err := services.VisitRecordsExport(query)
 	if err != nil {
 		var errResponse data.ErrorResponse
 		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
 			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
 		} else {
 			errResponse = data.NewErrorResponse(err.Error())
+
+			switch err {
+			case data.ErrExportTaskInProcess:
+				returnForbiddenRequest(w, errResponse)
+			default:
+				returnInternalServerError(w, errResponse)
+			}
 		}
-		returnInternalServerError(w, errResponse)
 		return
 	}
 
-	totalRecords := result.Hits
-	//This total size may over the es limit, 10000
-	logger.Trace.Printf("download total size: %d", result.Aggs["total_size"].(int64))
-
-	// Everything goes right, start writting CSV response
-	// FIXME, ADD windows byte mark for utf-8 support on old EXCEL
-	out := csv.NewWriter(w)
-	out.Write(data.VisitRecordsExportHeader)
-
-	for _, record := range totalRecords {
-		csvData := []string{
-			record.UserID,
-			record.UserQ,
-			strconv.FormatFloat(record.Score, 'f', -1, 64),
-			record.StdQ,
-			record.Answer,
-			record.LogTime,
-			record.Emotion,
-			record.QType,
-		}
-
-		err = out.Write(csvData)
-		if err != nil {
-			errResponse := data.NewErrorResponse(err.Error())
-			returnInternalServerError(w, errResponse)
-			return
-		}
+	response := data.VisitRecordsExportResponse{
+		ExportID: exportTaskID,
 	}
 
-	out.Flush()
-	err = out.Error()
+	returnOK(w, response)
+}
+
+func VisitRecordsExportDownloadHandler(w http.ResponseWriter, r *http.Request) {
+	exportID := util.GetMuxVar(r, "export_id")
+	if exportID == "" {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
+		returnBadRequest(w, errResponse)
+		return
+	}
+
+	err := services.VisitRecordsExportDownload(w, exportID)
 	if err != nil {
-		errResponse := data.NewErrorResponse(err.Error())
-		returnInternalServerError(w, errResponse)
+		switch err {
+		case data.ErrExportTaskNotFound:
+			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
+		case data.ErrExportTaskInProcess:
+			returnForbiddenRequest(w, data.NewErrorResponse(err.Error()))
+		case data.ErrExportTaskEmpty:
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			returnInternalServerError(w, data.NewErrorResponse(err.Error()))
+		}
 		return
 	}
-	w.Header().Set("content-type", "text/csv;charset=utf-8")
+
 	w.WriteHeader(http.StatusOK)
+}
+
+func VisitRecordsExportDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	exportID := util.GetMuxVar(r, "export_id")
+	if exportID == "" {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
+		returnBadRequest(w, errResponse)
+		return
+	}
+
+	err := services.VisitRecordsExportDelete(exportID)
+	if err != nil {
+		if err == data.ErrExportTaskNotFound {
+			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
+		} else {
+			returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func VisitRecordsExportStatusHandler(w http.ResponseWriter, r *http.Request) {
+	exportID := util.GetMuxVar(r, "export_id")
+	if exportID == "" {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
+		returnBadRequest(w, errResponse)
+		return
+	}
+
+	status, err := services.VisitRecordsExportStatus(exportID)
+	if err != nil {
+		if err == data.ErrExportTaskNotFound {
+			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
+		} else {
+			returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+		}
+		return
+	}
+
+	response := data.VisitRecordsExportStatusResponse{
+		Status: status,
+	}
+
+	returnOK(w, response)
 }
 
 type markResponse struct {
@@ -410,12 +448,15 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 //the only error should be returned is if request itself is invalided.
 //It handled the limit & page logic for now, should move up to controller level.
 func newRecordQuery(r *http.Request) (*data.RecordQuery, error) {
+	enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
 	var query data.RecordQuery
 	err := json.NewDecoder(r.Body).Decode(&query)
 	if err != nil {
 		return nil, fmt.Errorf("record query: request handled failed, %v", err)
 	}
+
+	query.EnterpriseID = enterpriseID
 	query.AppID = appID
 
 	return &query, nil
