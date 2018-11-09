@@ -26,7 +26,12 @@ POST /emotibot-records-csbot-*/_search
             }
           }
         }
-      ]
+      ],
+      "must_not": {
+        "term": {
+          "std_q.keyword": ""
+        }
+      }
     }
   },
   "aggs": {
