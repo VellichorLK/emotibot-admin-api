@@ -59,19 +59,3 @@ const ESMaxResultWindow = 10000
 
 const ESScrollSize = 10000
 const ESScrollKeepAlive = "30s"
-
-const MaxNumRecordsPerCSV = 100000
-
-const (
-	CodeExportTaskRunning = iota
-	CodeExportTaskCompleted
-	CodeExportTaskFailed
-	CodeExportTaskEmpty
-)
-
-var ExportTaskCodesMap = map[int]string{
-	CodeExportTaskRunning: "RUNNING",
-	CodeExportTaskCompleted: "COMPLETED",
-	CodeExportTaskFailed: "FAILED",
-	CodeExportTaskEmpty: "EMPTY",
-}
