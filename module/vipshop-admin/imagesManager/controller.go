@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/ApiError"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -139,6 +140,7 @@ func handleImageList(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()))
 		return
 	}
+	lastOperation := time.Now()
 
 	list, err := getImageList(listArgs)
 	if err != nil {
@@ -148,6 +150,7 @@ func handleImageList(ctx context.Context) {
 		return
 
 	}
+	util.LogInfo.Printf("get image list in handleImageList took: %s\n", time.Since(lastOperation))
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(list)
 	return
@@ -161,15 +164,20 @@ func handleDeleteImage(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
 		return
 	}
+	lastOperation := time.Now()
 
 	imageIDs := []interface{}{imageID}
 
 	auditRet := 1
 	files, _ := getFileNameByImageID(imageIDs)
+	util.LogInfo.Printf("get file name in handleDeleteImage took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	err = deleteImagesByID(ctx, imageIDs)
 	if err != nil {
 		auditRet = 0
 	}
+	util.LogInfo.Printf("delete image in handleDeleteImage took: %s\n", time.Since(lastOperation))
 
 	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
 }
@@ -182,6 +190,7 @@ func handleDeleteImages(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()))
 		return
 	}
+	lastOperation := time.Now()
 
 	imageIDs := make([]interface{}, len(ids))
 	for i := 0; i < len(ids); i++ {
@@ -190,10 +199,14 @@ func handleDeleteImages(ctx context.Context) {
 
 	auditRet := 1
 	files, _ := getFileNameByImageID(imageIDs)
+	util.LogInfo.Printf("get file name in handleDeleteImages took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	err = deleteImagesByID(ctx, imageIDs)
 	if err != nil {
 		auditRet = 0
 	}
+	util.LogInfo.Printf("delete images in handleDeleteImages took: %s\n", time.Since(lastOperation))
 
 	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationDelete)
 
@@ -220,13 +233,15 @@ func writeImageAduitLog(ctx context.Context, files map[uint64]string, result int
 }
 
 func deleteImagesByID(ctx context.Context, imageIDs []interface{}) (err error) {
-
+	lastOperation := time.Now()
 	relationMap, err := getRelationByID(imageIDs)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get image relation in deleteImagesByID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	if len(relationMap) > 0 {
 		ctx.StatusCode(http.StatusConflict)
@@ -235,6 +250,8 @@ func deleteImagesByID(ctx context.Context, imageIDs []interface{}) (err error) {
 	}
 
 	_, err = deleteImages(imageIDs)
+	util.LogInfo.Printf("delete images in deleteImagesByID took: %s\n", time.Since(lastOperation))
+
 
 	if err != nil {
 		if err == errImageNotExist {
@@ -256,6 +273,7 @@ func updateImage(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
 		return
 	}
+	lastOperation := time.Now()
 
 	files, err := getFileNameByImageID([]interface{}{imageID})
 	if err != nil {
@@ -264,6 +282,9 @@ func updateImage(ctx context.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get file name in updateImage took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 
 	if _, ok := files[imageID]; !ok {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -312,6 +333,8 @@ func updateImage(ctx context.Context) {
 			return
 		}
 	}
+	util.LogInfo.Printf("update images in updateImage took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	file, fileHeader, err := ctx.FormFile(IMAGE)
 	if fileHeader != nil {
@@ -346,6 +369,7 @@ func updateImage(ctx context.Context) {
 			return
 		}
 	}
+	util.LogInfo.Printf("replace old images in updateImage took: %s\n", time.Since(lastOperation))
 
 	if tx != nil {
 		tx.Commit()
@@ -362,6 +386,7 @@ func copyImage(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.REQUEST_ERROR, "Invalid id "+ctx.Params().GetEscape("id")))
 		return
 	}
+	lastOperation := time.Now()
 
 	title := ctx.FormValue(TITLE)
 	if title == "" {
@@ -385,6 +410,8 @@ func copyImage(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
+	util.LogInfo.Printf("get file name in copyImage took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	if len(nameList) <= 0 {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -404,6 +431,8 @@ func copyImage(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
+	util.LogInfo.Printf("copy image in copyImage took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -427,6 +456,7 @@ func copyImage(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleMedia, util.AuditOperationAdd, auditLog, auditRet)
 		return
 	}
+	util.LogInfo.Printf("store image in copyImage took: %s\n", time.Since(lastOperation))
 
 	tx.Commit()
 
@@ -447,6 +477,7 @@ func downloadImages(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, "No assigned id"))
 		return
 	}
+	lastOperation := time.Now()
 
 	imageIDs := make([]interface{}, len(ids))
 	for i := 0; i < len(ids); i++ {
@@ -461,6 +492,8 @@ func downloadImages(ctx context.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get file name in downloadImages took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	b, err := packageImages(imageIDs)
 	if err != nil {
@@ -469,6 +502,7 @@ func downloadImages(ctx context.Context) {
 		util.LogError.Println(err)
 		auditRet = 0
 	}
+	util.LogInfo.Printf("package images in downloadImages took: %s\n", time.Since(lastOperation))
 
 	writeImageAduitLog(ctx, files, auditRet, util.AuditOperationExport)
 	if auditRet == 0 {
@@ -499,6 +533,7 @@ func searchImageHandler(ctx context.Context) {
 		ctx.JSON(util.GenRetObj(ApiError.JSON_PARSE_ERROR, "No assigned id"))
 		return
 	}
+	lastOperation := time.Now()
 
 	answerImages, err := getAnswerImage(inputArgs.AnswerIDs)
 	if err != nil {
@@ -507,6 +542,7 @@ func searchImageHandler(ctx context.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get answer images in searchImageHandler took: %s\n", time.Since(lastOperation))
 
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(answerImages)

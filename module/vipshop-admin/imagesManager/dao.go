@@ -35,12 +35,14 @@ func getLocationID(location string) (uint64, error) {
 }
 
 func getExistLocationID(location string) (uint64, error) {
+	lastOperation := time.Now()
 	sql := "select " + attrID + " from " + locationTable + " where " + attrLocation + "=?"
 	rows, err := SqlQuery(db, sql, location)
 	if err != nil {
 		return 0, nil
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("query image location in getExistLocationID took: %s\n", time.Since(lastOperation))
 
 	var id uint64
 	if rows.Next() {
@@ -50,12 +52,15 @@ func getExistLocationID(location string) (uint64, error) {
 }
 
 func getImageRef(args *getImagesArg) (*imageList, error) {
-
+	lastOperation := time.Now()
 	locations, err := getLocationMap()
 
 	if err != nil {
 		return nil, err
 	}
+	util.LogInfo.Printf("query image location map in getImageRef took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 
 	var condition string
 	var params []interface{}
@@ -77,6 +82,8 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 		}
 	}
 	rows.Close()
+	util.LogInfo.Printf("count images in getImageRef took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	condition += "order by " + args.Order + " desc "
 	condition += "limit " + strconv.FormatInt(args.Limit, 10)
@@ -91,6 +98,8 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get images in getImageRef took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	il := &imageList{CurPage: uint64(args.Page)}
 	il.Images = make([]*imageInfo, 0)
@@ -136,6 +145,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 
 	il.Total = totalCount
 	il.CurPage = uint64(args.Page)
+	util.LogInfo.Printf("create image structs in getImageRef took: %s\n", time.Since(lastOperation))
 
 	return il, nil
 }
@@ -143,7 +153,7 @@ func getImageRef(args *getImagesArg) (*imageList, error) {
 func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap map[int]*Category) (map[int]*questionInfo, error) {
 
 	qis := make(map[int]*questionInfo, 0)
-
+	lastOperation := time.Now()
 	if len(answerID) > 0 {
 
 		mainDB := util.GetMainDB()
@@ -162,6 +172,8 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 			return nil, err
 		}
 		defer rows.Close()
+		util.LogInfo.Printf("get images answer reference in getAnswerRef took: %s\n", time.Since(lastOperation))
+		lastOperation = time.Now()
 
 		var lastAnswerID int
 		//Speedup same question ID's answer
@@ -218,18 +230,21 @@ func getAnswerRef(answerID []interface{}, tagMap map[int]string, categoriesMap m
 			}
 
 		}
+		util.LogInfo.Printf("cerate images answer reference struct in getAnswerRef took: %s\n", time.Since(lastOperation))
 	}
 
 	return qis, nil
 }
 
 func getLocationMap() (map[uint64]string, error) {
+	lastOperation := time.Now()
 	sqlString := "select " + attrID + "," + attrLocation + " from " + locationTable
 	rows, err := SqlQuery(db, sqlString)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get location in getLocationMap took: %s\n", time.Since(lastOperation))
 
 	locationMap := make(map[uint64]string)
 
@@ -243,6 +258,7 @@ func getLocationMap() (map[uint64]string, error) {
 		locationMap[id] = strings.Trim(location, "/")
 	}
 
+	util.LogInfo.Printf("create location map in getLocationMap took: %s\n", time.Since(lastOperation))
 	return locationMap, nil
 }
 
@@ -271,7 +287,7 @@ func getTagMap() (map[int]string, error) {
 }
 
 func GetCategories() (map[int]*Category, error) {
-
+	lastOperation := time.Now()
 	sqlString := "select " + attrCategoryID + "," + attrCategoryName + "," + attrParentID + " from " + VIPCategoryTable
 
 	rows, err := SqlQuery(util.GetMainDB(), sqlString)
@@ -279,6 +295,8 @@ func GetCategories() (map[int]*Category, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get categories in GetCategories took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	categories := make(map[int]*Category)
 
@@ -292,13 +310,14 @@ func GetCategories() (map[int]*Category, error) {
 		category := &Category{Name: categoryName, ParentID: parentID}
 		categories[categoryID] = category
 	}
+	util.LogInfo.Printf("create categories in GetCategories took: %s\n", time.Since(lastOperation))
 
 	return categories, nil
 }
 
 //get the file name stored in the disk. Keep the order of the imageID to fileName
 func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
-
+	lastOperation := time.Now()
 	sqlString := "select " + attrID + "," + attrRawFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
 
 	rows, err := SqlQuery(db, sqlString, imageIDs...)
@@ -306,6 +325,9 @@ func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get imaegs in getRealFileNameByImageID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	fileMap := make(map[uint64]string)
 	var fileName string
 	var id uint64
@@ -316,6 +338,8 @@ func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 		}
 		fileMap[id] = fileName
 	}
+	util.LogInfo.Printf("create filename struct in getRealFileNameByImageID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	if len(fileMap) != len(imageIDs) {
 		return nil, errors.New("file name num doesn't match file map")
@@ -337,10 +361,12 @@ func getRealFileNameByImageID(imageIDs []interface{}) ([]string, error) {
 		}
 
 	}
+	util.LogInfo.Printf("create imaeg map in getRealFileNameByImageID took: %s\n", time.Since(lastOperation))
 	return fileNameList, nil
 }
 
 func getFileNameByImageID(imageIDs []interface{}) (map[uint64]string, error) {
+	lastOperation := time.Now()
 	sqlString := "select " + attrID + "," + attrFileName + " from " + imageTable + " where " + attrID + " in (?" + strings.Repeat(",?", len(imageIDs)-1) + ")"
 
 	rows, err := SqlQuery(db, sqlString, imageIDs...)
@@ -348,6 +374,9 @@ func getFileNameByImageID(imageIDs []interface{}) (map[uint64]string, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("select images in getFileNameByImageID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	fileNameMap := make(map[uint64]string, 0)
 	var fileName string
 	var id uint64
@@ -358,6 +387,7 @@ func getFileNameByImageID(imageIDs []interface{}) (map[uint64]string, error) {
 		}
 		fileNameMap[id] = fileName
 	}
+	util.LogInfo.Printf("create filename map in getFileNameByImageID took: %s\n", time.Since(lastOperation))
 	return fileNameMap, nil
 }
 
@@ -365,6 +395,7 @@ func GetImageByAnswerID(answerIDs []interface{}) ([]*ImageRelation, error) {
 	imageRelations := make([]*ImageRelation, 0)
 	num := len(answerIDs)
 	if num > 0 {
+		lastOperation := time.Now()
 
 		locationMap, err := getLocationMap()
 		if err != nil {
@@ -393,6 +424,8 @@ func GetImageByAnswerID(answerIDs []interface{}) ([]*ImageRelation, error) {
 			return nil, err
 		}
 		defer rows.Close()
+		util.LogInfo.Printf("get images by answer id in GetImageByAnswerID took: %s\n", time.Since(lastOperation))
+		lastOperation = time.Now()
 
 		var imageID, locationID, answerID uint64
 		var fileName string
@@ -423,6 +456,7 @@ func GetImageByAnswerID(answerIDs []interface{}) ([]*ImageRelation, error) {
 				}
 			}
 		}
+		util.LogInfo.Printf("create answer id map in GetImageByAnswerID took: %s\n", time.Since(lastOperation))
 
 	}
 	return imageRelations, nil
@@ -491,13 +525,17 @@ func copyFiles(from string, to string, fileName []string) (int, error) {
 }
 
 func getRelationByID(ids []interface{}) (map[uint64][]uint64, error) {
-
+	lastOperation := time.Now()
+	
 	sqlString := fmt.Sprintf("select %s,%s from %s where %s in(?%s)", attrImageID, attrAnswerID, relationTable, attrImageID, strings.Repeat(",?", len(ids)-1))
 	rows, err := db.Query(sqlString, ids...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("select relation in getRelationByID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	var imageID, answerID uint64
 	relationMap := make(map[uint64][]uint64)
 	for rows.Next() {
@@ -507,6 +545,7 @@ func getRelationByID(ids []interface{}) (map[uint64][]uint64, error) {
 		}
 		relationMap[imageID] = append(relationMap[imageID], answerID)
 	}
+	util.LogInfo.Printf("create relation map in getRelationByID took: %s\n", time.Since(lastOperation))
 	return relationMap, nil
 }
 
@@ -653,6 +692,7 @@ func CreateMediaRef(answerID int, images []int) (err error) {
 		return
 	}
 	defer util.ClearTransition(tx)
+	lastOperation := time.Now()
 
 	// read lock for images to prevent other transaction to do modification on these images
 	readLockSql := fmt.Sprintf("SELECT count(id) FROM images WHERE id in (?%s) LOCK IN SHARE MODE;", strings.Repeat(",?", len(images)-1))
@@ -665,6 +705,8 @@ func CreateMediaRef(answerID int, images []int) (err error) {
 		return
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("select images count in CreateMediaRef took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	var count int
 	for rows.Next() {
@@ -688,10 +730,12 @@ func CreateMediaRef(answerID int, images []int) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("insert images in CreateMediaRef took: %s\n", time.Since(lastOperation))
 	return tx.Commit()
 }
 
 func DeleteMediaRef(answerID int) (err error) {
+	lastOperation := time.Now()
 	tx, err := GetTx(db)
 	if err != nil {
 		return
@@ -703,11 +747,12 @@ func DeleteMediaRef(answerID int) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("delete images in DeleteMediaRef took: %s\n", time.Since(lastOperation))
 	return tx.Commit()
 }
 
 func GetMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
-
+	lastOperation := time.Now()
 	metas := make(map[uint64]*imageMeta)
 	num := len(imageIDs)
 	if num == 0 {
@@ -719,6 +764,8 @@ func GetMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get image metadata in GetMetaByImageID took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	var fileName string
 	var rawFileName string
@@ -730,6 +777,7 @@ func GetMetaByImageID(imageIDs []interface{}) (map[uint64]*imageMeta, error) {
 		}
 		metas[id] = &imageMeta{FileName: fileName, RawFileName: rawFileName}
 	}
+	util.LogInfo.Printf("create image metadata struct in GetMetaByImageID took: %s\n", time.Since(lastOperation))
 
 	return metas, err
 
