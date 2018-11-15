@@ -259,6 +259,57 @@ var VisitStatsTableHeader = []TableHeaderItem{
 	},
 }
 
+var VisitStatsTagTableHeader = []TableHeaderItem{
+	TableHeaderItem{
+		Text: "总会话数",
+		ID:   VisitStatsMetricConversations,
+	},
+	TableHeaderItem{
+		Text: "独立用户数",
+		ID:   VisitStatsMetricUniqueUsers,
+	},
+	TableHeaderItem{
+		Text: "新增用户数",
+		ID:   VisitStatsMetricNewUsers,
+	},
+	TableHeaderItem{
+		Text: "总提问数",
+		ID:   VisitStatsMetricTotalAsks,
+	},
+	TableHeaderItem{
+		Text: "标准回复",
+		ID:   VisitStatsMetricNormalResponses,
+	},
+	TableHeaderItem{
+		Text: "聊天",
+		ID:   VisitStatsMetricChats,
+	},
+	TableHeaderItem{
+		Text: "其他",
+		ID:   VisitStatsMetricOthers,
+	},
+	TableHeaderItem{
+		Text: "未知问题回复",
+		ID:   VisitStatsMetricUnknownQnA,
+	},
+	TableHeaderItem{
+		Text: "未解决",
+		ID:   "unsolved",
+	},
+	TableHeaderItem{
+		Text: "成功率",
+		ID:   VisitStatsMetricSuccessRate,
+	},
+	TableHeaderItem{
+		Text: "解决率",
+		ID:   "solved_rate",
+	},
+	TableHeaderItem{
+		Text: "平均会话对话数",
+		ID:   VisitStatsMetricConversationsPerSession,
+	},
+}
+
 var AnswerCategoryTableHeader = []TableHeaderItem{
 	TableHeaderItem{
 		Text: "业务类",

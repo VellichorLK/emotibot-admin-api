@@ -440,7 +440,7 @@ func createVisitStatsTagResponse(query data.VisitStatsQuery,
 	}
 
 	response := data.VisitStatsTagResponse{
-		TableHeader: data.VisitStatsTableHeader,
+		TableHeader: data.VisitStatsTagTableHeader,
 		Data:        tagData,
 		Total:       *totalVisitStatsQ,
 	}
