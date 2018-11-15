@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sort"
+	"time"
 	// "strings"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -177,8 +178,12 @@ func deleteSimilarQuestions(qid string) error {
 }
 
 func DoFilter(condition QueryCondition, appid string) ([]int, [][]string, error) {
+	lastOperation := time.Now()
 	qids, aidMap, err := FilterQuestion(condition, appid)
 	aids := make([][]string, len(qids))
+
+	util.LogInfo.Printf("filter questions in Dofilter took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	if err != nil {
 		return qids, aids, err
@@ -188,13 +193,16 @@ func DoFilter(condition QueryCondition, appid string) ([]int, [][]string, error)
 		aidStr := aidMap[qid]
 		aids[i] = strings.Split(aidStr, ",")
 	}
+	util.LogInfo.Printf("create aids slice in Dofilter took: %s", time.Since(lastOperation))
 
 	return qids, aids, nil
 }
 
 func DoFetch(qids []int, aids [][]string, appid string) ([]Question, error) {
+	lastOperation := time.Now()
 	emptyCondition := QueryCondition{}
 	questions, err := FetchQuestions(emptyCondition, qids, aids, appid)
+	util.LogInfo.Printf("fetch questions in DoFetch took: %s\n", time.Since(lastOperation))
 
 	return questions, err
 }

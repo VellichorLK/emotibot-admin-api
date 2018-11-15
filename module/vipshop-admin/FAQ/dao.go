@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
 	"emotibot.com/emotigo/module/vipshop-admin/util"
@@ -28,11 +29,14 @@ func addApiCategory(appid string, name string, parentID int, level int) (int, er
 		return 0, errors.New("DB not init")
 	}
 
+	lastOperation := time.Now()
 	queryStr := fmt.Sprintf("INSERT INTO %s_categories (CategoryName, ParentId, Status, level, ParentPath, SelfPath) VALUES(?, ?, 1, ?, '', '')", appid)
 	res, err := mySQL.Exec(queryStr, name, parentID, level)
 	if err != nil {
 		return 0, err
 	}
+	util.LogInfo.Printf("insert into categories in addApiCategory took: %s", time.Since(lastOperation))
+
 	id, err := res.LastInsertId()
 	if err != nil {
 		return 0, err
@@ -48,6 +52,7 @@ func getQuestionCountInCategories(appid string, IDs []int) (int, error) {
 	} else if len(IDs) == 0 {
 		return 0, nil
 	}
+	lastOperation := time.Now()
 
 	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM %s_question WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
 	args := make([]interface{}, len(IDs))
@@ -60,6 +65,7 @@ func getQuestionCountInCategories(appid string, IDs []int) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	util.LogInfo.Printf("select count in getQuestionCountInCategories took: %s", time.Since(lastOperation))
 
 	return count, nil
 }
@@ -70,12 +76,14 @@ func getCategories(appid string) (map[int]*APICategory, error) {
 		return nil, errors.New("DB not init")
 	}
 
+	lastOperation := time.Now()
 	queryStr := fmt.Sprintf("SELECT CategoryId, CategoryName, ParentId FROM `%s_categories` where Status > 0 and CategoryId > 0", appid)
 	rows, err := mySQL.Query(queryStr)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get categories in getCategories took: %s", time.Since(lastOperation))
 
 	var ret []*APICategory
 	for rows.Next() {
@@ -104,6 +112,7 @@ func deleteCategories(appid string, IDs []int) error {
 		return nil
 	}
 
+	lastOperation := time.Now()
 	queryStr := fmt.Sprintf("DELETE FROM %s_categories WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
 	args := make([]interface{}, len(IDs))
 	for idx := range IDs {
@@ -113,6 +122,7 @@ func deleteCategories(appid string, IDs []int) error {
 	if err != nil {
 		return err
 	}
+	util.LogInfo.Printf("get categories in deleteCategories took: %s", time.Since(lastOperation))
 
 	return nil
 }
@@ -125,6 +135,7 @@ func disableQuestionInCategories(appid string, IDs []int) error {
 		return nil
 	}
 
+	lastOperation := time.Now()
 	queryStr := fmt.Sprintf("UPDATE %s_question SET Status = -1 WHERE CategoryId in (?"+strings.Repeat(",?", len(IDs)-1)+")", appid)
 	args := make([]interface{}, len(IDs))
 	for idx := range IDs {
@@ -134,11 +145,13 @@ func disableQuestionInCategories(appid string, IDs []int) error {
 	if err != nil {
 		return err
 	}
+	util.LogInfo.Printf("get categories in deleteCategories took: %s", time.Since(lastOperation))
 
 	return nil
 }
 
 func updateCategoryName(appid string, categoryID int, name string) error {
+	lastOperation := time.Now()
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		return errors.New("DB not init")
@@ -149,11 +162,13 @@ func updateCategoryName(appid string, categoryID int, name string) error {
 	if err != nil {
 		return err
 	}
+	util.LogInfo.Printf("update categories name in updateCategoryName took: %s", time.Since(lastOperation))
 
 	return nil
 }
 
 func selectSimilarQuestions(qID int, appID string) ([]SimilarQuestion, error) {
+	lastOperation := time.Now()
 	query := fmt.Sprintf("SELECT SQ_Id, Content FROM %s_squestion WHERE Question_Id = ?", appID)
 	db := util.GetMainDB()
 	if db == nil {
@@ -164,6 +179,7 @@ func selectSimilarQuestions(qID int, appID string) ([]SimilarQuestion, error) {
 		return nil, fmt.Errorf("query execute failed: %s", err)
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("select similar questions in selectSimilarQuestions took: %s", time.Since(lastOperation))
 	var similarQuestions []SimilarQuestion = make([]SimilarQuestion, 0)
 
 	for rows.Next() {
@@ -181,6 +197,7 @@ func selectSimilarQuestions(qID int, appID string) ([]SimilarQuestion, error) {
 // selectQuestion will return StdQuestion struct of the qid.
 // if some input are missed it will return error, if no rows are found it will return sql.ErrNoRows.
 func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
+	lastOperation := time.Now()
 	var questions = make([]StdQuestion, 0)
 	db := util.GetMainDB()
 	if db == nil {
@@ -197,6 +214,8 @@ func selectQuestions(groupID []int, appid string) ([]StdQuestion, error) {
 		return nil, fmt.Errorf("SQL query %s error: %s", rawQuery, err)
 	}
 	defer result.Close()
+	util.LogInfo.Printf("select questions in selectQuestions took: %s", time.Since(lastOperation))
+
 	for result.Next() {
 		var q StdQuestion
 		result.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
@@ -221,6 +240,7 @@ func FilterQuestions(appID string, content []string) ([]StdQuestion, error) {
 	if len(content) == 0 {
 		return nil, fmt.Errorf("content should have at least one element")
 	}
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	query := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content IN (?%s) AND status = 0", appID, strings.Repeat(", ?", len(content)-1))
 	var parameters = make([]interface{}, len(content))
@@ -234,6 +254,8 @@ func FilterQuestions(appID string, content []string) ([]StdQuestion, error) {
 		return nil, fmt.Errorf("select questions by content query failed, %v", err)
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("filter questions in FilterQuestions took: %s", time.Since(lastOperation))
+
 	var results = make([]StdQuestion, 0)
 	for rows.Next() {
 		var (
@@ -252,17 +274,20 @@ func FilterQuestions(appID string, content []string) ([]StdQuestion, error) {
 }
 
 func deleteSimilarQuestionsByQuestionID(t *sql.Tx, qid int, appid string) error {
+	lastOperation := time.Now()
 	queryStr := fmt.Sprintf("DELETE FROM %s_squestion WHERE Question_Id = ?", appid)
 	_, err := t.Exec(queryStr, qid)
 	if err != nil {
 		return fmt.Errorf("DELETE SQL execution failed, %s", err)
 	}
+	util.LogInfo.Printf("delete similar questions in deleteSimilarQuestionsByQuestionID took: %s\n", time.Since(lastOperation))
 	return nil
 }
 
 func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs []SimilarQuestion) error {
 
 	if len(sqs) > 0 {
+		lastOperation := time.Now()
 		// prepare insert sql
 		sqlStr := fmt.Sprintf("INSERT INTO %s_squestion(Question_Id, Content, CreatedUser, CreatedTime) VALUES ", appid)
 		vals := []interface{}{}
@@ -287,6 +312,7 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 		if err != nil {
 			return fmt.Errorf("SQL Execution err, %s", err)
 		}
+		util.LogInfo.Printf("insert similar questions in insertSimilarQuestions took: %s\n", time.Since(lastOperation))
 	}
 
 	return nil
@@ -294,6 +320,7 @@ func insertSimilarQuestions(t *sql.Tx, qid int, appid string, user string, sqs [
 
 func setQuestionDirty(t *sql.Tx, qid int, appid string) (err error) {
 	// update standard question status
+	lastOperation := time.Now()
 	sqlStr := fmt.Sprintf("UPDATE %s_question SET Status = 1 where Question_Id = %d", appid, qid)
 	updapteStmt, err := t.Prepare(sqlStr)
 	if err != nil {
@@ -305,6 +332,7 @@ func setQuestionDirty(t *sql.Tx, qid int, appid string) (err error) {
 	if err != nil {
 		return fmt.Errorf("Execute statement failed when set question status, %s", err)
 	}
+	util.LogInfo.Printf("set question to dirty in setQuestionDirty took: %s\n", time.Since(lastOperation))
 	return nil
 }
 
@@ -316,12 +344,16 @@ func searchQuestionByContent(content string, appid string) (StdQuestion, error) 
 	if db == nil {
 		return q, fmt.Errorf("main db connection pool is nil")
 	}
+
+	lastOperation := time.Now()
 	rawQuery := fmt.Sprintf("SELECT Question_id, Content, CategoryId FROM %s_question WHERE Content = ? and Status >= 0 ORDER BY Question_id DESC", appid)
 	results, err := db.Query(rawQuery, content)
 	if err != nil {
 		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
 	}
 	defer results.Close()
+	util.LogInfo.Printf("set search quesiton by content in searchQuestionByContent took: %s\n", time.Since(lastOperation))
+
 	if results.Next() {
 		results.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
 	} else { //404 Not Found
@@ -339,6 +371,7 @@ func searchQuestionByContent(content string, appid string) (StdQuestion, error) 
 // GetCategory will return find Category By ID.
 // return error sql.ErrNoRows if category can not be found with given ID
 func GetCategory(ID int, appid string) (Category, error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	var c Category
 	if db == nil {
@@ -351,11 +384,14 @@ func GetCategory(ID int, appid string) (Category, error) {
 	} else if err != nil {
 		return c, fmt.Errorf("query row failed, %v", err)
 	}
+	util.LogInfo.Printf("get category in GetCategory took: %s\n", time.Since(lastOperation))
+
 	return c, nil
 }
 
 //GetQuestionsByCategories search all the questions contained in given categories.
 func GetQuestionsByCategories(categories []Category, appid string) ([]StdQuestion, error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		return nil, fmt.Errorf("main db connection pool is nil")
@@ -370,6 +406,8 @@ func GetQuestionsByCategories(categories []Category, appid string) ([]StdQuestio
 		return nil, fmt.Errorf("query question failed, %v", err)
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get questions in GetQuestionsByCategories took: %s\n", time.Since(lastOperation))
+
 	var questions = make([]StdQuestion, 0)
 	for rows.Next() {
 		var q StdQuestion
@@ -387,6 +425,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 	var aidMap = make(map[int]string)
 	var query string
 	var sqlParams []interface{}
+	lastOperation := time.Now()
 
 	if HasCondition(condition) {
 		// TODO: filter by condition
@@ -455,6 +494,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 	if err != nil {
 		return qids, aidMap, err
 	}
+	util.LogInfo.Printf("filter questions in FilterQuestion took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		var qid int
@@ -464,6 +504,7 @@ func FilterQuestion(condition QueryCondition, appid string) ([]int, map[int]stri
 		qids = append(qids, qid)
 		aidMap[qid] = aidStr
 	}
+	util.LogInfo.Printf("create qid slice & aid map in FilterQuestion took: %s\n", time.Since(lastOperation))
 	return qids, aidMap, nil
 }
 
@@ -481,6 +522,7 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	var questions []Question
 	var sqlParams []interface{}
 	var timeFormat string = "%Y-%m-%d %H:%i:%s"
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 
 	query := "select q.Question_Id, q.CategoryId, q.Content, q.sQCount, q.CategoryName, a.Answer_Id, a.Content as acontent, a.Content_String as aContentString, a.Answer_CMD, a.Answer_CMD_Msg, a.Not_Show_In_Relative_Q, DATE_FORMAT(a.Begin_Time, '%s') as Begin_Time, DATE_FORMAT(a.End_Time, '%s') as End_Time, group_concat(DISTINCT rq.RelatedQuestion SEPARATOR '%s') as RelatedQuestion, group_concat(DISTINCT dm.DynamicMenu SEPARATOR '%s') as DynamicMenu, %s"
@@ -508,6 +550,8 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		return questions, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("fetch questions in FetchQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// construct Questions
 	var currentQuestion *Question
@@ -515,6 +559,9 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 	if err != nil {
 		return questions, err
 	}
+
+	util.LogInfo.Printf("get tag map took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	for rows.Next() {
 		var answer Answer
@@ -547,6 +594,10 @@ func FetchQuestions(condition QueryCondition, qids []int, aids [][]string, appid
 		}
 		currentQuestion.Answers = append(currentQuestion.Answers, answer)
 	}
+
+	util.LogInfo.Printf("get tag map took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	if currentQuestion != nil {
 		questions = append(questions, *currentQuestion)
 	}
@@ -688,6 +739,7 @@ func GenIdStr(ids []int) string {
 func GenCagtegoryMap(appid string) (map[int]*Category, error) {
 	query := `select CategoryId, ParentId from %s_categories order by ParentId`
 	query = fmt.Sprintf(query, appid)
+	lastOperation := time.Now()
 
 	db := util.GetMainDB()
 	categoryMap := make(map[int]*Category)
@@ -697,6 +749,7 @@ func GenCagtegoryMap(appid string) (map[int]*Category, error) {
 		return categoryMap, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("generate category map in GenCagtegoryMap took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		var category Category
@@ -839,6 +892,7 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 	var dimensionIdMap = make(map[string]int)
 	query := "select Tag_Id, Tag_Name from %s_tag"
 	query = fmt.Sprintf(query, appid)
+	lastOperation := time.Now()
 
 	db := util.GetMainDB()
 	rows, err := db.Query(query)
@@ -846,6 +900,7 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 		return dimensionIdMap, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("generate dimension map in DimensionToIdMapFactory took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		var dimension string
@@ -859,6 +914,7 @@ func DimensionToIdMapFactory(appid string) (map[string]int, error) {
 }
 
 func UpdateQuestion(appid string, question *Question) (err error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -875,12 +931,14 @@ func UpdateQuestion(appid string, question *Question) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("update question in UpdateQuestion took: %s\n", time.Since(lastOperation))
 
 	err = tx.Commit()
 	return
 }
 
 func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
+	lastOperation := time.Now()
 	parameters := []interface{}{
 		question.Content,
 		question.CategoryId,
@@ -891,6 +949,8 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("update question in updateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	var answerIDs []int
 	for _, answer := range question.Answers {
@@ -924,10 +984,12 @@ func updateQuestion(appid string, question *Question, tx *sql.Tx) (err error) {
 	}
 	sqlStr = fmt.Sprintf("DELETE FROM %s_answer WHERE (%s) and Question_Id=%d", appid, targetIDSQL, question.QuestionId)
 	_, err = tx.Exec(sqlStr)
+	util.LogInfo.Printf("delete answer in updateQuestion took: %s\n", time.Since(lastOperation))
 	return
 }
 
 func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
+	lastOperation := time.Now()
 	sqlStr := fmt.Sprintf("UPDATE %s_answer SET Question_Id =?, Content=?, Answer_CMD=?, Begin_Time=?, End_Time=?, Status=1, Not_Show_In_Relative_Q=?, Content_String=?, Answer_CMD_Msg=? WHERE Answer_Id=?", appid)
 	answerCmdMsg := answerCmd(answer.AnswerCmd, answer.AnswerCmdMsg)
 	parameters := []interface{}{
@@ -946,6 +1008,7 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("update answer in updateAnswer took: %s\n", time.Since(lastOperation))
 
 	// delete old dynamic menu, related questions, dimensions
 	sqlStr = fmt.Sprintf("DELETE FROM %s_dynamic_menu WHERE Answer_id = %d", appid, answer.AnswerId)
@@ -953,18 +1016,24 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("delete dynamic menu in updateAnswer took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	sqlStr = fmt.Sprintf("DELETE FROM %s_related_question WHERE Answer_id = %d", appid, answer.AnswerId)
 	_, err = tx.Exec(sqlStr)
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("delete related questions in updateAnswer took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	sqlStr = fmt.Sprintf("DELETE FROM %s_answertag WHERE Answer_Id = %d", appid, answer.AnswerId)
 	_, err = tx.Exec(sqlStr)
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("delete answer tags in updateAnswer took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// add back
 	if len(answer.DynamicMenus) > 0 {
@@ -991,6 +1060,8 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 	if err != nil {
 		return
 	}
+
+
 	if len(answer.Images) > 0 {
 		err = imagesManager.CreateMediaRef(answer.AnswerId, answer.Images)
 	}
@@ -1037,6 +1108,7 @@ func answerCmdLog(cmd string) (chineseCmd string) {
 }
 
 func InsertQuestion(appid string, question *Question, answers []Answer) (qid int64, err error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -1054,6 +1126,7 @@ func InsertQuestion(appid string, question *Question, answers []Answer) (qid int
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("insert question in InsertQuestion took: %s\n", time.Since(lastOperation))
 
 	err = tx.Commit()
 	return
@@ -1061,6 +1134,7 @@ func InsertQuestion(appid string, question *Question, answers []Answer) (qid int
 }
 
 func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.Tx) (qid int64, err error) {
+	lastOperation := time.Now()
 	columValues := []interface{}{question.Content, question.CategoryId, question.User, question.SQuestionConunt}
 	sql := fmt.Sprintf("INSERT INTO %s_question (Content, CategoryId, CreatedUser, SQuestion_count, CreatedTime) VALUES (?, ?, ?, ?, now())", appid)
 
@@ -1068,12 +1142,16 @@ func insertQuestion(appid string, question *Question, answers []Answer, tx *sql.
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("insert questions in insertQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 	qid, err = result.LastInsertId()
 
 	err = insertAnswers(appid, qid, answers, tx)
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("insert answers in insertQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	return
 }
@@ -1136,6 +1214,7 @@ func insertAnswer(appid string, qid int64, answer *Answer, tx *sql.Tx) (answerID
 func insertAnswerLabels(appid string, answerID int64, labelType int, labels []string, tx *sql.Tx) (err error) {
 	var table string
 	var column string
+	lastOperation := time.Now()
 	if labelType == RelatedQuestion {
 		table = fmt.Sprintf("%s_related_question", appid)
 		column = "RelatedQuestion"
@@ -1160,10 +1239,12 @@ func insertAnswerLabels(appid string, answerID int64, labelType int, labels []st
 	sqlStr += ";"
 
 	_, err = tx.Exec(sqlStr, values...)
+	util.LogInfo.Printf("insert answer labels in insertAnswerLabels took: %s\n", time.Since(lastOperation))
 	return
 }
 
 func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *sql.Tx) (err error) {
+	lastOperation := time.Now()
 	sqlStr := fmt.Sprintf("INSERT IGNORE INTO %s_answertag (Answer_Id, Tag_Id, CreatedTime) VALUES", appid)
 
 	var values []interface{}
@@ -1180,10 +1261,12 @@ func insertAnswerDimensions(appid string, answerID int64, dimensions []int, tx *
 	sqlStr += ";"
 
 	_, err = tx.Exec(sqlStr, values...)
+	util.LogInfo.Printf("insert answer dimensions in insertAnswerDimensions took: %s\n", time.Since(lastOperation))
 	return
 }
 
 func FindQuestions(appid string, targets []Question) (questions []Question, err error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 
 	if len(targets) == 0 {
@@ -1222,6 +1305,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("fetch questions in FindQuestions took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		var categoryName *string
@@ -1243,6 +1327,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 }
 
 func DeleteQuestions(appid string, targets []Question) error {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
@@ -1255,6 +1340,7 @@ func DeleteQuestions(appid string, targets []Question) error {
 	defer util.ClearTransition(tx)
 
 	err = deleteQuestions(appid, targets, tx)
+	util.LogInfo.Printf("delete questions in DeleteQuestions took: %s\n", time.Since(lastOperation))
 	tx.Commit()
 	return err
 }
@@ -1265,6 +1351,7 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) error {
 	// 2. delete answers
 	// 3. delete quesions
 
+	lastOperation := time.Now()
 	var targetAnswers []Answer
 	for _, question := range targets {
 		targetAnswer := Answer{
@@ -1274,6 +1361,8 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) error {
 		targetAnswers = append(targetAnswers, targetAnswer)
 	}
 	targetAnswers, err := findAnswers(appid, targetAnswers, tx)
+	util.LogInfo.Printf("find answers in deleteQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	var answerIDs []Answer = make([]Answer, len(targetAnswers))
 	for index, answer := range targetAnswers {
@@ -1288,10 +1377,13 @@ func deleteQuestions(appid string, targets []Question, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
+	util.LogInfo.Printf("delete answers in deleteQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// delete questions
 	sql, conditions := genDeleteQuestionSQL(appid, targets)
 	_, err = tx.Exec(sql, conditions...)
+	util.LogInfo.Printf("delete question in deleteQuestions took: %s\n", time.Since(lastOperation))
 	return err
 }
 
@@ -1344,6 +1436,7 @@ func genQuestionWhereClause(dao *Question) (string, []interface{}) {
 }
 
 func FindAnswers(appid string, targets []Answer) (answers []Answer, err error) {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		err = fmt.Errorf("main db connection pool is nil")
@@ -1358,11 +1451,13 @@ func FindAnswers(appid string, targets []Answer) (answers []Answer, err error) {
 	defer util.ClearTransition(tx)
 
 	answers, err = findAnswers(appid, targets, tx)
+	util.LogInfo.Printf("find answers in FindAnswers took: %s\n", time.Since(lastOperation))
 	tx.Commit()
 	return
 }
 
 func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
+	lastOperation := time.Now()
 	sql, conditions := genFindAnswersSQL(appid, targets)
 
 	var answers []Answer
@@ -1370,6 +1465,7 @@ func findAnswers(appid string, targets []Answer, tx *sql.Tx) ([]Answer, error) {
 	if err != nil {
 		return answers, err
 	}
+	util.LogInfo.Printf("find answers in findAnswers took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		answer := Answer{}
@@ -1425,6 +1521,7 @@ func whereDateStringTemplate(start string, end string, shouldAnd *bool) {
 }
 
 func DeleteAnswers(appid string, targets []Answer) error {
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		return fmt.Errorf("main db connection pool is nil")
@@ -1440,6 +1537,7 @@ func DeleteAnswers(appid string, targets []Answer) error {
 	if err != nil {
 		return err
 	}
+	util.LogInfo.Printf("delete answers in DeleteAnswers took: %s\n", time.Since(lastOperation))
 
 	return tx.Commit()
 }
@@ -1453,6 +1551,7 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 	if len(answers) == 0 {
 		return nil
 	}
+	lastOperation := time.Now()
 
 	var targetLabels []AnswerLabelDAO
 	var conditions []interface{}
@@ -1503,6 +1602,7 @@ func deleteAnswers(appid string, answers []Answer, tx *sql.Tx) error {
 
 	// delete answer
 	_, err = tx.Exec(sqlStr, conditions...)
+	util.LogInfo.Printf("delete answers in deleteAnswers took: %s\n", time.Since(lastOperation))
 	return err
 }
 
@@ -1557,6 +1657,7 @@ func FindAnswerLabels(appid string, labelType int, targets []AnswerLabelDAO) (la
 		err = fmt.Errorf("main db connection pool is nil")
 		return
 	}
+	lastOperation := time.Now()
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -1569,12 +1670,14 @@ func FindAnswerLabels(appid string, labelType int, targets []AnswerLabelDAO) (la
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("find answer labels in FindAnswerLabels took: %s\n", time.Since(lastOperation))
 
 	tx.Commit()
 	return
 }
 
 func findAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []AnswerLabelDAO) (labels []AnswerLabelDAO, err error) {
+	lastOperation := time.Now()
 	table, column, err := getAnswerLabelTableAndColumn(appid, labelType)
 	if err != nil {
 		return
@@ -1589,6 +1692,7 @@ func findAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []An
 	if err != nil {
 		return
 	}
+	util.LogInfo.Printf("find answer labels in findAnswerLabels took: %s\n", time.Since(lastOperation))
 
 	for rows.Next() {
 		label := AnswerLabelDAO{}
@@ -1630,6 +1734,7 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 	if len(targetLabels) == 0 {
 		return nil
 	}
+	lastOperation := time.Now()
 
 	table, column, err = getAnswerLabelTableAndColumn(appid, labelType)
 	if err != nil {
@@ -1639,6 +1744,7 @@ func deleteAnswerLabels(appid string, labelType int, tx *sql.Tx, targetLabels []
 	sql, conditions := genDeleteAnswerLabelSQL(table, column, targetLabels)
 
 	_, err = tx.Exec(sql, conditions...)
+	util.LogInfo.Printf("delete answer labels in deleteAnswerLabels took: %s\n", time.Since(lastOperation))
 	return err
 }
 
@@ -1763,6 +1869,7 @@ type CategoryTree struct {
 
 //NewCategoryTree create a CategoryTree
 func NewCategoryTree(appid string) (*CategoryTree, error) {
+	lastOperation := time.Now()
 	rawQuery := "SELECT CategoryId, CategoryName, ParentId FROM " + appid + "_categories"
 	db := util.GetMainDB()
 	if db == nil {
@@ -1773,6 +1880,8 @@ func NewCategoryTree(appid string) (*CategoryTree, error) {
 		return nil, fmt.Errorf("query failed, %v", err)
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get category in NewCategoryTree took: %s\n", time.Since(lastOperation))
+
 	var rootCategory = &Category{ID: 0}
 	var tree = &CategoryTree{
 		Index: map[int64]*Category{0: rootCategory},
@@ -1830,6 +1939,7 @@ func LabelMap(appid string) (map[int]string, error) {
 
 	sqlStr := fmt.Sprintf("SELECT Tag_Id, Tag_Name FROM %s_tag", appid)
 
+	lastOperation := time.Now()
 	db := util.GetMainDB()
 	if db == nil {
 		err := fmt.Errorf("Unable to get mysql connection")
@@ -1840,6 +1950,8 @@ func LabelMap(appid string) (map[int]string, error) {
 	if err != nil {
 		return tagMap, err
 	}
+	util.LogInfo.Printf("get label map in LabelMap took: %s\n", time.Since(lastOperation))
+
 	for rows.Next() {
 		var tagID int
 		var tagName string

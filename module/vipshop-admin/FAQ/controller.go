@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 
@@ -63,6 +64,7 @@ func test(headers websocket.ConnectionHeaders, message []byte) {
 }
 
 func handleAddCategory(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
@@ -80,6 +82,8 @@ func handleAddCategory(ctx context.Context) {
 		ctx.Writef(err.Error())
 		return
 	}
+	lastOperation = time.Now()
+	util.LogInfo.Printf("get api category in handleAddCategory took: %s\n", time.Since(lastOperation))
 
 	var newCatetory *APICategory
 	var path string
@@ -102,9 +106,12 @@ func handleAddCategory(ctx context.Context) {
 		ctx.JSON(newCatetory)
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.LogInfo.Printf("add auditLog took in handleAddCategory: %s\n", time.Since(lastOperation))
+
 }
 
 func handleDeleteCategory(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
@@ -115,6 +122,8 @@ func handleDeleteCategory(ctx context.Context) {
 	}
 
 	origCategory, err := GetAPICategory(appid, categoryID)
+	util.LogInfo.Printf("get api category in handleDeleteCategory took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.Writef(err.Error())
@@ -132,6 +141,9 @@ func handleDeleteCategory(ctx context.Context) {
 		ctx.Writef(err.Error())
 		return
 	}
+	util.LogInfo.Printf("get api category count in handleDeleteCategory took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	err = DeleteAPICategory(appid, origCategory)
 	fmtStr := "[%s]:%s，" + util.Msg["DeleteCategoryDesc"]
 	auditMessage := fmt.Sprintf(fmtStr, util.Msg["Category"], path, count)
@@ -143,10 +155,17 @@ func handleDeleteCategory(ctx context.Context) {
 	} else {
 		ctx.StatusCode(http.StatusOK)
 	}
+	util.LogInfo.Printf("delete category in handleDeleteCategory took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
+
+	
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.LogInfo.Printf("write auditlog in handleDeleteCategory took: %s\n", time.Since(lastOperation))
 }
 
 func handleUpdateCategories(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
@@ -171,6 +190,8 @@ func handleUpdateCategories(ctx context.Context) {
 	}
 	origCategory.Name = newName
 	err = UpdateAPICategoryName(appid, categoryID, newName)
+	util.LogInfo.Printf("get api category in handleUpdateCategories took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	origPaths := strings.Split(origCategory.Path, "/")
 	origPath := strings.Join(origPaths[1:], "/")
@@ -186,15 +207,18 @@ func handleUpdateCategories(ctx context.Context) {
 		ctx.StatusCode(http.StatusOK)
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
+	util.LogInfo.Printf("write auditlog in handleUpdateCategories took: %s\n", time.Since(lastOperation))
 }
 
 func handleGetCategories(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	categories, err := GetAPICategories(appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.Writef(err.Error())
 	}
+	util.LogInfo.Printf("get api categories in handleGetCategories took: %s\n", time.Since(lastOperation))
 
 	if categories == nil {
 		categories = make([]*APICategory, 0)
@@ -203,6 +227,7 @@ func handleGetCategories(ctx context.Context) {
 }
 
 func handleQuerySimilarQuestions(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	qid, err := ctx.Params().GetInt("qid")
 	if err != nil {
@@ -212,6 +237,13 @@ func handleQuerySimilarQuestions(ctx context.Context) {
 	}
 
 	similarQuestions, err := selectSimilarQuestions(qid, appid)
+	if err != nil {
+		util.LogError.Printf("error while get similar questions. err: %s\n", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+	util.LogInfo.Printf("get similar questions in handleGetCategories took: %s\n", time.Since(lastOperation))
 
 	type Response struct {
 		SimilarQuestions []SimilarQuestion `json:"similar_question"`
@@ -225,6 +257,7 @@ func handleQuerySimilarQuestions(ctx context.Context) {
 }
 
 func handleUpdateSimilarQuestions(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	qid, err := strconv.Atoi(ctx.Params().GetEscape("qid"))
 	if err != nil {
@@ -244,12 +277,19 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
+	util.LogInfo.Printf("get questions in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	var question = questions[0]
 	questionCategory, err := GetCategory(question.CategoryID, appid)
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get category in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
+
 	categoryName, err := questionCategory.FullName()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -263,6 +303,9 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get similar questions in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	var originSimilarityQuestions []string
 	for i := 0; i < len(similarityQuestions); i++ {
 		originSimilarityQuestions = append(originSimilarityQuestions, similarityQuestions[i].Content)
@@ -271,7 +314,7 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 
 	body := SimilarQuestionReqBody{}
 	if err = ctx.ReadJSON(&body); err != nil {
-		util.LogInfo.Printf("Bad request when loading from input: %s", err.Error())
+		util.LogInfo.Printf("Bad request when loading from input: %s\n", err.Error())
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
@@ -285,6 +328,9 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+
+	util.LogInfo.Printf("update similar questions in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	//sqsStr 移除了沒更動的相似問
 	var sqsStr []string
@@ -318,6 +364,7 @@ contentMatching:
 
 	}
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, operation, auditMessage, proccessStatus)
+	util.LogInfo.Printf("write audit log in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
 }
 
 func handleDeleteSimilarQuestions(ctx context.Context) {
@@ -326,6 +373,7 @@ func handleDeleteSimilarQuestions(ctx context.Context) {
 
 // search question by exactly matching content
 func handleSearchQuestion(ctx context.Context) {
+	lastOperation := time.Now()
 	content := ctx.FormValue("content")
 	appid := util.GetAppID(ctx)
 	question, err := searchQuestionByContent(content, appid)
@@ -337,12 +385,15 @@ func handleSearchQuestion(ctx context.Context) {
 		util.LogError.Printf("searching Question by content [%s] failed, %s", content, err)
 		return
 	}
+	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
+
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(question)
 
 }
 
 func handleCategoryQuestions(ctx iris.Context) {
+	lastOperation := time.Now()
 	cid := ctx.Params().Get("cid")
 	appid := util.GetAppID(ctx)
 	id, err := strconv.Atoi(cid)
@@ -350,6 +401,7 @@ func handleCategoryQuestions(ctx iris.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
+
 	category, err := GetCategory(id, appid)
 	if err == sql.ErrNoRows {
 		ctx.StatusCode(http.StatusNotFound)
@@ -359,6 +411,9 @@ func handleCategoryQuestions(ctx iris.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get category in handleCategoryQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	includeSub := ctx.Request().URL.Query().Get("includeSubCat")
 	var categories []Category
 	if includeSub == "true" {
@@ -378,27 +433,31 @@ func handleCategoryQuestions(ctx iris.Context) {
 		util.LogError.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get questions by categories in handleCategoryQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	ctx.JSON(questions)
 }
 
 func handleQuestionFilter(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	// parse QueryCondition
 	condition, err := ParseCondition(ctx)
 	if err != nil {
-		util.LogError.Printf("Error happened while parsing query options %s", err.Error())
+		util.LogError.Printf("Error happened while parsing query options %s\n", err.Error())
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
 	// fetch question ids and total row number
 	qids, aids, err := DoFilter(condition, appid)
-
 	if err != nil {
-		util.LogError.Printf("Error happened while Filter questions %s", err.Error())
+		util.LogError.Printf("Error happened while Filter questions %s\n", err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("filter questions in handleQuestionFilter took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// paging qids
 	start := condition.CurPage * condition.Limit
@@ -445,7 +504,10 @@ func handleQuestionFilter(ctx context.Context) {
 	questions, err := DoFetch(pagedQIDs, pagedAIDs, appid)
 	if err != nil {
 		util.LogError.Printf("Error happened Fetch questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
 	}
+	util.LogInfo.Printf("fetch questions in handleQuestionFilter took: %s\n", time.Since(lastOperation))
 
 	total := len(qids)
 	pageNum := math.Floor(float64(total / condition.Limit))
@@ -464,7 +526,7 @@ func handleCreateQuestion(ctx context.Context) {
 	// 1. create question
 	// 2. create answer
 	// 3. write audit log
-
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 
 	newQuestion, newAnswers, err := parseQA(ctx)
@@ -484,6 +546,9 @@ func handleCreateQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get category full name in handleCreateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	auditMsg := fmt.Sprintf("[标准问题]:[%s]:%s", categoryPath, newQuestion.Content)
 	auditRet := 1
 
@@ -500,11 +565,15 @@ func handleCreateQuestion(ctx context.Context) {
 		}
 		auditRet = 0
 	}
+	util.LogInfo.Printf("insert question in handleCreateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// write audit log
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationAdd, auditMsg, auditRet)
+	util.LogInfo.Printf("write auditlog in handleCreateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// response
 	type Response struct {
@@ -524,6 +593,7 @@ func handleUpdateQuestion(ctx context.Context) {
 	// 5. update question & answers
 	// 6. notfiy multicustomer
 	// 7. write audit log
+	lastOperation := time.Now()
 	qid, err := ctx.Params().GetInt("qid")
 	if err != nil {
 		util.LogError.Printf("Bad question id: %s", err.Error())
@@ -543,6 +613,8 @@ func handleUpdateQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get old question in handleUpdateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	auditRet := 1
 	if err != nil {
@@ -557,6 +629,8 @@ func handleUpdateQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		auditRet = 0
 	}
+	util.LogInfo.Printf("update question in handleUpdateQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// write audit log
 	err = writeUpdateAuditLog(ctx, auditRet, &oldQuestion, &newQuestion)
@@ -565,6 +639,7 @@ func handleUpdateQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("write auditlog in handleUpdateQuestion took: %s\n", time.Since(lastOperation))
 }
 
 func writeUpdateAuditLog(ctx context.Context, result int, oldQuestion, newQuestion *Question) (err error) {
@@ -914,7 +989,7 @@ func handleDeleteQuestion(ctx context.Context) {
 	// 1. get to be deleted questions
 	// 2. delete questions
 	// 3. write audit log
-
+	lastOperation := time.Now()
 	type Parameters struct {
 		Qids []int `json:"qids"`
 	}
@@ -944,6 +1019,8 @@ func handleDeleteQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get question in handleDeleteQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	auditMsg := ""
 	auditRet := 1
@@ -957,11 +1034,14 @@ func handleDeleteQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		auditRet = 0
 	}
+	util.LogInfo.Printf("delete questions in handleDeleteQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// write audit log
 	userID := util.GetUserID(ctx)
 	userIP := util.GetUserIP(ctx)
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationDelete, auditMsg, auditRet)
+	util.LogInfo.Printf("write auditlog in handleDeleteQuestion took: %s\n", time.Since(lastOperation))
 }
 
 func handleCommitQuestion(ctx context.Context) {
@@ -971,6 +1051,7 @@ func handleCommitQuestion(ctx context.Context) {
 }
 
 func handleQueryQuestion(ctx context.Context) {
+	lastOperation := time.Now()
 	appid := util.GetAppID(ctx)
 	qid, err := ctx.Params().GetInt("qid")
 	if err != nil {
@@ -990,6 +1071,8 @@ func handleQueryQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get questions in handleQueryQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	if len(questions) == 0 {
 		util.LogError.Printf("Can not find question: %d", qid)
@@ -1000,7 +1083,7 @@ func handleQueryQuestion(ctx context.Context) {
 	question := questions[0]
 	// status -1 means the question was deleted, but not commited
 	if question.Status == -1 {
-		util.LogInfo.Printf("Target question is deleted: %d", qid)
+		util.LogInfo.Printf("Target question is deleted: %d\n", qid)
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
@@ -1011,6 +1094,8 @@ func handleQueryQuestion(ctx context.Context) {
 		util.LogError.Printf("Error happened while fetch answers of question %d, reason: %s", qid,  err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
+	util.LogInfo.Printf("fetch answers of question in handleQueryQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	for index, _ := range question.Answers {
 		answer := &question.Answers[index]

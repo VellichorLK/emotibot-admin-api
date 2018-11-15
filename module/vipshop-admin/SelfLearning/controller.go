@@ -195,7 +195,7 @@ func getQuestionType(ctx context.Context) (int, error) {
 }
 
 func handleGetReports(ctx context.Context) {
-
+	lastOperation := time.Now()
 	status := -999
 	appid := ctx.GetHeader("Authorization")
 	if appid == "" {
@@ -223,12 +223,14 @@ func handleGetReports(ctx context.Context) {
 		util.LogError.Printf("%s\n", err)
 		return
 	}
+	util.LogInfo.Printf("get reports in handleGetReports took: %s", time.Since(lastOperation))
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(reports)
 }
 
 func handleGetReport(ctx context.Context) {
 	reportID := ctx.Params().GetEscape("id")
+	lastOperation := time.Now()
 	if reportID == "" {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.Writef("id should not be empty")
@@ -249,6 +251,8 @@ func handleGetReport(ctx context.Context) {
 		util.LogError.Printf("%s\n", err)
 		return
 	}
+	util.LogInfo.Printf("get reports in handleGetReport took: %s", time.Since(lastOperation))
+
 	if len(reports) == 0 {
 		ctx.StatusCode(http.StatusNotFound)
 		return
@@ -258,6 +262,7 @@ func handleGetReport(ctx context.Context) {
 }
 
 func handleGetClusters(ctx context.Context) {
+	lastOperation := time.Now()
 	reportID := ctx.Params().GetEscape("id")
 	if reportID == "" {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -279,21 +284,29 @@ func handleGetClusters(ctx context.Context) {
 		log.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get reports in handleGetClusters took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	if len(reports) == 0 {
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
+
+
 	clusters, err := GetClusters(reports[0])
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		log.Println(err)
 		return
 	}
+	util.LogInfo.Printf("get clusters in handleGetClusters took: %s", time.Since(lastOperation))
+
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(clusters)
 }
 
 func handleGetUserQuestions(ctx context.Context) {
+	lastOperation := time.Now()
 	reportID := ctx.FormValue("reportID")
 	if reportID == "" {
 		ctx.StatusCode(http.StatusBadRequest)
@@ -332,12 +345,15 @@ func handleGetUserQuestions(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get user questions in handleGetUserQuestions took: %s", time.Since(lastOperation))
+
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(questions)
 }
 
 func handleGetUserQuestion(ctx context.Context) {
 	uID, err := strconv.Atoi(ctx.Params().GetEscape("id"))
+	lastOperation := time.Now()
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
@@ -351,6 +367,7 @@ func handleGetUserQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
+	util.LogInfo.Printf("get user question in handleGetUserQuestion took: %s", time.Since(lastOperation))
 
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(uQuestion)
@@ -360,6 +377,7 @@ func handleUpdateUserQuestion(ctx context.Context) {
 	var request struct {
 		StdQuestion string `json:"std_question"`
 	}
+	lastOperation := time.Now()
 
 	err := ctx.ReadJSON(&request)
 	if err != nil {
@@ -393,6 +411,7 @@ func handleUpdateUserQuestion(ctx context.Context) {
 		util.LogError.Printf("Update id [%d] failed, %s\n", qid, err)
 		return
 	}
+	util.LogInfo.Printf("update std questions in handleUpdateUserQuestion took: %s", time.Since(lastOperation))
 
 	ctx.StatusCode(http.StatusOK)
 }
@@ -402,6 +421,7 @@ func handleUpdateUserQuestions(ctx context.Context) {
 		StdQuestion string `json:"std_question"`
 		Feedbacks   []int  `json:"feedbacks"`
 	}
+	lastOperation := time.Now()
 
 	err := ctx.ReadJSON(&request)
 	if err != nil {
@@ -414,6 +434,7 @@ func handleUpdateUserQuestions(ctx context.Context) {
 		ctx.Writef("request input invalid")
 		return
 	}
+
 	err = UpdateStdQuestions(request.Feedbacks, request.StdQuestion)
 	if err == ErrRowNotFound {
 		ctx.StatusCode(http.StatusNotFound)
@@ -428,6 +449,8 @@ func handleUpdateUserQuestions(ctx context.Context) {
 		util.LogError.Printf("update User Question failed. %s\n", err)
 		return
 	}
+	util.LogInfo.Printf("update std questions in handleUpdateUserQuestions took: %s", time.Since(lastOperation))
+
 	ctx.StatusCode(http.StatusOK)
 }
 
@@ -440,6 +463,7 @@ func handleRevokeQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
+	lastOperation := time.Now()
 
 	err = RevokeUserQuestion(id)
 	if err == ErrRowNotFound {
@@ -449,7 +473,7 @@ func handleRevokeQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
-
+	util.LogInfo.Printf("update revoke questions in handleRevokeQuestion took: %s", time.Since(lastOperation))
 }
 
 func handleDeleteReport(ctx context.Context) {
@@ -461,6 +485,7 @@ func handleDeleteReport(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 		return
 	}
+	lastOperation := time.Now()
 
 	status := -999
 	appid := ctx.GetHeader("Authorization")
@@ -479,6 +504,7 @@ func handleDeleteReport(ctx context.Context) {
 		util.LogError.Printf("delete report [%d] failed, %v", id, err)
 		return
 	}
+	util.LogInfo.Printf("delete report in handleDeleteReport took: %s", time.Since(lastOperation))
 
 	ctx.StatusCode(http.StatusOK)
 }
@@ -491,6 +517,7 @@ func handleRecommend(ctx context.Context) {
 		ctx.Writef("%s\n", err)
 		return
 	}
+	lastOperation := time.Now()
 
 	num := len(sentence)
 
@@ -510,5 +537,5 @@ func handleRecommend(ctx context.Context) {
 		ctx.StatusCode(http.StatusOK)
 		ctx.JSON(recommend)
 	}
-
+	util.LogInfo.Printf("get recommend in handleRecommend took: %s", time.Since(lastOperation))
 }

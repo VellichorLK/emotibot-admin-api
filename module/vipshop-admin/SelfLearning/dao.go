@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
@@ -58,6 +59,7 @@ func GetReports(id string, limit int, appid string, rType int) (reports []Report
 		err = fmt.Errorf("Could not Get the Self learn DB pool")
 		return
 	}
+	lastOperation := time.Now()
 
 	REPORT := TableProps.report
 	var wherePart string
@@ -85,6 +87,8 @@ func GetReports(id string, limit int, appid string, rType int) (reports []Report
 		return
 	}
 	defer results.Close()
+	util.LogInfo.Printf("get reports in GetReports took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	for results.Next() {
 		var r = Report{}
@@ -106,6 +110,7 @@ func GetReports(id string, limit int, appid string, rType int) (reports []Report
 		}
 		reports[i] = r
 	}
+	util.LogInfo.Printf("create report structs in GetReports took: %s\n", time.Since(lastOperation))
 	return
 }
 
@@ -116,6 +121,8 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 		err = fmt.Errorf("Could not Get the Self learn DB pool")
 		return
 	}
+	lastOperation := time.Now()
+
 	rawQuery := fmt.Sprintf("SELECT %s, count(*) FROM %s WHERE %s = ? GROUP BY %s",
 		TableProps.clusterResult.clusterID, TableProps.clusterResult.name, TableProps.clusterResult.reportID, TableProps.clusterResult.clusterID)
 	results, err := db.Query(rawQuery, r.ID)
@@ -124,6 +131,9 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 		return
 	}
 	defer results.Close()
+	util.LogInfo.Printf("get clusters in GetClusters took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	dict := make(map[int]*Cluster)
 	for results.Next() {
 		c := Cluster{Tags: []string{}}
@@ -135,6 +145,8 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 		return
 	}
 	results.Close()
+	util.LogInfo.Printf("create cluster structs in GetClusters took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	rawQuery = fmt.Sprintf("SELECT %s AS tag, %s As ClusterID FROM %s WHERE %s = ?",
 		TableProps.clusterTag.tag, TableProps.clusterTag.clusteringID, TableProps.clusterTag.name, TableProps.clusterTag.reportID)
@@ -144,6 +156,9 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 		return
 	}
 	defer tags.Close()
+	util.LogInfo.Printf("get cluster tags in GetClusters took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	for tags.Next() {
 		var (
 			clusterID int
@@ -157,6 +172,9 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 			return
 		}
 	}
+	util.LogInfo.Printf("create tag structs in GetClusters took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	if err = tags.Err(); err != nil {
 		err = fmt.Errorf("scaning data failed, %s", err)
 		return
@@ -171,6 +189,8 @@ func GetClusters(r Report) (clusters []Cluster, err error) {
 	for i, k := range keys {
 		clusters[i] = *dict[k]
 	}
+	util.LogInfo.Printf("create tag structs in GetClusters took: %s\n", time.Since(lastOperation))
+
 	return
 }
 
@@ -182,6 +202,7 @@ func GetUserQuestions(reportID string, clusterID string, page int, limit int) (u
 		err = fmt.Errorf("Could not Get the Self learn DB pool")
 		return
 	}
+	lastOperation := time.Now()
 
 	if reportID == "" {
 		err = fmt.Errorf("reportID should not be empty")
@@ -212,6 +233,9 @@ func GetUserQuestions(reportID string, clusterID string, page int, limit int) (u
 		return
 	}
 	defer results.Close()
+	util.LogInfo.Printf("get user questions in GetUserQuestions took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	for results.Next() {
 		var q UserQuestion
 		var stdQuestion sql.NullString
@@ -219,6 +243,8 @@ func GetUserQuestions(reportID string, clusterID string, page int, limit int) (u
 		q.StdQuestion = stdQuestion.String
 		uQuestions = append(uQuestions, q)
 	}
+	util.LogInfo.Printf("create user questions structs in GetUserQuestions took: %s\n", time.Since(lastOperation))
+
 	if err = results.Err(); err != nil {
 		err = fmt.Errorf("scaning data failed, %s", err)
 		return
@@ -235,6 +261,7 @@ func GetUserQuestion(id int) (UserQuestion, error) {
 		return uQuestion, fmt.Errorf("Could not Get the Self learn DB pool")
 	}
 	f := TableProps.feedback
+	lastOperation := time.Now()
 
 	rawQuery := fmt.Sprintf("SELECT %s, %s, %s, %s, %s FROM %s WHERE %s = ?",
 		f.id, f.question, f.stdQuestion, f.createdTime, f.updatedTime, f.name, f.id)
@@ -244,6 +271,7 @@ func GetUserQuestion(id int) (UserQuestion, error) {
 	if err != nil {
 		return uQuestion, fmt.Errorf("sql query %s failed. %s", rawQuery, err)
 	}
+	util.LogInfo.Printf("get user question in GetUserQuestion took: %s\n", time.Since(lastOperation))
 	return uQuestion, nil
 }
 
@@ -263,6 +291,7 @@ func UpdateStdQuestions(feedbacks []int, stdQuestion string) error {
 	if err != nil {
 		return fmt.Errorf("transaction start failed, %s", err)
 	}
+	lastOperation := time.Now()
 
 	rawQuery := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?", TableProps.feedback.stdQuestion, TableProps.feedback.name, TableProps.feedback.id)
 	selectStmt, err := tx.Prepare(rawQuery)
@@ -314,6 +343,7 @@ func UpdateStdQuestions(feedbacks []int, stdQuestion string) error {
 			return fmt.Errorf("didnt updated feedback id [%d]", id)
 		}
 	}
+	util.LogInfo.Printf("update user question in UpdateStdQuestions took: %s\n", time.Since(lastOperation))
 
 	err = tx.Commit()
 	if err != nil {
@@ -330,6 +360,7 @@ func RevokeUserQuestion(id int) error {
 	if db == nil {
 		return fmt.Errorf("could not get the Self learn DB pool")
 	}
+	lastOperation := time.Now()
 
 	rawQuery := fmt.Sprintf("SELECT %s FROM %s WHERE %s = ?",
 		TableProps.feedback.stdQuestion, TableProps.feedback.name, TableProps.feedback.id)
@@ -338,6 +369,10 @@ func RevokeUserQuestion(id int) error {
 		return fmt.Errorf("sql query %s failed, %s", rawQuery, err)
 	}
 	defer result.Close()
+	util.LogInfo.Printf("revoke user question in RevokeUserQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
+
 	if !result.Next() {
 		return ErrRowNotFound
 	}
@@ -348,6 +383,8 @@ func RevokeUserQuestion(id int) error {
 	if err != nil {
 		return fmt.Errorf("sql query %s failed, %s", rawQuery, err)
 	}
+	util.LogInfo.Printf("update feedback in RevokeUserQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	return nil
 
@@ -358,6 +395,7 @@ func DeleteReport(id int, appid string) error {
 	if db == nil {
 		return fmt.Errorf("could not get the Self learn DB pool")
 	}
+	lastOperation := time.Now()
 
 	rawQuery := fmt.Sprintf("SELECT count(%s) FROM %s WHERE %s = ? and %s = ?", TableProps.report.id, TableProps.report.name, TableProps.report.id, TableProps.report.appid)
 	var num int
@@ -368,12 +406,16 @@ func DeleteReport(id int, appid string) error {
 	if num == 0 {
 		return ErrRowNotFound
 	}
+	util.LogInfo.Printf("update feedback in DeleteReport took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	rawQuery = fmt.Sprintf("DELETE FROM %s WHERE %s = ? and %s = ?", TableProps.report.name, TableProps.report.id, TableProps.report.appid)
 	_, err = db.Exec(rawQuery, id)
 	if err != nil {
 		return fmt.Errorf("delete query %s failed, %v", rawQuery, err)
 	}
+	util.LogInfo.Printf("delete report in DeleteReport took: %s\n", time.Since(lastOperation))
+
 	return nil
 }
 
@@ -386,6 +428,8 @@ func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
 	if len(content) == 0 {
 		return make(map[string]int), nil
 	}
+	lastOperation := time.Now()
+
 	querySQL := "select " + NQuestionID + "," + NContent + " from " + QuestionTable +
 		" where " + NContent + " in(?" + strings.Repeat(",?", len(content)-1) + ")"
 
@@ -394,6 +438,8 @@ func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
 		return nil, err
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get std question in GetQuestionIDByContent took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	questionIDMap := make(map[string]int)
 
@@ -406,5 +452,6 @@ func GetQuestionIDByContent(content []interface{}) (map[string]int, error) {
 		}
 		questionIDMap[question] = id
 	}
+	util.LogInfo.Printf("get std question in GetQuestionIDByContent took: %s\n", time.Since(lastOperation))
 	return questionIDMap, nil
 }
