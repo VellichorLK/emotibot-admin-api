@@ -20,12 +20,12 @@ func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, err
 	ctx, client := elasticsearch.GetClient()
 	aggName := "conversations"
 	boolQuery := elastic.NewBoolQuery()
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionStartTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	switch query.AggBy {
 	case data.AggByTime:
-		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName).
+		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionStartTimeFieldName).
 			Interval(query.AggInterval)
 
 		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
