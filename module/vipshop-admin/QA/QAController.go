@@ -55,6 +55,7 @@ func importExcel(ctx context.Context) {
 	var appid = util.GetAppID(ctx)
 	var status = 0 // 0 == failed, 1 == success
 	var fileName, reason string
+	lastOperation := time.Now()
 
 	var method string
 	mode := ctx.FormValue("mode")
@@ -81,6 +82,9 @@ func importExcel(ctx context.Context) {
 		util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationImport, auditMessage, status)
 		return
 	}
+	util.LogInfo.Printf("get file header from context in importExcel took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	ext := filepath.Ext(fileHeader.Filename)
 	if strings.Compare(ext, ".xlsx") != 0 {
 		jsonResponse.Message = "[" + fileHeader.Filename + "] 后缀名为" + ext + " 请上传后缀名为.xlsx的文件!"
@@ -94,6 +98,7 @@ func importExcel(ctx context.Context) {
 	}
 	fileName = fileHeader.Filename
 	response, err := apiClient.McImportExcel(*fileHeader, userID, userIP, mode, appid)
+	util.LogInfo.Printf("get file extension & send to multicustomer from context in importExcel took: %s", time.Since(lastOperation))
 
 	switch err {
 	case util.ErrorMCLock: //503
@@ -132,6 +137,7 @@ func exportExcel(ctx context.Context) {
 	var userID = util.GetUserID(ctx)
 	var userIP = util.GetUserIP(ctx)
 	var appid = util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	// check if we need should do any db query
 	condition, err := FAQ.ParseCondition(ctx)
@@ -168,6 +174,7 @@ func exportExcel(ctx context.Context) {
 			mcResponse, err = apiClient.McExportExcel(userID, userIP, answerIDs, appid, -2)
 		}
 	}
+	util.LogInfo.Printf("send export request to multicustomer in exportExcel took: %s", time.Since(lastOperation))
 
 	switch err {
 	case nil: // 200
@@ -197,6 +204,8 @@ func download(ctx context.Context) {
 		ctx.StatusCode(500)
 		ctx.JSON(errorJSON{"Main DB Connection failed"})
 	}
+	
+	lastOperation := time.Now()
 	rows, err := db.Query("SELECT content, status FROM state_machine WHERE state_id = ?", id)
 	if err != nil {
 		ctx.StatusCode(500)
@@ -204,6 +213,8 @@ func download(ctx context.Context) {
 		return
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("get status in download took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
 
 	// var userID = util.GetUserID(ctx)
 	// var userIP = util.GetUserIP(ctx)
@@ -215,6 +226,8 @@ func download(ctx context.Context) {
 		return
 	}
 	rows.Scan(&content, &status)
+	util.LogInfo.Printf("create status struct in download took: %s", time.Since(lastOperation))
+
 	if strings.Compare(status, "success") == 0 || strings.Compare(status, "fail") == 0 {
 		ctx.Header("Content-Disposition", "attachment; filename=other_"+id+".xlsx")
 		ctx.Header("Cache-Control", "public")
@@ -243,11 +256,14 @@ func progress(ctx context.Context) {
 		ctx.StatusCode(500)
 		ctx.JSON("Main DB Connection failed")
 	}
+
+	lastOperation := time.Now()
 	statID, err := strconv.Atoi(ctx.Params().Get("id"))
 	if err != nil {
 		ctx.StatusCode(http.StatusBadRequest)
 		ctx.JSON(errorJSON{Message: err.Error()})
 	}
+
 	rows, err := db.Query("SELECT status, created_time, extra_info FROM state_machine WHERE state_id = ?", statID)
 	var returnJSON = successJSON{ID: statID}
 	if err != nil {
@@ -255,10 +271,13 @@ func progress(ctx context.Context) {
 		ctx.JSON(errorJSON{Message: err.Error()})
 		return
 	}
+	util.LogInfo.Printf("get process status in progress took: %s", time.Since(lastOperation))
+
 	if !rows.Next() {
 		ctx.StatusCode(http.StatusNotFound)
 		return
 	}
+
 	rows.Scan(&returnJSON.Status, &returnJSON.CreatedTime, &returnJSON.ExtraInfo)
 	defer rows.Close()
 
@@ -286,6 +305,7 @@ func viewOperations(ctx context.Context) {
 		ctx.StatusCode(500)
 		ctx.JSON("Main DB Connection failed")
 	}
+	lastOperation := time.Now()
 	values := ctx.FormValues()
 	var limitedQuery string
 	var whereQuery []string
@@ -315,6 +335,9 @@ func viewOperations(ctx context.Context) {
 		SQLQuery += "WHERE " + strings.Join(whereQuery, " AND ")
 	}
 	rows, err := db.Query(SQLQuery+" ORDER BY updated_time DESC "+limitedQuery, parameters...)
+	util.LogInfo.Printf("get process status in viewOperations took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		ctx.JSON(errorJSON{err.Error()})
@@ -331,6 +354,7 @@ func viewOperations(ctx context.Context) {
 		operations = append(operations, op)
 	}
 	defer rows.Close()
+	util.LogInfo.Printf("create operation struct in viewOperations took: %s", time.Since(lastOperation))
 
 	ctx.JSON(returnJSON{Records: operations})
 
