@@ -57,8 +57,10 @@ func getGlobalEnv(key string) string {
 // handleList will show onoff list in database
 func handleList(ctx context.Context) {
 	appid := util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	list, errCode, err := GetSwitches(appid)
+	util.LogInfo.Printf("get switch list in handleList took: %s", time.Since(lastOperation))
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
 	} else {
@@ -69,8 +71,10 @@ func handleList(ctx context.Context) {
 func handleSwitch(ctx context.Context) {
 	id, _ := ctx.Params().GetInt("id")
 	appid := util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	ret, errCode, err := GetSwitch(appid, id)
+	util.LogInfo.Printf("get switch in handleSwitch took: %s", time.Since(lastOperation))
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
 	} else {
@@ -80,6 +84,7 @@ func handleSwitch(ctx context.Context) {
 
 func handleNewSwitch(ctx context.Context) {
 	appid := util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	input := loadSwitchFromContext(ctx)
 	if input == nil {
@@ -88,6 +93,7 @@ func handleNewSwitch(ctx context.Context) {
 	}
 
 	errCode, err := InsertSwitch(appid, input)
+	util.LogInfo.Printf("create swtich in handleNewSwitch took: %s", time.Since(lastOperation))
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
@@ -117,6 +123,7 @@ func diffSwitchInfo(switchA *SwitchInfo, switchB *SwitchInfo) string {
 func handleUpdateSwitch(ctx context.Context) {
 	id, _ := ctx.Params().GetInt("id")
 	appid := util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	input := loadSwitchFromContext(ctx)
 	if input == nil {
@@ -125,6 +132,8 @@ func handleUpdateSwitch(ctx context.Context) {
 	}
 
 	orig, errCode, err := GetSwitch(appid, id)
+	util.LogInfo.Printf("get swtich in handleUpdateSwitch took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
 	//errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
@@ -132,6 +141,9 @@ func handleUpdateSwitch(ctx context.Context) {
 	}
 
 	errCode, err = UpdateSwitch(appid, id, input)
+	util.LogInfo.Printf("update swtich in handleUpdateSwitch took: %s", time.Since(lastOperation))
+	lastOperation = time.Now()
+
 	//errMsg = ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
@@ -156,6 +168,8 @@ func handleUpdateSwitch(ctx context.Context) {
 		//addAudit(ctx, util.AuditOperationEdit, msg, 1)
 
 		updateConsul()
+		util.LogInfo.Printf("update consul in handleUpdateSwitch took: %s", time.Since(lastOperation))
+		lastOperation = time.Now()
 		addAudit(ctx, util.AuditOperationEdit, safeLog(input,orig), 1)
 	}
 
@@ -165,6 +179,8 @@ func handleUpdateSwitch(ctx context.Context) {
 	} else {
 		ret, err = util.ConsulUpdateRobotChat(appid)
 	}
+	util.LogInfo.Printf("update consul by original code in handleUpdateSwitch took: %s", time.Since(lastOperation))
+
 	if err != nil {
 		util.LogInfo.Printf("Update consul result: %d, %s", ret, err.Error())
 	} else {
@@ -175,8 +191,11 @@ func handleUpdateSwitch(ctx context.Context) {
 func handleDeleteSwitch(ctx context.Context) {
 	id, _ := ctx.Params().GetInt("id")
 	appid := util.GetAppID(ctx)
+	lastOperation := time.Now()
 
 	errCode, err := DeleteSwitch(appid, id)
+	util.LogInfo.Printf("delete switch in handleDeleteSwitch took: %s", time.Since(lastOperation))
+
 	errMsg := ApiError.GetErrorMsg(errCode)
 	if errCode != ApiError.SUCCESS {
 		ctx.JSON(util.GenRetObj(errCode, err))
