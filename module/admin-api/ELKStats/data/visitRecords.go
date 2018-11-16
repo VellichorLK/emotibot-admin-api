@@ -193,7 +193,7 @@ type VisitRecordsExportRawData struct {
 
 var VisitRecordsTableHeader = []TableHeaderItem{
 	TableHeaderItem{
-		Text: "會話ID",
+		Text: "会话ID",
 		ID:   VisitRecordsMetricSessionID,
 	},
 	TableHeaderItem{
