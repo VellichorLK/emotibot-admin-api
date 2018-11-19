@@ -14,11 +14,16 @@
     - (`module` 不為 **`faq`**、**`task_engine`** 及 **`chat`**)
 
 ```
-POST /emotibot-records-csbot-*/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "range": {
             "log_time": {

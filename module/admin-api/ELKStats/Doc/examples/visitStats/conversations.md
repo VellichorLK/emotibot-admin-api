@@ -7,11 +7,16 @@
 統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-09-01 00:00:00`** 與 **`2018-09-30 23:59:59`**，結果依照 **`day`** 分群：
 
 ```
-POST /emotibot-sessions-csbot-*/_search
+POST /emotibot-sessions-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "range": {
             "end_time": {
@@ -231,11 +236,16 @@ POST /emotibot-sessions-csbot-*/_search
 統計 `app_id` 為 **`csbot`** 且資料介於 **`2018-09-01 00:00:00`** 與 **`2018-09-30 23:59:59`**，且 `platform` 不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群：
 
 ```
-POST /emotibot-sessions-csbot-*/_search
+POST /emotibot-sessions-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "range": {
             "end_time": {

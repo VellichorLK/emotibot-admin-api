@@ -15,25 +15,25 @@ import (
 func TotalCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "total_calls"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CompleteCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "complete_calls"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", data.CallStatusComplete)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CompleteCallRates(completeCallCounts map[string]interface{},
@@ -44,14 +44,14 @@ func CompleteCallRates(completeCallCounts map[string]interface{},
 func ToHumanCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "to_human_calls"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", data.CallStatusTranserToHuman)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func ToHumanCallRates(toHumanCounts map[string]interface{},
@@ -62,14 +62,14 @@ func ToHumanCallRates(toHumanCounts map[string]interface{},
 func TimeoutCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "timeout_calls"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", data.CallStatusTimeout)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func TimeoutCallRates(timeoutCallCounts map[string]interface{},
@@ -80,14 +80,14 @@ func TimeoutCallRates(timeoutCallCounts map[string]interface{},
 func CancelCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "cancel_calls"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", data.CallStatusCancel)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func CancelCallRates(cancelCallCounts map[string]interface{},
@@ -99,21 +99,21 @@ func Unknowns(query data.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	// TODO: Metric definition not defined yet, return maps with all zero values now
 	aggName := "unknowns"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", -10)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
-	return doCallStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
 func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers, error) {
 	ctx, client := elasticsearch.GetClient()
 	// Query all the session IDs in the query date range
 	groupBySessionsAggName := "group_by_sessions"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	toHumanTermQuery := elastic.NewTermQuery("status", data.CallStatusTranserToHuman)
 	boolQuery = boolQuery.Filter(rangeQuery)
@@ -123,7 +123,7 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 		Field("session_id").
 		Size(data.ESTermAggSize)
 
-	index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
+	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
 
 	result, err := client.Search().
 		Index(index).
@@ -158,7 +158,7 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 	latestRecordsTopHitAgg := elastic.NewTopHitsAggregation().Sort(data.LogTimeFieldName, false).Size(vaildRecordCount)
 	groupBySessionsAgg.SubAggregation(latestRecordsAggName, latestRecordsTopHitAgg)
 
-	index = fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	index = fmt.Sprintf("%s-*", data.ESRecordsIndex)
 
 	result, err = client.Search().
 		Index(index).
@@ -223,9 +223,9 @@ func createCallStatsDateHistogramAggregation(query data.CallStatsQuery) *elastic
 	return agg
 }
 
-func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, appID string,
+func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, appID)
+	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
 	result, err := createSearchService(ctx, client, query, index, data.ESSessionsType, aggName, agg)
 	if err != nil {
 		return nil, err

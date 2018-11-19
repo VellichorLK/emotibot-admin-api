@@ -10,11 +10,16 @@
 - `平台 (platform)` 為 **`ios`** 及 `性別 (sex)` 為 **`女`**
 
 ```
-POST /emotibot-records-csbot-*/_search
+POST /emotibot-records-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "range": {
             "log_time": {

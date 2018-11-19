@@ -7,11 +7,16 @@
 統計 `app_id` 為 **`csbot`**，且資料介於 **`2018-10-01 00:00:00`** 與 **`2018-10-31 23:59:59`**，結果依照 **`day`** 分群。但由於為了做到基於 `維度` 的統計，因此 `emotibot-users-*` 的 document ID 其實是透過 **`user_id` + `custom_info`** hash 過後得來的。因此有可能有同一個使用者，但維度不同而導致產生多個 documents，所以最後還必須再做一次 `cardinality aggregation` 排除重複的 `user_id` 後方可計算出正確的新增用戶數：
 
 ```
-POST /emotibot-users-csbot-*/_search
+POST /emotibot-users-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "range": {
             "first_log_time": {
@@ -330,14 +335,19 @@ POST /emotibot-users-csbot-*/_search
 #### 在所篩選的時間範圍內，各個維度的新增用戶數
 ##### (以平台 (platform) 維度為例)
 
-統計 `app_id` 為 **`csbot`**，且資料介於 **`2018-10-01 00:00:00`** 與 **`2018-10-31 23:59:59`**，且 `platform` 欄位不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群。但由於為了做到基於 `維度` 的統計，因此 `emotibot-users-*` 的 document ID 其實是透過 **`user_id` + `custom_info`** hash 過後得來的。因此有可能有同一個使用者，但維度不同而導致產生多個 documents，所以最後還必須再做一次 `cardinality aggregation` 排除重複的 `user_id` 後方可計算出正確的新增用戶數：
+統計 `app_id` 為 **`csbot`**，且資料介於 **`2018-10-01 00:00:00`** 與 **`2018-10-31 23:59:59`**，且 `platform` 欄位不為 **`空字串`**，結果依照平台 **`(group_by_platform)`** 分群。但由於為了做到基於 `維度` 的統計，因此 `emotibot-users-*` 的 document ID 其實是透過 **`user_id` + `custom_info`** hash 過後得來的。因此有可能有同一個使用者，但維度不同而導致產生多個 documents，所以最後還必須再做一次 `cardinality aggregation` 排除重複的 `user_id` 後方可計算出正確的新增用戶數：
 
 ```
-POST /emotibot-users-csbot-*/_search
+POST /emotibot-users-*/_search
 {
   "query": {
     "bool": {
       "filter": [
+        {
+          "term": {
+            "app_id": "csbot"
+          }
+        },
         {
           "exists": {
             "field": "custom_info.platform.keyword"

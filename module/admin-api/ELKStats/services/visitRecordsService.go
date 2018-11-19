@@ -264,7 +264,7 @@ func UpdateRecordIgnore(status bool) UpdateCommand {
 //It will return error if any problem occur.
 func UpdateRecords(query data.RecordQuery, cmd UpdateCommand) error {
 	ctx, client := elasticsearch.GetClient()
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 	bq := newBoolQueryWithRecordQuery(&query)
 	traceQuery(bq)
 	s := client.UpdateByQuery(index)
@@ -292,7 +292,7 @@ func traceQuery(bq *elastic.BoolQuery) {
 //In the return, result.Aggs may contain isMarked or isIgnored key if correspond ElasticSearchCommand have bee given in aggs
 func VisitRecordsQuery(query data.RecordQuery, aggs ...ElasticSearchCommand) (*RecordResult, error) {
 	ctx, client := elasticsearch.GetClient()
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 	logger.Trace.Printf("index: %s\n", index)
 	boolQuery := newBoolQueryWithRecordQuery(&query)
 	traceQuery(boolQuery)
@@ -649,7 +649,7 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		data.VisitRecordsMetricQType,
 	)
 
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, query.AppID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 
 	service := client.Scroll().
 		Index(index).

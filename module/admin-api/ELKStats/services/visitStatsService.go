@@ -19,7 +19,7 @@ const (
 func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "conversations"
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query.CommonQuery)
 	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionStartTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -28,7 +28,7 @@ func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, err
 		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionStartTimeFieldName).
 			Interval(query.AggInterval)
 
-		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
+		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
 		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, dateHistogramAgg)
 		if err != nil {
 			return nil, err
@@ -41,7 +41,7 @@ func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, err
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		index := fmt.Sprintf("%s-%s-*", data.ESSessionsIndex, query.AppID)
+		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
 		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
@@ -85,7 +85,7 @@ func UniqueUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error
 		return nil, data.ErrInvalidAggType
 	}
 
-	result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, _agg)
+	result, err := createVisitStatsSearchService(ctx, client, boolQuery, aggName, _agg)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 		return nil, data.ErrInvalidAggType
 	}
 
-	index := fmt.Sprintf("%s-%s-*", data.ESUsersIndex, query.AppID)
+	index := fmt.Sprintf("%s-*", data.ESUsersIndex)
 	result, err := createSearchService(ctx, client, boolQuery, index, data.ESUsersType, aggName, _agg)
 	if err != nil {
 		return nil, err
@@ -198,13 +198,13 @@ func TotalAskCounts(query data.VisitStatsQuery) (map[string]interface{}, error) 
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, tagTermAgg)
+		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -227,13 +227,13 @@ func NormalResponseCounts(query data.VisitStatsQuery) (map[string]interface{}, e
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, tagTermAgg)
+		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -256,13 +256,13 @@ func ChatCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, tagTermAgg)
+		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -285,13 +285,13 @@ func OtherCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, tagTermAgg)
+		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -314,13 +314,13 @@ func UnknownQnACounts(query data.VisitStatsQuery) (map[string]interface{}, error
 	switch query.AggBy {
 	case data.AggByTime:
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
-		return doVisitStatsDateHistogramAggService(ctx, client, query.AppID, boolQuery, aggName, dateHistogramAgg)
+		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
 		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
 
-		counts, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, tagTermAgg)
+		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -375,7 +375,7 @@ func TopQuestions(query data.VisitStatsQuery, topN int) (data.Questions, error) 
 	boolQuery = boolQuery.MustNot(stdQEmptyQuery)
 
 	topQTermAgg := elastic.NewTermsAggregation().Field("std_q.keyword").Size(topN).ShardSize(10000).OrderByCount(false)
-	result, err := doVisitStatsTermsAggService(ctx, client, query.AppID, boolQuery, aggName, topQTermAgg)
+	result, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, topQTermAgg)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQ
 	topUnmatchQTermAgg.SubAggregation(maxLogTimeAggName, maxLogTimeAgg)
 	topUnmatchQTermAgg.SubAggregation(minLogTimeAggName, minLogTimeAgg)
 
-	result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, topUnmatchQTermAgg)
+	result, err := createVisitStatsSearchService(ctx, client, boolQuery, aggName, topUnmatchQTermAgg)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +479,7 @@ func AnswerCategoryCounts(query data.VisitStatsQuery) (map[string]interface{}, e
 	filtersAgg = filtersAgg.FilterWithName(chatFilterName, chatTermQuery)
 	filtersAgg = filtersAgg.FilterWithName(otherFilterName, otherBoolQuery)
 
-	result, err := createVisitStatsSearchService(ctx, client, query.AppID, boolQuery, aggName, filtersAgg)
+	result, err := createVisitStatsSearchService(ctx, client, boolQuery, aggName, filtersAgg)
 	if err != nil {
 		return nil, err
 	}
@@ -514,7 +514,7 @@ func AnswerCategoryCounts(query data.VisitStatsQuery) (map[string]interface{}, e
 }
 
 func createVisitStatsBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
-	boolQuery := elastic.NewBoolQuery()
+	boolQuery := createBoolQuery(query)
 	welcomeTagTermQuery := elastic.NewTermQuery("user_q.keyword", "welcome_tag")
 	boolQuery = boolQuery.MustNot(welcomeTagTermQuery)
 	return boolQuery
@@ -536,15 +536,15 @@ func createVisitStatsTagTermsAggregation(tag string) *elastic.TermsAggregation {
 	return elastic.NewTermsAggregation().Field(field).Size(data.ESTermAggShardSize)
 }
 
-func createVisitStatsSearchService(ctx context.Context, client *elastic.Client, appID string,
+func createVisitStatsSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, appID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 	return createSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
 }
 
-func doVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, appID string, query elastic.Query,
+func doVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, appID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 	result, err := createSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
 	if err != nil {
 		return nil, err
@@ -554,9 +554,9 @@ func doVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Cl
 	return counts, nil
 }
 
-func doVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, appID string, query elastic.Query,
+func doVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-%s-*", data.ESRecordsIndex, appID)
+	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 	return doTermsAggService(ctx, client, query, index, data.ESRecordType, aggName, agg)
 }
 
