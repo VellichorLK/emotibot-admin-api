@@ -238,17 +238,16 @@ func safeLog(input *SwitchInfo, dbInfo *SwitchInfo) (string){
 		msg = fmt.Sprintf(s+"[话术设置]%s => %s", dbInfo.Msg, input.Msg)
 	}
 
-	switch input.ID {
-		case 1:
+	switch input.Code {
+		case "unsolve_ZRG":
 			title = "[未解决转人工]："+status+num+msg
-
-		case 2:
+		case "scenario_ZRG":
 			title = "[场景转人工]："+status+num+msg
-		case 3:
+		case "task_engine":
 			title = "[TE开关]："+status+num+msg
-		case 4:
+		case "unmatch_ZRG":
 			title = "[未匹配转人工]："+status+num+msg
-		case 5:
+		case "TE_name_list":
 			title = "[TE白名单开关]："+status+num+msg
 		default:
 			title = ""
