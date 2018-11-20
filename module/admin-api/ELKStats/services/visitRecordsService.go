@@ -444,6 +444,8 @@ func VisitRecordsExportDownload(w http.ResponseWriter, exportTaskID string) erro
 		return fmt.Errorf("Invalid exported records file format: %s", filePath)
 	}
 
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment;filename=%s", path.Base(filePath)))
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -454,7 +456,6 @@ func VisitRecordsExportDownload(w http.ResponseWriter, exportTaskID string) erro
 		return err
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment;filename=%s", path.Base(filePath)))
 	return nil
 }
 
