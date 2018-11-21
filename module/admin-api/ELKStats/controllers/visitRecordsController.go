@@ -46,6 +46,12 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	query.From = (p - 1) * int64(query.Limit)
 
+	if query.From+int64(query.Limit) > data.ESMaxResultWindow {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterPage, "page")
+		returnBadRequest(w, errResponse)
+		return
+	}
+
 	result, err := services.VisitRecordsQuery(*query,
 		services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
 	if err != nil {

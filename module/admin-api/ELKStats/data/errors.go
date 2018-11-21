@@ -32,6 +32,7 @@ const (
 	ErrCodeInvalidParameterCategory
 	ErrCodeInvalidParameterFilter
 	ErrCodeInvalidRequestBody
+	ErrCodeInvalidParameterPage
 	ErrCodeInvalidParameterExportID
 )
 

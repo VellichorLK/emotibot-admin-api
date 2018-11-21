@@ -54,6 +54,8 @@ const (
 	AggByTag  = "tag"
 )
 
+const ESMaxResultWindow = 10000
+
 const ESScrollSize = 10000
 const ESScrollKeepAlive = "30s"
 
