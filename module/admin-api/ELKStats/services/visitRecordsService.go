@@ -749,6 +749,14 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 				return
 			}
 
+			// Convert log time from UTC+0 back to local time
+			logTime, _err := time.Parse(data.LogTimeFormat, rawRecord.LogTime)
+			if _err != nil {
+				err = _err
+				return
+			}
+			logTime = logTime.Local()
+
 			answers := make([]string, 0)
 
 			for _, answer := range rawRecord.Answer {
@@ -773,7 +781,7 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 					EmotionScore: rawRecord.EmotionScore,
 					Intent:       rawRecord.Intent,
 					IntentScore:  rawRecord.IntentScore,
-					LogTime:      rawRecord.LogTime,
+					LogTime:      logTime.Format(data.LogTimeFormat),
 					Score:        rawRecord.Score,
 					Note:         rawRecord.Note,
 				},
