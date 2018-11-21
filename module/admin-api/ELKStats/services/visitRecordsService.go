@@ -646,7 +646,6 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		data.VisitRecordsMetricScore,
 		data.VisitRecordsMetricCustomInfo,
 		data.VisitRecordsMetricNote,
-		data.VisitRecordsMetricQType,
 	)
 
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
