@@ -647,7 +647,6 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		data.VisitRecordsMetricLogTime,
 		data.VisitRecordsMetricScore,
 		data.VisitRecordsMetricCustomInfo,
-		data.VisitRecordsMetricNote,
 	)
 
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
@@ -765,10 +764,19 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 				answers = append(answers, answer.Value)
 			}
 
-			customInfo, _err := json.Marshal(rawRecord.CustomInfo)
-			if _err != nil {
-				err = _err
-				return
+			customInfoString := ""
+
+			if rawRecord.CustomInfo != nil {
+				customInfo, _err := json.Marshal(rawRecord.CustomInfo)
+				if _err != nil {
+					err = _err
+					return
+				}
+
+				customInfoString = string(customInfo)
+				if customInfoString == "{}" {
+					customInfoString = ""
+				}
 			}
 
 			record := data.VisitRecordsExportData{
@@ -785,10 +793,9 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 					IntentScore:  rawRecord.IntentScore,
 					LogTime:      logTime.Format(data.LogTimeFormat),
 					Score:        rawRecord.Score,
-					Note:         rawRecord.Note,
 				},
 				Answer:     strings.Join(answers, ", "),
-				CustomInfo: string(customInfo),
+				CustomInfo: customInfoString,
 			}
 
 			records = append(records, &record)
@@ -856,7 +863,6 @@ func createExportRecordsXlsx(records []*data.VisitRecordsExportData,
 			record.Intent,
 			strconv.FormatFloat(record.IntentScore, 'f', -1, 64),
 			record.CustomInfo,
-			record.Note,
 		}
 
 		for _, d := range xlsxData {

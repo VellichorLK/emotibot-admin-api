@@ -265,7 +265,6 @@ var VisitRecordsExportHeader = []string{
 	"意图",
 	"意图分数",
 	"客制化资讯",
-	"附注",
 }
 
 type VisitRecordsExportResponse struct {
