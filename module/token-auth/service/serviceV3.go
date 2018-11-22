@@ -37,15 +37,13 @@ func AddSystemAdminV3(admin *data.UserDetailV3) (string, error) {
 		return "", err
 	}
 
-	exists, existedAdminName, existedAdminEmail, err := useDB.EnterpriseUserInfoExistsV3(admin.Type, "",
+	exists, existedAdminName, _, err := useDB.EnterpriseUserInfoExistsV3(admin.Type, "",
 		admin.UserName, admin.Email)
 	if err != nil {
 		return "", err
 	} else if exists {
 		if admin.UserName == existedAdminName {
 			return "", util.ErrUserNameExists
-		} else if admin.Email == existedAdminEmail {
-			return "", util.ErrUserEmailExists
 		}
 	}
 
@@ -59,13 +57,13 @@ func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetail
 	}
 
 	if newAdmin.UserName != origAdmin.UserName || newAdmin.Email != origAdmin.Email {
-		exists, existedAdminName, existedAdminEmail, err := useDB.EnterpriseUserInfoExistsV3(
+		exists, existedAdminName, _, err := useDB.EnterpriseUserInfoExistsV3(
 			newAdmin.Type, "", newAdmin.UserName, newAdmin.Email)
 		if err != nil {
 			return err
 		} else if exists {
-			if origAdmin.UserName != existedAdminName && newAdmin.Email == existedAdminEmail {
-				return util.ErrUserEmailExists
+			if newAdmin.UserName == existedAdminName {
+				return util.ErrUserNameExists
 			}
 		}
 	}
@@ -219,15 +217,13 @@ func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 		return "", nil
 	}
 
-	exists, existedUserName, existedUserEmail, err := useDB.EnterpriseUserInfoExistsV3(user.Type,
+	exists, existedUserName, _, err := useDB.EnterpriseUserInfoExistsV3(user.Type,
 		enterpriseID, user.UserName, user.Email)
 	if err != nil {
 		return "", err
 	} else if exists {
 		if user.UserName == existedUserName {
 			return "", util.ErrUserNameExists
-		} else if user.Email == existedUserEmail {
-			return "", util.ErrUserEmailExists
 		}
 	}
 
@@ -247,15 +243,13 @@ func UpdateUserV3(enterpriseID string, userID string,
 	}
 
 	if newUser.UserName != origUser.UserName || newUser.Email != origUser.Email {
-		exists, existedUserName, existedUserEmail, err := useDB.EnterpriseUserInfoExistsV3(newUser.Type, enterpriseID,
+		exists, existedUserName, _, err := useDB.EnterpriseUserInfoExistsV3(newUser.Type, enterpriseID,
 			newUser.UserName, newUser.Email)
 		if err != nil {
 			return err
 		} else if exists {
 			if newUser.UserName != origUser.UserName && newUser.UserName == existedUserName {
 				return util.ErrUserNameExists
-			} else if newUser.Email != origUser.Email && newUser.Email == existedUserEmail {
-				return util.ErrUserEmailExists
 			}
 		}
 	}
