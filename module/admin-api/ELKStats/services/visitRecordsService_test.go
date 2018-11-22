@@ -71,7 +71,7 @@ func TestNewBoolQueryWithRecordQuery(t *testing.T) {
 		t.Run(name, func(tt *testing.T) {
 			var q data.RecordQuery
 			json.Unmarshal([]byte(tc.input), &q)
-			bq := NewBoolQueryWithRecordQuery(q)
+			bq := newBoolQueryWithRecordQuery(&q)
 			src, _ := bq.Source()
 			query, _ := json.Marshal(src)
 			if string(query) != tc.query {
