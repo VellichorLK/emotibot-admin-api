@@ -298,7 +298,7 @@ paths:
         - $ref: '#/components/parameters/userId'
       responses:
         200:
-          description: 日志导出档案 (.zip 或 .csv 档)
+          description: 日志导出档案 (.zip 或 .xlsx 档)
         204:
           description: 日志导出无结果，因此无对应的日志导出档案可下载
         403:

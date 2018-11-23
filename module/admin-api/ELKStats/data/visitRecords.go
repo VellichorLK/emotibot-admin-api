@@ -2,6 +2,27 @@ package data
 
 const VisitRecordsPageLimit = 20
 const VisitRecordsExportPageLimit = 1000
+const MaxNumRecordsPerXlsx    = 100000
+
+const (
+	XlsxExportDir           = "exports"
+	XlsxDirTimestampFormat  = "20060102"
+	XlsxFileTimestampFormat = "20060102_150405"
+)
+
+const (
+	CodeExportTaskRunning = iota
+	CodeExportTaskCompleted
+	CodeExportTaskFailed
+	CodeExportTaskEmpty
+)
+
+var ExportTaskCodesMap = map[int]string{
+	CodeExportTaskRunning: "RUNNING",
+	CodeExportTaskCompleted: "COMPLETED",
+	CodeExportTaskFailed: "FAILED",
+	CodeExportTaskEmpty: "EMPTY",
+}
 
 const (
 	CategoryBusiness = "business"
@@ -244,7 +265,6 @@ var VisitRecordsExportHeader = []string{
 	"意图",
 	"意图分数",
 	"客制化资讯",
-	"附注",
 }
 
 type VisitRecordsExportResponse struct {

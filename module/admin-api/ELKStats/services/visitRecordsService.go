@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,7 +18,9 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/pkg/logger"
+
 	"github.com/olivere/elastic"
+	"github.com/tealeg/xlsx"
 )
 
 //RecordResult is the result fetched from Datastore,
@@ -438,8 +439,9 @@ func VisitRecordsExportDownload(w http.ResponseWriter, exportTaskID string) erro
 	switch path.Ext(filePath) {
 	case ".zip":
 		w.Header().Set("Content-type", "application/zip")
-	case ".csv":
-		w.Header().Set("Content-type", "text/csv;charset=utf-8")
+	case ".xlsx":
+		w.Header().Set("Content-type",
+			"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 	default:
 		return fmt.Errorf("Invalid exported records file format: %s", filePath)
 	}
@@ -610,7 +612,7 @@ func createTagsBoolQueries(tagsBoolQueries []*elastic.BoolQuery,
 	return tagsBoolQueries, nil
 }
 
-// exportTask exports records to CSV file in background
+// exportTask exports records to Excel file in background
 // TODO: Cancel the corresponding running exporting records task when:
 //		 DELETE /export/{export-id} API is called.
 func exportTask(query *data.RecordQuery, exportTaskID string) {
@@ -625,7 +627,7 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 
 	ctx, client := elasticsearch.GetClient()
 
-	logger.Info.Printf("Start exporting task: %s\n", exportTaskID)
+	logger.Info.Printf("Start exporting task: %s...\n", exportTaskID)
 
 	boolQuery := newBoolQueryWithRecordQuery(query)
 
@@ -645,7 +647,6 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		data.VisitRecordsMetricLogTime,
 		data.VisitRecordsMetricScore,
 		data.VisitRecordsMetricCustomInfo,
-		data.VisitRecordsMetricNote,
 	)
 
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
@@ -659,11 +660,11 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		KeepAlive(data.ESScrollKeepAlive)
 
 	records := make([]*data.VisitRecordsExportData, 0)
-	csvFilePaths := make([]string, 0)
+	xlsxFilePaths := make([]string, 0)
 	numOfRecords := 0
-	numOfRecordsPerCSV := 0
-	timestamp := time.Now().Format(csvFileTimestampFormat)
-	numOfCSVFiles := 0
+	numOfRecordsPerXlsx := 0
+	timestamp := time.Now().Format(data.XlsxFileTimestampFormat)
+	numOfXlsxFiles := 0
 
 	for {
 		logger.Trace.Printf("Task %s: Fetching results..\n", exportTaskID)
@@ -672,36 +673,36 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 		if _err != nil {
 			// No more data, scroll finished
 			if _err == io.EOF {
-				// Flush the remaining records in the buffer to CSV file, if any
+				// Flush the remaining records in the buffer to Excel file, if any
 				if len(records) > 0 {
-					numOfCSVFiles++
-					csvFileName := fmt.Sprintf("%s_%d", timestamp, numOfCSVFiles)
-					logger.Info.Printf("Task %s: Create CSV file %s.csv\n", exportTaskID, csvFileName)
-					csvFilePath, _err := createExportRecordsCSV(records, csvFileName)
+					numOfXlsxFiles++
+					xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
+					logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", exportTaskID, xlsxFileName)
+					xlsxFilePath, _err := createExportRecordsXlsx(records, xlsxFileName)
 					if _err != nil {
 						err = _err
 						return
 					}
-					csvFilePaths = append(csvFilePaths, csvFilePath)
+					xlsxFilePaths = append(xlsxFilePaths, xlsxFilePath)
 				}
 
-				if len(csvFilePaths) == 0 {
+				if len(xlsxFilePaths) == 0 {
 					err = dao.ExportTaskEmpty(exportTaskID)
 					if err == nil {
 						logger.Info.Printf("Task %s: Exporting completed, no results\n", exportTaskID)
 					}
-				} else if len(csvFilePaths) == 1 {
-					err = dao.ExportTaskCompleted(exportTaskID, csvFilePaths[0])
+				} else if len(xlsxFilePaths) == 1 {
+					err = dao.ExportTaskCompleted(exportTaskID, xlsxFilePaths[0])
 					if err == nil {
 						logger.Info.Printf("Task %s: Exporting completed, total %d records\n",
 							exportTaskID, numOfRecords)
 					}
 				} else {
-					// Multiple CSV files, zip the files
-					logger.Info.Printf("Task %s: Start compressing %d CSV files\n",
-						exportTaskID, len(csvFilePaths))
+					// Multiple Excel files, zip the files
+					logger.Info.Printf("Task %s: Start compressing %d Excel files...\n",
+						exportTaskID, len(xlsxFilePaths))
 
-					zipFilePath, _err := compressExportRecordsCSV(csvFilePaths, timestamp)
+					zipFilePath, _err := compressExportRecordsXLSX(xlsxFilePaths, timestamp)
 					if _err != nil {
 						err = _err
 						return
@@ -714,9 +715,9 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 						return
 					}
 
-					// Delete CSV files
-					for _, csvFilePath := range csvFilePaths {
-						err = os.Remove(csvFilePath)
+					// Delete Excel files
+					for _, xlsxFilePath := range xlsxFilePaths {
+						err = os.Remove(xlsxFilePath)
 						if err != nil {
 							return
 						}
@@ -733,7 +734,7 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 			return
 		}
 
-		logger.Trace.Printf("Task %s: Start converting %d hit results\n",
+		logger.Trace.Printf("Task %s: Start converting %d hit results...\n",
 			exportTaskID, len(results.Hits.Hits))
 
 		for _, hit := range results.Hits.Hits {
@@ -763,10 +764,19 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 				answers = append(answers, answer.Value)
 			}
 
-			customInfo, _err := json.Marshal(rawRecord.CustomInfo)
-			if _err != nil {
-				err = _err
-				return
+			customInfoString := ""
+
+			if rawRecord.CustomInfo != nil {
+				customInfo, _err := json.Marshal(rawRecord.CustomInfo)
+				if _err != nil {
+					err = _err
+					return
+				}
+
+				customInfoString = string(customInfo)
+				if customInfoString == "{}" {
+					customInfoString = ""
+				}
 			}
 
 			record := data.VisitRecordsExportData{
@@ -783,59 +793,63 @@ func exportTask(query *data.RecordQuery, exportTaskID string) {
 					IntentScore:  rawRecord.IntentScore,
 					LogTime:      logTime.Format(data.LogTimeFormat),
 					Score:        rawRecord.Score,
-					Note:         rawRecord.Note,
 				},
 				Answer:     strings.Join(answers, ", "),
-				CustomInfo: string(customInfo),
+				CustomInfo: customInfoString,
 			}
 
 			records = append(records, &record)
 			numOfRecords++
-			numOfRecordsPerCSV++
+			numOfRecordsPerXlsx++
 		}
 
 		logger.Trace.Printf("Task %s: Converting %d hit results finished!!\n",
 			exportTaskID, len(results.Hits.Hits))
 
-		if numOfRecordsPerCSV == data.MaxNumRecordsPerCSV {
-			numOfCSVFiles++
-			csvFileName := fmt.Sprintf("%s_%d", timestamp, numOfCSVFiles)
-			logger.Info.Printf("Task %s: Create CSV file %s.csv\n", exportTaskID, csvFileName)
-			csvFilePath, _err := createExportRecordsCSV(records, csvFileName)
+		if numOfRecordsPerXlsx == data.MaxNumRecordsPerXlsx {
+			numOfXlsxFiles++
+			xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
+			logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", exportTaskID, xlsxFileName)
+			xlsxFilePath, _err := createExportRecordsXlsx(records, xlsxFileName)
 			if _err != nil {
 				err = _err
 				return
 			}
-			csvFilePaths = append(csvFilePaths, csvFilePath)
+			xlsxFilePaths = append(xlsxFilePaths, xlsxFilePath)
 
 			records = make([]*data.VisitRecordsExportData, 0)
-			numOfRecordsPerCSV = 0
+			numOfRecordsPerXlsx = 0
 		}
 	}
 }
 
-func createExportRecordsCSV(records []*data.VisitRecordsExportData,
-	csvFileName string) (csvFilePath string, err error) {
+func createExportRecordsXlsx(records []*data.VisitRecordsExportData,
+	xlsxFileName string) (xlsxFilePath string, err error) {
 	dirPath, _err := getExportRecordsDir()
 	if _err != nil {
 		err = _err
 		return
 	}
 
-	csvFilePath = fmt.Sprintf("%s/%s.csv", dirPath, csvFileName)
-	csvFile, _err := os.Create(csvFilePath)
-	if _err != nil {
+	xlsxFilePath = fmt.Sprintf("%s/%s.xlsx", dirPath, xlsxFileName)
+	xlsxFile := xlsx.NewFile()
+	sheet, _err := xlsxFile.AddSheet("日志导出数据")
+	if err != nil {
 		err = _err
 		return
 	}
-	defer csvFile.Close()
 
-	// FIXME: ADD windows byte mark for utf-8 support on old EXCEL
-	out := csv.NewWriter(csvFile)
-	out.Write(data.VisitRecordsExportHeader)
+	// Header row
+	row := sheet.AddRow()
+	for _, header := range data.VisitRecordsExportHeader {
+		cell := row.AddCell()
+		cell.Value = header
+	}
 
+	// Data rows
 	for _, record := range records {
-		csvData := []string{
+		row := sheet.AddRow()
+		xlsxData := []string{
 			record.SessionID,
 			record.UserID,
 			record.UserQ,
@@ -849,18 +863,19 @@ func createExportRecordsCSV(records []*data.VisitRecordsExportData,
 			record.Intent,
 			strconv.FormatFloat(record.IntentScore, 'f', -1, 64),
 			record.CustomInfo,
-			record.Note,
 		}
 
-		err = out.Write(csvData)
+		for _, d := range xlsxData {
+			cell := row.AddCell()
+			cell.Value = d
+		}
 	}
 
-	out.Flush()
-	err = out.Error()
+	err = xlsxFile.Save(xlsxFilePath)
 	return
 }
 
-func compressExportRecordsCSV(files []string, timestamp string) (zipFilePath string, err error) {
+func compressExportRecordsXLSX(files []string, timestamp string) (zipFilePath string, err error) {
 	dirPath, _err := getExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -878,7 +893,7 @@ func createExportRecordsBaseDir() error {
 		return err
 	}
 
-	exportBaseDir = fmt.Sprintf("%s/%s", curDir, csvExportDir)
+	exportBaseDir = fmt.Sprintf("%s/%s", curDir, data.XlsxExportDir)
 	return os.MkdirAll(exportBaseDir, 0755)
 }
 
@@ -886,7 +901,7 @@ func createExportRecordsBaseDir() error {
  * If the directory not existed, create one
  */
 func getExportRecordsDir() (dirPath string, err error) {
-	dirName := time.Now().Format(csvDirTimestampFormat)
+	dirName := time.Now().Format(data.XlsxDirTimestampFormat)
 	dirPath = fmt.Sprintf("%s/%s", exportBaseDir, dirName)
 	err = os.MkdirAll(dirPath, 0755)
 	return
@@ -903,7 +918,7 @@ func exportedRecordsHousekeeping() {
 		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 		todayStr := today.Format("2006-01-02")
 
-		logger.Info.Printf("Start doing housekeeping of %s\n", todayStr)
+		logger.Info.Printf("Start doing housekeeping of %s...\n", todayStr)
 		logger.Info.Printf("Removing exported records before %s\n", todayStr)
 
 		// Remove all outdated exported records directories
@@ -919,7 +934,7 @@ func exportedRecordsHousekeeping() {
 				}
 
 				if fInfo.IsDir() {
-					dirTimestamp, err := time.Parse(csvDirTimestampFormat, fInfo.Name())
+					dirTimestamp, err := time.Parse(data.XlsxDirTimestampFormat, fInfo.Name())
 					if err != nil {
 						logger.Error.Println(err.Error())
 						continue

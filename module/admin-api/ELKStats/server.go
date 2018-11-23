@@ -58,5 +58,10 @@ func Init() error {
 		},
 	}
 
-	return services.InitTags()
+	err = services.InitTags()
+	if err != nil {
+		return err
+	}
+
+	return services.VisitRecordsServiceInit()
 }
