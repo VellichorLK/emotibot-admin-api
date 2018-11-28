@@ -93,6 +93,12 @@ func VisitRecordsServiceInit() error {
 // newBoolQueryWithRecordQuery create a *elastic.BoolQuery with the Record condition.
 func newBoolQueryWithRecordQuery(query *data.RecordQuery) *elastic.BoolQuery {
 	boolQuery := elastic.NewBoolQuery()
+
+	if query.AppID != "" {
+		appTermQuery := elastic.NewTermQuery("app_id", query.AppID)
+		boolQuery = boolQuery.Filter(appTermQuery)
+	}
+
 	if query.Records != nil {
 		//Executing a Terms Query request with a lot of terms can be quite slow, as each additional term demands extra processing and memory.
 		//To safeguard against this, the maximum number of terms that can be used in a Terms Query both directly or through lookup has been limited to 65536.
