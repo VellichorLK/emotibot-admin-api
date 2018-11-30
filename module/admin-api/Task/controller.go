@@ -105,6 +105,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
+	logger.Info.Printf("handleGetScenarios")
 	appid := requestheader.GetAppID(r)
 	userID := appid
 	taskURL := getEnvironment("SERVER_URL")
@@ -267,21 +268,20 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 
 func handleGetApps(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	// userID := requestheader.GetUserID(ctx)
-	taskURL := getEnvironment("SERVER_URL")
-
-	// Hack in task-engine, use appid as userid
-	url := fmt.Sprintf("%s/%s/%s?userid=%s", taskURL, taskAppEntry, appid, appid)
-	logger.Trace.Printf("Get apps: %s", url)
-	content, err := util.HTTPGetSimple(url)
+	scenarioInfoList, errno, err := GetScenarioInfoList(appid, appid)
 	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	} else {
-		// Cannot use json, or ui will has error...
-		// r.Header.Set("Content-type", "application/json; charset=utf-8")
-		r.Header.Set("Content-type", "text/plain; charset=utf-8")
-		io.WriteString(w, content)
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 	}
+	ret := ScenarioInfoListResponse{
+		Msg: scenarioInfoList,
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno = ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
 }
 
 func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
