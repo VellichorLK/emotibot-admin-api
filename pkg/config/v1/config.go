@@ -1,8 +1,12 @@
+/*Package config implements configuration reading functions from different source(ex: file or OS env).
+It will extract the variables of certain pattern.
+TODO: It need a refractor from global function into a factory mode.
+*/
 package config
 
 import (
-	"io/ioutil"
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"strings"
 
