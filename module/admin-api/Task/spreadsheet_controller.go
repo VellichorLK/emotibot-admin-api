@@ -72,7 +72,7 @@ func handleUploadSpreadSheet(w http.ResponseWriter, r *http.Request) {
 	content, err := json.Marshal(scenario.EditingContent)
 	layout, err := json.Marshal(scenario.EditingLayout)
 	logger.Trace.Printf("Save scenario content: %s", string(content))
-	retCode, err = UpdateScenario(scenarioID, string(content), string(layout))
+	retCode, err = UpdateSpreadsheetScenario(scenarioID, string(content), string(layout))
 	if err != nil {
 		retCode = ApiError.DB_ERROR
 		ret = fmt.Sprintf("%s: %s", util.Msg["ServerError"], err.Error())

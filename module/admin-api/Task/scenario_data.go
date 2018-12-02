@@ -78,3 +78,8 @@ type ScenarioInfo struct {
 	Enable       bool   `json:"enable"`
 	Version      string `json:"version"`
 }
+
+// ResultMsgResponse defines the return structure of result message
+type ResultMsgResponse struct {
+	Msg string `json:"msg"`
+}

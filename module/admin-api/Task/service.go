@@ -322,10 +322,10 @@ func DeleteMappingTable(appid, userID, tableName string) error {
 	return err
 }
 
-// UpdateScenario updates task engine scenario
-func UpdateScenario(scenarioID, content, layout string) (int, error) {
+// UpdateSpreadsheetScenario updates task engine scenario
+func UpdateSpreadsheetScenario(scenarioID, content, layout string) (int, error) {
 	// TODO check duplicate scenario name
-	err := updateScenario(scenarioID, content, layout)
+	err := updateSpreadsheetScenario(scenarioID, content, layout)
 	if err != nil {
 		return ApiError.DB_ERROR, nil
 	}

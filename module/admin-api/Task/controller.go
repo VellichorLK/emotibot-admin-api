@@ -133,6 +133,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 			templateScenarioInfoList, errno, err := GetTemplateScenarioInfoList()
 			if err != nil {
 				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
 			}
 			ret := TemplateScenarioInfoListResponse{
 				Result: templateScenarioInfoList,
@@ -141,6 +142,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				errno = ApiError.JSON_PARSE_ERROR
 				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			io.WriteString(w, string(retString))
@@ -152,9 +154,11 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 		scenario, errno, err := GetScenario(scenarioid)
 		if err != nil {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
 		} else if scenario == nil {
 			errMsg := fmt.Sprintf("No scenario found in DB with scenarioID: %s", scenarioid)
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, errMsg), http.StatusNotFound)
+			return
 		} else {
 			result := GetScenarioResult{
 				Content:        scenario.Content,
@@ -170,6 +174,7 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				errno = ApiError.JSON_PARSE_ERROR
 				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
 			}
 			w.Header().Set("Content-Type", "application/json")
 			io.WriteString(w, string(retString))
@@ -180,44 +185,71 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := appid
-	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.FormValue("scenarioid")
-	layout := r.FormValue("layout")
-	content := r.FormValue("content")
-	delete := r.FormValue("delete")
+	editingContent := r.FormValue("content")
+	editingLayout := r.FormValue("layout")
 	publish := r.FormValue("publish")
 
-	params := map[string]interface{}{
-		"appid":  appid,
-		"userid": userID,
-	}
+	// userID := appid
+	// taskURL := getEnvironment("SERVER_URL")
+	// layout := r.FormValue("layout")
+	// content := r.FormValue("content")
+	// delete := r.FormValue("delete")
+	// publish := r.FormValue("publish")
 
-	if content != "" {
-		params["content"] = content
-		params["layout"] = layout
-	} else if delete != "" {
-		params["delete"] = true
-	} else if publish != "" {
-		params["publish"] = true
-	}
-	url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
-	content, err := util.HTTPPutForm(url, params, 0)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	} else {
-		io.WriteString(w, content)
-	}
+	// params := map[string]interface{}{
+	// 	"appid":  appid,
+	// 	"userid": userID,
+	// }
+
+	// if content != "" {
+	// 	params["content"] = content
+	// 	params["layout"] = layout
+	// } else if delete != "" {
+	// 	params["delete"] = true
+	// } else if publish != "" {
+	// 	params["publish"] = true
+	// }
+
+	// TODO publish api
 	if publish != "" {
-		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+		return
 	}
 
-	if delete != "" {
-		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
+	errno, err := UpdateScenario(scenarioid, appid, appid, editingContent, editingLayout)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
+	ret := ResultMsgResponse{
+		Msg: "Update success",
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno = ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+
+	// url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
+	// logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
+	// content, err := util.HTTPPutForm(url, params, 0)
+	// if err != nil {
+	// 	util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	// } else {
+	// 	io.WriteString(w, content)
+	// }
+	// if publish != "" {
+	// 	auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+	// 	addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	// }
+
+	// if delete != "" {
+	// 	auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
+	// 	addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
+	// }
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	method := r.FormValue("method")
@@ -312,6 +344,7 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 	scenarioInfoList, errno, err := GetScenarioInfoList(appid, appid)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 	ret := ScenarioInfoListResponse{
 		Msg: scenarioInfoList,
@@ -320,6 +353,7 @@ func handleGetApps(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errno = ApiError.JSON_PARSE_ERROR
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	io.WriteString(w, string(retString))
@@ -363,6 +397,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 
 	mtList := GetMapTableListV2(wordbanks)
@@ -381,6 +416,7 @@ func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
 	rootMap, errno, err := Dictionary.GetWordbanksAllV3()
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 
 	appidToMtMap := GetMapTableAllV2(rootMap)

@@ -131,3 +131,30 @@ func getScenario(scenarioid string) (scenario *Scenario, err error) {
 	}
 	return nil, nil
 }
+
+func updateScenario(scenarioid, appid, userid, editingContent, editingLayout string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return err
+	}
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		UPDATE taskenginescenario
+		SET userID=?, editing=1, editingContent=?, editingLayout=?, updatetime=NOW()
+		WHERE scenarioID=? AND appID=?`
+	_, err = tx.Exec(queryStr, userid, editingContent, editingLayout, scenarioid, appid)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}

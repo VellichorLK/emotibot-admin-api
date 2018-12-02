@@ -28,3 +28,12 @@ func GetScenario(scenarioid string) (*Scenario, int, error) {
 	}
 	return scenario, ApiError.SUCCESS, nil
 }
+
+// UpdateScenario update the scenario content for the specified scenarioid
+func UpdateScenario(scenarioid, appid, userid, editingContent, editingLayout string) (int, error) {
+	err := updateScenario(scenarioid, appid, userid, editingContent, editingLayout)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}

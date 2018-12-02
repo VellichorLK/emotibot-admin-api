@@ -143,7 +143,7 @@ func deleteMappingTable(appid, userID, tableName string) error {
 	return err
 }
 
-func updateScenario(scenarioID, content, layout string) error {
+func updateSpreadsheetScenario(scenarioID, content, layout string) error {
 	var err error
 	defer func() {
 		util.ShowError(err)
