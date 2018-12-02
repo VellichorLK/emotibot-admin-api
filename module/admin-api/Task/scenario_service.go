@@ -10,3 +10,21 @@ func GetScenarioInfoList(appid string, userid string) ([]ScenarioInfo, int, erro
 	}
 	return scenarioInfoList, ApiError.SUCCESS, nil
 }
+
+// GetTemplateScenarioInfoList get the template scenario info list
+func GetTemplateScenarioInfoList() ([]ScenarioInfo, int, error) {
+	templateScenarioInfoList, err := getTemplateScenarioInfoList()
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return templateScenarioInfoList, ApiError.SUCCESS, nil
+}
+
+// GetScenario get the scenario content for the specified scenarioid
+func GetScenario(scenarioid string) (*Scenario, int, error) {
+	scenario, err := getScenario(scenarioid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return scenario, ApiError.SUCCESS, nil
+}

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,10 +106,8 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
-	logger.Info.Printf("handleGetScenarios")
 	appid := requestheader.GetAppID(r)
 	userID := appid
-	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.URL.Query().Get("scenarioid")
 	public := r.URL.Query().Get("public")
 
@@ -127,13 +126,55 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 		params.Set("userid", userID)
 	}
 
-	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, params.Encode())
-	logger.Trace.Printf("Get Scenario URL: %s", url)
-	content, err := util.HTTPGetSimple(url)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	if scenarioid == "all" {
+		public, _ := strconv.Atoi(public)
+		if public > 0 {
+			// get public(template) scenarios
+			templateScenarioInfoList, errno, err := GetTemplateScenarioInfoList()
+			if err != nil {
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			}
+			ret := TemplateScenarioInfoListResponse{
+				Result: templateScenarioInfoList,
+			}
+			retString, err := json.Marshal(ret)
+			if err != nil {
+				errno = ApiError.JSON_PARSE_ERROR
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			}
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, string(retString))
+			return
+		}
+		// TODO handle scenarioid == all, public != 1 API
+		logger.Info.Printf("scenarioid: %s, public: %d", scenarioid, public)
 	} else {
-		io.WriteString(w, content)
+		scenario, errno, err := GetScenario(scenarioid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		} else if scenario == nil {
+			errMsg := fmt.Sprintf("No scenario found in DB with scenarioID: %s", scenarioid)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, errMsg), http.StatusNotFound)
+		} else {
+			result := GetScenarioResult{
+				Content:        scenario.Content,
+				Layout:         scenario.Layout,
+				Editing:        scenario.Editing,
+				EditingContent: scenario.EditingContent,
+				EditingLayout:  scenario.EditingLayout,
+			}
+			ret := GetScenarioResponse{
+				Result: &result,
+			}
+			retString, err := json.Marshal(ret)
+			if err != nil {
+				errno = ApiError.JSON_PARSE_ERROR
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			}
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, string(retString))
+			return
+		}
 	}
 }
 
