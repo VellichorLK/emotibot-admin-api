@@ -129,6 +129,11 @@ func init() {
 		logger.Error.Println("Init Clustering module failed: ", err.Error())
 		initErrors = append(initErrors, err)
 	}
+	err = Service.Init()
+	if err != nil {
+		logger.Error.Println("Init service module failed: ", err.Error())
+		initErrors = append(initErrors, err)
+	}
 }
 
 func main() {

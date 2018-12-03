@@ -7,15 +7,22 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
+
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/misc/match"
 )
 
 var (
 	serviceNLUKey     = "NLU"
 	serviceSolrETLKey = "SOLRETL"
 	cache             = map[string]*NLUResult{}
+
+	matcher           = map[string]*match.Matcher{}
+	stdQuestionExpire = map[string]int64{}
 )
 
 func GetNLUResult(appid string, sentence string) (*NLUResult, error) {
@@ -198,4 +205,17 @@ func getEnvironment(key string) string {
 		}
 	}
 	return ""
+}
+
+func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, AdminErrors.AdminError) {
+	now := time.Now().Unix()
+	if now >= stdQuestionExpire[appid] || matcher[appid] == nil {
+		questions, err := dalClient.Questions(appid)
+		if err != nil {
+			return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, err.Error())
+		}
+		matcher[appid] = match.New(questions)
+		stdQuestionExpire[appid] = now + 300
+	}
+	return matcher[appid].FindNSentence(pattern, n), nil
 }
