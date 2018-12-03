@@ -7,9 +7,18 @@ var (
 	moduleName = "statistic"
 	// EntryList will be merged in the module controller
 	EntryList = []util.EntryPoint{
-		util.NewEntryPointWithCustom("POST", "audit/robot", []string{"view"}, handleListRobotAudit, 2, false),
-		util.NewEntryPointWithCustom("POST", "audit/enterprise", []string{"view"}, handleListEnterpriseAudit, 2, false),
-		util.NewEntryPointWithCustom("POST", "audit/system", []string{"view"}, handleListSystemAudit, 2, false),
+		util.NewEntryPointWithConfig("POST", "audit/robot", []string{"view"}, handleListRobotAudit, util.EntryConfig{
+			Version:     2,
+			IgnoreAppID: true,
+		}),
+		util.NewEntryPointWithConfig("POST", "audit/enterprise", []string{"view"}, handleListEnterpriseAudit, util.EntryConfig{
+			Version:     2,
+			IgnoreAppID: true,
+		}),
+		util.NewEntryPointWithConfig("POST", "audit/system", []string{"view"}, handleListSystemAudit, util.EntryConfig{
+			Version:     2,
+			IgnoreAppID: true,
+		}),
 	}
 )
 

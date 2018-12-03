@@ -15,6 +15,13 @@ type EntryPoint struct {
 	CheckAuthToken bool
 }
 
+// EntryConfig is extra config of entrypoint
+type EntryConfig struct {
+	Version         int
+	IgnoreAppID     bool
+	IgnoreAuthToken bool
+}
+
 // NewEntryPoint create new instance of EntryPoint with version 1
 func NewEntryPoint(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request)) EntryPoint {
 	entrypoint := EntryPoint{}
@@ -41,8 +48,26 @@ func NewEntryPointWithVer(method string, path string, cmd []string, callback fun
 	return entrypoint
 }
 
-// NewEntryPointWithCustom create new instance of EntryPoint with custom param
+// NewEntryPointWithConfig create new instance of EntryPoint with config object
 // which is (version int, checkAppID bool, checkAuthToken bool)
+func NewEntryPointWithConfig(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), config EntryConfig) EntryPoint {
+	entrypoint := EntryPoint{}
+	entrypoint.AllowMethod = method
+	entrypoint.EntryPath = path
+	entrypoint.Callback = callback
+	entrypoint.Command = cmd
+
+	entrypoint.Version = config.Version
+	if entrypoint.Version == 0 {
+		entrypoint.Version = 1
+	}
+	entrypoint.CheckAppID = !config.IgnoreAppID
+	entrypoint.CheckAuthToken = !config.IgnoreAuthToken
+	return entrypoint
+}
+
+// NewEntryPointWithCustom create new instance of EntryPoint with custom param
+// which is (version int, checkAppID bool, checkAuthToken bool) (deprecated)
 func NewEntryPointWithCustom(method string, path string, cmd []string, callback func(w http.ResponseWriter, r *http.Request), param ...interface{}) EntryPoint {
 	entrypoint := EntryPoint{}
 	entrypoint.AllowMethod = method

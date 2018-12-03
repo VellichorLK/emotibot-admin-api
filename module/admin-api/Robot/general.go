@@ -60,7 +60,10 @@ func init() {
 			util.NewEntryPointWithVer("PUT", "chat/{id}/content/{cid}", []string{"edit"}, handleUpdateRobotWordContent, 2),
 			util.NewEntryPointWithVer("DELETE", "chat/{id}/content/{cid}", []string{"delete"}, handleDeleteRobotWordContent, 2),
 
-			util.NewEntryPointWithCustom("POST", "data", []string{"edit"}, handleInitRobotData, 2, false),
+			util.NewEntryPointWithConfig("POST", "data", []string{"edit"}, handleInitRobotData, util.EntryConfig{
+				Version:     2,
+				IgnoreAppID: true,
+			}),
 		},
 		OneTimeFunc: map[string]func(){
 			"SyncRobotProfileToSolr": SyncOnce,

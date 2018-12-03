@@ -37,7 +37,6 @@ var (
 )
 
 func Init() error {
-
 	moduleName := "clustering"
 	envs := util.GetModuleEnvironments(moduleName)
 	db := util.GetMainDB()
