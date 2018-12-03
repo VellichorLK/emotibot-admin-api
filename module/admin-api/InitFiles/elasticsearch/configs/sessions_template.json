@@ -2,7 +2,7 @@
     "index_patterns": [
         "emotibot-sessions-*"
     ],
-    "version": 20181015,
+    "version": 20181206,
     "settings": {
         "number_of_replicas": 1,
         "number_of_shards": 1
@@ -27,6 +27,26 @@
                     "format": "epoch_second"
                 },
                 "end_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "feedback": {
+                    "type": "keyword"
+                },
+                "custom_feedback": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "feedback_time": {
                     "type": "date",
                     "format": "epoch_second"
                 }
