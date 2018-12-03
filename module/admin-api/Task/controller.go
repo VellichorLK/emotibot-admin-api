@@ -189,67 +189,72 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	editingContent := r.FormValue("content")
 	editingLayout := r.FormValue("layout")
 	publish := r.FormValue("publish")
+	delete := r.FormValue("delete")
 
-	// userID := appid
-	// taskURL := getEnvironment("SERVER_URL")
-	// layout := r.FormValue("layout")
-	// content := r.FormValue("content")
-	// delete := r.FormValue("delete")
-	// publish := r.FormValue("publish")
-
-	// params := map[string]interface{}{
-	// 	"appid":  appid,
-	// 	"userid": userID,
-	// }
-
-	// if content != "" {
-	// 	params["content"] = content
-	// 	params["layout"] = layout
-	// } else if delete != "" {
-	// 	params["delete"] = true
-	// } else if publish != "" {
-	// 	params["publish"] = true
-	// }
-
-	// TODO publish api
-	if publish != "" {
-		return
-	}
-
-	errno, err := UpdateScenario(scenarioid, appid, appid, editingContent, editingLayout)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
-		return
+	if delete != "" {
+		// delete scenario
+		errno, err := DeleteScenario(scenarioid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// delete app-scenario pair in taskengineapp
+		errno, err = DeleteAppScenario(scenarioid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// update app-scenario pair to consul
+		scenarioList, errno, err := GetAppScenarioList(appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		value := strings.Join(scenarioList, ",")
+		errno, err = util.ConsulUpdateTaskEngineApp(appid, value)
+		if err != nil {
+			logger.Error.Printf("Failed to update consul key:te/app/%s errno: %d, %s", appid, errno, err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	} else if publish != "" {
+		// publish scenario
+		errno, err := PublishScenario(scenarioid, appid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// update consul to inform TE to reload scenarios
+		errno, err = util.ConsulUpdateTaskEngineScenario()
+		if err != nil {
+			logger.Error.Printf("Failed to update consul key:te/scenario errno: %d, %s", errno, err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	} else {
+		// update scenario
+		errno, err := UpdateScenario(scenarioid, appid, appid, editingContent, editingLayout)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
 	}
 	ret := ResultMsgResponse{
 		Msg: "Update success",
 	}
 	retString, err := json.Marshal(ret)
 	if err != nil {
-		errno = ApiError.JSON_PARSE_ERROR
+		errno := ApiError.JSON_PARSE_ERROR
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	io.WriteString(w, string(retString))
-
-	// url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	// logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
-	// content, err := util.HTTPPutForm(url, params, 0)
-	// if err != nil {
-	// 	util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	// } else {
-	// 	io.WriteString(w, content)
-	// }
-	// if publish != "" {
-	// 	auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-	// 	addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
-	// }
-
-	// if delete != "" {
-	// 	auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-	// 	addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
-	// }
+	return
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	method := r.FormValue("method")

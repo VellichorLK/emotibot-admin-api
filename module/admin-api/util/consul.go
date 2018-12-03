@@ -21,6 +21,9 @@ const (
 	ConsulTEKey                = "te/enabled"
 	ConsulTEMappingTableKey    = "te/mapping_table"
 	ConsulTEMappingTableAllKey = "te/mapping_table_all"
+	ConsulTEScenarioKey        = "te/scenario"
+	ConsulTEScenarioAllKey     = "te/scenario_all"
+	ConsulTEAppKey             = "te/app"
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	ConsulRCKey = "chat/%s"
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
@@ -333,6 +336,26 @@ func ConsulUpdateTaskEngineMappingTableAll() (int, error) {
 	t := time.Now()
 	val := t.Format("2006-01-02 15:04:05")
 	return ConsulUpdateVal(ConsulTEMappingTableAllKey, val)
+}
+
+//ConsulUpdateTaskEngineScenario update the scenario consul key to inform TE to reload scenario
+func ConsulUpdateTaskEngineScenario() (int, error) {
+	t := time.Now()
+	val := t.Format("2006-01-02 15:04:05")
+	return ConsulUpdateVal(ConsulTEScenarioKey, val)
+}
+
+//ConsulUpdateTaskEngineScenarioAll update the scenario all consul key to inform TE to reload all scenario
+func ConsulUpdateTaskEngineScenarioAll() (int, error) {
+	t := time.Now()
+	val := t.Format("2006-01-02 15:04:05")
+	return ConsulUpdateVal(ConsulTEScenarioAllKey, val)
+}
+
+//ConsulUpdateTaskEngineApp update the app-scenario pair to consul for TE to reload
+func ConsulUpdateTaskEngineApp(appid, val string) (int, error) {
+	key := fmt.Sprintf("%s/%s", ConsulTEAppKey, appid)
+	return ConsulUpdateVal(key, val)
 }
 
 //ConsulUpdateFunctionStatus is a convenient function for updating Robot Chat's Consul Key

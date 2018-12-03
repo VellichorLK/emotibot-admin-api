@@ -63,12 +63,12 @@ type ContentNode struct {
 
 // ScenarioInfoListResponse defines the return structure of the GetScenarioInfoList API
 type ScenarioInfoListResponse struct {
-	Msg []ScenarioInfo `json:"msg"`
+	Msg []*ScenarioInfo `json:"msg"`
 }
 
 // TemplateScenarioInfoListResponse defines the return structure of the GetTemplateScenarioInfoList API
 type TemplateScenarioInfoListResponse struct {
-	Result []ScenarioInfo `json:"result"`
+	Result []*ScenarioInfo `json:"result"`
 }
 
 // ScenarioInfo defines the return structure of the scenario info
