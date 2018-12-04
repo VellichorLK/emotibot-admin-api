@@ -216,6 +216,7 @@ func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, Adm
 		}
 		matcher[appid] = match.New(questions)
 		stdQuestionExpire[appid] = now + 300
+		logger.Trace.Printf("Reload %d std questions of %s\n", len(questions), appid)
 	}
 	return matcher[appid].FindNSentence(pattern, n), nil
 }
