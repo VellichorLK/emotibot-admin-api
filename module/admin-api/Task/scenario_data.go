@@ -34,10 +34,15 @@ type GetScenarioResult struct {
 // ScenarioContent defines the structure of the content in taskenginescenario for TE 2.X
 type ScenarioContent struct {
 	Version  string           `json:"version"`
-	Nodes    []ContentNode    `json:"nodes"`
+	Nodes    []*ContentNode   `json:"nodes"`
 	Metadata *ContentMetadata `json:"metadata"`
 	//	Setting    Setting       `json:"setting"`
 	//	MsgConfirm []interface{} `json:"msg_confirm"`
+}
+
+// InitialScenarioContent defines the structure of the initial content
+type InitialScenarioContent struct {
+	Metadata *ContentMetadata `json:"metadata"`
 }
 
 // ContentMetadata defines the structure of the metadata in content
@@ -59,6 +64,17 @@ type ContentNode struct {
 	// EntryConditionRules [][]EntryConditionRule `json:"entry_condition_rules"`
 	//NodeDialogueCntLimit *int64                 `json:"node_dialogue_cnt_limit,omitempty"`
 	//Content              *NodeContent           `json:"content,omitempty"`
+}
+
+// CreateScenarioResponse defines the return structure of the CreateInitialScenario API
+type CreateScenarioResponse struct {
+	Template   *TemplateResult `json:"template"`
+	ScenarioID string          `json:"scenarioID"`
+}
+
+// TemplateResult defines the template result structure in CreateScenarioResponse
+type TemplateResult struct {
+	Metadata *ContentMetadata `json:"metadata"`
 }
 
 // ScenarioInfoListResponse defines the return structure of the GetScenarioInfoList API

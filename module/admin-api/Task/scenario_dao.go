@@ -98,6 +98,34 @@ func getTemplateScenarioInfoList() (templateScenarioInfoList []*ScenarioInfo, er
 	return templateScenarioInfoList, nil
 }
 
+func createScenario(scenarioid, userid, appid, content, layout string, public,
+	editing int, editingContent, editingLayout string, onoff int) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return err
+	}
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		INSERT INTO taskenginescenario
+		(scenarioID, userID, appID, content, layout, public, editing, editingContent, editingLayout, updatetime, onoff)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`
+	_, err = tx.Exec(queryStr, scenarioid, userid, appid, content, layout, public, editing, editingContent, editingLayout, onoff)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func getScenario(scenarioid string) (scenario *Scenario, err error) {
 	defer func() {
 		util.ShowError(err)
