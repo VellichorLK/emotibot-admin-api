@@ -45,6 +45,9 @@ func createDateHistogramAggregation(query data.CommonQuery, queryField string) *
 func createSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, index string, indexType string,
 	aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
+	if client == nil {
+		return nil, fmt.Errorf("Invlalid elasticsearch client")
+	}
 	return client.Search().
 		Index(index).
 		Type(indexType).
