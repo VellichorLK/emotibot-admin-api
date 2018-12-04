@@ -138,7 +138,7 @@ func (c *Client) Questions(appID string) ([]string, error) {
 	json.NewEncoder(&body).Encode(request{
 		Op:           "query",
 		Category:     "sq",
-		AppID:        "csbot",
+		AppID:        appID,
 		UserRecordID: 0,
 		Data: data{
 			Subop:    "conditionsSubop",
