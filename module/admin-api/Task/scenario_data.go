@@ -36,13 +36,19 @@ type ScenarioContent struct {
 	Version  string           `json:"version"`
 	Nodes    []*ContentNode   `json:"nodes"`
 	Metadata *ContentMetadata `json:"metadata"`
-	//	Setting    Setting       `json:"setting"`
-	//	MsgConfirm []interface{} `json:"msg_confirm"`
+	JSCode   *ContentJSCode   `json:"js_code"`
 }
 
 // InitialScenarioContent defines the structure of the initial content
 type InitialScenarioContent struct {
 	Metadata *ContentMetadata `json:"metadata"`
+}
+
+// ContentJSCode defines the structure of the js_code in content
+type ContentJSCode struct {
+	Alias    []string `json:"alias"`
+	TextType string   `json:"text_type"`
+	Main     string   `json:"main"`
 }
 
 // ContentMetadata defines the structure of the metadata in content

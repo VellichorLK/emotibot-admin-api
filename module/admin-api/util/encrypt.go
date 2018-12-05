@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	DesEncryptKey = "emotibot"
+	DesEncryptKey      = "emotibot"
+	TEJSCodeEncryptKey = "TEJSNode"
 )
 
 func zeroPadding(ciphertext []byte, blockSize int) []byte {

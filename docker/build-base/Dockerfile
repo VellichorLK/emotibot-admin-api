@@ -22,6 +22,8 @@ RUN go get gopkg.in/DATA-DOG/go-sqlmock.v1
 RUN go get github.com/rubenv/sql-migrate/...
 RUN go get github.com/coreos/go-semver/semver
 RUN go get gopkg.in/yaml.v2
+RUN go get github.com/tidwall/gjson
+RUN go get github.com/tidwall/sjson
 # Unit-test binary
 RUN go get github.com/axw/gocov/...
 RUN go get github.com/AlekSi/gocov-xml

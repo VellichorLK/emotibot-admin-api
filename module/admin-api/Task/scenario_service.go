@@ -8,8 +8,11 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 	uuid "github.com/satori/go.uuid"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 // GetScenarioInfoList get the scenario info list for the specified appid
@@ -113,6 +116,42 @@ func GetScenario(scenarioid string) (*Scenario, int, error) {
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
+	return scenario, ApiError.SUCCESS, nil
+}
+
+// GetDecryptScenario get the scenario content and layout then decrypt the js_code
+func GetDecryptScenario(scenarioid string) (*Scenario, int, error) {
+	scenario, err := getScenario(scenarioid)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	} else if scenario == nil {
+		return scenario, ApiError.SUCCESS, nil
+	}
+	value := gjson.Get(scenario.EditingContent, "js_code.main")
+	if !value.Exists() {
+		logger.Trace.Printf("no js_code.main found, skip decryption process.")
+		return scenario, ApiError.SUCCESS, nil
+	}
+	mainCipher := value.String()
+	logger.Info.Printf("mainCipher: %s", mainCipher)
+	mainPlain, err := util.DesDecrypt(mainCipher, []byte(util.TEJSCodeEncryptKey))
+	if err != nil {
+		return nil, ApiError.BASE64_PARSE_ERROR, err
+	}
+	ret := ResultMsgResponse{
+		Msg: mainPlain,
+	}
+	retString, _ := json.Marshal(ret)
+	logger.Info.Printf("mainPlain: %s", retString)
+	newContent, err := sjson.Set(scenario.EditingContent, "js_code.main", mainPlain)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+	newContent, err = sjson.Set(newContent, "js_code.text_type", "plain")
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+	scenario.EditingContent = newContent
 	return scenario, ApiError.SUCCESS, nil
 }
 

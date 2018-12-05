@@ -151,7 +151,8 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 		// TODO handle scenarioid == all, public != 1 API
 		logger.Info.Printf("scenarioid: %s, public: %d", scenarioid, public)
 	} else {
-		scenario, errno, err := GetScenario(scenarioid)
+		// scenario, errno, err := GetScenario(scenarioid)
+		scenario, errno, err := GetDecryptScenario(scenarioid)
 		if err != nil {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 			return
