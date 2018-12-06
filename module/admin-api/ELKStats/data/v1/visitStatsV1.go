@@ -1,36 +1,11 @@
-package data
+package v1
 
 import (
 	"strconv"
 	"time"
-)
 
-const (
-	VisitStatsMetricConversations           = "conversations"
-	VisitStatsMetricUniqueUsers             = "unique_users"
-	VisitStatsMetricNewUsers                = "new_users"
-	VisitStatsMetricTotalAsks               = "total_asks"
-	VisitStatsMetricNormalResponses         = "normal_responses"
-	VisitStatsMetricChats                   = "chats"
-	VisitStatsMetricOthers                  = "others"
-	VisitStatsMetricUnknownQnA              = "unknown_qna"
-	VisitStatsMetricSuccessRate             = "success_rate"
-	VisitStatsMetricConversationsPerSession = "conversation_per_session"
-)
-
-const (
-	VisitStatsTypeTime     = "time"
-	VisitStatsTypeBarchart = "barchart"
-)
-
-const (
-	VisitStatsFilterCategory = "category"
-	VisitStatsFilterQType    = "qtype"
-)
-
-const (
-	VisitQuestionsTypeTop    = "top"
-	VisitQuestionsTypeUnused = "unused"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
 )
 
 type Record struct {
@@ -40,7 +15,7 @@ type Record struct {
 	SessionID    string                 `json:"session_id"`
 	UserQ        string                 `json:"user_q"`
 	StdQ         string                 `json:"std_q"`
-	Answer       []Answer               `json:"answer"`
+	Answer       []data.Answer          `json:"answer"`
 	Module       string                 `json:"module"`
 	Emotion      string                 `json:"emotion"`
 	EmotionScore float64                `json:"emotion_score"`
@@ -54,16 +29,8 @@ type Record struct {
 	Note         string                 `json:"note"`
 }
 
-type Answer struct {
-	Type       string        `json:"type"`
-	SubType    string        `json:"subType"`
-	Value      string        `json:"value"`
-	Data       []interface{} `json:"data"`
-	ExtendData string        `json:"extendData"`
-}
-
 type VisitStatsQuery struct {
-	CommonQuery
+	data.CommonQuery
 	AggBy       string
 	AggInterval string
 	AggTagType  string
@@ -96,9 +63,9 @@ type UnmatchQuestion struct {
 }
 
 type VisitStatsResponse struct {
-	TableHeader []TableHeaderItem `json:"table_header"`
-	Data        VisitStatsData    `json:"data"`
-	Total       VisitStatsTotal   `json:"total"`
+	TableHeader []data.TableHeaderItem `json:"table_header"`
+	Data        VisitStatsData         `json:"data"`
+	Total       VisitStatsTotal        `json:"total"`
 }
 
 type VisitStatsData struct {
@@ -114,9 +81,9 @@ type VisitStatsTotal struct {
 }
 
 type VisitStatsTagResponse struct {
-	TableHeader []TableHeaderItem   `json:"table_header"`
-	Data        []VisitStatsTagData `json:"data"`
-	Total       VisitStatsQ         `json:"total"`
+	TableHeader []data.TableHeaderItem `json:"table_header"`
+	Data        []VisitStatsTagData    `json:"data"`
+	Total       VisitStatsQ            `json:"total"`
 }
 
 type VisitStatsTagData struct {
@@ -160,7 +127,7 @@ func (q VisitStatsQuantities) Less(i, j int) bool {
 }
 
 type AnswerCategoryStatsResponse struct {
-	TableHeader []TableHeaderItem        `json:"table_header"`
+	TableHeader []data.TableHeaderItem   `json:"table_header"`
 	Data        []AnswerCategoryStatData `json:"data"`
 	Total       VisitStatsQ              `json:"total"`
 }
@@ -204,124 +171,124 @@ type TopUnmatchedQuestionData struct {
 	LastTimeText  string `json:"last_time_txt"`
 }
 
-var VisitStatsTableHeader = []TableHeaderItem{
-	TableHeaderItem{
+var VisitStatsTableHeader = []data.TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "统计项",
 		ID:   "time_txt",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "总会话数",
-		ID:   VisitStatsMetricConversations,
+		ID:   common.VisitStatsMetricConversations,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "独立用户数",
-		ID:   VisitStatsMetricUniqueUsers,
+		ID:   common.VisitStatsMetricUniqueUsers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "新增用户数",
-		ID:   VisitStatsMetricNewUsers,
+		ID:   common.VisitStatsMetricNewUsers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "总提问数",
-		ID:   VisitStatsMetricTotalAsks,
+		ID:   common.VisitStatsMetricTotalAsks,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "标准回复",
-		ID:   VisitStatsMetricNormalResponses,
+		ID:   common.VisitStatsMetricNormalResponses,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "聊天",
-		ID:   VisitStatsMetricChats,
+		ID:   common.VisitStatsMetricChats,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "其他",
-		ID:   VisitStatsMetricOthers,
+		ID:   common.VisitStatsMetricOthers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "未知问题回复",
-		ID:   VisitStatsMetricUnknownQnA,
+		ID:   common.VisitStatsMetricUnknownQnA,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "未解决",
 		ID:   "unsolved",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "成功率",
-		ID:   VisitStatsMetricSuccessRate,
+		ID:   common.VisitStatsMetricSuccessRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "解决率",
 		ID:   "solved_rate",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "平均会话对话数",
-		ID:   VisitStatsMetricConversationsPerSession,
+		ID:   common.VisitStatsMetricConversationsPerSession,
 	},
 }
 
-var VisitStatsTagTableHeader = []TableHeaderItem{
-	TableHeaderItem{
+var VisitStatsTagTableHeader = []data.TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "总会话数",
-		ID:   VisitStatsMetricConversations,
+		ID:   common.VisitStatsMetricConversations,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "独立用户数",
-		ID:   VisitStatsMetricUniqueUsers,
+		ID:   common.VisitStatsMetricUniqueUsers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "新增用户数",
-		ID:   VisitStatsMetricNewUsers,
+		ID:   common.VisitStatsMetricNewUsers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "总提问数",
-		ID:   VisitStatsMetricTotalAsks,
+		ID:   common.VisitStatsMetricTotalAsks,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "标准回复",
-		ID:   VisitStatsMetricNormalResponses,
+		ID:   common.VisitStatsMetricNormalResponses,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "聊天",
-		ID:   VisitStatsMetricChats,
+		ID:   common.VisitStatsMetricChats,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "其他",
-		ID:   VisitStatsMetricOthers,
+		ID:   common.VisitStatsMetricOthers,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "未知问题回复",
-		ID:   VisitStatsMetricUnknownQnA,
+		ID:   common.VisitStatsMetricUnknownQnA,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "未解决",
 		ID:   "unsolved",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "成功率",
-		ID:   VisitStatsMetricSuccessRate,
+		ID:   common.VisitStatsMetricSuccessRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "解决率",
 		ID:   "solved_rate",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "平均会话对话数",
-		ID:   VisitStatsMetricConversationsPerSession,
+		ID:   common.VisitStatsMetricConversationsPerSession,
 	},
 }
 
-var AnswerCategoryTableHeader = []TableHeaderItem{
-	TableHeaderItem{
+var AnswerCategoryTableHeader = []data.TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "业务类",
-		ID:   CategoryBusiness,
+		ID:   common.CategoryBusiness,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "聊天类",
-		ID:   CategoryChat,
+		ID:   common.CategoryChat,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "其他",
-		ID:   CategoryOther,
+		ID:   common.CategoryOther,
 	},
 }
 

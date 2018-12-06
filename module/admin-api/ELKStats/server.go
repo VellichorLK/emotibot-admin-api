@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/ELKStats/controllers"
+	controllersV1 "emotibot.com/emotigo/module/admin-api/ELKStats/controllers/v1"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/api/dal/v1"
 )
@@ -41,20 +42,20 @@ func Init() error {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
 		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("GET", "visit", []string{"view"}, controllers.VisitStatsGetHandler),
-			util.NewEntryPoint("GET", "question", []string{"view"}, controllers.QuestionStatsGetHandler),
-			util.NewEntryPoint("POST", "records/query", []string{"view"}, controllers.VisitRecordsGetHandler),
-			util.NewEntryPoint("POST", "records/export", []string{"view", "export"}, controllers.VisitRecordsExportHandler),
+			util.NewEntryPoint("GET", "visit", []string{"view"}, controllersV1.VisitStatsGetHandler),
+			util.NewEntryPoint("GET", "question", []string{"view"}, controllersV1.QuestionStatsGetHandler),
+			util.NewEntryPoint("POST", "records/query", []string{"view"}, controllersV1.VisitRecordsGetHandler),
+			util.NewEntryPoint("POST", "records/export", []string{"view", "export"}, controllersV1.VisitRecordsExportHandler),
 			util.NewEntryPoint("GET", "records/export/{export_id}",
-				[]string{"view", "export"}, controllers.VisitRecordsExportDownloadHandler),
+				[]string{"view", "export"}, controllersV1.VisitRecordsExportDownloadHandler),
 			util.NewEntryPoint("DELETE", "records/export/{export_id}",
-				[]string{"view", "export"}, controllers.VisitRecordsExportDeleteHandler),
+				[]string{"view", "export"}, controllersV1.VisitRecordsExportDeleteHandler),
 			util.NewEntryPoint("GET", "records/export/{export_id}/status",
-				[]string{"view", "export"}, controllers.VisitRecordsExportStatusHandler),
-			util.NewEntryPoint("POST", "records/mark", []string{"view", "export"}, controllers.NewRecordsMarkUpdateHandler(dalClient)),
-			util.NewEntryPoint("POST", "records/ignore", []string{"view", "export"}, controllers.RecordsIgnoredUpdateHandler),
-			util.NewEntryPoint("GET", "records/{id}/marked", []string{"view", "export"}, controllers.NewRecordSSMHandler(dalClient)),
-			util.NewEntryPoint("GET", "call", []string{"view"}, controllers.CallStatsGetHandler),
+				[]string{"view", "export"}, controllersV1.VisitRecordsExportStatusHandler),
+			util.NewEntryPoint("POST", "records/mark", []string{"view", "export"}, controllersV1.NewRecordsMarkUpdateHandler(dalClient)),
+			util.NewEntryPoint("POST", "records/ignore", []string{"view", "export"}, controllersV1.RecordsIgnoredUpdateHandler),
+			util.NewEntryPoint("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandler(dalClient)),
+			util.NewEntryPoint("GET", "call", []string{"view"}, controllersV1.CallStatsGetHandler),
 		},
 	}
 
@@ -63,5 +64,5 @@ func Init() error {
 		return err
 	}
 
-	return services.VisitRecordsServiceInit()
+	return common.RecordsServiceInit()
 }

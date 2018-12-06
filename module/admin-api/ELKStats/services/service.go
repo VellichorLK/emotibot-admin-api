@@ -14,7 +14,7 @@ import (
 var tags map[string]map[string][]data.Tag
 var timezone = getSystemTimezone()
 
-func createBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
+func CreateBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
 	boolQuery := elastic.NewBoolQuery()
 
 	if query.AppID != "" {
@@ -25,7 +25,7 @@ func createBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
 	return boolQuery
 }
 
-func createRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQuery {
+func CreateRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQuery {
 	return elastic.NewRangeQuery(queryField).
 		Gte(query.StartTime.Format(data.ESTimeFormat)).
 		Lte(query.EndTime.Format(data.ESTimeFormat)).
@@ -33,7 +33,7 @@ func createRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQ
 		TimeZone(timezone)
 }
 
-func createDateHistogramAggregation(query data.CommonQuery, queryField string) *elastic.DateHistogramAggregation {
+func CreateDateHistogramAggregation(query data.CommonQuery, queryField string) *elastic.DateHistogramAggregation {
 	return elastic.NewDateHistogramAggregation().
 		Field(queryField).
 		Format("yyyy-MM-dd HH:mm:ss").
@@ -42,12 +42,13 @@ func createDateHistogramAggregation(query data.CommonQuery, queryField string) *
 		ExtendedBounds(query.StartTime.Format(data.ESTimeFormat), query.EndTime.Format(data.ESTimeFormat))
 }
 
-func createSearchService(ctx context.Context, client *elastic.Client,
+func CreateSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, index string, indexType string,
 	aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
 	if client == nil {
-		return nil, fmt.Errorf("Invlalid elasticsearch client")
+		return nil, data.ErrNotInit
 	}
+
 	return client.Search().
 		Index(index).
 		Type(indexType).
@@ -57,7 +58,7 @@ func createSearchService(ctx context.Context, client *elastic.Client,
 		Do(ctx)
 }
 
-func extractCountsFromAggDateHistogramBuckets(result *elastic.SearchResult, aggName string) map[string]interface{} {
+func ExtractCountsFromAggDateHistogramBuckets(result *elastic.SearchResult, aggName string) map[string]interface{} {
 	counts := make(map[string]interface{})
 
 	if agg, found := result.Aggregations.DateHistogram(aggName); found {
@@ -69,7 +70,7 @@ func extractCountsFromAggDateHistogramBuckets(result *elastic.SearchResult, aggN
 	return counts
 }
 
-func extractCountsFromAggTermsBuckets(result *elastic.SearchResult, aggName string) map[string]interface{} {
+func ExtractCountsFromAggTermsBuckets(result *elastic.SearchResult, aggName string) map[string]interface{} {
 	counts := make(map[string]interface{})
 
 	if agg, found := result.Aggregations.Terms(aggName); found {
@@ -81,33 +82,33 @@ func extractCountsFromAggTermsBuckets(result *elastic.SearchResult, aggName stri
 	return counts
 }
 
-func doDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
+func DoDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	index string, indexType string, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	result, err := createSearchService(ctx, client, query, index, indexType, aggName, agg)
+	result, err := CreateSearchService(ctx, client, query, index, indexType, aggName, agg)
 	if err != nil {
 		return nil, err
 	}
 
-	counts := extractCountsFromAggDateHistogramBuckets(result, aggName)
+	counts := ExtractCountsFromAggDateHistogramBuckets(result, aggName)
 	return counts, nil
 }
 
-func doTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
+func DoTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	index string, indexType string, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	result, err := createSearchService(ctx, client, query, index, indexType, aggName, agg)
+	result, err := CreateSearchService(ctx, client, query, index, indexType, aggName, agg)
 	if err != nil {
 		return nil, err
 	}
 
-	counts := extractCountsFromAggTermsBuckets(result, aggName)
+	counts := ExtractCountsFromAggTermsBuckets(result, aggName)
 	return counts, nil
 }
 
 func getSystemTimezone() string {
 	_, offset := time.Now().Zone()
 
-	hour := offset / (HourInSeconds)
-	minute := ((offset % (HourInSeconds)) / MinuteInSeconds)
+	hour := offset / (data.HourInSeconds)
+	minute := ((offset % (data.HourInSeconds)) / data.MinuteInSeconds)
 	if minute < 0 {
 		minute = -minute
 	}
@@ -179,7 +180,7 @@ func InitTags() (err error) {
 }
 
 func GetTagIDByName(appID string, tagType string, tagName string) (tagID string, found bool) {
-	availableTags := getAvailableTags(appID)
+	availableTags := GetAvailableTags(appID)
 
 	_availableTags := availableTags[tagType]
 	for _, tag := range _availableTags {
@@ -194,7 +195,7 @@ func GetTagIDByName(appID string, tagType string, tagName string) (tagID string,
 	return
 }
 
-func getAvailableTags(appID string) map[string][]data.Tag {
+func GetAvailableTags(appID string) map[string][]data.Tag {
 	availableTags := make(map[string][]data.Tag, 0)
 
 	_tags, ok := tags["system"]

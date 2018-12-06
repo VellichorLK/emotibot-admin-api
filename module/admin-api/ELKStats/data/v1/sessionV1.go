@@ -1,4 +1,4 @@
-package data
+package v1
 
 type Session struct {
 	ID        string `json:"session_id"`

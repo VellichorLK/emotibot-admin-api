@@ -1,4 +1,4 @@
-package services
+package v1
 
 import (
 	"encoding/json"
@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"testing"
 
-	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 )
 
@@ -38,13 +38,13 @@ func TestUpdateRecords(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer server.Close()
-	VisitRecordsQuery(data.RecordQuery{
+	VisitRecordsQuery(dataV1.RecordQuery{
 		AppID:   "csbot",
 		Records: []interface{}{"20180823183657462364352"},
 		Limit:   3})
 	return
 	cmd := UpdateRecordMark(true)
-	err = UpdateRecords(data.RecordQuery{
+	err = UpdateRecords(dataV1.RecordQuery{
 		AppID:   "csbot",
 		Records: []interface{}{"20180823183657462364352"}}, cmd)
 	if err != nil {
@@ -69,7 +69,7 @@ func TestNewBoolQueryWithRecordQuery(t *testing.T) {
 	}
 	for name, tc := range testTable {
 		t.Run(name, func(tt *testing.T) {
-			var q data.RecordQuery
+			var q dataV1.RecordQuery
 			json.Unmarshal([]byte(tc.input), &q)
 			bq := newBoolQueryWithRecordQuery(&q)
 			src, _ := bq.Source()

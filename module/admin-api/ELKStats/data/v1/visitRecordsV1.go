@@ -1,58 +1,9 @@
-package data
+package v1
 
-const VisitRecordsPageLimit = 20
-const VisitRecordsExportPageLimit = 1000
-const MaxNumRecordsPerXlsx    = 100000
-
-const (
-	XlsxExportDir           = "exports"
-	XlsxDirTimestampFormat  = "20060102"
-	XlsxFileTimestampFormat = "20060102_150405"
+import (
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
 )
-
-const (
-	CodeExportTaskRunning = iota
-	CodeExportTaskCompleted
-	CodeExportTaskFailed
-	CodeExportTaskEmpty
-)
-
-var ExportTaskCodesMap = map[int]string{
-	CodeExportTaskRunning: "RUNNING",
-	CodeExportTaskCompleted: "COMPLETED",
-	CodeExportTaskFailed: "FAILED",
-	CodeExportTaskEmpty: "EMPTY",
-}
-
-const (
-	CategoryBusiness = "business"
-	CategoryChat     = "chat"
-	CategoryOther    = "other"
-)
-
-const (
-	VisitRecordsMetricSessionID    = "session_id"
-	VisitRecordsMetricAppID        = "app_id"
-	VisitRecordsMetricUserID       = "user_id"
-	VisitRecordsMetricUserQ        = "user_q"
-	VisitRecordsMetricStdQ         = "std_q"
-	VisitRecordsMetricAnswer       = "answer"
-	VisitRecordsMetricModule       = "module"
-	VisitRecordsMetricEmotion      = "emotion"
-	VisitRecordsMetricEmotionScore = "emotion_score"
-	VisitRecordsMetricIntent       = "intent"
-	VisitRecordsMetricIntentScore  = "intent_score"
-	VisitRecordsMetricLogTime      = "log_time"
-	VisitRecordsMetricScore        = "score"
-	VisitRecordsMetricCustomInfo   = "custom_info"
-	VisitRecordsMetricNote         = "note"
-	VisitRecordsMetricQType        = "qtype"
-)
-
-type VisitRecordsTag struct {
-	Type string
-	Text string
-}
 
 type VisitRecordsRequest struct {
 	StartTime int64                      `json:"start_time"`
@@ -128,30 +79,25 @@ type RecordQuery struct {
 }
 
 type VisitRecordsQuery struct {
-	CommonQuery
+	data.CommonQuery
 	Question  string
 	UserID    string
 	Emotions  []interface{}
 	QType     string
-	Tags      []VisitRecordsQueryTag
+	Tags      []data.QueryTags
 	Page      int
 	PageLimit int
 }
 
-type VisitRecordsQueryTag struct {
-	Type  string
-	Texts []string
-}
-
 //VisitRecordsResponse is the schema of /record/query api response
 type VisitRecordsResponse struct {
-	Data        []*VisitRecordsData `json:"data"`
-	Limit       int                 `json:"limit"`
-	Page        int                 `json:"page"`
-	MarkedSize  int64               `json:"marked_size"`
-	IgnoredSize int64               `json:"ignored_size"`
-	TableHeader []TableHeaderItem   `json:"table_header"`
-	TotalSize   int64               `json:"total_size"`
+	Data        []*VisitRecordsData    `json:"data"`
+	Limit       int                    `json:"limit"`
+	Page        int                    `json:"page"`
+	MarkedSize  int64                  `json:"marked_size"`
+	IgnoredSize int64                  `json:"ignored_size"`
+	TableHeader []data.TableHeaderItem `json:"table_header"`
+	TotalSize   int64                  `json:"total_size"`
 }
 
 type VisitRecordsDataBase struct {
@@ -175,8 +121,8 @@ type VisitRecordsData struct {
 
 type VisitRecordsRawData struct {
 	VisitRecordsDataBase
-	UniqueID string   `json:"unique_id"`
-	Answer   []Answer `json:"answer"`
+	UniqueID string        `json:"unique_id"`
+	Answer   []data.Answer `json:"answer"`
 }
 
 type VisitRecordsHitResult struct {
@@ -186,7 +132,6 @@ type VisitRecordsHitResult struct {
 
 type VisitRecordsExportBase struct {
 	SessionID    string  `json:"session_id"`
-	AppID        string  `json:"app_id"`
 	UserID       string  `json:"user_id"`
 	UserQ        string  `json:"user_q"`
 	StdQ         string  `json:"std_q"`
@@ -208,46 +153,46 @@ type VisitRecordsExportData struct {
 
 type VisitRecordsExportRawData struct {
 	VisitRecordsExportBase
-	Answer     []Answer               `json:"answer"`
+	Answer     []data.Answer          `json:"answer"`
 	CustomInfo map[string]interface{} `json:"custom_info"`
 }
 
-var VisitRecordsTableHeader = []TableHeaderItem{
-	TableHeaderItem{
+var VisitRecordsTableHeader = []data.TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "会话ID",
-		ID:   VisitRecordsMetricSessionID,
+		ID:   common.VisitRecordsMetricSessionID,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "用户ID",
-		ID:   VisitRecordsMetricUserID,
+		ID:   common.VisitRecordsMetricUserID,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "用户问题",
-		ID:   VisitRecordsMetricUserQ,
+		ID:   common.VisitRecordsMetricUserQ,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "匹配分数",
-		ID:   VisitRecordsMetricScore,
+		ID:   common.VisitRecordsMetricScore,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "标准问题",
-		ID:   VisitRecordsMetricStdQ,
+		ID:   common.VisitRecordsMetricStdQ,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "机器人回答",
-		ID:   VisitRecordsMetricAnswer,
+		ID:   common.VisitRecordsMetricAnswer,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "访问时间",
-		ID:   VisitRecordsMetricLogTime,
+		ID:   common.VisitRecordsMetricLogTime,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "情感",
-		ID:   VisitRecordsMetricEmotion,
+		ID:   common.VisitRecordsMetricEmotion,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "问答类别",
-		ID:   VisitRecordsMetricQType,
+		ID:   common.VisitRecordsMetricQType,
 	},
 }
 
@@ -265,12 +210,4 @@ var VisitRecordsExportHeader = []string{
 	"意图",
 	"意图分数",
 	"客制化资讯",
-}
-
-type VisitRecordsExportResponse struct {
-	ExportID string `json:"export_id"`
-}
-
-type VisitRecordsExportStatusResponse struct {
-	Status string `json:"status"`
 }

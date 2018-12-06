@@ -1,4 +1,4 @@
-package controllers
+package v1
 
 import (
 	"encoding/json"
@@ -10,9 +10,14 @@ import (
 	"emotibot.com/emotigo/pkg/api/dal/v1"
 	"github.com/gorilla/mux"
 
+	"emotibot.com/emotigo/module/admin-api/ELKStats/controllers"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/controllers/common"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
-	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"emotibot.com/emotigo/module/admin-api/util"
+	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
+	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
+	servicesV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -25,14 +30,14 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 	query, err := newRecordQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody, err.Error())
-		returnBadRequest(w, errResponse)
+		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}
 
 	limit, found := r.URL.Query()["limit"]
 	if !found {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody, "limit should be greater than zero")
-		returnBadRequest(w, errResponse)
+		controllers.ReturnBadRequest(w, errResponse)
 		return
 	} else {
 		query.Limit, _ = strconv.Atoi(limit[0])
@@ -48,34 +53,34 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	if query.From+int64(query.Limit) > data.ESMaxResultWindow {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterPage, "page")
-		returnBadRequest(w, errResponse)
+		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}
 
-	result, err := services.VisitRecordsQuery(*query,
-		services.AggregateFilterIgnoredRecord, services.AggregateFilterMarkedRecord)
+	result, err := servicesV1.VisitRecordsQuery(*query,
+		servicesCommon.AggregateFilterIgnoredRecord, servicesCommon.AggregateFilterMarkedRecord)
 	if err != nil {
 		var errResponse data.ErrorResponse
-		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
+		if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
 			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ", "))
 		} else {
 			errResponse = data.NewErrorResponse(err.Error())
 		}
-		returnInternalServerError(w, errResponse)
+		controllers.ReturnInternalServerError(w, errResponse)
 		return
 	}
 
-	response := data.VisitRecordsResponse{
+	response := dataV1.VisitRecordsResponse{
 		Data:        result.Hits,
 		Limit:       query.Limit,
 		Page:        int(query.From)/query.Limit + 1,
-		TableHeader: data.VisitRecordsTableHeader,
+		TableHeader: dataV1.VisitRecordsTableHeader,
 		TotalSize:   result.Aggs["total_size"].(int64),
 		MarkedSize:  result.Aggs["isMarked"].(int64),
 		IgnoredSize: result.Aggs["isIgnored"].(int64),
 	}
 
-	returnOK(w, response)
+	controllers.ReturnOK(w, response)
 }
 
 func VisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,109 +90,45 @@ func VisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidRequestBody,
 			data.ErrInvalidRequestBody.Error())
-		returnBadRequest(w, errResponse)
+		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}
 
-	exportTaskID, err := services.VisitRecordsExport(query)
+	exportTaskID, err := servicesV1.VisitRecordsExport(query)
 	if err != nil {
 		var errResponse data.ErrorResponse
-		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
-			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
+		if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
+			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, "; "))
 		} else {
 			errResponse = data.NewErrorResponse(err.Error())
 
 			switch err {
 			case data.ErrExportTaskInProcess:
-				returnForbiddenRequest(w, errResponse)
+				controllers.ReturnForbiddenRequest(w, errResponse)
 			default:
-				returnInternalServerError(w, errResponse)
+				controllers.ReturnInternalServerError(w, errResponse)
 			}
 		}
 		return
 	}
 
-	response := data.VisitRecordsExportResponse{
+	response := dataCommon.VisitRecordsExportResponse{
 		ExportID: exportTaskID,
 	}
 
-	returnOK(w, response)
+	controllers.ReturnOK(w, response)
 }
 
 func VisitRecordsExportDownloadHandler(w http.ResponseWriter, r *http.Request) {
-	exportID := util.GetMuxVar(r, "export_id")
-	if exportID == "" {
-		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
-		returnBadRequest(w, errResponse)
-		return
-	}
-
-	err := services.VisitRecordsExportDownload(w, exportID)
-	if err != nil {
-		switch err {
-		case data.ErrExportTaskNotFound:
-			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
-		case data.ErrExportTaskInProcess:
-			returnForbiddenRequest(w, data.NewErrorResponse(err.Error()))
-		case data.ErrExportTaskEmpty:
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			returnInternalServerError(w, data.NewErrorResponse(err.Error()))
-		}
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	common.VisitRecordsExportDownloadHandler(w, r)
 }
 
 func VisitRecordsExportDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	exportID := util.GetMuxVar(r, "export_id")
-	if exportID == "" {
-		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
-		returnBadRequest(w, errResponse)
-		return
-	}
-
-	err := services.VisitRecordsExportDelete(exportID)
-	if err != nil {
-		if err == data.ErrExportTaskNotFound {
-			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
-		} else {
-			returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
-		}
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
+	common.VisitRecordsExportDeleteHandler(w, r)
 }
 
 func VisitRecordsExportStatusHandler(w http.ResponseWriter, r *http.Request) {
-	exportID := util.GetMuxVar(r, "export_id")
-	if exportID == "" {
-		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterExportID, "export_id")
-		returnBadRequest(w, errResponse)
-		return
-	}
-
-	status, err := services.VisitRecordsExportStatus(exportID)
-	if err != nil {
-		if err == data.ErrExportTaskNotFound {
-			returnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
-		} else {
-			returnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
-		}
-		return
-	}
-
-	response := data.VisitRecordsExportStatusResponse{
-		Status: status,
-	}
-
-	returnOK(w, response)
-}
-
-type markResponse struct {
-	Records []string `json:"records"`
+	common.VisitRecordsExportStatusHandler(w, r)
 }
 
 // RecordsIgnoredUpdateHandler handle the request for updating record's ignore column
@@ -197,33 +138,37 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		Records []string `json:"records"`
 	}
 	defer r.Body.Close()
+
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
 		return
 	}
+
 	if request.Ignore == nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "ignore is required"))
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "ignore is required"))
 		return
 	}
+
 	if request.Records == nil {
-		returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
 		return
 	}
-	q := data.RecordQuery{
+
+	q := dataV1.RecordQuery{
 		AppID:   requestheader.GetAppID(r),
 		Records: make([]interface{}, len(request.Records)),
 	}
 	for i, r := range request.Records {
 		q.Records[i] = r
 	}
-	err = services.UpdateRecords(q, services.UpdateRecordIgnore(*request.Ignore))
+	err = servicesV1.UpdateRecords(q, servicesV1.UpdateRecordIgnore(*request.Ignore))
 	if err != nil {
-		if rootCauseErrors, ok := extractElasticsearchRootCauseErrors(err); ok {
-			errResponse := data.NewErrorResponse(strings.Join(rootCauseErrors, ","))
-			returnInternalServerError(w, errResponse)
+		if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
+			errResponse := data.NewErrorResponse(strings.Join(rootCauseErrors, "; "))
+			controllers.ReturnInternalServerError(w, errResponse)
 		} else {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError,
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusInternalServerError,
 				"update records failed, "+err.Error()))
 		}
 
@@ -233,13 +178,13 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-//NewRecordsMarkUpdateHandler create a handler to handle records mark & unmark request.
-//The handler will update record store & ssm store.
-//Because we separate the Init() function and Controller, the only way to pass dal.Client is from parameters.
+// NewRecordsMarkUpdateHandler create a handler to handle records mark & unmark request.
+// The handler will update record store & ssm store.
+// Because we separate the Init() function and Controller, the only way to pass dal.Client is from parameters.
 func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter, r *http.Request) {
 	if client == nil {
 		return func(w http.ResponseWriter, r *http.Request) {
-			returnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
 		}
 	}
 
@@ -259,19 +204,19 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		defer r.Body.Close()
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
 			return
 		}
 		if request.Mark == nil {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "mark is required."))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "mark is required."))
 			return
 		}
 		if request.Records == nil {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
 			return
 		}
 		appID := requestheader.GetAppID(r)
-		q := data.RecordQuery{
+		q := dataV1.RecordQuery{
 			AppID:   appID,
 			Records: make([]interface{}, len(request.Records)),
 			Limit:   len(request.Records),
@@ -279,8 +224,8 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		for i, r := range request.Records {
 			q.Records[i] = r
 		}
-		//Need retrive record's userq
-		result, err := services.VisitRecordsQuery(q)
+		// Need retrive record's userq
+		result, err := servicesV1.VisitRecordsQuery(q)
 		if err != nil {
 			logger.Error.Printf("check record content failed, %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -289,9 +234,9 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			})
 			return
 		}
-		todoRecords := make([]*data.VisitRecordsData, 0)
+		todoRecords := make([]*dataV1.VisitRecordsData, 0)
 		skipRecordsID := make([]string, 0)
-		//Filter skip records
+		// Filter skip records
 		for _, record := range result.Hits {
 			var isSQ bool
 			isSQ, err = client.IsStandardQuestion(appID, record.UserQ)
@@ -310,7 +255,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			}
 			todoRecords = append(todoRecords, record)
 		}
-		//deduplicate input userQ, because dalClient can not handle duplicate request.
+		// Deduplicate input userQ, because dalClient can not handle duplicate request.
 		questions := map[string]struct{}{}
 		for _, r := range todoRecords {
 			_, found := questions[r.UserQ]
@@ -325,7 +270,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		}
 
 		if *request.Mark {
-			//If delete Simq have problem, we will know at next step setSimQ, so dont bother to check delete simQ operation at all.
+			// If delete Simq have problem, we will know at next step setSimQ, so dont bother to check delete simQ operation at all.
 			client.DeleteSimilarQuestions(appID, uniqueUserQ...)
 			err = client.SetSimilarQuestion(appID, request.Content, uniqueUserQ...)
 			if err != nil {
@@ -337,7 +282,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				return
 			}
 		} else {
-			//unmark should remove the records from ssm store
+			// Unmark should remove the records from ssm store
 			err = client.DeleteSimilarQuestions(appID, uniqueUserQ...)
 			//Note: because ssm wont sync with record, so it can be someone delete the ssm
 			//We only need to return error if the problem is not "not exist"
@@ -362,7 +307,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			}
 		}
 
-		newQuery := data.RecordQuery{
+		newQuery := dataV1.RecordQuery{
 			AppID:   appID,
 			Records: make([]interface{}, len(todoRecords)),
 		}
@@ -370,7 +315,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			newQuery.Records[i] = r.UniqueID
 		}
 
-		err = services.UpdateRecords(newQuery, services.UpdateRecordMark(*request.Mark))
+		err = servicesV1.UpdateRecords(newQuery, servicesV1.UpdateRecordMark(*request.Mark))
 		if err != nil {
 			logger.Error.Printf("service update record failed, %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -395,33 +340,33 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Request) {
 	if client == nil {
 		return func(w http.ResponseWriter, r *http.Request) {
-			returnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse("no valid dal client"))
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, ok := mux.Vars(r)["id"]
 		if !ok {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "no path variable id"))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "no path variable id"))
 			return
 		}
 		appID := requestheader.GetAppID(r)
-		query := data.RecordQuery{
+		query := dataV1.RecordQuery{
 			AppID:   appID,
 			Records: []interface{}{id},
 			Limit:   1,
 		}
-		result, err := services.VisitRecordsQuery(query)
+		result, err := servicesV1.VisitRecordsQuery(query)
 		if err != nil {
 			logger.Error.Printf("fetch es records failed, %v\n", err)
-			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse("internal server error"))
 			return
 		}
 		if size := len(result.Hits); size == 0 || size > 1 {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record id "+id+" is ambiguous(results: "+strconv.Itoa(size)+")"))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record id "+id+" is ambiguous(results: "+strconv.Itoa(size)+")"))
 			return
 		}
 		if !result.Hits[0].IsMarked {
-			returnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record is not marked"))
+			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record is not marked"))
 		}
 		lq := result.Hits[0].UserQ
 		var response = struct {
@@ -430,33 +375,33 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 		isLQ, err := client.IsSimilarQuestion(appID, lq)
 		if err != nil {
 			logger.Error.Printf("get isSimilarQ failed, %v", err)
-			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse("internal server error"))
 			return
 		}
 		if !isLQ {
 			response.Content = ""
-			returnOK(w, response)
+			controllers.ReturnOK(w, response)
 			return
 		}
 
 		response.Content, err = client.Question(appID, lq)
 		if err != nil {
 			logger.Error.Printf("get question for lq %s failed, %v", lq, err)
-			returnInternalServerError(w, data.NewErrorResponse("internal server error"))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse("internal server error"))
 			return
 		}
-		returnOK(w, response)
+		controllers.ReturnOK(w, response)
 	}
 }
 
-//newRecordQuery create a new *data.RecordQuery with given r.
+//newRecordQuery create a new *dataCommon.RecordQuery with given r.
 //It should handle all the logic to retrive data,
 //the only error should be returned is if request itself is invalided.
 //It handled the limit & page logic for now, should move up to controller level.
-func newRecordQuery(r *http.Request) (*data.RecordQuery, error) {
+func newRecordQuery(r *http.Request) (*dataV1.RecordQuery, error) {
 	enterpriseID := requestheader.GetEnterpriseID(r)
 	appID := requestheader.GetAppID(r)
-	var query data.RecordQuery
+	var query dataV1.RecordQuery
 	err := json.NewDecoder(r.Body).Decode(&query)
 	if err != nil {
 		return nil, fmt.Errorf("record query: request handled failed, %v", err)

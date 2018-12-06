@@ -27,13 +27,14 @@ var (
 
 const (
 	ErrCodeInvalidParameterType = iota
-	ErrCodeInvalidParameterT1
-	ErrCodeInvalidParameterT2
+	ErrCodeInvalidParameterStartTime
+	ErrCodeInvalidParameterEndTime
 	ErrCodeInvalidParameterCategory
 	ErrCodeInvalidParameterFilter
 	ErrCodeInvalidRequestBody
 	ErrCodeInvalidParameterPage
 	ErrCodeInvalidParameterExportID
+	ErrCodeInvalidParameterDimension
 )
 
 type ErrorResponse struct {

@@ -1,5 +1,16 @@
 package data
 
+import (
+	"time"
+)
+
+const (
+	HourInSeconds   = 60 * 60
+	MinuteInSeconds = 60
+)
+
+var DurationDay = time.Hour * 24
+
 const (
 	// AuthorizationHeaderKey is header used for auth, content will be app_id only
 	AuthorizationHeaderKey = "Authorization"
@@ -29,7 +40,9 @@ const ESUsersTemplateFile = "./InitFiles/elasticsearch/configs/users_template.js
 const ESUsersIndex = "emotibot-users"
 const ESUsersType = "doc"
 
-const ESTimeFormat = "2006-01-02 15:04:05"
+const StandardTimeFormat = "2006-01-02 15:04:05"
+
+var ESTimeFormat = StandardTimeFormat
 
 const ESTermAggSize = 3000000
 const ESTermAggShardSize = 3000000
@@ -51,11 +64,34 @@ const (
 )
 
 const (
-	AggByTime = "time"
-	AggByTag  = "tag"
+	AggByTime      = "time"
+	AggByTag       = "tag"
+	AggByDimension = "dimension"
 )
 
 const ESMaxResultWindow = 10000
 
 const ESScrollSize = 10000
 const ESScrollKeepAlive = "30s"
+
+const MaxNumRecordsPerXlsx = 100000
+
+const (
+	XlsxExportDir           = "exports"
+	XlsxDirTimestampFormat  = "20060102"
+	XlsxFileTimestampFormat = "20060102_150405"
+)
+
+const (
+	CodeExportTaskRunning = iota
+	CodeExportTaskCompleted
+	CodeExportTaskFailed
+	CodeExportTaskEmpty
+)
+
+var ExportTaskCodesMap = map[int]string{
+	CodeExportTaskRunning:   "RUNNING",
+	CodeExportTaskCompleted: "COMPLETED",
+	CodeExportTaskFailed:    "FAILED",
+	CodeExportTaskEmpty:     "EMPTY",
+}

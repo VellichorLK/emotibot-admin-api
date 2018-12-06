@@ -206,3 +206,18 @@ func createTimeRange(startTime time.Time,
 	_endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, time.Local)
 	return
 }
+
+func ExtractElasticsearchRootCauseErrors(err interface{}) ([]string, bool) {
+	if esErr, ok := err.(*elastic.Error); ok {
+		rootCause := esErr.Details.RootCause
+		reasons := make([]string, len(rootCause))
+		for i, cause := range rootCause {
+			reasons[i] = cause.Reason
+		}
+
+		return reasons, true
+	}
+
+	// Not instance of elastic.Error return false
+	return nil, false
+}
