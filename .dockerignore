@@ -2,5 +2,6 @@
 **/*.test
 **/vendor/**/*_test.go
 **/testdata
+**/docker*
+**/Dockerfile
 .git
-Dockerfile
