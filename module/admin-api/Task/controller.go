@@ -114,9 +114,9 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		"error":  "Update success",
 	}
 	if err == nil {
-		ImportScenario(appid, useNewID, taskEngineJSON)
+		ImportScenario(appid, appid, useNewID, taskEngineJSON)
 	} else {
-		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
+		BfbImportScenarios(appid, useNewID, *multiTaskEngineJSON)
 	}
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
 	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)

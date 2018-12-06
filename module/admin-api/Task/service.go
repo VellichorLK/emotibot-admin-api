@@ -50,13 +50,13 @@ func ReadUploadJSON(file multipart.File) (string, error) {
 	return buf.String(), nil
 }
 
-func ImportScenarios(appid string, newID bool, datas []interface{}) {
+func BfbImportScenarios(appid string, newID bool, datas []interface{}) {
 	for _, data := range datas {
-		ImportScenario(appid, newID, data)
+		BfbImportScenario(appid, newID, data)
 	}
 }
 
-func ImportScenario(appid string, newID bool, data interface{}) {
+func BfbImportScenario(appid string, newID bool, data interface{}) {
 	// logger.Info.Printf("Import scenario, use new ID: %t \ndata: %#v\n", newID, data)
 	if !newID {
 		bfbUpdateScenario(appid, data)

@@ -45,13 +45,10 @@ func CreateScenario(scenarioid, userid, appid, content, layout string, public,
 
 // CreateInitialScenario create an initial scenario record in taskenginescenario
 func CreateInitialScenario(appid, userid, scenarioName string) (*ContentMetadata, int, error) {
-	// generate new scenarioid
-	scenUUID, err := uuid.NewV4()
+	scenarioid, err := generateScenarioID()
 	if err != nil {
-		logger.Error.Printf("Failed to generate uuid. %s\n", err)
 		return nil, ApiError.DB_ERROR, err
 	}
-	scenarioid := scenUUID.String()
 	// generate content json string
 	now := time.Now()
 	updateTime := now.Format("2006-01-02 15:04:05")
@@ -80,6 +77,47 @@ func CreateInitialScenario(appid, userid, scenarioName string) (*ContentMetadata
 		return nil, ApiError.DB_ERROR, err
 	}
 	return metadata, ApiError.SUCCESS, nil
+}
+
+// ImportScenario import the scenario to the specified appid
+func ImportScenario(appid, userid string, useNewID bool, jsonData interface{}) (int, error) {
+	scenarioid, _, content, layout := parseJSONData(jsonData)
+	if useNewID {
+		id, err := generateScenarioID()
+		if err != nil {
+			return ApiError.DB_ERROR, err
+		}
+		scenarioid = id
+		contentObj := content.(map[string]interface{})
+		metadata := contentObj["metadata"].(map[string]interface{})
+		metadata["scenario_id"] = id
+	}
+
+	contentBytes, err := json.Marshal(content)
+	if err != nil {
+		return ApiError.JSON_PARSE_ERROR, err
+	}
+	contentString := string(contentBytes)
+	layoutBytes, err := json.Marshal(layout)
+	if err != nil {
+		return ApiError.JSON_PARSE_ERROR, err
+	}
+	layoutString := string(layoutBytes)
+	// create scenario
+	err = createScenario(scenarioid, userid, appid, contentString, layoutString, 0, 0, contentString, layoutString, 1)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}
+
+func generateScenarioID() (string, error) {
+	scenUUID, err := uuid.NewV4()
+	if err != nil {
+		logger.Error.Printf("Failed to generate uuid. %s\n", err)
+		return "", err
+	}
+	return scenUUID.String(), nil
 }
 
 func suffixIndexToScenarioNameIfAlreadyExist(appid, userid, scenarioName string) (string, int, error) {
