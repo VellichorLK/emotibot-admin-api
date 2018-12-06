@@ -148,11 +148,20 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 			io.WriteString(w, string(retString))
 			return
 		}
-		// TODO handle scenarioid == all, public != 1 API
+		// TODO handle scenarioid == all, public == 0 API
 		logger.Info.Printf("scenarioid: %s, public: %d", scenarioid, public)
 	} else {
-		// scenario, errno, err := GetScenario(scenarioid)
-		scenario, errno, err := GetDecryptScenario(scenarioid)
+		teConfig, errno, err := GetTaskEngineConfig()
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		scenario := &Scenario{}
+		if teConfig.TEv2Config.EnableJSCode {
+			scenario, errno, err = GetDecryptedScenario(scenarioid)
+		} else {
+			scenario, errno, err = GetScenario(scenarioid)
+		}
 		if err != nil {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 			return

@@ -24,6 +24,7 @@ const (
 	ConsulTEScenarioKey        = "te/scenario"
 	ConsulTEScenarioAllKey     = "te/scenario_all"
 	ConsulTEAppKey             = "te/app"
+	ConsulTEConfigKey          = "te/config"
 	// ConsulRCKey is a helper value used in ConsulUpdateRobotChat
 	ConsulRCKey = "chat/%s"
 	// ConsulFunctionKey is a helper value used in ConsulUpdateFunctionStatus
@@ -356,6 +357,12 @@ func ConsulUpdateTaskEngineScenarioAll() (int, error) {
 func ConsulUpdateTaskEngineApp(appid, val string) (int, error) {
 	key := fmt.Sprintf("%s/%s", ConsulTEAppKey, appid)
 	return ConsulUpdateVal(key, val)
+}
+
+//ConsulGetTaskEngineConfig return the TE config json string
+func ConsulGetTaskEngineConfig() (string, int, error) {
+	key := ConsulTEConfigKey
+	return ConsulGetVal(key)
 }
 
 //ConsulUpdateFunctionStatus is a convenient function for updating Robot Chat's Consul Key

@@ -119,8 +119,8 @@ func GetScenario(scenarioid string) (*Scenario, int, error) {
 	return scenario, ApiError.SUCCESS, nil
 }
 
-// GetDecryptScenario get the scenario content and layout then decrypt the js_code
-func GetDecryptScenario(scenarioid string) (*Scenario, int, error) {
+// GetDecryptedScenario get the scenario content and layout then decrypt the js_code
+func GetDecryptedScenario(scenarioid string) (*Scenario, int, error) {
 	scenario, err := getScenario(scenarioid)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
@@ -133,16 +133,12 @@ func GetDecryptScenario(scenarioid string) (*Scenario, int, error) {
 		return scenario, ApiError.SUCCESS, nil
 	}
 	mainCipher := value.String()
-	logger.Info.Printf("mainCipher: %s", mainCipher)
+	logger.Trace.Printf("mainCipher: %s", mainCipher)
 	mainPlain, err := util.DesDecrypt(mainCipher, []byte(util.TEJSCodeEncryptKey))
 	if err != nil {
 		return nil, ApiError.BASE64_PARSE_ERROR, err
 	}
-	ret := ResultMsgResponse{
-		Msg: mainPlain,
-	}
-	retString, _ := json.Marshal(ret)
-	logger.Info.Printf("mainPlain: %s", retString)
+	logger.Trace.Printf("mainPlain: %s", mainPlain)
 	newContent, err := sjson.Set(scenario.EditingContent, "js_code.main", mainPlain)
 	if err != nil {
 		return nil, ApiError.JSON_PARSE_ERROR, err
@@ -157,11 +153,52 @@ func GetDecryptScenario(scenarioid string) (*Scenario, int, error) {
 
 // UpdateScenario update the scenario editingContent and editingLayout
 func UpdateScenario(scenarioid, appid, userid, editingContent, editingLayout string) (int, error) {
-	err := updateScenario(scenarioid, appid, userid, editingContent, editingLayout)
+	// encrypt js_code if exist
+	editingContent, err := encryptJSCode(editingContent)
+	if err != nil {
+		return ApiError.BASE64_PARSE_ERROR, err
+	}
+	err = updateScenario(scenarioid, appid, userid, editingContent, editingLayout)
 	if err != nil {
 		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
+}
+
+// encryptJSCode encrypt the js_code.main in editingContent
+func encryptJSCode(editingContent string) (string, error) {
+	value := gjson.Get(editingContent, "js_code.text_type")
+	if !value.Exists() {
+		logger.Trace.Printf("no js_code.text_type found, skip encryption process.")
+		return editingContent, nil
+	}
+	textType := value.String()
+	logger.Trace.Printf("js_code.text_type: %s", textType)
+	if textType == "cipher" {
+		return editingContent, nil
+	} else if textType == "plain" {
+		value = gjson.Get(editingContent, "js_code.main")
+		if !value.Exists() {
+			logger.Trace.Printf("no js_code.main found, skip encryption process.")
+			return editingContent, nil
+		}
+		logger.Trace.Printf("encrypt js_code.main")
+		mainPlain := value.String()
+		mainCipher, err := util.DesEncrypt([]byte(mainPlain), []byte(util.TEJSCodeEncryptKey))
+		if err != nil {
+			return "", err
+		}
+		editingContent, err = sjson.Set(editingContent, "js_code.main", mainCipher)
+		if err != nil {
+			return "", err
+		}
+		editingContent, err := sjson.Set(editingContent, "js_code.text_type", "cipher")
+		if err != nil {
+			return "", err
+		}
+		return editingContent, nil
+	}
+	return "", fmt.Errorf("unknown text_type in js_code: %s", textType)
 }
 
 // DeleteScenario delete the scenario with the specified scenarioid

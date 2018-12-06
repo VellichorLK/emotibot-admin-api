@@ -18,6 +18,10 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+const (
+	teDefaultConfig = `{"system":"bfop","task_engine_v2":{"enable_js_code":false,"enable_node":{"nlu_pc":false,"action":false}}}`
+)
+
 func EnableAllScenario(appid string) {
 	setAllScenarioStatus(appid, true)
 }
@@ -359,4 +363,23 @@ func UpdateIntentV1(appID string, intentName string, triggerPhrases []string) er
 		return err
 	}
 	return nil
+}
+
+// GetTaskEngineConfig return the task-engine config
+func GetTaskEngineConfig() (*TEConfig, int, error) {
+	configString, errno, err := util.ConsulGetTaskEngineConfig()
+	if err != nil {
+		return nil, errno, err
+	}
+	if configString == "" {
+		configString = teDefaultConfig
+	}
+	teConfig := &TEConfig{}
+	err = json.Unmarshal([]byte(configString), teConfig)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+	teConfigString, _ := json.Marshal(teConfig)
+	logger.Trace.Printf("config of taskengine: %s", teConfigString)
+	return teConfig, ApiError.SUCCESS, nil
 }
