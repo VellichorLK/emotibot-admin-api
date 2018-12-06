@@ -53,8 +53,26 @@ func init() {
 			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableAllV2, 2),
 
 			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
+			util.NewEntryPoint("GET", "config", []string{}, handleGetConfig),
 		},
 	}
+}
+
+func handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	teConfig, errno, err := GetTaskEngineConfig()
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	retString, err := json.Marshal(teConfig)
+	if err != nil {
+		errno = ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
 }
 
 func handleUploadScenario(w http.ResponseWriter, r *http.Request) {
