@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -77,6 +78,13 @@ func CreateInitialScenario(appid, userid, scenarioName string) (*ContentMetadata
 		return nil, ApiError.DB_ERROR, err
 	}
 	return metadata, ApiError.SUCCESS, nil
+}
+
+// ImportScenarios import scenarios to the specified appid
+func ImportScenarios(appid, userid string, useNewID bool, datas []interface{}) {
+	for _, data := range datas {
+		ImportScenario(appid, userid, useNewID, data)
+	}
 }
 
 // ImportScenario import the scenario to the specified appid
@@ -257,6 +265,15 @@ func GetAppScenarioList(appid string) ([]string, int, error) {
 	return scenarioList, ApiError.SUCCESS, nil
 }
 
+// CreateAppScenario create an app-scenario pair to taskengineapp
+func CreateAppScenario(scenarioid, appid string) (int, error) {
+	err := createAppScenario(scenarioid, appid)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}
+
 // DeleteAppScenario delete the app-scenario pair with the specified scenarioid in taskengineapp
 func DeleteAppScenario(scenarioid, appid string) (int, error) {
 	err := deleteAppScenario(scenarioid, appid)
@@ -271,6 +288,21 @@ func PublishScenario(scenarioid, appid, userid string) (int, error) {
 	err := publishScenario(scenarioid, appid, userid)
 	if err != nil {
 		return ApiError.DB_ERROR, err
+	}
+	return ApiError.SUCCESS, nil
+}
+
+// UpdateAppScenarioPairToConsul update the app-scenario pair to consul key te/app
+func UpdateAppScenarioPairToConsul(appid string) (int, error) {
+	scenarioList, errno, err := GetAppScenarioList(appid)
+	if err != nil {
+		return errno, err
+	}
+	value := strings.Join(scenarioList, ",")
+	errno, err = util.ConsulUpdateTaskEngineApp(appid, value)
+	if err != nil {
+		logger.Error.Printf("Failed to update consul key:te/app/%s errno: %d, %s", appid, errno, err.Error())
+		return errno, err
 	}
 	return ApiError.SUCCESS, nil
 }

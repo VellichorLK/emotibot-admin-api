@@ -30,7 +30,7 @@ func setScenarioStatus(appid string, scenarioID string, status bool) error {
 		return errDBNotInit
 	}
 
-	queryStr := "UPDATE taskenginescenario onoff = ? where scenarioID = ?"
+	queryStr := "UPDATE taskenginescenario SET onoff = ? where scenarioID = ?"
 	_, err := mySQL.Exec(queryStr, status, scenarioID)
 	return err
 }

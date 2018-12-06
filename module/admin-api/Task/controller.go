@@ -116,7 +116,7 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		ImportScenario(appid, appid, useNewID, taskEngineJSON)
 	} else {
-		BfbImportScenarios(appid, useNewID, *multiTaskEngineJSON)
+		ImportScenarios(appid, appid, useNewID, *multiTaskEngineJSON)
 	}
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
 	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
@@ -232,16 +232,9 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 			return
 		}
-		// update app-scenario pair to consul
-		scenarioList, errno, err := GetAppScenarioList(appid)
+		errno, err = UpdateAppScenarioPairToConsul(appid)
 		if err != nil {
-			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
-			return
-		}
-		value := strings.Join(scenarioList, ",")
-		errno, err = util.ConsulUpdateTaskEngineApp(appid, value)
-		if err != nil {
-			logger.Error.Printf("Failed to update consul key:te/app/%s errno: %d, %s", appid, errno, err.Error())
+			errno := ApiError.JSON_PARSE_ERROR
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 			return
 		}
@@ -327,46 +320,61 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := appid
 	enable := r.FormValue("enable")
-	scenarioID := r.FormValue("scenarioid")
-	taskURL := getEnvironment("SERVER_URL")
+	scenarioid := r.FormValue("scenarioid")
 
-	url := fmt.Sprintf("%s/%s", taskURL, taskAppEntry)
-	params := map[string]string{
-		"userid":     userID,
-		"scenarioid": scenarioID,
-		"enable":     enable,
-		"appid":      appid,
-	}
-
-	content, err := util.HTTPPostForm(url, params, 0)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	var errno int
+	var err error
+	var ret ResultMsgResponse
+	if enable == "true" {
+		errno, err = CreateAppScenario(scenarioid, appid)
+		ret = ResultMsgResponse{
+			Msg: "Enable success",
+		}
 	} else {
-		r.Header.Set("Content-type", "application/json; charset=utf-8")
-		io.WriteString(w, content)
+		errno, err = DeleteAppScenario(scenarioid, appid)
+		ret = ResultMsgResponse{
+			Msg: "Disable success",
+		}
 	}
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	errno, err = UpdateAppScenarioPairToConsul(appid)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
 
 	auditTpl := ""
-	target := scenarioID
+	target := scenarioid
 	operation := audit.AuditOperationActive
 	if enable == "true" {
 		auditTpl = util.Msg["AuditActiveTpl"]
-		if scenarioID == "all" {
+		if scenarioid == "all" {
 			EnableAllScenario(appid)
 			target = util.Msg["All"]
 		} else {
-			EnableScenario(appid, scenarioID)
+			EnableScenario(appid, scenarioid)
 		}
 	} else {
 		auditTpl = util.Msg["AuditDeactiveTpl"]
 		operation = audit.AuditOperationDeactive
-		if scenarioID == "all" {
+		if scenarioid == "all" {
 			DisableAllScenario(appid)
 			target = util.Msg["All"]
 		} else {
-			DisableScenario(appid, scenarioID)
+			DisableScenario(appid, scenarioid)
 		}
 	}
 	auditMsg := fmt.Sprintf(auditTpl, target)

@@ -3,6 +3,7 @@ package Task
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -245,6 +246,34 @@ func getAppScenarioList(appid string) (scenarioids []string, err error) {
 		scenarioids = append(scenarioids, scenarioid)
 	}
 	return scenarioids, nil
+}
+
+func createAppScenario(scenarioid string, appid string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return err
+	}
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		INSERT INTO taskengineapp
+		(pk, appID, scenarioID)
+		VALUES (?, ?, ?)`
+	pk := fmt.Sprintf("%s%s", appid, scenarioid)
+	_, err = tx.Exec(queryStr, pk, appid, scenarioid)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func deleteAppScenario(scenarioid string, appid string) (err error) {
