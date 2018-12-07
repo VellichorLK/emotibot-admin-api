@@ -2,6 +2,7 @@ package feedback
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -17,6 +18,8 @@ type feedbackDao struct {
 }
 
 var (
+	// ErrDBNotInit is used to be returned if dao is not initialized
+	ErrDBNotInit = errors.New("DB is not init")
 	// it is used for mock
 	timestampHandler = getTimestamp
 )
