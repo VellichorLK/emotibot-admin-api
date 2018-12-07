@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,8 +53,26 @@ func init() {
 			util.NewEntryPointWithVer("GET", "mapping-tables/all", []string{}, handleGetMapTableAllV2, 2),
 
 			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
+			util.NewEntryPoint("GET", "config", []string{}, handleGetConfig),
 		},
 	}
+}
+
+func handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	teConfig, errno, err := GetTaskEngineConfig()
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	retString, err := json.Marshal(teConfig)
+	if err != nil {
+		errno = ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
 }
 
 func handleUploadScenario(w http.ResponseWriter, r *http.Request) {
@@ -95,9 +114,9 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		"error":  "Update success",
 	}
 	if err == nil {
-		ImportScenario(appid, useNewID, taskEngineJSON)
+		ImportScenario(appid, appid, useNewID, taskEngineJSON)
 	} else {
-		ImportScenarios(appid, useNewID, *multiTaskEngineJSON)
+		ImportScenarios(appid, appid, useNewID, *multiTaskEngineJSON)
 	}
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
 	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
@@ -107,7 +126,6 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	userID := appid
-	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.URL.Query().Get("scenarioid")
 	public := r.URL.Query().Get("public")
 
@@ -126,60 +144,141 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 		params.Set("userid", userID)
 	}
 
-	url := fmt.Sprintf("%s/%s/%s?%s", taskURL, taskScenarioEntry, scenarioid, params.Encode())
-	logger.Trace.Printf("Get Scenario URL: %s", url)
-	content, err := util.HTTPGetSimple(url)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	if scenarioid == "all" {
+		public, _ := strconv.Atoi(public)
+		if public > 0 {
+			// get public(template) scenarios
+			templateScenarioInfoList, errno, err := GetTemplateScenarioInfoList()
+			if err != nil {
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
+			}
+			ret := TemplateScenarioInfoListResponse{
+				Result: templateScenarioInfoList,
+			}
+			retString, err := json.Marshal(ret)
+			if err != nil {
+				errno = ApiError.JSON_PARSE_ERROR
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, string(retString))
+			return
+		}
+		// TODO handle scenarioid == all, public == 0 API
+		logger.Info.Printf("scenarioid: %s, public: %d", scenarioid, public)
 	} else {
-		io.WriteString(w, content)
+		teConfig, errno, err := GetTaskEngineConfig()
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		scenario := &Scenario{}
+		if teConfig.TEv2Config.EnableJSCode {
+			scenario, errno, err = GetDecryptedScenario(scenarioid)
+		} else {
+			scenario, errno, err = GetScenario(scenarioid)
+		}
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		} else if scenario == nil {
+			errMsg := fmt.Sprintf("No scenario found in DB with scenarioID: %s", scenarioid)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, errMsg), http.StatusNotFound)
+			return
+		} else {
+			result := GetScenarioResult{
+				Content:        scenario.Content,
+				Layout:         scenario.Layout,
+				Editing:        scenario.Editing,
+				EditingContent: scenario.EditingContent,
+				EditingLayout:  scenario.EditingLayout,
+			}
+			ret := GetScenarioResponse{
+				Result: &result,
+			}
+			retString, err := json.Marshal(ret)
+			if err != nil {
+				errno = ApiError.JSON_PARSE_ERROR
+				util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			io.WriteString(w, string(retString))
+			return
+		}
 	}
 }
 
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := appid
-	taskURL := getEnvironment("SERVER_URL")
 	scenarioid := r.FormValue("scenarioid")
-	layout := r.FormValue("layout")
-	content := r.FormValue("content")
-	delete := r.FormValue("delete")
+	editingContent := r.FormValue("content")
+	editingLayout := r.FormValue("layout")
 	publish := r.FormValue("publish")
-
-	params := map[string]interface{}{
-		"appid":  appid,
-		"userid": userID,
-	}
-
-	if content != "" {
-		params["content"] = content
-		params["layout"] = layout
-	} else if delete != "" {
-		params["delete"] = true
-	} else if publish != "" {
-		params["publish"] = true
-	}
-	url := fmt.Sprintf("%s/%s/%s", taskURL, taskScenarioEntry, scenarioid)
-	logger.Trace.Printf("Put scenarios: %s with params: %#v", url, params)
-	content, err := util.HTTPPutForm(url, params, 0)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	} else {
-		io.WriteString(w, content)
-	}
-	if publish != "" {
-		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
-	}
+	delete := r.FormValue("delete")
 
 	if delete != "" {
-		auditMsg := fmt.Sprintf("%s%s ID: %s", util.Msg["Delete"], util.Msg["TaskEngineScenario"], scenarioid)
-		addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
+		// delete scenario
+		errno, err := DeleteScenario(scenarioid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// delete app-scenario pair in taskengineapp
+		errno, err = DeleteAppScenario(scenarioid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		errno, err = UpdateAppScenarioPairToConsul(appid)
+		if err != nil {
+			errno := ApiError.JSON_PARSE_ERROR
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	} else if publish != "" {
+		// publish scenario
+		errno, err := PublishScenario(scenarioid, appid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// update consul to inform TE to reload scenarios
+		errno, err = util.ConsulUpdateTaskEngineScenario()
+		if err != nil {
+			logger.Error.Printf("Failed to update consul key:te/scenario errno: %d, %s", errno, err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	} else {
+		// update scenario
+		errno, err := UpdateScenario(scenarioid, appid, appid, editingContent, editingLayout)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
 	}
+	ret := ResultMsgResponse{
+		Msg: "Update success",
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
 }
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	method := r.FormValue("method")
-
 	if method == "GET" {
 		handleGetScenarios(w, r)
 		return
@@ -187,78 +286,95 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		handlePutScenarios(w, r)
 		return
 	}
-
 	appid := requestheader.GetAppID(r)
-	userID := appid
-	template := r.FormValue("template")
+	userid := appid
 	scenarioName := r.FormValue("scenarioName")
 	if scenarioName == "" {
 		scenarioName = "New Scenario"
 	}
-	taskURL := getEnvironment("SERVER_URL")
-	params := map[string]string{
-		"appid":        appid,
-		"userid":       userID,
-		"scenarioname": scenarioName,
-	}
-	if template != "" {
-		params["template"] = template
-	}
-	url := fmt.Sprintf("%s/%s", taskURL, taskScenarioEntry)
-	logger.Trace.Printf("Post scenarios: %s", url)
-	content, err := util.HTTPPostForm(url, params, 0)
+
+	metadata, errno, err := CreateInitialScenario(appid, userid, scenarioName)
 	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	} else {
-		io.WriteString(w, content)
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 
+	ret := CreateScenarioResponse{
+		Template: &TemplateResult{
+			Metadata: metadata,
+		},
+		ScenarioID: metadata.ScenarioID,
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
 	auditMsg := fmt.Sprintf("%s%s: %s", util.Msg["Add"], util.Msg["TaskEngineScenario"], scenarioName)
 	addAuditLog(r, audit.AuditOperationAdd, auditMsg, err == nil)
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
 }
 
 func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	userID := appid
 	enable := r.FormValue("enable")
-	scenarioID := r.FormValue("scenarioid")
-	taskURL := getEnvironment("SERVER_URL")
+	scenarioid := r.FormValue("scenarioid")
 
-	url := fmt.Sprintf("%s/%s", taskURL, taskAppEntry)
-	params := map[string]string{
-		"userid":     userID,
-		"scenarioid": scenarioID,
-		"enable":     enable,
-		"appid":      appid,
-	}
-
-	content, err := util.HTTPPostForm(url, params, 0)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
+	var errno int
+	var err error
+	var ret ResultMsgResponse
+	if enable == "true" {
+		errno, err = CreateAppScenario(scenarioid, appid)
+		ret = ResultMsgResponse{
+			Msg: "Enable success",
+		}
 	} else {
-		r.Header.Set("Content-type", "application/json; charset=utf-8")
-		io.WriteString(w, content)
+		errno, err = DeleteAppScenario(scenarioid, appid)
+		ret = ResultMsgResponse{
+			Msg: "Disable success",
+		}
 	}
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	errno, err = UpdateAppScenarioPairToConsul(appid)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
 
 	auditTpl := ""
-	target := scenarioID
+	target := scenarioid
 	operation := audit.AuditOperationActive
 	if enable == "true" {
 		auditTpl = util.Msg["AuditActiveTpl"]
-		if scenarioID == "all" {
+		if scenarioid == "all" {
 			EnableAllScenario(appid)
 			target = util.Msg["All"]
 		} else {
-			EnableScenario(appid, scenarioID)
+			EnableScenario(appid, scenarioid)
 		}
 	} else {
 		auditTpl = util.Msg["AuditDeactiveTpl"]
 		operation = audit.AuditOperationDeactive
-		if scenarioID == "all" {
+		if scenarioid == "all" {
 			DisableAllScenario(appid)
 			target = util.Msg["All"]
 		} else {
-			DisableScenario(appid, scenarioID)
+			DisableScenario(appid, scenarioid)
 		}
 	}
 	auditMsg := fmt.Sprintf(auditTpl, target)
@@ -267,21 +383,22 @@ func handleUpdateApp(w http.ResponseWriter, r *http.Request) {
 
 func handleGetApps(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
-	// userID := requestheader.GetUserID(ctx)
-	taskURL := getEnvironment("SERVER_URL")
-
-	// Hack in task-engine, use appid as userid
-	url := fmt.Sprintf("%s/%s/%s?userid=%s", taskURL, taskAppEntry, appid, appid)
-	logger.Trace.Printf("Get apps: %s", url)
-	content, err := util.HTTPGetSimple(url)
+	scenarioInfoList, errno, err := GetScenarioInfoList(appid, appid)
 	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.WEB_REQUEST_ERROR, err.Error()))
-	} else {
-		// Cannot use json, or ui will has error...
-		// r.Header.Set("Content-type", "application/json; charset=utf-8")
-		r.Header.Set("Content-type", "text/plain; charset=utf-8")
-		io.WriteString(w, content)
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
+	ret := ScenarioInfoListResponse{
+		Msg: scenarioInfoList,
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno = ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
 }
 
 func handleGetMapTableList(w http.ResponseWriter, r *http.Request) {
@@ -322,6 +439,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 
 	mtList := GetMapTableListV2(wordbanks)
@@ -340,6 +458,7 @@ func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
 	rootMap, errno, err := Dictionary.GetWordbanksAllV3()
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
 	}
 
 	appidToMtMap := GetMapTableAllV2(rootMap)

@@ -12,8 +12,8 @@ import (
 
 // ParseUploadSpreadsheet will parse and verify uploaded spreadsheet
 // Use intent_engine_2.0 intent as trigger
-func ParseUploadSpreadsheet(appID string, scenarioString string, fileBuf []byte) (*Scenario, error) {
-	var scenario Scenario
+func ParseUploadSpreadsheet(appID string, scenarioString string, fileBuf []byte) (*ScenarioTDE, error) {
+	var scenario ScenarioTDE
 	json.Unmarshal([]byte(scenarioString), &scenario)
 	xlFile, err := xlsx.OpenBinary(fileBuf)
 	if err != nil {

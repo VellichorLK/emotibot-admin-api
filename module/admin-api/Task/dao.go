@@ -30,7 +30,7 @@ func setScenarioStatus(appid string, scenarioID string, status bool) error {
 		return errDBNotInit
 	}
 
-	queryStr := "UPDATE taskenginescenario onoff = ? where scenarioID = ?"
+	queryStr := "UPDATE taskenginescenario SET onoff = ? where scenarioID = ?"
 	_, err := mySQL.Exec(queryStr, status, scenarioID)
 	return err
 }
@@ -143,7 +143,7 @@ func deleteMappingTable(appid, userID, tableName string) error {
 	return err
 }
 
-func updateScenario(scenarioID, content, layout string) error {
+func updateSpreadsheetScenario(scenarioID, content, layout string) error {
 	var err error
 	defer func() {
 		util.ShowError(err)
