@@ -3,10 +3,10 @@ package feedback
 import (
 	"testing"
 
-	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
-func TestGetReasons(t *testing.T) {
+func TestDaoGetReasons(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
@@ -52,7 +52,7 @@ func TestGetReasons(t *testing.T) {
 	})
 }
 
-func TestAddReason(t *testing.T) {
+func TestDaoAddReason(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
