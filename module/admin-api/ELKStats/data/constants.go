@@ -40,6 +40,11 @@ const ESUsersTemplateFile = "./InitFiles/elasticsearch/configs/users_template.js
 const ESUsersIndex = "emotibot-users"
 const ESUsersType = "doc"
 
+const ESTERecordsTemplate = "emotibot_te_records_template"
+const ESTERecordsTemplateFile = "./InitFiles/elasticsearch/configs/te_records_template.json"
+const ESTERecordsIndex = "emotibot-te-records"
+const ESTERecordsType = "doc"
+
 const StandardTimeFormat = "2006-01-02 15:04:05"
 
 var ESTimeFormat = StandardTimeFormat
@@ -54,6 +59,9 @@ const SessionStartTimeFieldName = "start_time"
 const SessionEndTimeFieldName = "end_time"
 const FirstLogTimeFieldName = "first_log_time"
 
+const TERecordsTriggerTimeFieldName = "trigger_time"
+const TERecordsFinishTimeFieldName = "finish_time"
+
 const (
 	IntervalYear   = "year"
 	IntervalMonth  = "month"
@@ -64,9 +72,8 @@ const (
 )
 
 const (
-	AggByTime      = "time"
-	AggByTag       = "tag"
-	AggByDimension = "dimension"
+	AggByTime = "time"
+	AggByTag  = "tag"
 )
 
 const ESMaxResultWindow = 10000

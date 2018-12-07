@@ -30,10 +30,7 @@ type Record struct {
 }
 
 type VisitStatsQuery struct {
-	data.CommonQuery
-	AggBy       string
-	AggInterval string
-	AggTagType  string
+	data.StatsQuery
 }
 
 type Question struct {

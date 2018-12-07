@@ -71,13 +71,15 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	switch statsType {
 	case dataCommon.VisitStatsTypeTime:
 		query = dataV1.VisitStatsQuery{
-			CommonQuery: data.CommonQuery{
-				AppID:     appID,
-				StartTime: startTime,
-				EndTime:   endTime,
+			StatsQuery: data.StatsQuery{
+				CommonQuery: data.CommonQuery{
+					AppID:     appID,
+					StartTime: startTime,
+					EndTime:   endTime,
+				},
+				AggBy:       data.AggByTime,
+				AggInterval: aggInterval,
 			},
-			AggBy:       data.AggByTime,
-			AggInterval: aggInterval,
 		}
 	case dataCommon.VisitStatsTypeBarchart:
 		if statsFilter == "" {
@@ -96,21 +98,25 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			query = dataV1.VisitStatsQuery{
-				CommonQuery: data.CommonQuery{
-					AppID:     appID,
-					StartTime: startTime,
-					EndTime:   endTime,
+				StatsQuery: data.StatsQuery{
+					CommonQuery: data.CommonQuery{
+						AppID:     appID,
+						StartTime: startTime,
+						EndTime:   endTime,
+					},
+					AggBy:       data.AggByTag,
+					AggInterval: aggInterval,
+					AggTagType:  statsCategory,
 				},
-				AggBy:       data.AggByTag,
-				AggInterval: aggInterval,
-				AggTagType:  statsCategory,
 			}
 		case dataCommon.VisitStatsFilterQType:
 			query = dataV1.VisitStatsQuery{
-				CommonQuery: data.CommonQuery{
-					AppID:     appID,
-					StartTime: startTime,
-					EndTime:   endTime,
+				StatsQuery: data.StatsQuery{
+					CommonQuery: data.CommonQuery{
+						AppID:     appID,
+						StartTime: startTime,
+						EndTime:   endTime,
+					},
 				},
 			}
 		default:
@@ -230,10 +236,12 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := dataV1.VisitStatsQuery{
-		CommonQuery: data.CommonQuery{
-			AppID:     appID,
-			StartTime: startTime,
-			EndTime:   endTime,
+		StatsQuery: data.StatsQuery{
+			CommonQuery: data.CommonQuery{
+				AppID:     appID,
+				StartTime: startTime,
+				EndTime:   endTime,
+			},
 		},
 	}
 

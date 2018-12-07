@@ -33,6 +33,13 @@ func CreateRangeQuery(query data.CommonQuery, queryField string) *elastic.RangeQ
 		TimeZone(timezone)
 }
 
+func CreateRangeQueryUnixTime(query data.CommonQuery, queryField string) *elastic.RangeQuery {
+	return elastic.NewRangeQuery(queryField).
+		Gte(query.StartTime.Unix()).
+		Lte(query.EndTime.Unix()).
+		Format("epoch_second")
+}
+
 func CreateDateHistogramAggregation(query data.CommonQuery, queryField string) *elastic.DateHistogramAggregation {
 	return elastic.NewDateHistogramAggregation().
 		Field(queryField).

@@ -55,6 +55,7 @@ func Init() error {
 			util.NewEntryPoint("POST", "records/mark", []string{"view", "export"}, controllersV1.NewRecordsMarkUpdateHandler(dalClient)),
 			util.NewEntryPoint("POST", "records/ignore", []string{"view", "export"}, controllersV1.RecordsIgnoredUpdateHandler),
 			util.NewEntryPoint("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandler(dalClient)),
+			util.NewEntryPoint("GET", "teVisit", []string{"view"}, controllersV1.TEVisitStatsGetHandler),
 			util.NewEntryPoint("GET", "call", []string{"view"}, controllersV1.CallStatsGetHandler),
 		},
 	}

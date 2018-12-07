@@ -13,6 +13,13 @@ type CommonQuery struct {
 	EndTime      time.Time
 }
 
+type StatsQuery struct {
+	CommonQuery
+	AggBy       string
+	AggInterval string
+	AggTagType  string
+}
+
 type Tag struct {
 	Code string
 	Name string
