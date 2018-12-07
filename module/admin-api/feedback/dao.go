@@ -29,7 +29,7 @@ func (dao feedbackDao) GetReasons(appid string) ([]*Reason, error) {
 		return nil, ErrDBNotInit
 	}
 
-	sql := "SELECT id, content FROM feedback_reason WHERE appid = ?"
+	sql := "SELECT id, content FROM feedback_reason WHERE appid = ? ORDER BY id"
 	rows, err := dao.db.Query(sql, appid)
 	if err != nil {
 		return nil, err
