@@ -20,6 +20,9 @@ type feedbackDao struct {
 var (
 	// ErrDBNotInit is used to be returned if dao is not initialized
 	ErrDBNotInit = errors.New("DB is not init")
+	// ErrIDNotExisted is used when id is not existed in update
+	ErrIDNotExisted = errors.New("ID is not found")
+
 	// it is used for mock
 	timestampHandler = getTimestamp
 )
@@ -78,6 +81,28 @@ func (dao feedbackDao) DeleteReason(appid string, id int64) error {
 	_, err := dao.db.Exec(sql, appid, id)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (dao feedbackDao) UpdateReason(appid string, id int64, content string) error {
+	if dao.db == nil {
+		return ErrDBNotInit
+	}
+
+	sql := "UPDATE feedback_reason SET content = ? WHERE appid = ? AND id = ?"
+	result, err := dao.db.Exec(sql, content, appid, id)
+	if err != nil {
+		return err
+	}
+
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrIDNotExisted
 	}
 
 	return nil

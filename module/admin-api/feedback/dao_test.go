@@ -130,6 +130,43 @@ func TestDeleteReason(t *testing.T) {
 	})
 }
 
+func TestUpdateReason(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+
+	appid := "csbot"
+	id := int64(10)
+	content := "new reason"
+	dao := &feedbackDao{}
+
+	t.Run("Test dao not set correctly", func(t *testing.T) {
+		err = dao.UpdateReason(appid, id, content)
+		if err != ErrDBNotInit {
+			t.Errorf("Unexcepted error: %s", err)
+			return
+		}
+	})
+
+	t.Run("Test update reason", func(t *testing.T) {
+		mock.ExpectExec("UPDATE feedback_reason").WithArgs(content, appid, id).WillReturnResult(sqlmock.NewResult(0, 1))
+		dao.db = db
+
+		err = dao.UpdateReason(appid, id, content)
+		if err != nil {
+			t.Errorf("Unexcepted error: %s", err)
+			return
+		}
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+			return
+		}
+	})
+}
+
 func getFixTimestamp() int64 {
 	return 1000000
 }

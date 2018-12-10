@@ -22,6 +22,7 @@ var (
 	cache             = map[string]*NLUResult{}
 
 	matcher           = map[string]*match.Matcher{}
+	matcherType       = match.FuzzyMode
 	stdQuestionExpire = map[string]int64{}
 )
 
@@ -209,12 +210,16 @@ func getEnvironment(key string) string {
 
 func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, AdminErrors.AdminError) {
 	now := time.Now().Unix()
+	typeStr := getEnvironment("MATCH_TYPE")
+	if typeStr == "prefix" {
+		matcherType = match.PrefixMode
+	}
 	if now >= stdQuestionExpire[appid] || matcher[appid] == nil {
 		questions, err := dalClient.Questions(appid)
 		if err != nil {
 			return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, err.Error())
 		}
-		matcher[appid] = match.New(questions)
+		matcher[appid] = match.New(questions, matcherType)
 		stdQuestionExpire[appid] = now + 300
 		logger.Trace.Printf("Reload %d std questions of %s\n", len(questions), appid)
 	}

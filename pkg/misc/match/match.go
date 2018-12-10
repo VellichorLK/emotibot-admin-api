@@ -1,6 +1,10 @@
 package match
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/sahilm/fuzzy"
+)
 
 type wordNode struct {
 	Word       rune
@@ -11,20 +15,37 @@ type wordNode struct {
 	Sibling    *wordNode
 }
 
+// MatcherMode decide the method matcher use to match sentences
+type MatcherMode int
+
+const (
+	// FuzzyMode will use github.com/sahilm/fuzzy lib to do fuzzy search
+	FuzzyMode MatcherMode = 0
+	// PrefixMode will search for prefix matching
+	PrefixMode MatcherMode = 1
+)
+
 // Matcher is the return structure of match package
 type Matcher struct {
+	// root is used only in PrefixMode
 	root *wordNode
+
+	sentences   []string
+	matcherMode MatcherMode
 }
 
-// New will return an new matcher of input sentences
-func New(sentences []string) *Matcher {
+// New will return an new matcher of input sentences,
+// matcherMode must be Fuzzy or Prefix
+func New(sentences []string, matcherMode MatcherMode) *Matcher {
 	matcher := &Matcher{}
-	matcher.init(sentences)
+	matcher.initPrefixTree(sentences)
+	matcher.sentences = sentences
+	matcher.matcherMode = matcherMode
 	return matcher
 }
 
 // Init will setup a the data structure
-func (matcher *Matcher) init(sentences []string) {
+func (matcher *Matcher) initPrefixTree(sentences []string) {
 	matcher.root = &wordNode{
 		' ', false, map[rune]*wordNode{}, nil, nil, nil,
 	}
@@ -43,8 +64,20 @@ func (matcher *Matcher) init(sentences []string) {
 	setSibling(matcher.root)
 }
 
-// FindNSentence will find at most N sentence start with pattern
-func (matcher *Matcher) FindNSentence(pattern string, n int) []string {
+func (matcher *Matcher) findNSentenceByFuzzy(pattern string, n int) []string {
+	result := fuzzy.Find(pattern, matcher.sentences)
+
+	ret := make([]string, min(result.Len(), n))
+	for idx, match := range result {
+		if idx >= n {
+			break
+		}
+		ret[idx] = match.Str
+	}
+	return ret
+}
+
+func (matcher *Matcher) findNSentenceByPrefix(pattern string, n int) []string {
 	ret := make([]string, 0, 10)
 	prefix := []rune{}
 
@@ -92,6 +125,19 @@ func (matcher *Matcher) FindNSentence(pattern string, n int) []string {
 	return ret
 }
 
+// FindNSentence will find at most N sentence start with pattern
+func (matcher *Matcher) FindNSentence(pattern string, n int) []string {
+	var ret []string
+	if matcher.matcherMode == FuzzyMode {
+		ret = matcher.findNSentenceByFuzzy(pattern, n)
+	} else if matcher.matcherMode == PrefixMode {
+		ret = matcher.findNSentenceByPrefix(pattern, n)
+	} else {
+		ret = []string{}
+	}
+	return ret
+}
+
 func (node wordNode) Print() {
 	fmt.Printf("%q, %t\n", node.Word, node.IsSentence)
 	fmt.Printf("\tParent: %p, Sibling: %p\n", node.Parent, node.Sibling)
@@ -116,4 +162,11 @@ func setSibling(node *wordNode) {
 			setSibling(child)
 		}
 	}
+}
+
+func min(a, b int) int {
+	if a > b {
+		return b
+	}
+	return a
 }
