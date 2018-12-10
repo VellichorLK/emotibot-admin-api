@@ -3,6 +3,7 @@ package match
 import (
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -47,8 +48,24 @@ func benchmarkFuzzy(b *testing.B) {
 	}
 }
 
+func benchmarkRegex(b *testing.B) {
+	pattern := "帮我.*"
+	for n := 0; n < b.N; n++ {
+		re := regexp.MustCompile(pattern)
+		ret := make([]string, 0, 5)
+		for _, sentence := range sentences {
+			if re.FindString(sentence) != "" {
+				ret = append(ret, sentence)
+			}
+			if len(ret) >= 5 {
+				break
+			}
+		}
+	}
+}
 func BenchmarkCompare(b *testing.B) {
-	b.N = 100000
+	b.N = 200000
 	b.Run("fuzzy", benchmarkFuzzy)
 	b.Run("simple", benchmarkPrefix)
+	b.Run("regex", benchmarkRegex)
 }
