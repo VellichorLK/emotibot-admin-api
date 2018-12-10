@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +25,10 @@ var (
 	matcher           = map[string]*match.Matcher{}
 	matcherType       = match.FuzzyMode
 	stdQuestionExpire = map[string]int64{}
+)
+
+const (
+	dftExpirePeriod = 300
 )
 
 func GetNLUResult(appid string, sentence string) (*NLUResult, error) {
@@ -214,14 +219,18 @@ func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, Adm
 	if typeStr == "prefix" {
 		matcherType = match.PrefixMode
 	}
+	expirePeriod, err := strconv.ParseInt(getEnvironment("MATCH_CACHE_TIMEOUT"), 10, 64)
+	if err != nil || expirePeriod == 0 {
+		expirePeriod = dftExpirePeriod
+	}
 	if now >= stdQuestionExpire[appid] || matcher[appid] == nil {
 		questions, err := dalClient.Questions(appid)
 		if err != nil {
 			return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, err.Error())
 		}
 		matcher[appid] = match.New(questions, matcherType)
-		stdQuestionExpire[appid] = now + 300
-		logger.Trace.Printf("Reload %d std questions of %s\n", len(questions), appid)
+		stdQuestionExpire[appid] = now + expirePeriod
+		logger.Trace.Printf("Reload %d std questions of %s, timeout when %d\n", len(questions), appid, stdQuestionExpire[appid])
 	}
 	return matcher[appid].FindNSentence(pattern, n), nil
 }
