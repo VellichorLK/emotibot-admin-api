@@ -35,6 +35,8 @@ const (
 	ErrCodeInvalidParameterPage
 	ErrCodeInvalidParameterExportID
 	ErrCodeInvalidParameterDimension
+	ErrCodeInvalidParameterPlatform
+	ErrCodeInvalidParameterGender
 )
 
 type ErrorResponse struct {

@@ -202,6 +202,22 @@ func GetTagIDByName(appID string, tagType string, tagName string) (tagID string,
 	return
 }
 
+func GetTagNameByID(appID string, tagType string, tagID string) (tagName string, found bool) {
+	availableTags := GetAvailableTags(appID)
+
+	_availableTags := availableTags[tagType]
+	for _, tag := range _availableTags {
+		if tag.Code == tagID {
+			tagName = tag.Name
+			found = true
+			return
+		}
+	}
+
+	found = false
+	return
+}
+
 func GetAvailableTags(appID string) map[string][]data.Tag {
 	availableTags := make(map[string][]data.Tag, 0)
 
