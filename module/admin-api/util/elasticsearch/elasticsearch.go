@@ -52,7 +52,9 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 
 	// Turn-off sniffing
 	client, err = elastic.NewClient(elastic.SetURL(esURL),
-		elastic.SetBasicAuth(basicAuthUsername, basicAuthPassword), elastic.SetSniff(false))
+		elastic.SetErrorLog(logger.Error),
+		elastic.SetBasicAuth(basicAuthUsername, basicAuthPassword),
+		elastic.SetSniff(false))
 	if err != nil {
 		return
 	}
