@@ -10,6 +10,7 @@ import (
 type Dao interface {
 	GetReasons(appid string) ([]*Reason, error)
 	AddReason(appid string, content string) (int64, error)
+	UpdateReason(appid string, id int64, content string) error
 	DeleteReason(appid string, id int64) error
 }
 
@@ -24,7 +25,9 @@ var (
 	ErrIDNotExisted = errors.New("ID is not found")
 
 	// it is used for mock
-	timestampHandler = getTimestamp
+	timestampHandler = func() int64 {
+		return time.Now().Unix()
+	}
 )
 
 func (dao feedbackDao) GetReasons(appid string) ([]*Reason, error) {
@@ -39,12 +42,15 @@ func (dao feedbackDao) GetReasons(appid string) ([]*Reason, error) {
 	}
 
 	ret := []*Reason{}
+	idx := 0
 	for rows.Next() {
 		t := Reason{}
 		err = rows.Scan(&t.ID, &t.Content)
 		if err != nil {
 			return nil, err
 		}
+		t.Index = idx
+		idx++
 		ret = append(ret, &t)
 	}
 
@@ -106,8 +112,4 @@ func (dao feedbackDao) UpdateReason(appid string, id int64, content string) erro
 	}
 
 	return nil
-}
-
-func getTimestamp() int64 {
-	return time.Now().Unix()
 }

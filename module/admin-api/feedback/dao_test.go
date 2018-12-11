@@ -39,8 +39,8 @@ func TestDaoGetReasons(t *testing.T) {
 			t.Errorf("Excepted reason length is 2, get %d", len(reasons))
 			return
 		}
-		if reasons[0].ID != 1 || reasons[0].Content != "reason1" ||
-			reasons[1].ID != 2 || reasons[1].Content != "reason2" {
+		if reasons[0].ID != 1 || reasons[0].Content != "reason1" || reasons[0].Index != 0 ||
+			reasons[1].ID != 2 || reasons[1].Content != "reason2" || reasons[1].Index != 1 {
 			t.Errorf("Excepted reason result: %+v", reasons)
 			return
 		}

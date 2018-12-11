@@ -40,6 +40,18 @@ func (dao mockDao) DeleteReason(appid string, id int64) error {
 	return nil
 }
 
+func (dao mockDao) UpdateReason(appid string, id int64, content string) error {
+	if _, ok := dao.Reasons[appid]; ok {
+		for _, reason := range dao.Reasons[appid] {
+			if reason.ID == id {
+				reason.Content = content
+				return nil
+			}
+		}
+	}
+	return ErrIDNotExisted
+}
+
 func (dao *mockDao) Init() {
 	dao.Reasons = map[string][]*Reason{
 		"csbot": []*Reason{
