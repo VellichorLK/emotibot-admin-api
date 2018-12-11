@@ -2,7 +2,6 @@ package traffic
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -213,11 +212,11 @@ func goStatsd(c *statsd.Client, flowCount map[string]*AppIDCount) {
 		c.IncrementCounterByValue(metric, numOfIP)
 
 		if numOfIP > 0 {
-			log.Printf("[%s] has following unique IPs (%d):\n", appID, numOfIP)
+			logger.Info.Printf("[%s] has following unique IPs (%d):\n", appID, numOfIP)
 			for ip := range v.FromWho {
-				log.Printf("%s\n", ip)
+				logger.Info.Printf("%s\n", ip)
 			}
-			log.Printf("-----------------------------------------\n")
+			logger.Info.Printf("-----------------------------------------\n")
 		}
 
 		// Number of unique users within log period
@@ -226,11 +225,11 @@ func goStatsd(c *statsd.Client, flowCount map[string]*AppIDCount) {
 		c.IncrementCounterByValue(metric, numOfUserID)
 
 		if numOfUserID > 0 {
-			log.Printf("[%s] has following unique users (%d):\n", appID, numOfUserID)
+			logger.Info.Printf("[%s] has following unique users (%d):\n", appID, numOfUserID)
 			for userID := range v.FromUser {
-				log.Printf("%s\n", userID)
+				logger.Info.Printf("%s\n", userID)
 			}
-			log.Printf("-----------------------------------------\n")
+			logger.Info.Printf("-----------------------------------------\n")
 		}
 	}
 }

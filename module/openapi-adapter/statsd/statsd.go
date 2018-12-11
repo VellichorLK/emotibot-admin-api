@@ -2,10 +2,11 @@ package statsd
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"net"
 	"time"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // Client type defines the relevant properties of a StatsD connection.
@@ -32,7 +33,7 @@ func (client *Client) Open() {
 	connectionString := fmt.Sprintf("%s:%d", client.Host, client.Port)
 	conn, err := net.Dial("udp", connectionString)
 	if err != nil {
-		log.Println(err)
+		logger.Error.Println(err)
 	}
 	client.conn = conn
 }
@@ -212,7 +213,7 @@ func (client *Client) UpdateGauges(stats []string, delta int, sampleRate float32
 	client.Send(statsToSend, sampleRate)
 }
 
-// Sends data to udp statsd daemon
+// Send will send data to statsd daemon by UDP
 func (client *Client) Send(data map[string]string, sampleRate float32) {
 	sampledData := make(map[string]string)
 	if sampleRate < 1 {
@@ -232,7 +233,7 @@ func (client *Client) Send(data map[string]string, sampleRate float32) {
 		update_string := fmt.Sprintf("%s:%s", k, v)
 		_, err := fmt.Fprintf(client.conn, update_string)
 		if err != nil {
-			log.Println(err)
+			logger.Error.Println(err)
 		}
 	}
 }

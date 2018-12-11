@@ -1,8 +1,9 @@
 package main
 
 import (
-	"log"
 	"time"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type scheduler struct {
@@ -38,7 +39,7 @@ func (s *scheduler) Start(c Clock) {
 			case <-s.timer.C:
 				err := s.Task()
 				if err != nil {
-					log.Println("task failed, ", err)
+					logger.Error.Println("task failed, ", err)
 				}
 				s.timer.Reset(c.NextRun())
 			case <-s.doneCh:
