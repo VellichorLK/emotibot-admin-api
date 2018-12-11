@@ -1,0 +1,263 @@
+openapi: 3.0.0
+info:
+  title: 数据优化/统计分析
+  description: 统计分析 API
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v2/stats
+
+components:
+  ###############################################################################
+  #                                   Schemas                                   #
+  ###############################################################################
+  schemas:
+    VisitResponseStats:
+      type: object
+      properties:
+        conversations:
+          description: 总会话数
+          type: integer
+        unique_users:
+          description: 独立用户数
+          type: integer
+        new_users:
+          description: 新增用户数
+          type: integer
+        total_asks:
+          description: 总提问数
+          type: integer
+        normal_responses:
+          description: 标准回复
+          type: integer
+        chats:
+          description: 聊天
+          type: integer
+        others:
+          description: 其他
+          type: integer
+        unknown_qna:
+          description: 未知问题回覆
+          type: integer
+        unsolved:
+          description: 未解决
+          type: integer
+        success_rate:
+          description: 成功率
+          type: string
+        solved:
+          description: 解决数
+          type: integer
+        solved_rate:
+          description: 解决率
+          type: string
+        conversation_per_session:
+          description: 平均会话对话数
+          type: string
+    VisitResponseTimeStats:
+      type: object
+      allOf:
+        - type: object
+          properties:
+            time:
+              description: 时间段
+              type: integer
+            time_txt:
+              description: 时间段
+              type: string
+        - $ref: '#/components/schemas/VisitResponseStats'
+    VisitResponseTimeStatsData:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            quantities:
+              type: array
+              items:
+                $ref: '#/components/schemas/VisitResponseTimeStats'
+            type:
+              description: 时间聚合类型
+              type: string
+            name:
+              description: 提问数
+              type: string
+    VisitResponseTimeStatsTotal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VisitResponseTimeStats'
+    VisitResponseDimensionStatsData:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              q:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/VisitResponseStats'
+              id:
+                description: 维度 ID
+                type: string
+              name:
+                description: 维度名称
+                type: string
+    VisitResponseDimensionStatsTotal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VisitResponseStats'
+    VisitResponseQtypeStatsData:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              q:
+                type: object
+                allOf:
+                  - $ref: '#/components/schemas/VisitResponseStats'
+              id:
+                description: 问答类别 ID
+                type: string
+              name:
+                description: 问答类别名称
+                type: string
+    VisitResponseQtypeStatsTotal:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VisitResponseStats'
+
+  ################################################################################
+  #                                  Parameters                                  #
+  ################################################################################
+  parameters:
+    EnterpriseId:
+      name: X-Enterpriseid
+      description: 企业 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    AppId:
+      name: X-Appid
+      description: 操作的机器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: X-Userid
+      description: 使用者 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    StartTime:
+      name: t1
+      description: 统计时间段开始时间
+      in: query
+      required: true
+      schema:
+        type: string
+    EndTime:
+      name: t2
+      description: 统计时间段结束时间
+      in: query
+      required: true
+      schema:
+        type: string
+    Type:
+      name: type
+      description: 统计类型
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - time
+          - barchart
+    Filter:
+      name: filter
+      description: 统计子类型 (只有当 type = barchart 的时候生效)
+      in: query
+      schema:
+        type: string
+        enum:
+          - category
+          - qtype
+    Category:
+      name: category
+      description: 统计維度 (只有当 filter = category 的时候生效)
+      in: query
+      schema:
+        type: string
+        enum:
+          - platform
+          - sex
+    Locale:
+      name: locale
+      in: header
+      description: 回传资料使用语系，预设使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+  
+paths:
+  /visit:
+    post:
+      tags:
+        - Statistic
+      summary: 日志统计分析
+      description: 日志统计分析结果
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/Type'
+        - $ref: '#/components/parameters/Filter'
+        - $ref: '#/components/parameters/Category'
+      responses:
+        200:
+          description: 日志统计分析结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/VisitResponseTimeStatsData'
+                  - $ref: '#/components/schemas/VisitResponseDimensionStatsData'
+                  - $ref: '#/components/schemas/VisitResponseQtypeStatsData'
+                type: object
+                properties:
+                  tableheader:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  total:
+                    type: object
+                    allOf:
+                      - $ref: '#/components/schemas/VisitResponseTimeStatsTotal'
+                      - $ref: '#/components/schemas/VisitResponseDimensionStatsTotal'
+                      - $ref: '#/components/schemas/VisitResponseQtypeStatsTotal'
+        400:
+          description: Bad request
+        500:
+          description: Internal server error
