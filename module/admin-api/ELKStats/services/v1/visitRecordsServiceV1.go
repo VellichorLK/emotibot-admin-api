@@ -93,11 +93,17 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 			"total_size": result.TotalHits(),
 		},
 	}
+
 	if markedSize, found := result.Aggregations.Filter("isMarked"); found {
 		r.Aggs["isMarked"] = markedSize.DocCount
+	} else {
+		r.Aggs["isMarked"] = 0
 	}
+
 	if ignoredSize, found := result.Aggregations.Filter("isIgnored"); found {
 		r.Aggs["isIgnored"] = ignoredSize.DocCount
+	} else {
+		r.Aggs["isIgnored"] = 0
 	}
 
 	for _, hit := range result.Hits.Hits {
