@@ -1,0 +1,150 @@
+openapi: 3.0.0
+info:
+  title: 数据优化/满意度统计分析
+  description: 满意度统计分析 API
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v2/stats
+
+components:
+  ###############################################################################
+  #                                   Schemas                                   #
+  ###############################################################################
+  schemas:
+    FeedbackResponseStats:
+      type: object
+      properties:
+        avg_rating:
+          description: 平均满意度分数
+          type: integer
+        ratings:
+          description: 各满意度分数统计数量
+          type: object
+          additionalProperties:
+            type: integer
+        feedbacks:
+          description: 各回馈统计数量
+          type: object
+          additionalProperties:
+            type: integer
+
+  ################################################################################
+  #                                  Parameters                                  #
+  ################################################################################
+  parameters:
+    EnterpriseId:
+      name: X-Enterpriseid
+      description: 企业 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    AppId:
+      name: X-Appid
+      description: 操作的机器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: X-Userid
+      description: 使用者 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    StartTime:
+      name: startTime
+      description: 统计时间段开始时间
+      in: query
+      required: true
+      schema:
+        type: string
+    EndTime:
+      name: endTime
+      description: 统计时间段结束时间
+      in: query
+      required: true
+      schema:
+        type: string
+    Type:
+      name: type
+      description: 统计项目 (会话/对话记录/多轮场景)
+      in: query
+      schema:
+        type: string
+        default: sessions
+        enum:
+          - sessions
+          - records
+          - teRecords
+    Platform:
+      name: platform
+      description: 筛选项 - 维度 (平台 code)
+      in: query
+      schema:
+        type: string
+    Gender:
+      name: gender
+      description: 筛选项 - 维度 (性别 code)
+      in: query
+      schema:
+        type: string
+    Locale:
+      name: locale
+      in: header
+      description: 回传资料使用语系，预设使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+
+paths:
+  /feedbacks:
+    post:
+      tags:
+        - Statistic
+      summary: 会话满意度统计分析
+      description: 会话满意度统计分析结果
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/Type'
+        - $ref: '#/components/parameters/Platform'
+        - $ref: '#/components/parameters/Gender'
+      responses:
+        200:
+          description: 会话满意度统计分析结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tableheader:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/FeedbackResponseStats'
+        400:
+          description: Bad request
+        500:
+          description: Internal server error

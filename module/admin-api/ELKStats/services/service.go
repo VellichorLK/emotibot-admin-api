@@ -3,6 +3,8 @@ package services
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
@@ -82,7 +84,22 @@ func ExtractCountsFromAggTermsBuckets(result *elastic.SearchResult, aggName stri
 
 	if agg, found := result.Aggregations.Terms(aggName); found {
 		for _, bucket := range agg.Buckets {
-			counts[bucket.Key.(string)] = bucket.DocCount
+			switch t := reflect.TypeOf(bucket.Key); t.Kind() {
+			case reflect.String:
+				counts[bucket.Key.(string)] = bucket.DocCount
+			case reflect.Int32:
+				key := strconv.FormatInt(int64(bucket.Key.(int32)), 10)
+				counts[key] = bucket.DocCount
+			case reflect.Int64:
+				key := strconv.FormatInt(bucket.Key.(int64), 10)
+				counts[key] = bucket.DocCount
+			case reflect.Float32:
+				key := strconv.FormatInt(int64(bucket.Key.(float32)), 10)
+				counts[key] = bucket.DocCount
+			case reflect.Float64:
+				key := strconv.FormatInt(int64(bucket.Key.(float64)), 10)
+				counts[key] = bucket.DocCount
+			}
 		}
 	}
 

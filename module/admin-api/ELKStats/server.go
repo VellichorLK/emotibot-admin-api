@@ -64,6 +64,7 @@ func Init() error {
 				[]string{"view", "export"}, controllersV1.TEVisitRecordsExportDeleteHandler),
 			util.NewEntryPoint("GET", "teRecords/export/{export_id}/status",
 				[]string{"view", "export"}, controllersV1.TEVisitRecordsExportStatusHandler),
+			util.NewEntryPoint("GET", "feedbacks", []string{"view"}, controllersV1.FeedbacksGetHandler),
 			util.NewEntryPoint("GET", "call", []string{"view"}, controllersV1.CallStatsGetHandler),
 		},
 	}

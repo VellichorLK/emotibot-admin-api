@@ -23,6 +23,7 @@ var (
 	ErrExportTaskFailed       = errors.New("Exporting task failed")
 	ErrExportTaskEmpty        = errors.New("Empty results, nothing to do")
 	ErrExportTaskNotFound     = errors.New("Exporting task not found")
+	ErrInvalidFeedbacksType   = errors.New("Invalid feedbacks type")
 )
 
 const (

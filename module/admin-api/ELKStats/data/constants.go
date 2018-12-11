@@ -62,6 +62,9 @@ const FirstLogTimeFieldName = "first_log_time"
 const TERecordsTriggerTimeFieldName = "trigger_time"
 const TERecordsFinishTimeFieldName = "finish_time"
 
+const SessionRatingFieldName = "rating"
+const SessionFeedbackFieldName = "feedback"
+
 const (
 	IntervalYear   = "year"
 	IntervalMonth  = "month"
