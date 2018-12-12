@@ -10,8 +10,13 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+var (
+	useDB *sql.DB
+)
+
 func addUser(userid, account, password, enterprise string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -40,7 +45,8 @@ func addUser(userid, account, password, enterprise string) error {
 }
 
 func deleteUser(userid string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -56,7 +62,8 @@ func deleteUser(userid string) error {
 }
 
 func addEnterprise(id, name string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -75,7 +82,8 @@ func addEnterprise(id, name string) error {
 
 func updateEnterprise(id, name string) (err error) {
 	defer util.ShowError(err)
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -87,7 +95,8 @@ func updateEnterprise(id, name string) (err error) {
 
 func deleteEnterprise(id string) (err error) {
 	defer util.ShowError(err)
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -146,7 +155,8 @@ func deleteEnterprise(id string) (err error) {
 }
 
 func addApp(appid, userid, name string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -164,7 +174,8 @@ func addApp(appid, userid, name string) error {
 }
 
 func updateApp(appid, name string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -175,7 +186,8 @@ func updateApp(appid, name string) error {
 }
 
 func deleteApp(appid string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -195,7 +207,8 @@ var cmdMap = map[string][]int{
 }
 
 func addRole(uuid string, commands []string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -240,7 +253,8 @@ func addRole(uuid string, commands []string) error {
 }
 
 func updateRole(uuid string, commands []string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -289,7 +303,8 @@ func updateRole(uuid string, commands []string) error {
 }
 
 func deleteRole(uuid string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -329,7 +344,8 @@ func deleteRole(uuid string) error {
 }
 
 func updateUserRole(enterprise, userid, roleid string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -367,7 +383,8 @@ func updateUserRole(enterprise, userid, roleid string) error {
 }
 
 func updateUserPassword(enterprise, userid, password string) error {
-	mySQL := util.GetMainDB()
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return errors.New("DB not init")
 	}
@@ -387,7 +404,9 @@ func updateUserPassword(enterprise, userid, password string) error {
 }
 
 func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
-	mySQL := util.GetMainDB()
+	var err error
+	checkDB()
+	mySQL := useDB
 	if mySQL == nil {
 		return nil, errors.New("DB not init")
 	}
@@ -423,5 +442,11 @@ func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
 		}
 	}
 
-	return root, err
+	return root, nil
+}
+
+func checkDB() {
+	if useDB == nil {
+		useDB = util.GetMainDB()
+	}
 }
