@@ -101,11 +101,19 @@ func ImportScenario(appid, userid string, useNewID bool, jsonData interface{}) (
 		metadata["scenario_id"] = id
 	}
 
+	// prepare contentString
 	contentBytes, err := json.Marshal(content)
 	if err != nil {
 		return ApiError.JSON_PARSE_ERROR, err
 	}
 	contentString := string(contentBytes)
+	// encrypt js_code if exist
+	contentString, err = encryptJSCode(contentString)
+	if err != nil {
+		return ApiError.BASE64_PARSE_ERROR, err
+	}
+
+	// prepare layoutString
 	layoutBytes, err := json.Marshal(layout)
 	if err != nil {
 		return ApiError.JSON_PARSE_ERROR, err
@@ -173,7 +181,20 @@ func GetDecryptedScenario(scenarioid string) (*Scenario, int, error) {
 	} else if scenario == nil {
 		return scenario, ApiError.SUCCESS, nil
 	}
-	value := gjson.Get(scenario.EditingContent, "js_code.main")
+	// check if text_type is cipher
+	value := gjson.Get(scenario.EditingContent, "js_code.text_type")
+	if !value.Exists() {
+		logger.Trace.Printf("no js_code.text_type found, skip decryption process.")
+		return scenario, ApiError.SUCCESS, nil
+	}
+	textType := value.String()
+	if textType == "plain" {
+		logger.Trace.Printf("text_type: plain, skip decryption process.")
+		return scenario, ApiError.SUCCESS, nil
+	}
+
+	// decrypt js_code.main
+	value = gjson.Get(scenario.EditingContent, "js_code.main")
 	if !value.Exists() {
 		logger.Trace.Printf("no js_code.main found, skip decryption process.")
 		return scenario, ApiError.SUCCESS, nil
@@ -194,6 +215,7 @@ func GetDecryptedScenario(scenarioid string) (*Scenario, int, error) {
 		return nil, ApiError.JSON_PARSE_ERROR, err
 	}
 	scenario.EditingContent = newContent
+	logger.Trace.Printf("js_code.main decryption success")
 	return scenario, ApiError.SUCCESS, nil
 }
 
