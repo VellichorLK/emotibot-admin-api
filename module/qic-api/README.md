@@ -14,6 +14,12 @@
 ./run.sh [tag_name]
 ```
 
+## CI FLow
+
+all CI script is in ./jenkins folder
+jenkins link [here]()
+
+
 ## Module List
 
 

@@ -4,7 +4,7 @@ FROM harbor.emotibot.com/library/go-build:69f1b756-1.10-standard AS build
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT
 
-COPY ./module/${PROJECT} ${GOPREFIX}/module/${PROJECT}
+COPY ./module ${GOPREFIX}/module/
 COPY ./pkg ${GOPREFIX}/pkg
 ## 如有需要加上其他编译时所需要的设定档可在此加上额外的指令
 
