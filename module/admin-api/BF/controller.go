@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
-	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -260,20 +261,11 @@ func handleInitSSM(w http.ResponseWriter, r *http.Request) {
 func handleGetSSMCategories(w http.ResponseWriter, r *http.Request) {
 	var retObj interface{}
 	var err error
-	retCode := ApiError.SUCCESS
-	defer func() {
-		if err == nil {
-			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
-		} else {
-			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
-		}
-	}()
 	appid := requestheader.GetAppID(r)
-
-	categories, err := GetSSMCategories(appid)
-	if err != nil {
-		retCode = ApiError.DB_ERROR
+	retObj, err = GetSSMCategories(appid)
+	if err == nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 	} else {
-		retObj = categories
+		util.Return(w, nil, retObj)
 	}
 }
