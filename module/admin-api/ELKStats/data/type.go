@@ -40,6 +40,16 @@ type QueryTags struct {
 	Texts []string
 }
 
+type FaqCategoryPath struct {
+	ID   int64
+	Path string
+}
+
+type FaqRobotTag struct {
+	ID  int64
+	Tag string
+}
+
 type Answer struct {
 	Type       string        `json:"type"`
 	SubType    string        `json:"subType"`
