@@ -3,7 +3,7 @@ package BF
 import (
 	"testing"
 
-	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 func TestGetSSMCategory(t *testing.T) {
