@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -71,6 +74,8 @@ func init() {
 			util.NewEntryPoint("POST", "cmd-class", []string{"view"}, handleAddCmdClass),
 			util.NewEntryPoint("PUT", "cmd-class/{id}", []string{"edit"}, handleUpdateCmdClass),
 			util.NewEntryPoint("DELETE", "cmd-class/{id}", []string{"delete"}, handleDeleteCmdClass),
+
+			util.NewEntryPoint("GET", "ssm/categories", []string{"view"}, handleGetSSMCategories),
 		},
 	}
 }
@@ -249,5 +254,26 @@ func handleInitSSM(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 	} else {
 		w.Write([]byte(ret))
+	}
+}
+
+func handleGetSSMCategories(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	var err error
+	retCode := ApiError.SUCCESS
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(retCode, retObj))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), ApiError.GetHttpStatus(retCode))
+		}
+	}()
+	appid := requestheader.GetAppID(r)
+
+	categories, err := GetSSMCategories(appid)
+	if err != nil {
+		retCode = ApiError.DB_ERROR
+	} else {
+		retObj = categories
 	}
 }

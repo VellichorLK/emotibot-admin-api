@@ -64,3 +64,11 @@ type CmdClass struct {
 	Cmds     []*Cmd      `json:"cmds"`
 	Children []*CmdClass `json:"children"`
 }
+
+// Category is the struct mapping to an SSM category
+type Category struct {
+	ID       int         `json:"id"`
+	Parent   int         `json:"parent"`
+	Name     string      `json:"name"`
+	Children []*Category `json:"children"`
+}

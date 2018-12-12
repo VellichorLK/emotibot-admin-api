@@ -385,3 +385,43 @@ func updateUserPassword(enterprise, userid, password string) error {
 	}
 	return nil
 }
+
+func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := "SELECT id, pid, name FROM tbl_sq_category WHERE app_id = ? AND is_del = 0"
+	if containSoftDelete {
+		queryStr = "SELECT id, pid, name FROM tbl_sq_category WHERE app_id = ?"
+	}
+	rows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	var root *Category
+	categoryMap := map[int]*Category{}
+	for rows.Next() {
+		tmp := &Category{}
+		tmp.Children = []*Category{}
+		err = rows.Scan(&tmp.ID, &tmp.Parent, &tmp.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		categoryMap[tmp.ID] = tmp
+		if tmp.Parent == 0 {
+			root = tmp
+		}
+	}
+
+	for _, category := range categoryMap {
+		if parent, ok := categoryMap[category.Parent]; ok {
+			parent.Children = append(parent.Children, category)
+		}
+	}
+
+	return root, err
+}
