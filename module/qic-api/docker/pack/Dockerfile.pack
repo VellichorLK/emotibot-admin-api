@@ -1,0 +1,16 @@
+## BUILD_IMAGE_NAME 为 build stage 所编译出来包含 binary 的 docker image 
+ARG BUILD_IMAGE_NAME=${BUILD_IMAGE_NAME}
+FROM ${BUILD_IMAGE_NAME} AS build
+
+## 将 build stage 所编译出来的 binary 复制至可执行环境
+FROM centos:centos7.4.1708
+
+ARG PROJECT
+
+RUN yum makecache fast && yum install -y wget tzdata && yum clean all
+
+WORKDIR /usr/bin
+COPY --from=build /usr/bin/app app
+WORKDIR /usr/bin/app
+
+CMD ["./entrypoint.sh"]

@@ -1,0 +1,8 @@
+version: '3'
+
+services:
+  qic-api:
+    image: ${BUILD_IMAGE_NAME}
+    build:
+      context: ${BUILD_CONTEXT}
+      dockerfile: ${DOCKER_FILE}
