@@ -16,8 +16,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
-	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/config/v1"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // constant define all const used in server
@@ -35,18 +35,17 @@ var serverConfig map[string]string
 var logChannel chan util.AccessLog
 
 func init() {
+	var err error
 	if len(os.Args) > 1 {
-		err := config.LoadConfigFromFile(os.Args[1])
-		if err != nil {
-			logger.Error.Printf(err.Error())
-			os.Exit(-1)
+		err = config.LoadConfigFromFile(os.Args[1])
+		if err == nil {
+			return
 		}
-	} else {
-		err := config.LoadConfigFromOSEnv()
-		if err != nil {
-			logger.Error.Printf(err.Error())
-			os.Exit(-1)
-		}
+	}
+	err = config.LoadConfigFromOSEnv()
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		os.Exit(-1)
 	}
 }
 
