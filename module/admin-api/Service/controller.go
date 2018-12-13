@@ -43,6 +43,9 @@ func Init() error {
 
 func handleGetRecommandQuestion(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
+	if appid == "" {
+		appid = r.URL.Query().Get("appid")
+	}
 
 	userInput := r.URL.Query().Get("user_input")
 	limit, _ := util.GetParamInt(r, "limit")
