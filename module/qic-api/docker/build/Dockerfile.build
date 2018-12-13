@@ -1,5 +1,5 @@
 ## 编译 binary
-FROM harbor.emotibot.com/library/go-build:69f1b756-1.10-standard AS build
+FROM harbor.emotibot.com/library/go-build:99b290c5-1.10-standard AS build
 
 ENV GOPREFIX /go/src/emotibot.com/emotigo
 ARG PROJECT

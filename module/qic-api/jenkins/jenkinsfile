@@ -1,4 +1,4 @@
-def TestBaseImage=' harbor.emotibot.com/library/go-build:69f1b756-1.10-standard'
+def TestBaseImage='harbor.emotibot.com/library/go-build:99b290c5-1.10-standard'
 pipeline {
     agent {
         node('docker-build01')
