@@ -34,7 +34,6 @@ func (c *TimeCache) Activate(config *TCacheConfig) error {
 	if !c.isInit {
 		c.period = int64(config.period / time.Second)
 		switch config.method {
-		case FixDuration:
 		case OnUpdate:
 			c.expireCheck = &onUpdateMethod{}
 		}
