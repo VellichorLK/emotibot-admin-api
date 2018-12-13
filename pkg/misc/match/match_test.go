@@ -33,6 +33,12 @@ func TestPrefixFindNSentence(t *testing.T) {
 	ret := matcher.FindNSentence("我要退", 1)
 	fmt.Printf("%+v\n", ret)
 }
+func TestFuzzyFindNSentence(t *testing.T) {
+	input := []string{"我要怎麼借款", "我要退錢", "我要退錢行嗎", "我要退貨"}
+	matcher := New(input, FuzzyMode)
+	ret := matcher.FindNSentence("我退", 2)
+	fmt.Printf("%+v\n", ret)
+}
 
 func benchmarkPrefix(b *testing.B) {
 	pattern := "帮我"
