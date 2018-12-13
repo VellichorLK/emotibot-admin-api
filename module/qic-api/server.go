@@ -11,6 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
@@ -29,6 +30,7 @@ var initErrors = []error{}
 
 var modules = []*util.ModuleInfo{
 	&auth.ModuleInfo,
+	&cu.ModuleInfo,
 }
 
 var serverConfig map[string]string
