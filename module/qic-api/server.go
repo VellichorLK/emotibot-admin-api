@@ -16,6 +16,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
+	"emotibot.com/emotigo/pkg/config/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -34,18 +35,17 @@ var serverConfig map[string]string
 var logChannel chan util.AccessLog
 
 func init() {
+	var err error
 	if len(os.Args) > 1 {
-		err := util.LoadConfigFromFile(os.Args[1])
-		if err != nil {
-			logger.Error.Printf(err.Error())
-			os.Exit(-1)
+		err = config.LoadConfigFromFile(os.Args[1])
+		if err == nil {
+			return
 		}
-	} else {
-		err := util.LoadConfigFromOSEnv()
-		if err != nil {
-			logger.Error.Printf(err.Error())
-			os.Exit(-1)
-		}
+	}
+	err = config.LoadConfigFromOSEnv()
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		os.Exit(-1)
 	}
 }
 
@@ -66,7 +66,7 @@ func init() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
-	serverEnvs := util.GetEnvOf("server")
+	serverEnvs := config.GetEnvOf("server")
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
 		logLevel = "INFO"
@@ -238,7 +238,7 @@ func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 }
 
 func getServerEnv(key string) string {
-	envs := util.GetEnvOf("server")
+	envs := config.GetEnvOf("server")
 	if envs != nil {
 		if val, ok := envs[key]; ok {
 			return val
