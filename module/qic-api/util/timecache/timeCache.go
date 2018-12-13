@@ -1,6 +1,7 @@
 package timecache
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -19,7 +20,15 @@ type TimeCache struct {
 var TCache TimeCache
 
 //Activate activate the time cache
-func (c *TimeCache) Activate(config *TCacheConfig) {
+func (c *TimeCache) Activate(config *TCacheConfig) error {
+
+	if config == nil {
+		return errors.New("No config is assigned")
+	}
+	if config.period == 0 {
+		return errors.New("No period is assigned")
+	}
+
 	c.mux.Lock()
 
 	if !c.isInit {
@@ -36,6 +45,7 @@ func (c *TimeCache) Activate(config *TCacheConfig) {
 	}
 
 	c.mux.Unlock()
+	return nil
 }
 
 func (c *TimeCache) recycleExpired() {
@@ -85,7 +95,7 @@ func (c *TimeCache) GetCache(key string) (interface{}, bool) {
 	return v, ok
 }
 
-//DeleteCache delete the key
+//DeleteCache delete the data by key
 func (c *TimeCache) DeleteCache(key string) {
 	c.mux.Lock()
 	if _, ok := c.cacheMap[key]; ok {

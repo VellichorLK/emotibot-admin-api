@@ -2,12 +2,12 @@ package timecache
 
 import "time"
 
+//CollectionMethod is the method type, used to determine which collect method should be used
 type CollectionMethod int
 
 //the method use to reclaim the cache
 const (
-	FixDuration CollectionMethod = iota
-	OnUpdate
+	OnUpdate CollectionMethod = iota
 )
 
 //TCacheConfig the config used in TimeCache structure
