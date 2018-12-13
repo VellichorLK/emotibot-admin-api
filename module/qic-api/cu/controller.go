@@ -3,7 +3,6 @@ package cu
 import (
 	"net/http"
 	"math/rand"
-    "time"	
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -24,7 +23,6 @@ func init() {
 }
 
 func random(min, max int) int {
-    rand.Seed(time.Now().Unix())
     return rand.Intn(max - min) + min
 }
 
