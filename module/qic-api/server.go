@@ -34,21 +34,6 @@ var modules = []*util.ModuleInfo{
 var serverConfig map[string]string
 var logChannel chan util.AccessLog
 
-func init() {
-	var err error
-	if len(os.Args) > 1 {
-		err = config.LoadConfigFromFile(os.Args[1])
-		if err == nil {
-			return
-		}
-	}
-	err = config.LoadConfigFromOSEnv()
-	if err != nil {
-		logger.Error.Printf(err.Error())
-		os.Exit(-1)
-	}
-}
-
 func logAvailablePath(router *mux.Router) {
 	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		methods, _ := route.GetMethods()
@@ -62,8 +47,21 @@ func logAvailablePath(router *mux.Router) {
 	})
 }
 
-func init() {
+// serverInitial init a serial steps for api server, including config and GOMAXPROCS
+func serverInitial() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	var err error
+	if len(os.Args) > 1 {
+		err = config.LoadConfigFromFile(os.Args[1])
+		if err == nil {
+			return
+		}
+	}
+	err = config.LoadConfigFromOSEnv()
+	if err != nil {
+		logger.Error.Printf(err.Error())
+		os.Exit(-1)
+	}
 	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
 	serverEnvs := config.GetEnvOf("server")
@@ -83,6 +81,8 @@ func init() {
 }
 
 func main() {
+	serverInitial()
+
 	router := setRoute()
 	logAvailablePath(router)
 
@@ -160,6 +160,7 @@ func clientNoStoreCache(w http.ResponseWriter) {
 	w.Header().Add("Cache-Control", "no-store, private")
 }
 
+//setRoute create a mux.Router based on modules
 func setRoute() *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
