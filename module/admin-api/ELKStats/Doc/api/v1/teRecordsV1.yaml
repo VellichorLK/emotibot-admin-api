@@ -1,21 +1,21 @@
 openapi: 3.0.0
 info:
-  title: 数据优化/日志管理
-  description: 统计数据日志管理 API，包含日志搜寻及日志导出
+  title: 多轮场景日誌管理
+  description: 多轮场景日志管理 API，包含日志搜寻及日志导出
   version: 1.0.0
   contact:
     name: Frank Chang
     email: frankchang@emotibot.com
 
 servers:
-  - url: http://127.0.0.1:8182/api/v1/stats/record
+  - url: http://127.0.0.1:8182/api/v1/stats
 
 components:
   ###############################################################################
   #                                   Schemas                                   #
   ###############################################################################
   schemas:
-    RequestRecordsBody:
+    RequestTERecordsBody:
       type: object
       properties:
         start_time:
@@ -24,24 +24,29 @@ components:
         end_time:
           description: 日志搜寻/导出时间段结束时间
           type: integer
-        filter:
-          description: 日志搜寻/导出筛选项
-          type: object
-          properties:
-            categories:
-              $ref: '#/components/schemas/FilterCategories'
-            contains:
-              $ref: '#/components/schemas/FilterContains'
-            emotions:
-              $ref: '#/components/schemas/FilterEmotions'
-            qtypes:
-              $ref: '#/components/schemas/FilterQtypes'
-            uid:
-              $ref: '#/components/schemas/FilterUid'
-    QueryRecordsBody:
+        scenario_name:
+          description: 筛选项 - 多轮场景名称
+          type: string
+        platforms:
+          description: 筛选项 - 维度 (平台 code)
+          type: array
+          items:
+            type: string
+        genders:
+          description: 筛选项 - 维度 (性别 code)
+          type: array
+          items:
+            type: string
+        uid:
+          description: 筛选项 - User ID
+          type: string
+        feedback:
+          description: 筛选项 - 反馈 (有用、无用... etc)
+          type: string
+    QueryTERecordsBody:
       type: object
       allOf:
-        - $ref: '#/components/schemas/RequestRecordsBody'
+        - $ref: '#/components/schemas/RequestTERecordsBody'
         - type: object
           properties:
             page:
@@ -52,87 +57,10 @@ components:
               description: 单笔页数，预设为 20
               type: integer
               default: 20
-    ExportRecordsBody:
+    ExportTERecordsBody:
       type: object
       allOf:
-        - $ref: '#/components/schemas/RequestRecordsBody'
-    FilterCategories:
-      description: 筛选条件组 - 维度
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 维度 ID
-                  type: string
-                text:
-                  description: 维度名称 
-                  type: string
-          type:
-              description: 维度类别 (platform, sex... etc)
-              type: string
-    FilterContains:
-      description: 筛选条件 - 关键字
-      type: object
-      properties:
-        text:
-          description: 搜寻关键字
-          type: string
-        type:
-          description: 关键字类别 (question)
-          type: string
-    FilterEmotions:
-      description: 筛选条件 - 情感
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 情感 ID
-                  type: string
-                text:
-                  description: 情感名称
-                  type: string
-          type:
-              description: 情感类别 (emotion)
-              type: string
-    FilterQtypes:
-      description: 筛选条件 - 问答类别
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 问答类别 ID
-                  type: string
-                  enum:
-                    - chat
-                    - faq
-                    - other
-                text:
-                  description: 问答类别名称
-                  type: string
-          type:
-              description: 问答类别 (qtype)
-              type: string
-    FilterUid:
-      description: 筛选条件 - User ID
-      type: string
+        - $ref: '#/components/schemas/RequestTERecordsBody'
 
   ################################################################################
   #                                  Parameters                                  #
@@ -176,34 +104,33 @@ components:
         enum:
           - zh-cn
           - zh-tw
-  
+
   ################################################################################
   #                                 Request Bodies                               #
   ################################################################################
   requestBodies:
-    QueryRecords:
+    QueryTERecords:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/QueryRecordsBody'
-    ExportRecords:
+            $ref: '#/components/schemas/QueryTERecordsBody'
+    ExportTERecords:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ExportRecordsBody'
-
+            $ref: '#/components/schemas/ExportTERecordsBody'
+  
 paths:
-  /query:
+  /teRecords:
     post:
       tags:
         - Query
-      summary: 搜寻日志
-      description: 日志搜寻结果
+      description: 日誌搜尋結果
       parameters:
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
       requestBody:
-        $ref: '#/components/requestBodies/QueryRecords'
+        $ref: '#/components/requestBodies/QueryTERecords'
       responses:
         200:
           description: 日志搜寻结果
@@ -229,32 +156,41 @@ paths:
                     items:
                       type: object
                       properties:
+                        taskengine_session_id:
+                          description: 多轮场景会话 ID
+                          type: string
                         session_id:
                           description: 会话 ID
                           type: string
-                        UserId:
+                        user_id:
                           description: 用户 ID
                           type: string
-                        user_q:
-                          description: 用户问题
+                        scenario_id:
+                          description: 多轮场景 ID
                           type: string
-                        score:
-                          description: 匹配分数
-                          type: integer
-                        std_q:
-                          description: 标准问题
+                        scenario_name:
+                          description: 多轮场景名称
                           type: string
-                        answer:
-                          description: 机器人回答
+                        last_node_id:
+                          description: 多轮场景最终结点 ID
                           type: string
-                        log_time:
-                          description: 访问时间
+                        last_node_name:
+                          description: 多轮场景最终节点名称
                           type: string
-                        emotion:
-                          description: 情感
+                        trigger_time:
+                          description: 多轮场景触发时间
                           type: string
-                        qtype:
-                          description: 问答类别
+                        finish_time:
+                          description: 多轮场景完成时间
+                          type: string
+                        feedback:
+                          description: 反馈 (有用、无用... etc)
+                          type: string
+                        custom_feedback:
+                          description: 客制化反馈
+                          type: string
+                        feedback_time:
+                          description: 反馈时间
                           type: string
                   limit:
                     description: 单笔页数
@@ -270,7 +206,7 @@ paths:
         500:
           description: Internal server error
 
-  /export:
+  /teRecords/export:
     post:
       tags:
         - Export
@@ -281,7 +217,7 @@ paths:
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
       requestBody:
-        $ref: '#/components/requestBodies/ExportRecords'
+        $ref: '#/components/requestBodies/ExportTERecords'
       responses:
         200:
           description: 成功建立日志导出任务
@@ -298,8 +234,11 @@ paths:
         500:
           description: Internal server error
   
-  /export/{export_id}:
+  /teRecords/export/{export_id}:
     parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/UserId'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:
@@ -338,8 +277,11 @@ paths:
         500:
           description: Internal server error
 
-  /export/{export_id}/status:
+  /teRecords/export/{export_id}/status:
     parameters:
+      - $ref: '#/components/parameters/EnterpriseId'
+      - $ref: '#/components/parameters/AppId'
+      - $ref: '#/components/parameters/UserId'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:

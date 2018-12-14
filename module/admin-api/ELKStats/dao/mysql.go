@@ -16,6 +16,8 @@ import (
 const (
 	TagTypeTable           = "tag_type"
 	TagsTable              = "tags"
+	FaqCategoryTable       = "tbl_sq_category"
+	FaqRobotTagTable       = "tbl_robot_tag"
 	RecordsExportTaskTable = "records_export_tasks"
 	RecordsExportTable     = "records_export"
 )
@@ -62,6 +64,177 @@ func GetTags() (map[string]map[string][]data.Tag, error) {
 	}
 
 	return tags, nil
+}
+
+func GetFaqCategoryPathByID(categoryID int64) (categoryPath string, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`SELECT path FROM %s WHERE id = ?`, FaqCategoryTable)
+	queryParams := []interface{}{categoryID}
+
+	row := db.QueryRow(queryStr, queryParams...)
+
+	err = row.Scan(&categoryPath)
+	if err != nil && err == sql.ErrNoRows {
+		err = data.ErrFaqCategoryPathNotFound
+	}
+
+	return
+}
+
+func GetFaqCategoryPathsByIDs(categoryIDs []int64) (categoryPaths map[int64]*data.FaqCategoryPath,
+	err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	if len(categoryIDs) > 0 {
+		ids := strings.Repeat(", ?", len(categoryIDs)-1)
+		queryStr := fmt.Sprintf(`SELECT id, path FROM %s WHERE id IN (?%s`, FaqCategoryTable, ids)
+		queryParams := make([]interface{}, len(categoryIDs))
+
+		for i, categoryID := range categoryIDs {
+			queryParams[i] = categoryID
+		}
+
+		rows, err := db.Query(queryStr, queryParams...)
+		if err != nil {
+			return nil, err
+		}
+
+		categoryPaths = make(map[int64]*data.FaqCategoryPath)
+
+		for rows.Next() {
+			categoryPath := data.FaqCategoryPath{}
+			err = rows.Scan(&categoryPath.ID, &categoryPath.Path)
+			if err != nil {
+				return nil, err
+			}
+
+			categoryPaths[categoryPath.ID] = &categoryPath
+		}
+	}
+
+	return
+}
+
+func GetAllFaqCategoryPaths() (categoryPaths map[int64]*data.FaqCategoryPath, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`SELECT id, path FROM %s`, FaqCategoryTable)
+	rows, err := db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	categoryPaths = make(map[int64]*data.FaqCategoryPath)
+
+	for rows.Next() {
+		categoryPath := data.FaqCategoryPath{}
+		err = rows.Scan(&categoryPath.ID, &categoryPath.Path)
+		if err != nil {
+			return nil, err
+		}
+
+		categoryPaths[categoryPath.ID] = &categoryPath
+	}
+
+	return
+}
+
+func GetFaqRobotTagByID(robotTagID int64) (robotTag string, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`SELECT name FROM %s WHERE id = ?`, FaqRobotTagTable)
+	queryParams := []interface{}{robotTagID}
+
+	row := db.QueryRow(queryStr, queryParams...)
+
+	err = row.Scan(&robotTag)
+	if err != nil && err == sql.ErrNoRows {
+		err = data.ErrFaqRobotTagNotFound
+	}
+
+	return
+}
+
+func GetFaqRobotTagsByIDs(robotTagIDs []int64) (robotTags map[int64]*data.FaqRobotTag, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	if len(robotTagIDs) > 0 {
+		ids := strings.Repeat(", ?", len(robotTagIDs)-1)
+		queryStr := fmt.Sprintf(`SELECT id, name FROM %s WHERE id IN (?%s`, FaqRobotTagTable, ids)
+		queryParams := make([]interface{}, len(robotTagIDs))
+
+		for i, robotTagID := range robotTagIDs {
+			queryParams[i] = robotTagID
+		}
+
+		rows, err := db.Query(queryStr, queryParams...)
+		if err != nil {
+			return nil, err
+		}
+
+		robotTags = make(map[int64]*data.FaqRobotTag)
+
+		for rows.Next() {
+			robotTag := data.FaqRobotTag{}
+			err = rows.Scan(&robotTag.ID, &robotTag.Tag)
+			if err != nil {
+				return nil, err
+			}
+
+			robotTags[robotTag.ID] = &robotTag
+		}
+	}
+
+	return
+}
+
+func GetAllFaqRobotTags() (robotTags map[int64]*data.FaqRobotTag, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`SELECT id, name FROM %s`, FaqRobotTagTable)
+	rows, err := db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	robotTags = make(map[int64]*data.FaqRobotTag)
+
+	for rows.Next() {
+		robotTag := data.FaqRobotTag{}
+		err = rows.Scan(&robotTag.ID, &robotTag.Tag)
+		if err != nil {
+			return nil, err
+		}
+
+		robotTags[robotTag.ID] = &robotTag
+	}
+
+	return
 }
 
 func TryCreateExportTask(enterpriseID string) (exportTaskID string, err error) {

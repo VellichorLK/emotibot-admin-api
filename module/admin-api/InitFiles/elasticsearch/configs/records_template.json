@@ -2,7 +2,7 @@
     "index_patterns": [
         "emotibot-records-*"
     ],
-    "version": 20181015,
+    "version": 20181206,
     "settings": {
         "number_of_replicas": 1,
         "number_of_shards": 1
@@ -67,8 +67,11 @@
                 "score": {
                     "type": "double"
                 },
+                "source": {
+                    "type": "keyword"
+                },
                 "host": {
-                    "type": "ip"
+                    "type": "keyword"
                 },
                 "marked": {
                     "type": "boolean"
@@ -88,6 +91,35 @@
                             "type": "keyword"
                         }
                     }
+                },
+                "taskengine_session_id": {
+                    "type": "keyword"
+                },
+                "faq_cat_id": {
+                    "type": "integer"
+                },
+                "faq_robot_tag_id": {
+                    "type": "keyword"
+                },
+                "threshold": {
+                    "type": "integer"
+                },
+                "feedback": {
+                    "type": "keyword"
+                },
+                "custom_feedback": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "feedback_time": {
+                    "type": "date",
+                    "format": "epoch_second"
                 }
             }
         }

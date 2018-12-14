@@ -13,8 +13,9 @@ import (
 
 	"emotibot.com/emotigo/pkg/api/dal/v1"
 
-	statData "emotibot.com/emotigo/module/admin-api/ELKStats/data"
-	statService "emotibot.com/emotigo/module/admin-api/ELKStats/services"
+	statDataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
+	statServiceV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
+	statServiceCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -76,7 +77,7 @@ func Init() error {
 func NewDoReportHandler(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client, dalClient *dal.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		appid := requestheader.GetAppID(r)
-		var query statData.RecordQuery
+		var query statDataV1.RecordQuery
 		requestBody, _ := ioutil.ReadAll(r.Body)
 		defer r.Body.Close()
 		err := json.Unmarshal(requestBody, &query)
@@ -88,7 +89,8 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		rawRequestQuery, _ := json.Marshal(query)
 		query.AppID = appid
 		query.Limit = 0
-		result, err := statService.VisitRecordsQuery(query, statService.AggregateFilterMarkedRecord, statService.AggregateFilterIgnoredRecord)
+		result, err := statServiceV1.VisitRecordsQuery(query,
+			statServiceCommon.AggregateFilterMarkedRecord, statServiceCommon.AggregateFilterIgnoredRecord)
 		if err != nil {
 			logger.Error.Printf("get records failed, %v", err)
 		}
@@ -101,7 +103,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		query.Limit = 10000
 		query.IsIgnored = new(bool)
 		query.IsMarked = new(bool)
-		result, err = statService.VisitRecordsQuery(query)
+		result, err = statServiceV1.VisitRecordsQuery(query)
 		now := time.Now().Unix()
 		thirtyMinAgo := now - 1800
 		s := int(ReportStatusRunning)

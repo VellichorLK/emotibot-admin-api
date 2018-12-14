@@ -1,0 +1,164 @@
+openapi: 3.0.0
+info:
+  title: 多轮场景日誌统计
+  description: 多轮场景日誌统计 API
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v1/stats
+
+components:
+  ################################################################################
+  #                                  Parameters                                  #
+  ################################################################################
+  parameters:
+    EnterpriseId:
+      name: X-Enterpriseid
+      description: 企业 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    AppId:
+      name: X-Appid
+      description: 操作的机器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    UserId:
+      name: X-Userid
+      description: 使用者 ID
+      in: header
+      required: true
+      schema:
+        type: string
+    StartTime:
+      name: startTime
+      description: 搜寻起始时间
+      in: query
+      required: true
+      schema:
+        type: integer
+    EndTime:
+      name: endTime
+      description: 搜寻结束时间
+      in: query
+      required: true
+      schema:
+        type: integer
+    ScenarioId:
+      name: scenarioID
+      description: 多轮场景 ID
+      in: query
+      schema:
+        type: string
+    ScenarioName:
+      name: scenarioName
+      description: 多轮场景名称
+      in: query
+      schema:
+        type: string
+    Type:
+      name: type
+      description: 统计类型
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - time
+          - dimension
+    Dimension:
+      name: dimension
+      description: 统计維度 (只有当 type = dimension 的时候生效)
+      in: query
+      schema:
+        type: string
+        enum:
+          - platform
+          - sex
+    Locale:
+      name: locale
+      in: header
+      description: 回传资料使用语系，预设使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+  
+paths:
+  /teVisits:
+    get:
+      tags:
+        - Statistic
+      description: 日誌统计結果
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/ScenarioId'
+        - $ref: '#/components/parameters/ScenarioName'
+        - $ref: '#/components/parameters/Type'
+        - $ref: '#/components/parameters/Dimension'
+      responses:
+        200:
+          description: 日志统计结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tableheader:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  data:
+                    type: object
+                    properties:
+                      quantities:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            triggers:
+                              description: 场景触发量
+                              type: integer
+                            unfinished:
+                              description: 场景未完成量
+                              type: integer
+                      type:
+                        description: 聚合类型
+                        type: string
+                        enum:
+                          - day
+                          - hour
+                  total:
+                    description: 总和统计值
+                    type: object
+                    properties:
+                      triggers:
+                        description: 场景触发量
+                        type: integer
+                      unfinished:
+                        description: 场景未完成量
+                        type: integer
+        400:
+          description: Bad request
+        500:
+          description: Internal server error
+  
