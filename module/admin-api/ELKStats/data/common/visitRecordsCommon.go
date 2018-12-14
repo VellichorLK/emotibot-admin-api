@@ -25,6 +25,7 @@ const (
 	VisitRecordsMetricLogTime         = "log_time"
 	VisitRecordsMetricScore           = "score"
 	VisitRecordsMetricCustomInfo      = "custom_info"
+	VisitRecordsMetricSource          = "source"
 	VisitRecordsMetricNote            = "note"
 	VisitRecordsMetricQType           = "qtype"
 	VisitRecordsMetricTESessionID     = "taskengine_session_id"

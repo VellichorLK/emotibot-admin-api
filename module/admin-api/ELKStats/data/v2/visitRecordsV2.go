@@ -83,6 +83,7 @@ type VisitRecordsRawData struct {
 	UniqueID       string                 `json:"unique_id"`
 	Answer         []data.Answer          `json:"answer"`
 	CustomInfo     map[string]interface{} `json:"custom_info"`
+	Source         string                 `json:"source"`
 	Note           string                 `json:"note"`
 	IsMarked       bool                   `json:"is_marked"`
 	IsIgnored      bool                   `json:"is_ignored"`
@@ -122,6 +123,7 @@ type VisitRecordsQueryResult struct {
 
 type VisitRecordsExportData struct {
 	VisitRecordsCommon
+	Source       string  `json:"source"`
 	EmotionScore float64 `json:"emotion_score"`
 	IntentScore  float64 `json:"intent_score"`
 	CustomInfo   string  `json:"custom_info"`
@@ -207,6 +209,7 @@ var VisitRecordsExportHeader = []string{
 	"机器人回答",
 	"匹配分数",
 	"出话模组",
+	"出话来源",
 	"访问时间",
 	"情感",
 	"情感分数",

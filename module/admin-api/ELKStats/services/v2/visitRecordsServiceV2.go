@@ -307,6 +307,7 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 
 	recordPtr = &dataV2.VisitRecordsExportData{
 		VisitRecordsCommon: *recordCommon,
+		Source:             rawRecord.Source,
 		EmotionScore:       rawRecord.EmotionScore,
 		IntentScore:        rawRecord.IntentScore,
 		CustomInfo:         customInfo,
@@ -375,6 +376,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 			record.Answer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
 			record.Module,
+			record.Source,
 			record.LogTime,
 			record.Emotion,
 			strconv.FormatFloat(record.EmotionScore, 'f', -1, 64),
@@ -420,6 +422,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricIntent,
 		dataCommon.VisitRecordsMetricIntentScore,
 		dataCommon.VisitRecordsMetricCustomInfo,
+		dataCommon.VisitRecordsMetricSource,
 		"faq_cat_id",
 		"fat_robot_tag_id",
 		dataCommon.VisitRecordsMetricFeedback,

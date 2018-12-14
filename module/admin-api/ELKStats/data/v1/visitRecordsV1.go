@@ -121,6 +121,7 @@ type VisitRecordsData struct {
 
 type VisitRecordsRawData struct {
 	VisitRecordsDataBase
+	Source   string        `json:"source"`
 	UniqueID string        `json:"unique_id"`
 	Answer   []data.Answer `json:"answer"`
 }
@@ -142,6 +143,7 @@ type VisitRecordsExportBase struct {
 	IntentScore  float64 `json:"intent_score"`
 	LogTime      string  `json:"log_time"`
 	Score        float64 `json:"score"`
+	Source       string  `json:"source"`
 	Note         string  `json:"note"`
 }
 
@@ -204,6 +206,7 @@ var VisitRecordsExportHeader = []string{
 	"机器人回答",
 	"匹配分数",
 	"出话模组",
+	"出话来源",
 	"访问时间",
 	"情感",
 	"情感分数",
