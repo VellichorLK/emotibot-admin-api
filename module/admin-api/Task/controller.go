@@ -293,10 +293,22 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		scenarioName = "New Scenario"
 	}
 
-	metadata, errno, err := CreateInitialScenario(appid, userid, scenarioName)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
-		return
+	metadata := &ContentMetadata{}
+	var errno int
+	var err error
+	template := r.FormValue("template")
+	if template == "" {
+		metadata, errno, err = CreateInitialScenario(appid, userid, scenarioName)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+	} else {
+		metadata, errno, err = CreateScenarioWithTemplate(appid, userid, scenarioName, template)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
 	}
 
 	ret := CreateScenarioResponse{
