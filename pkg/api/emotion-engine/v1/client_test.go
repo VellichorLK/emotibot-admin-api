@@ -13,14 +13,54 @@ import (
 var isIntegration bool
 
 func TestMain(m *testing.M) {
-	flag.BoolVar(&isIntegration, "integration", false, "")
+	flag.BoolVar(&isIntegration, "integrate", false, "")
 	flag.Parse()
 	os.Exit(m.Run())
 }
+
+// TestClientIntegration is a integration test case that run against a local emotion-engine module.
+// setup can be found in ./testdata/run.sh
+// Scenario:
+// 	1. train from a csv file.
+//	2. verify by predict api.
 func TestClientIntegration(t *testing.T) {
 	if !isIntegration {
-
+		t.Skip("Specify -integrate flag for running integration test")
 	}
+
+	c := Client{
+		Transport: http.DefaultClient,
+		ServerURL: "http://localhost:8888",
+	}
+	e, err := CSVToEmotion("./testdata/happy.csv", "高興")
+	if err != nil {
+		t.Error("open test data failed, ", err)
+	}
+	_, err = c.Train(Model{
+		AppID:        "demo",
+		IsAutoReload: true,
+		Data: map[string]Emotion{
+			"高興": e,
+		},
+	})
+	if err != nil {
+		t.Fatal("expect train to be OK, but got ", err)
+	}
+	req := PredictRequest{
+		AppID:    "demo",
+		Sentence: "哈哈，和你开玩笑呢",
+	}
+	predictions, err := c.Predict(req)
+	if err != nil {
+		t.Fatal("expect predict to be OK, but got ", err)
+	}
+	if len(predictions) == 0 {
+		t.Fatal("expect at least one prediction but got 0")
+	}
+	if predictions[0].Label != "高興" {
+		t.Error("expect first one to be 高興, but got ", predictions[0].Label)
+	}
+
 }
 
 type mockTransporter [][]byte

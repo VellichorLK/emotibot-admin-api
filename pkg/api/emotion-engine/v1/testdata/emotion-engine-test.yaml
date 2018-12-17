@@ -1,0 +1,26 @@
+# This is a setup example yaml to run emotion-engine dev env
+# DO NOT COPY ANY ARGUMENTS DIRECTLY FOR PRODUCTION!!!
+version: '3.2'
+services:
+    api:
+        image: docker-reg.emotibot.com.cn:55688/emotion-engine:c170d65
+        environment:
+            - WORKERS=1
+            - IE_MONGO_URI=mongodb://db
+            - IE_MONGO_DB=emotion_engine
+            - IE_UPDATE_INT=1
+            - IE_TIMEOUT_MIN=30
+        ports:
+            - 8888:80
+    trainer:
+        image: docker-reg.emotibot.com.cn:55688/emotion-engine-trainer:c170d65
+        environment:
+            - IE_MONGO_URI=mongodb://db
+            - IE_MONGO_DB=emotion_engine
+            - IE_UPDATE_INT=1
+    db:
+        image: mongo
+        volumes:
+            - mongodb:/data/db
+volumes:
+  mongodb:

@@ -18,6 +18,8 @@ type Client struct {
 	// Which should be compatible with the net/http package.
 	// If nil, http.DefaultClient is used.
 	Transport api.HTTPClient
+	// ServerURL is the host and port of the emotion-engine module.
+	// which shouold be "http://{host}:{port}". DO NOT add ending slash.
 	ServerURL string
 }
 
@@ -37,8 +39,10 @@ func (c *Client) Train(apiModel Model) (modelID string, err error) {
 	m := model{
 		AppID:      apiModel.AppID,
 		AutoReload: apiModel.IsAutoReload,
-		Data:       make([]emotion, 0, len(apiModel.Data)),
+		Data:       make(map[string]interface{}, 0),
 	}
+
+	emotions := make([]emotion, 0, len(apiModel.Data))
 	for name, e := range apiModel.Data {
 		if name != e.Name {
 			return "", fmt.Errorf("EE: invalid model data, EmotionName '%s' should be the same with the key of it's Data map '%s'", e.Name, name)
@@ -54,19 +58,21 @@ func (c *Client) Train(apiModel Model) (modelID string, err error) {
 		} else {
 			negativeSentence = e.NegativeSentence
 		}
-		m.Data = append(m.Data, emotion{
+		emotions = append(emotions, emotion{
 			EmotionName: e.Name,
-			Sentence: sentence{
+			Sentences: sentence{
 				Positive: e.PositiveSentence,
 				Negative: negativeSentence,
 			},
 		})
 	}
+	m.Data["emotion"] = emotions
 
 	data, err := json.Marshal(m)
 	if err != nil {
 		return "", fmt.Errorf("OTHER: json marshal failed, %v", err)
 	}
+	// fmt.Printf("data: %s", data)
 	req, err := http.NewRequest(http.MethodPost, c.ServerURL+"/train", bytes.NewBuffer(data))
 	if err != nil {
 		return "", fmt.Errorf("OTHER: New Request failed, %v", err)
@@ -81,7 +87,7 @@ func (c *Client) Train(apiModel Model) (modelID string, err error) {
 	var respBody trainResponse
 	json.Unmarshal(data, &respBody)
 	if respBody.Status != "OK" {
-		return "", fmt.Errorf("EE: unsuccessful status, %s", respBody.Status)
+		return "", fmt.Errorf("EE: got unsuccessful status '%s', error message: %s", respBody.Status, respBody.ErrMsg)
 	}
 	return respBody.ModelID, nil
 }
@@ -92,7 +98,7 @@ func (c *Client) Predict(request PredictRequest) (predictions []Predict, err err
 		return nil, fmt.Errorf("EE: predict appID should not be empty")
 	}
 	data, err := json.Marshal(request)
-	req, err := http.NewRequest(http.MethodGet, c.ServerURL+"/predict", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, c.ServerURL+"/predict", bytes.NewBuffer(data))
 	resp, err := c.Transport.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP: Transport Do request failed, %v", err)
@@ -179,13 +185,14 @@ type rawPredict struct {
 }
 
 type model struct {
-	AppID      string    `json:"app_id"`
-	AutoReload bool      `json:"auto_reload"`
-	Data       []emotion `json:"data"`
+	AppID      string                 `json:"app_id"`
+	AutoReload bool                   `json:"auto_reload"`
+	Data       map[string]interface{} `json:"data"`
 }
+
 type emotion struct {
 	EmotionName string   `json:"emotion_name"`
-	Sentence    sentence `json:"sentence"`
+	Sentences   sentence `json:"sentences"`
 }
 
 type sentence struct {
@@ -196,4 +203,5 @@ type sentence struct {
 type trainResponse struct {
 	Status  string `json:"status"`
 	ModelID string `json:"model_id"`
+	ErrMsg  string `json:"error"`
 }
