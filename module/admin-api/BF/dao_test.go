@@ -15,11 +15,11 @@ func TestGetSSMCategory(t *testing.T) {
 	useDB = db
 	appid := "csbot"
 
-	rows := sqlmock.NewRows([]string{"id", "pid", "name"}).
-		AddRow(1, 0, "root").
-		AddRow(2, 1, "level1-1").
-		AddRow(3, 1, "level1-2").
-		AddRow(4, 3, "level1-2-1")
+	rows := sqlmock.NewRows([]string{"id", "pid", "name", "label"}).
+		AddRow(1, 0, "root", "cat_1").
+		AddRow(2, 1, "level1-1", "cat_2").
+		AddRow(3, 1, "level1-2", "cat_3").
+		AddRow(4, 3, "level1-2-1", "cat_4")
 	mock.ExpectQuery("^SELECT (.+) FROM tbl_sq_category WHERE app_id = (.+) AND is_del = 0$").WithArgs(appid).WillReturnRows(rows)
 
 	t.Run("Test get category without deleted", func(t *testing.T) {

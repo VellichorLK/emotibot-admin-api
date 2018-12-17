@@ -411,9 +411,9 @@ func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	queryStr := "SELECT id, pid, name FROM tbl_sq_category WHERE app_id = ? AND is_del = 0"
+	queryStr := "SELECT id, pid, name, label FROM tbl_sq_category WHERE app_id = ? AND is_del = 0"
 	if containSoftDelete {
-		queryStr = "SELECT id, pid, name FROM tbl_sq_category WHERE app_id = ?"
+		queryStr = "SELECT id, pid, name, label FROM tbl_sq_category WHERE app_id = ?"
 	}
 	rows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
@@ -425,7 +425,7 @@ func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
 	for rows.Next() {
 		tmp := &Category{}
 		tmp.Children = []*Category{}
-		err = rows.Scan(&tmp.ID, &tmp.Parent, &tmp.Name)
+		err = rows.Scan(&tmp.ID, &tmp.Parent, &tmp.Name, &tmp.CatID)
 		if err != nil {
 			return nil, err
 		}
