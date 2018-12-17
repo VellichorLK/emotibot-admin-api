@@ -1,45 +1,22 @@
-package data
+package v1
 
 import (
 	"strconv"
 	"time"
-)
 
-const (
-	CallStatusComplete       = 1
-	CallStatusOngoing        = 0
-	CallStatusTranserToHuman = -1
-	CallStatusTimeout        = -2
-	CallStatusCancel         = -3
-)
-
-const (
-	CallStatsTypeTime    = "time"
-	CallStatsTypeAnswers = "answers"
-)
-
-const (
-	CallsMetricTotals        = "totals"
-	CallsMetricCompletes     = "completes"
-	CallsMetricCompletesRate = "completes_rate"
-	CallsMetricToHumans      = "to_humans"
-	CallsMetricToHumansRate  = "to_humans_rate"
-	CallsMetricTimeouts      = "timeouts"
-	CallsMetricTimeoutsRate  = "timeouts_rate"
-	CallsMetricCancels       = "cancels"
-	CallsMetricCancelsRate   = "cancels_rate"
-	CallsMetricUnknowns      = "unknowns"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
 )
 
 type CallStatsQuery struct {
-	CommonQuery
+	data.CommonQuery
 	AggInterval string
 }
 
 type CallStatsResponse struct {
-	TableHeader []TableHeaderItem `json:"table_header"`
-	Data        CallStatData      `json:"data"`
-	Total       CallStatsTotal    `json:"total"`
+	TableHeader []data.TableHeaderItem `json:"table_header"`
+	Data        CallStatData           `json:"data"`
+	Total       CallStatsTotal         `json:"total"`
 }
 
 type CallStatData struct {
@@ -54,50 +31,50 @@ type CallStatsTotal struct {
 	Time     string `json:"time,omitempty"`
 }
 
-var CallStatsTableHeader = []TableHeaderItem{
-	TableHeaderItem{
+var CallStatsTableHeader = []data.TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "统计项",
 		ID:   "time_txt",
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "总场景数",
-		ID:   CallsMetricTotals,
+		ID:   common.CallsMetricTotals,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景完成数",
-		ID:   CallsMetricCompletes,
+		ID:   common.CallsMetricCompletes,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景完成率",
-		ID:   CallsMetricCompletesRate,
+		ID:   common.CallsMetricCompletesRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景转人工数",
-		ID:   CallsMetricToHumans,
+		ID:   common.CallsMetricToHumans,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景转人工率",
-		ID:   CallsMetricToHumansRate,
+		ID:   common.CallsMetricToHumansRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景中断数",
-		ID:   CallsMetricTimeouts,
+		ID:   common.CallsMetricTimeouts,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "场景中断率",
-		ID:   CallsMetricTimeoutsRate,
+		ID:   common.CallsMetricTimeoutsRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "用户拒绝场景数",
-		ID:   CallsMetricCancels,
+		ID:   common.CallsMetricCancels,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "用户拒绝场景率",
-		ID:   CallsMetricCancelsRate,
+		ID:   common.CallsMetricCancelsRate,
 	},
-	TableHeaderItem{
+	data.TableHeaderItem{
 		Text: "未提供型号尺寸数",
-		ID:   CallsMetricUnknowns,
+		ID:   common.CallsMetricUnknowns,
 	},
 }
 

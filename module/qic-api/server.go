@@ -85,6 +85,7 @@ func serverInitial() {
 
 func main() {
 	serverInitial()
+
 	router := setRoute()
 	initDB()
 	logAvailablePath(router)

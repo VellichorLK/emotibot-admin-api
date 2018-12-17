@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"emotibot.com/emotigo/pkg/logger"
-
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -17,6 +16,16 @@ var (
 	ModuleInfo  util.ModuleInfo
 	maxDirDepth int
 )
+
+func init() {
+	ModuleInfo = util.ModuleInfo{
+		ModuleName: "cu",
+		EntryPoints: []util.EntryPoint{
+			util.NewEntryPoint("POST", "text/process", []string{}, handleTextProcess),
+		},
+	}
+	maxDirDepth = 4
+}
 
 func random(min, max int) int {
 	rand.Seed(time.Now().Unix())

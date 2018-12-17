@@ -71,4 +71,7 @@ type Category struct {
 	Parent   int         `json:"parent"`
 	Name     string      `json:"name"`
 	Children []*Category `json:"children"`
+
+	// CatID is used in SSM mongo system
+	CatID string `json:"cat_id"`
 }

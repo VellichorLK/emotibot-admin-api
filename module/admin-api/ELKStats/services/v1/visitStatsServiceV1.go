@@ -1,4 +1,4 @@
-package services
+package v1
 
 import (
 	"context"
@@ -7,58 +7,57 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"github.com/olivere/elastic"
 )
 
-const (
-	HourInSeconds   = 60 * 60
-	MinuteInSeconds = 60
-)
-
-func ConversationCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func ConversationCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "conversations"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionStartTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionStartTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	switch query.AggBy {
 	case data.AggByTime:
-		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.SessionStartTimeFieldName).
+		dateHistogramAgg := services.CreateDateHistogramAggregation(query.CommonQuery, data.SessionStartTimeFieldName).
 			Interval(query.AggInterval)
 
 		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, dateHistogramAgg)
+		result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, dateHistogramAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		counts := extractCountsFromAggDateHistogramBuckets(result, aggName)
+		counts := services.ExtractCountsFromAggDateHistogramBuckets(result, aggName)
 		return counts, nil
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-		result, err := createSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, tagTermAgg)
+		result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		counts := extractCountsFromAggTermsBuckets(result, aggName)
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		counts := services.ExtractCountsFromAggTermsBuckets(result, aggName)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
 }
 
-func UniqueUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func UniqueUserCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "unique_users"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	uniqueUserCountAggName := "unique_user_count"
@@ -75,9 +74,9 @@ func UniqueUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error
 		_agg = dateHistogramAgg
 	case data.AggByTag:
 		boolQuery = boolQuery.Filter(rangeQuery)
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 		tagTermAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
 		_agg = tagTermAgg
@@ -117,11 +116,11 @@ func UniqueUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error
 	return uniqueUserCounts, nil
 }
 
-func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func NewUserCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "new_users"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.FirstLogTimeFieldName)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.FirstLogTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	uniqueUserCountAggName := "unique_user_count"
@@ -132,15 +131,15 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 
 	switch query.AggBy {
 	case data.AggByTime:
-		dateHistogramAgg := createDateHistogramAggregation(query.CommonQuery, data.FirstLogTimeFieldName).
+		dateHistogramAgg := services.CreateDateHistogramAggregation(query.CommonQuery, data.FirstLogTimeFieldName).
 			Interval(query.AggInterval)
 		dateHistogramAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
 		_agg = dateHistogramAgg
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType).ShardSize(data.ESTermAggShardSize)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType).ShardSize(data.ESTermAggShardSize)
 		tagTermAgg.SubAggregation(uniqueUserCountAggName, uniqueUserCardinalityAgg)
 
 		_agg = tagTermAgg
@@ -149,7 +148,7 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	}
 
 	index := fmt.Sprintf("%s-*", data.ESUsersIndex)
-	result, err := createSearchService(ctx, client, boolQuery, index, data.ESUsersType, aggName, _agg)
+	result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESUsersType, aggName, _agg)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +178,7 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	}
 
 	if query.AggBy == data.AggByTag {
-		newUserCounts, err = normalizeTagCounts(newUserCounts, query.AppID, query.AggTagType)
+		newUserCounts, err = common.NormalizeTagCounts(newUserCounts, query.AppID, query.AggTagType)
 		if err != nil {
 			return nil, err
 		}
@@ -188,11 +187,11 @@ func NewUserCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 	return newUserCounts, nil
 }
 
-func TotalAskCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func TotalAskCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "total_asks"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	switch query.AggBy {
@@ -200,27 +199,27 @@ func TotalAskCounts(query data.VisitStatsQuery) (map[string]interface{}, error) 
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
 		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
 }
 
-func NormalResponseCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func NormalResponseCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "normal_responses"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(termsQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -229,27 +228,27 @@ func NormalResponseCounts(query data.VisitStatsQuery) (map[string]interface{}, e
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
 		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
 }
 
-func ChatCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func ChatCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "chats"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "chat")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -258,27 +257,27 @@ func ChatCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
 		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
 }
 
-func OtherCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func OtherCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "others"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "chat", "backfill")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.MustNot(termsQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -287,27 +286,27 @@ func OtherCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
 		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
 }
 
-func UnknownQnACounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func UnknownQnACounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "unknown_qna"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "backfill")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -316,16 +315,16 @@ func UnknownQnACounts(query data.VisitStatsQuery) (map[string]interface{}, error
 		dateHistogramAgg := createVisitStatsDateHistogramAggregation(query)
 		return doVisitStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 	case data.AggByTag:
-		tagExistsQuery := createVisitStatsTagExistsQuery(query.AggTagType)
+		tagExistsQuery := common.CreateStatsTagExistsQuery(query.AggTagType)
 		boolQuery = boolQuery.Filter(tagExistsQuery)
-		tagTermAgg := createVisitStatsTagTermsAggregation(query.AggTagType)
+		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
 		counts, err := doVisitStatsTermsAggService(ctx, client, boolQuery, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
 
-		return normalizeTagCounts(counts, query.AppID, query.AggTagType)
+		return common.NormalizeTagCounts(counts, query.AppID, query.AggTagType)
 	default:
 		return nil, data.ErrInvalidAggType
 	}
@@ -363,12 +362,12 @@ func CoversationsPerSessionCounts(conversationCounts map[string]interface{},
 	return counts
 }
 
-func TopQuestions(query data.VisitStatsQuery, topN int) (data.Questions, error) {
+func TopQuestions(query dataV1.VisitStatsQuery, topN int) (dataV1.Questions, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "top_questions"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "faq")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	stdQEmptyQuery := elastic.NewTermQuery("std_q.keyword", "")
 	boolQuery = boolQuery.Filter(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
@@ -380,9 +379,9 @@ func TopQuestions(query data.VisitStatsQuery, topN int) (data.Questions, error) 
 		return nil, err
 	}
 
-	questions := make(data.Questions, 0)
+	questions := make(dataV1.Questions, 0)
 	for question, count := range result {
-		q := data.Question{
+		q := dataV1.Question{
 			Question: question,
 			Count:    count.(int64),
 		}
@@ -393,12 +392,12 @@ func TopQuestions(query data.VisitStatsQuery, topN int) (data.Questions, error) 
 	return questions, nil
 }
 
-func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQuestion, error) {
+func TopUnmatchQuestions(query dataV1.VisitStatsQuery, topN int) ([]*dataV1.UnmatchQuestion, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "top_unmatch_q"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("module", "backfill")
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(termQuery, rangeQuery)
 
 	maxLogTimeAggName := "max_log_time"
@@ -414,7 +413,7 @@ func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQ
 		return nil, err
 	}
 
-	unmatchQuestions := make([]*data.UnmatchQuestion, 0)
+	unmatchQuestions := make([]*dataV1.UnmatchQuestion, 0)
 
 	if agg, found := result.Aggregations.Terms(aggName); found {
 		for _, bucket := range agg.Buckets {
@@ -442,7 +441,7 @@ func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQ
 			}
 			minLogTime = minLogTime.Local()
 
-			unmatchQuestion := data.UnmatchQuestion{
+			unmatchQuestion := dataV1.UnmatchQuestion{
 				Question:   bucket.Key.(string),
 				Count:      bucket.DocCount,
 				MaxLogTime: maxLogTime.Format(data.ESTimeFormat),
@@ -455,22 +454,22 @@ func TopUnmatchQuestions(query data.VisitStatsQuery, topN int) ([]*data.UnmatchQ
 	return unmatchQuestions, nil
 }
 
-func AnswerCategoryCounts(query data.VisitStatsQuery) (map[string]interface{}, error) {
+func AnswerCategoryCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "answer_categories"
-	boolQuery := createVisitStatsBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.LogTimeFieldName)
+	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	filtersAgg := elastic.NewFiltersAggregation()
 
-	businessFilterName := data.CategoryBusiness
+	businessFilterName := dataCommon.CategoryBusiness
 	businessTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
 
-	chatFilterName := data.CategoryChat
+	chatFilterName := dataCommon.CategoryChat
 	chatTermQuery := elastic.NewTermQuery("module", "chat")
 
-	otherFilterName := data.CategoryOther
+	otherFilterName := dataCommon.CategoryOther
 	otherBoolQuery := elastic.NewBoolQuery()
 	otherNotTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "chat")
 	otherBoolQuery = otherBoolQuery.MustNot(otherNotTermsQuery)
@@ -513,83 +512,27 @@ func AnswerCategoryCounts(query data.VisitStatsQuery) (map[string]interface{}, e
 	return answerCategoryCounts, nil
 }
 
-func createVisitStatsBoolQuery(query data.CommonQuery) *elastic.BoolQuery {
-	boolQuery := createBoolQuery(query)
-	welcomeTagTermQuery := elastic.NewTermQuery("user_q.keyword", "welcome_tag")
-	boolQuery = boolQuery.MustNot(welcomeTagTermQuery)
-	return boolQuery
-}
-
-func createVisitStatsTagExistsQuery(tag string) *elastic.ExistsQuery {
-	field := fmt.Sprintf("custom_info.%s.keyword", tag)
-	return elastic.NewExistsQuery(field)
-}
-
-func createVisitStatsDateHistogramAggregation(query data.VisitStatsQuery) *elastic.DateHistogramAggregation {
-	agg := createDateHistogramAggregation(query.CommonQuery, data.LogTimeFieldName)
+func createVisitStatsDateHistogramAggregation(query dataV1.VisitStatsQuery) *elastic.DateHistogramAggregation {
+	agg := services.CreateDateHistogramAggregation(query.CommonQuery, data.LogTimeFieldName)
 	agg.Interval(query.AggInterval)
 	return agg
-}
-
-func createVisitStatsTagTermsAggregation(tag string) *elastic.TermsAggregation {
-	field := fmt.Sprintf("custom_info.%s.keyword", tag)
-	return elastic.NewTermsAggregation().Field(field).Size(data.ESTermAggShardSize)
 }
 
 func createVisitStatsSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
-	return createSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
+	return services.CreateSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
 }
 
 func doVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
-	result, err := createSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
-	if err != nil {
-		return nil, err
-	}
-
-	counts := extractCountsFromAggDateHistogramBuckets(result, aggName)
-	return counts, nil
+	return services.DoDateHistogramAggService(ctx, client, query,
+		index, data.ESRecordType, aggName, agg)
 }
 
 func doVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
-	return doTermsAggService(ctx, client, query, index, data.ESRecordType, aggName, agg)
-}
-
-func createTagCountsMap(query data.VisitStatsQuery) (map[string]interface{}, error) {
-	counts := make(map[string]interface{})
-	availableTags := getAvailableTags(query.AppID)
-
-	aggTags, ok := availableTags[query.AggTagType]
-	if !ok {
-		return nil, data.ErrTagTypeNotFound
-	}
-
-	for _, aggTag := range aggTags {
-		counts[aggTag.Name] = int64(0)
-	}
-
-	return counts, nil
-}
-
-// normalizeTagCounts returns a new counts map with missing tags and without redundant tags
-func normalizeTagCounts(counts map[string]interface{}, appID string, tagType string) (map[string]interface{}, error) {
-	tagCounts := make(map[string]interface{})
-	availableTags := getAvailableTags(appID)
-
-	if aggTags, ok := availableTags[tagType]; ok {
-		for _, aggTag := range aggTags {
-			if count, ok := counts[aggTag.Name]; ok {
-				tagCounts[aggTag.Name] = count
-			} else {
-				tagCounts[aggTag.Name] = int64(0)
-			}
-		}
-	}
-
-	return tagCounts, nil
+	return services.DoTermsAggService(ctx, client, query, index, data.ESRecordType, aggName, agg)
 }
