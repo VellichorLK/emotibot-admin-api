@@ -1,4 +1,6 @@
 def TestBaseImage='harbor.emotibot.com/library/go-build:99b290c5-1.10-standard'
+def havePushed=false
+
 pipeline {
     agent {
         node('docker-build01')
@@ -61,6 +63,9 @@ pipeline {
                     steps {
                         sh 'docker login -u ${DOCKER_SECRECT_USR} -p ${DOCKER_SECRECT_PSW} harbor.emotibot.com '
                         sh "cd 'module/qic-api/docker' && bash push_images.sh;"
+                        script {
+                            havePushed = true
+                        }
                     }
                 }
             }
@@ -77,7 +82,11 @@ pipeline {
             sh "bash module/qic-api/jenkins/send2slack.sh"
         }
         success {
-            sh "bash module/qic-api/jenkins/send2slack.sh success"
+            script{
+                if (havePushed == true) {
+                    sh "bash module/qic-api/jenkins/send2slack.sh success"
+                }
+            }        
         }
     }
 }

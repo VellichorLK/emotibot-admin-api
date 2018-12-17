@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: 数据管理/日志管理
+  title: 数据优化/日志管理
   description: 统计数据日志管理 API，包含日志搜寻及日志导出
   version: 1.0.0
   contact:
@@ -15,7 +15,7 @@ components:
   #                                   Schemas                                   #
   ###############################################################################
   schemas:
-    QueryRecordsBody:
+    RequestRecordsBody:
       type: object
       properties:
         start_time:
@@ -38,14 +38,24 @@ components:
               $ref: '#/components/schemas/FilterQtypes'
             uid:
               $ref: '#/components/schemas/FilterUid'
-        page:
-          description: 分页页码，从 0 开始，预设为 0
-          type: integer
-          default: 0
-        limit:
-          description: 单笔页数，预设为 20
-          type: integer
-          default: 20
+    QueryRecordsBody:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RequestRecordsBody'
+        - type: object
+          properties:
+            page:
+              description: 分页页码，从 0 开始，预设为 0
+              type: integer
+              default: 0
+            limit:
+              description: 单笔页数，预设为 20
+              type: integer
+              default: 20
+    ExportRecordsBody:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RequestRecordsBody'
     FilterCategories:
       description: 筛选条件组 - 维度
       type: array
@@ -142,7 +152,7 @@ components:
       required: true
       schema:
         type: string
-    userId:
+    UserId:
       name: X-Userid
       description: 使用者 ID
       in: header
@@ -156,7 +166,7 @@ components:
       required: true
       schema:
         type: string
-    locale:
+    Locale:
       name: locale
       in: header
       description: 回传资料使用语系，预设使用 zh-cn
@@ -176,6 +186,11 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/QueryRecordsBody'
+    ExportRecords:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ExportRecordsBody'
 
 paths:
   /query:
@@ -185,9 +200,8 @@ paths:
       summary: 搜寻日志
       description: 日志搜寻结果
       parameters:
-        - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
-        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/UserId'
       requestBody:
         $ref: '#/components/requestBodies/QueryRecords'
       responses:
@@ -218,7 +232,7 @@ paths:
                         session_id:
                           description: 会话 ID
                           type: string
-                        userId:
+                        UserId:
                           description: 用户 ID
                           type: string
                         user_q:
@@ -265,9 +279,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
-        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/UserId'
       requestBody:
-        $ref: '#/components/requestBodies/QueryRecords'
+        $ref: '#/components/requestBodies/ExportRecords'
       responses:
         200:
           description: 成功建立日志导出任务
@@ -295,7 +309,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
-        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/UserId'
       responses:
         200:
           description: 日志导出档案 (.zip 或 .xlsx 档)
@@ -315,7 +329,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
-        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/UserId'
       responses:
         200:
           description: 成功删除日志导出档案
@@ -335,7 +349,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
-        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/UserId'
       responses:
         200:
           description: 日志导出任务目前状态

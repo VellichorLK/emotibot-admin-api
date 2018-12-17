@@ -80,6 +80,48 @@ func CreateInitialScenario(appid, userid, scenarioName string) (*ContentMetadata
 	return metadata, ApiError.SUCCESS, nil
 }
 
+// CreateScenarioWithTemplate create a new scenario that is a copy of the target template scenario
+func CreateScenarioWithTemplate(appid, userid, scenarioName, template string) (*ContentMetadata, int, error) {
+	scenarioid, err := generateScenarioID()
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	now := time.Now()
+	updateTime := now.Format("2006-01-02 15:04:05")
+	newScenarioName, errno, err := suffixIndexToScenarioNameIfAlreadyExist(appid, userid, scenarioName)
+	if err != nil {
+		return nil, errno, err
+	}
+	metadata := &ContentMetadata{
+		ScenarioName: newScenarioName,
+		UpdateTime:   updateTime,
+		UpdateUser:   userid,
+		ScenarioID:   scenarioid,
+	}
+	// get template scenario content
+	scenario, err := getScenario(template)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	content := &map[string]interface{}{}
+	err = json.Unmarshal([]byte(scenario.Content), content)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+	(*content)["metadata"] = metadata
+	contentBytes, err := json.Marshal(content)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+	contentString := string(contentBytes)
+	// create scenario
+	err = createScenario(scenarioid, userid, appid, contentString, scenario.Layout, 0, 0, contentString, scenario.Layout, 1)
+	if err != nil {
+		return nil, ApiError.DB_ERROR, err
+	}
+	return metadata, ApiError.SUCCESS, nil
+}
+
 // ImportScenarios import scenarios to the specified appid
 func ImportScenarios(appid, userid string, useNewID bool, datas []interface{}) {
 	for _, data := range datas {

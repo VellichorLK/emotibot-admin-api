@@ -1,0 +1,68 @@
+{
+    "index_patterns": [
+        "emotibot-te-records-*"
+    ],
+    "version": 20181206,
+    "settings": {
+        "number_of_replicas": 1,
+        "number_of_shards": 1
+    },
+    "mappings": {
+        "doc": {
+            "properties": {
+                "taskengine_session_id": {
+                    "type": "keyword"
+                },
+                "enterprise_id": {
+                    "type": "keyword"
+                },
+                "app_id": {
+                    "type": "keyword"
+                },
+                "user_id": {
+                    "type": "keyword"
+                },
+                "session_id": {
+                    "type": "keyword"
+                },
+                "scenario_id": {
+                    "type": "keyword"
+                },
+                "scenario_name": {
+                    "type": "keyword"
+                },
+                "last_node_id": {
+                    "type": "keyword"
+                },
+                "last_node_name": {
+                    "type": "keyword"
+                },
+                "trigger_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                },
+                "finish_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                },
+                "feedback": {
+                    "type": "keyword"
+                },
+                "custom_feedback": {
+                    "type": "text",
+                    "analyzer": "ik_max_word",
+                    "search_analyzer": "ik_max_word",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
+                },
+                "feedback_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                }
+            }
+        }
+    }
+}
