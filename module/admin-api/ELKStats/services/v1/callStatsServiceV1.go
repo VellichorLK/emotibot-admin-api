@@ -1,6 +1,6 @@
-package services
-
-import (
+ package v1
+ 
+ import (
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,27 +8,64 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
+	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"github.com/olivere/elastic"
 )
 
-func TotalCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+func createCallStatsDateHistogramAggregation(query dataV1.CallStatsQuery) *elastic.DateHistogramAggregation {
+	agg := services.CreateDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName)
+	agg.Interval(query.AggInterval)
+	return agg
+}
+
+func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client,
+	query elastic.Query, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
+	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
+	result, err := services.CreateSearchService(ctx, client, query, index, data.ESSessionsType, aggName, agg)
+	if err != nil {
+		return nil, err
+	}
+
+	counts := services.ExtractCountsFromAggDateHistogramBuckets(result, aggName)
+	return counts, nil
+}
+
+func calculateCallRates(totalCallCounts map[string]interface{},
+	targetCallCounts map[string]interface{}) map[string]interface{} {
+	counts := make(map[string]interface{})
+
+	for datetime, totalCallCount := range totalCallCounts {
+		if totalCallCount.(int64) == 0 {
+			counts[datetime] = "N/A"
+		} else if targetCallCount, ok := targetCallCounts[datetime]; ok {
+			counts[datetime] = strconv.FormatFloat((float64(targetCallCount.(int64)) /
+				float64(totalCallCount.(int64))), 'f', 2, 64)
+		}
+	}
+
+	return counts
+}
+
+func TotalCallCounts(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "total_calls"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
 	dateHistogramAgg := createCallStatsDateHistogramAggregation(query)
 	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
-func CompleteCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+func CompleteCallCounts(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "complete_calls"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	termQuery := elastic.NewTermQuery("status", data.CallStatusComplete)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	termQuery := elastic.NewTermQuery("status", dataCommon.CallStatusComplete)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -41,12 +78,12 @@ func CompleteCallRates(completeCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, completeCallCounts)
 }
 
-func ToHumanCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+func ToHumanCallCounts(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "to_human_calls"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	termQuery := elastic.NewTermQuery("status", data.CallStatusTranserToHuman)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	termQuery := elastic.NewTermQuery("status", dataCommon.CallStatusTranserToHuman)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -59,12 +96,12 @@ func ToHumanCallRates(toHumanCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, toHumanCounts)
 }
 
-func TimeoutCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+func TimeoutCallCounts(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "timeout_calls"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	termQuery := elastic.NewTermQuery("status", data.CallStatusTimeout)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	termQuery := elastic.NewTermQuery("status", dataCommon.CallStatusTimeout)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -77,12 +114,12 @@ func TimeoutCallRates(timeoutCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, timeoutCallCounts)
 }
 
-func CancelCallCounts(query data.CallStatsQuery) (map[string]interface{}, error) {
+func CancelCallCounts(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "cancel_calls"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	termQuery := elastic.NewTermQuery("status", data.CallStatusCancel)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	termQuery := elastic.NewTermQuery("status", dataCommon.CallStatusCancel)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -95,13 +132,13 @@ func CancelCallRates(cancelCallCounts map[string]interface{},
 	return calculateCallRates(totalCallCounts, cancelCallCounts)
 }
 
-func Unknowns(query data.CallStatsQuery) (map[string]interface{}, error) {
+func Unknowns(query dataV1.CallStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	// TODO: Metric definition not defined yet, return maps with all zero values now
 	aggName := "unknowns"
-	boolQuery := createBoolQuery(query.CommonQuery)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
 	termQuery := elastic.NewTermQuery("status", -10)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
 	boolQuery = boolQuery.Must(termQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
 
@@ -109,13 +146,13 @@ func Unknowns(query data.CallStatsQuery) (map[string]interface{}, error) {
 	return doCallStatsDateHistogramAggService(ctx, client, boolQuery, aggName, dateHistogramAgg)
 }
 
-func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers, error) {
+func TopToHumanAnswers(query dataV1.CallStatsQuery, topN int) (dataV1.ToHumanAnswers, error) {
 	ctx, client := elasticsearch.GetClient()
 	// Query all the session IDs in the query date range
 	groupBySessionsAggName := "group_by_sessions"
-	boolQuery := createBoolQuery(query.CommonQuery)
-	rangeQuery := createRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
-	toHumanTermQuery := elastic.NewTermQuery("status", data.CallStatusTranserToHuman)
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.SessionEndTimeFieldName)
+	toHumanTermQuery := elastic.NewTermQuery("status", dataCommon.CallStatusTranserToHuman)
 	boolQuery = boolQuery.Filter(rangeQuery)
 	boolQuery = boolQuery.Filter(toHumanTermQuery)
 
@@ -139,7 +176,7 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 	vaildRecordCount := 2
 	sessionIDs := make([]interface{}, 0)
 	toHumanAnswersMap := make(map[string]int64)
-	toHumanAnswers := make(data.ToHumanAnswers, 0)
+	toHumanAnswers := make(dataV1.ToHumanAnswers, 0)
 
 	if agg, found := result.Aggregations.Terms(groupBySessionsAggName); found {
 		for _, bucket := range agg.Buckets {
@@ -182,7 +219,7 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 				continue
 			}
 
-			record := data.Record{}
+			record := dataV1.Record{}
 			jsonStr, err := recordBuckets.Hits.Hits[1].Source.MarshalJSON()
 			if err != nil {
 				return nil, err
@@ -205,7 +242,7 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 	}
 
 	for answer, count := range toHumanAnswersMap {
-		answer := data.ToHumanAnswer{
+		answer := dataV1.ToHumanAnswer{
 			Answer: answer,
 			Count:  count,
 		}
@@ -215,38 +252,4 @@ func TopToHumanAnswers(query data.CallStatsQuery, topN int) (data.ToHumanAnswers
 	// Sort by counts
 	sort.Sort(sort.Reverse(toHumanAnswers))
 	return toHumanAnswers, nil
-}
-
-func createCallStatsDateHistogramAggregation(query data.CallStatsQuery) *elastic.DateHistogramAggregation {
-	agg := createDateHistogramAggregation(query.CommonQuery, data.SessionEndTimeFieldName)
-	agg.Interval(query.AggInterval)
-	return agg
-}
-
-func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client,
-	query elastic.Query, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-	result, err := createSearchService(ctx, client, query, index, data.ESSessionsType, aggName, agg)
-	if err != nil {
-		return nil, err
-	}
-
-	counts := extractCountsFromAggDateHistogramBuckets(result, aggName)
-	return counts, nil
-}
-
-func calculateCallRates(totalCallCounts map[string]interface{},
-	targetCallCounts map[string]interface{}) map[string]interface{} {
-	counts := make(map[string]interface{})
-
-	for datetime, totalCallCount := range totalCallCounts {
-		if totalCallCount.(int64) == 0 {
-			counts[datetime] = "N/A"
-		} else if targetCallCount, ok := targetCallCounts[datetime]; ok {
-			counts[datetime] = strconv.FormatFloat((float64(targetCallCount.(int64)) /
-				float64(totalCallCount.(int64))), 'f', 2, 64)
-		}
-	}
-
-	return counts
 }

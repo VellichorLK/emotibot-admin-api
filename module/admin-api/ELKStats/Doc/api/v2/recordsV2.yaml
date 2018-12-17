@@ -1,14 +1,14 @@
 openapi: 3.0.0
 info:
   title: 数据优化/日志管理
-  description: 统计数据日志管理 API，包含日志搜寻及日志导出
-  version: 1.0.0
+  description: 统计数据日志管理 v2 API，包含日志搜寻及日志导出
+  version: 2.0.0
   contact:
     name: Frank Chang
     email: frankchang@emotibot.com
 
 servers:
-  - url: http://127.0.0.1:8182/api/v1/stats/record
+  - url: http://127.0.0.1:8182/api/v2/stats/record
 
 components:
   ###############################################################################
@@ -24,20 +24,71 @@ components:
         end_time:
           description: 日志搜寻/导出时间段结束时间
           type: integer
-        filter:
-          description: 日志搜寻/导出筛选项
-          type: object
-          properties:
-            categories:
-              $ref: '#/components/schemas/FilterCategories'
-            contains:
-              $ref: '#/components/schemas/FilterContains'
-            emotions:
-              $ref: '#/components/schemas/FilterEmotions'
-            qtypes:
-              $ref: '#/components/schemas/FilterQtypes'
-            uid:
-              $ref: '#/components/schemas/FilterUid'
+        modules:
+          description: 出话模组
+          type: array
+          items:
+            type: string
+        platforms:
+          description: 筛选项 - 维度 (平台 code)
+          type: array
+          items:
+            type: string
+        genders:
+          description: 筛选项 - 维度 (性别 code)
+          type: array
+          items:
+            type: string
+        emotions:
+          description: 筛选项 - 情绪
+          type: array
+          items:
+            type: string
+        is_ignored:
+          description: 筛选项 - 是否已忽略
+          type: boolean
+        is_marked:
+          description: 筛选项 - 是否已标注
+          type: boolean
+        keyword:
+          description: 筛选项 - 关键词
+          type: string
+        uid:
+          description: 筛选项 - 用户 ID
+          type: string
+        session_id:
+          description: 筛选项 - 会话 ID
+          type: string
+        taskengine_session_id:
+          description: 筛选项 - 多轮场景会话 ID
+          type: string
+        intent:
+          description: 筛选项 - 意图名称
+          type: string
+        min_score:
+          description: 筛选项 - 最低匹配分数
+          type: integer
+        max_score:
+          description: 筛选项 - 最高匹配分数
+          type: integer
+        low_confidence_score:
+          description: 筛选项 - 低信心分数
+          type: integer
+        faq_cats:
+          description: 筛选项 - FAQ 分类 (目录路径)
+          type: array
+          items:
+            description: FAQ 分类 ID
+            type: integer
+        faq_robot_tags:
+          description: 筛选项 - FAQ 标签名称
+          type: array
+          items:
+            description: FAQ 标签名称 ID
+            type: integer
+        feedback:
+          description: 筛选项 - 反馈 (有用、无用... etc)
+          type: string
     QueryRecordsBody:
       type: object
       allOf:
@@ -56,83 +107,6 @@ components:
       type: object
       allOf:
         - $ref: '#/components/schemas/RequestRecordsBody'
-    FilterCategories:
-      description: 筛选条件组 - 维度
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 维度 ID
-                  type: string
-                text:
-                  description: 维度名称 
-                  type: string
-          type:
-              description: 维度类别 (platform, sex... etc)
-              type: string
-    FilterContains:
-      description: 筛选条件 - 关键字
-      type: object
-      properties:
-        text:
-          description: 搜寻关键字
-          type: string
-        type:
-          description: 关键字类别 (question)
-          type: string
-    FilterEmotions:
-      description: 筛选条件 - 情感
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 情感 ID
-                  type: string
-                text:
-                  description: 情感名称
-                  type: string
-          type:
-              description: 情感类别 (emotion)
-              type: string
-    FilterQtypes:
-      description: 筛选条件 - 问答类别
-      type: array
-      items:
-        type: object
-        properties:
-          group:
-            type: array
-            items:
-              type: object
-              properties:
-                id:
-                  description: 问答类别 ID
-                  type: string
-                  enum:
-                    - chat
-                    - faq
-                    - other
-                text:
-                  description: 问答类别名称
-                  type: string
-          type:
-              description: 问答类别 (qtype)
-              type: string
-    FilterUid:
-      description: 筛选条件 - User ID
-      type: string
 
   ################################################################################
   #                                  Parameters                                  #
@@ -229,10 +203,16 @@ paths:
                     items:
                       type: object
                       properties:
+                        id:
+                          description: 對話 ID (Unique ID)
+                          type: string
                         session_id:
                           description: 会话 ID
                           type: string
-                        UserId:
+                        taskengine_session_id:
+                          description: 多轮场景会话 ID
+                          type: string
+                        userId:
                           description: 用户 ID
                           type: string
                         user_q:
@@ -253,9 +233,42 @@ paths:
                         emotion:
                           description: 情感
                           type: string
-                        qtype:
-                          description: 问答类别
+                        intent:
+                          description: 意图
                           type: string
+                        module:
+                          description: 出话模组
+                          type: string
+                        is_ignored:
+                          description: 是否已忽略
+                          type: boolean
+                        is_marked:
+                          description: 是否已标注
+                          type: boolean
+                        faq_cat_name:
+                          description: FAQ 分类 (目录路径)
+                          type: string
+                        faq_robot_tag_name:
+                          description: FAQ 标签名称
+                          type: string
+                        feedback:
+                          description: 反馈 (有用、无用... etc)
+                          type: string
+                        custom_feedback:
+                          description: 客制化反馈
+                          type: string
+                        feedback_time:
+                          description: 反馈时间
+                          type: string
+                        threshold:
+                          description: 低信心阈值
+                          type: integer
+                  ignored_size:
+                    description: 已忽略对话数
+                    type: integer
+                  marked_size:
+                    description: 已标注对话数
+                    type: integer
                   limit:
                     description: 单笔页数
                     type: integer

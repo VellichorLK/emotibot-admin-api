@@ -52,7 +52,9 @@ func initClient() (ctx context.Context, client *elastic.Client, err error) {
 
 	// Turn-off sniffing
 	client, err = elastic.NewClient(elastic.SetURL(esURL),
-		elastic.SetBasicAuth(basicAuthUsername, basicAuthPassword), elastic.SetSniff(false))
+		elastic.SetErrorLog(logger.Error),
+		elastic.SetBasicAuth(basicAuthUsername, basicAuthPassword),
+		elastic.SetSniff(false))
 	if err != nil {
 		return
 	}
@@ -205,4 +207,19 @@ func createTimeRange(startTime time.Time,
 	_startTime = time.Date(startTime.Year(), startTime.Month(), startTime.Day(), 0, 0, 0, 0, time.Local)
 	_endTime = time.Date(endTime.Year(), endTime.Month(), endTime.Day(), 23, 59, 59, 0, time.Local)
 	return
+}
+
+func ExtractElasticsearchRootCauseErrors(err interface{}) ([]string, bool) {
+	if esErr, ok := err.(*elastic.Error); ok {
+		rootCause := esErr.Details.RootCause
+		reasons := make([]string, len(rootCause))
+		for i, cause := range rootCause {
+			reasons[i] = cause.Reason
+		}
+
+		return reasons, true
+	}
+
+	// Not instance of elastic.Error return false
+	return nil, false
 }
