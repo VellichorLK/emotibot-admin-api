@@ -89,4 +89,9 @@ services:
       - ADMIN_SERVER_DAL_URL=http://${DAL_HOST}:8885/
       # - env for Clustering tool host
       - ADMIN_CLUSTERING_TOOL_URL=http://${CLUSTER_HOST}:13014/
+
+      - ADMIN_CU_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
+      - ADMIN_CU_MYSQL_USER=${MYSQL_USER}
+      - ADMIN_CU_MYSQL_PASS=${MYSQL_PASS}
+      - ADMIN_CU_MYSQL_DB=QISYS
     restart: always

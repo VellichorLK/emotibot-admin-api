@@ -11,12 +11,12 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
+	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/pkg/config/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -54,18 +54,20 @@ func serverInitial() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	var err error
 	if len(os.Args) > 1 {
-		err = config.LoadConfigFromFile(os.Args[1])
-		if err == nil {
-			return
+		err = util.LoadConfigFromFile(os.Args[1])
+		if err != nil {
+			logger.Error.Printf(err.Error())
+			os.Exit(-1)
+		}
+	} else {
+		err = util.LoadConfigFromOSEnv()
+		if err != nil {
+			logger.Error.Printf(err.Error())
+			os.Exit(-1)
 		}
 	}
-	err = config.LoadConfigFromOSEnv()
-	if err != nil {
-		logger.Error.Printf(err.Error())
-		os.Exit(-1)
-	}
-	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
+	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 	serverEnvs := config.GetEnvOf("server")
 	logLevel, ok := serverEnvs["LOG_LEVEL"]
 	if !ok {
@@ -73,7 +75,6 @@ func serverInitial() {
 	}
 	logger.SetLevel(logLevel)
 	logger.Info.Printf("Set log level %s\n", logLevel)
-	initDB()
 
 	accessLog := serverEnvs["ACCESS_LOG"]
 	if accessLog == "1" {
@@ -84,8 +85,8 @@ func serverInitial() {
 
 func main() {
 	serverInitial()
-
 	router := setRoute()
+	initDB()
 	logAvailablePath(router)
 
 	serverConfig = util.GetEnvOf("server")
@@ -241,7 +242,7 @@ func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 }
 
 func getServerEnv(key string) string {
-	envs := config.GetEnvOf("server")
+	envs := util.GetEnvOf("server")
 	if envs != nil {
 		if val, ok := envs[key]; ok {
 			return val
@@ -274,6 +275,12 @@ func initDB() {
 	err = auth.InitDB()
 	if err != nil {
 		logger.Error.Println("Init auth db fail")
+		initErrors = append(initErrors, err)
+	}
+
+	err = cu.InitDB()
+	if err != nil {
+		logger.Error.Println("Init cu(qi) db fail")
 		initErrors = append(initErrors, err)
 	}
 }
