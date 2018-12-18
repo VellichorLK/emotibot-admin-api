@@ -3,6 +3,7 @@ package cu
 import (
 	"database/sql"
 	"net/http"
+	"strconv"
 	"time"
 
 	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
@@ -19,6 +20,7 @@ var (
 	emotionTrain func(apiModel emotionengine.Model) (modelID string, err error)
 	// emotionPredict is an api instance that will be used in our api.
 	emotionPredict func(request emotionengine.PredictRequest) (predictions []emotionengine.Predict, err error)
+	filterScore    = 60
 )
 
 func init() {
@@ -47,6 +49,16 @@ func init() {
 				}
 				emotionTrain = client.Train
 				emotionPredict = client.Predict
+
+				filterScoreText, found := ModuleInfo.Environments["EMOTION_FILTER_SCORE"]
+				score, err := strconv.Atoi(filterScoreText)
+				if err != nil {
+					logger.Error.Println("Variable EMOTION_FILTER_SCORE ", filterScoreText, " can not convert to int: ", err)
+				} else if found {
+					filterScore = score
+				} else {
+					logger.Warn.Println("Variable EMOTION_FILTER_SCORE is not found, use default value: ", filterScore)
+				}
 			},
 		},
 	}
