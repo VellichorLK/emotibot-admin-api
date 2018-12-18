@@ -5,41 +5,24 @@ import (
 	"net/http"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-var (
-	// ModuleInfo is needed for module define
-	ModuleInfo  util.ModuleInfo
-	maxDirDepth int
-)
-
-func init() {
-	ModuleInfo = util.ModuleInfo{
-		ModuleName: "cu",
-		EntryPoints: []util.EntryPoint{
-			util.NewEntryPoint("POST", "text/process", []string{}, handleTextProcess),
-		},
-	}
-	maxDirDepth = 4
-}
-
 func random(min, max int) int {
 	rand.Seed(time.Now().Unix())
 	return rand.Intn(max-min) + min
 }
 
+var adminErrInitialFailed = AdminErrors.New(AdminErrors.ErrnoInitfailed, "cu package init failed")
+
 func handleTextProcess(w http.ResponseWriter, r *http.Request) {
-	mockEmotions := []string{
-		"不满",
-		"称赞",
-		"不喜欢",
-		"高兴",
-		"伤心",
-		"害怕",
+	if emotionPredict == nil {
+		util.Return(w, adminErrInitialFailed, nil)
 	}
 
 	type RequestObj struct {
