@@ -56,3 +56,35 @@ func TestGetSSMCategory(t *testing.T) {
 		}
 	})
 }
+
+func TestGetSSMLabel(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer db.Close()
+	useDB = db
+	appid := "csbot"
+
+	rows := sqlmock.NewRows([]string{"id", "name", "description"}).
+		AddRow(1, "label1", "label desc1").
+		AddRow(2, "label2", "label desc2")
+	mock.ExpectQuery("^SELECT (.+) FROM tbl_robot_tag WHERE app_id = (.+)$").WithArgs(appid).WillReturnRows(rows)
+
+	t.Run("Test get category without deleted", func(t *testing.T) {
+		labels, err := getSSMLabels(appid)
+		if err != nil {
+			t.Errorf("Unexcepted error: %s", err)
+			return
+		}
+
+		if len(labels) != 2 {
+			t.Errorf("Unexcepted count of label")
+		}
+
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("there were unfulfilled expectations: %s", err)
+			return
+		}
+	})
+}

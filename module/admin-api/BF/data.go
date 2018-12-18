@@ -75,3 +75,9 @@ type Category struct {
 	// CatID is used in SSM mongo system
 	CatID string `json:"cat_id"`
 }
+
+type SSMLabel struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
