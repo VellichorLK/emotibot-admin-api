@@ -25,34 +25,33 @@ func handleTextProcess(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, adminErrInitialFailed, nil)
 	}
 
-	type RequestObj struct {
+	type processRequest struct {
 		Text string `json:"text"`
 	}
 
-	type EmotionObj struct {
+	type emotionData struct {
 		Label string `json:"label"`
 	}
-	type ResponseObj struct {
-		Text    string       `json:"text"`
-		Emotion []EmotionObj `json:"emotion"`
+	type result struct {
+		Text    string        `json:"text"`
+		Emotion []emotionData `json:"emotion"`
 	}
 
-	reqBody := []RequestObj{}
+	reqBody := []processRequest{}
 	err := util.ReadJSON(r, &reqBody)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	responseBody := []ResponseObj{}
+	responseBody := []result{}
 	for _, textObj := range reqBody {
-		ind := random(0, 6)
-		emotion := mockEmotions[ind]
+		emotion := "test"
 
-		responseObj := ResponseObj{
+		responseObj := result{
 			Text: textObj.Text,
-			Emotion: []EmotionObj{
-				EmotionObj{
+			Emotion: []emotionData{
+				emotionData{
 					Label: emotion,
 				},
 			},
@@ -62,7 +61,6 @@ func handleTextProcess(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJSON(w, responseBody)
-
 }
 
 func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
