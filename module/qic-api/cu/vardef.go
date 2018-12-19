@@ -22,9 +22,13 @@ const (
 
 //Table name in QISYS
 const (
-	Conversation = "Conversation"
-	TableSegment = "Segment"
-	tblGroup     = "Group"
+	Conversation    = "Conversation"
+	TableSegment    = "Segment"
+	tblGroup        = "Group"
+	tblRelGrpRule   = "Relation_Group_Rule"
+	tblRelRuleLogic = "Relation_Rule_Logic"
+	tblRule         = "Rule"
+	tblLogic        = "Logic"
 )
 
 //field name in Conversation table
@@ -85,4 +89,30 @@ const (
 	fldGroupLimitedSpeed   = "limit_speed"
 	fldGroupLimitedSilence = "limit_silence"
 	fldGroupType           = "type"
+)
+
+const (
+	fldTagID = "tag_id"
+)
+
+const (
+	fldRuleID          = "rule_id"
+	fldRuleIsDelete    = "is_delete"
+	fldRuleName        = "rule_name"
+	fldRuleMethod      = "method"
+	fldRuleScore       = "score"
+	fldRuleDescription = "description"
+	fldRuleEnterprise  = "enterprise"
+)
+
+const (
+	fldLogicID              = "logic_id"
+	fldLogicName            = "name"
+	fldLogicTagDist         = "tag_distance"
+	fldLogicRangeConstraint = "range_constraint"
+	fldLogicCreateTime      = "create_time"
+	fldLogicUpdateTime      = "update_time"
+	fldLogicIsDelete        = "is_delete"
+	fldLogicEnterprise      = "enterprise"
+	fldLogicSpeaker         = "speaker"
 )

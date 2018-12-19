@@ -3,6 +3,7 @@ package cu
 import (
 	"math/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
@@ -129,6 +130,13 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conversation, err := getConversation(uuid)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	//insert the segment
 	err = insertSegmentByUUID(uuid, requestBody)
 	if err != nil {
@@ -152,16 +160,50 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 	//transform the segment to cu-predict-request
 	predictReq := segmentToV1PredictRequest(segments)
 
-	//FIXME get app_id here
-	predictContext := &V1PredictContext{AppID: 1, Threshold: 50, Data: predictReq}
-
-	predictResult, err := predictByV1CuModule(predictContext)
+	enterprise := requestheader.GetEnterpriseID(r)
+	//get the group info for flow usage
+	groups, err := GetFlowGroup(enterprise)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()), http.StatusInternalServerError)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
 	}
 
-	err = util.WriteJSON(w, predictResult)
+	if len(groups) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no group for flow usage"), http.StatusBadRequest)
+		return
+	}
+
+	resp := &QIFlowResult{FileName: conversation.FileName}
+
+	for i := 0; i < len(groups); i++ {
+		appIDStr := strconv.FormatUint(groups[i].AppID, 10)
+		predictContext := &V1PredictContext{AppID: appIDStr, Threshold: 50, Data: predictReq}
+
+		predictResult, err := predictByV1CuModule(predictContext)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()), http.StatusInternalServerError)
+		}
+
+		qiResult, err := GetRuleLogic(groups[0].AppID)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		err = FillCUCheckResult(predictResult, qiResult)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		groupRes := &QIFlowGroupResult{Name: groups[i].Name}
+		groupRes.QIResult = qiResult
+
+		resp.Result = append(resp.Result, groupRes)
+	}
+
+	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
 	}

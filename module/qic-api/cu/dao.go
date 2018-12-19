@@ -21,11 +21,26 @@ type Dao interface {
 	GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInfo, error)
 	GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error)
 	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
+	GetGroupToLogicID(tx *sql.Tx, appID uint64) (map[uint64][]uint64, []uint64, error)
+	GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error)
+	GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error)
 }
 
 // GroupQuery can used to query the group table
 type GroupQuery struct {
 	Type         []int
+	EnterpriseID *string
+}
+
+//RuleQuery gives the query condition for Rule table
+type RuleQuery struct {
+	ID           []uint64
+	EnterpriseID *string
+}
+
+//LogicQuery gives the query condition for Logic table
+type LogicQuery struct {
+	ID           []uint64
 	EnterpriseID *string
 }
 
@@ -49,6 +64,50 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 	return whereSQL, bindData
 }
 
+func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {
+	bindData = make([]interface{}, 0, 2)
+	whereSQL = "WHERE "
+	conditions := []string{}
+
+	if len(r.ID) > 0 {
+		condition := fldRuleID + " IN (?" + strings.Repeat(",?", len(r.ID)-1) + ")"
+		conditions = append(conditions, condition)
+		for _, id := range r.ID {
+			bindData = append(bindData, id)
+		}
+	}
+
+	if r.EnterpriseID != nil {
+		condition := fldRuleEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		bindData = append(bindData, *r.EnterpriseID)
+	}
+	whereSQL += strings.Join(conditions, " AND ")
+	return whereSQL, bindData
+}
+
+func (l *LogicQuery) whereSQL() (whereSQL string, bindData []interface{}) {
+	bindData = make([]interface{}, 0, 2)
+	whereSQL = "WHERE "
+	conditions := []string{}
+
+	if len(l.ID) > 0 {
+		condition := fldLogicID + " IN (?" + strings.Repeat(",?", len(l.ID)-1) + ")"
+		conditions = append(conditions, condition)
+		for _, id := range l.ID {
+			bindData = append(bindData, id)
+		}
+	}
+
+	if l.EnterpriseID != nil {
+		condition := fldLogicEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		bindData = append(bindData, *l.EnterpriseID)
+	}
+	whereSQL += strings.Join(conditions, " AND ")
+	return whereSQL, bindData
+}
+
 // Group
 type Group struct {
 	AppID          uint64
@@ -62,6 +121,30 @@ type Group struct {
 	LimitedSpeed   int
 	LimitedSilence float32
 	typ            int
+}
+
+//Rule is field in Rule
+type Rule struct {
+	RuleID      uint64
+	IsDelete    int
+	Name        string
+	Method      int
+	Score       int
+	Description string
+	Enterprise  string
+}
+
+//Logic is field in Logic
+type Logic struct {
+	LogicID         uint64
+	Name            string
+	TagDistance     int
+	RangeConstraint string
+	CreateTime      int64
+	UpdateTime      int64
+	IsDelete        int
+	Enterprise      string
+	Speaker         int
 }
 
 //SQLDao is sql struct used to access database
@@ -281,7 +364,7 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	var groups = make([]Group, 0)
 	for rows.Next() {
 		var g Group
-		rows.Scan(&g.AppID, &g.IsDelete, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &g.IsDelete, &g.LimitedSpeed, &g.LimitedSilence)
+		rows.Scan(&g.AppID, &g.IsDelete, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &g.IsDelete, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
 		groups = append(groups, g)
 	}
 
@@ -290,4 +373,156 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	}
 
 	return groups, nil
+}
+
+//GetGroupToLogicID gets the id and name of logics in rule, rules in group
+func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint64, []uint64, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, nil, util.ErrDBNotInit
+	}
+
+	tableA := tblRelGrpRule
+	tableB := tblRelRuleLogic
+	findIDSQL := fmt.Sprintf("SELECT a.%s,b.%s FROM %s AS a LEFT JOIN %s AS b on a.%s=b.%s WHERE a.%s=?",
+		fldRuleID, fldLogicID,
+		tableA, tableB,
+		fldRuleID, fldRuleID,
+		fldGroupAppID)
+	rows, err := q.Query(findIDSQL, groupID)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var ruleID uint64
+	var logicID sql.NullInt64
+
+	ruleIDToLogicID := make(map[uint64][]uint64)
+	ruleOrder := make([]uint64, 0)
+
+	for rows.Next() {
+		err = rows.Scan(&ruleID, &logicID)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, nil, err
+		}
+
+		if _, ok := ruleIDToLogicID[ruleID]; !ok {
+			ruleIDToLogicID[ruleID] = make([]uint64, 0)
+			ruleOrder = append(ruleOrder, ruleID)
+		}
+
+		if logicID.Valid {
+			ruleIDToLogicID[ruleID] = append(ruleIDToLogicID[ruleID], uint64(logicID.Int64))
+		}
+	}
+	return ruleIDToLogicID, ruleOrder, nil
+}
+
+//GetRule getsrule information based on condition
+func (s SQLDao) GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	sqlQuery := fmt.Sprintf("SELECT `%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s` FROM `%s`",
+		fldRuleID, fldRuleIsDelete, fldRuleName, fldRuleMethod, fldRuleScore, fldRuleDescription, fldRuleEnterprise,
+		tblRule)
+
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := q.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	rules := make([]*Rule, 0)
+	for rows.Next() {
+		var r Rule
+		err = rows.Scan(&r.RuleID, &r.IsDelete, &r.Name, &r.Method, &r.Score, &r.Description, &r.Enterprise)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, err
+		}
+		rules = append(rules, &r)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return rules, nil
+}
+
+//GetLogic gets logic information based on condition
+func (s SQLDao) GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	sqlQuery := fmt.Sprintf("SELECT `%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s` FROM `%s`",
+		fldLogicID, fldLogicName, fldLogicTagDist, fldLogicRangeConstraint, fldLogicCreateTime,
+		fldLogicUpdateTime, fldLogicIsDelete, fldLogicEnterprise, fldLogicSpeaker,
+		tblLogic)
+
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := q.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	logics := make([]*Logic, 0)
+	for rows.Next() {
+		var l Logic
+		var rangeConstraint *sql.NullString
+		err = rows.Scan(&l.LogicID, &l.Name, &l.TagDistance, &rangeConstraint, &l.CreateTime,
+			&l.UpdateTime, &l.IsDelete, &l.Enterprise, &l.Speaker)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, err
+		}
+		if rangeConstraint.Valid {
+			l.RangeConstraint = rangeConstraint.String
+		}
+		logics = append(logics, &l)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return logics, nil
 }
