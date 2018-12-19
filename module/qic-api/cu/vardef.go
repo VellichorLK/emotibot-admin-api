@@ -16,6 +16,7 @@ const (
 //Table name in QISYS
 const (
 	Conversation = "Conversation"
+	tblGroup     = "Group"
 )
 
 //field name in Conversation table
@@ -30,4 +31,19 @@ const (
 	ConFieldFileName     = "file_name"
 	ConFieldUUID         = "call_uuid"
 	ConFieldUser         = "user"
+)
+
+//field name in Group Table
+const (
+	fldGroupAppID          = "app_id"
+	fldGroupIsDeleted      = "is_delete"
+	fldGroupIsEnabled      = "is_enable"
+	fldGroupName           = "group_name"
+	fldGroupEnterprise     = "enterprise"
+	fldGroupDescription    = "description"
+	fldGroupCreatedTime    = "create_time"
+	fldGroupUpdatedTime    = "update_time"
+	fldGroupLimitedSpeed   = "limit_speed"
+	fldGroupLimitedSilence = "limit_silence"
+	fldGroupType           = "type"
 )

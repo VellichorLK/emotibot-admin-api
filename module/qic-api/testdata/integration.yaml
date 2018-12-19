@@ -1,0 +1,26 @@
+version: '3'
+services:
+  sql:
+    image: mysql:5.7
+    ports:
+    - 3306:3306
+    environment:
+    - MYSQL_ROOT_PASSWORD=password
+    - TZ=Asia/Taipei
+  init-db:
+    image: harbor.emotibot.com/emotivoice/init-db:2018121218-3fcbd86-emotivoice
+    container_name: init-db
+    environment:
+      - INIT_MYSQL_INIT=true
+      - INIT_MYSQL_HOST=sql
+      - INIT_MYSQL_PORT=3306
+      - INIT_MYSQL_USER=root
+      - INIT_MYSQL_PASSWORD=password
+      # - INIT_ELASTICSEARCH_INIT=true
+      # - INIT_ELASTICSEARCH_HOST=172.17.0.1
+      # - INIT_ELASTICSEARCH_PORT=9200
+      # - INIT_ELASTICSEARCH_INDEX=records
+      # - INIT_TDE_INIT=true
+    depends_on:
+      - sql
+   
