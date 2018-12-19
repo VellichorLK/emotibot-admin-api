@@ -21,7 +21,10 @@ var (
 	emotionTrain func(apiModel emotionengine.Model) (modelID string, err error)
 	// emotionPredict is an api instance that will be used in our api.
 	emotionPredict func(request emotionengine.PredictRequest) (predictions []emotionengine.Predict, err error)
-	filterScore    = 60
+	// filterScore is the emotion filter standard
+	filterScore = 60
+	//KeyInitEmotionEngine is the key of one time function that will be used to trigger emotion-engine initial
+	keyInitEmotionEngine = "Init emotion resource"
 )
 
 func init() {
@@ -33,7 +36,7 @@ func init() {
 			util.NewEntryPoint("POST", "conversation/{id}/append", []string{}, handleFlowAdd),
 		},
 		OneTimeFunc: map[string]func(){
-			"Init emotion resource": func() {
+			keyInitEmotionEngine: func() {
 				if ModuleInfo.Environments == nil {
 					logger.Error.Println("Expect cu ModuleInfo.Environments is inited, but nil.")
 					return
@@ -53,10 +56,11 @@ func init() {
 				emotionPredict = client.Predict
 
 				filterScoreText, found := ModuleInfo.Environments["EMOTION_FILTER_SCORE"]
-				score, err := strconv.Atoi(filterScoreText)
-				if err != nil {
-					logger.Error.Println("Variable EMOTION_FILTER_SCORE ", filterScoreText, " can not convert to int: ", err)
-				} else if found {
+				if found {
+					score, err := strconv.Atoi(filterScoreText)
+					if err != nil {
+						logger.Error.Println("Variable EMOTION_FILTER_SCORE ", filterScoreText, " can not convert to int: ", err)
+					}
 					filterScore = score
 				} else {
 					logger.Warn.Println("Variable EMOTION_FILTER_SCORE is not found, use default value: ", filterScore)
