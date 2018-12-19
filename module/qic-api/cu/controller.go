@@ -130,13 +130,6 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conversation, err := getConversation(uuid)
-	if err != nil {
-		logger.Error.Printf("%s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
 	//insert the segment
 	err = insertSegmentByUUID(uuid, requestBody)
 	if err != nil {
@@ -148,6 +141,13 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	enterprise := requestheader.GetEnterpriseID(r)
+	writeCurrentQIFlowResult(w, enterprise, uuid)
+}
+
+func writeCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid string) {
+
+	conversation, err := getConversation(uuid)
 
 	//get the current segment by order
 	segments, err := getFlowSentences(uuid)
@@ -157,10 +157,15 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
 	//transform the segment to cu-predict-request
 	predictReq := segmentToV1PredictRequest(segments)
 
-	enterprise := requestheader.GetEnterpriseID(r)
 	//get the group info for flow usage
 	groups, err := GetFlowGroup(enterprise)
 	if err != nil {
@@ -207,5 +212,10 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
 	}
+}
 
+func handleFlowResult(w http.ResponseWriter, r *http.Request) {
+	uuid := util.GetMuxVar(r, "id")
+	enterprise := requestheader.GetEnterpriseID(r)
+	writeCurrentQIFlowResult(w, enterprise, uuid)
 }
