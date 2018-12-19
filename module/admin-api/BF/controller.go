@@ -4,11 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 var (
@@ -77,6 +75,7 @@ func init() {
 			util.NewEntryPoint("DELETE", "cmd-class/{id}", []string{"delete"}, handleDeleteCmdClass),
 
 			util.NewEntryPoint("GET", "ssm/categories", []string{"view"}, handleGetSSMCategories),
+			util.NewEntryPoint("GET", "ssm/labels", []string{"veiw"}, handleGetSSMLabels),
 		},
 	}
 }
@@ -263,7 +262,19 @@ func handleGetSSMCategories(w http.ResponseWriter, r *http.Request) {
 	var err error
 	appid := requestheader.GetAppID(r)
 	retObj, err = GetSSMCategories(appid)
-	if err == nil {
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
+	} else {
+		util.Return(w, nil, retObj)
+	}
+}
+
+func handleGetSSMLabels(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	var err error
+	appid := requestheader.GetAppID(r)
+	retObj, err = GetSSMLabels(appid)
+	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 	} else {
 		util.Return(w, nil, retObj)

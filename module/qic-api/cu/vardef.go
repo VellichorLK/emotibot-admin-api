@@ -24,6 +24,7 @@ const (
 const (
 	Conversation = "Conversation"
 	TableSegment = "Segment"
+	tblGroup     = "Group"
 )
 
 //field name in Conversation table
@@ -69,4 +70,19 @@ const (
 	SegFieldChannel    = "channel"
 	SegFieldCreateTiem = "create_time"
 	SegFieldAsrText    = "asr_text"
+)
+
+//field name in Group Table
+const (
+	fldGroupAppID          = "app_id"
+	fldGroupIsDeleted      = "is_delete"
+	fldGroupIsEnabled      = "is_enable"
+	fldGroupName           = "group_name"
+	fldGroupEnterprise     = "enterprise"
+	fldGroupDescription    = "description"
+	fldGroupCreatedTime    = "create_time"
+	fldGroupUpdatedTime    = "update_time"
+	fldGroupLimitedSpeed   = "limit_speed"
+	fldGroupLimitedSilence = "limit_silence"
+	fldGroupType           = "type"
 )

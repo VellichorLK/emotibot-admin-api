@@ -445,6 +445,33 @@ func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
 	return root, nil
 }
 
+func getSSMLabels(appid string) ([]*SSMLabel, error) {
+	var err error
+	checkDB()
+	mySQL := useDB
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := "SELECT id, name, description FROM tbl_robot_tag WHERE app_id = ?"
+	rows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []*SSMLabel{}
+
+	for rows.Next() {
+		tmp := &SSMLabel{}
+		err = rows.Scan(&tmp.ID, &tmp.Name, &tmp.Description)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, tmp)
+	}
+	return ret, nil
+}
+
 func checkDB() {
 	if useDB == nil {
 		useDB = util.GetMainDB()

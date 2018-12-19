@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"emotibot.com/emotigo/pkg/logger"
+
 	"emotibot.com/emotigo/pkg/api"
 )
 
@@ -19,13 +21,13 @@ type Client struct {
 	// If nil, http.DefaultClient is used.
 	Transport api.HTTPClient
 	// ServerURL is the host and port of the emotion-engine module.
-	// which shouold be "http://{host}:{port}". DO NOT add ending slash.
+	// which shouold be "http://{host}:{port}"
 	ServerURL string
 }
 
 // Train will tell emotion-engine to create a model based on the model's AppID
 // It will return modelID if successful. On error, modelID will be empty
-// returned error will can be http, emotion-engine, or other error.
+// returned error can be http, emotion-engine, or other error.
 // It is seperated by message prefix HTTP, EE, or OTHER.
 func (c *Client) Train(apiModel Model) (modelID string, err error) {
 	var transporter api.HTTPClient
@@ -72,7 +74,7 @@ func (c *Client) Train(apiModel Model) (modelID string, err error) {
 	if err != nil {
 		return "", fmt.Errorf("OTHER: json marshal failed, %v", err)
 	}
-	// fmt.Printf("data: %s", data)
+
 	req, err := http.NewRequest(http.MethodPost, c.ServerURL+"/train", bytes.NewBuffer(data))
 	if err != nil {
 		return "", fmt.Errorf("OTHER: New Request failed, %v", err)
@@ -85,14 +87,21 @@ func (c *Client) Train(apiModel Model) (modelID string, err error) {
 
 	data, err = ioutil.ReadAll(resp.Body)
 	var respBody trainResponse
-	json.Unmarshal(data, &respBody)
+	err = json.Unmarshal(data, &respBody)
+	if err != nil {
+		logger.Error.Println("raw output: ", string(data))
+		return "", fmt.Errorf("EE: response format invalid, %v", err)
+	}
 	if respBody.Status != "OK" {
 		return "", fmt.Errorf("EE: got unsuccessful status '%s', error message: %s", respBody.Status, respBody.ErrMsg)
 	}
 	return respBody.ModelID, nil
 }
 
-//Predict will sending request to emotion-engine to get the PredictResult from it.
+// Predict will sending request to emotion-engine to get the PredictResult from it.
+// It will return a slice of Predicts in response of the request.Sentence.
+// returned error can be http, emotion-engine, or other error.
+// It is seperated by message prefix HTTP, EE, or OTHER.
 func (c *Client) Predict(request PredictRequest) (predictions []Predict, err error) {
 	if request.AppID == "" {
 		return nil, fmt.Errorf("EE: predict appID should not be empty")
@@ -111,7 +120,8 @@ func (c *Client) Predict(request PredictRequest) (predictions []Predict, err err
 	var respBody predictResponse
 	err = json.Unmarshal(data, &respBody)
 	if err != nil {
-		return nil, fmt.Errorf("EE: predict response is not valid, %v, raw output: %s", err, data)
+		logger.Error.Println("raw output: ", string(data))
+		return nil, fmt.Errorf("EE: predict response is not valid, %v", err)
 	}
 	var result = []Predict{}
 	for _, p := range respBody.Predictions {
@@ -155,7 +165,10 @@ type PredictRequest struct {
 
 //Predict is the result of Client.Predict().
 type Predict struct {
+	// Label is the category tag for the input sentence, which should be the same with Emotion Name.
 	Label string
+	// Score is the confident score of the Label, from 0 to 100.
+	// Threshold should be determine by the user.
 	Score int
 }
 type predictResponse struct {
@@ -166,7 +179,7 @@ type predictResponse struct {
 
 const (
 	errPredictNotLoad = "No model loaded."
-	errPredictLoading = "Model is loading."
+	errPredictLoading = "Model is loading."
 )
 
 var (

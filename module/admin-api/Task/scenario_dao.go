@@ -265,11 +265,11 @@ func createAppScenario(scenarioid string, appid string) (err error) {
 	defer util.ClearTransition(tx)
 
 	queryStr := `
-		INSERT INTO taskengineapp
-		(pk, appID, scenarioID)
-		VALUES (?, ?, ?)`
+		INSERT INTO taskengineapp (pk, appID, scenarioID)
+		SELECT ?, ?, ?
+		WHERE NOT EXISTS (SELECT * FROM taskengineapp WHERE pk=? AND appId=? AND scenarioID=?)`
 	pk := fmt.Sprintf("%s%s", appid, scenarioid)
-	_, err = tx.Exec(queryStr, pk, appid, scenarioid)
+	_, err = tx.Exec(queryStr, pk, appid, scenarioid, pk, appid, scenarioid)
 	if err != nil {
 		return err
 	}
