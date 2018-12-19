@@ -58,7 +58,7 @@ func Init() error {
 			util.NewEntryPoint("POST", "records/ignore", []string{"view", "export"}, controllersV1.RecordsIgnoredUpdateHandler),
 			util.NewEntryPoint("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandler(dalClient)),
 			util.NewEntryPoint("GET", "teVisit", []string{"view"}, controllersV1.TEVisitStatsGetHandler),
-			util.NewEntryPoint("POSt", "teRecords/query", []string{"view"}, controllersV1.TEVisitRecordsGetHandler),
+			util.NewEntryPoint("POST", "teRecords/query", []string{"view"}, controllersV1.TEVisitRecordsGetHandler),
 			util.NewEntryPoint("POST", "teRecords/export", []string{"view", "export"}, controllersV1.TEVisitRecordsExportHandler),
 			util.NewEntryPoint("GET", "teRecords/export/{export_id}",
 				[]string{"view", "export"}, controllersV1.TEVisitRecordsExportDownloadHandler),

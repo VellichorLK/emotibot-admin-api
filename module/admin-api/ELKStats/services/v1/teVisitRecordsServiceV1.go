@@ -116,7 +116,7 @@ func newTEBoolQueryWithRecordQuery(query *dataV1.TEVisitRecordsQuery) *elastic.B
 		boolQuery.Filter(appTermQuery)
 	}
 
-	// Start time & End time// Start time & End time
+	// Start time & End time
 	rangeQuery := services.CreateRangeQueryUnixTime(query.CommonQuery,
 		data.TERecordsTriggerTimeFieldName)
 	boolQuery.Filter(rangeQuery)
@@ -183,7 +183,7 @@ func extractRawTERecord(rawTERecord *dataV1.TEVisitRecordsRawData) (*dataV1.TEVi
 		},
 	}
 
-	// Convert trigger time and finish time and feedback time
+	// Convert trigger time, finish time and feedback time
 	// from UTC+0 back to local time
 	var triggerTime string
 	if rawTERecord.TriggerTime != 0 {
