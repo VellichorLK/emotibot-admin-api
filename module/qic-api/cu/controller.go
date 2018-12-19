@@ -108,3 +108,57 @@ func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Printf("%s\n", err)
 	}
 }
+
+func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
+	uuid := util.GetMuxVar(r, "id")
+
+	var requestBody []*apiFlowAddBody
+	err := util.ReadJSON(r, &requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	if len(requestBody) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty sentence"), http.StatusBadRequest)
+		return
+	}
+
+	//insert the segment
+	err = insertSegmentByUUID(uuid, requestBody)
+	if err != nil {
+		if err == ErrSpeaker {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("%s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	//get the current segment by order
+	segments, err := getFlowSentences(uuid)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	//transform the segment to cu-predict-request
+	predictReq := segmentToV1PredictRequest(segments)
+
+	//FIXME get app_id here
+	predictContext := &V1PredictContext{AppID: 1, Threshold: 50, Data: predictReq}
+
+	predictResult, err := predictByV1CuModule(predictContext)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.OPENAPI_URL_ERROR, err.Error()), http.StatusInternalServerError)
+	}
+
+	err = util.WriteJSON(w, predictResult)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+	}
+
+}
