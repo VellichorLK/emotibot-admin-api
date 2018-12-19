@@ -265,7 +265,7 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	}
 
 	sqlQuery := "SELECT `" + fldGroupAppID + "`, `" + fldGroupIsDeleted + "`, `" + fldGroupName + "`, `" + fldGroupEnterprise + "`, `" +
-		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsDeleted + "`, `" +
+		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsEnabled + "`, `" +
 		fldGroupLimitedSpeed + "`, `" + fldGroupLimitedSilence + "`, `" + fldGroupType + "` FROM `" + tblGroup + "`"
 	wherePart, bindData := query.whereSQL()
 	if len(bindData) > 0 {
@@ -280,12 +280,19 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	defer rows.Close()
 	var groups = make([]Group, 0)
 	for rows.Next() {
-		var g Group
-		rows.Scan(&g.AppID, &g.IsDelete, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &g.IsDelete, &g.LimitedSpeed, &g.LimitedSilence)
+		var g = Group{}
+		var isDeleted, isEnabled int
+		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
+		if isDeleted == 1 {
+			g.IsDelete = true
+		}
+		if isEnabled == 1 {
+			g.IsEnable = true
+		}
 		groups = append(groups, g)
 	}
-
-	if err = rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("sql scan failed, %v", err)
 	}
 
