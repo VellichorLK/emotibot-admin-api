@@ -25,6 +25,7 @@ func InitDB() error {
 	}
 	util.SetDB(ModuleInfo.ModuleName, dao)
 	SetupServiceDB(dao)
+	SetUpTimeCache()
 	return nil
 }
 
