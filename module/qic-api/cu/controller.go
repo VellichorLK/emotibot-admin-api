@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -159,6 +160,20 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
+	}
+
+	resp.Sensitive = make([]string, 0)
+
+	for i := 0; i < len(requestBody); i++ {
+
+		words, err := sensitive.IsSensitive(requestBody[i].Text)
+		if err != nil {
+			logger.Error.Printf("get sensitive words failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		resp.Sensitive = append(resp.Sensitive, words...)
 	}
 
 	err = util.WriteJSON(w, resp)
