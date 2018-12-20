@@ -17,6 +17,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/module/qic-api/cu"
+	"emotibot.com/emotigo/module/qic-api/qi"
 	"emotibot.com/emotigo/pkg/config/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -31,6 +32,7 @@ var initErrors = []error{}
 var modules = []*util.ModuleInfo{
 	&auth.ModuleInfo,
 	&cu.ModuleInfo,
+	&qi.ModuleInfo,
 }
 
 var serverConfig map[string]string
