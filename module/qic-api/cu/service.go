@@ -167,7 +167,7 @@ func GetFlowGroup(enterprise string) ([]Group, error) {
 	if enterprise == "" {
 		return nil, nil
 	}
-	queryCondition := GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow, AudioFile}}
+	queryCondition := GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow}}
 	return serviceDao.Group(nil, queryCondition)
 }
 
