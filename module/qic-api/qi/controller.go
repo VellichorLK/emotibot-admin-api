@@ -31,5 +31,15 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, groups)
+	simpleGroups := make([]SimpleGroup, len(groups), len(groups))
+	for i, group := range groups {
+		simpleGroup := SimpleGroup{
+			ID: group.ID,
+			Name: group.Name,
+		}
+
+		simpleGroups[i] = simpleGroup
+	}
+
+	util.WriteJSON(w, simpleGroups)
 }

@@ -1,5 +1,9 @@
 package qi
 
+type SimpleGroup struct {
+	ID int64 `json:"group_id"`
+	Name string `json:"group_name"`
+}
 type Group struct {
 	ID int64 `json:"group_id,omitempty"`
 	Name string `json:"group_name,omitempty"`
