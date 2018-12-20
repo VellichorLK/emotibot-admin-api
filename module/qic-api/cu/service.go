@@ -149,6 +149,7 @@ func predictByV1CuModule(context *V1PredictContext) (*V1PredictResult, error) {
 		logger.Error.Printf("%s\n", err)
 		return nil, err
 	}
+
 	predictResult := &V1PredictResult{}
 
 	err = json.Unmarshal([]byte(resp), predictResult)
@@ -251,12 +252,12 @@ func FillCUCheckResult(predict *V1PredictResult, result []*QIResult) error {
 		valid := true
 		for j := 0; j < len(logics); j++ {
 			if _, ok := predictLogicMap[logics[j].Name]; ok {
-				logics[i].Valid = true
+				logics[j].Valid = true
 			} else {
 				valid = false
 			}
-			result[i].Valid = valid
 		}
+		result[i].Valid = valid
 	}
 
 	return nil

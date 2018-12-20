@@ -90,14 +90,14 @@ type V1PredictResult struct {
 	Threshold   int             `json:"threshold"`
 	LogicResult []V1LogicResult `json:"logic_results"`
 	//currently we don't use this information, just use interface to catch it
-	IntentResult  interface{} `json:"intent_results"`
-	KeywordResult interface{} `json:"keyword_results"`
+	//IntentResult  interface{} `json:"intent_results"`
+	//KeywordResult interface{} `json:"keyword_results"`
 }
 
 //V1LogicResult gives the logic result
 type V1LogicResult struct {
-	LogicRule   V1LogicRule    `json:"logic_rule"`
-	Predictions []V1Prediction `json:"predictions"`
+	LogicRule V1LogicRule `json:"logic_rule"`
+	//Predictions [][]V1Prediction `json:"predictions"`
 }
 
 //V1LogicRule is the relative logic information
