@@ -89,7 +89,8 @@ services:
       - ADMIN_SERVER_DAL_URL=http://${DAL_HOST}:8885/
       # - env for Clustering tool host
       - ADMIN_CLUSTERING_TOOL_URL=http://${CLUSTER_HOST}:13014/
-
+      - ADMIN_CU_EMOTION_ENGINE_URL=http://172.17.0.1:8888
+      - ADMIN_CU_EMOTION_FILTER_SCORE=60
       - ADMIN_CU_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
       - ADMIN_CU_MYSQL_USER=${MYSQL_USER}
       - ADMIN_CU_MYSQL_PASS=${MYSQL_PASS}
