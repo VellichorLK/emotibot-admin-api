@@ -6,9 +6,6 @@ var (
 
 func GetGroups() (groups []Group, err error) {
 	groups, err = serviceDAO.GetGroups()
-	if err != nil {
-		return
-	}
 	return
 }
 
@@ -35,5 +32,38 @@ func CreateGroup(group *Group) (createdGroup *Group, err error) {
 	}
 
 	serviceDAO.Commit(tx)
+	return
+}
+
+func GetGroupBy(id int64) (group *Group, err error) {
+	group, err = serviceDAO.GetGroupBy(id)
+	if err != nil || group == nil {
+		return
+	}
+
+	// TODO: set channel name by code
+	group.Condition.LeftChannel = "staff"
+	group.Condition.RightChannel = "client"
+	return
+}
+
+func UpdateGroup(id int64, gruop *Group) (err error) {
+	tx, err := serviceDAO.Begin()
+	if err != nil {
+		return
+	}
+	defer serviceDAO.ClearTranscation(tx)
+
+	err = serviceDAO.UpdateGroup(id, gruop, tx)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
+	return
+}
+
+func DeleteGroup(id int64) (err error) {
+	err = serviceDAO.DeleteGroup(id)
 	return
 }

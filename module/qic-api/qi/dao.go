@@ -15,6 +15,9 @@ type DAO interface {
 	ClearTranscation(tx *sql.Tx)
 	GetGroups() ([]Group, error)
 	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
+	GetGroupBy(id int64) (*Group, error)
+	UpdateGroup(id int64, group *Group, tx *sql.Tx) (error)
+	DeleteGroup(id int64) (error)
 }
 
 type sqlDAO struct {
@@ -74,7 +77,7 @@ func (s *sqlDAO) GetGroups() (groups []Group, err error) {
 		}
 	}
 
-	queryStr := "SELECT id, group_name FROM `Group` where `is_enable`=1"
+	queryStr := "SELECT id, group_name FROM rule_group where `is_enable`=1"
 
 	rows, err := s.conn.Query(queryStr)
 	if err != nil {
@@ -105,7 +108,7 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 	now := time.Now().Unix()
 
 	// insert group
-	insertStr := "INSERT INTO `Group` (group_name, enterprise, create_time, update_time, is_enable, limit_speed, limit_silence) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	insertStr := "INSERT INTO `rule_group` (group_name, enterprise, create_time, update_time, is_enable, limit_speed, limit_silence) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	values := []interface{}{
 		group.Name,
 		group.Enterprise,
@@ -128,7 +131,7 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 	}
 
 	// insert condition
-	insertStr = "INSERT INTO `Condition` (group_id, file_name, deal, series, staff_id, staff_name, extension, department, client_id, client_name, client_phone, call_start, call_end, left_channel, right_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	insertStr = "INSERT INTO group_condition (group_id, file_name, deal, series, staff_id, staff_name, extension, department, client_id, client_name, client_phone, call_start, call_end, left_channel, right_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 	values = []interface{}{
 		groupID,
@@ -156,5 +159,224 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 
 	group.ID = groupID
 	createdGroup = group
+	return
+}
+
+func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	queryStr := `SELECT g.id, g.group_name, g.limit_speed, g.limit_silence, 
+	gc.file_name, gc.deal, gc.series, gc.staff_id, gc.staff_name, gc.extension, gc.department, 
+	gc.client_id, gc.client_name, gc.client_phone, gc.call_start, gc.call_end, gc.left_channel, gc.right_channel 
+	FROM (SELECT * FROM rule_group WHERE id=?) as g 
+	LEFT JOIN group_condition as gc ON g.id = gc.group_id`
+
+	rows, err := s.conn.Query(queryStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while query group in dao.GetGroupBy, err: %s", err.Error())
+		return
+	}
+
+	group = &Group{}
+	for rows.Next() {
+		condition := GroupCondition{}
+
+		rows.Scan(
+			&group.ID,
+			&group.Name,
+			&group.Speed,
+			&group.SlienceDuration,
+			&condition.FileName,
+			&condition.Deal,
+			&condition.Series,
+			&condition.StaffID,
+			&condition.StaffName,
+			&condition.Extension,
+			&condition.Department,
+			&condition.ClientID,
+			&condition.ClientName,
+			&condition.ClientPhone,
+			&condition.CallStart,
+			&condition.CallEnd,
+			&condition.LeftChannelCode,
+			&condition.RightChannelCode,
+		)
+
+		group.Condition = &condition
+	}
+	return
+}
+
+func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
+	if group == nil {
+		return
+	}
+
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	// update group
+	updateStr, values := genUpdateGroupSQL(id, group)
+	_, err = tx.Exec(updateStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while update group in dao.UpdateGroup, err: %s", err.Error())
+		return
+	}
+
+	// update condition
+	if group.Condition != nil {
+		updateStr, values = genUpdateConditionSQL(id, group.Condition)
+		_, err = tx.Exec(updateStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while update condition in dao.UpdateGroup, err: %s", err.Error())
+		}
+	}
+	return
+}
+
+func genUpdateGroupSQL(id int64, group *Group) (str string, values []interface{}) {
+	str = "UPDATE rule_group SET "
+
+	values = make([]interface{}, 0)
+	if group.Name != "" {
+		str += "group_name = ?"
+		values = append(values, group.Name)
+	}
+
+	if group.Speed != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " limit_speed = ?"
+		values = append(values, group.Speed)
+	}
+
+	if group.SlienceDuration != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " limit_silence = ?"
+		values = append(values, group.SlienceDuration)
+	}
+
+	if group.Enterprise != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " enterprise = ?"
+		values = append(values, group.Enterprise)
+	}
+
+	str = addCommaIfNotFirst(str, len(values) == 0)
+	str += " is_enable = ?"
+	values = append(values, group.Enabled)
+
+	str = fmt.Sprintf("%s where id = ?", str)
+	values = append(values, id)
+	return
+}
+
+func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , values []interface{}) {
+	str = "UPDATE group_condition SET "
+	values = make([]interface{}, 0)
+
+	if condition.CallEnd != 0 {
+		str += "call_end = ?"
+		values = append(values, condition.CallEnd)
+	}
+
+	if condition.CallStart != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " call_start = ?"
+		values = append(values, condition.CallStart)
+	}
+
+	if condition.ClientID != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_id = ?"
+		values = append(values, condition.ClientID)
+	}
+
+	if condition.ClientName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_name = ?"
+		values = append(values, condition.ClientName)
+	}
+
+	if condition.ClientPhone != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_phone = ?"
+		values = append(values, condition.ClientPhone)
+	}
+
+	if condition.Department != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " department = ?"
+		values = append(values, condition.Department)
+	}
+
+	if condition.Extension != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " extension = ?"
+		values = append(values, condition.Extension)
+	}
+
+	if condition.FileName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " file_name = ?"
+		values = append(values, condition.FileName)
+	}
+
+	if condition.Series != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " series = ?"
+		values = append(values, condition.Series)
+	}
+
+	if condition.StaffID != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " staff_id = ?"
+		values = append(values, condition.StaffID)
+	}
+
+	if condition.StaffName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " staff_name = ?"
+		values = append(values, condition.StaffName)
+	}
+
+	str = addCommaIfNotFirst(str, len(values) == 0)
+	str += " deal = ?, left_channel = ?, right_channel = ? where group_id = ?"
+	values = append(values, condition.Deal, condition.LeftChannelCode, condition.RightChannelCode, id)
+	return
+}
+
+func addCommaIfNotFirst(sqlStr string, first bool) (string) {
+	if !first {
+		sqlStr += ","
+		return sqlStr
+	}
+	return sqlStr
+}
+
+func (s *sqlDAO) DeleteGroup(id int64) (err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	deleteStr := "UPDATE rule_group SET is_delete = 1 WHERE id = ?"
+	_, err = s.conn.Exec(deleteStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while delete group in dao.DeleteGroup, err: %s", err.Error())
+	}
 	return
 }

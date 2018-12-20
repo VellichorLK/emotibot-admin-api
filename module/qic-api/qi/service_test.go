@@ -46,6 +46,23 @@ func (m *mockDAO) CreateGroup(group *Group, tx *sql.Tx) (*Group, error) {
 	return createdGroup, nil
 }
 
+func (m *mockDAO) GetGroupBy(id int64) (*Group, error) {
+	if id == mockGroups[0].ID {
+		mockGroup.ID = mockGroups[0].ID
+		return mockGroup, nil
+	} else {
+		return nil, nil
+	}
+}
+
+func (m *mockDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
+	return
+}
+
+func (m *mockDAO) DeleteGroup(id int64) (err error) {
+	return
+}
+
 func restoreDAO (originDAO DAO) {
 	serviceDAO = originDAO
 }
@@ -153,4 +170,39 @@ func sameGroup(g1, g2 *Group) bool {
 	}
 
 	return same
+}
+
+func TestGetSingleGroup(t *testing.T) {
+	// mock dao
+	originDAO := serviceDAO
+	m := &mockDAO{}
+	serviceDAO = m
+	defer restoreDAO(originDAO)
+
+	group, err := GetGroupBy(mockGroups[0].ID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if group == nil {
+		t.Error("get nil group")
+		return
+	}
+
+	if group.ID != mockGroups[0].ID {
+		t.Errorf("expect group id: %d, but get %d", mockGroups[0].ID, group.ID)
+		return
+	}
+
+	group, err = GetGroupBy(mockGroups[1].ID)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if group != nil {
+		t.Errorf("expect nil group but get one")
+		return
+	}
 }
