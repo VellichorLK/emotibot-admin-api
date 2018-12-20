@@ -3,7 +3,7 @@ ARG BUILD_IMAGE_NAME=${BUILD_IMAGE_NAME}
 FROM ${BUILD_IMAGE_NAME} AS build
 
 ## 将 build stage 所编译出来的 binary 复制至可执行环境
-FROM centos:centos7.4.1708
+FROM alpine:3.6
 
 ARG PROJECT
 
