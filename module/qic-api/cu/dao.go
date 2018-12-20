@@ -28,6 +28,7 @@ type Dao interface {
 	UpdateFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error)
 	GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, error)
 	UpdateConversation(tx *sql.Tx, callID uint64, params map[string]interface{}) (int64, error)
+	GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error)
 }
 
 // GroupQuery can used to query the group table
@@ -662,4 +663,58 @@ func (s SQLDao) UpdateConversation(tx *sql.Tx, callID uint64, params map[string]
 		return 0, fmt.Errorf("sql executed failed, %v", err)
 	}
 	return result.RowsAffected()
+}
+
+//GetRecommendations gets the recommendation wordings for each logic
+func (s SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error) {
+	if len(logicIDs) == 0 {
+		return nil, nil
+	}
+
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	querySQL := fmt.Sprintf("SELECT %s,%s FROM %s WHERE %s in (?%s)", fldLogicID, fldSentence, tblRecommend, fldLogicID, strings.Repeat(",?", len(logicIDs)-1))
+
+	numOfLogicID := len(logicIDs)
+	params := make([]interface{}, numOfLogicID, numOfLogicID)
+
+	for i := 0; i < numOfLogicID; i++ {
+		params[i] = logicIDs[i]
+	}
+	rows, err := q.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("query sql:%s, params:%+v failed. %s\n", querySQL, params, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	logicRecommendMap := make(map[uint64][]string)
+	var logicID uint64
+	var sentence string
+	var sentences []string
+	var ok bool
+	for rows.Next() {
+		err = rows.Scan(&logicID, &sentence)
+		if err != nil {
+			logger.Error.Printf("Scan error. %s\n", err)
+			return nil, err
+		}
+		if sentences, ok = logicRecommendMap[logicID]; !ok {
+			sentences = make([]string, 0)
+		}
+		sentences = append(sentences, sentence)
+		logicRecommendMap[logicID] = sentences
+	}
+
+	return logicRecommendMap, nil
 }

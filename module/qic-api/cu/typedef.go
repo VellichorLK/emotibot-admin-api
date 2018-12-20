@@ -123,8 +123,9 @@ type V1Prediction struct {
 
 //QIFlowResult give the reuslt of qi flow
 type QIFlowResult struct {
-	FileName string               `json:"file_name"`
-	Result   []*QIFlowGroupResult `json:"cu_result"`
+	FileName  string               `json:"file_name"`
+	Result    []*QIFlowGroupResult `json:"cu_result"`
+	Sensitive []string             `json:"sensitive"`
 }
 
 //QIFlowGroupResult gives the result of check

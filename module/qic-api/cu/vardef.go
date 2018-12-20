@@ -30,6 +30,7 @@ const (
 	tblRule         = "Rule"
 	tblLogic        = "Logic"
 	tblCUPredict    = "CUPredict"
+	tblRecommend    = "Recommendations"
 )
 
 //field name in Conversation table
@@ -96,6 +97,7 @@ const (
 	fldTagID     = "tag_id"
 	fldCallID    = "call_id"
 	fldCUPredict = "predict"
+	fldSentence  = "sentence"
 )
 
 const (
