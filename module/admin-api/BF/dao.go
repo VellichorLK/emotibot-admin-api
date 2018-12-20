@@ -1,10 +1,15 @@
 package BF
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
 	"database/sql"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strconv"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
@@ -476,4 +481,27 @@ func checkDB() {
 	if useDB == nil {
 		useDB = util.GetMainDB()
 	}
+}
+
+func getBFAccessToken(userid string) (string, error) {
+	checkDB()
+	mySQL := useDB
+	if mySQL == nil {
+		return "", errors.New("DB not init")
+	}
+
+	now := time.Now()
+	data := []byte(fmt.Sprintf("%s%s", now.Format("2006-01-02 15:04:05"), userid))
+	md5Part := fmt.Sprintf("%x", md5.Sum(data))
+	sha1Part := fmt.Sprintf("%x", sha1.Sum([]byte(strconv.FormatFloat(rand.Float64(), 'f', 17, 64))))
+	accessToken := fmt.Sprintf("%s-%s", md5Part, sha1Part)
+	logger.Trace.Printf("Gen new access token: %s\n", accessToken)
+
+	queryStr := "INSERT INTO tbl_user_access_token (USER_ID, access_token, expiration, create_datetime) VALUES (?, ?, 36000, ?)"
+	_, err := mySQL.Exec(queryStr, userid, accessToken, now)
+	if err != nil {
+		return "", err
+	}
+
+	return accessToken, nil
 }

@@ -76,6 +76,11 @@ func init() {
 
 			util.NewEntryPoint("GET", "ssm/categories", []string{"view"}, handleGetSSMCategories),
 			util.NewEntryPoint("GET", "ssm/labels", []string{"veiw"}, handleGetSSMLabels),
+			util.NewEntryPointWithConfig("GET", "access-token", []string{"view"}, handleGetBFAccessToken, util.EntryConfig{
+				Version:         1,
+				IgnoreAppID:     true,
+				IgnoreAuthToken: false,
+			}),
 		},
 	}
 }
@@ -274,6 +279,18 @@ func handleGetSSMLabels(w http.ResponseWriter, r *http.Request) {
 	var err error
 	appid := requestheader.GetAppID(r)
 	retObj, err = GetSSMLabels(appid)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
+	} else {
+		util.Return(w, nil, retObj)
+	}
+}
+
+func handleGetBFAccessToken(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	var err error
+	userid := requestheader.GetUserID(r)
+	retObj, err = GetBFAccessToken(userid)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 	} else {
