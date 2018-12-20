@@ -24,6 +24,10 @@ type Dao interface {
 	GetGroupToLogicID(tx *sql.Tx, appID uint64) (map[uint64][]uint64, []uint64, error)
 	GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error)
 	GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error)
+	InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error)
+	UpdateFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error)
+	GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, error)
+	UpdateConversation(tx *sql.Tx, callID uint64, params map[string]interface{}) (int64, error)
 }
 
 // GroupQuery can used to query the group table
@@ -185,7 +189,7 @@ func (s SQLDao) CreateFlowConversation(tx *sql.Tx, d *daoFlowCreate) (int64, err
 		return 0, util.ErrDBNotInit
 	}
 
-	table := Conversation
+	table := tblConversation
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?,?,?,?,?)",
 		table,
 		ConFieldEnterprise, ConFieldFileName, ConFieldCallTime, ConFieldUpdateTime,
@@ -211,7 +215,7 @@ func (s SQLDao) InsertSegment(tx *sql.Tx, seg *Segment) (int64, error) {
 		return 0, util.ErrDBNotInit
 	}
 
-	table := TableSegment
+	table := tblSegment
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?)",
 		table,
 		SegFieldCallID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel, SegFieldCreateTiem, SegFieldAsrText,
@@ -236,7 +240,7 @@ func (s SQLDao) GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInf
 		return nil, util.ErrDBNotInit
 	}
 
-	table := Conversation
+	table := tblConversation
 
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM %s WHERE %s=?",
 		ConFieldID, ConFieldStatus, ConFieldFileName, ConFieldPath, ConFieldVoiceID,
@@ -303,7 +307,7 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 		return nil, util.ErrDBNotInit
 	}
 
-	table := TableSegment
+	table := tblSegment
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s FROM %s WHERE %s=? ORDER BY %s ASC",
 		SegFieldID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel,
 		SegFieldCreateTiem, SegFieldAsrText,
@@ -435,7 +439,7 @@ func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint
 	return ruleIDToLogicID, ruleOrder, nil
 }
 
-//GetRule getsrule information based on condition
+//GetRule gets rule information based on condition
 func (s SQLDao) GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error) {
 	type queryer interface {
 		Query(query string, args ...interface{}) (*sql.Rows, error)
@@ -533,4 +537,129 @@ func (s SQLDao) GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error) {
 	}
 
 	return logics, nil
+}
+
+//InsertFlowResultTmp inserts the record the CUPredict for now
+func (s SQLDao) InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldGroupAppID, fldCUPredict)
+	result, err := q.Exec(insertSQL, callID, val)
+	if err != nil {
+		logger.Error.Println("raw sql: ", insertSQL)
+		logger.Error.Printf("raw bind-data: [%v,%v]\n", callID, val)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.LastInsertId()
+}
+
+//UpdateFlowResultTmp update the record the CUPredict for now
+func (s SQLDao) UpdateFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblCUPredict, fldCUPredict, fldCallID)
+	result, err := q.Exec(updateSQL, val, callID)
+	if err != nil {
+		logger.Error.Println("raw sql: ", updateSQL)
+		logger.Error.Printf("raw bind-data: [%v,%v]\n", callID, val)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.RowsAffected()
+}
+
+//GetFlowResultFromTmp gets the flow from tmp
+func (s SQLDao) GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=?", fldCUPredict, tblCUPredict, fldCallID)
+	rows, err := q.Query(querySQL, callID)
+	if err != nil {
+		logger.Error.Println("raw sql: ", querySQL)
+		logger.Error.Printf("raw bind-data: [%v]\n", callID)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+
+	var val *sql.NullString
+	result := &QIFlowResult{}
+	if rows.Next() {
+		err = rows.Scan(&val)
+		if err != nil {
+			logger.Error.Printf("Scan %s failed. %s\n", fldCUPredict, err)
+			return nil, err
+		}
+		if val.Valid {
+			err = json.Unmarshal([]byte(val.String), result)
+			if err != nil {
+				logger.Error.Printf("Marshal json failed. %s\n", err)
+				return nil, err
+			}
+		}
+	}
+	return result, nil
+}
+
+//UpdateConversation updates the info in Conversation table
+func (s SQLDao) UpdateConversation(tx *sql.Tx, callID uint64, params map[string]interface{}) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	numOfParams := len(params)
+	bindData := make([]interface{}, 0, numOfParams+1)
+	setFields := make([]string, 0, numOfParams)
+	for k, v := range params {
+		field := k + "=?"
+		setFields = append(setFields, field)
+		bindData = append(bindData, v)
+	}
+
+	setStat := strings.Join(setFields, ",")
+	bindData = append(bindData, callID)
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s WHERE %s=?", tblConversation, setStat, fldCallID)
+
+	result, err := q.Exec(updateSQL, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", updateSQL)
+		logger.Error.Printf("raw bind-data: [%v]\n", callID)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.RowsAffected()
 }

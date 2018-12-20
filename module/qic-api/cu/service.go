@@ -21,7 +21,8 @@ var (
 
 //Error msg
 var (
-	ErrSpeaker = errors.New("Wrong speaker")
+	ErrSpeaker        = errors.New("Wrong speaker")
+	ErrEndTimeSmaller = errors.New("end time < start time")
 )
 
 func createFlowConversation(enterprise string, user string, body *apiFlowCreateBody) (string, error) {
@@ -35,10 +36,31 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 		fileName: body.FileName, callTime: body.CreateTime, uploadTime: now, updateTime: now, uuid: uuidStr,
 		user: user}
 
-	_, err = serviceDao.CreateFlowConversation(nil, daoData)
+	tx, err := serviceDao.Begin()
 	if err != nil {
 		return "", err
 	}
+	defer tx.Rollback()
+
+	callID, err := serviceDao.CreateFlowConversation(tx, daoData)
+	if err != nil {
+		logger.Error.Printf("Create flow conversation failed")
+		return "", err
+	}
+
+	empty := &QIFlowResult{FileName: body.FileName}
+	emptStr, err := json.Marshal(empty)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return "", err
+	}
+	_, err = serviceDao.InsertFlowResultTmp(tx, uint64(callID), string(emptStr))
+	if err != nil {
+		logger.Error.Printf("insert empty flow result failed")
+		return "", err
+	}
+	tx.Commit()
+
 	return uuidStr, nil
 }
 
@@ -238,4 +260,88 @@ func FillCUCheckResult(predict *V1PredictResult, result []*QIResult) error {
 	}
 
 	return nil
+}
+
+//FinishFlowQI finishs the flow, update information
+func FinishFlowQI(req *apiFlowFinish, uuid string, result *QIFlowResult) error {
+
+	callID, err := getIDByUUID(uuid)
+	if err != nil {
+		logger.Error.Printf("Error! Get ID by UUID. %s\n", err)
+		return err
+	}
+	conversation, err := getConversation(uuid)
+	if err != nil {
+		logger.Error.Printf("Get conversation [%v] error. %s\n", uuid, err)
+		return err
+	}
+
+	dur := req.FinishTime - conversation.CallTime
+	if dur < 0 {
+		return ErrEndTimeSmaller
+	}
+
+	tx, err := serviceDao.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	resultStr, err := json.Marshal(result)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return err
+	}
+	_, err = serviceDao.UpdateFlowResultTmp(tx, callID, string(resultStr))
+	if err != nil {
+		logger.Error.Printf("lupdate flow result failed. %s\n", err)
+		return err
+	}
+
+	_, err = serviceDao.UpdateConversation(tx, callID, map[string]interface{}{ConFieldStatus: 1, ConFieldDuration: dur})
+	if err != nil {
+		logger.Error.Printf("lupdate conversation result failed. %s\n", err)
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
+}
+
+//InsertFlowResultToTmp inserts the flow result
+func InsertFlowResultToTmp(callID uint64, result *QIFlowResult) error {
+
+	resultStr, err := json.Marshal(result)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return err
+	}
+	_, err = serviceDao.InsertFlowResultTmp(nil, callID, string(resultStr))
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+	}
+	return err
+}
+
+//UpdateFlowResult updates the current flow result by callID
+func UpdateFlowResult(callID uint64, result *QIFlowResult) (int64, error) {
+	resultStr, err := json.Marshal(result)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return 0, err
+	}
+
+	affected, err := serviceDao.UpdateFlowResultTmp(nil, callID, string(resultStr))
+
+	if err != nil {
+		logger.Error.Printf("Update flow result failed\n")
+
+	}
+	return affected, err
+}
+
+//GetFlowResult gets the flow result from db
+func GetFlowResult(callID uint64) (*QIFlowResult, error) {
+	return serviceDao.GetFlowResultFromTmp(nil, callID)
 }

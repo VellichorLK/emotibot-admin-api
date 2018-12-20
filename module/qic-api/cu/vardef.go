@@ -22,13 +22,14 @@ const (
 
 //Table name in QISYS
 const (
-	Conversation    = "Conversation"
-	TableSegment    = "Segment"
+	tblConversation = "Conversation"
+	tblSegment      = "Segment"
 	tblGroup        = "Group"
 	tblRelGrpRule   = "Relation_Group_Rule"
 	tblRelRuleLogic = "Relation_Rule_Logic"
 	tblRule         = "Rule"
 	tblLogic        = "Logic"
+	tblCUPredict    = "CUPredict"
 )
 
 //field name in Conversation table
@@ -92,7 +93,9 @@ const (
 )
 
 const (
-	fldTagID = "tag_id"
+	fldTagID     = "tag_id"
+	fldCallID    = "call_id"
+	fldCUPredict = "predict"
 )
 
 const (

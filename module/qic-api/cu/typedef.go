@@ -9,6 +9,10 @@ type apiFlowCreateResp struct {
 	UUID string `json:"id"`
 }
 
+type apiFlowFinish struct {
+	FinishTime int64 `json:""finish_time""`
+}
+
 type daoFlowCreate struct {
 	typ          int
 	leftChannel  int
