@@ -7,7 +7,8 @@ FROM alpine:3.6
 
 ARG PROJECT
 
-RUN yum makecache fast && yum install -y wget tzdata && yum clean all
+RUN apk update && apk add wget tzdata
+# RUN yum makecache fast && yum install -y wget tzdata && yum clean all
 
 WORKDIR /usr/bin
 COPY --from=build /usr/bin/app app
