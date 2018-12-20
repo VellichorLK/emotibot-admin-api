@@ -21,11 +21,30 @@ type Dao interface {
 	GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInfo, error)
 	GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error)
 	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
+	GetGroupToLogicID(tx *sql.Tx, appID uint64) (map[uint64][]uint64, []uint64, error)
+	GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error)
+	GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error)
+	InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error)
+	UpdateFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error)
+	GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, error)
+	UpdateConversation(tx *sql.Tx, callID uint64, params map[string]interface{}) (int64, error)
 }
 
 // GroupQuery can used to query the group table
 type GroupQuery struct {
 	Type         []int
+	EnterpriseID *string
+}
+
+//RuleQuery gives the query condition for Rule table
+type RuleQuery struct {
+	ID           []uint64
+	EnterpriseID *string
+}
+
+//LogicQuery gives the query condition for Logic table
+type LogicQuery struct {
+	ID           []uint64
 	EnterpriseID *string
 }
 
@@ -49,6 +68,50 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 	return whereSQL, bindData
 }
 
+func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {
+	bindData = make([]interface{}, 0, 2)
+	whereSQL = "WHERE "
+	conditions := []string{}
+
+	if len(r.ID) > 0 {
+		condition := fldRuleID + " IN (?" + strings.Repeat(",?", len(r.ID)-1) + ")"
+		conditions = append(conditions, condition)
+		for _, id := range r.ID {
+			bindData = append(bindData, id)
+		}
+	}
+
+	if r.EnterpriseID != nil {
+		condition := fldRuleEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		bindData = append(bindData, *r.EnterpriseID)
+	}
+	whereSQL += strings.Join(conditions, " AND ")
+	return whereSQL, bindData
+}
+
+func (l *LogicQuery) whereSQL() (whereSQL string, bindData []interface{}) {
+	bindData = make([]interface{}, 0, 2)
+	whereSQL = "WHERE "
+	conditions := []string{}
+
+	if len(l.ID) > 0 {
+		condition := fldLogicID + " IN (?" + strings.Repeat(",?", len(l.ID)-1) + ")"
+		conditions = append(conditions, condition)
+		for _, id := range l.ID {
+			bindData = append(bindData, id)
+		}
+	}
+
+	if l.EnterpriseID != nil {
+		condition := fldLogicEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		bindData = append(bindData, *l.EnterpriseID)
+	}
+	whereSQL += strings.Join(conditions, " AND ")
+	return whereSQL, bindData
+}
+
 // Group
 type Group struct {
 	AppID          uint64
@@ -62,6 +125,30 @@ type Group struct {
 	LimitedSpeed   int
 	LimitedSilence float32
 	typ            int
+}
+
+//Rule is field in Rule
+type Rule struct {
+	RuleID      uint64
+	IsDelete    int
+	Name        string
+	Method      int
+	Score       int
+	Description string
+	Enterprise  string
+}
+
+//Logic is field in Logic
+type Logic struct {
+	LogicID         uint64
+	Name            string
+	TagDistance     int
+	RangeConstraint string
+	CreateTime      int64
+	UpdateTime      int64
+	IsDelete        int
+	Enterprise      string
+	Speaker         int
 }
 
 //SQLDao is sql struct used to access database
@@ -102,7 +189,7 @@ func (s SQLDao) CreateFlowConversation(tx *sql.Tx, d *daoFlowCreate) (int64, err
 		return 0, util.ErrDBNotInit
 	}
 
-	table := Conversation
+	table := tblConversation
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?,?,?,?,?)",
 		table,
 		ConFieldEnterprise, ConFieldFileName, ConFieldCallTime, ConFieldUpdateTime,
@@ -128,7 +215,7 @@ func (s SQLDao) InsertSegment(tx *sql.Tx, seg *Segment) (int64, error) {
 		return 0, util.ErrDBNotInit
 	}
 
-	table := TableSegment
+	table := tblSegment
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?)",
 		table,
 		SegFieldCallID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel, SegFieldCreateTiem, SegFieldAsrText,
@@ -153,7 +240,7 @@ func (s SQLDao) GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInf
 		return nil, util.ErrDBNotInit
 	}
 
-	table := Conversation
+	table := tblConversation
 
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s FROM %s WHERE %s=?",
 		ConFieldID, ConFieldStatus, ConFieldFileName, ConFieldPath, ConFieldVoiceID,
@@ -220,7 +307,7 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 		return nil, util.ErrDBNotInit
 	}
 
-	table := TableSegment
+	table := tblSegment
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s FROM %s WHERE %s=? ORDER BY %s ASC",
 		SegFieldID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel,
 		SegFieldCreateTiem, SegFieldAsrText,
@@ -280,6 +367,7 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	defer rows.Close()
 	var groups = make([]Group, 0)
 	for rows.Next() {
+
 		var g = Group{}
 		var isDeleted, isEnabled int
 		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
@@ -297,4 +385,281 @@ func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	}
 
 	return groups, nil
+}
+
+//GetGroupToLogicID gets the id and name of logics in rule, rules in group
+func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint64, []uint64, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, nil, util.ErrDBNotInit
+	}
+
+	tableA := tblRelGrpRule
+	tableB := tblRelRuleLogic
+	findIDSQL := fmt.Sprintf("SELECT a.%s,b.%s FROM %s AS a LEFT JOIN %s AS b on a.%s=b.%s WHERE a.%s=?",
+		fldRuleID, fldLogicID,
+		tableA, tableB,
+		fldRuleID, fldRuleID,
+		fldGroupAppID)
+	rows, err := q.Query(findIDSQL, groupID)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		return nil, nil, err
+	}
+	defer rows.Close()
+	var ruleID uint64
+	var logicID sql.NullInt64
+
+	ruleIDToLogicID := make(map[uint64][]uint64)
+	ruleOrder := make([]uint64, 0)
+
+	for rows.Next() {
+		err = rows.Scan(&ruleID, &logicID)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, nil, err
+		}
+
+		if _, ok := ruleIDToLogicID[ruleID]; !ok {
+			ruleIDToLogicID[ruleID] = make([]uint64, 0)
+			ruleOrder = append(ruleOrder, ruleID)
+		}
+
+		if logicID.Valid {
+			ruleIDToLogicID[ruleID] = append(ruleIDToLogicID[ruleID], uint64(logicID.Int64))
+		}
+	}
+	return ruleIDToLogicID, ruleOrder, nil
+}
+
+//GetRule gets rule information based on condition
+func (s SQLDao) GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	sqlQuery := fmt.Sprintf("SELECT `%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s` FROM `%s`",
+		fldRuleID, fldRuleIsDelete, fldRuleName, fldRuleMethod, fldRuleScore, fldRuleDescription, fldRuleEnterprise,
+		tblRule)
+
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := q.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	rules := make([]*Rule, 0)
+	for rows.Next() {
+		var r Rule
+		err = rows.Scan(&r.RuleID, &r.IsDelete, &r.Name, &r.Method, &r.Score, &r.Description, &r.Enterprise)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, err
+		}
+		rules = append(rules, &r)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return rules, nil
+}
+
+//GetLogic gets logic information based on condition
+func (s SQLDao) GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	sqlQuery := fmt.Sprintf("SELECT `%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s`,`%s` FROM `%s`",
+		fldLogicID, fldLogicName, fldLogicTagDist, fldLogicRangeConstraint, fldLogicCreateTime,
+		fldLogicUpdateTime, fldLogicIsDelete, fldLogicEnterprise, fldLogicSpeaker,
+		tblLogic)
+
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := q.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	logics := make([]*Logic, 0)
+	for rows.Next() {
+		var l Logic
+		var rangeConstraint *sql.NullString
+		err = rows.Scan(&l.LogicID, &l.Name, &l.TagDistance, &rangeConstraint, &l.CreateTime,
+			&l.UpdateTime, &l.IsDelete, &l.Enterprise, &l.Speaker)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			return nil, err
+		}
+		if rangeConstraint.Valid {
+			l.RangeConstraint = rangeConstraint.String
+		}
+		logics = append(logics, &l)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return logics, nil
+}
+
+//InsertFlowResultTmp inserts the record the CUPredict for now
+func (s SQLDao) InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldGroupAppID, fldCUPredict)
+	result, err := q.Exec(insertSQL, callID, val)
+	if err != nil {
+		logger.Error.Println("raw sql: ", insertSQL)
+		logger.Error.Printf("raw bind-data: [%v,%v]\n", callID, val)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.LastInsertId()
+}
+
+//UpdateFlowResultTmp update the record the CUPredict for now
+func (s SQLDao) UpdateFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblCUPredict, fldCUPredict, fldCallID)
+	result, err := q.Exec(updateSQL, val, callID)
+	if err != nil {
+		logger.Error.Println("raw sql: ", updateSQL)
+		logger.Error.Printf("raw bind-data: [%v,%v]\n", callID, val)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.RowsAffected()
+}
+
+//GetFlowResultFromTmp gets the flow from tmp
+func (s SQLDao) GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
+
+	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=?", fldCUPredict, tblCUPredict, fldCallID)
+	rows, err := q.Query(querySQL, callID)
+	if err != nil {
+		logger.Error.Println("raw sql: ", querySQL)
+		logger.Error.Printf("raw bind-data: [%v]\n", callID)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+
+	var val *sql.NullString
+	result := &QIFlowResult{}
+	if rows.Next() {
+		err = rows.Scan(&val)
+		if err != nil {
+			logger.Error.Printf("Scan %s failed. %s\n", fldCUPredict, err)
+			return nil, err
+		}
+		if val.Valid {
+			err = json.Unmarshal([]byte(val.String), result)
+			if err != nil {
+				logger.Error.Printf("Marshal json failed. %s\n", err)
+				return nil, err
+			}
+		}
+	}
+	return result, nil
+}
+
+//UpdateConversation updates the info in Conversation table
+func (s SQLDao) UpdateConversation(tx *sql.Tx, callID uint64, params map[string]interface{}) (int64, error) {
+	type executor interface {
+		Exec(query string, args ...interface{}) (sql.Result, error)
+	}
+	var q executor
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return 0, util.ErrDBNotInit
+	}
+
+	numOfParams := len(params)
+	bindData := make([]interface{}, 0, numOfParams+1)
+	setFields := make([]string, 0, numOfParams)
+	for k, v := range params {
+		field := k + "=?"
+		setFields = append(setFields, field)
+		bindData = append(bindData, v)
+	}
+
+	setStat := strings.Join(setFields, ",")
+	bindData = append(bindData, callID)
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s WHERE %s=?", tblConversation, setStat, fldCallID)
+
+	result, err := q.Exec(updateSQL, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", updateSQL)
+		logger.Error.Printf("raw bind-data: [%v]\n", callID)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.RowsAffected()
 }

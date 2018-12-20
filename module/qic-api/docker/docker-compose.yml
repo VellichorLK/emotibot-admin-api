@@ -94,4 +94,5 @@ services:
       - ADMIN_CU_MYSQL_USER=${MYSQL_USER}
       - ADMIN_CU_MYSQL_PASS=${MYSQL_PASS}
       - ADMIN_CU_MYSQL_DB=QISYS
+      - ADMIN_CU_LOGIC_PREDICT_URL=172.17.0.1:30000
     restart: always

@@ -9,6 +9,10 @@ type apiFlowCreateResp struct {
 	UUID string `json:"id"`
 }
 
+type apiFlowFinish struct {
+	FinishTime int64 `json:""finish_time""`
+}
+
 type daoFlowCreate struct {
 	typ          int
 	leftChannel  int
@@ -69,7 +73,7 @@ type ConversationInfo struct {
 
 //V1PredictContext is context that sent to cu to predict
 type V1PredictContext struct {
-	AppID     int64                   `json:"app_id"`
+	AppID     string                  `json:"app_id"`
 	Threshold int                     `json:"threshold"`
 	Data      []*V1PredictRequestData `json:"data"`
 }
@@ -82,7 +86,7 @@ type V1PredictRequestData struct {
 
 //V1PredictResult is the prediction result
 type V1PredictResult struct {
-	Status      int             `json:"status"`
+	Status      string          `json:"status"`
 	Threshold   int             `json:"threshold"`
 	LogicResult []V1LogicResult `json:"logic_results"`
 	//currently we don't use this information, just use interface to catch it
@@ -115,4 +119,33 @@ type V1RangeConstraint struct {
 type V1Prediction struct {
 	Tag       string `json:"tag"`
 	Candidate []V1PredictRequestData
+}
+
+//QIFlowResult give the reuslt of qi flow
+type QIFlowResult struct {
+	FileName string               `json:"file_name"`
+	Result   []*QIFlowGroupResult `json:"cu_result"`
+}
+
+//QIFlowGroupResult gives the result of check
+type QIFlowGroupResult struct {
+	ID       uint64      `json:"-"`
+	Name     string      `json:"group_name"`
+	QIResult []*QIResult `json:"qi_result"`
+}
+
+//QIResult gives the result of rule
+type QIResult struct {
+	ID          uint64         `json:"-"`
+	Name        string         `json:"controller_rule"`
+	Valid       bool           `json:"valid"`
+	LogicResult []*LogicResult `json:"logic_results"`
+}
+
+//LogicResult give the result of logic
+type LogicResult struct {
+	ID        uint64   `json:"-"`
+	Name      string   `json:"logic_rule"`
+	Valid     bool     `json:"valid"`
+	Recommend []string `json:"recommend"`
 }

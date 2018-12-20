@@ -34,6 +34,8 @@ func init() {
 			util.NewEntryPoint("POST", "text/process", []string{}, handleTextProcess),
 			util.NewEntryPoint("POST", "conversation", []string{}, handleFlowCreate),
 			util.NewEntryPoint("POST", "conversation/{id}/append", []string{}, handleFlowAdd),
+			util.NewEntryPoint("GET", "conversation/{id}", []string{}, handleFlowResult),
+			util.NewEntryPoint("PUT", "conversation/{id}", []string{}, handleFlowFinish),
 		},
 		OneTimeFunc: map[string]func(){
 			keyInitEmotionEngine: func() {
