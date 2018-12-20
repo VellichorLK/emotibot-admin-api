@@ -46,3 +46,19 @@ func GetGroupBy(id int64) (group *Group, err error) {
 	group.Condition.RightChannel = "client"
 	return
 }
+
+func UpdateGroup(id int64, gruop *Group) (err error) {
+	tx, err := serviceDAO.Begin()
+	if err != nil {
+		return
+	}
+	defer serviceDAO.ClearTranscation(tx)
+
+	err = serviceDAO.UpdateGroup(id, gruop, tx)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
+	return
+}

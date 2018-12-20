@@ -16,6 +16,7 @@ type DAO interface {
 	GetGroups() ([]Group, error)
 	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
 	GetGroupBy(id int64) (*Group, error)
+	UpdateGroup(id int64, group *Group, tx *sql.Tx) (error)
 }
 
 type sqlDAO struct {
@@ -209,4 +210,155 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 		group.Condition = &condition
 	}
 	return
+}
+
+func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
+	if group == nil {
+		return
+	}
+
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	// update group
+	updateStr, values := genUpdateGroupSQL(id, group)
+	_, err = tx.Exec(updateStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while update group in dao.UpdateGroup, err: %s", err.Error())
+		return
+	}
+
+	// update condition
+	if group.Condition != nil {
+		updateStr, values = genUpdateConditionSQL(id, group.Condition)
+		_, err = tx.Exec(updateStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while update condition in dao.UpdateGroup, err: %s", err.Error())
+		}
+	}
+	return
+}
+
+func genUpdateGroupSQL(id int64, group *Group) (str string, values []interface{}) {
+	str = "UPDATE rule_group SET "
+
+	values = make([]interface{}, 0)
+	if group.Name != "" {
+		str += "group_name = ?"
+		values = append(values, group.Name)
+	}
+
+	if group.Speed != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " limit_speed = ?"
+		values = append(values, group.Speed)
+	}
+
+	if group.SlienceDuration != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " limit_silence = ?"
+		values = append(values, group.SlienceDuration)
+	}
+
+	if group.Enterprise != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " enterprise = ?"
+		values = append(values, group.Enterprise)
+	}
+
+	str = addCommaIfNotFirst(str, len(values) == 0)
+	str += " is_enable = ?"
+	values = append(values, group.Enabled)
+
+	str = fmt.Sprintf("%s where id = ?", str)
+	values = append(values, id)
+	return
+}
+
+func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , values []interface{}) {
+	str = "UPDATE group_condition SET "
+	values = make([]interface{}, 0)
+
+	if condition.CallEnd != 0 {
+		str += "call_end = ?"
+		values = append(values, condition.CallEnd)
+	}
+
+	if condition.CallStart != 0 {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " call_start = ?"
+		values = append(values, condition.CallStart)
+	}
+
+	if condition.ClientID != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_id = ?"
+		values = append(values, condition.ClientID)
+	}
+
+	if condition.ClientName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_name = ?"
+		values = append(values, condition.ClientName)
+	}
+
+	if condition.ClientPhone != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " client_phone = ?"
+		values = append(values, condition.ClientPhone)
+	}
+
+	if condition.Department != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " department = ?"
+		values = append(values, condition.Department)
+	}
+
+	if condition.Extension != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " extension = ?"
+		values = append(values, condition.Extension)
+	}
+
+	if condition.FileName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " file_name = ?"
+		values = append(values, condition.FileName)
+	}
+
+	if condition.Series != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " series = ?"
+		values = append(values, condition.Series)
+	}
+
+	if condition.StaffID != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " staff_id = ?"
+		values = append(values, condition.StaffID)
+	}
+
+	if condition.StaffName != "" {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " staff_name = ?"
+		values = append(values, condition.StaffName)
+	}
+
+	str = addCommaIfNotFirst(str, len(values) == 0)
+	str += " deal = ?, left_channel = ?, right_channel = ? where group_id = ?"
+	values = append(values, condition.Deal, condition.LeftChannelCode, condition.RightChannelCode, id)
+	return
+}
+
+func addCommaIfNotFirst(sqlStr string, first bool) (string) {
+	if !first {
+		sqlStr += ","
+		return sqlStr
+	}
+	return sqlStr
 }

@@ -47,11 +47,17 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, simpleGroups)
 }
 
-func handleGetGroup(w http.ResponseWriter, r *http.Request) {
+func parseID(r *http.Request) (id int64, err error) {
 	vars := mux.Vars(r)
 	idStr := vars["id"]
+
+	id, err = strconv.ParseInt(idStr, 10, 64)
+	return 
 	
-	id, err := strconv.ParseInt(idStr, 10, 64)
+}
+
+func handleGetGroup(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
 	if err != nil {
 		http.Error(w, "id is not a number", http.StatusBadRequest)
 		return
@@ -74,9 +80,26 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	group := Group{}
+	err = util.ReadJSON(r, &group)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = UpdateGroup(id, &group)
+	if err != nil {
+		logger.Error.Printf("error while update group in handleUpdateGroup, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
-	
 }
