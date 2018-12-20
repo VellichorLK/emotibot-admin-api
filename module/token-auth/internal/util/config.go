@@ -16,6 +16,11 @@ const (
 	mysqlAuditPasswordKey = "ADMIN_AUTH_AUDIT_MYSQL_PASS"
 	mysqlAuditDatabaseKey = "ADMIN_AUTH_AUDIT_MYSQL_DB"
 
+	ssoTypeKey        = "ADMIN_AUTH_SSO_TYPE"
+	ssoValidateURLKey = "ADMIN_AUTH_SSO_VALIDATE"
+	ssoLoginURLKey    = "ADMIN_UI_SSO_LOGIN_URL"
+	ssoLogoutURLKey   = "ADMIN_UI_SSO_LOGOUT_URL"
+
 	serverPortKey = "ADMIN_AUTH_PORT"
 	serverURLKey  = "ADMIN_AUTH_URL"
 
@@ -23,6 +28,33 @@ const (
 
 	jwtTimeoutKey = "ADMIN_AUTH_TIMEOUT"
 )
+
+// SSOConfig is used to store config about sso
+type SSOConfig struct {
+	SSOType     string
+	ValidateURL string
+	LoginURL    string
+	LogoutURL   string
+}
+
+// IsEnable is used to check SSO is enable or not
+func (config SSOConfig) IsEnable() bool {
+	return config.ValidateURL != "" && config.LoginURL != "" && config.LogoutURL != ""
+}
+
+// GetSSOConfig is used to get config of sso from env
+func GetSSOConfig() *SSOConfig {
+	ret := SSOConfig{
+		SSOType:     GetStrEnv(ssoTypeKey, ""),
+		ValidateURL: GetStrEnv(ssoValidateURLKey, ""),
+		LoginURL:    GetStrEnv(ssoLoginURLKey, ""),
+		LogoutURL:   GetStrEnv(ssoLogoutURLKey, ""),
+	}
+	if ret.SSOType == "" {
+		return nil
+	}
+	return &ret
+}
 
 // GetMySQLConfig will get db init config from env
 func GetMySQLConfig() (url string, port int, user string, password string, database string) {

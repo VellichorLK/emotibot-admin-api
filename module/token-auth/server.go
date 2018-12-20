@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
@@ -12,7 +14,6 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
-	"emotibot.com/emotigo/pkg/logger"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
@@ -103,8 +104,8 @@ func setUpRoutes() {
 		Route{"DeleteRole", "DELETE", 3, "enterprise/{enterpriseID}/role/{roleID}", nil, RoleDeleteHandlerV3, []interface{}{0, 1}},
 
 		Route{"Login", "POST", 3, "login", nil, LoginHandlerV3, []interface{}{}},
-		Route{"ValidateToken", "GET", 3, "token/{token}", nil, ValidateTokenHandler, []interface{}{}},
-		Route{"ValidateToken", "GET", 3, "token", nil, ValidateTokenHandler, []interface{}{}},
+		Route{"ValidateToken", "GET", 3, "token/{token}", nil, ValidateTokenHandlerV3, []interface{}{}},
+		Route{"ValidateToken", "GET", 3, "token", nil, ValidateTokenHandlerV3, []interface{}{}},
 
 		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", nil, ModulesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetModules", "GET", 3, "modules", nil, GlobalModulesGetHandlerV3, []interface{}{}},
@@ -249,10 +250,10 @@ func main() {
 				defer func() {
 					if err := recover(); err != nil {
 						w.WriteHeader(http.StatusInternalServerError)
-						util.PrintRuntimeStack(10)
+						printRuntimeStack(10)
 
 						errMsg := fmt.Sprintf("%#v", err)
-						logger.Error.Println("Panic error:", errMsg)
+						util.LogError.Println("Panic error:", errMsg)
 					}
 				}()
 				if checkAuth(r, route) {
@@ -313,4 +314,25 @@ func getRequesterV3(r *http.Request) *data.UserDetailV3 {
 	}
 
 	return &userInfo
+}
+
+func printRuntimeStack(maxStack int) {
+	pc := make([]uintptr, maxStack)
+	n := runtime.Callers(0, pc)
+	if n == 0 {
+		return
+	}
+	pc = pc[:n]
+	frames := runtime.CallersFrames(pc)
+	var buf bytes.Buffer
+
+	buf.WriteString("Stack: \n")
+	for {
+		frame, more := frames.Next()
+		buf.WriteString(fmt.Sprintf("\t[%s:%d]\n", frame.File, frame.Line))
+		if !more {
+			break
+		}
+	}
+	util.LogTrace.Printf(buf.String())
 }

@@ -20,6 +20,7 @@ import (
 
 var userTryCount map[string]int
 var captchaConfig captcha.ConfigCharacter
+var ssoConfig *util.SSOConfig
 
 const (
 	banRetryTimes = 5
@@ -27,6 +28,7 @@ const (
 
 func init() {
 	captchaConfig = initCaptchaConfig()
+	ssoConfig = util.GetSSOConfig()
 }
 
 func EnterprisesGetHandler(w http.ResponseWriter, r *http.Request) {

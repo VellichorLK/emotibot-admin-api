@@ -2148,3 +2148,48 @@ func (controller MYSQLController) GetEnterpriseAppListV3(enterpriseID *string, u
 	}
 	return
 }
+
+func (controller MYSQLController) GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, password, product
+		FROM %s
+		WHERE %s = ?`, userTableV3, key)
+
+	row := controller.connectDB.QueryRow(queryStr, value)
+	
+
+	user := data.UserDetailV3{}
+	productStr := ""
+	err = row.Scan(&user.ID, &user.UserName, &user.DisplayName, &user.Email, &user.Phone, &user.Type,
+		&user.Enterprise, &user.Status, &user.Password, &productStr)
+
+	if productStr == "" {
+		user.Products = []string{}
+	} else {
+		user.Products = strings.Split(productStr, ",")
+	}
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	roles, err := controller.getUserRolesV3(user.ID)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	user.Roles = roles
+
+	return &user, nil
+}

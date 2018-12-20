@@ -11,6 +11,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
+	"emotibot.com/emotigo/module/token-auth/internal/sso"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
@@ -1936,4 +1937,47 @@ func EnterpriseAppGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	} else {
 		returnSuccess(w, ret)
 	}
+}
+
+func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	handler := sso.GetHandler(ssoConfig)
+	token := vars["token"]
+	if ssoConfig == nil || handler == nil {
+		util.LogTrace.Println("Normal token flow")
+		token := vars["token"]
+		if token == "" {
+			params := strings.Split(r.Header.Get("Authorization"), " ")
+			if len(params) >= 2 {
+				token = params[1]
+			}
+		}
+		if token == "" {
+			returnBadRequest(w, "token")
+			return
+		}
+
+		userInfo := data.User{}
+		err := userInfo.SetValueWithToken(token)
+		if err != nil {
+			util.LogInfo.Println("Check token fail: ", err.Error())
+			returnBadRequest(w, "token")
+			return
+		}
+	} else {
+		util.LogTrace.Println("SSO Flow")
+		value, key, err := handler.ValidateRequest(r)
+		if err != nil {
+			returnUnauthorized(w)
+			return
+		}
+
+		util.LogTrace.Printf("Find user from SSO with field %s = %s\n", key, value)
+		detailUser, err := service.GetUserV3ByKeyValue(key, value)
+		if err != nil {
+			util.LogInfo.Printf("SSO User not found (%s, %s)\n", key, value)
+		}
+		token, err = detailUser.GenerateToken()
+	}
+	returnSuccess(w, token)
 }
