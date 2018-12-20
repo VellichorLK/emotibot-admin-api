@@ -15,6 +15,7 @@ type DAO interface {
 	ClearTranscation(tx *sql.Tx)
 	GetGroups() ([]Group, error)
 	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
+	GetGroupBy(id int64) (*Group, error)
 }
 
 type sqlDAO struct {
@@ -74,7 +75,7 @@ func (s *sqlDAO) GetGroups() (groups []Group, err error) {
 		}
 	}
 
-	queryStr := "SELECT id, group_name FROM `Group` where `is_enable`=1"
+	queryStr := "SELECT id, group_name FROM rule_group where `is_enable`=1"
 
 	rows, err := s.conn.Query(queryStr)
 	if err != nil {
@@ -105,7 +106,7 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 	now := time.Now().Unix()
 
 	// insert group
-	insertStr := "INSERT INTO `Group` (group_name, enterprise, create_time, update_time, is_enable, limit_speed, limit_silence) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	insertStr := "INSERT INTO `rule_group` (group_name, enterprise, create_time, update_time, is_enable, limit_speed, limit_silence) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	values := []interface{}{
 		group.Name,
 		group.Enterprise,
@@ -128,7 +129,7 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 	}
 
 	// insert condition
-	insertStr = "INSERT INTO `Condition` (group_id, file_name, deal, series, staff_id, staff_name, extension, department, client_id, client_name, client_phone, call_start, call_end, left_channel, right_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	insertStr = "INSERT INTO group_condition (group_id, file_name, deal, series, staff_id, staff_name, extension, department, client_id, client_name, client_phone, call_start, call_end, left_channel, right_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 
 	values = []interface{}{
 		groupID,
@@ -156,5 +157,56 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 
 	group.ID = groupID
 	createdGroup = group
+	return
+}
+
+func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	queryStr := `SELECT g.id, g.group_name, g.limit_speed, g.limit_silence, 
+	gc.file_name, gc.deal, gc.series, gc.staff_id, gc.staff_name, gc.extension, gc.department, 
+	gc.client_id, gc.client_name, gc.client_phone, gc.call_start, gc.call_end, gc.left_channel, gc.right_channel 
+	FROM (SELECT * FROM rule_group WHERE id=?) as g 
+	LEFT JOIN group_condition as gc ON g.id = gc.group_id`
+
+	rows, err := s.conn.Query(queryStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while query group in dao.GetGroupBy, err: %s", err.Error())
+		return
+	}
+
+	group = &Group{}
+	for rows.Next() {
+		condition := GroupCondition{}
+
+		rows.Scan(
+			&group.ID,
+			&group.Name,
+			&group.Speed,
+			&group.SlienceDuration,
+			&condition.FileName,
+			&condition.Deal,
+			&condition.Series,
+			&condition.StaffID,
+			&condition.StaffName,
+			&condition.Extension,
+			&condition.Department,
+			&condition.ClientID,
+			&condition.ClientName,
+			&condition.ClientPhone,
+			&condition.CallStart,
+			&condition.CallEnd,
+			&condition.LeftChannelCode,
+			&condition.RightChannelCode,
+		)
+
+		group.Condition = &condition
+	}
 	return
 }

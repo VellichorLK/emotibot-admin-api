@@ -1,9 +1,12 @@
 package qi
 
 import (
+	"strconv"
 	"net/http"
+	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
@@ -42,4 +45,38 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJSON(w, simpleGroups)
+}
+
+func handleGetGroup(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	idStr := vars["id"]
+	
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "id is not a number", http.StatusBadRequest)
+		return
+	}
+
+	group, err := GetGroupBy(id)
+	if err != nil {
+		logger.Error.Printf("error while get group in handleGetGroup, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if group == nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	util.WriteJSON(w, group)
+	
+}
+
+func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
+	
 }

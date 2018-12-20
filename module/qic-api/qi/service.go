@@ -6,9 +6,6 @@ var (
 
 func GetGroups() (groups []Group, err error) {
 	groups, err = serviceDAO.GetGroups()
-	if err != nil {
-		return
-	}
 	return
 }
 
@@ -35,5 +32,17 @@ func CreateGroup(group *Group) (createdGroup *Group, err error) {
 	}
 
 	serviceDAO.Commit(tx)
+	return
+}
+
+func GetGroupBy(id int64) (group *Group, err error) {
+	group, err = serviceDAO.GetGroupBy(id)
+	if err != nil || group == nil {
+		return
+	}
+
+	// TODO: set channel name by code
+	group.Condition.LeftChannel = "staff"
+	group.Condition.RightChannel = "client"
 	return
 }
