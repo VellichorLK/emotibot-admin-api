@@ -18,7 +18,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/module/qic-api/qi"
-	"emotibot.com/emotigo/pkg/config/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -90,7 +89,7 @@ func initLogger(logLevel string, enableAccessLog bool) {
 func main() {
 	initGoMaxPROCS()
 	initVariables()
-	serverEnvs := config.GetEnvOf("server")
+	serverEnvs := util.GetEnvOf("server")
 	logLevel, _ := serverEnvs["LOG_LEVEL"]
 	accessLog, _ := serverEnvs["ACCESS_LOG"]
 	var enableAccessLog = false
