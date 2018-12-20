@@ -133,7 +133,11 @@ func newTEBoolQueryWithRecordQuery(query *dataV1.TEVisitRecordsQuery) *elastic.B
 
 	// Feedback
 	if query.Feedback != nil && *query.Feedback != "" {
-		boolQuery.Filter(elastic.NewTermQuery("feedback", *query.Feedback))
+		feedbackTermQuery := elastic.NewTermQuery("feedback", *query.Feedback)
+		customFeedbackTermQuery := elastic.NewTermQuery("custom_feedback.keyword",
+			*query.Feedback)
+
+		boolQuery.Filter(elastic.NewBoolQuery().Should(feedbackTermQuery, customFeedbackTermQuery))
 	}
 
 	// Platforms & Genders
