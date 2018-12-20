@@ -10,7 +10,7 @@ type apiFlowCreateResp struct {
 }
 
 type apiFlowFinish struct {
-	FinishTime int64 `json:""finish_time""`
+	FinishTime int64 `json:"finish_time"`
 }
 
 type daoFlowCreate struct {
