@@ -64,6 +64,7 @@ const TERecordsFinishTimeFieldName = "finish_time"
 
 const SessionRatingFieldName = "rating"
 const SessionFeedbackFieldName = "feedback"
+const SessionFeedbackTimeFieldName = "feedback_time"
 
 const (
 	IntervalYear   = "year"

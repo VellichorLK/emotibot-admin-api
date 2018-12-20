@@ -8,7 +8,7 @@ info:
     email: frankchang@emotibot.com
 
 servers:
-  - url: http://127.0.0.1:8182/api/v2/stats
+  - url: http://127.0.0.1:8182/api/v1/stats
 
 components:
   ###############################################################################
@@ -107,7 +107,7 @@ components:
 
 paths:
   /feedbacks:
-    post:
+    get:
       tags:
         - Statistic
       summary: 会话满意度统计分析

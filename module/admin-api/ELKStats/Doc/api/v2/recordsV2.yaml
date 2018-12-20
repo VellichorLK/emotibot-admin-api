@@ -8,7 +8,7 @@ info:
     email: frankchang@emotibot.com
 
 servers:
-  - url: http://127.0.0.1:8182/api/v2/stats/record
+  - url: http://127.0.0.1:8182/api/v2/stats
 
 components:
   ###############################################################################
@@ -167,7 +167,7 @@ components:
             $ref: '#/components/schemas/ExportRecordsBody'
 
 paths:
-  /query:
+  /records/query:
     post:
       tags:
         - Query
@@ -283,7 +283,7 @@ paths:
         500:
           description: Internal server error
 
-  /export:
+  /records/export:
     post:
       tags:
         - Export
@@ -311,7 +311,7 @@ paths:
         500:
           description: Internal server error
   
-  /export/{export_id}:
+  /records/export/{export_id}:
     parameters:
       - $ref: '#/components/parameters/ExportId'
     get:
@@ -351,7 +351,7 @@ paths:
         500:
           description: Internal server error
 
-  /export/{export_id}/status:
+  /records/export/{export_id}/status:
     parameters:
       - $ref: '#/components/parameters/ExportId'
     get:

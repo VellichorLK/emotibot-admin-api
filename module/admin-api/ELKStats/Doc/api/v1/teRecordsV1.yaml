@@ -121,7 +121,7 @@ components:
             $ref: '#/components/schemas/ExportTERecordsBody'
   
 paths:
-  /teRecords:
+  /teRecords/query:
     post:
       tags:
         - Query
