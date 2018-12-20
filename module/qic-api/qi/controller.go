@@ -102,4 +102,17 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = DeleteGroup(id)
+
+	if err != nil {
+		logger.Error.Printf("error while delete group in handleDeleteGroup, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

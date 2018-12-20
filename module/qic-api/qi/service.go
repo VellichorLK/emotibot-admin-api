@@ -62,3 +62,8 @@ func UpdateGroup(id int64, gruop *Group) (err error) {
 	err = tx.Commit()
 	return
 }
+
+func DeleteGroup(id int64) (err error) {
+	err = serviceDAO.DeleteGroup(id)
+	return
+}

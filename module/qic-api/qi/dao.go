@@ -17,6 +17,7 @@ type DAO interface {
 	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
 	GetGroupBy(id int64) (*Group, error)
 	UpdateGroup(id int64, group *Group, tx *sql.Tx) (error)
+	DeleteGroup(id int64) (error)
 }
 
 type sqlDAO struct {
@@ -361,4 +362,21 @@ func addCommaIfNotFirst(sqlStr string, first bool) (string) {
 		return sqlStr
 	}
 	return sqlStr
+}
+
+func (s *sqlDAO) DeleteGroup(id int64) (err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	deleteStr := "UPDATE rule_group SET is_delete = 1 WHERE id = ?"
+	_, err = s.conn.Exec(deleteStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while delete group in dao.DeleteGroup, err: %s", err.Error())
+	}
+	return
 }

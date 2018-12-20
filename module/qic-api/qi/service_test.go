@@ -59,6 +59,10 @@ func (m *mockDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
 	return
 }
 
+func (m *mockDAO) DeleteGroup(id int64) (err error) {
+	return
+}
+
 func restoreDAO (originDAO DAO) {
 	serviceDAO = originDAO
 }
