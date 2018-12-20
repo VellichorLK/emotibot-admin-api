@@ -51,9 +51,8 @@ func logAvailablePath(router *mux.Router) {
 	})
 }
 
-// serverInitial init a serial steps for api server, including config and GOMAXPROCS
-func serverInitial() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+// initVariables init a serial steps for api server, including config and GOMAXPROCS
+func initVariables() {
 	var err error
 	if len(os.Args) > 1 {
 		err = util.LoadConfigFromFile(os.Args[1])
@@ -69,24 +68,36 @@ func serverInitial() {
 		}
 	}
 
+}
+
+func initGoMaxPROCS() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
-	serverEnvs := config.GetEnvOf("server")
-	logLevel, ok := serverEnvs["LOG_LEVEL"]
-	if !ok {
+}
+
+func initLogger(logLevel string, enableAccessLog bool) {
+	if logLevel == "" {
 		logLevel = "INFO"
 	}
 	logger.SetLevel(logLevel)
 	logger.Info.Printf("Set log level %s\n", logLevel)
 
-	accessLog := serverEnvs["ACCESS_LOG"]
-	if accessLog == "1" {
+	if enableAccessLog {
 		logChannel = make(chan util.AccessLog)
 		util.InitAccessLog(logChannel)
 	}
 }
-
 func main() {
-	serverInitial()
+	initGoMaxPROCS()
+	initVariables()
+	serverEnvs := config.GetEnvOf("server")
+	logLevel, _ := serverEnvs["LOG_LEVEL"]
+	accessLog, _ := serverEnvs["ACCESS_LOG"]
+	var enableAccessLog = false
+	if accessLog == "1" {
+		enableAccessLog = true
+	}
+	initLogger(logLevel, enableAccessLog)
 
 	router := setRoute()
 	initDB()
