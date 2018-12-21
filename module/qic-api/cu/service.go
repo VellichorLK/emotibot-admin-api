@@ -74,6 +74,9 @@ func insertSegmentByUUID(uuid string, asr []*apiFlowAddBody) error {
 	if err != nil {
 		return err
 	}
+	if id == 0 {
+		return errors.New("No such id")
+	}
 
 	//begin a transaction
 	tx, err := serviceDao.Begin()
@@ -105,6 +108,9 @@ func getFlowSentences(uuid string) ([]*Segment, error) {
 	id, err := getIDByUUID(uuid)
 	if err != nil {
 		return nil, err
+	}
+	if id == 0 {
+		return nil, errors.New("No such id")
 	}
 	return serviceDao.GetSegmentByCallID(nil, id)
 }
@@ -286,6 +292,9 @@ func FinishFlowQI(req *apiFlowFinish, uuid string, result *QIFlowResult) error {
 	if err != nil {
 		logger.Error.Printf("Error! Get ID by UUID. %s\n", err)
 		return err
+	}
+	if callID == 0 {
+		return errors.New("No such id")
 	}
 	conversation, err := getConversation(uuid)
 	if err != nil {

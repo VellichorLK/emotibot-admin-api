@@ -155,6 +155,10 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	if callID == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id is found"), http.StatusBadRequest)
+		return
+	}
 
 	_, err = UpdateFlowResult(callID, resp)
 	if err != nil {
