@@ -36,7 +36,7 @@ func main() {
 			continue
 		}
 		absFilePath := folder + "/" + filename
-		emotion, err := emotionengine.CSVToEmotion(absFilePath, filename[:len(filename)-3])
+		emotion, err := emotionengine.CSVToEmotion(absFilePath, filename[:len(filename)-4])
 		if err != nil {
 			log.Println("csv file: ", f.Name(), "can not import: ", err)
 		}
