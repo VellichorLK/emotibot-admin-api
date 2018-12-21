@@ -2,10 +2,8 @@ package cu
 
 import (
 	"errors"
-	"math/rand"
 	"net/http"
 	"strconv"
-	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/qic-api/sensitive"
@@ -16,11 +14,6 @@ import (
 	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
-
-func random(min, max int) int {
-	rand.Seed(time.Now().Unix())
-	return rand.Intn(max-min) + min
-}
 
 var adminErrInitialFailed = AdminErrors.New(AdminErrors.ErrnoInitfailed, "cu package init failed")
 
