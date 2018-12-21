@@ -133,8 +133,10 @@ func getIDByUUID(uuid string) (uint64, error) {
 		if err != nil {
 			return 0, err
 		}
-		cache.SetCache(idCachKey, info.CallID)
-		id = info.CallID
+		if info != nil {
+			cache.SetCache(idCachKey, info.CallID)
+			id = info.CallID
+		}
 	} else {
 		id = v.(uint64)
 	}

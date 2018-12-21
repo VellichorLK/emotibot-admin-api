@@ -611,7 +611,7 @@ func (s SQLDao) GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, 
 	}
 
 	var val *sql.NullString
-	result := &QIFlowResult{}
+	result := &QIFlowResult{Result: make([]*QIFlowGroupResult, 0), Sensitive: make([]string, 0)}
 	if rows.Next() {
 		err = rows.Scan(&val)
 		if err != nil {

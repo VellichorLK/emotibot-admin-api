@@ -259,6 +259,10 @@ func handleFlowResult(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	if callID == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id is found"), http.StatusBadRequest)
+		return
+	}
 	resp, err := GetFlowResult(callID)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
