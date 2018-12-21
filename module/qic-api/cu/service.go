@@ -144,7 +144,7 @@ func getIDByUUID(uuid string) (uint64, error) {
 func predictByV1CuModule(context *V1PredictContext) (*V1PredictResult, error) {
 
 	url := ModuleInfo.Environments["LOGIC_PREDICT_URL"]
-	resp, err := util.HTTPPostJSONWithHeader(url, context, 2, map[string]string{"Content-Type": "application/json"})
+	resp, err := util.HTTPPostJSONWithHeader(url+"/predict", context, 2, map[string]string{"Content-Type": "application/json"})
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
 		return nil, err
