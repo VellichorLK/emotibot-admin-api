@@ -96,6 +96,17 @@ func (s *sqlDAO) GetGroups() (groups []Group, err error) {
 	return
 }
 
+func genInsertRelationSQL(id int64, rules []int64) (str string, values []interface{}) {
+	str = "INSERT INTO Relation_Group_Rule (group_id, rule_id) VALUES "
+	values = []interface{}{}
+	for _, ruleID := range rules {
+		str = addCommaIfNotFirst(str, len(values) == 0)
+		str += " (?, ?)"
+		values = append(values, id, ruleID)
+	}
+	return
+}
+
 func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err error) {
 	if s.conn == nil {
 		err = s.initDB()
@@ -157,6 +168,17 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 		return
 	}
 
+	// insert into group_rule_map
+	if len(group.Rules) != 0 {
+		insertStr, values = genInsertRelationSQL(groupID, group.Rules)
+
+		_, err = tx.Exec(insertStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while insert relation_group_rule in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
 	group.ID = groupID
 	createdGroup = group
 	return
@@ -173,7 +195,7 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 
 	queryStr := `SELECT g.id, g.group_name, g.limit_speed, g.limit_silence, 
 	gc.file_name, gc.deal, gc.series, gc.staff_id, gc.staff_name, gc.extension, gc.department, 
-	gc.client_id, gc.client_name, gc.client_phone, gc.call_start, gc.call_end, gc.left_channel, gc.right_channel 
+	gc.client_id, gc.client_name, gc.client_phone, gc.call_start, gc.call_end, gc.left_channel, gc.right_channel
 	FROM (SELECT * FROM rule_group WHERE id=?) as g 
 	LEFT JOIN group_condition as gc ON g.id = gc.group_id`
 
@@ -184,6 +206,7 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 	}
 
 	group = &Group{}
+
 	for rows.Next() {
 		condition := GroupCondition{}
 
@@ -207,9 +230,24 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 			&condition.LeftChannelCode,
 			&condition.RightChannelCode,
 		)
-
 		group.Condition = &condition
 	}
+
+	// get rules under this group
+	queryStr = "SELECT rule_id FROM Relation_Group_Rule WHERE group_id = ?"
+	rows, err = s.conn.Query(queryStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while get rules of group in dao.GetGroupBy, err: %s", err.Error())
+		return
+	}
+
+	group.Rules = make([]int64, 0)
+	for rows.Next() {
+		var ruleID int64
+		rows.Scan(&ruleID)
+		group.Rules = append(group.Rules, ruleID)
+	}
+
 	return
 }
 
@@ -240,6 +278,25 @@ func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
 		_, err = tx.Exec(updateStr, values...)
 		if err != nil {
 			err = fmt.Errorf("error while update condition in dao.UpdateGroup, err: %s", err.Error())
+		}
+	}
+
+	// update relation
+	// delete old relation 
+	// add new relation
+	updateStr = "DELETE FROM Relation_Group_Rule WHERE group_id=?"
+	_, err = tx.Exec(updateStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while delete old relation in dao.UpdateGroup, err: %s", err.Error())
+		return
+	}
+
+	if len(group.Rules) != 0 {
+		updateStr, values = genInsertRelationSQL(id, group.Rules)
+		_, err = tx.Exec(updateStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while insert new relation in dao.UpdateGroup, err: %s", err.Error())
+			return
 		}
 	}
 	return

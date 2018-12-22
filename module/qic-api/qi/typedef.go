@@ -11,6 +11,7 @@ type Group struct {
 	Enabled int `json:is_enable,omitempty`
 	Speed float64 `json:"limit_speed,omitempty"`
 	SlienceDuration float64 `json:"limit_silence,omitempty"`
+	Rules []int64 `json:"rules"`
 	Condition *GroupCondition `json:"other,omitempty"`
 }
 

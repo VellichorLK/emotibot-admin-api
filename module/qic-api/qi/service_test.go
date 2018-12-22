@@ -42,6 +42,7 @@ func (m *mockDAO) CreateGroup(group *Group, tx *sql.Tx) (*Group, error) {
 		Speed: group.Speed,
 		SlienceDuration: group.SlienceDuration,
 		Condition: group.Condition,
+		Rules: group.Rules,
 	}
 	return createdGroup, nil
 }
@@ -92,6 +93,7 @@ var mockGroup *Group = &Group {
 	Speed: 300,
 	SlienceDuration: 0.33,
 	Condition: mockCondition,
+	Rules: []int64{1, 2, 3},
 }
 
 func TestGetGroups(t *testing.T) {
@@ -167,6 +169,17 @@ func sameGroup(g1, g2 *Group) bool {
 
 	if g1.Condition.StaffID != g2.Condition.StaffID || g1.Condition.StaffName != g2.Condition.StaffName {
 		same = false
+	}
+
+	if len(g1.Rules) != len(g2.Rules) {
+		same = false
+	} else {
+		for id := range g1.Rules {
+			if g1.Rules[id] != g2.Rules[id] {
+				same = false
+				break
+			}
+		}
 	}
 
 	return same
