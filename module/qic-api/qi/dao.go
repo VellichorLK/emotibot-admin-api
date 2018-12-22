@@ -157,6 +157,21 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 		return
 	}
 
+	// insert into group_rule_map
+	insertStr = "INSERT INTO Relation_Group_Rule (group_id, rule_id) VALUES "
+	values = []interface{}{}
+	for _, ruleID := range group.Rules {
+		insertStr = addCommaIfNotFirst(insertStr, len(values) == 0)
+		insertStr += " (?, ?)"
+		values = append(values, groupID, ruleID)
+	}
+
+	_, err = tx.Exec(insertStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while insert relation_group_rule in dao.CreateGroup, err: %s", err.Error())
+		return
+	}
+
 	group.ID = groupID
 	createdGroup = group
 	return
