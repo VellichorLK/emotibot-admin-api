@@ -121,6 +121,9 @@ func setUpRoutes() {
 		Route{"GetIMRobots", "GET", 3, "enterprise/{enterpriseID}/imrobots", nil, IMAppsGetHandlerV3, []interface{}{0, 1, 2}},
 
 		Route{"GetCaptcha", "GET", 1, "captcha", nil, CaptchaGetHandler, []interface{}{}},
+
+		Route{"ValidateToken", "GET", 3, "trace/token/{token}", nil, TraceValidateTokenHandlerV3, []interface{}{}},
+		Route{"ValidateToken", "GET", 3, "trace/token", nil, TraceValidateTokenHandlerV3, []interface{}{}},
 	}
 }
 

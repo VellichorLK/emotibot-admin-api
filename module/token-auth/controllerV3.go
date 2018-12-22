@@ -1968,6 +1968,7 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		util.LogTrace.Println("SSO Flow")
 		value, key, err := handler.ValidateRequest(r)
 		if err != nil {
+			util.LogTrace.Println("Validate SSO fail: ", err.Error())
 			returnUnauthorized(w)
 			return
 		}
@@ -1976,8 +1977,57 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		detailUser, err := service.GetUserV3ByKeyValue(key, value)
 		if err != nil {
 			util.LogInfo.Printf("SSO User not found (%s, %s)\n", key, value)
+			returnUnauthorized(w)
+			return
 		}
 		token, err = detailUser.GenerateToken()
 	}
 	returnSuccess(w, token)
+}
+
+func TraceValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	handler := sso.GetHandler(ssoConfig)
+	token := vars["token"]
+	if ssoConfig == nil || handler == nil {
+		w.Write([]byte("Normal token flow.\n"))
+		token := vars["token"]
+		if token == "" {
+			params := strings.Split(r.Header.Get("Authorization"), " ")
+			if len(params) >= 2 {
+				token = params[1]
+			}
+		}
+		if token == "" {
+			w.Write([]byte("Token is empty.\n"))
+			return
+		}
+
+		userInfo := data.User{}
+		err := userInfo.SetValueWithToken(token)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Check token fail: %s\n", err.Error())))
+			return
+		}
+	} else {
+		w.Write([]byte("SSO Flow\n"))
+		info := handler.ValidateDebug(r)
+		w.Write([]byte(info + "\n\n"))
+
+		value, key, err := handler.ValidateRequest(r)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("Validate SSO fail: %s\n", err.Error())))
+			return
+		}
+
+		w.Write([]byte(fmt.Sprintf("Find user from SSO with field %s = %s\n", key, value)))
+		detailUser, err := service.GetUserV3ByKeyValue(key, value)
+		if err != nil {
+			w.Write([]byte(fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)))
+			returnUnauthorized(w)
+			return
+		}
+		token, err = detailUser.GenerateToken()
+	}
+	w.Write([]byte(fmt.Sprintf("Get return token: %s\n", token)))
 }

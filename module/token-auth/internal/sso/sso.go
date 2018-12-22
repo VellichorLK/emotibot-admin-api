@@ -11,6 +11,7 @@ import (
 type SSOHandler interface {
 	LoadConfig(*util.SSOConfig) error
 	ValidateRequest(*http.Request) (string, string, error)
+	ValidateDebug(*http.Request) string
 }
 
 func GetHandler(config *util.SSOConfig) SSOHandler {

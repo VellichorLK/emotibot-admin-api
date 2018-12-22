@@ -127,3 +127,35 @@ func (handler *HuaweiSSO) CallValidate(requestInfo *validateInput) (*ssoUser, er
 	}
 	return &ssoUser, nil
 }
+
+func (handler *HuaweiSSO) ValidateDebug(r *http.Request) string {
+	ret := ""
+	requestInfo := validateInput{
+		Token: &token{},
+		URL:   r.Referer(),
+	}
+	requestInfo.Token = &token{}
+
+	cookies := r.Cookies()
+	for _, cookie := range cookies {
+		switch cookie.Name {
+		case "hwsso_login":
+			requestInfo.Token.Login = cookie.Value
+		case "hwssot":
+			requestInfo.Token.T = cookie.Value
+		case "hwssotiner3":
+			requestInfo.Token.TINTER = cookie.Value
+		case "login_uid":
+			requestInfo.Token.UID = cookie.Value
+		}
+	}
+
+	ret = fmt.Sprintf("SSO Validate input: %+v\n", requestInfo)
+	ssoUser, err := handler.CallValidate(&requestInfo)
+	if err != nil {
+		ret = ret + fmt.Sprintf("SSO validate fail: %s\n", err.Error())
+	} else {
+		ret = ret + fmt.Sprintf("Get SSO user, get user which user_name is %s\n", ssoUser.EmployeeNumber)
+	}
+	return ret
+}
