@@ -286,7 +286,11 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 	logger.Trace.Printf("CustomInfo: %s\n", customInfoStr)
 	logger.Trace.Printf("CustomReturn: %s\n", customReturnStr)
 
-	response, err := util.HTTPPostJSON(openAPIURL, input, 10)
+	logger.Trace.Printf("Call OpenAPI With: %+v\n", input)
+	response, err := util.HTTPPostJSONWithHeader(openAPIURL, input, 10, map[string]string{
+		"appId":  appid,
+		"userId": user,
+	})
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
 	}
