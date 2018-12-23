@@ -48,6 +48,7 @@ func (handler *HuaweiSSO) LoadConfig(config *util.SSOConfig) error {
 		LoginURL:    config.LoginURL,
 		LogoutURL:   config.LogoutURL,
 	}
+	util.LogTrace.Printf("Load huawei sso with config: %+v\n", handler.Config)
 	return nil
 }
 
