@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +33,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/misc/emotibothttpwriter"
 )
 
 // constant define all const used in server
@@ -230,7 +230,9 @@ func setRoute() *mux.Router {
 				Methods(entrypoint.AllowMethod).
 				Path(entryPath).
 				Name(entrypoint.EntryPath).
-				HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				HandlerFunc(func(origWriter http.ResponseWriter, r *http.Request) {
+					w := emotibothttpwriter.New(origWriter)
+
 					defer logHandleRuntime(w, r)()
 					clientNoStoreCache(w)
 					defer func() {
@@ -260,17 +262,10 @@ func setRoute() *mux.Router {
 	return router
 }
 
-func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
+func logHandleRuntime(w *emotibothttpwriter.EmotibotHTTPWriter, r *http.Request) func() {
 	now := time.Now()
 	return func() {
-		code, err := strconv.Atoi(w.Header().Get("X-Status"))
-		if err != nil {
-			// TODO: use custom responseWriter to get return http status
-			// For now, use X-Status in header to do log
-			// if header not set X-Status, default is 200
-			code = http.StatusOK
-		}
-
+		code := w.GetStatusCode()
 		requestIP := r.Header.Get("X-Real-IP")
 		if requestIP == "" {
 			requestIP = r.RemoteAddr
