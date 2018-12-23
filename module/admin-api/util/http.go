@@ -61,14 +61,12 @@ func WriteJSONWithStatus(w http.ResponseWriter, obj interface{}, status int) err
 		return err
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Header().Set("X-Status", fmt.Sprintf("%d", status))
 	w.WriteHeader(status)
 	w.Write(js)
 	return nil
 }
 
 func WriteWithStatus(w http.ResponseWriter, content string, status int) {
-	w.Header().Set("X-Status", fmt.Sprintf("%d", status))
 	w.WriteHeader(status)
 	w.Write([]byte(content))
 }
@@ -95,7 +93,6 @@ func Return(w http.ResponseWriter, adminErr AdminErrors.AdminError, ret interfac
 		return err
 	}
 
-	w.Header().Set("X-Status", fmt.Sprintf("%d", status))
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	w.Write(js)
