@@ -1945,7 +1945,6 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 	token := vars["token"]
 	if ssoConfig == nil || handler == nil {
 		util.LogTrace.Println("Normal token flow")
-		token := vars["token"]
 		if token == "" {
 			params := strings.Split(r.Header.Get("Authorization"), " ")
 			if len(params) >= 2 {
