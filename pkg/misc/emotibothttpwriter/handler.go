@@ -30,7 +30,7 @@ func (w EmotibotHTTPWriter) Write(content []byte) (int, error) {
 // after finish write status to origin http writer
 func (w EmotibotHTTPWriter) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
-	w.WriteHeader(statusCode)
+	w.origWriter.WriteHeader(statusCode)
 }
 
 // GetStatusCode will get status from local variable, which cannot get from origin writer
