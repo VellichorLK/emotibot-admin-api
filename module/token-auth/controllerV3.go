@@ -1975,9 +1975,18 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 		util.LogTrace.Printf("Find user from SSO with field %s = %s\n", key, value)
 		detailUser, err := service.GetUserV3ByKeyValue(key, value)
-		if err != nil {
-			util.LogInfo.Printf("SSO User not found (%s, %s)\n", key, value)
+		if detailUser == nil {
+			msg := fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)
+			util.LogInfo.Printf(msg)
 			returnUnauthorized(w)
+			w.Write([]byte(msg))
+			return
+		}
+		if err != nil {
+			msg := fmt.Sprintf("Get SSO User error %s\n", err.Error())
+			util.LogInfo.Printf(msg)
+			returnUnauthorized(w)
+			w.Write([]byte(msg))
 			return
 		}
 		token, err = detailUser.GenerateToken()
