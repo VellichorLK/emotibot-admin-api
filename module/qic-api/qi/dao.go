@@ -25,21 +25,12 @@ type sqlDAO struct {
 }
 
 //InitDB is used to get the db in this module
+//	deprecated, origin version should not be used anymore for performance and race-condition issues.
+//	It is keeped only to minimize code changed for current functions.
+//  sqlDao will get the inner conn db at somewhere else.
 func (s *sqlDAO) initDB() error {
 	if s.conn == nil {
-		envs := ModuleInfo.Environments
-
-		url := envs["MYSQL_URL"]
-		user := envs["MYSQL_USER"]
-		pass := envs["MYSQL_PASS"]
-		db := envs["MYSQL_DB"]
-
-		conn, err := util.InitDB(url, user, pass, db)
-		if err != nil {
-			logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
-			return err
-		}
-		s.conn = conn
+		return fmt.Errorf("package db have not initialized yet")
 	}
 	return nil
 }
