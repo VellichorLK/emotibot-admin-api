@@ -152,7 +152,8 @@ func (handler *HuaweiSSO) ValidateDebug(r *http.Request) string {
 		}
 	}
 
-	ret = fmt.Sprintf("SSO Validate input: %+v\n", requestInfo)
+	data, _ := json.Marshal(requestInfo)
+	ret = fmt.Sprintf("SSO Validate input: %s\n", data)
 	ssoUser, err := handler.CallValidate(&requestInfo)
 	if err != nil {
 		ret = ret + fmt.Sprintf("SSO validate fail: %s\n", err.Error())
