@@ -1,12 +1,11 @@
 package qi
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/pkg/logger"
 )
 
 type DAO interface {
@@ -16,8 +15,8 @@ type DAO interface {
 	GetGroups() ([]Group, error)
 	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
 	GetGroupBy(id int64) (*Group, error)
-	UpdateGroup(id int64, group *Group, tx *sql.Tx) (error)
-	DeleteGroup(id int64) (error)
+	UpdateGroup(id int64, group *Group, tx *sql.Tx) error
+	DeleteGroup(id int64) error
 }
 
 type sqlDAO struct {
@@ -273,7 +272,7 @@ func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
 	}
 
 	// update relation
-	// delete old relation 
+	// delete old relation
 	// add new relation
 	updateStr = "DELETE FROM Relation_Group_Rule WHERE group_id=?"
 	_, err = tx.Exec(updateStr, id)
@@ -329,7 +328,7 @@ func genUpdateGroupSQL(id int64, group *Group) (str string, values []interface{}
 	return
 }
 
-func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , values []interface{}) {
+func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string, values []interface{}) {
 	str = "UPDATE group_condition SET "
 	values = make([]interface{}, 0)
 
@@ -404,7 +403,7 @@ func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , va
 	return
 }
 
-func addCommaIfNotFirst(sqlStr string, first bool) (string) {
+func addCommaIfNotFirst(sqlStr string, first bool) string {
 	if !first {
 		sqlStr += ","
 		return sqlStr
