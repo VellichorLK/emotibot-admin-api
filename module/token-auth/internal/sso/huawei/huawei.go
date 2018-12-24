@@ -73,7 +73,8 @@ func (handler *HuaweiSSO) ValidateRequest(r *http.Request) (string, string, erro
 		}
 	}
 
-	util.LogTrace.Printf("SSO Validate input: %+v\n", requestInfo)
+	data, _ := json.Marshal(requestInfo)
+	util.LogTrace.Printf("SSO Validate input: %s\n", data)
 	ssoUser, err := handler.CallValidate(&requestInfo)
 	if err != nil {
 		return "", "", err
