@@ -150,3 +150,24 @@ func TestClientPredict(t *testing.T) {
 	}
 
 }
+
+const failedPredictBody = `{"status": "error","error": "No model loaded."}`
+
+func TestClientPredictFailed(t *testing.T) {
+	mt := mockTransporter{
+		[]byte(failedPredictBody),
+	}
+	c := Client{
+		Transport: mt,
+		ServerURL: "",
+	}
+	req := PredictRequest{
+		AppID:    "csbot",
+		Sentence: "測試",
+	}
+	_, err := c.Predict(req)
+	if err == nil {
+		t.Fatal("expect predict result to be error, but got nil")
+	}
+
+}
