@@ -2032,9 +2032,18 @@ func TraceValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte(fmt.Sprintf("Find user from SSO with field %s = %s\n", key, value)))
 		detailUser, err := service.GetUserV3ByKeyValue(key, value)
-		if err != nil {
-			w.Write([]byte(fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)))
+		if detailUser == nil {
+			msg := fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)
+			util.LogInfo.Printf(msg)
 			returnUnauthorized(w)
+			w.Write([]byte(msg))
+			return
+		}
+		if err != nil {
+			msg := fmt.Sprintf("Get SSO User error %s\n", err.Error())
+			util.LogInfo.Printf(msg)
+			returnUnauthorized(w)
+			w.Write([]byte(msg))
 			return
 		}
 		token, err = detailUser.GenerateToken()
