@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/services/workweixin"
 	"github.com/line/line-bot-sdk-go/linebot"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -29,7 +30,8 @@ var handlers map[string]func(w http.ResponseWriter, r *http.Request, appid strin
 
 func init() {
 	handlers = map[string]func(w http.ResponseWriter, r *http.Request, appid string, config map[string]string){
-		"line": handleLineReply,
+		"line":       handleLineReply,
+		"workweixin": handleWorkWeixinReply,
 	}
 }
 
@@ -72,7 +74,9 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 	if _, ok := lineBots[appid]; !ok {
 		bot, err := linebot.New(config["secret"], config["token"])
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			logger.Error.Println("Linebot init fail: ", err.Error())
+			return
 		}
 		lineBots[appid] = bot
 	}
@@ -98,5 +102,29 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 				}
 			}
 		}
+	}
+}
+
+var workWeixinBot = map[string]*workweixin.Client{}
+
+func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string, config map[string]string) {
+	if config["token"] == "" || config["encoded-aes"] == "" {
+		return
+	}
+	if _, ok := workWeixinBot[appid]; !ok {
+		bot, err := workweixin.New(config["token"], config["encoded-aes"])
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.Error.Println("workWeixinBot init fail: ", err.Error())
+			return
+		}
+		workWeixinBot[appid] = bot
+	}
+
+	bot := workWeixinBot[appid]
+	if r.Method == http.MethodGet {
+		logger.Trace.Println("Start url verify")
+		bot.VerifyURL(w, r)
+		return
 	}
 }
