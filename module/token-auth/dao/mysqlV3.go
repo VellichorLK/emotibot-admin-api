@@ -987,6 +987,11 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 		return
 	}
 
+	_, secretErr := controller.RenewAppSecretV3(appID)
+	if secretErr != nil {
+		util.LogError.Println("Create app secret fail, auth may need migration")
+	}
+
 	return
 }
 
