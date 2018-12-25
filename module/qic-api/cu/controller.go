@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/qic-api/sensitive"
 
@@ -179,7 +181,7 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid string) (*QIFlowResult, error) {
+func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid string) (*model.QIFlowResult, error) {
 
 	conversation, err := getConversation(uuid)
 
