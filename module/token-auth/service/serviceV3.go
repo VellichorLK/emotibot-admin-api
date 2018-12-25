@@ -707,3 +707,7 @@ func GetAppViaApiKey(apiKey string) (string, error) {
 	}
 	return appid, nil
 }
+
+func ClearExpireToken() {
+	useDB.ClearExpireToken()
+}

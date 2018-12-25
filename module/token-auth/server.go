@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
@@ -243,6 +244,7 @@ func main() {
 	setUpRoutes()
 	setUpDB()
 	setUpLog()
+	setupRoutines()
 
 	router := mux.NewRouter().StrictSlash(true)
 
@@ -342,4 +344,14 @@ func printRuntimeStack(maxStack int) {
 		}
 	}
 	util.LogTrace.Printf(buf.String())
+}
+
+func setupRoutines() {
+	ticker := time.NewTicker(time.Hour * 12)
+	go func() {
+		for t := range ticker.C {
+			service.ClearExpireToken()
+			util.LogInfo.Println("Clear expired token at", t.Unix())
+		}
+	}()
 }

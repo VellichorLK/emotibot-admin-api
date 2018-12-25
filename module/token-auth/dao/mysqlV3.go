@@ -2372,3 +2372,25 @@ func (controller MYSQLController) GetAppViaApiKey(apiKey string) (string, error)
 
 	return appid, nil
 }
+
+func (controller MYSQLController) ClearExpireToken() {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return
+	}
+
+	now := time.Now()
+	queryStr := "DELETE FROM api_key WHERE expire_time < ?"
+	if _, err = controller.connectDB.Exec(queryStr, now.Unix()); err != nil {
+		return
+	}
+
+	return
+}

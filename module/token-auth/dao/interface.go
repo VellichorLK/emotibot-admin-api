@@ -100,6 +100,7 @@ type DB interface {
 	GetAppViaApiKey(apiKey string) (string, error)
 	RemoveAppApiKeyV3(appid, token string) error
 	RemoveAppAllApiKeyV3(appid string) error
+	ClearExpireToken()
 
 	AddAuditLog(auditLog data.AuditLog) error
 }
