@@ -150,3 +150,65 @@ func GetAppViaApiKey(apiKey string) (string, error) {
 func getCurrentTimestamp() int64 {
 	return time.Now().Unix()
 }
+
+func GetSystemAdminID() ([]string, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		err = util.ErrDBNotInit
+		return nil, err
+	}
+
+	queryStr := "SELECT uuid FROM users WHERE enterprise = NULL order by id"
+	rows, err := db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	for rows.Next() {
+		uuid := ""
+		err = rows.Scan(&uuid)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, uuid)
+	}
+
+	return ret, nil
+}
+
+func GetEnterpriseAdminOfRobot(appid string) ([]string, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		err = util.ErrDBNotInit
+		return nil, err
+	}
+
+	queryStr := "SELECT users.uuid FROM users, apps WHERE apps.uuid = ? AND apps.enterprise = users.enterprise"
+	rows, err := db.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	for rows.Next() {
+		uuid := ""
+		err = rows.Scan(&uuid)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, uuid)
+	}
+
+	return ret, nil
+}
