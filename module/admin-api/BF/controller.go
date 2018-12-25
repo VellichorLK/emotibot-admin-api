@@ -1,6 +1,7 @@
 package BF
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -374,8 +375,9 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 	tokenExpireTime[params[1]] = now.Unix() + accessTokenExpire
 
 	realPath := strings.Replace(r.RequestURI, "api/v1/bf/", "", -1)
-	logger.Trace.Printf("%v %v", r.Method, realPath)
-	req, err = http.NewRequest(r.Method, bfServer+realPath, r.Body)
+	url := fmt.Sprintf("http://%s%s", bfServer, realPath)
+	logger.Trace.Printf("%v %v", r.Method, url)
+	req, err = http.NewRequest(r.Method, url, r.Body)
 	for name, value := range r.Header {
 		req.Header.Set(name, value[0])
 	}
