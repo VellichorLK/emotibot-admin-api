@@ -2361,8 +2361,10 @@ func (controller MYSQLController) GetAppViaApiKey(apiKey string) (string, error)
 		return "", err
 	}
 
-	queryStr := "SELECT appid FROM api_key WHERE api_key = ?"
-	row := controller.connectDB.QueryRow(queryStr, apiKey)
+	now := time.Now()
+
+	queryStr := "SELECT appid FROM api_key WHERE api_key = ? AND expire_time > ?"
+	row := controller.connectDB.QueryRow(queryStr, apiKey, now.Unix())
 	appid := ""
 	if err = row.Scan(&appid); err != nil {
 		return "", err
