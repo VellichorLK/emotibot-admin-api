@@ -391,6 +391,8 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 	for k, v := range resp.Header {
 		w.Header().Set(k, v[0])
 	}
+
+	w.Header().Set("Access_token", accessToken)
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 	resp.Body.Close()
