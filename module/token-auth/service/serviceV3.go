@@ -676,3 +676,34 @@ func GetEnterpriseApp(enterpriseID *string, userID *string) ([]*data.EnterpriseA
 func GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error) {
 	return useDB.GetUserV3ByKeyValue(key, value)
 }
+
+func CheckAppSecretValid(appid, secret string) (bool, error) {
+	key, err := useDB.GetAppSecretV3(appid)
+	if err != sql.ErrNoRows && err != nil {
+		return false, err
+	}
+	util.LogTrace.Printf("Get secret: %s, input secret: %s\n", key, secret)
+	return key == secret, nil
+}
+
+func IssueNewApiKey(appid string, expired int) (string, error) {
+	return useDB.GenerateAppApiKeyV3(appid, expired)
+}
+
+func GetAppSecret(appid string) (string, error) {
+	return useDB.GetAppSecretV3(appid)
+}
+
+func RenewAppSecret(appid string) (string, error) {
+	return useDB.RenewAppSecretV3(appid)
+}
+
+func GetAppViaApiKey(apiKey string) (string, error) {
+	appid, err := useDB.GetAppViaApiKey(apiKey)
+	if err == sql.ErrNoRows {
+		return "", nil
+	} else if err != nil {
+		return "", err
+	}
+	return appid, nil
+}

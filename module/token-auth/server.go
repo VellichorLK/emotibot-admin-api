@@ -90,6 +90,8 @@ func setUpRoutes() {
 		Route{"AddApp", "POST", 3, "enterprise/{enterpriseID}/app", nil, AppAddHandlerV3, []interface{}{0, 1}},
 		Route{"UpdateApp", "PUT", 3, "enterprise/{enterpriseID}/app/{appID}", nil, AppUpdateHandlerV3, []interface{}{0, 1}},
 		Route{"DeleteApp", "DELETE", 3, "enterprise/{enterpriseID}/app/{appID}", nil, AppDeleteHandlerV3, []interface{}{0, 1}},
+		Route{"GetAppSecretKey", "GET", 3, "enterprise/{enterpriseID}/app/{appID}/secret", nil, AppGetSecretHandlerV3, []interface{}{0, 1, 2}},
+		Route{"GetAppSecretKey", "POST", 3, "enterprise/{enterpriseID}/app/{appID}/secret", nil, AppRenewSecretHandlerV3, []interface{}{0, 1, 2}},
 
 		Route{"GetGroups", "GET", 3, "enterprise/{enterpriseID}/groups", nil, GroupsGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetGroup", "GET", 3, "enterprise/{enterpriseID}/group/{groupID}", nil, GroupGetHandlerV3, []interface{}{0, 1, 2}},
@@ -106,6 +108,8 @@ func setUpRoutes() {
 		Route{"Login", "POST", 3, "login", nil, LoginHandlerV3, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "token/{token}", nil, ValidateTokenHandlerV3, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "token", nil, ValidateTokenHandlerV3, []interface{}{}},
+		Route{"IssueApiKey", "POST", 3, "apikey/issue", nil, IssueApiKeyHandler, []interface{}{}},
+		Route{"ValidateApiKey", "GET", 3, "apikey", nil, ValidateApiKey, []interface{}{}},
 
 		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", nil, ModulesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetModules", "GET", 3, "modules", nil, GlobalModulesGetHandlerV3, []interface{}{}},

@@ -18,6 +18,8 @@ import (
 	captcha "github.com/mojocn/base64Captcha"
 )
 
+const defaultExpiredTime = 3600
+
 func SystemAdminsGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	retData, err := service.GetSystemAdminsV3()
 	if err != nil {
@@ -2038,4 +2040,94 @@ func TraceValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		token, err = detailUser.GenerateToken()
 	}
 	w.Write([]byte(fmt.Sprintf("Get return token: %s\n", token)))
+}
+
+func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
+	appid := r.FormValue("appid")
+	secret := r.FormValue("secret")
+	expiredStr := r.FormValue("expired")
+	expired, err := strconv.Atoi(expiredStr)
+	if err != nil {
+		expired = defaultExpiredTime
+	}
+
+	util.LogTrace.Printf("Check secret with %s, %s\n", appid, secret)
+	valid, err := service.CheckAppSecretValid(appid, secret)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+
+	if !valid {
+		returnUnauthorized(w)
+		return
+	}
+
+	apiKey, err := service.IssueNewApiKey(appid, expired)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+
+	returnSuccess(w, apiKey)
+}
+func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
+	authorization := r.Header.Get("Authorization")
+	apiKey := ""
+	if authorization == "" {
+		apiKey = r.URL.Query().Get("apikey")
+	} else {
+		params := strings.Split(authorization, " ")
+		if params[0] != "Api" {
+			util.LogTrace.Println("Header format error: ", authorization)
+			returnUnauthorized(w)
+			return
+		}
+		apiKey = params[1]
+	}
+
+	if apiKey == "" {
+		returnUnauthorized(w)
+		return
+	}
+
+	appid, err := service.GetAppViaApiKey(apiKey)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+
+	if appid == "" {
+		returnUnauthorized(w)
+		return
+	}
+}
+
+func AppGetSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	appid := vars["appID"]
+	if appid == "" {
+		returnBadRequest(w, appid)
+		return
+	}
+	secret, err := service.GetAppSecret(appid)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+	returnSuccess(w, secret)
+}
+func AppRenewSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	appid := vars["appID"]
+	if appid == "" {
+		returnBadRequest(w, appid)
+		return
+	}
+	secret, err := service.RenewAppSecret(appid)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+	returnSuccess(w, secret)
 }

@@ -1,11 +1,13 @@
 package dao
 
 import (
+	"crypto/md5"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
@@ -2162,7 +2164,6 @@ func (controller MYSQLController) GetUserV3ByKeyValue(key string, value string) 
 		WHERE %s = ?`, userTableV3, key)
 
 	row := controller.connectDB.QueryRow(queryStr, value)
-	
 
 	user := data.UserDetailV3{}
 	productStr := ""
@@ -2192,4 +2193,175 @@ func (controller MYSQLController) GetUserV3ByKeyValue(key string, value string) 
 	user.Roles = roles
 
 	return &user, nil
+}
+
+func (controller MYSQLController) GetAppSecretV3(appid string) (string, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	// controller.connectDB
+	queryStr := "SELECT secret FROM apps WHERE uuid = ?"
+	row := controller.connectDB.QueryRow(queryStr, appid)
+	secret := ""
+	err = row.Scan(&secret)
+	if err != nil {
+		return "", err
+	}
+	return secret, nil
+}
+
+func (controller MYSQLController) RenewAppSecretV3(appid string) (string, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return "", err
+	}
+
+	tx, err := controller.connectDB.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := "UPDATE apps SET secret = concat(md5(concat(now(), `uuid`)), sha1(rand())) WHERE uuid = ?"
+	result, err := tx.Exec(queryStr, appid)
+	if err != nil {
+		return "", err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return "", sql.ErrNoRows
+	}
+
+	queryStr = "SELECT secret FROM apps WHERE uuid = ?"
+	row := tx.QueryRow(queryStr, appid)
+	secret := ""
+	if err = row.Scan(&secret); err != nil {
+		return "", err
+	}
+
+	queryStr = "DELETE FROM api_key WHERE appid = ?"
+	if _, err = tx.Exec(queryStr, appid); err != nil {
+		return "", err
+	}
+
+	err = tx.Commit()
+	return secret, err
+}
+
+func (controller MYSQLController) GenerateAppApiKeyV3(appid string, expired int) (string, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+	ok, err := controller.checkDB()
+	if !ok {
+		return "", err
+	}
+
+	tx, err := controller.connectDB.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := "SELECT secret FROM apps WHERE uuid = ?"
+	row := tx.QueryRow(queryStr, appid)
+	secret := ""
+	if err = row.Scan(&secret); err != nil {
+		return "", err
+	}
+
+	now := time.Now()
+	token := fmt.Sprintf("%x%x",
+		md5.Sum([]byte(now.String()+appid)),
+		md5.Sum([]byte(now.String()+secret)))
+	queryStr = "INSERT INTO api_key (appid, api_key, expire_time, create_time) VALUES (?, ?, ?, ?)"
+	if _, err := tx.Exec(queryStr, appid, token, now.Unix()+int64(expired), now.Unix()); err != nil {
+		return "", err
+	}
+	err = tx.Commit()
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func (controller MYSQLController) RemoveAppApiKeyV3(appid, token string) error {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return err
+	}
+
+	queryStr := "DELETE FROM api_key WHERE appid = ? AND api_key = ?"
+	if _, err = controller.connectDB.Exec(queryStr, appid, token); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (controller MYSQLController) RemoveAppAllApiKeyV3(appid string) error {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return err
+	}
+
+	queryStr := "DELETE FROM api_key WHERE appid = ?"
+	if _, err = controller.connectDB.Exec(queryStr, appid); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (controller MYSQLController) GetAppViaApiKey(apiKey string) (string, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return "", err
+	}
+
+	queryStr := "SELECT appid FROM api_key WHERE api_key = ?"
+	row := controller.connectDB.QueryRow(queryStr, apiKey)
+	appid := ""
+	if err = row.Scan(&appid); err != nil {
+		return "", err
+	}
+
+	return appid, nil
 }
