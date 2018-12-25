@@ -112,10 +112,19 @@ func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func newAsrContent(content apiFlowAddBody) *model.AsrContent {
+	return &model.AsrContent{
+		StartTime: content.StartTime,
+		EndTime:   content.EndTime,
+		Text:      content.Text,
+		Speaker:   content.Speaker,
+	}
+}
+
 func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 	uuid := util.GetMuxVar(r, "id")
 
-	var requestBody []*apiFlowAddBody
+	var requestBody []apiFlowAddBody
 	err := util.ReadJSON(r, &requestBody)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -126,9 +135,12 @@ func handleFlowAdd(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty sentence"), http.StatusBadRequest)
 		return
 	}
-
+	var asrContents = make([]*model.AsrContent, 0)
+	for _, b := range requestBody {
+		asrContents = append(asrContents, newAsrContent(b))
+	}
 	//insert the segment
-	err = insertSegmentByUUID(uuid, requestBody)
+	err = insertSegmentByUUID(uuid, asrContents)
 	if err != nil {
 		if err == ErrSpeaker {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -215,7 +227,7 @@ func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid strin
 		return nil, errors.New("no group for flow usage")
 	}
 
-	resp := &QIFlowResult{FileName: conversation.FileName}
+	resp := &model.QIFlowResult{FileName: conversation.FileName}
 
 	for i := 0; i < len(groups); i++ {
 		appIDStr := strconv.FormatUint(groups[i].AppID, 10)
@@ -239,7 +251,7 @@ func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid strin
 			return nil, err
 		}
 
-		groupRes := &QIFlowGroupResult{Name: groups[i].Name}
+		groupRes := &model.QIFlowGroupResult{Name: groups[i].Name}
 		groupRes.QIResult = qiResult
 
 		resp.Result = append(resp.Result, groupRes)

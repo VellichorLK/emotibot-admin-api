@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -37,7 +38,7 @@ func init() {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return
 				}
-				serviceDAO = &sqlDAO{conn: conn}
+				serviceDAO = model.NewGroupSQLDao(conn)
 			},
 		},
 	}

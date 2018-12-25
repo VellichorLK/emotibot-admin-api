@@ -1,15 +1,17 @@
 package qi
 
+import "emotibot.com/emotigo/module/qic-api/model/v1"
+
 var (
-	serviceDAO DAO = &sqlDAO{}
+	serviceDAO model.GroupDAO = &model.GroupSQLDao{}
 )
 
-func GetGroups() (groups []Group, err error) {
+func GetGroups() (groups []model.GroupWCond, err error) {
 	groups, err = serviceDAO.GetGroups()
 	return
 }
 
-func CreateGroup(group *Group) (createdGroup *Group, err error) {
+func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err error) {
 	if group == nil || group.Condition == nil {
 		return
 	}
@@ -35,7 +37,7 @@ func CreateGroup(group *Group) (createdGroup *Group, err error) {
 	return
 }
 
-func GetGroupBy(id int64) (group *Group, err error) {
+func GetGroupBy(id int64) (group *model.GroupWCond, err error) {
 	group, err = serviceDAO.GetGroupBy(id)
 	if err != nil || group == nil {
 		return
@@ -47,7 +49,7 @@ func GetGroupBy(id int64) (group *Group, err error) {
 	return
 }
 
-func UpdateGroup(id int64, gruop *Group) (err error) {
+func UpdateGroup(id int64, gruop *model.GroupWCond) (err error) {
 	tx, err := serviceDAO.Begin()
 	if err != nil {
 		return

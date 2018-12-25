@@ -19,8 +19,14 @@ type GroupDAO interface {
 	DeleteGroup(id int64) error
 }
 
-type sqlDAO struct {
+type GroupSQLDao struct {
 	conn *sql.DB
+}
+
+func NewGroupSQLDao(conn *sql.DB) *GroupSQLDao {
+	return &GroupSQLDao{
+		conn: conn,
+	}
 }
 
 type SimpleGroup struct {
@@ -79,8 +85,8 @@ type GroupCondition struct {
 //InitDB is used to get the db in this module
 //	deprecated, origin version should not be used anymore for performance and race-condition issues.
 //	It is keeped only to minimize code changed for current functions.
-//  sqlDao will get the inner conn db at somewhere else.
-func (s *sqlDAO) initDB() error {
+//  GroupSQLDao will get the inner conn db at somewhere else.
+func (s *GroupSQLDao) initDB() error {
 	if s.conn == nil {
 		return fmt.Errorf("package db have not initialized yet")
 	}
@@ -88,7 +94,7 @@ func (s *sqlDAO) initDB() error {
 }
 
 //Begin is used to start a transaction
-func (s *sqlDAO) Begin() (*sql.Tx, error) {
+func (s *GroupSQLDao) Begin() (*sql.Tx, error) {
 	if s.conn == nil {
 		err := s.initDB()
 		if err != nil {
@@ -99,20 +105,20 @@ func (s *sqlDAO) Begin() (*sql.Tx, error) {
 }
 
 //Commit commits the data
-func (s *sqlDAO) Commit(tx *sql.Tx) error {
+func (s *GroupSQLDao) Commit(tx *sql.Tx) error {
 	if tx != nil {
 		return tx.Commit()
 	}
 	return nil
 }
 
-func (s *sqlDAO) ClearTranscation(tx *sql.Tx) {
+func (s *GroupSQLDao) ClearTranscation(tx *sql.Tx) {
 	if tx != nil {
 		util.ClearTransition(tx)
 	}
 }
 
-func (s *sqlDAO) GetGroups() (groups []GroupWCond, err error) {
+func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -150,7 +156,7 @@ func genInsertRelationSQL(id int64, rules []int64) (str string, values []interfa
 	return
 }
 
-func (s *sqlDAO) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *GroupWCond, err error) {
+func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -227,7 +233,7 @@ func (s *sqlDAO) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *Group
 	return
 }
 
-func (s *sqlDAO) GetGroupBy(id int64) (group *GroupWCond, err error) {
+func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -294,7 +300,7 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *GroupWCond, err error) {
 	return
 }
 
-func (s *sqlDAO) UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) (err error) {
+func (s *GroupSQLDao) UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) (err error) {
 	if group == nil {
 		return
 	}
@@ -464,7 +470,7 @@ func addCommaIfNotFirst(sqlStr string, first bool) string {
 	return sqlStr
 }
 
-func (s *sqlDAO) DeleteGroup(id int64) (err error) {
+func (s *GroupSQLDao) DeleteGroup(id int64) (err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -481,6 +487,6 @@ func (s *sqlDAO) DeleteGroup(id int64) (err error) {
 	return
 }
 
-// func (s *sqlDAO) GetRules(enterprise string) (err error) {
+// func (s *GroupSQLDao) GetRules(enterprise string) (err error) {
 
 // }

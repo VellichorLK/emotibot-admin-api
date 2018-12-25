@@ -12,8 +12,7 @@ import (
 )
 
 // Dao is the interface of qi dao, it can be used for mock
-type Dao interface {
-	InitDB() error
+type RuleDao interface {
 	Begin() (*sql.Tx, error)
 	Commit(tx *sql.Tx) error
 	CreateFlowConversation(tx *sql.Tx, d *FlowCreate) (int64, error)
@@ -32,27 +31,27 @@ type Dao interface {
 }
 
 type FlowCreate struct {
-	typ          int
-	leftChannel  int
-	rightChannel int
-	enterprise   string
-	callTime     int64
-	uploadTime   int64
-	updateTime   int64
-	fileName     string
-	uuid         string
-	user         string
+	Typ          int
+	LeftChannel  int
+	RightChannel int
+	Enterprise   string
+	CallTime     int64
+	UploadTime   int64
+	UpdateTime   int64
+	FileName     string
+	UUID         string
+	User         string
 }
 
 //Segment is vad segment
 type Segment struct {
-	callID    uint64
-	asr       *apiFlowAddBody
-	channel   int
-	creatTime int64
+	CallID    uint64
+	ASR       *AsrContent
+	Channel   int
+	CreatTime int64
 }
 
-type apiFlowAddBody struct {
+type AsrContent struct {
 	StartTime float64 `json:"start_time"`
 	EndTime   float64 `json:"end_time"`
 	Text      string  `json:"text"`
@@ -230,13 +229,10 @@ type SQLDao struct {
 	conn *sql.DB
 }
 
-//InitDB is used to get the db in this module
-func (s SQLDao) InitDB() error {
-	s.conn = GetDB()
-	if s.conn == nil {
-		return util.ErrDBNotInit
+func NewSQLDao(conn *sql.DB) *SQLDao {
+	return &SQLDao{
+		conn: conn,
 	}
-	return nil
 }
 
 //Begin is used to start a transaction
@@ -257,7 +253,7 @@ func (s SQLDao) Commit(tx *sql.Tx) error {
 }
 
 //CreateFlowConversation creates the flow conversation
-func (s SQLDao) CreateFlowConversation(tx *sql.Tx, d *daoFlowCreate) (int64, error) {
+func (s SQLDao) CreateFlowConversation(tx *sql.Tx, d *FlowCreate) (int64, error) {
 
 	if s.conn == nil && tx == nil {
 		return 0, util.ErrDBNotInit
@@ -273,9 +269,9 @@ func (s SQLDao) CreateFlowConversation(tx *sql.Tx, d *daoFlowCreate) (int64, err
 	var res sql.Result
 	var err error
 	if tx != nil {
-		res, err = tx.Exec(insertSQL, d.enterprise, d.fileName, d.callTime, d.updateTime, d.uploadTime, d.typ, d.leftChannel, d.rightChannel, d.uuid, d.user)
+		res, err = tx.Exec(insertSQL, d.Enterprise, d.FileName, d.CallTime, d.UpdateTime, d.UploadTime, d.Typ, d.LeftChannel, d.RightChannel, d.UUID, d.User)
 	} else {
-		res, err = s.conn.Exec(insertSQL, d.enterprise, d.fileName, d.callTime, d.updateTime, d.uploadTime, d.typ, d.leftChannel, d.rightChannel, d.uuid, d.user)
+		res, err = s.conn.Exec(insertSQL, d.Enterprise, d.FileName, d.CallTime, d.UpdateTime, d.UploadTime, d.Typ, d.LeftChannel, d.RightChannel, d.UUID, d.User)
 	}
 	if err != nil {
 		return 0, err
@@ -298,9 +294,9 @@ func (s SQLDao) InsertSegment(tx *sql.Tx, seg *Segment) (int64, error) {
 	var res sql.Result
 	var err error
 	if tx != nil {
-		res, err = tx.Exec(insertSQL, seg.callID, seg.asr.StartTime, seg.asr.EndTime, seg.channel, seg.creatTime, seg.asr.Text)
+		res, err = tx.Exec(insertSQL, seg.CallID, seg.ASR.StartTime, seg.ASR.EndTime, seg.Channel, seg.CreatTime, seg.ASR.Text)
 	} else {
-		res, err = s.conn.Exec(insertSQL, seg.callID, seg.asr.StartTime, seg.asr.EndTime, seg.channel, seg.creatTime, seg.asr.Text)
+		res, err = s.conn.Exec(insertSQL, seg.CallID, seg.ASR.StartTime, seg.ASR.EndTime, seg.Channel, seg.CreatTime, seg.ASR.Text)
 	}
 	if err != nil {
 		return 0, err
@@ -406,8 +402,8 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 		if err != nil {
 			return nil, err
 		}
-		asr := &apiFlowAddBody{StartTime: startT, EndTime: endT, Text: asrText}
-		segment := &Segment{callID: callID, channel: channel, creatTime: createTime, asr: asr}
+		asr := &AsrContent{StartTime: startT, EndTime: endT, Text: asrText}
+		segment := &Segment{CallID: callID, Channel: channel, CreatTime: createTime, ASR: asr}
 		segments = append(segments, segment)
 	}
 	return segments, nil
