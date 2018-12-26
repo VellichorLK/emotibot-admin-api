@@ -3,6 +3,8 @@ package integration
 import (
 	"net/http"
 
+	"github.com/siongui/gojianfan"
+
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/services/workweixin"
@@ -71,6 +73,7 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 	if config["token"] == "" || config["secret"] == "" {
 		return
 	}
+	locale := r.URL.Query().Get("locale")
 	if _, ok := lineBots[appid]; !ok {
 		bot, err := linebot.New(config["secret"], config["token"])
 		if err != nil {
@@ -97,6 +100,12 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
 				answer := GetChatResult(appid, event.Source.UserID, message.Text)
+				if locale == "zhtw" {
+					answer = gojianfan.S2T(answer)
+				} else {
+					answer = gojianfan.T2S(answer)
+				}
+
 				if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(answer)).Do(); err != nil {
 					logger.Error.Println("Reply message fail: ", err.Error())
 				}
