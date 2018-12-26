@@ -39,7 +39,7 @@ type GroupWCond struct {
 	ID              int64           `json:"group_id,omitempty"`
 	Name            string          `json:"group_name,omitempty"`
 	Enterprise      string          `json:",omitempty"`
-	Enabled         int             `json:is_enable,omitempty`
+	Enabled         int             `json:"is_enable,omitempty"`
 	Speed           float64         `json:"limit_speed,omitempty"`
 	SlienceDuration float64         `json:"limit_silence,omitempty"`
 	Rules           []int64         `json:"rules"`
