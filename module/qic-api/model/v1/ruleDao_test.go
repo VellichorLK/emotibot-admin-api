@@ -1,4 +1,4 @@
-package cu
+package model
 
 import (
 	"database/sql"
@@ -86,7 +86,7 @@ func TestIntegrationSQLDaoGroup(t *testing.T) {
 
 func TestSQLDaoGroup(t *testing.T) {
 	db, mocker, _ := sqlmock.New()
-	serviceDao = SQLDao{
+	serviceDao := SQLDao{
 		conn: db,
 	}
 	rows := exampleGroups(goldenGroups)

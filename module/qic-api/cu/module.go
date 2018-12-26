@@ -11,6 +11,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/timecache"
 )
 
@@ -74,9 +75,7 @@ func init() {
 
 //SetupServiceDB sets up the db structure
 func SetupServiceDB(db *sql.DB) {
-	serviceDao = SQLDao{
-		conn: db,
-	}
+	serviceDao = model.NewSQLDao(db)
 }
 
 func SetUpTimeCache() {
