@@ -57,3 +57,30 @@ func TestGetUUID(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGetAppidViaApiKey(t *testing.T) {
+	currentTimeGetter = getCurrentTimestampMock
+	now := currentTimeGetter()
+	var mockedRows = sqlmock.NewRows([]string{"appid", "expire_time"}).AddRow("csbot", now+3000)
+	writer.ExpectQuery("SELECT appid, expire_time FROM api_key*").WithArgs("abcde", now).WillReturnRows(mockedRows)
+	appid, err := GetAppViaApiKey("abcde")
+	if err != nil {
+		t.Fatal("GetAppViaApiKey fail", err.Error())
+	}
+	if appid != "csbot" {
+		t.Errorf("GetAppViaApiKey expect csbot, get %s", appid)
+	}
+	if appid != apiKeyApp["abcde"] {
+		t.Errorf("GetAppViaApiKey get invalid value in appid, expect csbot, get %s", apiKeyApp["abcde"])
+	}
+	if now+3000 != apiKeyCache["abcde"] {
+		t.Errorf("GetAppViaApiKey get invalid value in expire, expect %d, get %d", now+3000, apiKeyCache["abcde"])
+	}
+	if err = writer.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func getCurrentTimestampMock() int64 {
+	return 12345
+}

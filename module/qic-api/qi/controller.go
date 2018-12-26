@@ -1,16 +1,18 @@
 package qi
 
 import (
-	"strconv"
 	"net/http"
+	"strconv"
+
 	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
-	group := Group{}
+	group := model.GroupWCond{}
 	err := util.ReadJSON(r, &group)
 
 	if err != nil {
@@ -34,10 +36,10 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	simpleGroups := make([]SimpleGroup, len(groups), len(groups))
+	simpleGroups := make([]model.SimpleGroup, len(groups), len(groups))
 	for i, group := range groups {
-		simpleGroup := SimpleGroup{
-			ID: group.ID,
+		simpleGroup := model.SimpleGroup{
+			ID:   group.ID,
 			Name: group.Name,
 		}
 
@@ -52,8 +54,8 @@ func parseID(r *http.Request) (id int64, err error) {
 	idStr := vars["id"]
 
 	id, err = strconv.ParseInt(idStr, 10, 64)
-	return 
-	
+	return
+
 }
 
 func handleGetGroup(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +78,7 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJSON(w, group)
-	
+
 }
 
 func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +88,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	group := Group{}
+	group := model.GroupWCond{}
 	err = util.ReadJSON(r, &group)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

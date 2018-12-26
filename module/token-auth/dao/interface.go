@@ -94,5 +94,13 @@ type DB interface {
 	GetEnterpriseIDV3(appID string) (string, error)
 	GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)
 
+	GetAppSecretV3(appid string) (string, error)
+	RenewAppSecretV3(appid string) (string, error)
+	GenerateAppApiKeyV3(appid string, expired int) (string, error)
+	GetAppViaApiKey(apiKey string) (string, error)
+	RemoveAppApiKeyV3(appid, token string) error
+	RemoveAppAllApiKeyV3(appid string) error
+	ClearExpireToken()
+
 	AddAuditLog(auditLog data.AuditLog) error
 }

@@ -1,51 +1,100 @@
-package qi
+package model
 
 import (
-	"fmt"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/pkg/logger"
 )
 
-type DAO interface {
+type GroupDAO interface {
 	Begin() (*sql.Tx, error)
 	Commit(tx *sql.Tx) error
 	ClearTranscation(tx *sql.Tx)
-	GetGroups() ([]Group, error)
-	CreateGroup(group *Group, tx *sql.Tx) (*Group, error)
-	GetGroupBy(id int64) (*Group, error)
-	UpdateGroup(id int64, group *Group, tx *sql.Tx) (error)
-	DeleteGroup(id int64) (error)
+	GetGroups() ([]GroupWCond, error)
+	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
+	GetGroupBy(id int64) (*GroupWCond, error)
+	UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
+	DeleteGroup(id int64) error
 }
 
-type sqlDAO struct {
+type GroupSQLDao struct {
 	conn *sql.DB
 }
 
+func NewGroupSQLDao(conn *sql.DB) *GroupSQLDao {
+	return &GroupSQLDao{
+		conn: conn,
+	}
+}
+
+type SimpleGroup struct {
+	ID   int64  `json:"group_id"`
+	Name string `json:"group_name"`
+}
+
+// GroupWCond is Group with Condition struct
+type GroupWCond struct {
+	ID              int64           `json:"group_id,omitempty"`
+	Name            string          `json:"group_name,omitempty"`
+	Enterprise      string          `json:",omitempty"`
+	Enabled         int             `json:is_enable,omitempty`
+	Speed           float64         `json:"limit_speed,omitempty"`
+	SlienceDuration float64         `json:"limit_silence,omitempty"`
+	Rules           []int64         `json:"rules"`
+	Condition       *GroupCondition `json:"other,omitempty"`
+}
+
+// Group
+type Group struct {
+	AppID          uint64
+	Name           string
+	EnterpriseID   string
+	Description    string
+	CreatedTime    int64
+	UpdatedTime    int64
+	IsDelete       bool
+	IsEnable       bool
+	LimitedSpeed   int
+	LimitedSilence float32
+	typ            int
+}
+
+type GroupCondition struct {
+	FileName         string `json:"file_name"`
+	CallDuration     int64  `json:"call_time"`
+	CallComment      string `json:"call_comment"`
+	Deal             int    `json:"transcation"`
+	Series           string `json:"series"`
+	StaffID          string `json:"host_id"`
+	StaffName        string `json:"host_name"`
+	Extension        string `json:"extension"`
+	Department       string `json:"department"`
+	ClientID         string `json:"guest_id"`
+	ClientName       string `json:"guest_name"`
+	ClientPhone      string `json:"guest_phone"`
+	LeftChannel      string `json:"left_channel"`
+	LeftChannelCode  int
+	RightChannel     string `json:"right_channel"`
+	RightChannelCode int
+	CallStart        int64 `json:"call_from"`
+	CallEnd          int64 `json:"call_end"`
+}
+
 //InitDB is used to get the db in this module
-func (s *sqlDAO) initDB() error {
+//	deprecated, origin version should not be used anymore for performance and race-condition issues.
+//	It is keeped only to minimize code changed for current functions.
+//  GroupSQLDao will get the inner conn db at somewhere else.
+func (s *GroupSQLDao) initDB() error {
 	if s.conn == nil {
-		envs := ModuleInfo.Environments
-
-		url := envs["MYSQL_URL"]
-		user := envs["MYSQL_USER"]
-		pass := envs["MYSQL_PASS"]
-		db := envs["MYSQL_DB"]
-
-		conn, err := util.InitDB(url, user, pass, db)
-		if err != nil {
-			logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
-			return err
-		}
-		s.conn = conn
+		return fmt.Errorf("package db have not initialized yet")
 	}
 	return nil
 }
 
 //Begin is used to start a transaction
-func (s *sqlDAO) Begin() (*sql.Tx, error) {
+func (s *GroupSQLDao) Begin() (*sql.Tx, error) {
 	if s.conn == nil {
 		err := s.initDB()
 		if err != nil {
@@ -56,20 +105,20 @@ func (s *sqlDAO) Begin() (*sql.Tx, error) {
 }
 
 //Commit commits the data
-func (s *sqlDAO) Commit(tx *sql.Tx) error {
+func (s *GroupSQLDao) Commit(tx *sql.Tx) error {
 	if tx != nil {
 		return tx.Commit()
 	}
 	return nil
 }
 
-func (s *sqlDAO) ClearTranscation(tx *sql.Tx) {
+func (s *GroupSQLDao) ClearTranscation(tx *sql.Tx) {
 	if tx != nil {
 		util.ClearTransition(tx)
 	}
 }
 
-func (s *sqlDAO) GetGroups() (groups []Group, err error) {
+func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -86,9 +135,9 @@ func (s *sqlDAO) GetGroups() (groups []Group, err error) {
 	}
 	defer rows.Close()
 
-	groups = make([]Group, 0)
+	groups = make([]GroupWCond, 0)
 	for rows.Next() {
-		group := Group{}
+		group := GroupWCond{}
 		rows.Scan(&group.ID, &group.Name)
 
 		groups = append(groups, group)
@@ -107,7 +156,7 @@ func genInsertRelationSQL(id int64, rules []int64) (str string, values []interfa
 	return
 }
 
-func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err error) {
+func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -184,7 +233,7 @@ func (s *sqlDAO) CreateGroup(group *Group, tx *sql.Tx) (createdGroup *Group, err
 	return
 }
 
-func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
+func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -205,7 +254,7 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 		return
 	}
 
-	group = &Group{}
+	group = &GroupWCond{}
 
 	for rows.Next() {
 		condition := GroupCondition{}
@@ -251,7 +300,7 @@ func (s *sqlDAO) GetGroupBy(id int64) (group *Group, err error) {
 	return
 }
 
-func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
+func (s *GroupSQLDao) UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) (err error) {
 	if group == nil {
 		return
 	}
@@ -282,7 +331,7 @@ func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
 	}
 
 	// update relation
-	// delete old relation 
+	// delete old relation
 	// add new relation
 	updateStr = "DELETE FROM Relation_Group_Rule WHERE group_id=?"
 	_, err = tx.Exec(updateStr, id)
@@ -302,7 +351,7 @@ func (s *sqlDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
 	return
 }
 
-func genUpdateGroupSQL(id int64, group *Group) (str string, values []interface{}) {
+func genUpdateGroupSQL(id int64, group *GroupWCond) (str string, values []interface{}) {
 	str = "UPDATE rule_group SET "
 
 	values = make([]interface{}, 0)
@@ -338,7 +387,7 @@ func genUpdateGroupSQL(id int64, group *Group) (str string, values []interface{}
 	return
 }
 
-func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , values []interface{}) {
+func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string, values []interface{}) {
 	str = "UPDATE group_condition SET "
 	values = make([]interface{}, 0)
 
@@ -413,7 +462,7 @@ func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string , va
 	return
 }
 
-func addCommaIfNotFirst(sqlStr string, first bool) (string) {
+func addCommaIfNotFirst(sqlStr string, first bool) string {
 	if !first {
 		sqlStr += ","
 		return sqlStr
@@ -421,7 +470,7 @@ func addCommaIfNotFirst(sqlStr string, first bool) (string) {
 	return sqlStr
 }
 
-func (s *sqlDAO) DeleteGroup(id int64) (err error) {
+func (s *GroupSQLDao) DeleteGroup(id int64) (err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -437,3 +486,7 @@ func (s *sqlDAO) DeleteGroup(id int64) (err error) {
 	}
 	return
 }
+
+// func (s *GroupSQLDao) GetRules(enterprise string) (err error) {
+
+// }

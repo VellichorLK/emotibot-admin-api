@@ -497,8 +497,8 @@ func getBFAccessToken(userid string) (string, error) {
 	accessToken := fmt.Sprintf("%s-%s", md5Part, sha1Part)
 	logger.Trace.Printf("Gen new access token: %s\n", accessToken)
 
-	queryStr := "INSERT INTO tbl_user_access_token (USER_ID, access_token, expiration, create_datetime) VALUES (?, ?, 36000, ?)"
-	_, err := mySQL.Exec(queryStr, userid, accessToken, now)
+	queryStr := "INSERT INTO tbl_user_access_token (USER_ID, access_token, expiration, create_datetime) VALUES (?, ?, ?, ?)"
+	_, err := mySQL.Exec(queryStr, userid, accessToken, accessTokenExpire, now)
 	if err != nil {
 		return "", err
 	}

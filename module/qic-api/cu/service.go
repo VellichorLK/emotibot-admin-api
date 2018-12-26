@@ -10,12 +10,13 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/timecache"
 	uuid "github.com/satori/go.uuid"
 )
 
 var (
-	serviceDao Dao
+	serviceDao model.RuleDao
 	cache      timecache.TimeCache
 )
 
@@ -25,6 +26,13 @@ var (
 	ErrEndTimeSmaller = errors.New("end time < start time")
 )
 
+type apiFlowAddBody struct {
+	StartTime float64 `json:"start_time"`
+	EndTime   float64 `json:"end_time"`
+	Text      string  `json:"text"`
+	Speaker   string  `json:"speaker"`
+}
+
 func createFlowConversation(enterprise string, user string, body *apiFlowCreateBody) (string, error) {
 	now := time.Now().Unix()
 	uuid, err := uuid.NewV4()
@@ -32,9 +40,9 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 		return "", err
 	}
 	uuidStr := hex.EncodeToString(uuid[:])
-	daoData := &daoFlowCreate{enterprise: enterprise, typ: Flow, leftChannel: ChannelHost, rightChannel: ChannelGuest,
-		fileName: body.FileName, callTime: body.CreateTime, uploadTime: now, updateTime: now, uuid: uuidStr,
-		user: user}
+	daoData := &model.FlowCreate{Enterprise: enterprise, Typ: Flow, LeftChannel: ChannelHost, RightChannel: ChannelGuest,
+		FileName: body.FileName, CallTime: body.CreateTime, UploadTime: now, UpdateTime: now, UUID: uuidStr,
+		User: user}
 
 	tx, err := serviceDao.Begin()
 	if err != nil {
@@ -48,7 +56,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 		return "", err
 	}
 
-	empty := &QIFlowResult{FileName: body.FileName}
+	empty := &model.QIFlowResult{FileName: body.FileName}
 	emptStr, err := json.Marshal(empty)
 	if err != nil {
 		logger.Error.Printf("Marshal failed. %s\n", err)
@@ -64,7 +72,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	return uuidStr, nil
 }
 
-func insertSegmentByUUID(uuid string, asr []*apiFlowAddBody) error {
+func insertSegmentByUUID(uuid string, asr []*model.AsrContent) error {
 
 	if asr == nil || len(uuid) != 32 {
 		return nil
@@ -87,14 +95,14 @@ func insertSegmentByUUID(uuid string, asr []*apiFlowAddBody) error {
 
 	//create the segment structure and insert into db
 	for i := 0; i < len(asr); i++ {
-		seg := &Segment{callID: id, asr: asr[i], creatTime: time.Now().Unix()}
+		seg := &model.Segment{CallID: id, ASR: asr[i], CreatTime: time.Now().Unix()}
 		switch asr[i].Speaker {
 		case WordHost:
-			seg.channel = ChannelHost
+			seg.Channel = ChannelHost
 		case WordGuest:
-			seg.channel = ChannelGuest
+			seg.Channel = ChannelGuest
 		case WordSilence:
-			seg.channel = ChannelSilence
+			seg.Channel = ChannelSilence
 		default:
 			return ErrSpeaker
 		}
@@ -104,7 +112,7 @@ func insertSegmentByUUID(uuid string, asr []*apiFlowAddBody) error {
 
 }
 
-func getFlowSentences(uuid string) ([]*Segment, error) {
+func getFlowSentences(uuid string) ([]*model.Segment, error) {
 	id, err := getIDByUUID(uuid)
 	if err != nil {
 		return nil, err
@@ -115,17 +123,17 @@ func getFlowSentences(uuid string) ([]*Segment, error) {
 	return serviceDao.GetSegmentByCallID(nil, id)
 }
 
-func segmentToV1PredictRequest(segments []*Segment) []*V1PredictRequestData {
+func segmentToV1PredictRequest(segments []*model.Segment) []*V1PredictRequestData {
 	num := len(segments)
 	V1PredictRequestDatas := make([]*V1PredictRequestData, num, num)
 	for i := 0; i < num; i++ {
-		data := &V1PredictRequestData{ID: i + 1, Sentence: segments[i].asr.Text}
+		data := &V1PredictRequestData{ID: i + 1, Sentence: segments[i].ASR.Text}
 		V1PredictRequestDatas[i] = data
 	}
 	return V1PredictRequestDatas
 }
 
-func getConversation(uuid string) (*ConversationInfo, error) {
+func getConversation(uuid string) (*model.ConversationInfo, error) {
 	return serviceDao.GetConversationByUUID(nil, uuid)
 }
 
@@ -172,30 +180,30 @@ func predictByV1CuModule(context *V1PredictContext) (*V1PredictResult, error) {
 }
 
 //GetFlowGroup gets the group for flow usage in enterprise
-func GetFlowGroup(enterprise string) ([]Group, error) {
+func GetFlowGroup(enterprise string) ([]model.Group, error) {
 	if enterprise == "" {
 		return nil, nil
 	}
-	queryCondition := GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow}}
+	queryCondition := model.GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow}}
 	return serviceDao.Group(nil, queryCondition)
 }
 
 //GetRuleLogic gets the logic in the rule, the rule in the group information
-func GetRuleLogic(groupID uint64) ([]*QIResult, error) {
+func GetRuleLogic(groupID uint64) ([]*model.QIResult, error) {
 	ruleLogicIDs, ruleOrder, err := serviceDao.GetGroupToLogicID(nil, groupID)
 	if err != nil {
 		return nil, err
 	}
 
 	//get the rule information
-	ruleCondition := RuleQuery{ID: ruleOrder}
+	ruleCondition := model.RuleQuery{ID: ruleOrder}
 	rules, err := serviceDao.GetRule(nil, ruleCondition)
 	if err != nil {
 		return nil, err
 	}
 
 	//transform rule slice to map[rule_id] rule
-	rulesMap := make(map[uint64]*Rule, len(rules))
+	rulesMap := make(map[uint64]*model.Rule, len(rules))
 	for i := 0; i < len(rules); i++ {
 		rulesMap[rules[i].RuleID] = rules[i]
 	}
@@ -207,14 +215,14 @@ func GetRuleLogic(groupID uint64) ([]*QIResult, error) {
 	}
 
 	//get all logic information
-	logicCondition := LogicQuery{ID: logicIDs}
+	logicCondition := model.LogicQuery{ID: logicIDs}
 	logics, err := serviceDao.GetLogic(nil, logicCondition)
 	if err != nil {
 		return nil, err
 	}
 
 	//transform logics to map[logic_id] logic
-	logicsMap := make(map[uint64]*Logic, len(logics))
+	logicsMap := make(map[uint64]*model.Logic, len(logics))
 	for i := 0; i < len(logics); i++ {
 		logicsMap[logics[i].LogicID] = logics[i]
 	}
@@ -229,18 +237,18 @@ func GetRuleLogic(groupID uint64) ([]*QIResult, error) {
 	*/
 
 	numOfRule := len(ruleOrder)
-	ruleRes := make([]*QIResult, 0, numOfRule)
+	ruleRes := make([]*model.QIResult, 0, numOfRule)
 	for i := 0; i < numOfRule; i++ {
 		ruleID := ruleOrder[i]
 		if rule, ok := rulesMap[ruleID]; ok {
-			result := &QIResult{Name: rule.Name, ID: ruleID}
+			result := &model.QIResult{Name: rule.Name, ID: ruleID}
 
 			localLogicIDs := ruleLogicIDs[ruleID]
 			for i := 0; i < len(localLogicIDs); i++ {
 
 				logicID := localLogicIDs[i]
 				if logic, ok := logicsMap[logicID]; ok {
-					logicRes := &LogicResult{Name: logic.Name, ID: logicID, Recommend: make([]string, 0)}
+					logicRes := &model.LogicResult{Name: logic.Name, ID: logicID, Recommend: make([]string, 0)}
 					/*
 						if recommendation, ok := logicRecommend[logicID]; ok {
 							logicRes.Recommend = recommendation
@@ -257,7 +265,7 @@ func GetRuleLogic(groupID uint64) ([]*QIResult, error) {
 }
 
 //FillCUCheckResult fills the result
-func FillCUCheckResult(predict *V1PredictResult, result []*QIResult) error {
+func FillCUCheckResult(predict *V1PredictResult, result []*model.QIResult) error {
 	if predict == nil || result == nil {
 		return nil
 	}
@@ -286,7 +294,7 @@ func FillCUCheckResult(predict *V1PredictResult, result []*QIResult) error {
 }
 
 //FinishFlowQI finishs the flow, update information
-func FinishFlowQI(req *apiFlowFinish, uuid string, result *QIFlowResult) error {
+func FinishFlowQI(req *apiFlowFinish, uuid string, result *model.QIFlowResult) error {
 
 	callID, err := getIDByUUID(uuid)
 	if err != nil {
@@ -336,7 +344,7 @@ func FinishFlowQI(req *apiFlowFinish, uuid string, result *QIFlowResult) error {
 }
 
 //InsertFlowResultToTmp inserts the flow result
-func InsertFlowResultToTmp(callID uint64, result *QIFlowResult) error {
+func InsertFlowResultToTmp(callID uint64, result *model.QIFlowResult) error {
 
 	resultStr, err := json.Marshal(result)
 	if err != nil {
@@ -351,7 +359,7 @@ func InsertFlowResultToTmp(callID uint64, result *QIFlowResult) error {
 }
 
 //UpdateFlowResult updates the current flow result by callID
-func UpdateFlowResult(callID uint64, result *QIFlowResult) (int64, error) {
+func UpdateFlowResult(callID uint64, result *model.QIFlowResult) (int64, error) {
 	resultStr, err := json.Marshal(result)
 	if err != nil {
 		logger.Error.Printf("Marshal failed. %s\n", err)
@@ -368,6 +376,6 @@ func UpdateFlowResult(callID uint64, result *QIFlowResult) (int64, error) {
 }
 
 //GetFlowResult gets the flow result from db
-func GetFlowResult(callID uint64) (*QIFlowResult, error) {
+func GetFlowResult(callID uint64) (*model.QIFlowResult, error) {
 	return serviceDao.GetFlowResultFromTmp(nil, callID)
 }

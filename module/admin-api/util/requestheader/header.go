@@ -37,7 +37,7 @@ func GetAuthToken(r *http.Request) string {
 	if len(params) < 2 {
 		return ""
 	}
-	return params[1]
+	return header
 }
 
 // GetEnterpriseID will get enterprise ID from http header

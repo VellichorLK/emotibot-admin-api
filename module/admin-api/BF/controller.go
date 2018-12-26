@@ -1,17 +1,26 @@
 package BF
 
 import (
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
+	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
+)
+
+const (
+	accessTokenExpire = 86400
 )
 
 // This module will do some dirty work for BF compatible...
@@ -81,6 +90,17 @@ func init() {
 				IgnoreAppID:     true,
 				IgnoreAuthToken: false,
 			}),
+
+			util.NewEntryPoint("POST", "upload/sq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/operation/insert/sq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "sq/deleteCollection", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "upload/lq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "progress", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/operation/upsert/lq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/operation/delete/lq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/operation/update/sq", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/operation/update/answer", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "dal/updatesqanswer", []string{}, handleRedirect),
 		},
 	}
 }
@@ -296,4 +316,87 @@ func handleGetBFAccessToken(w http.ResponseWriter, r *http.Request) {
 	} else {
 		util.Return(w, nil, retObj)
 	}
+}
+
+var tokenCache = map[string]string{}
+var tokenExpireTime = map[string]int64{}
+
+func handleRedirect(w http.ResponseWriter, r *http.Request) {
+	var resp *http.Response
+	var err error
+	var req *http.Request
+	client := &http.Client{}
+	bfServer := ModuleInfo.Environments["SERVER_URL"]
+	now := time.Now()
+
+	token := requestheader.GetAuthToken(r)
+	params := strings.Split(token, " ")
+	if len(params) != 2 {
+		logger.Trace.Println("Error token format:", token)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Find from cache
+	accessToken := ""
+	if val, ok := tokenCache[params[1]]; ok {
+		if now.Unix() <= tokenExpireTime[params[1]] {
+			accessToken = val
+		}
+	}
+
+	// If not in cache, gen new token
+	if accessToken == "" {
+		switch params[0] {
+		case "Bearer":
+			accessToken, err = GetBFAccessToken(requestheader.GetUserID(r))
+		case "Api":
+			// Api type will gen new access token of enterprise admin
+			appid, err := auth.GetAppViaApiKey(params[1])
+			if err == nil {
+				accessToken, err = GetNewAccessTokenOfAppid(appid)
+			}
+		}
+	}
+
+	// if gen token fail, return error
+	if err != nil {
+		logger.Trace.Println("Gen access token fail:", err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	if accessToken == "" {
+		logger.Trace.Println("Get empty access token")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	tokenCache[params[1]] = accessToken
+	tokenExpireTime[params[1]] = now.Unix() + accessTokenExpire
+
+	realPath := strings.Replace(r.RequestURI, "api/v1/bf/", "", -1)
+	url := fmt.Sprintf("http://%s%s", bfServer, realPath)
+	logger.Trace.Printf("%v %v", r.Method, url)
+	req, err = http.NewRequest(r.Method, url, r.Body)
+	for name, value := range r.Header {
+		req.Header.Set(name, value[0])
+	}
+	resp, err = client.Do(req)
+	r.Body.Close()
+
+	// combined for GET/POST
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for k, v := range resp.Header {
+		w.Header().Set(k, v[0])
+	}
+
+	w.Header().Set("Access_token", accessToken)
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
+	resp.Body.Close()
+
 }

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/pkg/misc/emotijwt"
+
 	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/BF"
@@ -185,14 +187,53 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 			logger.Trace.Printf("Unauthorized path[%s]: empty token", ep.EntryPath)
 			return false
 		}
-		return checkPrivilegeWithAPI(module, cmd, token)
+		return checkAuthHeader(appid, token) && checkPrivilegeWithAPI(module, cmd, token)
 	}
 
 	return true
 }
 
+func checkAuthHeader(appid, token string) bool {
+	// Hardcode for debug
+	if token == "Bearer EMOTIBOTDEBUGGER" {
+		return true
+	}
+	params := strings.Split(token, " ")
+	if len(params) != 2 {
+		logger.Error.Println("Token format error:", token)
+		return false
+	}
+	switch params[0] {
+	case "Bearer":
+		jwt := params[1]
+		_, err := emotijwt.ResolveJWTToken(jwt)
+		if err != nil {
+			logger.Error.Println("Resolve jwt fail:", err.Error())
+			return false
+		}
+		return true
+	case "Api":
+		apiKeyAppid, err := auth.GetAppViaApiKey(params[1])
+		if err != nil {
+			logger.Error.Println("Get appid of apikey err:", err.Error())
+			return false
+		}
+		return apiKeyAppid == appid
+	}
+	return false
+}
+
 func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 	if serverConfig == nil {
+		return true
+	}
+
+	params := strings.Split(token, " ")
+	if len(params) != 2 {
+		logger.Error.Println("Token format error:", token)
+		return false
+	}
+	if params[0] == "Api" {
 		return true
 	}
 
@@ -201,7 +242,7 @@ func checkPrivilegeWithAPI(module string, cmd string, token string) bool {
 		req["module"] = module
 		req["cmd"] = cmd
 
-		_, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, token))
+		_, err := util.HTTPGetSimple(fmt.Sprintf("%s/%s", authURL, params[1]))
 		if err != nil {
 			logger.Trace.Printf("Get content resp:%s\n", err.Error())
 		}

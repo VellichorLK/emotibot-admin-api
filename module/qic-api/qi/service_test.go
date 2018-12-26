@@ -3,18 +3,19 @@ package qi
 import (
 	"database/sql"
 	"testing"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
 type mockDAO struct{}
 
-
-var mockGroups []Group = []Group{
-	Group{
-		ID: 55688,
+var mockGroups = []model.GroupWCond{
+	model.GroupWCond{
+		ID:   55688,
 		Name: "test1",
 	},
-	Group{
-		ID: 55699,
+	model.GroupWCond{
+		ID:   55699,
 		Name: "test2",
 	},
 }
@@ -29,25 +30,25 @@ func (m *mockDAO) Commit(tx *sql.Tx) error {
 
 func (m *mockDAO) ClearTranscation(tx *sql.Tx) {}
 
-func (m *mockDAO) GetGroups() ([]Group, error) {
+func (m *mockDAO) GetGroups() ([]model.GroupWCond, error) {
 	return mockGroups, nil
 }
 
-func (m *mockDAO) CreateGroup(group *Group, tx *sql.Tx) (*Group, error) {
-	createdGroup := &Group{
-		ID: 55688,
-		Name: group.Name,
-		Enterprise: group.Enterprise,
-		Enabled: group.Enabled,
-		Speed: group.Speed,
+func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
+	createdGroup := &model.GroupWCond{
+		ID:              55688,
+		Name:            group.Name,
+		Enterprise:      group.Enterprise,
+		Enabled:         group.Enabled,
+		Speed:           group.Speed,
 		SlienceDuration: group.SlienceDuration,
-		Condition: group.Condition,
-		Rules: group.Rules,
+		Condition:       group.Condition,
+		Rules:           group.Rules,
 	}
 	return createdGroup, nil
 }
 
-func (m *mockDAO) GetGroupBy(id int64) (*Group, error) {
+func (m *mockDAO) GetGroupBy(id int64) (*model.GroupWCond, error) {
 	if id == mockGroups[0].ID {
 		mockGroup.ID = mockGroups[0].ID
 		return mockGroup, nil
@@ -56,7 +57,7 @@ func (m *mockDAO) GetGroupBy(id int64) (*Group, error) {
 	}
 }
 
-func (m *mockDAO) UpdateGroup(id int64, group *Group, tx *sql.Tx) (err error) {
+func (m *mockDAO) UpdateGroup(id int64, group *model.GroupWCond, tx *sql.Tx) (err error) {
 	return
 }
 
@@ -64,36 +65,36 @@ func (m *mockDAO) DeleteGroup(id int64) (err error) {
 	return
 }
 
-func restoreDAO (originDAO DAO) {
+func restoreDAO(originDAO model.GroupDAO) {
 	serviceDAO = originDAO
 }
 
-var mockCondition *GroupCondition = &GroupCondition{
-	FileName: "FileName",
+var mockCondition = &model.GroupCondition{
+	FileName:     "FileName",
 	CallDuration: 55688,
-	CallComment: "comment",
-	Deal: 1,
-	Series: "series",
-	StaffID: "staff_id",
-	StaffName: "staff_name",
-	Extension: "extension",
-	Department: "department",
-	ClientID: "client_id",
-	ClientName: "client_name",
-	LeftChannel: "left_channel",
+	CallComment:  "comment",
+	Deal:         1,
+	Series:       "series",
+	StaffID:      "staff_id",
+	StaffName:    "staff_name",
+	Extension:    "extension",
+	Department:   "department",
+	ClientID:     "client_id",
+	ClientName:   "client_name",
+	LeftChannel:  "left_channel",
 	RightChannel: "right_channel",
-	CallStart: 55699,
-	CallEnd: 55670,
+	CallStart:    55699,
+	CallEnd:      55670,
 }
 
-var mockGroup *Group = &Group {
-	Name: "group_name",
-	Enterprise: "enterpries",
-	Enabled: 1,
-	Speed: 300,
+var mockGroup = &model.GroupWCond{
+	Name:            "group_name",
+	Enterprise:      "enterpries",
+	Enabled:         1,
+	Speed:           300,
 	SlienceDuration: 0.33,
-	Condition: mockCondition,
-	Rules: []int64{1, 2, 3},
+	Condition:       mockCondition,
+	Rules:           []int64{1, 2, 3},
 }
 
 func TestGetGroups(t *testing.T) {
@@ -141,7 +142,7 @@ func TestCreateGroup(t *testing.T) {
 	}
 }
 
-func sameGroup(g1, g2 *Group) bool {
+func sameGroup(g1, g2 *model.GroupWCond) bool {
 	same := true
 	if g1.Enabled != g2.Enabled || g1.Enterprise != g2.Enterprise || g1.Name != g2.Name || g1.SlienceDuration != g2.SlienceDuration || g1.Speed != g2.Speed {
 		same = false

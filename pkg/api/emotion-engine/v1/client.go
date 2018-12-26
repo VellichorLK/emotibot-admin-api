@@ -123,6 +123,11 @@ func (c *Client) Predict(request PredictRequest) (predictions []Predict, err err
 		logger.Error.Println("raw output: ", string(data))
 		return nil, fmt.Errorf("EE: predict response is not valid, %v", err)
 	}
+
+	if respBody.Status != "OK" {
+		return nil, fmt.Errorf("EE: got unsuccessful status '%s', error message: %s", respBody.Status, respBody.Error)
+	}
+
 	var result = []Predict{}
 	for _, p := range respBody.Predictions {
 		result = append(result, Predict{

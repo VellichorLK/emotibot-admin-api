@@ -30,7 +30,7 @@ type validateInput struct {
 }
 
 type ssoUser struct {
-	EmployeeNumber string `json:"employeeNumber"`
+	UID string `json:"uid"`
 }
 
 type validateReturn struct {
@@ -73,13 +73,14 @@ func (handler *HuaweiSSO) ValidateRequest(r *http.Request) (string, string, erro
 		}
 	}
 
-	util.LogTrace.Printf("SSO Validate input: %+v\n", requestInfo)
+	data, _ := json.Marshal(requestInfo)
+	util.LogTrace.Printf("SSO Validate input: %s\n", data)
 	ssoUser, err := handler.CallValidate(&requestInfo)
 	if err != nil {
 		return "", "", err
 	}
 
-	return ssoUser.EmployeeNumber, "user_name", nil
+	return ssoUser.UID, "user_name", nil
 }
 
 func (handler *HuaweiSSO) CallValidate(requestInfo *validateInput) (*ssoUser, error) {
@@ -151,12 +152,13 @@ func (handler *HuaweiSSO) ValidateDebug(r *http.Request) string {
 		}
 	}
 
-	ret = fmt.Sprintf("SSO Validate input: %+v\n", requestInfo)
+	data, _ := json.Marshal(requestInfo)
+	ret = fmt.Sprintf("SSO Validate input: %s\n", data)
 	ssoUser, err := handler.CallValidate(&requestInfo)
 	if err != nil {
 		ret = ret + fmt.Sprintf("SSO validate fail: %s\n", err.Error())
 	} else {
-		ret = ret + fmt.Sprintf("Get SSO user, get user which user_name is %s\n", ssoUser.EmployeeNumber)
+		ret = ret + fmt.Sprintf("Get SSO user, get user which user_name is %s\n", ssoUser.UID)
 	}
 	return ret
 }
