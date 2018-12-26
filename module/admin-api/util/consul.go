@@ -437,6 +437,28 @@ func ConsulGetTreeFromRoot(key string) (map[string]string, int, error) {
 	return RootConsulClient.ConsulGetTreeVal(key)
 }
 
+func ConsulGetLogo(enterprise string, iconType string) ([]byte, error) {
+	if enterprise == "" {
+		enterprise = "system"
+	}
+	key := fmt.Sprintf("ui/icon/%s/%s", enterprise, iconType)
+	value, _, err := DefaultConsulClient.ConsulGetVal(key)
+	if err != nil {
+		return nil, err
+	}
+	return base64.StdEncoding.DecodeString(value)
+}
+
+func ConsulUpdateLogo(enterprise string, iconType string, input []byte) error {
+	if enterprise == "" {
+		enterprise = "system"
+	}
+	key := fmt.Sprintf("ui/icon/%s/%s", enterprise, iconType)
+	encoded := base64.StdEncoding.EncodeToString(input)
+	_, err := DefaultConsulClient.ConsulUpdateVal(key, encoded)
+	return err
+}
+
 func logTraceConsul(function string, msg string) {
 	logger.Trace.Printf("[CONSUL][%s]:%s", function, msg)
 }

@@ -2,7 +2,9 @@ package UI
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -16,6 +18,11 @@ var (
 	ModuleInfo util.ModuleInfo
 )
 
+const (
+	// MaxIconSize is the max image size can be update to server
+	MaxIconSize = 128 * 1024
+)
+
 func init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "ui",
@@ -26,6 +33,12 @@ func init() {
 
 			util.NewEntryPoint("GET", "encrypt", []string{}, handleEncrypt),
 			util.NewEntryPoint("GET", "decrypt", []string{}, handleDecrypt),
+
+			util.NewEntryPoint("GET", "logo", []string{}, handleGetLogo),
+			util.NewEntryPointWithConfig("PUT", "logo", []string{"edit"}, handleUploadLogo, util.EntryConfig{
+				Version:     1,
+				IgnoreAppID: true,
+			}),
 		},
 	}
 }
@@ -130,4 +143,71 @@ func handleDumpVersionInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, content))
+}
+
+func handleGetLogo(w http.ResponseWriter, r *http.Request) {
+	enterprise := r.URL.Query().Get("enterprise")
+	iconType := r.URL.Query().Get("type")
+	if iconType == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// Get icon of enterprise first, if fail, get system icon
+	data, err := util.ConsulGetLogo(enterprise, iconType)
+	if err != nil {
+		data, err = util.ConsulGetLogo("", iconType)
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if len(data) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	contentType := http.DetectContentType(data)
+	if strings.Index(contentType, "text/xml") >= 0 {
+		w.Header().Set("Content-Type", "image/svg+xml")
+	} else {
+		w.Header().Set("Content-Type", contentType)
+	}
+	w.Write(data)
+}
+
+func handleUploadLogo(w http.ResponseWriter, r *http.Request) {
+	enterprise := r.FormValue("enterprise")
+	iconType := r.FormValue("type")
+	if iconType == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	file, info, err := r.FormFile("file")
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	if info.Size > MaxIconSize {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf("Max file size: %d, get %d", MaxIconSize, info.Size)))
+		return
+	}
+
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	err = util.ConsulUpdateLogo(enterprise, iconType, content)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	util.Return(w, nil, nil)
 }
