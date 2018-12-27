@@ -106,7 +106,7 @@ func TestHandleGetGroup(t *testing.T) {
 	defer restoreDAO(originDAO)
 
 	w := httptest.NewRecorder()
-	r, err := http.NewRequest(http.MethodGet, "/groups/55688", nil)
+	r, err := http.NewRequest(http.MethodGet, "/groups/ABCDE", nil)
 	if err != nil {
 		t.Error(err)
 		return

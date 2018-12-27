@@ -17,7 +17,7 @@ type GroupDAO interface {
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
 	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
-	DeleteGroup(id string) error
+	DeleteGroup(id string, tx *sql.Tx) error
 	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
 }
 
@@ -567,22 +567,18 @@ func addCommaIfNotFirst(sqlStr string, first bool) string {
 	return sqlStr
 }
 
-func (s *GroupSQLDao) DeleteGroup(id string) (err error) {
-	if s.conn == nil {
-		err = s.initDB()
-		if err != nil {
-			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
-			return
-		}
+func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
+	if tx == nil {
+		return
 	}
 
 	deleteStr := fmt.Sprintf(
 		"UPDATE %s SET %s = 1 WHERE %s = ?",
 		tblRuleGroup,
 		RGIsDelete,
-		RGID,
+		RGUUID,
 	)
-	_, err = s.conn.Exec(deleteStr, id)
+	_, err = tx.Exec(deleteStr, id)
 	if err != nil {
 		err = fmt.Errorf("error while delete group in dao.DeleteGroup, err: %s", err.Error())
 	}

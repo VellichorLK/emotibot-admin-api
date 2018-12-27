@@ -64,7 +64,7 @@ func (m *mockDAO) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, er
 	return mockGroups, nil
 }
 
-func (m *mockDAO) DeleteGroup(id string) (err error) {
+func (m *mockDAO) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	return
 }
 
@@ -191,7 +191,7 @@ func TestGetSingleGroup(t *testing.T) {
 		return
 	}
 
-	group, err = GetGroupBy(mockGroups[1].ID)
+	group, err = GetGroupBy(mockGroups[1].UUID)
 	if err != nil {
 		t.Error(err)
 		return

@@ -67,23 +67,35 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	return
 }
 
-func UpdateGroup(id string, gruop *model.GroupWCond) (err error) {
-	// tx, err := serviceDAO.Begin()
-	// if err != nil {
-	// 	return
-	// }
-	// defer serviceDAO.ClearTranscation(tx)
+func UpdateGroup(id string, group *model.GroupWCond) (err error) {
+	tx, err := serviceDAO.Begin()
+	if err != nil {
+		return
+	}
+	defer serviceDAO.ClearTranscation(tx)
 
-	// err = serviceDAO.UpdateGroup(id, gruop, tx)
-	// if err != nil {
-	// 	return
-	// }
+	err = serviceDAO.DeleteGroup(id, tx)
+	if err != nil {
+		return
+	}
 
-	// err = tx.Commit()
+	group.UUID = id
+	_, err = serviceDAO.CreateGroup(group, tx)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
 	return
 }
 
 func DeleteGroup(id string) (err error) {
-	err = serviceDAO.DeleteGroup(id)
+	tx, err := serviceDAO.Begin()
+	if err != nil {
+		return
+	}
+	defer serviceDAO.ClearTranscation(tx)
+
+	err = serviceDAO.DeleteGroup(id, tx)
 	return
 }
