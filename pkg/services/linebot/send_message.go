@@ -73,7 +73,7 @@ func (call *PushMessageCall) Do() (*BasicResponse, error) {
 }
 
 // ReplyMessage method
-func (client *Client) ReplyMessage(replyToken string, messages ...SendingMessage) *ReplyMessageCall {
+func (client *Client) ReplyMessage(replyToken string, messages []SendingMessage) *ReplyMessageCall {
 	return &ReplyMessageCall{
 		c:          client,
 		replyToken: replyToken,

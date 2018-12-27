@@ -95,19 +95,39 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 		}
 		return
 	}
+	converter := gojianfan.T2S
+	if locale == "zhtw" {
+		converter = gojianfan.S2T
+	}
 	for _, event := range events {
 		switch event.Type {
 		case linebot.EventTypeMessage:
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
-				answer := GetChatResult(appid, event.Source.UserID, message.Text)
-				if locale == "zhtw" {
-					answer = gojianfan.S2T(answer)
-				} else {
-					answer = gojianfan.T2S(answer)
+				answers := GetChatResult(appid, event.Source.UserID, message.Text)
+
+				lineAnswers := []linebot.SendingMessage{}
+
+				for _, answer := range answers {
+					if answer == nil {
+						continue
+					}
+					if answer.Type == "text" {
+						if (answer.SubType == "relatelist" || answer.SubType == "guslist") && len(answer.Data) > 0 {
+							options := []linebot.TemplateAction{}
+							for _, d := range answer.Data {
+								opt := converter(d)
+								options = append(options, linebot.NewMessageAction(opt, opt))
+							}
+							buttons := linebot.NewButtonsTemplate("", "", converter(answer.Value), options...)
+							lineAnswers = append(lineAnswers, linebot.NewTemplateMessage(answer.ToString(), buttons))
+						} else {
+							lineAnswers = append(lineAnswers, linebot.NewTextMessage(converter(answer.ToString())))
+						}
+					}
 				}
 
-				if _, err := bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(answer)).Do(); err != nil {
+				if _, err := bot.ReplyMessage(event.ReplyToken, lineAnswers).Do(); err != nil {
 					logger.Error.Println("Reply message fail: ", err.Error())
 				}
 			}

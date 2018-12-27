@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/integration/internal/datatype"
@@ -16,35 +15,55 @@ import (
 
 const PlatformWorkWeixin = "workweixin"
 
-func GetChatResult(appid, userid, input string) string {
+func genPureTextNode(input string) *QA.BFOPOpenapiAnswer {
+	return &QA.BFOPOpenapiAnswer{
+		Type:    "text",
+		SubType: "text",
+		Value:   input,
+		Data:    []string{},
+	}
+}
+
+func GetChatResult(appid, userid, input string) []*QA.BFOPOpenapiAnswer {
 	conf := &QA.QATestInput{}
 	conf.UserInput = input
 	answer, _, err := QA.DoChatRequestWithBFOPOpenAPI(appid, userid, conf)
 	if err != nil {
-		return fmt.Sprintf("System error: %s", err.Error())
+		return []*QA.BFOPOpenapiAnswer{
+			genPureTextNode(fmt.Sprintf("System error: %s", err.Error())),
+		}
 	}
 	if answer.Answers == nil || len(answer.Answers) == 0 {
-		return "No response"
+		return []*QA.BFOPOpenapiAnswer{
+			genPureTextNode("No response"),
+		}
 	}
 
-	ret := []string{}
+	ret := []*QA.BFOPOpenapiAnswer{}
 	for idx := range answer.Answers {
 		t := QA.BFOPOpenapiAnswer{}
 		err := json.Unmarshal([]byte(*answer.Answers[idx]), &t)
 		if err != nil {
-			ret = append(ret, *answer.Answers[idx])
+			ret = append(ret, &QA.BFOPOpenapiAnswer{
+				Type:    "text",
+				SubType: "text",
+				Value:   *answer.Answers[idx],
+				Data:    []string{},
+			})
 			logger.Trace.Println("Parse json fail:", err.Error())
 		} else {
 			logger.Trace.Println("Append", t.ToString())
-			ret = append(ret, t.ToString())
+			ret = append(ret, &t)
 		}
 	}
 
 	if len(ret) == 0 {
-		return "No valid response"
+		return []*QA.BFOPOpenapiAnswer{
+			genPureTextNode("No valid response"),
+		}
 	}
 
-	return strings.Join(ret, "\n")
+	return ret
 }
 
 func GetPlatformConfig(appid, platform string) (map[string]string, error) {
