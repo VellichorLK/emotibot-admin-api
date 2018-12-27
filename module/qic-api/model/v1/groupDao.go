@@ -15,9 +15,9 @@ type GroupDAO interface {
 	ClearTranscation(tx *sql.Tx)
 	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
-	GetGroupBy(id int64) (*GroupWCond, error)
+	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
-	DeleteGroup(id int64) error
+	DeleteGroup(id string) error
 	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
 }
 
@@ -462,7 +462,7 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	return
 }
 
-func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
+func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {
@@ -477,7 +477,7 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
 	FROM (SELECT * FROM %s WHERE %s=?) as g 
 	LEFT JOIN %s as gc ON g.%s = gc.%s`,
-		RGID,
+		RGUUID,
 		RGName,
 		RGLimitSpeed,
 		RGLimitSilence,
@@ -496,7 +496,7 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 		RGCLeftChannel,
 		RGCRightChannel,
 		tblRuleGroup,
-		RGID,
+		RGUUID,
 		tblRGC,
 		RGID,
 		RGCGroupID,
@@ -514,7 +514,7 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 		condition := GroupCondition{}
 
 		rows.Scan(
-			&group.ID,
+			&group.UUID,
 			&group.Name,
 			&group.Speed,
 			&group.SlienceDuration,
@@ -567,7 +567,7 @@ func addCommaIfNotFirst(sqlStr string, first bool) string {
 	return sqlStr
 }
 
-func (s *GroupSQLDao) DeleteGroup(id int64) (err error) {
+func (s *GroupSQLDao) DeleteGroup(id string) (err error) {
 	if s.conn == nil {
 		err = s.initDB()
 		if err != nil {

@@ -67,21 +67,13 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	autil.WriteJSON(w, response)
 }
 
-func parseID(r *http.Request) (id int64, err error) {
+func parseID(r *http.Request) (id string) {
 	vars := mux.Vars(r)
-	idStr := vars["id"]
-
-	id, err = strconv.ParseInt(idStr, 10, 64)
-	return
-
+	return vars["id"]
 }
 
 func handleGetGroup(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
-		http.Error(w, "id is not a number", http.StatusBadRequest)
-		return
-	}
+	id := parseID(r)
 
 	group, err := GetGroupBy(id)
 	if err != nil {
@@ -100,14 +92,10 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	id := parseID(r)
 
 	group := model.GroupWCond{}
-	err = autil.ReadJSON(r, &group)
+	err := autil.ReadJSON(r, &group)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -122,13 +110,9 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	id := parseID(r)
 
-	err = DeleteGroup(id)
+	err := DeleteGroup(id)
 
 	if err != nil {
 		logger.Error.Printf("error while delete group in handleDeleteGroup, reason: %s", err.Error())

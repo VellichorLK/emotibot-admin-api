@@ -45,7 +45,7 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	return
 }
 
-func GetGroupBy(id int64) (group *model.GroupWCond, err error) {
+func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 	group, err = serviceDAO.GetGroupBy(id)
 	if err != nil || group == nil {
 		return
@@ -67,7 +67,7 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	return
 }
 
-func UpdateGroup(id int64, gruop *model.GroupWCond) (err error) {
+func UpdateGroup(id string, gruop *model.GroupWCond) (err error) {
 	// tx, err := serviceDAO.Begin()
 	// if err != nil {
 	// 	return
@@ -83,7 +83,7 @@ func UpdateGroup(id int64, gruop *model.GroupWCond) (err error) {
 	return
 }
 
-func DeleteGroup(id int64) (err error) {
+func DeleteGroup(id string) (err error) {
 	err = serviceDAO.DeleteGroup(id)
 	return
 }

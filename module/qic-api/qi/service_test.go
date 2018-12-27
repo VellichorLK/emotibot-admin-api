@@ -47,8 +47,8 @@ func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.Group
 	return createdGroup, nil
 }
 
-func (m *mockDAO) GetGroupBy(id int64) (*model.GroupWCond, error) {
-	if id == mockGroups[0].ID {
+func (m *mockDAO) GetGroupBy(id string) (*model.GroupWCond, error) {
+	if id == mockGroups[0].UUID {
 		mockGroup.ID = mockGroups[0].ID
 		return mockGroup, nil
 	} else {
@@ -64,7 +64,7 @@ func (m *mockDAO) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, er
 	return mockGroups, nil
 }
 
-func (m *mockDAO) DeleteGroup(id int64) (err error) {
+func (m *mockDAO) DeleteGroup(id string) (err error) {
 	return
 }
 
@@ -175,7 +175,7 @@ func TestGetSingleGroup(t *testing.T) {
 	serviceDAO = m
 	defer restoreDAO(originDAO)
 
-	group, err := GetGroupBy(mockGroups[0].ID)
+	group, err := GetGroupBy(mockGroups[0].UUID)
 	if err != nil {
 		t.Error(err)
 		return
