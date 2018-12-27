@@ -1,13 +1,24 @@
 package qi
 
-import "emotibot.com/emotigo/module/qic-api/model/v1"
+import (
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+)
 
 var (
 	serviceDAO model.GroupDAO = &model.GroupSQLDao{}
 )
 
-func GetGroups() (groups []model.GroupWCond, err error) {
-	groups, err = serviceDAO.GetGroups()
+func GetGroups() (total int64, groups []model.GroupWCond, err error) {
+	filter := model.GroupFilter{
+		Deal: -1,
+	}
+
+	total, err = serviceDAO.CountGroupsBy(&filter)
+	if err != nil {
+		return
+	}
+
+	groups, err = serviceDAO.GetGroupsBy(&filter)
 	return
 }
 
@@ -49,19 +60,24 @@ func GetGroupBy(id int64) (group *model.GroupWCond, err error) {
 	return
 }
 
+func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.GroupWCond, err error) {
+	groups, err = serviceDAO.GetGroupsBy(filter)
+	return
+}
+
 func UpdateGroup(id int64, gruop *model.GroupWCond) (err error) {
-	tx, err := serviceDAO.Begin()
-	if err != nil {
-		return
-	}
-	defer serviceDAO.ClearTranscation(tx)
+	// tx, err := serviceDAO.Begin()
+	// if err != nil {
+	// 	return
+	// }
+	// defer serviceDAO.ClearTranscation(tx)
 
-	err = serviceDAO.UpdateGroup(id, gruop, tx)
-	if err != nil {
-		return
-	}
+	// err = serviceDAO.UpdateGroup(id, gruop, tx)
+	// if err != nil {
+	// 	return
+	// }
 
-	err = tx.Commit()
+	// err = tx.Commit()
 	return
 }
 
