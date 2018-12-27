@@ -2,6 +2,9 @@ package qi
 
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"fmt"
+	"github.com/satori/go.uuid"
+	"strings"
 )
 
 var (
@@ -27,6 +30,12 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 		return
 	}
 
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		err = fmt.Errorf("error while create uuid in CreateGroup, err: %s", err.Error())
+		return
+	}
+
 	tx, err := serviceDAO.Begin()
 	if err != nil {
 		return
@@ -38,6 +47,8 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	group.Condition.RightChannelCode = 1
 
 	group.Enabled = 1
+	group.UUID = uuid.String()
+	group.UUID = strings.Replace(group.UUID, "-", "", -1)
 
 	createdGroup, err = serviceDAO.CreateGroup(group, tx)
 	if err != nil {

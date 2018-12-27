@@ -38,7 +38,7 @@ type SimpleGroup struct {
 
 // GroupWCond is Group with Condition struct
 type GroupWCond struct {
-	ID              int64
+	ID              int64           `json:"-"`
 	UUID            string          `json:"group_id,omitempty"`
 	Name            string          `json:"group_name,omitempty"`
 	Enterprise      string          `json:",omitempty"`
@@ -339,7 +339,6 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 }
 
 func genInsertRelationSQL(id int64, rules []int64) (str string, values []interface{}) {
-	str = "INSERT INTO Relation_Group_Rule (group_id, rule_id) VALUES "
 	str = fmt.Sprintf(
 		"INSERT INTO %s (%s, %s) VALUES ",
 		tblRelGrpRule,
@@ -368,8 +367,9 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 
 	// insert group
 	insertStr := fmt.Sprintf(
-		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		tblRuleGroup,
+		RGUUID,
 		RGName,
 		RGEnterprise,
 		RGCreateTime,
@@ -379,6 +379,7 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 		RGLimitSilence,
 	)
 	values := []interface{}{
+		group.UUID,
 		group.Name,
 		group.Enterprise,
 		now,
@@ -400,7 +401,7 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	}
 
 	// insert condition
-	fmt.Sprintf(
+	insertStr = fmt.Sprintf(
 		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		tblRGC,
 		RGCGroupID,

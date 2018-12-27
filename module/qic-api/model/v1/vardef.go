@@ -5,7 +5,7 @@ const (
 	tblConversation = "Conversation"
 	tblSegment      = "Segment"
 	tblGroup        = "Group"
-	tblRelGrpRule   = "Relation_Group_Rule"
+	tblRelGrpRule   = "Relation_RuleGroup_Rule"
 	tblRelRuleLogic = "Relation_Rule_Logic"
 	tblRule         = "Rule"
 	tblLogic        = "Logic"
