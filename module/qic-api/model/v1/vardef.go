@@ -13,6 +13,7 @@ const (
 	tblRecommend    = "Recommendations"
 	tblRuleGroup    = "RuleGroup"
 	tblRGC          = "RuleGroupCondition"
+	tblTags         = "Tag"
 )
 
 //field name in Conversation table
@@ -75,8 +76,20 @@ const (
 	fldGroupType           = "type"
 )
 
+//field name in Tag Table
 const (
-	fldTagID     = "tag_id"
+	fldTagID         = "id"
+	fldTagUUID       = "uuid"
+	fldTagIsDeleted  = "is_delete"
+	fldTagName       = "name"
+	fldTagType       = "type"
+	fldTagPosSen     = "pos_sentences"
+	fldTagNegSen     = "neg_sentences"
+	fldTagCreateTime = "create_time"
+	fldTagUpdateTime = "update_time"
+	fldTagEnterprise = "enterprise"
+)
+const (
 	fldCallID    = "call_id"
 	fldCUPredict = "predict"
 	fldSentence  = "sentence"

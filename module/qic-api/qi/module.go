@@ -11,6 +11,7 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
+	tagDao     TagDao
 	db         *sql.DB
 )
 
@@ -40,6 +41,11 @@ func init() {
 					return
 				}
 				serviceDAO = model.NewGroupSQLDao(conn)
+				tagDao, err = model.NewTagSQLDao(conn)
+				if err != nil {
+					logger.Error.Printf("init tag dao failed, %v", err)
+					return
+				}
 			},
 		},
 	}
