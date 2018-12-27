@@ -475,7 +475,7 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		`SELECT g.%s, g.%s, g.%s, g.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
-	FROM (SELECT * FROM %s WHERE %s=?) as g 
+	FROM (SELECT * FROM %s WHERE %s=? and %s = 0) as g 
 	LEFT JOIN %s as gc ON g.%s = gc.%s`,
 		RGUUID,
 		RGName,
@@ -497,6 +497,7 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		RGCRightChannel,
 		tblRuleGroup,
 		RGUUID,
+		RGIsDelete,
 		tblRGC,
 		RGID,
 		RGCGroupID,
@@ -508,9 +509,8 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		return
 	}
 
-	group = &GroupWCond{}
-
 	for rows.Next() {
+		group = &GroupWCond{}
 		condition := GroupCondition{}
 
 		rows.Scan(
@@ -534,6 +534,10 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 			&condition.RightChannelCode,
 		)
 		group.Condition = &condition
+	}
+
+	if group == nil {
+		return
 	}
 
 	// get rules under this group

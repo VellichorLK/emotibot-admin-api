@@ -51,6 +51,8 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 		return
 	}
 
+	fmt.Printf("group: %+v\n", group)
+
 	// TODO: set channel name by code
 	group.Condition.LeftChannel = "staff"
 	group.Condition.RightChannel = "client"
@@ -97,5 +99,10 @@ func DeleteGroup(id string) (err error) {
 	defer serviceDAO.ClearTranscation(tx)
 
 	err = serviceDAO.DeleteGroup(id, tx)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
 	return
 }

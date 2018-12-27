@@ -82,6 +82,8 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	logger.Error.Printf("group: %+v\n", group)
+
 	if group == nil {
 		http.Error(w, "Not Found", http.StatusNotFound)
 		return
