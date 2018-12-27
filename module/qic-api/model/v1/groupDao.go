@@ -226,9 +226,11 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 
 	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
+	rrr.%s
 	FROM (SELECT * FROM %s %s) as gc
-	LEFT JOIN %s as rg ON gc.%s = rg.%s
+	INNER JOIN (SELECT * FROM %s WHERE %s=0 and %s=1) as rg ON gc.%s = rg.%s
+	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	`
 
 	queryStr = fmt.Sprintf(
@@ -252,11 +254,17 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
+		RRRRuleID,
 		tblRGC,
 		conditionStr,
 		tblRuleGroup,
+		RGIsDelete,
+		RGIsEnable,
 		RGCGroupID,
 		RGID,
+		tblRelGrpRule,
+		RGID,
+		RRRGroupID,
 	)
 	return
 }
@@ -300,8 +308,6 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	end := start + filter.Limit
 	queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
 
-	fmt.Printf("queryStr: %s", queryStr)
-
 	rows, err := s.conn.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while get groups in dao.GetGroupsBy, err: %s", err.Error())
@@ -310,9 +316,11 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	defer rows.Close()
 
 	groups = []GroupWCond{}
+	var currentGroup *GroupWCond
 	for rows.Next() {
 		group := GroupWCond{}
 		condition := GroupCondition{}
+		var ruleID int64
 		rows.Scan(
 			&group.ID,
 			&group.UUID,
@@ -333,9 +341,27 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			&condition.CallEnd,
 			&condition.LeftChannelCode,
 			&condition.RightChannelCode,
+			&ruleID,
 		)
-		group.Condition = &condition
-		groups = append(groups, group)
+
+		if currentGroup == nil || group.ID != currentGroup.ID {
+			if currentGroup != nil {
+				groups = append(groups, *currentGroup)
+			}
+
+			group.Condition = &condition
+
+			currentGroup = &group
+			currentGroup.Rules = []int64{
+				ruleID,
+			}
+		} else {
+			currentGroup.Rules = append(currentGroup.Rules, ruleID)
+		}
+	}
+
+	if currentGroup != nil {
+		groups = append(groups, *currentGroup)
 	}
 	return
 }
