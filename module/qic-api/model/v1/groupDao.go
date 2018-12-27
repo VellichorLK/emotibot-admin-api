@@ -32,7 +32,7 @@ func NewGroupSQLDao(conn *sql.DB) *GroupSQLDao {
 }
 
 type SimpleGroup struct {
-	ID   int64  `json:"group_id"`
+	ID   string `json:"group_id"`
 	Name string `json:"group_name"`
 }
 
@@ -299,6 +299,8 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	start := filter.Page * filter.Limit
 	end := start + filter.Limit
 	queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
+
+	fmt.Printf("queryStr: %s", queryStr)
 
 	rows, err := s.conn.Query(queryStr, values...)
 	if err != nil {

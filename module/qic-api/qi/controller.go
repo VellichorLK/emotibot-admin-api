@@ -39,7 +39,7 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total, groups, err := GetGroups()
+	total, groups, err := GetGroupsByFilter(filter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -48,7 +48,7 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	simpleGroups := make([]model.SimpleGroup, len(groups), len(groups))
 	for i, group := range groups {
 		simpleGroup := model.SimpleGroup{
-			ID:   group.ID,
+			ID:   group.UUID,
 			Name: group.Name,
 		}
 

@@ -12,10 +12,12 @@ type mockDAO struct{}
 var mockGroups = []model.GroupWCond{
 	model.GroupWCond{
 		ID:   55688,
+		UUID: "ABCDE",
 		Name: "test1",
 	},
 	model.GroupWCond{
 		ID:   55699,
+		UUID: "CDEFG",
 		Name: "test2",
 	},
 }
@@ -33,6 +35,7 @@ func (m *mockDAO) ClearTranscation(tx *sql.Tx) {}
 func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
 	createdGroup := &model.GroupWCond{
 		ID:              55688,
+		UUID:            "abcde",
 		Name:            group.Name,
 		Enterprise:      group.Enterprise,
 		Enabled:         group.Enabled,
@@ -95,27 +98,6 @@ var mockGroup = &model.GroupWCond{
 	SlienceDuration: 0.33,
 	Condition:       mockCondition,
 	Rules:           []int64{1, 2, 3},
-}
-
-func TestGetGroups(t *testing.T) {
-	// mock dao
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
-
-	total, groups, _ := GetGroups()
-	if total != int64(len(mockGroups)) {
-		t.Error("expect 2 groups but got ", len(groups))
-	}
-
-	for idx := range groups {
-		g := groups[idx]
-		targetG := mockGroups[idx]
-		if g.ID != targetG.ID || g.Name != targetG.Name {
-			t.Error("expect ", targetG.ID, " ", targetG.Name, "but got ", g.ID, " ", g.Name)
-		}
-	}
 }
 
 func TestCreateGroup(t *testing.T) {

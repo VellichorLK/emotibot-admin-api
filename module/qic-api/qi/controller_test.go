@@ -56,7 +56,7 @@ func TestHandleGetGroups(t *testing.T) {
 		return
 	}
 
-	if group.ID != 55688 {
+	if group.UUID != "abcde" {
 		t.Error("create group failed")
 		return
 	}
@@ -91,8 +91,8 @@ func TestHandleCreateGroup(t *testing.T) {
 		g := response.Data[idx]
 		targetG := mockGroups[idx]
 
-		if g.ID != targetG.ID || g.Name != targetG.Name {
-			t.Errorf("expect ID: %d, Name: %s, but got %d, %s", targetG.ID, targetG.Name, g.ID, g.Name)
+		if g.ID != targetG.UUID || g.Name != targetG.Name {
+			t.Errorf("expect ID: %s, Name: %s, but got %s, %s", targetG.UUID, targetG.Name, g.ID, g.Name)
 			return
 		}
 	}

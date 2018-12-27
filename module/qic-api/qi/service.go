@@ -11,20 +11,6 @@ var (
 	serviceDAO model.GroupDAO = &model.GroupSQLDao{}
 )
 
-func GetGroups() (total int64, groups []model.GroupWCond, err error) {
-	filter := model.GroupFilter{
-		Deal: -1,
-	}
-
-	total, err = serviceDAO.CountGroupsBy(&filter)
-	if err != nil {
-		return
-	}
-
-	groups, err = serviceDAO.GetGroupsBy(&filter)
-	return
-}
-
 func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err error) {
 	if group == nil || group.Condition == nil {
 		return
@@ -72,6 +58,11 @@ func GetGroupBy(id int64) (group *model.GroupWCond, err error) {
 }
 
 func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.GroupWCond, err error) {
+	total, err = serviceDAO.CountGroupsBy(filter)
+	if err != nil {
+		return
+	}
+
 	groups, err = serviceDAO.GetGroupsBy(filter)
 	return
 }
