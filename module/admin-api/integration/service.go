@@ -11,28 +11,15 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/integration/internal/datatype"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
-type AnswerObj struct {
-	Type    string `json:"type"`
-	SubType string `json:"subType"`
-	Value   string `json:"value"`
-}
-
 const PlatformWorkWeixin = "workweixin"
-
-func (ans AnswerObj) IsSupport() bool {
-	return ans.Type == "text"
-}
-
-func (ans AnswerObj) ToString() string {
-	return ans.Value
-}
 
 func GetChatResult(appid, userid, input string) string {
 	conf := &QA.QATestInput{}
 	conf.UserInput = input
-	answer, _, err := QA.DoChatRequestWithOpenAPI(appid, userid, conf)
+	answer, _, err := QA.DoChatRequestWithBFOPOpenAPI(appid, userid, conf)
 	if err != nil {
 		return fmt.Sprintf("System error: %s", err.Error())
 	}
@@ -42,11 +29,13 @@ func GetChatResult(appid, userid, input string) string {
 
 	ret := []string{}
 	for idx := range answer.Answers {
-		t := AnswerObj{}
+		t := QA.BFOPOpenapiAnswer{}
 		err := json.Unmarshal([]byte(*answer.Answers[idx]), &t)
 		if err != nil {
 			ret = append(ret, *answer.Answers[idx])
+			logger.Trace.Println("Parse json fail:", err.Error())
 		} else {
+			logger.Trace.Println("Append", t.ToString())
 			ret = append(ret, t.ToString())
 		}
 	}

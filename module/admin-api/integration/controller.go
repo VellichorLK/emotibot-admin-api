@@ -3,12 +3,12 @@ package integration
 import (
 	"net/http"
 
+	"github.com/line/line-bot-sdk-go/linebot"
 	"github.com/siongui/gojianfan"
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/services/workweixin"
-	"github.com/line/line-bot-sdk-go/linebot"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
