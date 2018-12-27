@@ -1,7 +1,11 @@
 package integration
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
+
+	"emotibot.com/emotigo/module/admin-api/QA"
 
 	"emotibot.com/emotigo/pkg/services/linebot"
 
@@ -16,7 +20,8 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	ModuleInfo    util.ModuleInfo
+	textConverter = gojianfan.T2S
 )
 
 func init() {
@@ -69,6 +74,13 @@ func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
 }
 
 var lineBots = map[string]*linebot.Client{}
+var lineConverters = [](func(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage){
+	createLineTextMessage,
+	createLineButtonTemplateMessage,
+	createLineFlexMessage,
+}
+var lineConverterName = []string{"text", "button template", "flex"}
+var lineConverterIdx = map[string]int{}
 
 func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, config map[string]string) {
 	if config["token"] == "" || config["secret"] == "" {
@@ -95,45 +107,100 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 		}
 		return
 	}
-	converter := gojianfan.T2S
 	if locale == "zhtw" {
-		converter = gojianfan.S2T
+		textConverter = gojianfan.S2T
 	}
+	if _, ok := lineConverterIdx[appid]; !ok {
+		lineConverterIdx[appid] = 0
+	}
+
 	for _, event := range events {
 		switch event.Type {
 		case linebot.EventTypeMessage:
 			switch message := event.Message.(type) {
 			case *linebot.TextMessage:
-				answers := GetChatResult(appid, event.Source.UserID, message.Text)
-
 				lineAnswers := []linebot.SendingMessage{}
 
-				for _, answer := range answers {
-					if answer == nil {
-						continue
+				if strings.Index(message.Text, "##") == 0 {
+					logger.Trace.Println("command series,", strings.Replace(message.Text, "##", "", 1))
+					if strings.Replace(message.Text, "##", "", 1) == "change" {
+						logger.Trace.Println("change converter")
+						lineConverterIdx[appid]++
+						lineConverterIdx[appid] = lineConverterIdx[appid] % len(lineConverters)
+						lineAnswers = append(lineAnswers, linebot.NewTextMessage(lineConverterName[lineConverterIdx[appid]]))
 					}
-					// if answer.Type == "text" {
-					// 	if (answer.SubType == "relatelist" || answer.SubType == "guslist") && len(answer.Data) > 0 {
-					// 		options := []linebot.TemplateAction{}
-					// 		for _, d := range answer.Data {
-					// 			opt := converter(d)
-					// 			options = append(options, linebot.NewMessageAction(opt, opt))
-					// 		}
-					// 		buttons := linebot.NewButtonsTemplate("", "", converter(answer.Value), options...)
-					// 		lineAnswers = append(lineAnswers, linebot.NewTemplateMessage(answer.ToString(), buttons))
-					// 	} else {
-					// 		lineAnswers = append(lineAnswers, linebot.NewTextMessage(converter(answer.ToString())))
-					// 	}
-					// }
-					lineAnswers = append(lineAnswers, linebot.NewTextMessage(converter(answer.ToString())))
+				} else {
+					answers := GetChatResult(appid, event.Source.UserID, message.Text)
+					for _, answer := range answers {
+						if answer == nil {
+							continue
+						}
+						if answer.Type == "text" {
+							if (answer.SubType == "relatelist" || answer.SubType == "guslist") && len(answer.Data) > 0 {
+								lineAnswers = append(lineAnswers, lineConverters[lineConverterIdx[appid]](answer))
+							} else {
+								lineAnswers = append(lineAnswers, linebot.NewTextMessage(textConverter(answer.ToString())))
+							}
+						}
+					}
 				}
 
+				logger.Trace.Printf("Reply %d messages\n", len(lineAnswers))
 				if _, err := bot.ReplyMessage(event.ReplyToken, lineAnswers).Do(); err != nil {
 					logger.Error.Println("Reply message fail: ", err.Error())
 				}
 			}
 		}
 	}
+}
+
+func createLineFlexMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage {
+	contents := []linebot.FlexComponent{
+		&linebot.TextComponent{
+			Type:  linebot.FlexComponentTypeText,
+			Text:  textConverter(answer.Value),
+			Align: linebot.FlexComponentAlignTypeStart,
+			Wrap:  true,
+		},
+	}
+	for idx, d := range answer.Data {
+		opt := textConverter(d)
+		contents = append(contents,
+			&linebot.TextComponent{
+				Type:   linebot.FlexComponentTypeText,
+				Text:   fmt.Sprintf("%d. %s", idx+1, opt),
+				Action: linebot.NewMessageAction(opt, opt),
+				Align:  linebot.FlexComponentAlignTypeStart,
+				Wrap:   true,
+				Color:  "#1875f0",
+			})
+	}
+	return linebot.NewFlexMessage(
+		textConverter(answer.ToString()),
+		&linebot.BubbleContainer{
+			Type: linebot.FlexContainerTypeBubble,
+			Body: &linebot.BoxComponent{
+				Type:     linebot.FlexComponentTypeBox,
+				Layout:   linebot.FlexBoxLayoutTypeVertical,
+				Contents: contents,
+				Spacing:  linebot.FlexComponentSpacingTypeMd,
+			},
+		},
+	)
+}
+
+func createLineButtonTemplateMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage {
+	options := []linebot.TemplateAction{}
+	for _, d := range answer.Data {
+		opt := textConverter(d)
+		options = append(options, linebot.NewMessageAction(opt, opt))
+	}
+	buttons := linebot.NewButtonsTemplate("", "", textConverter(answer.Value), options...)
+	return linebot.NewTemplateMessage(answer.ToString(), buttons)
+}
+
+func createLineTextMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage {
+	return linebot.NewTextMessage(textConverter(answer.ToString()))
 }
 
 var workWeixinBot = map[string]*workweixin.Client{}
