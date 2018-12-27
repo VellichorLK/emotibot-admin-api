@@ -5,12 +5,14 @@ const (
 	tblConversation = "Conversation"
 	tblSegment      = "Segment"
 	tblGroup        = "Group"
-	tblRelGrpRule   = "Relation_Group_Rule"
+	tblRelGrpRule   = "Relation_RuleGroup_Rule"
 	tblRelRuleLogic = "Relation_Rule_Logic"
 	tblRule         = "Rule"
 	tblLogic        = "Logic"
 	tblCUPredict    = "CUPredict"
 	tblRecommend    = "Recommendations"
+	tblRuleGroup    = "RuleGroup"
+	tblRGC          = "RuleGroupCondition"
 )
 
 //field name in Conversation table
@@ -100,4 +102,49 @@ const (
 	fldLogicIsDelete        = "is_delete"
 	fldLogicEnterprise      = "enterprise"
 	fldLogicSpeaker         = "speaker"
+)
+
+// field name in RuleGroupCondition table
+const (
+	RGCID            = "id"
+	RGCGroupID       = "rg_id"
+	RGCType          = "type"
+	RGCFileName      = "file_name"
+	RGCDeal          = "deal"
+	RGCSeries        = "series"
+	RGCUploadTime    = "upload_time"
+	RGCStaffID       = "staff_id"
+	RGCStaffName     = "staff_name"
+	RGCExtension     = "extension"
+	RGCDepartment    = "department"
+	RGCCustomerID    = "customer_id"
+	RGCCustomerName  = "customer_name"
+	RGCCustomerPhone = "customer_phone"
+	RGCCategory      = "category"
+	RGCCallStart     = "call_start"
+	RGCCallEnd       = "call_end"
+	RGCLeftChannel   = "left_channel"
+	RGCRightChannel  = "right_channel"
+)
+
+// field name in RuleGroup
+const (
+	RGID           = "id"
+	RGUUID         = "uuid"
+	RGIsDelete     = "is_delete"
+	RGName         = "name"
+	RGEnterprise   = "enterprise"
+	RGDescription  = "description"
+	RGCreateTime   = "create_time"
+	RGUpdateTime   = "update_time"
+	RGIsEnable     = "is_enable"
+	RGLimitSpeed   = "limit_speed"
+	RGLimitSilence = "limit_silence"
+	RGType         = "type"
+)
+
+// field name Relation_RuleGroup_Rule
+const (
+	RRRGroupID = "rg_id"
+	RRRRuleID  = "rule_id"
 )

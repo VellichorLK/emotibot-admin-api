@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -55,7 +56,7 @@ func TestHandleGetGroups(t *testing.T) {
 		return
 	}
 
-	if group.ID != 55688 {
+	if group.UUID != "abcde" {
 		t.Error("create group failed")
 		return
 	}
@@ -78,20 +79,20 @@ func TestHandleCreateGroup(t *testing.T) {
 		return
 	}
 
-	groups := []model.GroupWCond{}
-	json.Unmarshal(body, &groups)
+	response := SimpleGroupsResponse{}
+	json.Unmarshal(body, &response)
 
-	if len(groups) != 2 {
-		t.Errorf("expect 2 groups but got %d", len(groups))
+	if response.Paging.Total != int64(len(mockGroups)) {
+		t.Errorf("expect 2 groups but got %d", response.Paging.Total)
 		return
 	}
 
-	for idx := range groups {
-		g := groups[idx]
+	for idx := range response.Data {
+		g := response.Data[idx]
 		targetG := mockGroups[idx]
 
-		if g.ID != targetG.ID || g.Name != targetG.Name {
-			t.Errorf("expect ID: %d, Name: %s, but got %d, %s", targetG.ID, targetG.Name, g.ID, g.Name)
+		if g.ID != targetG.UUID || g.Name != targetG.Name {
+			t.Errorf("expect ID: %s, Name: %s, but got %s, %s", targetG.UUID, targetG.Name, g.ID, g.Name)
 			return
 		}
 	}
@@ -105,7 +106,7 @@ func TestHandleGetGroup(t *testing.T) {
 	defer restoreDAO(originDAO)
 
 	w := httptest.NewRecorder()
-	r, err := http.NewRequest(http.MethodGet, "/groups/55688", nil)
+	r, err := http.NewRequest(http.MethodGet, "/groups/ABCDE", nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -131,6 +132,25 @@ func TestHandleGetGroup(t *testing.T) {
 
 	if !sameGroup(&group, mockGroup) {
 		t.Errorf("expect group: %+v, but got %+v", mockGroup, group)
+		return
+	}
+}
+
+func TestParseGroupFilter(t *testing.T) {
+	values := url.Values{}
+	values.Add("file_name", "abcd.wmv")
+	values.Add("deal", "1")
+	values.Add("series", "test")
+	values.Add("call_start", "10056")
+
+	filter, err := parseGroupFilter(&values)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if filter.FileName != values.Get("file_name") || filter.Deal != 1 || filter.Series != values.Get("series") || filter.CallStart != 10056 {
+		t.Error("parse group filter failed")
 		return
 	}
 }

@@ -20,9 +20,10 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "groups", []string{}, handleCreateGroup),
 			util.NewEntryPoint("GET", "groups", []string{}, handleGetGroups),
-			util.NewEntryPoint("GET", "groups/{id:[0-9]+}", []string{}, handleGetGroup),
-			util.NewEntryPoint("PUT", "groups/{id:[0-9]+}", []string{}, handleUpdateGroup),
-			util.NewEntryPoint("DELETE", "groups/{id:[0-9]+}", []string{}, handleDeleteGroup),
+			util.NewEntryPoint("GET", "groups/filters", []string{}, handleGetGroupsByFilter),
+			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
+			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
+			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
