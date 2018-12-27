@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -12,11 +13,12 @@ type GroupDAO interface {
 	Begin() (*sql.Tx, error)
 	Commit(tx *sql.Tx) error
 	ClearTranscation(tx *sql.Tx)
-	GetGroups() ([]GroupWCond, error)
+	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
 	GetGroupBy(id int64) (*GroupWCond, error)
-	UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
+	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id int64) error
+	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
 }
 
 type GroupSQLDao struct {
@@ -36,7 +38,8 @@ type SimpleGroup struct {
 
 // GroupWCond is Group with Condition struct
 type GroupWCond struct {
-	ID              int64           `json:"group_id,omitempty"`
+	ID              int64
+	UUID            string          `json:"group_id,omitempty"`
 	Name            string          `json:"group_name,omitempty"`
 	Enterprise      string          `json:",omitempty"`
 	Enabled         int             `json:"is_enable,omitempty"`
@@ -126,7 +129,13 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 		}
 	}
 
-	queryStr := "SELECT id, group_name FROM rule_group where `is_enable`=1"
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s FROM %s where %s=1",
+		RGID,
+		RGName,
+		tblRuleGroup,
+		RGIsEnable,
+	)
 
 	rows, err := s.conn.Query(queryStr)
 	if err != nil {
@@ -145,8 +154,198 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 	return
 }
 
+func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
+	values = []interface{}{}
+	conditions := []string{}
+	conditionStr := "WHERE"
+	if filter.FileName != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCFileName))
+		values = append(values, filter.FileName)
+	}
+
+	if filter.CallEnd != 0 {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCallEnd))
+		values = append(values, filter.CallEnd)
+	}
+
+	if filter.CallStart != 0 {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCallStart))
+		values = append(values, filter.CallStart)
+	}
+
+	if filter.CustomerID != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerID))
+		values = append(values, filter.CustomerID)
+	}
+
+	if filter.CustomerName != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerName))
+		values = append(values, filter.CustomerName)
+	}
+
+	if filter.CustomerPhone != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerPhone))
+		values = append(values, filter.CustomerPhone)
+	}
+
+	if filter.Deal != -1 {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCDeal))
+		values = append(values, filter.Deal)
+	}
+
+	if filter.Department != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCDepartment))
+		values = append(values, filter.Department)
+	}
+
+	if filter.Extension != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCExtension))
+		values = append(values, filter.Extension)
+	}
+
+	if filter.Series != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCSeries))
+		values = append(values, filter.Series)
+	}
+
+	if filter.StaffID != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffID))
+		values = append(values, filter.StaffID)
+	}
+
+	if filter.StaffName != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffName))
+		values = append(values, filter.StaffName)
+	}
+
+	if len(values) == 0 {
+		conditionStr = ""
+	} else {
+		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
+	}
+
+	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
+	FROM (SELECT * FROM %s %s) as gc
+	LEFT JOIN %s as rg ON gc.%s = rg.%s
+	`
+
+	queryStr = fmt.Sprintf(
+		queryStr,
+		RGID,
+		RGUUID,
+		RGName,
+		RGLimitSpeed,
+		RGLimitSilence,
+		RGCFileName,
+		RGCDeal,
+		RGCSeries,
+		RGCStaffID,
+		RGCStaffName,
+		RGCExtension,
+		RGCDepartment,
+		RGCCustomerID,
+		RGCCustomerName,
+		RGCCustomerPhone,
+		RGCCallStart,
+		RGCCallEnd,
+		RGCLeftChannel,
+		RGCRightChannel,
+		tblRGC,
+		conditionStr,
+		tblRuleGroup,
+		RGCGroupID,
+		RGID,
+	)
+	return
+}
+
+func (s *GroupSQLDao) CountGroupsBy(filter *GroupFilter) (total int64, err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	queryStr, values := getGroupsSQL(filter)
+	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", RGID, queryStr)
+
+	rows, err := s.conn.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while count groups in dao.CountGroupsBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&total)
+	}
+	return
+}
+
+func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err error) {
+	if s.conn == nil {
+		err = s.initDB()
+		if err != nil {
+			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
+			return
+		}
+	}
+
+	queryStr, values := getGroupsSQL(filter)
+	start := filter.Page * filter.Limit
+	end := start + filter.Limit
+	queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
+
+	rows, err := s.conn.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while get groups in dao.GetGroupsBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	groups = []GroupWCond{}
+	for rows.Next() {
+		group := GroupWCond{}
+		condition := GroupCondition{}
+		rows.Scan(
+			&group.ID,
+			&group.UUID,
+			&group.Name,
+			&group.Speed,
+			&group.SlienceDuration,
+			&condition.FileName,
+			&condition.Deal,
+			&condition.Series,
+			&condition.StaffID,
+			&condition.StaffName,
+			&condition.Extension,
+			&condition.Department,
+			&condition.ClientID,
+			&condition.ClientName,
+			&condition.ClientPhone,
+			&condition.CallStart,
+			&condition.CallEnd,
+			&condition.LeftChannelCode,
+			&condition.RightChannelCode,
+		)
+		group.Condition = &condition
+		groups = append(groups, group)
+	}
+	return
+}
+
 func genInsertRelationSQL(id int64, rules []int64) (str string, values []interface{}) {
 	str = "INSERT INTO Relation_Group_Rule (group_id, rule_id) VALUES "
+	str = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES ",
+		tblRelGrpRule,
+		RRRGroupID,
+		RRRRuleID,
+	)
 	values = []interface{}{}
 	for _, ruleID := range rules {
 		str = addCommaIfNotFirst(str, len(values) == 0)
@@ -168,7 +367,17 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	now := time.Now().Unix()
 
 	// insert group
-	insertStr := "INSERT INTO `rule_group` (group_name, enterprise, create_time, update_time, is_enable, limit_speed, limit_silence) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	insertStr := fmt.Sprintf(
+		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		tblRuleGroup,
+		RGName,
+		RGEnterprise,
+		RGCreateTime,
+		RGUpdateTime,
+		RGIsEnable,
+		RGLimitSpeed,
+		RGLimitSilence,
+	)
 	values := []interface{}{
 		group.Name,
 		group.Enterprise,
@@ -191,8 +400,25 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	}
 
 	// insert condition
-	insertStr = "INSERT INTO group_condition (group_id, file_name, deal, series, staff_id, staff_name, extension, department, client_id, client_name, client_phone, call_start, call_end, left_channel, right_channel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-
+	fmt.Sprintf(
+		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		tblRGC,
+		RGCGroupID,
+		RGCFileName,
+		RGCDeal,
+		RGCSeries,
+		RGCStaffID,
+		RGCStaffName,
+		RGCExtension,
+		RGCDepartment,
+		RGCCustomerID,
+		RGCCustomerName,
+		RGCCustomerPhone,
+		RGCCallStart,
+		RGCCallEnd,
+		RGCLeftChannel,
+		RGCRightChannel,
+	)
 	values = []interface{}{
 		groupID,
 		group.Condition.FileName,
@@ -242,11 +468,36 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 		}
 	}
 
-	queryStr := `SELECT g.id, g.group_name, g.limit_speed, g.limit_silence, 
-	gc.file_name, gc.deal, gc.series, gc.staff_id, gc.staff_name, gc.extension, gc.department, 
-	gc.client_id, gc.client_name, gc.client_phone, gc.call_start, gc.call_end, gc.left_channel, gc.right_channel
-	FROM (SELECT * FROM rule_group WHERE id=?) as g 
-	LEFT JOIN group_condition as gc ON g.id = gc.group_id`
+	queryStr := fmt.Sprintf(
+		`SELECT g.%s, g.%s, g.%s, g.%s, 
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
+	FROM (SELECT * FROM %s WHERE %s=?) as g 
+	LEFT JOIN %s as gc ON g.%s = gc.%s`,
+		RGID,
+		RGName,
+		RGLimitSpeed,
+		RGLimitSilence,
+		RGCFileName,
+		RGCDeal,
+		RGCSeries,
+		RGCStaffID,
+		RGCStaffName,
+		RGCExtension,
+		RGCDepartment,
+		RGCCustomerID,
+		RGCCustomerName,
+		RGCCustomerPhone,
+		RGCCallStart,
+		RGCCallEnd,
+		RGCLeftChannel,
+		RGCRightChannel,
+		tblRuleGroup,
+		RGID,
+		tblRGC,
+		RGID,
+		RGCGroupID,
+	)
 
 	rows, err := s.conn.Query(queryStr, id)
 	if err != nil {
@@ -283,7 +534,12 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 	}
 
 	// get rules under this group
-	queryStr = "SELECT rule_id FROM Relation_Group_Rule WHERE group_id = ?"
+	queryStr = fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = ?",
+		RRRRuleID,
+		tblRelGrpRule,
+		RRRGroupID,
+	)
 	rows, err = s.conn.Query(queryStr, id)
 	if err != nil {
 		err = fmt.Errorf("error while get rules of group in dao.GetGroupBy, err: %s", err.Error())
@@ -297,168 +553,6 @@ func (s *GroupSQLDao) GetGroupBy(id int64) (group *GroupWCond, err error) {
 		group.Rules = append(group.Rules, ruleID)
 	}
 
-	return
-}
-
-func (s *GroupSQLDao) UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) (err error) {
-	if group == nil {
-		return
-	}
-
-	if s.conn == nil {
-		err = s.initDB()
-		if err != nil {
-			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
-			return
-		}
-	}
-
-	// update group
-	updateStr, values := genUpdateGroupSQL(id, group)
-	_, err = tx.Exec(updateStr, values...)
-	if err != nil {
-		err = fmt.Errorf("error while update group in dao.UpdateGroup, err: %s", err.Error())
-		return
-	}
-
-	// update condition
-	if group.Condition != nil {
-		updateStr, values = genUpdateConditionSQL(id, group.Condition)
-		_, err = tx.Exec(updateStr, values...)
-		if err != nil {
-			err = fmt.Errorf("error while update condition in dao.UpdateGroup, err: %s", err.Error())
-		}
-	}
-
-	// update relation
-	// delete old relation
-	// add new relation
-	updateStr = "DELETE FROM Relation_Group_Rule WHERE group_id=?"
-	_, err = tx.Exec(updateStr, id)
-	if err != nil {
-		err = fmt.Errorf("error while delete old relation in dao.UpdateGroup, err: %s", err.Error())
-		return
-	}
-
-	if len(group.Rules) != 0 {
-		updateStr, values = genInsertRelationSQL(id, group.Rules)
-		_, err = tx.Exec(updateStr, values...)
-		if err != nil {
-			err = fmt.Errorf("error while insert new relation in dao.UpdateGroup, err: %s", err.Error())
-			return
-		}
-	}
-	return
-}
-
-func genUpdateGroupSQL(id int64, group *GroupWCond) (str string, values []interface{}) {
-	str = "UPDATE rule_group SET "
-
-	values = make([]interface{}, 0)
-	if group.Name != "" {
-		str += "group_name = ?"
-		values = append(values, group.Name)
-	}
-
-	if group.Speed != 0 {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " limit_speed = ?"
-		values = append(values, group.Speed)
-	}
-
-	if group.SlienceDuration != 0 {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " limit_silence = ?"
-		values = append(values, group.SlienceDuration)
-	}
-
-	if group.Enterprise != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " enterprise = ?"
-		values = append(values, group.Enterprise)
-	}
-
-	str = addCommaIfNotFirst(str, len(values) == 0)
-	str += " is_enable = ?"
-	values = append(values, group.Enabled)
-
-	str = fmt.Sprintf("%s where id = ?", str)
-	values = append(values, id)
-	return
-}
-
-func genUpdateConditionSQL(id int64, condition *GroupCondition) (str string, values []interface{}) {
-	str = "UPDATE group_condition SET "
-	values = make([]interface{}, 0)
-
-	if condition.CallEnd != 0 {
-		str += "call_end = ?"
-		values = append(values, condition.CallEnd)
-	}
-
-	if condition.CallStart != 0 {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " call_start = ?"
-		values = append(values, condition.CallStart)
-	}
-
-	if condition.ClientID != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " client_id = ?"
-		values = append(values, condition.ClientID)
-	}
-
-	if condition.ClientName != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " client_name = ?"
-		values = append(values, condition.ClientName)
-	}
-
-	if condition.ClientPhone != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " client_phone = ?"
-		values = append(values, condition.ClientPhone)
-	}
-
-	if condition.Department != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " department = ?"
-		values = append(values, condition.Department)
-	}
-
-	if condition.Extension != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " extension = ?"
-		values = append(values, condition.Extension)
-	}
-
-	if condition.FileName != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " file_name = ?"
-		values = append(values, condition.FileName)
-	}
-
-	if condition.Series != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " series = ?"
-		values = append(values, condition.Series)
-	}
-
-	if condition.StaffID != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " staff_id = ?"
-		values = append(values, condition.StaffID)
-	}
-
-	if condition.StaffName != "" {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " staff_name = ?"
-		values = append(values, condition.StaffName)
-	}
-
-	str = addCommaIfNotFirst(str, len(values) == 0)
-	str += " deal = ?, left_channel = ?, right_channel = ? where group_id = ?"
-	values = append(values, condition.Deal, condition.LeftChannelCode, condition.RightChannelCode, id)
 	return
 }
 
@@ -479,7 +573,12 @@ func (s *GroupSQLDao) DeleteGroup(id int64) (err error) {
 		}
 	}
 
-	deleteStr := "UPDATE rule_group SET is_delete = 1 WHERE id = ?"
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s = 1 WHERE %s = ?",
+		tblRuleGroup,
+		RGIsDelete,
+		RGID,
+	)
 	_, err = s.conn.Exec(deleteStr, id)
 	if err != nil {
 		err = fmt.Errorf("error while delete group in dao.DeleteGroup, err: %s", err.Error())
