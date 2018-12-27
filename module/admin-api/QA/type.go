@@ -1,5 +1,10 @@
 package QA
 
+import (
+	"fmt"
+	"strings"
+)
+
 type QATestInput struct {
 	QuestionType string            `json:"qtype"`
 	Top          int               `json:"top"`
@@ -100,4 +105,45 @@ type BFOPControllerResponse struct {
 	Status int           `json:"status"`
 	Answer []interface{} `json:"data"`
 	Info   *InfoNode     `json:"info"`
+}
+
+type BFOPOpenapiAnswer struct {
+	Type    string   `json:"type"`
+	SubType string   `json:"subType"`
+	Value   string   `json:"value"`
+	Data    []string `json:"data"`
+}
+
+func (a BFOPOpenapiAnswer) ToString() string {
+	if a.Data == nil || len(a.Data) <= 0 {
+		return a.Value
+	}
+	buf := strings.Builder{}
+	buf.WriteString(a.Value)
+	buf.WriteString("\n")
+	for idx := range a.Data {
+		buf.WriteString(fmt.Sprintf("%d. %s\n", idx+1, a.Data[idx]))
+	}
+	return buf.String()
+}
+
+type BFOPOpenapiInfoNode struct {
+	Module        string    `json:"module"`
+	Source        string    `json:"source"`
+	Score         float32   `json:"textScore"`
+	Emotion       string    `json:"emotion"`
+	EmotionScore  float32   `json:"emotionScore"`
+	Intent        string    `json:"intent"`
+	IntentScore   float32   `json:"intentScore"`
+	Tokens        []*string `json:"tokens"`
+	MatchQuestion string    `json:"matchQuestion"`
+}
+
+type BFOPOpenAPIResponse struct {
+	Status     int                  `json:"status"`
+	Message    string               `json:"message"`
+	Data       []*BFOPOpenapiAnswer `json:"data"`
+	Info       *BFOPOpenapiInfoNode `json:"info"`
+	CustomInfo interface{}          `json:"customInfo"`
+	ExtendData interface{}          `json:"extendData"`
 }

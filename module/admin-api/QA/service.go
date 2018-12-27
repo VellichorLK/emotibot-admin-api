@@ -248,6 +248,7 @@ func getFirstCUData(input interface{}) *CUDataFromDC {
 }
 
 func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
+	logger.Trace.Println("Chat with OPENAPI controller")
 	openAPIURL := getTestURL()
 	if len(openAPIURL) == 0 {
 		return nil, ApiError.REQUEST_ERROR, nil
@@ -327,6 +328,75 @@ func DoChatRequestWithOpenAPI(appid string, user string, inputData *QATestInput)
 		ret.Tokens = []*string{}
 	}
 
+	return &ret, ApiError.SUCCESS, nil
+}
+
+func DoChatRequestWithBFOPOpenAPI(appid string, user string, inputData *QATestInput) (*RetData, int, error) {
+	logger.Trace.Println("Chat with BFOPOPENAPI controller")
+	openAPIURL := getTestURL()
+	if len(openAPIURL) == 0 {
+		return nil, ApiError.REQUEST_ERROR, nil
+	}
+
+	// Prepare for openAPI input
+	input := make(map[string]interface{})
+	header := map[string]string{}
+
+	header["userid"] = user
+	header["appid"] = appid
+	header["uuid"] = genRandomUUIDSameAsOpenAPI()
+
+	input["text"] = inputData.UserInput
+	customInfo := map[string]string{
+		"qtype":    "debug",
+		"top":      "2",
+		"platform": inputData.Platform,
+		"brand":    inputData.Brand,
+		"sex":      inputData.Gender,
+		"age":      inputData.Age,
+		"hobbies":  inputData.Hobbies,
+	}
+	customInfoStr, _ := json.Marshal(customInfo)
+
+	input["customInfo"] = customInfo
+
+	logger.Trace.Printf("CustomInfo: %s\n", customInfoStr)
+
+	logger.Trace.Printf("Call OpenAPI With: %+v\n", input)
+	response, err := util.HTTPPostJSONWithHeader(openAPIURL, input, 10, header)
+	if err != nil {
+		return nil, ApiError.OPENAPI_URL_ERROR, err
+	}
+	logger.Trace.Printf("Raw response from OpenAPI: %s\n", response)
+
+	openAPIRet := BFOPOpenAPIResponse{}
+	err = json.Unmarshal([]byte(response), &openAPIRet)
+	if err != nil {
+		return nil, ApiError.JSON_PARSE_ERROR, err
+	}
+
+	ret := RetData{}
+	if openAPIRet.Info != nil {
+		ret.Emotion = openAPIRet.Info.Emotion
+		ret.Intent = openAPIRet.Info.Intent
+		ret.Tokens = openAPIRet.Info.Tokens
+	}
+
+	if openAPIRet.Data != nil && len(openAPIRet.Data) > 0 {
+		for idx := range openAPIRet.Data {
+			temp, err := json.Marshal(openAPIRet.Data[idx])
+			if err != nil || string(temp) == "" {
+				logger.Trace.Println("Marshal to json fail:", err.Error())
+				continue
+			}
+			str := string(temp)
+			ret.Answers = append(ret.Answers, &str)
+		}
+	} else {
+		return nil, ApiError.QA_TEST_FORMAT_ERROR, errors.New("Answer column is empty")
+	}
+
+	ret.OpenAPIReturn = openAPIRet.Status
 	return &ret, ApiError.SUCCESS, nil
 }
 

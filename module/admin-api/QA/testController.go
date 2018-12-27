@@ -6,6 +6,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -26,10 +27,11 @@ func init() {
 		},
 	}
 	HandleFuncMap = map[string]func(appid string, user string, input *QATestInput) (*RetData, int, error){
-		"DC":         DoChatRequestWithDC,
-		"OPENAPI":    DoChatRequestWithOpenAPI,
-		"CONTROLLER": DoChatRequestWithController,
-		"BFOP":       DoChatRequestWithBFOPController,
+		"DC":          DoChatRequestWithDC,
+		"OPENAPI":     DoChatRequestWithOpenAPI,
+		"CONTROLLER":  DoChatRequestWithController,
+		"BFOP":        DoChatRequestWithBFOPController,
+		"BFOPOPENAPI": DoChatRequestWithBFOPOpenAPI,
 	}
 }
 
@@ -68,6 +70,7 @@ func hadleChatTest(w http.ResponseWriter, r *http.Request) {
 	var ret *RetData
 	var errCode int
 
+	logger.Trace.Printf("Get QA test type of: %s\n", getQATestType())
 	if handleFunc, ok := HandleFuncMap[getQATestType()]; ok {
 		ret, errCode, err = handleFunc(appid, user, input)
 	} else {
