@@ -12,15 +12,18 @@ func TestGetGroupsSQL(t *testing.T) {
 		Extension: "abcdefg",
 	}
 
-	targetStr := `SELECT g.%s, g.%s, g.%s, g.%s, 
+	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
-	FROM (SELECT * FROM RuleGroupCondition WHERE %s = ? and %s = ?) as gc
-	LEFT JOIN RuleGroup as rg ON gc.%s = rg.%s
+	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
+	rrr.%s
+	FROM (SELECT * FROM %s WHERE %s = ? and %s = ?) as gc
+	INNER JOIN (SELECT * FROM %s WHERE %s=0 and %s=1) as rg ON gc.%s = rg.%s
+	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	`
 	targetStr = fmt.Sprintf(
 		targetStr,
 		RGID,
+		RGUUID,
 		RGName,
 		RGLimitSpeed,
 		RGLimitSilence,
@@ -38,10 +41,18 @@ func TestGetGroupsSQL(t *testing.T) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
+		RRRRuleID,
+		tblRGC,
 		RGCFileName,
 		RGCExtension,
+		tblRuleGroup,
+		RGIsDelete,
+		RGIsEnable,
 		RGCGroupID,
 		RGID,
+		tblRelGrpRule,
+		RGID,
+		RRRGroupID,
 	)
 
 	queryStr, values := getGroupsSQL(&filter)
