@@ -3,18 +3,32 @@
 // we should implement small util(ex: MaxInt, MinInt) by ourself.
 package mathutil
 
-// MaxInt compare a and b, and return the maximum value.
-func MaxInt(a int, b int) int {
-	if a < b {
-		return b
+// MaxInt will return the max of nums.
+// If nums if empty, return 0.
+func MaxInt(nums ...int) int {
+	if len(nums) == 0 {
+		return 0
 	}
-	return a
+	max := nums[0]
+	for _, n := range nums[1:] {
+		if n > max {
+			max = n
+		}
+	}
+	return max
 }
 
-// MinInt compare a and b, and return the minimum value.
-func MinInt(a int, b int) int {
-	if a > b {
-		return b
+// MinInt will return the min of nums.
+// If nums if empty, return 0.
+func MinInt(nums ...int) int {
+	if len(nums) == 0 {
+		return 0
 	}
-	return a
+	min := nums[0]
+	for _, n := range nums[1:] {
+		if n < min {
+			min = n
+		}
+	}
+	return min
 }
