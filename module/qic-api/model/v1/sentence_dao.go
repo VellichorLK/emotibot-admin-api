@@ -14,6 +14,8 @@ import (
 
 //SentenceDao defines the db access function
 type SentenceDao interface {
+	Begin() (*sql.Tx, error)
+	Commit(*sql.Tx) error
 	GetSentences(tx *sql.Tx, q *SentenceQuery) ([]*Sentence, error)
 	InsertSentence(tx *sql.Tx, s *Sentence) (int64, error)
 	SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error)
@@ -51,7 +53,7 @@ type SentenceSQLDao struct {
 //Sentence is sentence data in db
 type Sentence struct {
 	ID         uint64
-	IsDelete   int
+	IsDelete   int8
 	Name       string
 	Enterprise string
 	UUID       string
@@ -129,6 +131,22 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 	}
 
 	return whereSQL, params
+}
+
+//Begin begins the transaction
+func (d *SentenceSQLDao) Begin() (*sql.Tx, error) {
+	if d.conn != nil {
+		return d.conn.Begin()
+	}
+	return nil, nil
+}
+
+//Commit commits the transaction
+func (d *SentenceSQLDao) Commit(tx *sql.Tx) error {
+	if tx != nil {
+		return tx.Commit()
+	}
+	return nil
 }
 
 //GetSentences gets the sentences based on query condition

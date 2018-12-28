@@ -31,6 +31,16 @@ type DataTag struct {
 	NegSentence []string `json:"neg_sentences,omitempty"`
 }
 
+//SrvSentence is used to as a structure to store the arguments which inputs to service in sentence
+type SrvSentence struct {
+	UUID       string
+	Enterprise *string
+	Name       *string
+	Limit      int
+	Page       int
+	TagUUID    []string
+}
+
 //GetSentence gets one sentence depends on uuid
 func GetSentence(uuid string, enterprise string) (*DataSentence, error) {
 	var isDelete int8
@@ -81,7 +91,8 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 	}
 
 	//get tags information
-	query := model.TagQuery{ID: allTagIDs, Enterprise: &(*q.Enterprise)}
+	query := model.TagQuery{ID: allTagIDs, Enterprise: q.Enterprise}
+
 	tags, err := tagDao.Tags(nil, query)
 	if err != nil {
 		return nil, err
@@ -161,8 +172,67 @@ func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentenc
 	uuidStr := hex.EncodeToString(uuid[:])
 	s := &model.Sentence{IsDelete: 0, Name: name, Enterprise: enterprise,
 		CreateTime: now, UpdateTime: now, TagIDs: tagsID, UUID: uuidStr}
-	sentenceDao.InsertSentence(nil, s)
-
+	tx, err := sentenceDao.Begin()
+	if err != nil {
+		logger.Error.Printf("create transaction failed. %s\n", err)
+		return nil, err
+	}
+	defer tx.Rollback()
+	_, err = sentenceDao.InsertSentence(tx, s)
+	if err != nil {
+		return nil, err
+	}
+	sentenceDao.Commit(tx)
 	sentence := &DataSentence{UUID: uuidStr, Name: name}
 	return sentence, nil
+}
+
+//UpdateSentence updates sentence, do soft delete and create new record
+func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID []string) (int64, error) {
+	tx, err := sentenceDao.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	//soft delete the sentence
+	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise}
+	affected, err := sentenceDao.SoftDeleteSentence(tx, q)
+	//means already deleted or non of rows is matched the condition
+	if affected == 0 {
+		return 0, nil
+	}
+
+	//query tags ID
+	query := model.TagQuery{UUID: tagUUID, Enterprise: &enterprise}
+	tags, err := tagDao.Tags(nil, query)
+	if err != nil {
+		logger.Error.Printf("Query tag failed. %s\n", err)
+		return 0, err
+	}
+	numOfTags := len(tags)
+	tagIDs := make([]uint64, numOfTags, numOfTags)
+	for i := 0; i < numOfTags; i++ {
+		tagIDs[i] = tags[i].ID
+	}
+
+	//insert the sentence
+	now := time.Now().Unix()
+	s := &model.Sentence{Name: name, Enterprise: enterprise,
+		UUID: sentenceUUID, CreateTime: now, UpdateTime: now,
+		TagIDs: tagIDs}
+	affected, err = sentenceDao.InsertSentence(tx, s)
+	if err != nil {
+		logger.Error.Printf("insert sentence failed. %s\n", err)
+		return 0, err
+	}
+
+	err = sentenceDao.Commit(tx)
+	return affected, err
+}
+
+//SoftDeleteSentence sets the field, is_delete, in sentence to 1
+func SoftDeleteSentence(sentenceUUID string, enterprise string) (int64, error) {
+	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise}
+	return sentenceDao.SoftDeleteSentence(nil, q)
 }
