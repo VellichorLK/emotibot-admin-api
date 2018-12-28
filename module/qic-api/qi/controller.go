@@ -7,15 +7,15 @@ import (
 
 	"github.com/gorilla/mux"
 
-	autil "emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	group := model.GroupWCond{}
-	err := autil.ReadJSON(r, &group)
+	err := util.ReadJSON(r, &group)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -28,7 +28,7 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	autil.WriteJSON(w, createdGroup)
+	util.WriteJSON(w, createdGroup)
 }
 
 func handleGetGroups(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +56,7 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := SimpleGroupsResponse{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Page:  filter.Page,
 			Limit: filter.Limit,
 			Total: total,
@@ -64,7 +64,7 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		Data: simpleGroups,
 	}
 
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func parseID(r *http.Request) (id string) {
@@ -87,14 +87,15 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	autil.WriteJSON(w, group)
+	util.WriteJSON(w, group)
+
 }
 
 func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
 
 	group := model.GroupWCond{}
-	err := autil.ReadJSON(r, &group)
+	err := util.ReadJSON(r, &group)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -136,7 +137,7 @@ func handleGetGroupsByFilter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := GroupsResponse{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Page:  filter.Page,
 			Total: total,
 			Limit: filter.Limit,
@@ -144,7 +145,7 @@ func handleGetGroupsByFilter(w http.ResponseWriter, r *http.Request) {
 		Data: groups,
 	}
 
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error) {

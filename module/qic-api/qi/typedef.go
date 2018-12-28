@@ -4,16 +4,16 @@ import (
 	"database/sql"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 )
 
 type GroupsResponse struct {
-	Paging *util.Paging       `json:"paging"`
+	Paging *general.Paging    `json:"paging"`
 	Data   []model.GroupWCond `json:"data"`
 }
 
 type SimpleGroupsResponse struct {
-	Paging *util.Paging        `json:"paging"`
+	Paging *general.Paging     `json:"paging"`
 	Data   []model.SimpleGroup `json:"data"`
 }
 

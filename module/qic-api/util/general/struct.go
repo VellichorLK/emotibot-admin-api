@@ -1,4 +1,4 @@
-package util
+package general
 
 type Paging struct {
 	Total int64 `json:"total"`
