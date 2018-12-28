@@ -19,7 +19,7 @@ type DataSentence struct {
 	ID   uint64     `json:"id"`
 	UUID string     `json:"sentence_id,omitempty"`
 	Name string     `json:"sentence_name,omitempty"`
-	Tags []*DataTag `json:"tags,omitempty"`
+	Tags []*DataTag `json:"tags"`
 }
 
 //DataTag is data struct of tag level
@@ -56,7 +56,7 @@ func GetSentence(uuid string, enterprise string) (*DataSentence, error) {
 }
 
 //GetSentenceList gets list of sentences queried by enterprise
-func GetSentenceList(enterprise string, limit int, page int) (uint64, []*DataSentence, error) {
+func GetSentenceList(enterprise string, page int, limit int) (uint64, []*DataSentence, error) {
 	var isDelete int8
 	q := &model.SentenceQuery{Enterprise: &enterprise, Limit: limit, Page: page, IsDelete: &isDelete}
 	count, err := sentenceDao.CountSentences(nil, q)
@@ -69,7 +69,7 @@ func GetSentenceList(enterprise string, limit int, page int) (uint64, []*DataSen
 		return count, data, err
 	}
 
-	return count, nil, nil
+	return count, []*DataSentence{}, nil
 }
 
 func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
@@ -104,6 +104,7 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 	}
 
 	for i := 0; i < len(data); i++ {
+		data[i].Tags = make([]*DataTag, 0)
 		for _, tagID := range sentences[i].TagIDs {
 			if tag, ok := tagsIDMap[tagID]; ok {
 				dataTag := &DataTag{UUID: tag.UUID, Name: tag.Name}
@@ -122,16 +123,18 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 				}
 
 				if tag.PositiveSentence != "" {
-					err = json.Unmarshal([]byte(tag.PositiveSentence), dataTag.PosSentence)
+					err = json.Unmarshal([]byte(tag.PositiveSentence), &dataTag.PosSentence)
 					if err != nil {
 						logger.Error.Printf("umarshal tag positive %s failed. %s", tag.PositiveSentence, err)
 						return nil, err
 					}
 				}
 				if tag.NegativeSentence != "" {
-					err = json.Unmarshal([]byte(tag.NegativeSentence), dataTag.NegSentence)
-					logger.Error.Printf("umarshal tag negative %s failed. %s", tag.NegativeSentence, err)
-					return nil, err
+					err = json.Unmarshal([]byte(tag.NegativeSentence), &dataTag.NegSentence)
+					if err != nil {
+						logger.Error.Printf("umarshal tag negative %s failed. %s", tag.NegativeSentence, err)
+						return nil, err
+					}
 				}
 
 				data[i].Tags = append(data[i].Tags, dataTag)
@@ -157,7 +160,7 @@ func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentenc
 		logger.Warn.Printf("user input tagUUID [%+v] not equals to tags [%+v] in db\n", tagUUID, tags)
 	}
 
-	tagsID := make([]uint64, 0, numOfTags)
+	tagsID := make([]uint64, numOfTags, numOfTags)
 	for i := 0; i < numOfTags; i++ {
 		tagsID[i] = tags[i].ID
 	}
@@ -196,13 +199,14 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	defer tx.Rollback()
 
 	//soft delete the sentence
-	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise}
+	var isDeleteInt int8
+	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise, IsDelete: &isDeleteInt}
 	affected, err := sentenceDao.SoftDeleteSentence(tx, q)
+
 	//means already deleted or non of rows is matched the condition
 	if affected == 0 {
 		return 0, nil
 	}
-
 	//query tags ID
 	query := model.TagQuery{UUID: tagUUID, Enterprise: &enterprise}
 	tags, err := tagDao.Tags(nil, query)
@@ -235,4 +239,21 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 func SoftDeleteSentence(sentenceUUID string, enterprise string) (int64, error) {
 	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise}
 	return sentenceDao.SoftDeleteSentence(nil, q)
+}
+
+//CheckSentenceAuth checks whether these uuid belongs to this enterprise
+func CheckSentenceAuth(sentenceUUID []string, enterprise string) (bool, error) {
+
+	numOfSen := len(sentenceUUID)
+
+	var isDelete int8
+	q := &model.SentenceQuery{UUID: sentenceUUID, Enterprise: &enterprise, IsDelete: &isDelete}
+	count, err := sentenceDao.CountSentences(nil, q)
+	if err != nil {
+		return false, err
+	}
+	if count < uint64(numOfSen) {
+		return false, nil
+	}
+	return true, nil
 }

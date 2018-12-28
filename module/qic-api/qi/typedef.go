@@ -24,3 +24,15 @@ type TagDao interface {
 	DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
 	CountTags(tx *sql.Tx, query model.TagQuery) (uint, error)
 }
+
+//Query parameter
+const (
+	QPage  = "page"
+	QLimit = "limit"
+)
+
+//Default value
+const (
+	DPage  = 1
+	DLimit = 10
+)
