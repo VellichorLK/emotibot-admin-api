@@ -94,8 +94,12 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 			bindedData = append(bindedData, uuid)
 		}
 	}
+	if t.Enterprise != nil {
+		conditions = append(conditions, fldTagEnterprise+" = ?")
+		bindedData = append(bindedData, t.Enterprise)
+	}
 	if t.Name != nil {
-		conditions = append(conditions, fldTagName+" LIKE ?")
+		conditions = append(conditions, fldTagName+" = ?")
 		bindedData = append(bindedData, t.Name)
 	}
 	if !t.IgnoreSoftDelete {
