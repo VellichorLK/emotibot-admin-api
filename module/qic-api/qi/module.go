@@ -41,16 +41,17 @@ func init() {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return
 				}
+
 				dbLike = &model.DefaultDBLike{
 					DB: sqlConn,
 				}
-
 				serviceDAO = model.NewGroupSQLDao(sqlConn)
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {
 					logger.Error.Printf("init tag dao failed, %v", err)
 					return
 				}
+				sentenceDao = model.NewSentenceSQLDao(sqlConn)
 			},
 		},
 	}
