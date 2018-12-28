@@ -173,3 +173,7 @@ func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
 func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery, isSoftDelete bool) error {
 	return nil
 }
+
+func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
+	return 0, nil
+}

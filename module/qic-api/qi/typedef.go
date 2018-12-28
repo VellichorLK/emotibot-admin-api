@@ -22,4 +22,5 @@ type TagDao interface {
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
 	NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error)
 	DeleteTags(tx *sql.Tx, query model.TagQuery, isSoftDelete bool) error
+	CountTags(tx *sql.Tx, query model.TagQuery) (uint, error)
 }
