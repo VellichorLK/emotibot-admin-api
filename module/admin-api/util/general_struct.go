@@ -109,6 +109,7 @@ type ModuleInfo struct {
 
 	// EntryPoints is needed for every Dictionary for set route
 	EntryPoints []EntryPoint
+	EntryPrefix []EntryPoint
 
 	Environments map[string]string
 

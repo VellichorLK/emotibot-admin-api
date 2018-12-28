@@ -293,6 +293,40 @@ func setRoute() *mux.Router {
 					}
 				})
 		}
+		if info.EntryPrefix == nil {
+			continue
+		}
+		for idx := range info.EntryPrefix {
+			entrypoint := info.EntryPrefix[idx]
+			// entry will be api/v_/<module>/<entry>
+			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"],
+				entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
+			router.
+				Methods(entrypoint.AllowMethod).
+				PathPrefix(entryPath).
+				Name(entrypoint.EntryPath).
+				HandlerFunc(func(origWriter http.ResponseWriter, r *http.Request) {
+					w := emotibothttpwriter.New(origWriter)
+
+					defer logHandleRuntime(w, r)()
+					clientNoStoreCache(w)
+					defer func() {
+						if err := recover(); err != nil {
+							errMsg := fmt.Sprintf("%#v", err)
+							util.WriteWithStatus(w, errMsg, http.StatusInternalServerError)
+							util.PrintRuntimeStack(10)
+							logger.Error.Println("Panic error:", errMsg)
+						}
+					}()
+
+					if checkPrivilege(r, entrypoint) {
+						r.Header.Set(audit.AuditCustomHeader, info.ModuleName)
+						entrypoint.Callback(w, r)
+					} else {
+						http.Error(w, "Unauthorized", http.StatusUnauthorized)
+					}
+				})
+		}
 	}
 	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
 	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
