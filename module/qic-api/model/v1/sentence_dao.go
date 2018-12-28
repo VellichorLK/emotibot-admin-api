@@ -14,6 +14,8 @@ import (
 
 //SentenceDao defines the db access function
 type SentenceDao interface {
+	Begin() (*sql.Tx, error)
+	Commit(*sql.Tx) error
 	GetSentences(tx *sql.Tx, q *SentenceQuery) ([]*Sentence, error)
 	InsertSentence(tx *sql.Tx, s *Sentence) (int64, error)
 	SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error)
@@ -51,7 +53,7 @@ type SentenceSQLDao struct {
 //Sentence is sentence data in db
 type Sentence struct {
 	ID         uint64
-	IsDelete   int
+	IsDelete   int8
 	Name       string
 	Enterprise string
 	UUID       string
@@ -124,11 +126,29 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
+	whereSQL += " ORDER BY " + fldID + " DESC "
+
 	if q.Page > 0 && q.Limit > 0 {
-		whereSQL = fmt.Sprintf(" ORDER BY %s DESC LIMIT %d OFFSET %d", fldID, q.Limit, (q.Page-1)*q.Limit)
+		whereSQL = fmt.Sprintf("%s LIMIT %d OFFSET %d", whereSQL, q.Limit, (q.Page-1)*q.Limit)
 	}
 
 	return whereSQL, params
+}
+
+//Begin begins the transaction
+func (d *SentenceSQLDao) Begin() (*sql.Tx, error) {
+	if d.conn != nil {
+		return d.conn.Begin()
+	}
+	return nil, nil
+}
+
+//Commit commits the transaction
+func (d *SentenceSQLDao) Commit(tx *sql.Tx) error {
+	if tx != nil {
+		return tx.Commit()
+	}
+	return nil
 }
 
 //GetSentences gets the sentences based on query condition
@@ -160,7 +180,7 @@ func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentenc
 	for rows.Next() {
 		var s Sentence
 		var tagID sql.NullInt64
-		err = rows.Scan(&s.ID, &s.IsDelete, &s.Name, &s.UUID, &s.CreateTime, &s.UpdateTime, &tagID)
+		err = rows.Scan(&s.ID, &s.IsDelete, &s.Name, &s.Enterprise, &s.UUID, &s.CreateTime, &s.UpdateTime, &tagID)
 		if err != nil {
 			logger.Error.Printf("Scan error. %s\n", err)
 			return nil, err
@@ -238,7 +258,7 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 
 //SoftDeleteSentence sets the field is_delete to 1
 func (d *SentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error) {
-	if q == nil || q.Enterprise == nil || len(q.UUID) > 0 {
+	if q == nil || q.Enterprise == nil || len(q.UUID) == 0 {
 		return 0, ErrNeedCondition
 	}
 	exe, err := genrateExecutor(d.conn, tx)
@@ -246,9 +266,14 @@ func (d *SentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64
 		return 0, err
 	}
 	condition, params := q.whereSQL()
-	deleteSQL := fmt.Sprintf("Update %s SET %s=1,%s=%d %s", fldSentence, fldIsDelete, fldUpdateTime,
+	deleteSQL := fmt.Sprintf("Update %s SET %s=1,%s=%d %s", tblSentence, fldIsDelete, fldUpdateTime,
 		time.Now().Unix(), condition)
+
 	res, err := exe.Exec(deleteSQL, params...)
+	if err != nil {
+		logger.Error.Printf("delete failed. %s\n", err)
+		return 0, err
+	}
 	return res.RowsAffected()
 }
 

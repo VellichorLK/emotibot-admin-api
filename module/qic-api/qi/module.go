@@ -26,6 +26,12 @@ func init() {
 			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
 			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
 			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
+
+			util.NewEntryPoint("GET", "sentences", []string{}, handleGetSentences),
+			util.NewEntryPoint("POST", "sentences", []string{}, handleNewSentence),
+			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
+			util.NewEntryPoint("PUT", "sentences/{id}", []string{}, WithSenUUIDCheck(handleModifySentence)),
+			util.NewEntryPoint("DELETE", "sentences/{id}", []string{}, WithSenUUIDCheck(handleDeleteSentence)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
