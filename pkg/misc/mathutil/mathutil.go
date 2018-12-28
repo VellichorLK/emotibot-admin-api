@@ -1,5 +1,7 @@
 // Package mathutil is the util functions that built-in math package does not provide.
-// according to (this blog)[https://www.jianshu.com/p/4a833196b02c],
+// according to these sources:
+// 	- https://www.jianshu.com/p/4a833196b02c
+//  - https://mrekucci.blogspot.com/2015/07/dont-abuse-mathmax-mathmin.html
 // we should implement small util(ex: MaxInt, MinInt) by ourself.
 package mathutil
 
