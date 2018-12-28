@@ -1,0 +1,15 @@
+version: '3'
+services:
+  sql:
+    container_name: mysql-integration
+    image: mysql:5.7
+    ports:
+    - 3306:3306
+    environment:
+    - MYSQL_ROOT_PASSWORD=password
+    - TZ=Asia/Taipei
+    healthcheck:
+      test: "/usr/bin/mysql --user=root --password=password --execute=\"SHOW DATABASES;\""
+      interval: 3s
+      timeout: 3s
+      retries: 3
