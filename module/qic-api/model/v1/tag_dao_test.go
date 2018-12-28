@@ -75,8 +75,10 @@ func TestTagDaoTags(t *testing.T) {
 	}
 	mocker.ExpectQuery("SELECT .+ FROM `" + tblTags + "`").WillReturnRows(rows)
 	tags, err := dao.Tags(nil, TagQuery{
-		ID:    []uint64{1, 2},
-		Limit: 5,
+		ID: []uint64{1, 2},
+		paging: &Pagination{
+			Limit: 5,
+		},
 	})
 	if err != nil {
 		t.Fatal("expect ok but got err: ", err)
@@ -91,12 +93,77 @@ func TestTagDaoTagsIntegration(t *testing.T) {
 	skipIntergartion(t)
 	dao := newTestingTagDao(t)
 	expectedTags := testTags[:2]
-	tags, err := dao.Tags(nil, TagQuery{ID: []uint64{1, 2}, Limit: 5})
+	query := TagQuery{
+		ID:               []uint64{1, 2},
+		IgnoreSoftDelete: true,
+	}
+	tags, err := dao.Tags(nil, query)
 	if err != nil {
 		t.Fatal("expect ok, but got error: ", err)
 	}
 	if !reflect.DeepEqual(tags, expectedTags) {
 		t.Logf("tags: %+v\n expected tags: %+v\n", tags, expectedTags)
 		t.Error("expect got tags but not the same")
+	}
+}
+
+func TestTagDaoNewTagsIntegration(t *testing.T) {
+	skipIntergartion(t)
+	dao := newTestingTagDao(t)
+	tags := testTags[:2]
+	results, err := dao.NewTags(nil, tags)
+	if err == ErrAutoIDDisabled {
+		//Need to Get the correct result back
+	} else if err != nil {
+		t.Fatal("expect ok, but got error: ", err)
+	}
+	if reflect.DeepEqual(tags, results) {
+		t.Fatal("expect result should replace tags id, but it is the same")
+	}
+	if len(results) != len(tags) {
+		t.Fatal("expect results length to be the same of input, but got ", len(results))
+	}
+	if results[0].ID != 3 {
+		t.Error("expect new tag id incremental to 3, but no.")
+	}
+	if results[1].ID != 4 {
+		t.Error("expect new tag id incremental to 4, but no.")
+	}
+}
+
+func TestTagDaoDeleteTagsIntegration(t *testing.T) {
+	skipIntergartion(t)
+	dao := newTestingTagDao(t)
+	query := TagQuery{
+		ID: []uint64{2},
+	}
+	count, err := dao.DeleteTags(nil, query)
+	if err != nil {
+		t.Fatal("expect delete tags to be ok, but got error: ", err)
+	}
+	if count != 1 {
+		t.Error("expect delete 1 tag, but got ", count)
+	}
+	tags, err := dao.Tags(nil, query)
+	if err != nil {
+		t.Fatal("expect get tags to be ok, but got error: ", err)
+	}
+	if len(tags) != 0 {
+		t.Error("expect get empty tags, but got ", len(tags))
+	}
+}
+
+func TestTagDaoCountTagsIntegration(t *testing.T) {
+	skipIntergartion(t)
+	dao := newTestingTagDao(t)
+	var enterprise = "csbot"
+	count, err := dao.CountTags(nil, TagQuery{
+		Enterprise: &enterprise,
+	})
+	if err != nil {
+		t.Fatal("expect count to be ok, but got error: ", err)
+	}
+	if len(testTags) != int(count) {
+		t.Error("expect count to be ", len(testTags), ", but got ", int(count))
 	}
 }

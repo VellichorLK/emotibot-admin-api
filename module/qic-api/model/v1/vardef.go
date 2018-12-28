@@ -1,5 +1,10 @@
 package model
 
+import "errors"
+
+// ErrAutoIDDisabled will only be returned when Insert operation can not found the lastInsertId.
+var ErrAutoIDDisabled = errors.New("dao does not support LastInsertId function")
+
 //Table name in QISYS
 const (
 	tblConversation    = "Conversation"

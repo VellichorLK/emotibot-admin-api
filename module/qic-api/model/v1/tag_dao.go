@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/misc/mathutil"
 )
 
 //TagSQLDao is the DAO implemented in sql.
@@ -63,13 +65,18 @@ type Tag struct {
 // TagQuery is the query against tag datastore, all fields is the condition which should be nilable.
 // any nil field will be ignored. And all conditions will be join by AND logic.
 type TagQuery struct {
-	ID         []uint64
-	UUID       []string
-	Enterprise *string
-	Name       *string
-	IsDeleted  *bool
-	Limit      int
-	Page       int
+	ID               []uint64
+	UUID             []string
+	Enterprise       *string
+	Name             *string
+	IgnoreSoftDelete bool
+	paging           *Pagination
+}
+
+// Limit and Page is the conditions for querying paging.
+type Pagination struct {
+	Limit int
+	Page  int
 }
 
 func (t *TagQuery) whereSQL() (string, []interface{}) {
@@ -91,6 +98,11 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 		conditions = append(conditions, fldTagName+" LIKE ?")
 		bindedData = append(bindedData, t.Name)
 	}
+	if !t.IgnoreSoftDelete {
+		conditions = append(conditions, fldTagIsDeleted+" = ?")
+		bindedData = append(bindedData, t.IgnoreSoftDelete)
+	}
+
 	var rawsql string
 	if len(conditions) > 0 {
 		rawsql = "WHERE " + strings.Join(conditions, " AND ")
@@ -98,9 +110,11 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 	return rawsql, bindedData
 }
 
-func (t *TagQuery) offsetSQL() string {
-	offset := t.Limit * t.Page
-	return fmt.Sprintf(" LIMIT %d, %d", offset, t.Limit)
+func (p *Pagination) offsetSQL() string {
+	limit := mathutil.MaxInt(p.Limit, 0)
+	page := mathutil.MaxInt(p.Page-1, 1)
+	offset := limit * page
+	return fmt.Sprintf(" LIMIT %d, %d", offset, limit)
 }
 
 func (t *TagSQLDao) Begin() (*sql.Tx, error) {
@@ -114,20 +128,25 @@ type queryer interface {
 var tagSelectColumns = []string{fldTagID, fldTagUUID, fldTagIsDeleted, fldTagName,
 	fldTagType, fldTagPosSen, fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise}
 
+// Tags fetch the tag resource from db or tx.
+// query determine condition and how many it should fetch.
 func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
-	var q queryer
+	var q SqlLike
 	if tx != nil {
 		q = tx
-	} else if t.db != nil {
-		q = t.db
 	} else {
-		return nil, fmt.Errorf("dao")
+		q = t.db
 	}
-	wheresql, data := query.whereSQL()
+	var (
+		wheresql, pagingsql string
+		data                []interface{}
+	)
+	wheresql, data = query.whereSQL()
+	if query.paging != nil {
+		pagingsql = query.paging.offsetSQL()
+	}
 	rawsql := "SELECT `" + strings.Join(tagSelectColumns, "`, `") + "` FROM `" + tblTags + "` " +
-		wheresql + " " + query.offsetSQL()
-	logger.Error.Println("raw error sql of ", rawsql, "; data: ", data)
-
+		wheresql + " " + pagingsql
 	rows, err := q.Query(rawsql, data...)
 	if err != nil {
 		logger.Error.Println("raw error sql of ", rawsql, "; data: ", data)
@@ -137,8 +156,7 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 	tags := make([]Tag, 0)
 	for rows.Next() {
 		var (
-			tag Tag
-			// isDeleted int8
+			tag    Tag
 			negSen sql.NullString
 			posSen sql.NullString
 		)
@@ -150,11 +168,6 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 		if !posSen.Valid {
 			tag.PositiveSentence = "[]"
 		}
-		// if isDeleted == 0 {
-		// 	tag.IsDeleted = false
-		// } else {
-		// 	tag.IsDeleted = true
-		// }
 		tag.PositiveSentence = posSen.String
 		tag.NegativeSentence = negSen.String
 		tags = append(tags, tag)
@@ -165,15 +178,104 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 	return tags, nil
 }
 
+// NewTags Insert the tag struct and return the tag inserted with latest id.
+// ErrAutoIDDisabled is returned If LastInsertId is not guaranteed.
 func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
-
-	return nil, nil
+	var s SqlLike
+	if tx != nil {
+		s = tx
+	} else {
+		s = t.db
+	}
+	tagInsertColumns := []string{fldTagUUID, fldTagEnterprise, fldTagName, fldTagType,
+		fldTagPosSen, fldTagNegSen}
+	rawsql := "INSERT INTO `" + tblTags + "`(`" + strings.Join(tagInsertColumns, "` , `") + "`) VALUE (?" + strings.Repeat(", ?", len(tagInsertColumns)-1) + ")"
+	stmt, err := s.Prepare(rawsql)
+	if err != nil {
+		logger.Error.Println("error rawsql: ", rawsql)
+		return nil, fmt.Errorf("prepare sql failed, %v", err)
+	}
+	defer stmt.Close()
+	results := make([]Tag, 0, len(tags))
+	var isReliable = true
+	for _, t := range tags {
+		result, err := stmt.Exec(t.UUID, t.Enterprise, t.Name, t.Typ,
+			t.PositiveSentence, t.NegativeSentence)
+		if err != nil {
+			return nil, fmt.Errorf("insert sql failed, %v", err)
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			isReliable = false
+		} else {
+			t.ID = uint64(id)
+		}
+		results = append(results, t)
+	}
+	if !isReliable {
+		return results, ErrAutoIDDisabled
+	}
+	return results, nil
 }
 
-func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery, isSoftDelete bool) error {
-	return nil
+// DeleteTags soft delete the tags from db by the query indicated.
+// soft deleted tags will still stayed in the db, but isDeleted will be flaged as true.
+// the true affected rows will be returned.
+// notice: query's paging struct still can affected how many it will deleted.
+func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) (int64, error) {
+	var q SqlLike
+	if tx != nil {
+		q = tx
+	} else {
+		q = t.db
+	}
+	var (
+		wheresql, pagingsql string
+		data                []interface{}
+	)
+	wheresql, data = query.whereSQL()
+	if query.paging != nil {
+		pagingsql = query.paging.offsetSQL()
+	}
+	rawsql := "UPDATE `" + tblTags + "` SET `" + fldTagIsDeleted + "`=?, `" + fldTagUpdateTime + "`=? " +
+		wheresql + " " + pagingsql
+	utctimestamp := time.Now().Unix()
+	data = append([]interface{}{true, utctimestamp}, data...)
+	result, err := q.Exec(rawsql, data...)
+	if err != nil {
+		logger.Error.Println("error sql: " + rawsql)
+		return 0, fmt.Errorf("update failed, %v", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return 0, ErrAutoIDDisabled
+	}
+	return count, nil
 }
 
 func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
-	return 0, nil
+	var q SqlLike
+	if tx != nil {
+		q = tx
+	} else {
+		q = t.db
+	}
+	var (
+		wheresql, pagingsql string
+		data                []interface{}
+	)
+	wheresql, data = query.whereSQL()
+	if query.paging != nil {
+		pagingsql = query.paging.offsetSQL()
+	}
+	rawsql := "SELECT count(*) FROM `" + tblTags + "` " +
+		wheresql + " " + pagingsql
+
+	var count uint
+	err := q.QueryRow(rawsql, data...).Scan(&count)
+	if err != nil {
+		logger.Error.Println("raw error sql of ", rawsql)
+		return 0, fmt.Errorf("Query error: %v", err)
+	}
+	return count, nil
 }

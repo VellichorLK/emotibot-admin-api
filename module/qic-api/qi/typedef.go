@@ -21,6 +21,6 @@ type SimpleGroupsResponse struct {
 type TagDao interface {
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
 	NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error)
-	DeleteTags(tx *sql.Tx, query model.TagQuery, isSoftDelete bool) error
+	DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
 	CountTags(tx *sql.Tx, query model.TagQuery) (uint, error)
 }
