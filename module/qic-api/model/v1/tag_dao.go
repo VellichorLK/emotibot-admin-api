@@ -165,14 +165,11 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 	return tags, nil
 }
 
-func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]uint, error) {
+func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
+
 	return nil, nil
 }
 
-func (t *TagSQLDao) SetTags(tx *sql.Tx, tag []Tag) ([]uint, error) {
-	return nil, nil
-}
-
-func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) error {
+func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery, isSoftDelete bool) error {
 	return nil
 }

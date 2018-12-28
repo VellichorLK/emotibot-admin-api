@@ -20,7 +20,6 @@ type SimpleGroupsResponse struct {
 //TagDao is tag resource manipulating interface, which itself should support ACID transaction.
 type TagDao interface {
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
-	NewTags(tx *sql.Tx, tags []model.Tag) ([]uint, error)
-	SetTags(tx *sql.Tx, tag []model.Tag) ([]uint, error)
-	DeleteTags(tx *sql.Tx, query model.TagQuery) error
+	NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error)
+	DeleteTags(tx *sql.Tx, query model.TagQuery, isSoftDelete bool) error
 }
