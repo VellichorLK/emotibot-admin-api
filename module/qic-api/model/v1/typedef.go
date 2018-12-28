@@ -2,6 +2,7 @@ package model
 
 import (
 	"database/sql"
+
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -28,6 +29,8 @@ func (dl *DefaultDBLike) ClearTransition(tx *sql.Tx) {
 type SqlLike interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+	Prepare(query string) (*sql.Stmt, error)
 }
 
 type GroupFilter struct {
