@@ -81,8 +81,7 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 	}
 
 	//get tags information
-	isDelete := false
-	query := model.TagQuery{ID: allTagIDs, Enterprise: &(*q.Enterprise), IsDeleted: &isDelete}
+	query := model.TagQuery{ID: allTagIDs, Enterprise: &(*q.Enterprise)}
 	tags, err := tagDao.Tags(nil, query)
 	if err != nil {
 		return nil, err
@@ -136,8 +135,7 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentence, error) {
 
 	//query tags ID
-	isDelete := false
-	query := model.TagQuery{UUID: tagUUID, Enterprise: &enterprise, IsDeleted: &isDelete}
+	query := model.TagQuery{UUID: tagUUID, Enterprise: &enterprise}
 	tags, err := tagDao.Tags(nil, query)
 	if err != nil {
 		return nil, err
