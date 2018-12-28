@@ -30,6 +30,7 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "chat/{platform}/{appid}", []string{}, handlePlatformChat),
 			util.NewEntryPoint("POST", "chat/{platform}/{appid}", []string{}, handlePlatformChat),
+			util.NewEntryPoint("GET", "chat/reload", []string{}, handleReloadPlatformConfig),
 		},
 	}
 }
@@ -55,11 +56,18 @@ func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config, err := GetPlatformConfig(appid, platform)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		logger.Error.Println("Get platform conf fail:", err.Error())
-		return
+	var err error
+	key := fmt.Sprintf("%s-%s", appid, platform)
+	config, ok := configCache[key]
+	if !ok {
+		config, err = GetPlatformConfig(appid, platform)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.Error.Println("Get platform conf fail:", err.Error())
+			return
+		}
+		configCache[key] = config
+		logger.Trace.Println("Add cache")
 	}
 
 	logger.Trace.Printf("Get platform config of %s, %s: %+v\n", appid, platform, config)
@@ -221,8 +229,15 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 
 	bot := workWeixinBot[appid]
 	if r.Method == http.MethodGet {
-		logger.Trace.Println("Start url verify")
 		bot.VerifyURL(w, r)
 		return
+	} else if r.Method == http.MethodPost {
+		// inputs, err := bot.ParseRequest(r)
 	}
+}
+
+var configCache = map[string]map[string]string{}
+
+func handleReloadPlatformConfig(w http.ResponseWriter, r *http.Request) {
+	configCache = map[string]map[string]string{}
 }

@@ -5,11 +5,12 @@ import (
 	"crypto/cipher"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -41,17 +42,18 @@ func New(token, encodingAES string) (*Client, error) {
 	return client, nil
 }
 
-func (c *Client) ParseRequest(r *http.Request) {
-
-}
-
 func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
 	signature := r.URL.Query().Get("msg_signature")
 	timestamp := r.URL.Query().Get("timestamp")
 	nonce := r.URL.Query().Get("nonce")
 	encryptStr := r.URL.Query().Get("echostr")
 
-	logger.Trace.Printf("Verify with: %s, %s, %s, %s\n", signature, timestamp, nonce, encryptStr)
+	logger.Trace.Printf(`Verify with:
+	signature:	%s
+	timestamp: %s
+	nonce: %s
+	encryptStr: %s
+	`, signature, timestamp, nonce, encryptStr)
 	verify := calculateSignature(c.Token, timestamp, nonce, encryptStr)
 	logger.Trace.Printf("Signature check: %s, %s\n", verify, signature)
 	if verify != signature {
@@ -59,27 +61,43 @@ func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	decodedStr, err := base64.StdEncoding.DecodeString(encryptStr)
+	msg, _, err := decrypt(c.Cipher, c.AESKey, encryptStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		logger.Error.Println("Verify URL error when decode base64, ", err.Error())
+		logger.Error.Printf("Decrypt error: %s\n", err.Error())
 		return
 	}
-	outputStr := make([]byte, len(decodedStr))
+	w.Write(msg)
+}
 
-	c.Cipher.Decrypt(outputStr, decodedStr)
-	content := outputStr[16:]
-	msgLen, err := strconv.Atoi(string(outputStr[0:4]))
+func decrypt(c cipher.Block, key []byte, encryptStr string) ([]byte, []byte, error) {
+	decodedStr, err := base64.StdEncoding.DecodeString(encryptStr)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		logger.Error.Printf("Verify URL error when get msgLen %s, %s\n", outputStr[0:4], err.Error())
-		return
+		return nil, nil, err
+	}
+
+	blockMode := cipher.NewCBCDecrypter(c, key[0:16])
+	outputStr := make([]byte, len(decodedStr))
+	blockMode.CryptBlocks(outputStr, decodedStr)
+	outputStr = PKCS5UnPadding(outputStr)
+	content := outputStr[16:]
+	msgLen := binary.BigEndian.Uint32(content[:4])
+	if int(msgLen) > len(content) {
+		logger.Error.Printf("length too large")
+		return nil, nil, err
 	}
 	msg := content[4 : msgLen+4]
 	verified := content[msgLen+4:]
+	logger.Trace.Printf("Get origin result: %s\n", content)
+	logger.Trace.Printf("Get msg %s\n", msg)
+	logger.Trace.Printf("Get verified: %s\n", verified)
+	return msg, verified, nil
+}
 
-	logger.Trace.Printf("Get msg [%s], verified [%s]\n", msg, verified)
-	w.Write(msg)
+func PKCS5UnPadding(origData []byte) []byte {
+	length := len(origData)
+	unpadding := int(origData[length-1])
+	return origData[:(length - unpadding)]
 }
 
 func calculateSignature(token, timestamp, nonce, message string) string {
@@ -91,4 +109,14 @@ func calculateSignature(token, timestamp, nonce, message string) string {
 	io.WriteString(hash, input)
 	signature := fmt.Sprintf("%x", hash.Sum(nil))
 	return signature
+}
+
+func (c *Client) ParseRequest(r *http.Request) ([]*WorkWeixinMessage, error) {
+	_, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	if err != nil {
+		return nil, nil
+	}
+	return nil, nil
 }
