@@ -12,7 +12,8 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
 	tagDao     TagDao
-	db         *sql.DB
+	sqlConn    *sql.DB
+	dbLike     model.DBLike
 )
 
 func init() {
@@ -35,13 +36,17 @@ func init() {
 				pass := envs["MYSQL_PASS"]
 				db := envs["MYSQL_DB"]
 
-				conn, err := util.InitDB(url, user, pass, db)
+				sqlConn, err := util.InitDB(url, user, pass, db)
 				if err != nil {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return
 				}
-				serviceDAO = model.NewGroupSQLDao(conn)
-				tagDao, err = model.NewTagSQLDao(conn)
+				dbLike = &model.DefaultDBLike{
+					DB: sqlConn,
+				}
+
+				serviceDAO = model.NewGroupSQLDao(sqlConn)
+				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {
 					logger.Error.Printf("init tag dao failed, %v", err)
 					return
