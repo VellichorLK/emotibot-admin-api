@@ -90,17 +90,6 @@ func init() {
 				IgnoreAppID:     true,
 				IgnoreAuthToken: false,
 			}),
-
-			// util.NewEntryPoint("POST", "upload/sq", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/operation/insert/sq", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "sq/deleteCollection", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "upload/lq", []string{}, handleRedirect),
-			util.NewEntryPoint("POST", "progress", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/operation/upsert/lq", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/operation/delete/lq", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/operation/update/sq", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/operation/update/answer", []string{}, handleRedirect),
-			// util.NewEntryPoint("POST", "dal/updatesqanswer", []string{}, handleRedirect),
 		},
 		EntryPrefix: []util.EntryPoint{
 			util.NewEntryPoint("GET", "dal/", []string{}, handleRedirect),
