@@ -10,6 +10,6 @@ services:
     - TZ=Asia/Taipei
     healthcheck:
       test: "/usr/bin/mysql --user=root --password=password --execute=\"SHOW DATABASES;\""
-      interval: 3s
-      timeout: 3s
-      retries: 3
+      interval: 1s
+      timeout: 1s
+      retries: 10

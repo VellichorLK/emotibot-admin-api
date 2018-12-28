@@ -8,6 +8,6 @@ until [ "$(docker inspect -f {{.State.Health.Status}} mysql-integration)" == "he
     sleep 1;
 done;
 mysql -u root -ppassword -h 127.0.0.1 < $DIR/data.sql
-cd ../ && go test -v ./...-integration
+cd ../ && go test -v ./... -integration
 
 docker-compose -p $COMPOSE_PROJECT_NAME -f $DIR/integration.yaml down -t 3
