@@ -75,7 +75,8 @@ func TestTagDaoTags(t *testing.T) {
 	}
 	mocker.ExpectQuery("SELECT .+ FROM `" + tblTags + "`").WillReturnRows(rows)
 	tags, err := dao.Tags(nil, TagQuery{
-		ID: []uint64{1, 2},
+		ID:    []uint64{1, 2},
+		Limit: 5,
 	})
 	if err != nil {
 		t.Fatal("expect ok but got err: ", err)
@@ -90,7 +91,7 @@ func TestTagDaoTagsIntegration(t *testing.T) {
 	skipIntergartion(t)
 	dao := newTestingTagDao(t)
 	expectedTags := testTags[:2]
-	tags, err := dao.Tags(nil, TagQuery{ID: []uint64{1, 2}})
+	tags, err := dao.Tags(nil, TagQuery{ID: []uint64{1, 2}, Limit: 5})
 	if err != nil {
 		t.Fatal("expect ok, but got error: ", err)
 	}

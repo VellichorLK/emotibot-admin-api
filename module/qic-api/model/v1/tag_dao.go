@@ -68,6 +68,8 @@ type TagQuery struct {
 	Enterprise *string
 	Name       *string
 	IsDeleted  *bool
+	Limit      int
+	Page       int
 }
 
 func (t *TagQuery) whereSQL() (string, []interface{}) {
@@ -95,6 +97,12 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 	}
 	return rawsql, bindedData
 }
+
+func (t *TagQuery) offsetSQL() string {
+	offset := t.Limit * t.Page
+	return fmt.Sprintf(" LIMIT %d, %d", offset, t.Limit)
+}
+
 func (t *TagSQLDao) Begin() (*sql.Tx, error) {
 	return t.db.Begin()
 }
@@ -116,7 +124,8 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 		return nil, fmt.Errorf("dao")
 	}
 	wheresql, data := query.whereSQL()
-	rawsql := "SELECT `" + strings.Join(tagSelectColumns, "`, `") + "` FROM `" + tblTags + "` " + wheresql
+	rawsql := "SELECT `" + strings.Join(tagSelectColumns, "`, `") + "` FROM `" + tblTags + "` " +
+		wheresql + " " + query.offsetSQL()
 	logger.Error.Println("raw error sql of ", rawsql, "; data: ", data)
 
 	rows, err := q.Query(rawsql, data...)
