@@ -70,7 +70,7 @@ type TagQuery struct {
 	Enterprise       *string
 	Name             *string
 	IgnoreSoftDelete bool
-	paging           *Pagination
+	Paging           *Pagination
 }
 
 // Limit and Page is the conditions for querying paging.
@@ -142,8 +142,8 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 		data                []interface{}
 	)
 	wheresql, data = query.whereSQL()
-	if query.paging != nil {
-		pagingsql = query.paging.offsetSQL()
+	if query.Paging != nil {
+		pagingsql = query.Paging.offsetSQL()
 	}
 	rawsql := "SELECT `" + strings.Join(tagSelectColumns, "`, `") + "` FROM `" + tblTags + "` " +
 		wheresql + " " + pagingsql
@@ -234,8 +234,8 @@ func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) (int64, error) {
 		data                []interface{}
 	)
 	wheresql, data = query.whereSQL()
-	if query.paging != nil {
-		pagingsql = query.paging.offsetSQL()
+	if query.Paging != nil {
+		pagingsql = query.Paging.offsetSQL()
 	}
 	rawsql := "UPDATE `" + tblTags + "` SET `" + fldTagIsDeleted + "`=?, `" + fldTagUpdateTime + "`=? " +
 		wheresql + " " + pagingsql
@@ -265,8 +265,8 @@ func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
 		data                []interface{}
 	)
 	wheresql, data = query.whereSQL()
-	if query.paging != nil {
-		pagingsql = query.paging.offsetSQL()
+	if query.Paging != nil {
+		pagingsql = query.Paging.offsetSQL()
 	}
 	rawsql := "SELECT count(*) FROM `" + tblTags + "` " +
 		wheresql + " " + pagingsql

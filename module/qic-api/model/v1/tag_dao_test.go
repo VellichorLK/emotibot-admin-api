@@ -76,7 +76,7 @@ func TestTagDaoTags(t *testing.T) {
 	mocker.ExpectQuery("SELECT .+ FROM `" + tblTags + "`").WillReturnRows(rows)
 	tags, err := dao.Tags(nil, TagQuery{
 		ID: []uint64{1, 2},
-		paging: &Pagination{
+		Paging: &Pagination{
 			Limit: 5,
 		},
 	})
