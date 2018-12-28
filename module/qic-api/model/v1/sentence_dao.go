@@ -126,8 +126,10 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
+	whereSQL += " ORDER BY " + fldID + " DESC "
+
 	if q.Page > 0 && q.Limit > 0 {
-		whereSQL = fmt.Sprintf(" ORDER BY %s DESC LIMIT %d OFFSET %d", fldID, q.Limit, (q.Page-1)*q.Limit)
+		whereSQL = fmt.Sprintf("%s LIMIT %d OFFSET %d", whereSQL, q.Limit, (q.Page-1)*q.Limit)
 	}
 
 	return whereSQL, params
