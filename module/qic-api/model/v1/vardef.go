@@ -2,18 +2,21 @@ package model
 
 //Table name in QISYS
 const (
-	tblConversation = "Conversation"
-	tblSegment      = "Segment"
-	tblGroup        = "Group"
-	tblRelGrpRule   = "Relation_RuleGroup_Rule"
-	tblRelRuleLogic = "Relation_Rule_Logic"
-	tblRule         = "Rule"
-	tblLogic        = "Logic"
-	tblCUPredict    = "CUPredict"
-	tblRecommend    = "Recommendations"
-	tblRuleGroup    = "RuleGroup"
-	tblRGC          = "RuleGroupCondition"
-	tblTags         = "Tag"
+	tblConversation    = "Conversation"
+	tblSegment         = "Segment"
+	tblGroup           = "Group"
+	tblRelGrpRule      = "Relation_Group_Rule"
+	tblRelRuleLogic    = "Relation_Rule_Logic"
+	tblRule            = "Rule"
+	tblLogic           = "Logic"
+	tblCUPredict       = "CUPredict"
+	tblRecommend       = "Recommendations"
+	tblSentence        = "Sentence"
+	tbleRelSentenceTag = "Relation_Sentence_Tag"
+	tblRelSenTag       = "Relation_Sentence_Tag"
+	tblRuleGroup       = "RuleGroup"
+	tblRGC             = "RuleGroupCondition"
+	tblTags            = "Tag"
 )
 
 //field name in Conversation table
@@ -160,4 +163,21 @@ const (
 const (
 	RRRGroupID = "rg_id"
 	RRRRuleID  = "rule_id"
+)
+
+//common field name
+const (
+	fldID         = "id"
+	fldIsDelete   = "is_delete"
+	fldName       = "name"
+	fldEnterprise = "enterprise"
+	fldUUID       = "uuid"
+	fldCreateTime = "create_time"
+	fldUpdateTime = "update_time"
+)
+
+//relation field name
+const (
+	fldRelTagID = "tag_id"
+	fldRelSenID = "s_id"
 )
