@@ -2,15 +2,21 @@ package model
 
 //Table name in QISYS
 const (
-	tblConversation = "Conversation"
-	tblSegment      = "Segment"
-	tblGroup        = "Group"
-	tblRelGrpRule   = "Relation_Group_Rule"
-	tblRelRuleLogic = "Relation_Rule_Logic"
-	tblRule         = "Rule"
-	tblLogic        = "Logic"
-	tblCUPredict    = "CUPredict"
-	tblRecommend    = "Recommendations"
+	tblConversation    = "Conversation"
+	tblSegment         = "Segment"
+	tblGroup           = "Group"
+	tblRelGrpRule      = "Relation_Group_Rule"
+	tblRelRuleLogic    = "Relation_Rule_Logic"
+	tblRule            = "Rule"
+	tblLogic           = "Logic"
+	tblCUPredict       = "CUPredict"
+	tblRecommend       = "Recommendations"
+	tblSentence        = "Sentence"
+	tbleRelSentenceTag = "Relation_Sentence_Tag"
+	tblRelSenTag       = "Relation_Sentence_Tag"
+	tblRuleGroup       = "RuleGroup"
+	tblRGC             = "RuleGroupCondition"
+	tblTags            = "Tag"
 )
 
 //field name in Conversation table
@@ -73,8 +79,20 @@ const (
 	fldGroupType           = "type"
 )
 
+//field name in Tag Table
 const (
-	fldTagID     = "tag_id"
+	fldTagID         = "id"
+	fldTagUUID       = "uuid"
+	fldTagIsDeleted  = "is_delete"
+	fldTagName       = "name"
+	fldTagType       = "type"
+	fldTagPosSen     = "pos_sentences"
+	fldTagNegSen     = "neg_sentences"
+	fldTagCreateTime = "create_time"
+	fldTagUpdateTime = "update_time"
+	fldTagEnterprise = "enterprise"
+)
+const (
 	fldCallID    = "call_id"
 	fldCUPredict = "predict"
 	fldSentence  = "sentence"
@@ -100,4 +118,66 @@ const (
 	fldLogicIsDelete        = "is_delete"
 	fldLogicEnterprise      = "enterprise"
 	fldLogicSpeaker         = "speaker"
+)
+
+// field name in RuleGroupCondition table
+const (
+	RGCID            = "id"
+	RGCGroupID       = "rg_id"
+	RGCType          = "type"
+	RGCFileName      = "file_name"
+	RGCDeal          = "deal"
+	RGCSeries        = "series"
+	RGCUploadTime    = "upload_time"
+	RGCStaffID       = "staff_id"
+	RGCStaffName     = "staff_name"
+	RGCExtension     = "extension"
+	RGCDepartment    = "department"
+	RGCCustomerID    = "customer_id"
+	RGCCustomerName  = "customer_name"
+	RGCCustomerPhone = "customer_phone"
+	RGCCategory      = "category"
+	RGCCallStart     = "call_start"
+	RGCCallEnd       = "call_end"
+	RGCLeftChannel   = "left_channel"
+	RGCRightChannel  = "right_channel"
+)
+
+// field name in RuleGroup
+const (
+	RGID           = "id"
+	RGUUID         = "uuid"
+	RGIsDelete     = "is_delete"
+	RGName         = "name"
+	RGEnterprise   = "enterprise"
+	RGDescription  = "description"
+	RGCreateTime   = "create_time"
+	RGUpdateTime   = "update_time"
+	RGIsEnable     = "is_enable"
+	RGLimitSpeed   = "limit_speed"
+	RGLimitSilence = "limit_silence"
+	RGType         = "type"
+)
+
+// field name Relation_RuleGroup_Rule
+const (
+	RRRGroupID = "rg_id"
+	RRRRuleID  = "rule_id"
+)
+
+//common field name
+const (
+	fldID         = "id"
+	fldIsDelete   = "is_delete"
+	fldName       = "name"
+	fldEnterprise = "enterprise"
+	fldUUID       = "uuid"
+	fldCreateTime = "create_time"
+	fldUpdateTime = "update_time"
+)
+
+//relation field name
+const (
+	fldRelTagID = "tag_id"
+	fldRelSenID = "s_id"
 )

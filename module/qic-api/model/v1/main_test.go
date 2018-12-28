@@ -13,3 +13,10 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 	os.Exit(m.Run())
 }
+
+func skipIntergartion(t *testing.T) {
+	if !isIntegration {
+		t.Skip("skip intergration test, please specify -intergation flag.")
+	}
+	return
+}

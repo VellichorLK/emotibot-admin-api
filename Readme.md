@@ -33,3 +33,8 @@ mkdir -p $GOPATH/src/emotibot.com/
 mv emotigo/ $GOPATH/src/emotibot.com/
 # Download third party source code if needed
 ```
+
+## Style
+
+- file naming: all go file should use lower case with underscore(ex: http_server.go)
+- package naming: should all lower case with no underscore.

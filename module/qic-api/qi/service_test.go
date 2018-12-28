@@ -12,10 +12,12 @@ type mockDAO struct{}
 var mockGroups = []model.GroupWCond{
 	model.GroupWCond{
 		ID:   55688,
+		UUID: "ABCDE",
 		Name: "test1",
 	},
 	model.GroupWCond{
 		ID:   55699,
+		UUID: "CDEFG",
 		Name: "test2",
 	},
 }
@@ -30,13 +32,10 @@ func (m *mockDAO) Commit(tx *sql.Tx) error {
 
 func (m *mockDAO) ClearTranscation(tx *sql.Tx) {}
 
-func (m *mockDAO) GetGroups() ([]model.GroupWCond, error) {
-	return mockGroups, nil
-}
-
 func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
 	createdGroup := &model.GroupWCond{
 		ID:              55688,
+		UUID:            "abcde",
 		Name:            group.Name,
 		Enterprise:      group.Enterprise,
 		Enabled:         group.Enabled,
@@ -48,8 +47,8 @@ func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.Group
 	return createdGroup, nil
 }
 
-func (m *mockDAO) GetGroupBy(id int64) (*model.GroupWCond, error) {
-	if id == mockGroups[0].ID {
+func (m *mockDAO) GetGroupBy(id string) (*model.GroupWCond, error) {
+	if id == mockGroups[0].UUID {
 		mockGroup.ID = mockGroups[0].ID
 		return mockGroup, nil
 	} else {
@@ -57,11 +56,15 @@ func (m *mockDAO) GetGroupBy(id int64) (*model.GroupWCond, error) {
 	}
 }
 
-func (m *mockDAO) UpdateGroup(id int64, group *model.GroupWCond, tx *sql.Tx) (err error) {
-	return
+func (m *mockDAO) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+	return int64(len(mockGroups)), nil
 }
 
-func (m *mockDAO) DeleteGroup(id int64) (err error) {
+func (m *mockDAO) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+	return mockGroups, nil
+}
+
+func (m *mockDAO) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	return
 }
 
@@ -95,27 +98,6 @@ var mockGroup = &model.GroupWCond{
 	SlienceDuration: 0.33,
 	Condition:       mockCondition,
 	Rules:           []int64{1, 2, 3},
-}
-
-func TestGetGroups(t *testing.T) {
-	// mock dao
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
-
-	groups, _ := GetGroups()
-	if len(groups) != 2 {
-		t.Error("expect 2 groups but got ", len(groups))
-	}
-
-	for idx := range groups {
-		g := groups[idx]
-		targetG := mockGroups[idx]
-		if g.ID != targetG.ID || g.Name != targetG.Name {
-			t.Error("expect ", targetG.ID, " ", targetG.Name, "but got ", g.ID, " ", g.Name)
-		}
-	}
 }
 
 func TestCreateGroup(t *testing.T) {
@@ -193,7 +175,7 @@ func TestGetSingleGroup(t *testing.T) {
 	serviceDAO = m
 	defer restoreDAO(originDAO)
 
-	group, err := GetGroupBy(mockGroups[0].ID)
+	group, err := GetGroupBy(mockGroups[0].UUID)
 	if err != nil {
 		t.Error(err)
 		return
@@ -209,7 +191,7 @@ func TestGetSingleGroup(t *testing.T) {
 		return
 	}
 
-	group, err = GetGroupBy(mockGroups[1].ID)
+	group, err = GetGroupBy(mockGroups[1].UUID)
 	if err != nil {
 		t.Error(err)
 		return
