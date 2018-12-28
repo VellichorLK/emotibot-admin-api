@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -33,7 +32,6 @@ func TestSetRoute(t *testing.T) {
 		},
 	}
 	router := setRoute()
-	fmt.Printf("%+v\n", router)
 	route := router.Get("bar")
 	if route == nil {
 		t.Fatal("should be a route, but got nil")
