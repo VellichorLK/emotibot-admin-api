@@ -33,7 +33,7 @@ func TestHandleCreateSentenceGroup(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/qi/sentence-groups", bytes.NewBuffer(reqBody))
+	r := httptest.NewRequest(http.MethodPost, "/qi/sentence-groups", bytes.NewBuffer(reqBody))
 	handleCreateSentenceGroup(w, r)
 
 	body, err := ioutil.ReadAll(w.Body)
@@ -51,6 +51,34 @@ func TestHandleCreateSentenceGroup(t *testing.T) {
 
 	if group.ID != mockSentenceGroup1.UUID {
 		t.Errorf("expect sentence group id: %s, but got: %s", mockSentenceGroup1.UUID, group.ID)
+		return
+	}
+}
+
+func TestHandleGetSentenceGroups(t *testing.T) {
+	originDBLike, originSGDao, originSDao := setupSentenceGroupTestMock()
+	defer restoreSentenceGroupTest(originDBLike, originSGDao, originSDao)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/qi/sentence-groups", nil)
+	handleGetSentenceGroups(w, r)
+
+	body, err := ioutil.ReadAll(w.Body)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	response := SetenceGroupsResponse{}
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	groups := response.Data
+	if len(groups) != len(mockSentenceGroups) {
+		t.Errorf("expect %d sentence groups, but got: %d", len(mockSentenceGroups), len(groups))
 		return
 	}
 }

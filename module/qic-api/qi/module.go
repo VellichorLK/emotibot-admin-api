@@ -32,7 +32,9 @@ func init() {
 			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
 			util.NewEntryPoint("PUT", "sentences/{id}", []string{}, WithSenUUIDCheck(handleModifySentence)),
 			util.NewEntryPoint("DELETE", "sentences/{id}", []string{}, WithSenUUIDCheck(handleDeleteSentence)),
+
 			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
+			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
@@ -43,7 +45,8 @@ func init() {
 				pass := envs["MYSQL_PASS"]
 				db := envs["MYSQL_DB"]
 
-				sqlConn, err := util.InitDB(url, user, pass, db)
+				newConn, err := util.InitDB(url, user, pass, db)
+				sqlConn = newConn
 				if err != nil {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return

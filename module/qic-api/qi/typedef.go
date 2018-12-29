@@ -31,7 +31,7 @@ type SentenceGroupInResponse struct {
 	Name             string                 `json:"sg_name,omitempty"`
 	Role             string                 `json:"role,omitempty"`
 	Position         string                 `json:"position,omitempty"`
-	PositionDistance string                 `json:"position_distance,omitempty"`
+	PositionDistance int                    `json:"position_distance"`
 	Sentences        []model.SimpleSentence `json:"sentences,omitempty"`
 }
 

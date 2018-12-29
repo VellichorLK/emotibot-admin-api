@@ -54,10 +54,17 @@ func (m *mockSentenceGroupDao) Create(group *model.SentenceGroup, sql model.SqlL
 }
 
 func (m *mockSentenceGroupDao) CountBy(filter *model.SentenceGroupFilter, sql model.SqlLike) (total int64, err error) {
+	total = 0
+	for _, uuid := range filter.UUID {
+		if uuid == mockSentenceGroup1.UUID || uuid == mockSentenceGroup2.UUID {
+			total += 1
+		}
+	}
 	return
 }
 
 func (m *mockSentenceGroupDao) GetBy(filter *model.SentenceGroupFilter, sql model.SqlLike) (groups []model.SentenceGroup, err error) {
+	groups = mockSentenceGroups
 	return
 }
 
@@ -143,6 +150,28 @@ func TestCreateSentenceGroup(t *testing.T) {
 
 	if created.UUID != mockSentenceGroup1.UUID {
 		t.Errorf("expect %s, but got %s", mockSentenceGroup1.UUID, created.UUID)
+		return
+	}
+}
+
+func TestGetSentenceGroups(t *testing.T) {
+	originDBLike, originSGDao, originSDao := setupSentenceGroupTestMock()
+	defer restoreSentenceGroupTest(originDBLike, originSGDao, originSDao)
+
+	filter := &model.SentenceGroupFilter{
+		UUID: []string{
+			mockSentenceGroup1.UUID,
+			mockSentenceGroup2.UUID,
+		},
+	}
+	total, _, err := GetSentenceGroupsBy(filter)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if total != 2 {
+		t.Errorf("expect %d, but got: %d", len(mockGroups), total)
 		return
 	}
 }

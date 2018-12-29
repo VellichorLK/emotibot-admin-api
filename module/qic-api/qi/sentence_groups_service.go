@@ -71,3 +71,13 @@ func CreateSentenceGroup(group *model.SentenceGroup) (createdGroup *model.Senten
 	err = dbLike.Commit(tx)
 	return
 }
+
+func GetSentenceGroupsBy(filter *model.SentenceGroupFilter) (total int64, groups []model.SentenceGroup, err error) {
+	total, err = sentenceGroupDao.CountBy(filter, sqlConn)
+	if err != nil {
+		return
+	}
+
+	groups, err = sentenceGroupDao.GetBy(filter, sqlConn)
+	return
+}

@@ -4,6 +4,7 @@ import (
 	autil "emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 	"net/http"
 )
@@ -16,6 +17,21 @@ var roleMapping map[string]int = map[string]int{
 var positionMap map[string]int = map[string]int{
 	"top":    0,
 	"bottom": 1,
+}
+
+var roleCodeMap map[int]string = map[int]string{
+	0: "staff",
+	1: "customer",
+}
+
+var positionCodeMap map[int]string = map[int]string{
+	0: "top",
+	1: "bottom",
+}
+
+type SetenceGroupsResponse struct {
+	Paging *util.Paging              `json:"paging"`
+	Data   []SentenceGroupInResponse `json:"data"`
 }
 
 func sentenceGroupInReqToSentenceGroup(sentenceGroupInReq *SentenceGroupInReq) (group *model.SentenceGroup) {
@@ -45,6 +61,18 @@ func sentenceGroupInReqToSentenceGroup(sentenceGroupInReq *SentenceGroupInReq) (
 	}
 
 	group.Distance = sentenceGroupInReq.PositionDistance
+	return
+}
+
+func sentenceGroupToSentenceGroupInResponse(sg *model.SentenceGroup) (sgInRes SentenceGroupInResponse) {
+	sgInRes = SentenceGroupInResponse{
+		ID:               sg.UUID,
+		Name:             sg.Name,
+		Role:             roleCodeMap[sg.Role],
+		Position:         positionCodeMap[sg.Position],
+		PositionDistance: sg.Distance,
+		Sentences:        sg.Sentences,
+	}
 	return
 }
 
@@ -80,7 +108,36 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	filter := &model.SentenceGroupFilter{
+		Limit:      0,
+		Role:       -1,
+		Position:   -1,
+		Enterprise: enterprise,
+	}
 
+	total, groups, err := GetSentenceGroupsBy(filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	groupsInRes := make([]SentenceGroupInResponse, len(groups))
+	for idx, group := range groups {
+		groupInRes := sentenceGroupToSentenceGroupInResponse(&group)
+		groupsInRes[idx] = groupInRes
+	}
+
+	response := SetenceGroupsResponse{
+		Paging: &util.Paging{
+			Total: total,
+			Page:  0,
+			Limit: len(groups),
+		},
+		Data: groupsInRes,
+	}
+
+	autil.WriteJSON(w, response)
 }
 
 func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
