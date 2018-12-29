@@ -72,7 +72,7 @@ func (m *mockSentenceGroupDao) Update(id string, group *model.SentenceGroup, sql
 	return nil, nil
 }
 
-func (m *mockSentenceGroupDao) Delete(id string) error {
+func (m *mockSentenceGroupDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 

@@ -44,7 +44,7 @@ type SentenceGroupsSqlDao interface {
 	CountBy(filter *SentenceGroupFilter, sql SqlLike) (int64, error)
 	GetBy(filter *SentenceGroupFilter, sql SqlLike) ([]SentenceGroup, error)
 	Update(id string, group *SentenceGroup, sql SqlLike) (*SentenceGroup, error)
-	Delete(id string) error
+	Delete(id string, sqllike SqlLike) error
 }
 
 type SentenceGroupsSqlDaoImpl struct{}
@@ -277,6 +277,13 @@ func (dao *SentenceGroupsSqlDaoImpl) Update(id string, group *SentenceGroup, sql
 	return
 }
 
-func (dao *SentenceGroupsSqlDaoImpl) Delete(id string) (err error) {
+func (dao *SentenceGroupsSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err error) {
+	deleteStr := fmt.Sprintf("UPDATE %s SET %s=1 WHERE %s=?", tblSetnenceGroup, fldIsDelete, fldUUID)
+
+	_, err = sqlLike.Exec(deleteStr, id)
+	if err != nil {
+		err = fmt.Errorf("error while delete sentenct group in dao.Delete, err: %s", err.Error())
+		return
+	}
 	return
 }

@@ -81,3 +81,7 @@ func GetSentenceGroupsBy(filter *model.SentenceGroupFilter) (total int64, groups
 	groups, err = sentenceGroupDao.GetBy(filter, sqlConn)
 	return
 }
+
+func DeleteSentenceGroup(uuid string) error {
+	return sentenceGroupDao.Delete(uuid, sqlConn)
+}

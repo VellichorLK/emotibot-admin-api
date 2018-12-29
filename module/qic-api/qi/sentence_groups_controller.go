@@ -177,5 +177,11 @@ func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteSentenceGroup(w http.ResponseWriter, r *http.Request) {
+	id := parseID(r)
 
+	err := DeleteSentenceGroup(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
