@@ -35,6 +35,7 @@ func init() {
 
 			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
 			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
+			util.NewEntryPoint("GET", "sentence-groups/{id}", []string{}, handleGetSentenceGroup),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

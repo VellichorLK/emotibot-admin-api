@@ -141,7 +141,35 @@ func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	id := parseID(r)
 
+	filter := &model.SentenceGroupFilter{
+		UUID: []string{
+			id,
+		},
+		Enterprise: enterprise,
+		Role:       -1,
+		Position:   -1,
+		Limit:      0,
+	}
+
+	total, groups, err := GetSentenceGroupsBy(filter)
+	if err != nil {
+		logger.Error.Printf("err: %s\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if total == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	group := groups[0]
+
+	groupInRes := sentenceGroupToSentenceGroupInResponse(&group)
+	autil.WriteJSON(w, groupInRes)
 }
 
 func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {

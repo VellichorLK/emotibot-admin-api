@@ -1,6 +1,7 @@
 package model
 
 import (
+	"emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
 	"strings"
@@ -125,6 +126,15 @@ func querySQLBy(filter *SentenceGroupFilter) (queryStr string, values []interfac
 
 	conditionStr := "WHERE "
 	conditions := []string{}
+
+	if len(filter.UUID) > 0 {
+		uuidStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.UUID)-1))
+		for _, uuid := range filter.UUID {
+			values = append(values, uuid)
+		}
+		conditionStr = fmt.Sprintf("%s %s IN (%s) and ", conditionStr, fldUUID, uuidStr)
+	}
+
 	if filter.Name != "" {
 		conditions = append(conditions, fldName)
 		values = append(values, filter.Name)
@@ -195,6 +205,9 @@ func (dao *SentenceGroupsSqlDaoImpl) CountBy(filter *SentenceGroupFilter, sqlLik
 
 	queryStr, values := querySQLBy(filter)
 	queryStr = fmt.Sprintf("SELECT COUNT(sg.%s) FROM (%s) as sg", fldUUID, queryStr)
+
+	logger.Info.Printf("queryStr: %s\n", queryStr)
+	logger.Info.Printf("values: %+v\n", values)
 
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
