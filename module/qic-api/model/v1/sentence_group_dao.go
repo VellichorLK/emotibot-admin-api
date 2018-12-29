@@ -1,7 +1,14 @@
 package model
 
 import (
+	"errors"
+	"fmt"
+	"strings"
 	"time"
+)
+
+var (
+	ErrNilSqlLike = errors.New("SqlLike can not be nil")
 )
 
 type SentenceGroup struct {
@@ -10,10 +17,11 @@ type SentenceGroup struct {
 	Name       string
 	Role       int
 	Position   int
-	Sentences  []string
+	Distance   int
+	Sentences  []SimpleSentence
 	Enterprise string
-	CreateTime *time.Time
-	UpdateTime *time.Time
+	CreateTime int64
+	UpdateTime int64
 }
 
 type SentenceGroupFilter struct {
@@ -39,6 +47,74 @@ type SentenceGroupsSqlDao interface {
 type SentenceGroupsSqlDaoImpl struct{}
 
 func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (createdGroup *SentenceGroup, err error) {
+	if sql == nil {
+		err = ErrNilSqlLike
+		return
+	}
+
+	// insert sentence group
+	fileds := []string{
+		fldIsDelete,
+		fldName,
+		fldEnterprise,
+		SGRole,
+		SGPoistion,
+		SGRange,
+		fldUUID,
+		fldCreateTime,
+		fldUpdateTime,
+	}
+
+	values := []interface{}{
+		0,
+		group.Name,
+		group.Enterprise,
+		group.Role,
+		group.Position,
+		group.Distance,
+		group.UUID,
+		group.CreateTime,
+		group.UpdateTime,
+	}
+
+	fieldStr := strings.Join(fileds, "`, `")
+	fieldStr = fmt.Sprintf("`%s`", fieldStr)
+	valueStr := fmt.Sprintf("?%s", strings.Repeat(", ?", len(fileds)-1))
+	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblSetnenceGroup, fieldStr, valueStr)
+
+	fmt.Printf("insertStr: %s\n", insertStr)
+
+	result, err := sql.Exec(insertStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while insert sentence group in dao.Create, err: %s", err.Error())
+		return
+	}
+
+	groupID, err := result.LastInsertId()
+	if err != nil {
+		err = fmt.Errorf("error while get group id in dao.Create, err: %s", err.Error())
+		return
+
+	}
+
+	if len(group.Sentences) > 0 {
+		// create sentence group to sentence relation
+		values = []interface{}{}
+		for _, ss := range group.Sentences {
+			values = append(values, groupID, ss.ID)
+		}
+
+		valueStr = fmt.Sprintf("(?, ?) %s", strings.Repeat(", (?, ?)", len(group.Sentences)-1))
+		insertStr = fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES %s", tblRelSGS, RSGSSGID, RSGSSID, valueStr)
+
+		_, err = sql.Exec(insertStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while insert sentence group to sentence relationin dao.Create, err: %s", err.Error())
+			return
+		}
+	}
+	group.ID = groupID
+	createdGroup = group
 	return
 }
 
