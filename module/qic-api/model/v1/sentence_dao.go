@@ -29,6 +29,13 @@ var (
 	ErrNeedRelation    = errors.New("Must has relation structure")
 )
 
+// SimpleSentence only contains sentence id & sentence name
+type SimpleSentence struct {
+	ID   uint64 `json:"-"`
+	UUID string `json:"sentence_id"`
+	Name string `json:"sentence_name"`
+}
+
 //SentenceQuery uses as query structure of sentence
 type SentenceQuery struct {
 	UUID       []string
