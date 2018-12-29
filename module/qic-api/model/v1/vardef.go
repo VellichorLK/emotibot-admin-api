@@ -22,6 +22,8 @@ const (
 	tblRuleGroup       = "RuleGroup"
 	tblRGC             = "RuleGroupCondition"
 	tblTags            = "Tag"
+	tblSetnenceGroup   = "SentenceGroup"
+	tblRelSGS          = "Relation_SentenceGroup_Sentence"
 )
 
 //field name in Conversation table
@@ -168,6 +170,19 @@ const (
 const (
 	RRRGroupID = "rg_id"
 	RRRRuleID  = "rule_id"
+)
+
+// field name in SentenceGroup
+const (
+	SGRole     = "role"
+	SGPoistion = "position"
+	SGRange    = "range"
+)
+
+// field name in Relation_SentenceGroup_Sentece
+const (
+	RSGSSGID = "sg_id"
+	RSGSSID  = "s_id"
 )
 
 //common field name
