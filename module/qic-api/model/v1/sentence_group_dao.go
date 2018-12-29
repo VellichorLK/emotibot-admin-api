@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
 	"strings"
@@ -175,7 +175,7 @@ func querySQLBy(filter *SentenceGroupFilter) (queryStr string, values []interfac
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		LEFT JOIN %s as s ON rsgs.%s = s.%s`,
 		fldUUID,
@@ -183,6 +183,8 @@ func querySQLBy(filter *SentenceGroupFilter) (queryStr string, values []interfac
 		SGRole,
 		SGPoistion,
 		SGRange,
+		fldCreateTime,
+		fldUpdateTime,
 		fldUUID,
 		fldName,
 		tblSetnenceGroup,
@@ -205,9 +207,6 @@ func (dao *SentenceGroupsSqlDaoImpl) CountBy(filter *SentenceGroupFilter, sqlLik
 
 	queryStr, values := querySQLBy(filter)
 	queryStr = fmt.Sprintf("SELECT COUNT(sg.%s) FROM (%s) as sg", fldUUID, queryStr)
-
-	logger.Info.Printf("queryStr: %s\n", queryStr)
-	logger.Info.Printf("values: %+v\n", values)
 
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
@@ -253,6 +252,8 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 			&group.Role,
 			&group.Position,
 			&group.Distance,
+			&group.CreateTime,
+			&group.UpdateTime,
 			&simpleSentence.UUID,
 			&simpleSentence.Name,
 		)

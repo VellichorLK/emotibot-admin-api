@@ -173,7 +173,29 @@ func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {
+	id := parseID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 
+	groupInReq := SentenceGroupInReq{}
+	err := autil.ReadJSON(r, &groupInReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
+	group.Enterprise = enterprise
+
+	updatedGroup, err := UpdateSentenceGroup(id, group)
+	if err != nil {
+		logger.Error.Printf("error while update sentence group in handleUpdateSentenceGroup, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	groupInRes := sentenceGroupToSentenceGroupInResponse(updatedGroup)
+	autil.WriteJSON(w, groupInRes)
+	return
 }
 
 func handleDeleteSentenceGroup(w http.ResponseWriter, r *http.Request) {

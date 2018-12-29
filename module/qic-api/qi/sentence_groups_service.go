@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"database/sql"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
@@ -10,6 +11,45 @@ import (
 )
 
 var sentenceGroupDao model.SentenceGroupsSqlDao = &model.SentenceGroupsSqlDaoImpl{}
+
+func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences []model.SimpleSentence, err error) {
+	if len(group.Sentences) == 0 {
+		return
+	}
+
+	simpleSentences = make([]model.SimpleSentence, len(group.Sentences))
+	uuids := make([]string, len(group.Sentences))
+	for idx, s := range group.Sentences {
+		uuids[idx] = s.UUID
+	}
+
+	var isDelete int8 = int8(0)
+	query := &model.SentenceQuery{
+		Enterprise: &group.Enterprise,
+		UUID:       uuids,
+		IsDelete:   &isDelete,
+	}
+
+	sentences, err := sentenceDao.GetSentences(tx, query)
+	if err != nil {
+		return
+	}
+
+	if len(sentences) != len(group.Sentences) {
+		logger.Warn.Printf("user input sentences does not match sentences in db")
+	}
+
+	for idx, s := range sentences {
+		simpleSentence := model.SimpleSentence{
+			ID:   s.ID,
+			UUID: s.UUID,
+			Name: s.Name,
+		}
+		simpleSentences[idx] = simpleSentence
+	}
+	return
+
+}
 
 func CreateSentenceGroup(group *model.SentenceGroup) (createdGroup *model.SentenceGroup, err error) {
 	if group == nil {
@@ -32,34 +72,9 @@ func CreateSentenceGroup(group *model.SentenceGroup) (createdGroup *model.Senten
 	}
 	defer dbLike.ClearTransition(tx)
 
-	uuids := []string{}
-	for _, s := range group.Sentences {
-		uuids = append(uuids, s.UUID)
-	}
-	var isDelete int8 = int8(0)
-	sentenceQuery := &model.SentenceQuery{
-		Enterprise: &group.Enterprise,
-		UUID:       uuids,
-		IsDelete:   &isDelete,
-	}
-
-	sentences, err := sentenceDao.GetSentences(tx, sentenceQuery)
+	simpleSentences, err := simpleSentencesOf(group, tx)
 	if err != nil {
 		return
-	}
-
-	if len(sentences) != len(group.Sentences) {
-		logger.Warn.Printf("user input sentences does not match sentences in db")
-	}
-
-	simpleSentences := []model.SimpleSentence{}
-	for _, s := range sentences {
-		simpleSentence := model.SimpleSentence{
-			ID:   s.ID,
-			UUID: s.UUID,
-			Name: s.Name,
-		}
-		simpleSentences = append(simpleSentences, simpleSentence)
 	}
 	group.Sentences = simpleSentences
 
@@ -79,6 +94,55 @@ func GetSentenceGroupsBy(filter *model.SentenceGroupFilter) (total int64, groups
 	}
 
 	groups, err = sentenceGroupDao.GetBy(filter, sqlConn)
+	return
+}
+
+func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup *model.SentenceGroup, err error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	filter := &model.SentenceGroupFilter{
+		UUID: []string{
+			uuid,
+		},
+		Enterprise: group.Enterprise,
+		Role:       -1,
+		Position:   -1,
+		Limit:      0,
+	}
+
+	groups, err := sentenceGroupDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(groups) == 0 {
+		return
+	}
+
+	oldGroup := groups[0]
+
+	err = sentenceGroupDao.Delete(uuid, tx)
+	if err != nil {
+		return
+	}
+
+	simpleSentences, err := simpleSentencesOf(group, tx)
+	if err != nil {
+		return
+	}
+
+	group.Sentences = simpleSentences
+	group.UUID = uuid
+	group.CreateTime = oldGroup.CreateTime
+	group.UpdateTime = time.Now().Unix()
+
+	sentenceGroupDao.Create(group, tx)
+	updatedGroup = group
+	err = tx.Commit()
 	return
 }
 
