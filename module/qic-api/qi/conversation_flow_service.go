@@ -100,3 +100,7 @@ func GetConversationFlowsBy(filter *model.ConversationFlowFilter) (total int64, 
 	}
 	return
 }
+
+func DeleteConversationFlow(id string) (err error) {
+	return conversationFlowDao.Delete(id, sqlConn)
+}

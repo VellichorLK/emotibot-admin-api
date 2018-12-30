@@ -69,7 +69,7 @@ func handleCreateConversationFlow(w http.ResponseWriter, r *http.Request) {
 	createdFlow, err := CreateConversationFlow(flow)
 
 	if err != nil {
-		logger.Error.Printf("error while create conversation flow in handleCreateConversaionFlow, reason: %s", err.Error())
+		logger.Error.Printf("error while create conversation flow in handleCreateConversaionFlow, reason: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,7 +88,8 @@ func handleGetConversationFlows(w http.ResponseWriter, r *http.Request) {
 
 	total, flows, err := GetConversationFlowsBy(filter)
 	if err != nil {
-		logger.Error.Printf("error while get conversation flows in handleGetConversationFlows, reason: %s", err.Error())
+		logger.Error.Printf("error while get conversation flows in handleGetConversationFlows, reason: %s\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -112,4 +113,46 @@ func handleGetConversationFlows(w http.ResponseWriter, r *http.Request) {
 		Data: flowsInRes,
 	}
 	autil.WriteJSON(w, response)
+}
+
+func handleGetConversationFlow(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	id := parseID(r)
+
+	filter := &model.ConversationFlowFilter{
+		Enterprise: enterprise,
+		UUID: []string{
+			id,
+		},
+	}
+
+	_, flows, err := GetConversationFlowsBy(filter)
+	if err != nil {
+		logger.Error.Printf("error while get conversation flow(%s) in handleGetConversationFlow, reason: %s\n", id, err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(flows) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	flow := flows[0]
+	flowInRes := conversationfFlowToFlowInRes(&flow)
+
+	autil.WriteJSON(w, flowInRes)
+	return
+}
+
+func handleDeleteConversationFlow(w http.ResponseWriter, r *http.Request) {
+	id := parseID(r)
+
+	err := DeleteConversationFlow(id)
+	if err != nil {
+		logger.Error.Printf("error while delete conversation flow in handleDeleteConversationFlow, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	return
 }
