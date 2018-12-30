@@ -7,23 +7,25 @@ var ErrAutoIDDisabled = errors.New("dao does not support LastInsertId function")
 
 //Table name in QISYS
 const (
-	tblConversation    = "Conversation"
-	tblSegment         = "Segment"
-	tblGroup           = "Group"
-	tblRelGrpRule      = "Relation_Group_Rule"
-	tblRelRuleLogic    = "Relation_Rule_Logic"
-	tblRule            = "Rule"
-	tblLogic           = "Logic"
-	tblCUPredict       = "CUPredict"
-	tblRecommend       = "Recommendations"
-	tblSentence        = "Sentence"
-	tbleRelSentenceTag = "Relation_Sentence_Tag"
-	tblRelSenTag       = "Relation_Sentence_Tag"
-	tblRuleGroup       = "RuleGroup"
-	tblRGC             = "RuleGroupCondition"
-	tblTags            = "Tag"
-	tblSetnenceGroup   = "SentenceGroup"
-	tblRelSGS          = "Relation_SentenceGroup_Sentence"
+	tblConversation     = "Conversation"
+	tblSegment          = "Segment"
+	tblGroup            = "Group"
+	tblRelGrpRule       = "Relation_Group_Rule"
+	tblRelRuleLogic     = "Relation_Rule_Logic"
+	tblRule             = "Rule"
+	tblLogic            = "Logic"
+	tblCUPredict        = "CUPredict"
+	tblRecommend        = "Recommendations"
+	tblSentence         = "Sentence"
+	tbleRelSentenceTag  = "Relation_Sentence_Tag"
+	tblRelSenTag        = "Relation_Sentence_Tag"
+	tblRuleGroup        = "RuleGroup"
+	tblRGC              = "RuleGroupCondition"
+	tblTags             = "Tag"
+	tblSetnenceGroup    = "SentenceGroup"
+	tblRelSGS           = "Relation_SentenceGroup_Sentence"
+	tblConversationflow = "ConversationFlow"
+	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
 )
 
 //field name in Conversation table
@@ -200,4 +202,16 @@ const (
 const (
 	fldRelTagID = "tag_id"
 	fldRelSenID = "s_id"
+)
+
+// fields in ConversationFlow
+const (
+	CFType       = "type"
+	CFExpression = "expression"
+)
+
+// fields in Relation_ConversationFlow_SentenceGroup
+const (
+	RCFSGCFID = "cf_id"
+	RCFSGSGID = "sg_id"
 )
