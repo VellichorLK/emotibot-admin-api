@@ -12,6 +12,12 @@ var (
 	ErrNilSqlLike = errors.New("SqlLike can not be nil")
 )
 
+type SimpleSentenceGroup struct {
+	ID   int64  `json:"-"`
+	UUID string `json:"sg_id"`
+	Name string `json:"sg_name"`
+}
+
 type SentenceGroup struct {
 	ID         int64
 	UUID       string
@@ -36,7 +42,7 @@ type SentenceGroupFilter struct {
 	UpdateTime *time.Time
 	Page       int
 	Limit      int
-	IsDelete   int
+	IsDelete   int8
 }
 
 type SentenceGroupsSqlDao interface {
@@ -175,9 +181,10 @@ func querySQLBy(filter *SentenceGroupFilter) (queryStr string, values []interfac
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		LEFT JOIN %s as s ON rsgs.%s = s.%s`,
+		fldID,
 		fldUUID,
 		fldName,
 		SGRole,
@@ -247,6 +254,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 		simpleSentence := SimpleSentence{}
 
 		rows.Scan(
+			&group.ID,
 			&group.UUID,
 			&group.Name,
 			&group.Role,
