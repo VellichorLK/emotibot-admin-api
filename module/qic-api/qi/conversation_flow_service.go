@@ -15,7 +15,7 @@ var (
 
 var conversationFlowDao model.ConversationFlowDao = &model.ConversationFlowSqlDaoImpl{}
 
-func simpleSentenceGroupsOf(flow *model.ConversationFlow) (groups []model.SimpleSentenceGroup, err error) {
+func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) (groups []model.SimpleSentenceGroup, err error) {
 	uuids := make([]string, len(flow.SentenceGroups))
 	for idx, _ := range flow.SentenceGroups {
 		uuids[idx] = flow.SentenceGroups[idx].UUID
@@ -30,7 +30,7 @@ func simpleSentenceGroupsOf(flow *model.ConversationFlow) (groups []model.Simple
 		Position:   -1,
 	}
 
-	sentenceGroups, err := sentenceGroupDao.GetBy(filter, sqlConn)
+	sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
 	if err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func CreateConversationFlow(flow *model.ConversationFlow) (createdFlow *model.Co
 	}
 	defer dbLike.ClearTransition(tx)
 
-	simpleGroups, err := simpleSentenceGroupsOf(flow)
+	simpleGroups, err := simpleSentenceGroupsOf(flow, tx)
 	if err != nil {
 		return
 	}
@@ -98,6 +98,60 @@ func GetConversationFlowsBy(filter *model.ConversationFlowFilter) (total int64, 
 	if err != nil {
 		return
 	}
+	return
+}
+
+func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow) (updatedFlow *model.ConversationFlow, err error) {
+	if flow == nil {
+		err = ErrNilFlow
+		return
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	filter := &model.ConversationFlowFilter{
+		UUID: []string{
+			id,
+		},
+		Enterprise: enterprise,
+		IsDelete:   0,
+	}
+
+	flows, err := conversationFlowDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(flows) == 0 {
+		return
+	}
+
+	originFlow := flows[0]
+
+	err = conversationFlowDao.Delete(id, tx)
+	if err != nil {
+		return
+	}
+
+	simpleGroups, err := simpleSentenceGroupsOf(flow, tx)
+	if err != nil {
+		return
+	}
+
+	flow.UUID = id
+	flow.SentenceGroups = simpleGroups
+	flow.CreateTime = originFlow.CreateTime
+	flow.UpdateTime = time.Now().Unix()
+
+	updatedFlow, err = conversationFlowDao.Create(flow, tx)
+	if err != nil {
+		return
+	}
+	dbLike.Commit(tx)
 	return
 }
 

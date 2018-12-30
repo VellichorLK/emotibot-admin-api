@@ -145,6 +145,30 @@ func handleGetConversationFlow(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func handleUpdateConversationFlow(w http.ResponseWriter, r *http.Request) {
+	id := parseID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	flowInReq := ConversationFlowInReq{}
+	err := autil.ReadJSON(r, &flowInReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	flow := flowInReqToConversationFlow(&flowInReq, enterprise)
+	updatedFlow, err := UpdateConversationFlow(id, enterprise, flow)
+	if err != nil {
+		logger.Error.Printf("error while update conversation flow in handleUpdateConversationFlow, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	flowInRes := conversationfFlowToFlowInRes(updatedFlow)
+
+	autil.WriteJSON(w, flowInRes)
+}
+
 func handleDeleteConversationFlow(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
 
