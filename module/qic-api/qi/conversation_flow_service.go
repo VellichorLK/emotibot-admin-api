@@ -87,3 +87,16 @@ func CreateConversationFlow(flow *model.ConversationFlow) (createdFlow *model.Co
 	err = dbLike.Commit(tx)
 	return
 }
+
+func GetConversationFlowsBy(filter *model.ConversationFlowFilter) (total int64, flows []model.ConversationFlow, err error) {
+	total, err = conversationFlowDao.CountBy(filter, sqlConn)
+	if err != nil {
+		return
+	}
+
+	flows, err = conversationFlowDao.GetBy(filter, sqlConn)
+	if err != nil {
+		return
+	}
+	return
+}

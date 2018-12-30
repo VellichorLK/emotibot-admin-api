@@ -102,3 +102,25 @@ func TestSimpleSentenceGroupsOf(t *testing.T) {
 		return
 	}
 }
+
+func TestGetConversationFlowsBy(t *testing.T) {
+	origindbLike, originCFDao, originSGDao := setupConversationFlowMock()
+	defer restoreConversationFlowTest(origindbLike, originCFDao, originSGDao)
+
+	filter := &model.ConversationFlowFilter{}
+	total, flows, err := GetConversationFlowsBy(filter)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if total != int64(len(flows)) {
+		t.Error("expect total equal to number of flows")
+		return
+	}
+
+	if total != int64(len(mockConversationFlows)) {
+		t.Errorf("expect %d flows, but got: %d", len(mockConversationFlows), total)
+		return
+	}
+}

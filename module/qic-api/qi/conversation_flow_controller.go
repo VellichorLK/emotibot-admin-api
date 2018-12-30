@@ -4,6 +4,7 @@ import (
 	autil "emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 	"net/http"
 )
@@ -76,4 +77,39 @@ func handleCreateConversationFlow(w http.ResponseWriter, r *http.Request) {
 	flowInRes := conversationfFlowToFlowInRes(createdFlow)
 
 	autil.WriteJSON(w, flowInRes)
+}
+
+func handleGetConversationFlows(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	filter := &model.ConversationFlowFilter{
+		Enterprise: enterprise,
+	}
+
+	total, flows, err := GetConversationFlowsBy(filter)
+	if err != nil {
+		logger.Error.Printf("error while get conversation flows in handleGetConversationFlows, reason: %s", err.Error())
+		return
+	}
+
+	flowsInRes := make([]ConversationFlowInRes, len(flows))
+	for idx, flow := range flows {
+		flowInRes := conversationfFlowToFlowInRes(&flow)
+		flowsInRes[idx] = flowInRes
+	}
+
+	type Response struct {
+		Paging *util.Paging            `json:"page"`
+		Data   []ConversationFlowInRes `json:"data"`
+	}
+
+	response := Response{
+		Paging: &util.Paging{
+			Total: total,
+			Page:  0,
+			Limit: len(flows),
+		},
+		Data: flowsInRes,
+	}
+	autil.WriteJSON(w, response)
 }

@@ -127,7 +127,7 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (
 	return
 }
 
-func querySQLBy(filter *SentenceGroupFilter) (queryStr string, values []interface{}) {
+func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
 
 	conditionStr := "WHERE "
@@ -212,7 +212,7 @@ func (dao *SentenceGroupsSqlDaoImpl) CountBy(filter *SentenceGroupFilter, sqlLik
 		return
 	}
 
-	queryStr, values := querySQLBy(filter)
+	queryStr, values := querySentenceGroupsSQLBy(filter)
 	queryStr = fmt.Sprintf("SELECT COUNT(sg.%s) FROM (%s) as sg", fldUUID, queryStr)
 
 	rows, err := sqlLike.Query(queryStr, values...)
@@ -234,7 +234,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 		return
 	}
 
-	queryStr, values := querySQLBy(filter)
+	queryStr, values := querySentenceGroupsSQLBy(filter)
 	if filter.Limit != 0 {
 		start := filter.Page * filter.Limit
 		end := start + filter.Limit
