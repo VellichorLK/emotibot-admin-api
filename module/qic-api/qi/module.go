@@ -38,6 +38,8 @@ func init() {
 			util.NewEntryPoint("GET", "sentence-groups/{id}", []string{}, handleGetSentenceGroup),
 			util.NewEntryPoint("PUT", "sentence-groups/{id}", []string{}, handleUpdateSentenceGroup),
 			util.NewEntryPoint("DELETE", "sentence-groups/{id}", []string{}, handleDeleteSentenceGroup),
+
+			util.NewEntryPoint("POST", "conversation-flow", []string{}, handleCreateConversationFlow),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

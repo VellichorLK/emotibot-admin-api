@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+var (
+	ErrNilSentenceGroup = fmt.Errorf("Sentence can not be nil")
+)
+
 var sentenceGroupDao model.SentenceGroupsSqlDao = &model.SentenceGroupsSqlDaoImpl{}
 
 func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences []model.SimpleSentence, err error) {
@@ -53,6 +57,7 @@ func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences 
 
 func CreateSentenceGroup(group *model.SentenceGroup) (createdGroup *model.SentenceGroup, err error) {
 	if group == nil {
+		err = ErrNilSentenceGroup
 		return
 	}
 
