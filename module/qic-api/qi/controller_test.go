@@ -122,7 +122,6 @@ func TestHandleGetGroup(t *testing.T) {
 		return
 	}
 
-	fmt.Printf("body: %s\n", body)
 	group := model.GroupWCond{}
 	err = json.Unmarshal(body, &group)
 	if err != nil {
