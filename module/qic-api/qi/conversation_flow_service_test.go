@@ -91,7 +91,7 @@ func TestSimpleSentenceGroupsOf(t *testing.T) {
 	origindbLike, originCFDao, originSGDao := setupConversationFlowMock()
 	defer restoreConversationFlowTest(origindbLike, originCFDao, originSGDao)
 
-	groups, err := simpleSentenceGroupsOf(&mockConversationFlow1)
+	groups, err := simpleSentenceGroupsOf(&mockConversationFlow1, sqlConn)
 	if err != nil {
 		t.Error(err)
 		return
