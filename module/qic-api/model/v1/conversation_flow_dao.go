@@ -220,9 +220,8 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 				flows = append(flows, *cFlow)
 			}
 			cFlow = &flow
-		} else {
-			cFlow.SentenceGroups = append(cFlow.SentenceGroups, sg)
 		}
+		cFlow.SentenceGroups = append(cFlow.SentenceGroups, sg)
 	}
 
 	if cFlow != nil {

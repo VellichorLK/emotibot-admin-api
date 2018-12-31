@@ -271,9 +271,8 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 				groups = append(groups, *cGroup)
 			}
 			cGroup = &group
-		} else {
-			cGroup.Sentences = append(cGroup.Sentences, simpleSentence)
 		}
+		cGroup.Sentences = append(cGroup.Sentences, simpleSentence)
 	}
 
 	if cGroup != nil {
