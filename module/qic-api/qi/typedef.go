@@ -2,6 +2,7 @@ package qi
 
 import (
 	"database/sql"
+	"encoding/json"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -37,6 +38,7 @@ type SentenceGroupInResponse struct {
 
 //TagDao is tag resource manipulating interface, which itself should support ACID transaction.
 type TagDao interface {
+	Begin() (*sql.Tx, error)
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
 	NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error)
 	DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
@@ -54,3 +56,17 @@ const (
 	DPage  = 1
 	DLimit = 10
 )
+
+//TagResponse is the Get handler response body struct.
+type TagResponse struct {
+	Paging general.Paging `json:"paging"`
+	Data   []tag          `json:"data"`
+}
+
+type tag struct {
+	TagID        uint64          `json:"tag_id"`
+	TagName      string          `json:"tag_name"`
+	TagType      string          `json:"tag_type"`
+	PosSentences json.RawMessage `json:"pos_sentences"`
+	NegSentences json.RawMessage `json:"neg_sentences"`
+}
