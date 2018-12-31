@@ -155,3 +155,41 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 
 	autil.WriteJSON(w, response)
 }
+
+func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	id := parseID(r)
+
+	filter := &model.ConversationRuleFilter{
+		UUID: []string{
+			id,
+		},
+		Enterprise: enterprise,
+		Severity:   -1,
+	}
+
+	_, rules, err := GetConversationRulesBy(filter)
+	if err != nil {
+		logger.Error.Printf("error while get rule in handleGetConversationRule, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(rules) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	rule := rules[0]
+	ruleInRes := conversationRuleToRuleInRes(&rule)
+
+	autil.WriteJSON(w, ruleInRes)
+}
+
+func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
+
+}
+
+func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {
+
+}
