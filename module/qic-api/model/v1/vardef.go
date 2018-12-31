@@ -26,6 +26,8 @@ const (
 	tblRelSGS           = "Relation_SentenceGroup_Sentence"
 	tblConversationflow = "ConversationFlow"
 	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
+	tblConversationRule = "Rule"
+	tblRelCRCF          = "Relation_Rule_ConversationFlow"
 )
 
 //field name in Conversation table
@@ -214,4 +216,20 @@ const (
 const (
 	RCFSGCFID = "cf_id"
 	RCFSGSGID = "sg_id"
+)
+
+// fields in Rule
+const (
+	CRMethod      = "method"
+	CRScore       = "score"
+	CRDescription = "description"
+	CRMin         = "min"
+	CRMax         = "max"
+	CRSeverity    = "severity"
+)
+
+// fields in Relation_Rule_ConversationFlow
+const (
+	CRCFRID  = "rule_id"
+	CRCFCFID = "cf_id"
 )

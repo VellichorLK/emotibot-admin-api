@@ -44,6 +44,8 @@ func init() {
 			util.NewEntryPoint("GET", "conversation-flow/{id}", []string{}, handleGetConversationFlow),
 			util.NewEntryPoint("PUT", "conversation-flow/{id}", []string{}, handleUpdateConversationFlow),
 			util.NewEntryPoint("DELETE", "conversation-flow/{id}", []string{}, handleDeleteConversationFlow),
+
+			util.NewEntryPoint("POST", "rules", []string{}, handleCreateConversationRule),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
