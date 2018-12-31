@@ -110,3 +110,7 @@ func GetConversationRulesBy(filter *model.ConversationRuleFilter) (total int64, 
 	}
 	return
 }
+
+func DeleteConversationRule(id string) (err error) {
+	return conversationRuleDao.Delete(id, sqlConn)
+}

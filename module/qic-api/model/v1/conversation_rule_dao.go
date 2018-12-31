@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -244,10 +244,16 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 	if cRule != nil {
 		rules = append(rules, *cRule)
 	}
-	logger.Info.Printf("rules: %+v\n", rules)
 	return
 }
 
 func (dao *ConversationRuleSqlDaoImpl) Delete(id string, sql SqlLike) (err error) {
+	deleteStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblConversationRule, fldIsDelete, fldUUID)
+
+	_, err = sql.Exec(deleteStr, 1, id)
+	if err != nil {
+		err = fmt.Errorf("error while delete rule in dao.Delete, err: %s", err.Error())
+		return
+	}
 	return
 }

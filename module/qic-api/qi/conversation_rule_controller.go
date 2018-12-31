@@ -191,5 +191,12 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {
+	id := parseID(r)
 
+	err := DeleteConversationRule(id)
+	if err != nil {
+		logger.Error.Printf("error while delete rule in handleDeleteConversationRule, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
