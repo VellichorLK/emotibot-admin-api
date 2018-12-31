@@ -1,7 +1,7 @@
 package model
 
 import (
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -26,9 +26,10 @@ type ConversationRule struct {
 type ConversationRuleFilter struct {
 	UUID       []string
 	Name       string
-	Method     int8
+	Method     int8 // TODO
 	Enterprise string
 	Severity   int8
+	IsDeleted  int8
 }
 
 type ConversationRuleDao interface {
@@ -83,7 +84,7 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sql SqlLik
 	}
 
 	if len(rule.Flows) > 0 {
-		fieldStr = fmt.Sprintf("%s, %s", CRCFCFID, CRCFRID)
+		fieldStr = fmt.Sprintf("%s, %s", CRCFRID, CRCFCFID)
 		valueStr = "(?, ?)"
 		values = []interface{}{
 			ruleID,
@@ -108,11 +109,142 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sql SqlLik
 	return
 }
 
+func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr string, values []interface{}) {
+	values = []interface{}{}
+	conditionStr := "WHERE "
+	conditions := []string{}
+
+	if len(filter.UUID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.UUID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldUUID, idStr))
+
+		for _, uuid := range filter.UUID {
+			values = append(values, uuid)
+		}
+	}
+
+	if filter.Enterprise != "" {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldEnterprise))
+		values = append(values, filter.Enterprise)
+	}
+
+	if filter.Name != "" {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldName))
+		values = append(values, filter.Name)
+	}
+
+	if filter.IsDeleted != -1 {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldIsDelete))
+		values = append(values, filter.IsDeleted)
+	}
+
+	if filter.Severity != -1 {
+		conditions = append(conditions, fmt.Sprintf("%s=?", CRSeverity))
+		values = append(values, filter.Severity)
+	}
+
+	if len(conditions) > 0 {
+		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
+	} else {
+		conditionStr = ""
+	}
+
+	queryStr = fmt.Sprintf(
+		`SELECT cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s,
+		cf.%s as cfUUID, cf.%s as cfName
+		 FROM (SELECT * FROM %s %s) as cr
+		 LEFT JOIN %s as rcrcf ON cr.%s = rcrcf.%s
+		 LEFT JOIN %s as cf ON rcrcf.%s = cf.%s`,
+		fldID,
+		fldUUID,
+		fldName,
+		CRMethod,
+		CRScore,
+		fldEnterprise,
+		CRDescription,
+		CRMin,
+		CRMax,
+		CRSeverity,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+		fldName,
+		tblConversationRule,
+		conditionStr,
+		tblRelCRCF,
+		fldID,
+		CRCFRID,
+		tblConversationflow,
+		CRCFCFID,
+		fldID,
+	)
+	return
+}
+
 func (dao *ConversationRuleSqlDaoImpl) CountBy(filter *ConversationRuleFilter, sql SqlLike) (total int64, err error) {
+	queryStr, values := queryConversationRulesSQLBy(filter)
+	queryStr = fmt.Sprintf("SELECT COUNT(cr.%s) FROM (%s) as cr", fldID, queryStr)
+
+	rows, err := sql.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while count rules in dao.CountBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&total)
+	}
 	return
 }
 
 func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql SqlLike) (rules []ConversationRule, err error) {
+	queryStr, values := queryConversationRulesSQLBy(filter)
+
+	rows, err := sql.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while get rules in dao.GetBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	rules = []ConversationRule{}
+	var cRule *ConversationRule
+	for rows.Next() {
+		rule := ConversationRule{}
+		flow := SimpleConversationFlow{}
+
+		rows.Scan(
+			&rule.ID,
+			&rule.UUID,
+			&rule.Name,
+			&rule.Method,
+			&rule.Score,
+			&rule.Enterprise,
+			&rule.Description,
+			&rule.Min,
+			&rule.Max,
+			&rule.Severity,
+			&rule.CreateTime,
+			&rule.UpdateTime,
+			&flow.UUID,
+			&flow.Name,
+		)
+
+		if cRule == nil || cRule.UUID != rule.UUID {
+			if cRule != nil {
+				rules = append(rules, *cRule)
+			}
+			cRule = &rule
+		}
+		cRule.Flows = append(cRule.Flows, flow)
+		logger.Info.Printf("rules.flows: %+v\n", cRule.Flows)
+	}
+
+	if cRule != nil {
+		rules = append(rules, *cRule)
+	}
+	logger.Info.Printf("rules: %+v\n", rules)
 	return
 }
 

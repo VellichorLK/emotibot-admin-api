@@ -88,3 +88,25 @@ func CreateConversationRule(rule *model.ConversationRule) (createdRule *model.Co
 	dbLike.Commit(tx)
 	return
 }
+
+func GetConversationRulesBy(filter *model.ConversationRuleFilter) (total int64, rules []model.ConversationRule, err error) {
+	if filter == nil {
+		return
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+
+	total, err = conversationRuleDao.CountBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	rules, err = conversationRuleDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+	return
+}

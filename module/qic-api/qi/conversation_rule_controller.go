@@ -4,6 +4,7 @@ import (
 	autil "emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 	"net/http"
 )
@@ -115,4 +116,42 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 	}
 
 	autil.WriteJSON(w, ruleInRes)
+}
+
+func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	filter := &model.ConversationRuleFilter{
+		Enterprise: enterprise,
+		Severity:   -1,
+	}
+
+	total, rules, err := GetConversationRulesBy(filter)
+	if err != nil {
+		logger.Error.Printf("error while get rules in handleGetConversationRules, reason: %s\n", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type Response struct {
+		Paging *util.Paging
+		Data   []ConversationRuleInRes
+	}
+
+	rulesInRes := make([]ConversationRuleInRes, len(rules))
+	for idx := range rules {
+		ruleInRes := conversationRuleToRuleInRes(&rules[idx])
+		rulesInRes[idx] = *ruleInRes
+	}
+
+	response := Response{
+		Paging: &util.Paging{
+			Page:  0,
+			Total: total,
+			Limit: len(rules),
+		},
+		Data: rulesInRes,
+	}
+
+	autil.WriteJSON(w, response)
 }

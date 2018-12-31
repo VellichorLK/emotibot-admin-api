@@ -85,3 +85,27 @@ func TestCreateConversationRule(t *testing.T) {
 		return
 	}
 }
+
+func TestGetConversationRulesBy(t *testing.T) {
+	originDBLike, originCRDao, originCFDao := setupConversationRuleMock()
+	defer restoreConversationRuleTest(originDBLike, originCRDao, originCFDao)
+
+	filter := &model.ConversationRuleFilter{}
+
+	total, rules, err := GetConversationRulesBy(filter)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if total != int64(len(mockConversationRules)) {
+		t.Errorf("incorrect total: %d", total)
+		return
+	}
+
+	if total != int64(len(rules)) {
+		t.Errorf("total(%d) does not match rules number(%d)", total, len(rules))
+		return
+	}
+}
