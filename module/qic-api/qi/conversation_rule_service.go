@@ -111,6 +111,60 @@ func GetConversationRulesBy(filter *model.ConversationRuleFilter) (total int64, 
 	return
 }
 
+func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRule *model.ConversationRule, err error) {
+	if rule == nil {
+		err = ErrNilConversationRule
+		return
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	filter := &model.ConversationRuleFilter{
+		UUID: []string{
+			id,
+		},
+		Enterprise: rule.Enterprise,
+		Severity:   -1,
+	}
+	rules, err := conversationRuleDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(rules) == 0 {
+		return
+	}
+
+	originRule := rules[0]
+
+	flows, err := simpleConversationFlowsOf(rule, tx)
+	if err != nil {
+		return
+	}
+
+	err = conversationRuleDao.Delete(id, tx)
+	if err != nil {
+		return
+	}
+
+	rule.Flows = flows
+	rule.UUID = id
+	rule.CreateTime = originRule.CreateTime
+	rule.UpdateTime = time.Now().Unix()
+
+	updatedRule, err = conversationRuleDao.Create(rule, tx)
+	logger.Info.Printf("updatedRule: %+v\n", updatedRule)
+	if err != nil {
+		return
+	}
+	dbLike.Commit(tx)
+	return
+}
+
 func DeleteConversationRule(id string) (err error) {
 	return conversationRuleDao.Delete(id, sqlConn)
 }

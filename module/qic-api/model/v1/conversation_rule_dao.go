@@ -1,7 +1,7 @@
 package model
 
 import (
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )

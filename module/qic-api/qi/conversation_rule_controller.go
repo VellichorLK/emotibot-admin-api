@@ -187,7 +187,35 @@ func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	id := parseID(r)
 
+	ruleInReq := ConversationRuleInReq{}
+	err := autil.ReadJSON(r, &ruleInReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rule := ruleInReqToConversationRule(&ruleInReq)
+	rule.Enterprise = enterprise
+	rule.UUID = id
+
+	updatedRule, err := UpdateConversationRule(id, rule)
+	if err != nil {
+		logger.Error.Printf("error while update rule in handleUpdateConversationRule, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if updatedRule == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	ruleInRes := conversationRuleToRuleInRes(updatedRule)
+
+	autil.WriteJSON(w, ruleInRes)
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {
