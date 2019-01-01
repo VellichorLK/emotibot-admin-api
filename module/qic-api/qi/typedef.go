@@ -2,7 +2,6 @@ package qi
 
 import (
 	"database/sql"
-	"encoding/json"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -64,9 +63,9 @@ type TagResponse struct {
 }
 
 type tag struct {
-	TagID        uint64          `json:"tag_id"`
-	TagName      string          `json:"tag_name"`
-	TagType      string          `json:"tag_type"`
-	PosSentences json.RawMessage `json:"pos_sentences"`
-	NegSentences json.RawMessage `json:"neg_sentences"`
+	TagID        uint64   `json:"tag_id,omitempty"`
+	TagName      string   `json:"tag_name,omitempty"`
+	TagType      string   `json:"tag_type,omitempty"`
+	PosSentences []string `json:"pos_sentences,omitempty"`
+	NegSentences []string `json:"neg_sentences,omitempty"`
 }
