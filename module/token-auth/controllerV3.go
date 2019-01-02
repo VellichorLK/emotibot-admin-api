@@ -164,25 +164,28 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if *newAdmin.Password != "" {
-		verifyPassword := r.FormValue("verify_password")
+		// If using SSO, verify password is meanless
+		if !isSSOValid() {
+			verifyPassword := r.FormValue("verify_password")
 
-		if verifyPassword == "" {
-			returnForbidden(w)
-			return
-		}
+			if verifyPassword == "" {
+				returnForbidden(w)
+				return
+			}
 
-		password, err := service.GetUserPasswordV3(requester.ID)
-		if err != nil {
-			returnInternalError(w, err.Error())
-			return
-		} else if password == "" {
-			returnForbidden(w)
-			return
-		}
+			password, err := service.GetUserPasswordV3(requester.ID)
+			if err != nil {
+				returnInternalError(w, err.Error())
+				return
+			} else if password == "" {
+				returnForbidden(w)
+				return
+			}
 
-		if verifyPassword != password {
-			returnForbidden(w)
-			return
+			if verifyPassword != password {
+				returnForbidden(w)
+				return
+			}
 		}
 	}
 
@@ -451,6 +454,7 @@ func EnterpriseDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	var enterpriseID string
 	var origEnterprise *data.EnterpriseDetailV3
 	var err error
+	reason := r.URL.Query().Get("reason")
 
 	defer func() {
 		// Add audit log
@@ -461,6 +465,9 @@ func EnterpriseDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentEnterpriseDelete, enterpriseID)
 		} else {
 			auditMessage = data.AuditContentEnterpriseDelete
+		}
+		if reason != "" {
+			auditMessage = fmt.Sprintf("%s, %s", auditMessage, reason)
 		}
 
 		addAuditLog(r, audit.AuditModuleManageRobot, audit.AuditOperationDelete,
@@ -702,11 +709,13 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 	if *newUser.Password != "" {
 		verifyPassword := r.FormValue("verify_password")
-
-		if verifyPassword == "" {
-			err = util.ErrOperationForbidden
-			returnForbidden(w)
-			return
+		// If using SSO, verify password is meanless
+		if !isSSOValid() {
+			if verifyPassword == "" {
+				err = util.ErrOperationForbidden
+				returnForbidden(w)
+				return
+			}
 		}
 
 		var password string
@@ -732,10 +741,13 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if verifyPassword != password {
-			err = util.ErrOperationForbidden
-			returnForbidden(w)
-			return
+		// If using SSO, verify password is meanless
+		if !isSSOValid() {
+			if verifyPassword != password {
+				err = util.ErrOperationForbidden
+				returnForbidden(w)
+				return
+			}
 		}
 	}
 
@@ -1019,6 +1031,7 @@ func AppDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 	var appID string
 	var app *data.AppDetailV3
 	var err error
+	reason := r.URL.Query().Get("reason")
 
 	defer func() {
 		// Add audit log
@@ -1029,6 +1042,9 @@ func AppDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
 			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppDelete, appID)
 		} else {
 			auditMessage = data.AuditContentAppDelete
+		}
+		if reason != "" {
+			auditMessage = fmt.Sprintf("%s, %s", auditMessage, reason)
 		}
 
 		addAuditLog(r, audit.AuditModuleManageRobot, audit.AuditOperationDelete,
@@ -1945,7 +1961,7 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	handler := sso.GetHandler(ssoConfig)
 	token := vars["token"]
-	if ssoConfig == nil || handler == nil {
+	if !isSSOValid() {
 		util.LogTrace.Println("Normal token flow")
 		if token == "" {
 			params := strings.Split(r.Header.Get("Authorization"), " ")
@@ -2139,4 +2155,9 @@ func AppRenewSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	returnSuccess(w, secret)
+}
+
+func isSSOValid() bool {
+	handler := sso.GetHandler(ssoConfig)
+	return ssoConfig != nil && handler != nil
 }
