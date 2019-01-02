@@ -17,6 +17,24 @@ type SimpleGroupsResponse struct {
 	Data   []model.SimpleGroup `json:"data"`
 }
 
+type SentenceGroupInReq struct {
+	ID               string   `json:"sg_id"`
+	Name             string   `json:"sg_name"`
+	Role             string   `json:"role"`
+	Position         string   `json:"position"`
+	PositionDistance int      `json:"position_distance"`
+	Sentences        []string `json:"sentences"`
+}
+
+type SentenceGroupInResponse struct {
+	ID               string                 `json:"sg_id,omitempty"`
+	Name             string                 `json:"sg_name,omitempty"`
+	Role             string                 `json:"role,omitempty"`
+	Position         string                 `json:"position,omitempty"`
+	PositionDistance int                    `json:"position_distance"`
+	Sentences        []model.SimpleSentence `json:"sentences,omitempty"`
+}
+
 //TagDao is tag resource manipulating interface, which itself should support ACID transaction.
 type TagDao interface {
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)

@@ -7,21 +7,27 @@ var ErrAutoIDDisabled = errors.New("dao does not support LastInsertId function")
 
 //Table name in QISYS
 const (
-	tblConversation    = "Conversation"
-	tblSegment         = "Segment"
-	tblGroup           = "Group"
-	tblRelGrpRule      = "Relation_Group_Rule"
-	tblRelRuleLogic    = "Relation_Rule_Logic"
-	tblRule            = "Rule"
-	tblLogic           = "Logic"
-	tblCUPredict       = "CUPredict"
-	tblRecommend       = "Recommendations"
-	tblSentence        = "Sentence"
-	tbleRelSentenceTag = "Relation_Sentence_Tag"
-	tblRelSenTag       = "Relation_Sentence_Tag"
-	tblRuleGroup       = "RuleGroup"
-	tblRGC             = "RuleGroupCondition"
-	tblTags            = "Tag"
+	tblConversation     = "Conversation"
+	tblSegment          = "Segment"
+	tblGroup            = "Group"
+	tblRelGrpRule       = "Relation_Group_Rule"
+	tblRelRuleLogic     = "Relation_Rule_Logic"
+	tblRule             = "Rule"
+	tblLogic            = "Logic"
+	tblCUPredict        = "CUPredict"
+	tblRecommend        = "Recommendations"
+	tblSentence         = "Sentence"
+	tbleRelSentenceTag  = "Relation_Sentence_Tag"
+	tblRelSenTag        = "Relation_Sentence_Tag"
+	tblRuleGroup        = "RuleGroup"
+	tblRGC              = "RuleGroupCondition"
+	tblTags             = "Tag"
+	tblSetnenceGroup    = "SentenceGroup"
+	tblRelSGS           = "Relation_SentenceGroup_Sentence"
+	tblConversationflow = "ConversationFlow"
+	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
+	tblConversationRule = "Rule"
+	tblRelCRCF          = "Relation_Rule_ConversationFlow"
 )
 
 //field name in Conversation table
@@ -170,6 +176,19 @@ const (
 	RRRRuleID  = "rule_id"
 )
 
+// field name in SentenceGroup
+const (
+	SGRole     = "role"
+	SGPoistion = "position"
+	SGRange    = "range"
+)
+
+// field name in Relation_SentenceGroup_Sentece
+const (
+	RSGSSGID = "sg_id"
+	RSGSSID  = "s_id"
+)
+
 //common field name
 const (
 	fldID         = "id"
@@ -185,4 +204,32 @@ const (
 const (
 	fldRelTagID = "tag_id"
 	fldRelSenID = "s_id"
+)
+
+// fields in ConversationFlow
+const (
+	CFType       = "type"
+	CFExpression = "expression"
+)
+
+// fields in Relation_ConversationFlow_SentenceGroup
+const (
+	RCFSGCFID = "cf_id"
+	RCFSGSGID = "sg_id"
+)
+
+// fields in Rule
+const (
+	CRMethod      = "method"
+	CRScore       = "score"
+	CRDescription = "description"
+	CRMin         = "min"
+	CRMax         = "max"
+	CRSeverity    = "severity"
+)
+
+// fields in Relation_Rule_ConversationFlow
+const (
+	CRCFRID  = "rule_id"
+	CRCFCFID = "cf_id"
 )

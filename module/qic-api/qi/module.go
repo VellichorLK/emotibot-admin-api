@@ -32,6 +32,24 @@ func init() {
 			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
 			util.NewEntryPoint("PUT", "sentences/{id}", []string{}, WithSenUUIDCheck(handleModifySentence)),
 			util.NewEntryPoint("DELETE", "sentences/{id}", []string{}, WithSenUUIDCheck(handleDeleteSentence)),
+
+			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
+			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
+			util.NewEntryPoint("GET", "sentence-groups/{id}", []string{}, handleGetSentenceGroup),
+			util.NewEntryPoint("PUT", "sentence-groups/{id}", []string{}, handleUpdateSentenceGroup),
+			util.NewEntryPoint("DELETE", "sentence-groups/{id}", []string{}, handleDeleteSentenceGroup),
+
+			util.NewEntryPoint("POST", "conversation-flow", []string{}, handleCreateConversationFlow),
+			util.NewEntryPoint("GET", "conversation-flow", []string{}, handleGetConversationFlows),
+			util.NewEntryPoint("GET", "conversation-flow/{id}", []string{}, handleGetConversationFlow),
+			util.NewEntryPoint("PUT", "conversation-flow/{id}", []string{}, handleUpdateConversationFlow),
+			util.NewEntryPoint("DELETE", "conversation-flow/{id}", []string{}, handleDeleteConversationFlow),
+
+			util.NewEntryPoint("POST", "rules", []string{}, handleCreateConversationRule),
+			util.NewEntryPoint("GET", "rules", []string{}, handleGetConversationRules),
+			util.NewEntryPoint("GET", "rules/{id}", []string{}, handleGetConversationRule),
+			util.NewEntryPoint("PUT", "rules/{id}", []string{}, handleUpdateConversationRule),
+			util.NewEntryPoint("DELETE", "rules/{id}", []string{}, handleDeleteConversationRule),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
@@ -42,7 +60,8 @@ func init() {
 				pass := envs["MYSQL_PASS"]
 				db := envs["MYSQL_DB"]
 
-				sqlConn, err := util.InitDB(url, user, pass, db)
+				newConn, err := util.InitDB(url, user, pass, db)
+				sqlConn = newConn
 				if err != nil {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return

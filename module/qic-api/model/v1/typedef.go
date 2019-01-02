@@ -9,6 +9,7 @@ import (
 type DBLike interface {
 	Begin() (*sql.Tx, error)
 	ClearTransition(tx *sql.Tx)
+	Commit(tx *sql.Tx) error
 }
 
 type DefaultDBLike struct {
@@ -24,6 +25,14 @@ func (dl *DefaultDBLike) ClearTransition(tx *sql.Tx) {
 	if rollbackRet != sql.ErrTxDone && rollbackRet != nil {
 		logger.Error.Printf("Critical db error in rollback: %s", rollbackRet.Error())
 	}
+}
+
+func (dl *DefaultDBLike) Commit(tx *sql.Tx) (err error) {
+	if tx != nil {
+		err = tx.Commit()
+		return
+	}
+	return
 }
 
 type SqlLike interface {
