@@ -181,7 +181,12 @@ func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentenc
 		return nil, err
 	}
 	defer tx.Rollback()
-	_, err = sentenceDao.InsertSentence(tx, s)
+	newID, err := sentenceDao.InsertSentence(tx, s)
+	if err != nil {
+		return nil, err
+	}
+	s.ID = uint64(newID)
+	err = sentenceDao.InsertSenTagRelation(tx, s)
 	if err != nil {
 		return nil, err
 	}
@@ -225,14 +230,19 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	s := &model.Sentence{Name: name, Enterprise: enterprise,
 		UUID: sentenceUUID, CreateTime: now, UpdateTime: now,
 		TagIDs: tagIDs}
-	affected, err = sentenceDao.InsertSentence(tx, s)
+	newID, err := sentenceDao.InsertSentence(tx, s)
 	if err != nil {
 		logger.Error.Printf("insert sentence failed. %s\n", err)
 		return 0, err
 	}
+	s.ID = uint64(newID)
+	err = sentenceDao.InsertSenTagRelation(tx, s)
+	if err != nil {
+		return 0, err
+	}
 
 	err = sentenceDao.Commit(tx)
-	return affected, err
+	return newID, err
 }
 
 //SoftDeleteSentence sets the field, is_delete, in sentence to 1
