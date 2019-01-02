@@ -1,12 +1,13 @@
 package qi
 
 import (
-	autil "emotibot.com/emotigo/module/admin-api/util"
+	"net/http"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"net/http"
 )
 
 type ConversationRuleInReq struct {
@@ -95,7 +96,7 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	ruleInReq := ConversationRuleInReq{}
-	err := autil.ReadJSON(r, &ruleInReq)
+	err := util.ReadJSON(r, &ruleInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -115,7 +116,7 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 		UUID: createdRule.UUID,
 	}
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +135,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Response struct {
-		Paging *util.Paging
+		Paging *general.Paging
 		Data   []ConversationRuleInRes
 	}
 
@@ -145,7 +146,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := Response{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Page:  0,
 			Total: total,
 			Limit: len(rules),
@@ -153,7 +154,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 		Data: rulesInRes,
 	}
 
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +184,7 @@ func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
 	rule := rules[0]
 	ruleInRes := conversationRuleToRuleInRes(&rule)
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +192,7 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
 
 	ruleInReq := ConversationRuleInReq{}
-	err := autil.ReadJSON(r, &ruleInReq)
+	err := util.ReadJSON(r, &ruleInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -215,7 +216,7 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 
 	ruleInRes := conversationRuleToRuleInRes(updatedRule)
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {
