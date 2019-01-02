@@ -57,13 +57,9 @@ func sendFromQueue() {
 	}
 }
 
-var handlers map[string]func(w http.ResponseWriter, r *http.Request, appid string, config map[string]string)
-
-func init() {
-	handlers = map[string]func(w http.ResponseWriter, r *http.Request, appid string, config map[string]string){
-		"line":       handleLineReply,
-		"workweixin": handleWorkWeixinReply,
-	}
+var handlers = map[string]func(w http.ResponseWriter, r *http.Request, appid string, config map[string]string){
+	"line":       handleLineReply,
+	"workweixin": handleWorkWeixinReply,
 }
 
 func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
