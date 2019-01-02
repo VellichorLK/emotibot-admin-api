@@ -87,6 +87,7 @@ func NewTag(t model.Tag) (id uint64, err error) {
 // UpdateTag update the origin t, since tag need to keep the origin value.
 // update will try to delete the old one with the same uuid, and create new one.
 // multiple update called on the same t will try it best to resolve to one state, but not guarantee success.
+// if conflicted can not be resolved, id will be 0 and err will be nil.
 func UpdateTag(t model.Tag) (id uint64, err error) {
 	tx, err := tagDao.Begin()
 	if err != nil {
@@ -95,20 +96,25 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 	defer func() {
 		tx.Rollback()
 	}()
-	query := model.TagQuery{
-		UUID: []string{t.UUID},
-	}
-	tags, err := tagDao.Tags(tx, query)
-	if len(tags) != 1 {
-		return 0, fmt.Errorf("dao found %d tag with the query %+v", len(tags), t.UUID)
-	}
-	maxRetries := 3
+	var (
+		tags       []model.Tag
+		maxRetries = 3
+		rowsCount  int64
+	)
+
 	// we will try at least maxRetries time for delete operation
 	for i := 0; i <= 3; i++ {
 		if i == maxRetries {
 			return 0, fmt.Errorf("unexpected affected rows count")
 		}
-		var rowsCount int64
+		query := model.TagQuery{
+			UUID: []string{t.UUID},
+		}
+		tags, err = tagDao.Tags(tx, query)
+		if len(tags) != 1 {
+			return 0, fmt.Errorf("dao found %d tag with the query %+v", len(tags), t.UUID)
+		}
+		query.ID = []uint64{tags[0].ID}
 		rowsCount, err = tagDao.DeleteTags(tx, query)
 		if err != nil {
 			return 0, fmt.Errorf("dao delete failed, %v", err)
