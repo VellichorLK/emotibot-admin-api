@@ -171,6 +171,10 @@ func (m *mockSentenceSQLDao) Commit(tx *sql.Tx) error {
 	return tx.Commit()
 }
 
+func (m *mockSentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+	return nil
+}
+
 func (m *mockSentenceSQLDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	if q == nil {
 		return nil, nil
