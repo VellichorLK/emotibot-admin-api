@@ -244,25 +244,6 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 		return 0, err
 	}
 
-	//insert into Relation_Sentence_Tag table
-	/*
-		if numOfTags > 0 {
-			insertRelSQL := fmt.Sprintf("INSERT INTO %s (%s,%s) VALUES ", tbleRelSentenceTag, fldRelSenID, fldRelTagID)
-
-			bulk := fmt.Sprintf("(%d,?)", id)
-			insertRelSQL = fmt.Sprintf("%s %s%s", insertRelSQL, bulk, strings.Repeat(","+bulk, numOfTags-1))
-			params := make([]interface{}, 0, numOfTags)
-			for i := 0; i < numOfTags; i++ {
-				params = append(params, s.TagIDs[i])
-			}
-			_, err = exe.Exec(insertRelSQL, params...)
-			if err != nil {
-				logger.Error.Printf("insert (%s)(%+v) relation sentence tag failed. %s\n", insertRelSQL, params, err)
-				return 0, err
-			}
-		}
-	*/
-
 	return id, err
 }
 
