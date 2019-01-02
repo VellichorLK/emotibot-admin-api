@@ -10,7 +10,7 @@ func TestRuleInReqToConversationRule(t *testing.T) {
 		UUID:     "id",
 		Name:     "name",
 		Severity: "critical",
-		Type:     "negative",
+		Method:   "negative",
 		Score:    1,
 	}
 
@@ -26,7 +26,7 @@ func TestRuleInReqToConversationRule(t *testing.T) {
 		return
 	}
 
-	if rule.Type != -1 {
+	if rule.Method != -1 {
 		t.Error("transform rule type fail")
 		return
 	}
@@ -37,7 +37,7 @@ func TestConversationRuleToRuleInRes(t *testing.T) {
 		UUID:     "id",
 		Name:     "name",
 		Severity: 1,
-		Type:     -1,
+		Method:   -1,
 		Score:    1,
 	}
 
@@ -48,7 +48,7 @@ func TestConversationRuleToRuleInRes(t *testing.T) {
 		return
 	}
 
-	if ruleInRes.Type != "negative" {
+	if ruleInRes.Method != "negative" {
 		t.Error("transform rule type fail")
 		return
 	}

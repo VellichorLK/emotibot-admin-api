@@ -16,7 +16,7 @@ type ConversationRuleInReq struct {
 	Severity    string   `json:"severity"`
 	Min         int      `json:"min"`
 	Max         int      `json:"max"`
-	Type        string   `json:"type"`
+	Method      string   `json:"method"`
 	Score       int      `json:"score"`
 	Flows       []string `json:"flows"`
 }
@@ -28,7 +28,7 @@ type ConversationRuleInRes struct {
 	Severity    string                         `json:"severity,omitempty"`
 	Min         int                            `json:"min,omitempty"`
 	Max         int                            `json:"max,omitempty"`
-	Type        string                         `json:"type,omitempty"`
+	Method      string                         `json:"method,omitempty"`
 	Score       int                            `json:"score,omitempty"`
 	Flows       []model.SimpleConversationFlow `json:"flows,omitempty"`
 }
@@ -43,12 +43,12 @@ var severityCodeToString map[int8]string = map[int8]string{
 	int8(1): "critical",
 }
 
-var typeStringToCode map[string]int8 = map[string]int8{
+var methodStringToCode map[string]int8 = map[string]int8{
 	"positive": int8(1),
 	"negative": int8(-1),
 }
 
-var typeCodeToString map[int8]string = map[int8]string{
+var methodCodeToString map[int8]string = map[int8]string{
 	int8(1):  "positive",
 	int8(-1): "negative",
 }
@@ -63,7 +63,7 @@ func ruleInReqToConversationRule(ruleInReq *ConversationRuleInReq) (rule *model.
 	}
 
 	rule.Severity = severityStringToCode[ruleInReq.Severity]
-	rule.Type = typeStringToCode[ruleInReq.Type]
+	rule.Method = methodStringToCode[ruleInReq.Method]
 
 	flows := make([]model.SimpleConversationFlow, len(ruleInReq.Flows))
 	for idx := range ruleInReq.Flows {
@@ -83,7 +83,7 @@ func conversationRuleToRuleInRes(rule *model.ConversationRule) (ruleInRes *Conve
 		Severity:    severityCodeToString[rule.Severity],
 		Min:         rule.Min,
 		Max:         rule.Max,
-		Type:        typeCodeToString[rule.Type],
+		Method:      methodCodeToString[rule.Method],
 		Score:       rule.Score,
 		Flows:       rule.Flows,
 		Description: rule.Description,
