@@ -137,3 +137,27 @@ func TestTags(t *testing.T) {
 		t.Error("expect paging data is correct, but got unexpected data.")
 	}
 }
+
+func TestNewTag(t *testing.T) {
+	var expectedTags = []model.Tag{
+		model.Tag{ID: 1},
+	}
+	tagDao = &testTagDao{
+		output: []interface{}{
+			expectedTags,
+			errors.New("test failed"),
+		},
+	}
+
+	id, err := NewTag(model.Tag{ID: 0})
+	if err != nil {
+		t.Fatal("expect new tag to be ok, but got ", err)
+	}
+	if id != expectedTags[0].ID {
+		t.Error("expect new tag id to be ", expectedTags[0].ID, ", but got ", id)
+	}
+	_, err = NewTag(model.Tag{})
+	if err == nil {
+		t.Fatal("expect new tag to handle error, but no error has returned")
+	}
+}
