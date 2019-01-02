@@ -166,7 +166,31 @@ func TestNewTag(t *testing.T) {
 		t.Fatal("expect new tag to handle error, but no error has returned")
 	}
 }
-
+func TestUpdateTags(t *testing.T) {
+	tagDao = &testTagDao{
+		output: []interface{}{
+			//Begin
+			mockTx(t),
+			//Query
+			[]model.Tag{
+				model.Tag{ID: 1},
+			},
+			//Delete
+			int64(1),
+			//New
+			[]model.Tag{
+				model.Tag{ID: 2},
+			},
+		},
+	}
+	id, err := UpdateTag(model.Tag{})
+	if err != nil {
+		t.Fatal("expect update to be ok, but got ", err)
+	}
+	if id != 2 {
+		t.Error("expect new id to be 2, but got ", id)
+	}
+}
 func TestDeleteTag(t *testing.T) {
 	tagDao = &testTagDao{
 		output: []interface{}{
