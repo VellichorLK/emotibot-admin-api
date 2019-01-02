@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
@@ -27,15 +28,19 @@ func (t *testTagDao) popOutput() (interface{}, error) {
 	return o, nil
 }
 func (t *testTagDao) Begin() (*sql.Tx, error) {
-	//not mocking begin yet
-	return nil, nil
+	o, err := t.popOutput()
+	oo, ok := o.(*sql.Tx)
+	if !ok {
+		return nil, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
 }
 
 func (t *testTagDao) Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error) {
 	o, err := t.popOutput()
 	oo, ok := o.([]model.Tag)
 	if !ok {
-		return nil, fmt.Errorf("mockOutput is not expected type")
+		return nil, fmt.Errorf("mockOutput %T is not expected type", o)
 	}
 	return oo, err
 }
@@ -44,7 +49,7 @@ func (t *testTagDao) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) 
 	o, err := t.popOutput()
 	oo, ok := o.([]model.Tag)
 	if !ok {
-		return nil, fmt.Errorf("mockOutput is not expected type")
+		return nil, fmt.Errorf("mockOutput %T is not expected type", o)
 	}
 	return oo, err
 }
@@ -53,7 +58,7 @@ func (t *testTagDao) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
 	o, err := t.popOutput()
 	oo, ok := o.(int64)
 	if !ok {
-		return 0, fmt.Errorf("mockOutput is not expected type")
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
 	}
 	return oo, err
 }
@@ -61,7 +66,7 @@ func (t *testTagDao) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(uint)
 	if !ok {
-		return 0, fmt.Errorf("mockOutput is not expected type")
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
 	}
 	return oo, err
 }
@@ -160,4 +165,35 @@ func TestNewTag(t *testing.T) {
 	if err == nil {
 		t.Fatal("expect new tag to handle error, but no error has returned")
 	}
+}
+
+func TestDeleteTag(t *testing.T) {
+	tagDao = &testTagDao{
+		output: []interface{}{
+			mockTx(t),
+			int64(3),
+			mockTx(t),
+			int64(2),
+		},
+	}
+	err := DeleteTag("1", "2", "3")
+	if err != nil {
+		t.Fatal("expect delete tag to be ok, but got ", err)
+	}
+	err = DeleteTag("1", "2", "3")
+	if err == nil {
+		t.Fatal("expect delete tag to has error, but got none")
+	}
+
+}
+
+func mockTx(t *testing.T) *sql.Tx {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal("init sqlmock failed, ", err)
+	}
+	mock.ExpectBegin()
+	mock.ExpectCommit()
+	tx, _ := db.Begin()
+	return tx
 }

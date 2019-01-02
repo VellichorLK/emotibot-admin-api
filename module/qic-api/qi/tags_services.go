@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"emotibot.com/emotigo/pkg/logger"
+
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -150,14 +152,22 @@ func DeleteTag(uuid ...string) error {
 		return fmt.Errorf("dao init transaction failed, %v", err)
 	}
 	defer func() {
-		tx.Commit()
+		tx.Rollback()
 	}()
 	query := model.TagQuery{
 		UUID: uuid,
 	}
-	_, err = tagDao.DeleteTags(tx, query)
-	if err != nil && err != model.ErrAutoIDDisabled {
+	affectedrows, err := tagDao.DeleteTags(tx, query)
+	if err == model.ErrAutoIDDisabled {
+		logger.Warn.Println("tag table does not support affectedrow, we will continue to work, but we can not detect conflict now.")
+		tx.Commit()
+		return nil
+	}
+	if err != nil {
 		return fmt.Errorf("dao delete failed, %v", err)
+	}
+	if err != model.ErrAutoIDDisabled && int(affectedrows) != len(uuid) {
+		return fmt.Errorf("dao delete should delete %d of rows, but only %d. possible conflict operation at the same time", len(uuid), affectedrows)
 	}
 	tx.Commit()
 	return nil
