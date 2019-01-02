@@ -14,6 +14,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 	if config["token"] == "" || config["encoded-aes"] == "" || config["cropid"] == "" || config["secret"] == "" {
 		return
 	}
+	// If client is not created, create it with config
 	if _, ok := workWeixinBot[appid]; !ok {
 		bot, err := workweixin.New(config["cropid"], config["secret"], config["token"], config["encoded-aes"])
 		if err != nil {
@@ -23,6 +24,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 		}
 		workWeixinBot[appid] = bot
 	}
+
 	locale := r.URL.Query().Get("locale")
 	if locale == "zhtw" {
 		textConverter = gojianfan.S2T
@@ -32,6 +34,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 
 	bot := workWeixinBot[appid]
 	if r.Method == http.MethodGet {
+		// Work weixin will use GET method to validate webhook validation
 		bot.VerifyURL(w, r)
 		return
 	} else if r.Method == http.MethodPost {

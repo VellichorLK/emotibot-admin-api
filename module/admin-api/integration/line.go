@@ -11,20 +11,27 @@ import (
 	"github.com/siongui/gojianfan"
 )
 
+// lineBots is the cache of linebot client, key is appid, value is bot client
 var lineBots = map[string]*linebot.Client{}
+
+// lineConverters is the converter of reply message type
 var lineConverters = [](func(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage){
 	createLineTextMessage,
 	createLineButtonTemplateMessage,
 	createLineFlexMessage,
 }
+
+// lineConverterName is used to show the converter name to bot command
 var lineConverterName = []string{"text", "button template", "flex"}
+
+// lineConverterIdx is setting of converter, key is appid
 var lineConverterIdx = map[string]int{}
 
 func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, config map[string]string) {
 	if config["token"] == "" || config["secret"] == "" {
 		return
 	}
-	locale := r.URL.Query().Get("locale")
+	// If client is not created, create it with config
 	if _, ok := lineBots[appid]; !ok {
 		bot, err := linebot.New(config["secret"], config["token"])
 		if err != nil {
@@ -45,6 +52,8 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 		}
 		return
 	}
+
+	locale := r.URL.Query().Get("locale")
 	if locale == "zhtw" {
 		textConverter = gojianfan.S2T
 	} else {
@@ -61,8 +70,10 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 			case *linebot.TextMessage:
 				lineAnswers := []linebot.SendingMessage{}
 
+				// message with '##' prefix will be commands for users for now
 				if strings.Index(message.Text, "##") == 0 {
 					logger.Trace.Println("command series,", strings.Replace(message.Text, "##", "", 1))
+					// 'change' command will change message format converter
 					if strings.Replace(message.Text, "##", "", 1) == "change" {
 						logger.Trace.Println("change converter")
 						lineConverterIdx[appid]++

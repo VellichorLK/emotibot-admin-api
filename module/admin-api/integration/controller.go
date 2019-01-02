@@ -36,6 +36,7 @@ func init() {
 	go sendFromQueue()
 }
 
+// sendFromQueue will get reply task from queue to avoid webhook timeout
 func sendFromQueue() {
 	for {
 		select {
@@ -74,6 +75,7 @@ func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if config cache is valid of not
 	var err error
 	key := fmt.Sprintf("%s-%s", appid, platform)
 	config, ok := configCache[key]
@@ -90,6 +92,7 @@ func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
 
 	logger.Trace.Printf("Get platform config of %s, %s: %+v\n", appid, platform, config)
 
+	// Get handler via platfrom value, which is get from URL var
 	handler := handlers[platform]
 	if handler == nil {
 		w.WriteHeader(http.StatusBadRequest)

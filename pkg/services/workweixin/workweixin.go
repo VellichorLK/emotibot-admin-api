@@ -53,6 +53,8 @@ func New(corpid, secret, token, encodingAES string) (*Client, error) {
 	return client, nil
 }
 
+// VerifyURL will used to reply workweixin validation
+// refs: https://work.weixin.qq.com/api/doc#90000/90135/90237/%E9%AA%8C%E8%AF%81URL%E6%9C%89%E6%95%88%E6%80%A7
 func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
 	signature := r.URL.Query().Get("msg_signature")
 	timestamp := r.URL.Query().Get("timestamp")
@@ -81,6 +83,8 @@ func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
 	w.Write(msg)
 }
 
+// decrypt will do the decryption of work weixin
+// refs: https://work.weixin.qq.com/api/doc#90000/90139/90968/%E5%AF%86%E6%96%87%E8%A7%A3%E5%AF%86%E5%BE%97%E5%88%B0msg%E7%9A%84%E8%BF%87%E7%A8%8B
 func decrypt(c cipher.Block, key []byte, encryptStr string) ([]byte, []byte, error) {
 	decodedStr, err := base64.StdEncoding.DecodeString(encryptStr)
 	if err != nil {
@@ -105,12 +109,15 @@ func decrypt(c cipher.Block, key []byte, encryptStr string) ([]byte, []byte, err
 	return msg, verified, nil
 }
 
+// PKCS5UnPadding will undo the padding used by workweixin
 func PKCS5UnPadding(origData []byte) []byte {
 	length := len(origData)
 	unpadding := int(origData[length-1])
 	return origData[:(length - unpadding)]
 }
 
+// calculateSignature will do the signature of work weixin to check API call validation
+// refs: https://work.weixin.qq.com/api/doc#90000/90139/90968/%E6%B6%88%E6%81%AF%E4%BD%93%E7%AD%BE%E5%90%8D%E6%A0%A1%E9%AA%8C
 func calculateSignature(token, timestamp, nonce, message string) string {
 	params := []string{token, timestamp, nonce, message}
 	sort.Strings(params)
@@ -122,6 +129,7 @@ func calculateSignature(token, timestamp, nonce, message string) string {
 	return signature
 }
 
+// getPostMsg will do the decrypt and return request body
 func (c *Client) getPostMsg(r *http.Request) ([]byte, error) {
 	content, err := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
@@ -156,6 +164,7 @@ func (c *Client) getPostMsg(r *http.Request) ([]byte, error) {
 	return msg, nil
 }
 
+// ParseRequest will parse the request to return the actual work weixin message
 func (c *Client) ParseRequest(r *http.Request) (Message, error) {
 	input, err := c.getPostMsg(r)
 	if err != nil {
@@ -184,6 +193,7 @@ func (c *Client) ParseRequest(r *http.Request) (Message, error) {
 	return nil, nil
 }
 
+// NewTextMessage will create new text message node to send to user
 func NewTextMessage(receiver string, agentID int, text string) SendingMessage {
 	ret := TextSendMessage{}
 	ret.To = receiver
@@ -193,6 +203,7 @@ func NewTextMessage(receiver string, agentID int, text string) SendingMessage {
 	return &ret
 }
 
+// SendMessages will send message to user
 func (c *Client) SendMessages(messages []SendingMessage) (*APIChatReturn, error) {
 	for idx := range messages {
 		if messages[idx] == nil {
@@ -208,6 +219,7 @@ func (c *Client) SendMessages(messages []SendingMessage) (*APIChatReturn, error)
 	return nil, nil
 }
 
+// Post will post to work weixin with valid token
 func (c *Client) Post(url string, input []byte) (*APIChatReturn, error) {
 	var err error
 	if !c.AccessTokenValidate() {
@@ -239,8 +251,9 @@ func (c *Client) Post(url string, input []byte) (*APIChatReturn, error) {
 	return &ret, nil
 }
 
-// AccessTokenValidate is a hacked method to check token validation
+// AccessTokenValidate will check stored token is expired or not
 func (c *Client) AccessTokenValidate() bool {
+	// Commented method is a hacked method to do the validation
 	// if c.AccessToken == "" {
 	// 	return false
 	// }
@@ -263,6 +276,8 @@ func (c *Client) AccessTokenValidate() bool {
 	return now.Unix() < c.ExpireTime
 }
 
+// GetNewAccessToken will use work weixin API to issue a new token
+// refs: https://work.weixin.qq.com/api/doc#90000/90135/91039
 func (c *Client) GetNewAccessToken() error {
 	now := time.Now()
 	url := fmt.Sprintf("%s?corpid=%s&corpsecret=%s", TokenIssueURL, c.CorpID, c.Secret)
