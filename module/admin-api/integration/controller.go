@@ -27,7 +27,10 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "chat/{platform}/{appid}", []string{}, handlePlatformChat),
 			util.NewEntryPoint("POST", "chat/{platform}/{appid}", []string{}, handlePlatformChat),
-			util.NewEntryPoint("GET", "chat/reload", []string{}, handleReloadPlatformConfig),
+			util.NewEntryPoint("GET", "configs/reload", []string{}, handleReloadPlatformConfig),
+			// util.NewEntryPoint("GET", "configs", []string{"view"}, handleGetConfigs),
+			// util.NewEntryPoint("Get", "config/{platform}", []string{"view"}, handleGetConfigTemplate),
+			// util.NewEntryPoint("Get", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
 		},
 	}
 	go sendFromQueue()
