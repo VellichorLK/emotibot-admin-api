@@ -52,7 +52,7 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 		}
 
 		tags = append(tags, tag{
-			TagID:        t.ID,
+			TagUUID:      t.UUID,
 			TagName:      t.Name,
 			TagType:      typ,
 			PosSentences: posSentences,

@@ -63,7 +63,7 @@ type TagResponse struct {
 }
 
 type tag struct {
-	TagID        uint64   `json:"tag_id,omitempty"`
+	TagUUID      string   `json:"tag_id,omitempty"`
 	TagName      string   `json:"tag_name,omitempty"`
 	TagType      string   `json:"tag_type,omitempty"`
 	PosSentences []string `json:"pos_sentences,omitempty"`

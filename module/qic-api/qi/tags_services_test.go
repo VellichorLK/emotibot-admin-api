@@ -67,8 +67,8 @@ func (t *testTagDao) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
 }
 
 func assertTag(te *testing.T, mt model.Tag, t tag) {
-	if t.TagID != mt.ID {
-		te.Error("expect tag id to be ", mt.ID, ", but got ", t.TagID)
+	if t.TagUUID != mt.UUID {
+		te.Error("expect tag id to be ", mt.ID, ", but got ", t.TagUUID)
 		return
 	}
 	if t.TagName != mt.Name {
@@ -83,19 +83,32 @@ func assertTag(te *testing.T, mt model.Tag, t tag) {
 		te.Error("expect tag type to be ", mt.Typ, ", but got ", t.TagType)
 		return
 	}
-	if !reflect.DeepEqual(t.NegSentences, json.RawMessage(mt.NegativeSentence)) {
-		te.Error("expect tag negative sentence to be the same, but no")
+	var negSentences, posSentences []string
+	err := json.Unmarshal([]byte(mt.NegativeSentence), &negSentences)
+	if err != nil {
+		te.Fatal("unmarshal failed with model tag negative sentences payload ", mt.NegativeSentence, ": ", err)
+	}
+	err = json.Unmarshal([]byte(mt.PositiveSentence), &posSentences)
+	if err != nil {
+		te.Fatal("unmarshal failed with model tag positive sentences payload ", mt.PositiveSentence, ": ", err)
+	}
+	if !reflect.DeepEqual(t.NegSentences, negSentences) {
+		te.Error("expect tag negative sentence to be the same, but got ", mt.NegativeSentence)
 		return
 	}
-	if !reflect.DeepEqual(t.PosSentences, json.RawMessage(mt.PositiveSentence)) {
-		te.Error("expect tag positive sentence to be the same, but no")
+	if !reflect.DeepEqual(t.PosSentences, posSentences) {
+		te.Error("expect tag positive sentence to be the same, but got ", mt.PositiveSentence)
 		return
 	}
 }
 
 func TestTags(t *testing.T) {
 	var expectTags = []model.Tag{
-		model.Tag{},
+		model.Tag{
+			UUID:             "abc",
+			PositiveSentence: "[]",
+			NegativeSentence: "[]",
+		},
 	}
 	tagDao = &testTagDao{
 		output: []interface{}{

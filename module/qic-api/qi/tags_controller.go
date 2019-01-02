@@ -42,13 +42,13 @@ func HandlePostTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := NewTag(*modelTag)
+	_, err = NewTag(*modelTag)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("new tag failed, %v", err))
 		return
 	}
 	util.WriteJSON(w, tag{
-		TagID: id,
+		TagUUID: modelTag.UUID,
 	})
 }
 
@@ -132,7 +132,7 @@ func extractTag(r *http.Request) (*model.Tag, error) {
 }
 
 type NewTagReq struct {
-	TagUUID      string   `json:"tag_uuid"`
+	TagUUID      string   `json:"tag_id"`
 	TagName      string   `json:"tag_name"`
 	TagType      string   `json:"tag_type"`
 	PosSentences []string `json:"pos_sentences"`
