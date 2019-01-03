@@ -147,7 +147,7 @@ var VisitRecordsTableHeader = []data.TableHeaderItem{
 		ID:   common.VisitRecordsMetricUserQ,
 	},
 	data.TableHeaderItem{
-		Text: "匹配分数",
+		Text: "信心分数",
 		ID:   common.VisitRecordsMetricScore,
 	},
 	data.TableHeaderItem{
@@ -175,11 +175,11 @@ var VisitRecordsTableHeader = []data.TableHeaderItem{
 		ID:   common.VisitRecordsMetricModule,
 	},
 	data.TableHeaderItem{
-		Text: "FAQ 分类",
+		Text: "标准问题分类",
 		ID:   common.VisitRecordsMetricFaqCategoryName,
 	},
 	data.TableHeaderItem{
-		Text: "FAQ 标签",
+		Text: "标准问题标签",
 		ID:   common.VisitRecordsMetricFaqRobotTagName,
 	},
 	data.TableHeaderItem{
