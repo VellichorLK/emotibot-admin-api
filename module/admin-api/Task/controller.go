@@ -54,6 +54,18 @@ func init() {
 
 			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
 			util.NewEntryPoint("GET", "config", []string{}, handleGetConfig),
+
+			// v2
+			util.NewEntryPointWithVer("GET", "scenarios", []string{}, handleGetApps, 2),
+			util.NewEntryPointWithVer("GET", "scenario", []string{}, handleGetScenario, 2),
+			util.NewEntryPointWithVer("GET", "scenario/config", []string{}, handleGetConfig, 2),
+			util.NewEntryPointWithVer("PUT", "scenario/config", []string{}, handleUpdateApp, 2),
+			util.NewEntryPointWithVer("POST", "scenario", []string{}, handleCreateScenario, 2),
+			util.NewEntryPointWithVer("PUT", "scenario", []string{}, handlePutScenario, 2),
+			util.NewEntryPointWithVer("DELETE", "scenario", []string{}, handleDeleteScenario, 2),
+			util.NewEntryPointWithVer("GET", "templates", []string{}, handleGetScenarioTemplates, 2),
+			util.NewEntryPointWithVer("POST", "scenarios-upload", []string{}, handleUploadScenarios, 2),
+			util.NewEntryPointWithVer("POST", "spreadsheet", []string{}, handleUploadSpreadSheet, 2),
 		},
 	}
 }
@@ -211,6 +223,155 @@ func handleGetScenarios(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGetScenarioTemplates(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	userID := appid
+	public := r.URL.Query().Get("public")
+
+	if public == "" {
+		public = r.FormValue("public")
+	}
+	params := url.Values{
+		"appid": []string{appid},
+	}
+	if public != "" {
+		params.Set("public", public)
+	} else {
+		params.Set("userid", userID)
+	}
+
+	publicInt, _ := strconv.Atoi(public)
+	if publicInt > 0 {
+		// get public(template) scenarios
+		templateScenarioInfoList, errno, err := GetTemplateScenarioInfoList()
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		ret := TemplateScenarioInfoListResponse{
+			Result: templateScenarioInfoList,
+		}
+		retString, err := json.Marshal(ret)
+		if err != nil {
+			errno = ApiError.JSON_PARSE_ERROR
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, string(retString))
+		return
+	}
+	// TODO handle scenarioid == all, public == 0 API
+	logger.Info.Printf("scenarioid: all, public: %d", publicInt)
+}
+
+func handleGetScenario(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	userID := appid
+	scenarioid := r.URL.Query().Get("scenarioid")
+	public := r.URL.Query().Get("public")
+
+	if scenarioid == "" {
+		scenarioid = r.FormValue("scenarioid")
+	}
+	if public == "" {
+		public = r.FormValue("public")
+	}
+	params := url.Values{
+		"appid": []string{appid},
+	}
+	if public != "" {
+		params.Set("public", public)
+	} else {
+		params.Set("userid", userID)
+	}
+
+	teConfig, errno, err := GetTaskEngineConfig()
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	scenario := &Scenario{}
+	if teConfig.TEv2Config.EnableJSCode {
+		scenario, errno, err = GetDecryptedScenario(scenarioid)
+	} else {
+		scenario, errno, err = GetScenario(scenarioid)
+	}
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	} else if scenario == nil {
+		errMsg := fmt.Sprintf("No scenario found in DB with scenarioID: %s", scenarioid)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, errMsg), http.StatusNotFound)
+		return
+	} else {
+		result := GetScenarioResult{
+			Content:        scenario.Content,
+			Layout:         scenario.Layout,
+			Editing:        scenario.Editing,
+			EditingContent: scenario.EditingContent,
+			EditingLayout:  scenario.EditingLayout,
+		}
+		ret := GetScenarioResponse{
+			Result: &result,
+		}
+		retString, err := json.Marshal(ret)
+		if err != nil {
+			errno = ApiError.JSON_PARSE_ERROR
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, string(retString))
+		return
+	}
+}
+
+func handlePutScenario(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	scenarioid := r.FormValue("scenarioid")
+	editingContent := r.FormValue("content")
+	editingLayout := r.FormValue("layout")
+	publish := r.FormValue("publish")
+
+	if publish != "" {
+		// publish scenario
+		errno, err := PublishScenario(scenarioid, appid, appid)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		// update consul to inform TE to reload scenarios
+		errno, err = util.ConsulUpdateTaskEngineScenario()
+		if err != nil {
+			logger.Error.Printf("Failed to update consul key:te/scenario errno: %d, %s", errno, err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+	} else {
+		// update scenario
+		errno, err := UpdateScenario(scenarioid, appid, appid, editingContent, editingLayout)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+	}
+	ret := ResultMsgResponse{
+		Msg: "Update success",
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
+}
+
 func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	scenarioid := r.FormValue("scenarioid")
@@ -277,6 +438,45 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, string(retString))
 	return
 }
+
+func handleDeleteScenario(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	scenarioid := r.URL.Query().Get("scenarioid")
+	// delete scenario
+	errno, err := DeleteScenario(scenarioid, appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	// delete app-scenario pair in taskengineapp
+	errno, err = DeleteAppScenario(scenarioid, appid)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	errno, err = UpdateAppScenarioPairToConsul(appid)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+	addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+
+	ret := ResultMsgResponse{
+		Msg: "Delete success",
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
+}
+
 func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 	method := r.FormValue("method")
 	if method == "GET" {
@@ -286,6 +486,51 @@ func handlePostScenarios(w http.ResponseWriter, r *http.Request) {
 		handlePutScenarios(w, r)
 		return
 	}
+	appid := requestheader.GetAppID(r)
+	userid := appid
+	scenarioName := r.FormValue("scenarioName")
+	if scenarioName == "" {
+		scenarioName = "New Scenario"
+	}
+
+	metadata := &ContentMetadata{}
+	var errno int
+	var err error
+	template := r.FormValue("template")
+	if template == "" {
+		metadata, errno, err = CreateInitialScenario(appid, userid, scenarioName)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+	} else {
+		metadata, errno, err = CreateScenarioWithTemplate(appid, userid, scenarioName, template)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+			return
+		}
+	}
+
+	ret := CreateScenarioResponse{
+		Template: &TemplateResult{
+			Metadata: metadata,
+		},
+		ScenarioID: metadata.ScenarioID,
+	}
+	retString, err := json.Marshal(ret)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+	auditMsg := fmt.Sprintf("%s%s: %s", util.Msg["Add"], util.Msg["TaskEngineScenario"], scenarioName)
+	addAuditLog(r, audit.AuditOperationAdd, auditMsg, err == nil)
+	w.Header().Set("Content-Type", "application/json")
+	io.WriteString(w, string(retString))
+	return
+}
+
+func handleCreateScenario(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	userid := appid
 	scenarioName := r.FormValue("scenarioName")
