@@ -99,13 +99,17 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 		tx.Rollback()
 	}()
 	var (
-		tags       []model.Tag
-		maxRetries = 3
-		rowsCount  int64
+		tags      []model.Tag
+		sentences []uint64
 	)
 
 	// we will try at least maxRetries time for delete operation
 	for i := 0; i <= 3; i++ {
+		var (
+			maxRetries    = 3
+			rowsCount     int64
+			tagsSentences map[uint64][]uint64
+		)
 		if i == maxRetries {
 			return 0, fmt.Errorf("unexpected affected rows count")
 		}
@@ -116,6 +120,12 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 		if len(tags) != 1 {
 			return 0, fmt.Errorf("dao found %d tag with the query %+v", len(tags), t.UUID)
 		}
+		tg := tags[0]
+		tagsSentences, err = sentenceDao.GetRelSentenceIDByTagIDs(tx, []uint64{tg.ID})
+		if err != nil {
+			return 0, fmt.Errorf("dao get sentence id failed, %v", err)
+		}
+		sentences = tagsSentences[tg.ID]
 		query.ID = []uint64{tags[0].ID}
 		rowsCount, err = tagDao.DeleteTags(tx, query)
 		if err != nil {
@@ -130,9 +140,26 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 	t.CreateTime = tags[0].CreateTime
 	t.UpdateTime = time.Now().Unix()
 	tags, err = tagDao.NewTags(tx, []model.Tag{t})
+	// TODO: support elegant handle for sql driver not support return incremental id.
+	// if err == model.ErrAutoIDDisabled {
+	//	tagDao.Tags()
+	// 	tx.Commit()
+	// }
 	if err != nil {
 		return 0, fmt.Errorf("dao create new tags failed, %v", err)
 	}
+	logger.Trace.Println("sentences: ", sentences)
+
+	for _, sID := range sentences {
+		err = sentenceDao.InsertSenTagRelation(tx, &model.Sentence{
+			ID:     sID,
+			TagIDs: []uint64{tags[0].ID},
+		})
+		if err != nil {
+			return 0, fmt.Errorf("dao insert sentence tag relation failed, %v", err)
+		}
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return 0, fmt.Errorf("tx commit failed, %v", err)

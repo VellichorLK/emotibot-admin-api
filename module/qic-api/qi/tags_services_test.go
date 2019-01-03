@@ -14,11 +14,11 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
-type testTagDao struct {
+type testDao struct {
 	output []interface{}
 }
 
-func (t *testTagDao) popOutput() (interface{}, error) {
+func (t *testDao) popOutput() (interface{}, error) {
 	if len(t.output) == 0 {
 		return nil, errors.New("all output is depleted")
 	}
@@ -27,7 +27,7 @@ func (t *testTagDao) popOutput() (interface{}, error) {
 
 	return o, nil
 }
-func (t *testTagDao) Begin() (*sql.Tx, error) {
+func (t *testDao) Begin() (*sql.Tx, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(*sql.Tx)
 	if !ok {
@@ -36,7 +36,7 @@ func (t *testTagDao) Begin() (*sql.Tx, error) {
 	return oo, err
 }
 
-func (t *testTagDao) Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error) {
+func (t *testDao) Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error) {
 	o, err := t.popOutput()
 	oo, ok := o.([]model.Tag)
 	if !ok {
@@ -45,7 +45,7 @@ func (t *testTagDao) Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
 	return oo, err
 }
 
-func (t *testTagDao) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) {
+func (t *testDao) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) {
 	o, err := t.popOutput()
 	oo, ok := o.([]model.Tag)
 	if !ok {
@@ -54,7 +54,7 @@ func (t *testTagDao) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) 
 	return oo, err
 }
 
-func (t *testTagDao) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error) {
+func (t *testDao) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(int64)
 	if !ok {
@@ -62,11 +62,66 @@ func (t *testTagDao) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
 	}
 	return oo, err
 }
-func (t *testTagDao) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
+func (t *testDao) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(uint)
 	if !ok {
 		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
+func (t *testDao) Commit(tx *sql.Tx) error {
+	return tx.Commit()
+}
+
+func (t *testDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
+	o, err := t.popOutput()
+	oo, ok := o.([]*model.Sentence)
+	if !ok {
+		return nil, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
+func (t *testDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
+	o, err := t.popOutput()
+	oo, ok := o.(int64)
+	if !ok {
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
+func (t *testDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
+	o, err := t.popOutput()
+	oo, ok := o.(int64)
+	if !ok {
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
+func (t *testDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
+	o, err := t.popOutput()
+	oo, ok := o.(uint64)
+	if !ok {
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
+func (t *testDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+	o, err := t.popOutput()
+	oo, ok := o.(error)
+	if !ok {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return oo
+}
+func (t *testDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	o, err := t.popOutput()
+	oo, ok := o.(map[uint64][]uint64)
+	if !ok {
+		return nil, fmt.Errorf("mockOutput %T is not expected type", o)
 	}
 	return oo, err
 }
@@ -115,7 +170,7 @@ func TestTags(t *testing.T) {
 			NegativeSentence: "[]",
 		},
 	}
-	tagDao = &testTagDao{
+	tagDao = &testDao{
 		output: []interface{}{
 			expectTags,
 			uint(10),
@@ -147,7 +202,7 @@ func TestNewTag(t *testing.T) {
 	var expectedTags = []model.Tag{
 		model.Tag{ID: 1},
 	}
-	tagDao = &testTagDao{
+	tagDao = &testDao{
 		output: []interface{}{
 			expectedTags,
 			errors.New("test failed"),
@@ -167,7 +222,7 @@ func TestNewTag(t *testing.T) {
 	}
 }
 func TestUpdateTags(t *testing.T) {
-	tagDao = &testTagDao{
+	d := &testDao{
 		output: []interface{}{
 			//Begin
 			mockTx(t),
@@ -175,14 +230,23 @@ func TestUpdateTags(t *testing.T) {
 			[]model.Tag{
 				model.Tag{ID: 1},
 			},
+			//GetRelSentenceIDByTagIDs
+			map[uint64][]uint64{
+				1: []uint64{1, 2},
+			},
 			//Delete
 			int64(1),
 			//New
 			[]model.Tag{
 				model.Tag{ID: 2},
 			},
+			//InsertSenTagRelation
+			nil,
+			nil,
 		},
 	}
+	tagDao = d
+	sentenceDao = d
 	id, err := UpdateTag(model.Tag{})
 	if err != nil {
 		t.Fatal("expect update to be ok, but got ", err)
@@ -192,7 +256,7 @@ func TestUpdateTags(t *testing.T) {
 	}
 }
 func TestDeleteTag(t *testing.T) {
-	tagDao = &testTagDao{
+	tagDao = &testDao{
 		output: []interface{}{
 			mockTx(t),
 			int64(3),
