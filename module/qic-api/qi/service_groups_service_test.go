@@ -108,6 +108,10 @@ func (m *mockSentencesDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) e
 	return nil
 }
 
+func (m *mockSentencesDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	return nil, nil
+}
+
 type mockDBLike struct{}
 
 func (m *mockDBLike) Begin() (*sql.Tx, error) {

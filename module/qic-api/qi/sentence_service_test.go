@@ -174,6 +174,10 @@ func (m *mockSentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence)
 	return nil
 }
 
+func (m *mockSentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	return nil, nil
+}
+
 func (m *mockSentenceSQLDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	if q == nil {
 		return nil, nil
