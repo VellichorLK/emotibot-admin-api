@@ -17,7 +17,7 @@ type BFAppV3 struct {
 	Name string `json:"nickname"`
 }
 
-func (BFApp *BFAppV3) CopyFromApp(app *AppV3) {
+func (BFApp *BFAppV3) CopyFromApp(app *AppDetailV3) {
 	BFApp.ID = app.ID
 	BFApp.Name = app.Name
 }

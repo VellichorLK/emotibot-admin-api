@@ -62,7 +62,7 @@ type DB interface {
 	EnterpriseUserInfoExistsV3(userType int, enterpriseID string,
 		userName string, userEmail string) (bool, string, string, error)
 
-	GetAppsV3(enterpriseID string) ([]*data.AppV3, error)
+	GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error)
 	GetAppV3(enterpriseID string, appID string) (*data.AppDetailV3, error)
 	AddAppV3(enterpriseID string, app *data.AppDetailV3) (string, error)
 	UpdateAppV3(enterpriseID string, appID string, app *data.AppDetailV3) error

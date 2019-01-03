@@ -283,7 +283,7 @@ func DeleteUserV3(enterpriseID string, userID string) (bool, error) {
 	return true, nil
 }
 
-func GetAppsV3(enterpriseID string) ([]*data.AppV3, error) {
+func GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err

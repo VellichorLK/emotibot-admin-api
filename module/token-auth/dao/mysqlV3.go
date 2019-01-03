@@ -884,7 +884,7 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 	}
 }
 
-func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppV3, error) {
+func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -892,7 +892,7 @@ func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppV3,
 	}
 
 	queryStr := fmt.Sprintf(`
-		SELECT uuid, name, status
+		SELECT uuid, name, status, description
 		FROM %s
 		WHERE enterprise = ?`, appTableV3)
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
@@ -902,10 +902,10 @@ func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppV3,
 	}
 	defer rows.Close()
 
-	apps := make([]*data.AppV3, 0)
+	apps := make([]*data.AppDetailV3, 0)
 	for rows.Next() {
-		app := data.AppV3{}
-		err := rows.Scan(&app.ID, &app.Name, &app.Status)
+		app := data.AppDetailV3{}
+		err := rows.Scan(&app.ID, &app.Name, &app.Status, &app.Description)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
