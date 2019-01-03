@@ -109,8 +109,8 @@ type VisitRecordsDataBase struct {
 	LogTime   string  `json:"log_time"`
 	Emotion   string  `json:"emotion"`
 	QType     string  `json:"qtype"`
-	IsMarked  bool    `json:"is_marked"`
-	IsIgnored bool    `json:"is_ignored"`
+	IsMarked  bool    `json:"isMarked"`
+	IsIgnored bool    `json:"isIgnored"`
 }
 
 type VisitRecordsData struct {

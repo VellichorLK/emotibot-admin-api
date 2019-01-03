@@ -255,6 +255,10 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 			}
 			todoRecords = append(todoRecords, record)
 		}
+
+		logger.Trace.Println("Skip records:", skipRecordsID)
+		logger.Trace.Println("To-do records:", todoRecords)
+
 		// Deduplicate input userQ, because dalClient can not handle duplicate request.
 		questions := map[string]struct{}{}
 		for _, r := range todoRecords {
@@ -267,6 +271,15 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		uniqueUserQ := []string{}
 		for r := range questions {
 			uniqueUserQ = append(uniqueUserQ, r)
+		}
+
+		if len(uniqueUserQ) == 0 {
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(response{
+				Done: []interface{}{},
+				Skip: skipRecordsID,
+			})
+			return
 		}
 
 		if *request.Mark {
@@ -326,12 +339,10 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 		}
 
 		w.WriteHeader(http.StatusOK)
-		resp := response{
+		json.NewEncoder(w).Encode(response{
 			Done: newQuery.Records,
 			Skip: skipRecordsID,
-		}
-		data, _ := json.Marshal(resp)
-		w.Write(data)
+		})
 	}
 
 }
@@ -365,8 +376,10 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record id "+id+" is ambiguous(results: "+strconv.Itoa(size)+")"))
 			return
 		}
+		logger.Trace.Printf("Get record: %+v\n", *result.Hits[0])
 		if !result.Hits[0].IsMarked {
 			controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record is not marked"))
+			return
 		}
 		lq := result.Hits[0].UserQ
 		var response = struct {

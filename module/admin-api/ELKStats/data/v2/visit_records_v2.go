@@ -85,8 +85,8 @@ type VisitRecordsRawData struct {
 	CustomInfo     map[string]interface{} `json:"custom_info"`
 	Source         string                 `json:"source"`
 	Note           string                 `json:"note"`
-	IsMarked       bool                   `json:"is_marked"`
-	IsIgnored      bool                   `json:"is_ignored"`
+	IsMarked       bool                   `json:"isMarked"`
+	IsIgnored      bool                   `json:"isIgnored"`
 	FaqCategoryID  int64                  `json:"faq_cat_id"`
 	FaqRobotTagIDs []int64                `json:"faq_robot_tag_id"`
 	Feedback       string                 `json:"feedback"`
