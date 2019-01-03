@@ -2,8 +2,9 @@ package qi
 
 import (
 	"database/sql"
-	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"testing"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
 var mockSentence1 *model.Sentence = &model.Sentence{}
@@ -101,6 +102,14 @@ func (m *mockSentencesDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery
 
 func (m *mockSentencesDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
 	return 0, nil
+}
+
+func (m *mockSentencesDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+	return nil
+}
+
+func (m *mockSentencesDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	return nil, nil
 }
 
 type mockDBLike struct{}

@@ -1,12 +1,13 @@
 package qi
 
 import (
-	autil "emotibot.com/emotigo/module/admin-api/util"
+	"net/http"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"net/http"
 )
 
 var roleMapping map[string]int = map[string]int{
@@ -30,7 +31,7 @@ var positionCodeMap map[int]string = map[int]string{
 }
 
 type SetenceGroupsResponse struct {
-	Paging *util.Paging              `json:"paging"`
+	Paging *general.Paging           `json:"paging"`
 	Data   []SentenceGroupInResponse `json:"data"`
 }
 
@@ -80,7 +81,7 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	groupInReq := SentenceGroupInReq{}
-	err := autil.ReadJSON(r, &groupInReq)
+	err := util.ReadJSON(r, &groupInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -103,7 +104,7 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	groupInResponse := SentenceGroupInResponse{
 		ID: createdGroup.UUID,
 	}
-	autil.WriteJSON(w, groupInResponse)
+	util.WriteJSON(w, groupInResponse)
 	return
 }
 
@@ -129,7 +130,7 @@ func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := SetenceGroupsResponse{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Total: total,
 			Page:  0,
 			Limit: len(groups),
@@ -137,7 +138,7 @@ func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
 		Data: groupsInRes,
 	}
 
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +170,7 @@ func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	group := groups[0]
 
 	groupInRes := sentenceGroupToSentenceGroupInResponse(&group)
-	autil.WriteJSON(w, groupInRes)
+	util.WriteJSON(w, groupInRes)
 }
 
 func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {
@@ -177,7 +178,7 @@ func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	groupInReq := SentenceGroupInReq{}
-	err := autil.ReadJSON(r, &groupInReq)
+	err := util.ReadJSON(r, &groupInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -194,7 +195,7 @@ func handleUpdateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	groupInRes := sentenceGroupToSentenceGroupInResponse(updatedGroup)
-	autil.WriteJSON(w, groupInRes)
+	util.WriteJSON(w, groupInRes)
 	return
 }
 

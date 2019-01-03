@@ -20,6 +20,8 @@ type SentenceDao interface {
 	InsertSentence(tx *sql.Tx, s *Sentence) (int64, error)
 	SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error)
 	CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, error)
+	InsertSenTagRelation(tx *sql.Tx, s *Sentence) error
+	GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error)
 }
 
 //error message
@@ -243,24 +245,35 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 		return 0, err
 	}
 
-	//insert into Relation_Sentence_Tag table
-	if numOfTags > 0 {
-		insertRelSQL := fmt.Sprintf("INSERT INTO %s (%s,%s) VALUES ", tbleRelSentenceTag, fldRelSenID, fldRelTagID)
+	return id, err
+}
 
-		bulk := fmt.Sprintf("(%d,?)", id)
-		insertRelSQL = fmt.Sprintf("%s %s%s", insertRelSQL, bulk, strings.Repeat(","+bulk, numOfTags-1))
-		params := make([]interface{}, 0, numOfTags)
-		for i := 0; i < numOfTags; i++ {
-			params = append(params, s.TagIDs[i])
-		}
-		_, err = exe.Exec(insertRelSQL, params...)
-		if err != nil {
-			logger.Error.Printf("insert (%s)(%+v) relation sentence tag failed. %s\n", insertRelSQL, params, err)
-			return 0, err
-		}
+//InsertSenTagRelation inserts the Relation_Sentence_Tag
+func (d *SentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *Sentence) error {
+	if s == nil || len(s.TagIDs) == 0 || s.ID == 0 {
+		return ErrNeedRelation
 	}
 
-	return id, err
+	exe, err := genrateExecutor(d.conn, tx)
+	if err != nil {
+		return err
+	}
+
+	numOfTags := len(s.TagIDs)
+	insertRelSQL := fmt.Sprintf("INSERT INTO %s (%s,%s) VALUES ", tbleRelSentenceTag, fldRelSenID, fldRelTagID)
+
+	bulk := fmt.Sprintf("(%d,?)", s.ID)
+	insertRelSQL = fmt.Sprintf("%s %s%s", insertRelSQL, bulk, strings.Repeat(","+bulk, numOfTags-1))
+	params := make([]interface{}, 0, numOfTags)
+	for i := 0; i < numOfTags; i++ {
+		params = append(params, s.TagIDs[i])
+	}
+	_, err = exe.Exec(insertRelSQL, params...)
+	if err != nil {
+		logger.Error.Printf("insert (%s)(%+v) relation sentence tag failed. %s\n", insertRelSQL, params, err)
+		return err
+	}
+	return nil
 }
 
 //SoftDeleteSentence sets the field is_delete to 1
@@ -299,4 +312,53 @@ func (d *SentenceSQLDao) CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, e
 		return 0, err
 	}
 	return count, nil
+}
+
+//GetRelSentenceIDByTagIDs gets the sentence id which is related to tag id
+func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	exe, err := genrateExecutor(d.conn, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	numOfTags := len(tagIDs)
+	if numOfTags == 0 {
+		return nil, nil
+	}
+
+	querySQL := fmt.Sprintf("SELECT %s,%s FROM %s WHERE %s IN (?%s)",
+		fldRelSenID, fldRelTagID,
+		tblRelSenTag, fldRelTagID,
+		strings.Repeat(",?", numOfTags-1))
+
+	tagIDsInterface := make([]interface{}, 0, numOfTags)
+	for _, id := range tagIDs {
+		tagIDsInterface = append(tagIDsInterface, id)
+	}
+
+	rows, err := exe.Query(querySQL, tagIDsInterface...)
+	if err != nil {
+		logger.Error.Printf("get sentence to tag relation failed. %s\n", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	tagToSentenceMap := make(map[uint64][]uint64)
+	var sID, tID uint64
+	var sentenceIDs []uint64
+	var ok bool
+	for rows.Next() {
+		err = rows.Scan(&sID, &tID)
+		if err != nil {
+			logger.Error.Printf("Scan error. %s\n", err)
+			return nil, err
+		}
+		if sentenceIDs, ok = tagToSentenceMap[tID]; !ok {
+			sentenceIDs = make([]uint64, 0, 1)
+		}
+		sentenceIDs = append(sentenceIDs, sID)
+		tagToSentenceMap[tID] = sentenceIDs
+	}
+
+	return tagToSentenceMap, nil
 }

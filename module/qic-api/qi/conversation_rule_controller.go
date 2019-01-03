@@ -1,12 +1,13 @@
 package qi
 
 import (
-	autil "emotibot.com/emotigo/module/admin-api/util"
+	"net/http"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"net/http"
 )
 
 type ConversationRuleInReq struct {
@@ -16,7 +17,7 @@ type ConversationRuleInReq struct {
 	Severity    string   `json:"severity"`
 	Min         int      `json:"min"`
 	Max         int      `json:"max"`
-	Type        string   `json:"type"`
+	Method      string   `json:"method"`
 	Score       int      `json:"score"`
 	Flows       []string `json:"flows"`
 }
@@ -28,7 +29,7 @@ type ConversationRuleInRes struct {
 	Severity    string                         `json:"severity,omitempty"`
 	Min         int                            `json:"min,omitempty"`
 	Max         int                            `json:"max,omitempty"`
-	Type        string                         `json:"type,omitempty"`
+	Method      string                         `json:"method,omitempty"`
 	Score       int                            `json:"score,omitempty"`
 	Flows       []model.SimpleConversationFlow `json:"flows,omitempty"`
 }
@@ -43,12 +44,12 @@ var severityCodeToString map[int8]string = map[int8]string{
 	int8(1): "critical",
 }
 
-var typeStringToCode map[string]int8 = map[string]int8{
+var methodStringToCode map[string]int8 = map[string]int8{
 	"positive": int8(1),
 	"negative": int8(-1),
 }
 
-var typeCodeToString map[int8]string = map[int8]string{
+var methodCodeToString map[int8]string = map[int8]string{
 	int8(1):  "positive",
 	int8(-1): "negative",
 }
@@ -63,7 +64,7 @@ func ruleInReqToConversationRule(ruleInReq *ConversationRuleInReq) (rule *model.
 	}
 
 	rule.Severity = severityStringToCode[ruleInReq.Severity]
-	rule.Type = typeStringToCode[ruleInReq.Type]
+	rule.Method = methodStringToCode[ruleInReq.Method]
 
 	flows := make([]model.SimpleConversationFlow, len(ruleInReq.Flows))
 	for idx := range ruleInReq.Flows {
@@ -83,7 +84,7 @@ func conversationRuleToRuleInRes(rule *model.ConversationRule) (ruleInRes *Conve
 		Severity:    severityCodeToString[rule.Severity],
 		Min:         rule.Min,
 		Max:         rule.Max,
-		Type:        typeCodeToString[rule.Type],
+		Method:      methodCodeToString[rule.Method],
 		Score:       rule.Score,
 		Flows:       rule.Flows,
 		Description: rule.Description,
@@ -95,7 +96,7 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	ruleInReq := ConversationRuleInReq{}
-	err := autil.ReadJSON(r, &ruleInReq)
+	err := util.ReadJSON(r, &ruleInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -115,7 +116,7 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 		UUID: createdRule.UUID,
 	}
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +135,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Response struct {
-		Paging *util.Paging
+		Paging *general.Paging
 		Data   []ConversationRuleInRes
 	}
 
@@ -145,7 +146,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := Response{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Page:  0,
 			Total: total,
 			Limit: len(rules),
@@ -153,7 +154,7 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 		Data: rulesInRes,
 	}
 
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +184,7 @@ func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
 	rule := rules[0]
 	ruleInRes := conversationRuleToRuleInRes(&rule)
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
@@ -191,7 +192,7 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
 
 	ruleInReq := ConversationRuleInReq{}
-	err := autil.ReadJSON(r, &ruleInReq)
+	err := util.ReadJSON(r, &ruleInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -215,7 +216,7 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 
 	ruleInRes := conversationRuleToRuleInRes(updatedRule)
 
-	autil.WriteJSON(w, ruleInRes)
+	util.WriteJSON(w, ruleInRes)
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {

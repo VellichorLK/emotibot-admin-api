@@ -1,12 +1,13 @@
 package qi
 
 import (
-	autil "emotibot.com/emotigo/module/admin-api/util"
+	"net/http"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"net/http"
 )
 
 type ConversationFlowInReq struct {
@@ -59,7 +60,7 @@ func handleCreateConversationFlow(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	flowInReq := ConversationFlowInReq{}
-	err := autil.ReadJSON(r, &flowInReq)
+	err := util.ReadJSON(r, &flowInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -76,7 +77,7 @@ func handleCreateConversationFlow(w http.ResponseWriter, r *http.Request) {
 
 	flowInRes := conversationfFlowToFlowInRes(createdFlow)
 
-	autil.WriteJSON(w, flowInRes)
+	util.WriteJSON(w, flowInRes)
 }
 
 func handleGetConversationFlows(w http.ResponseWriter, r *http.Request) {
@@ -100,19 +101,19 @@ func handleGetConversationFlows(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Response struct {
-		Paging *util.Paging            `json:"page"`
+		Paging *general.Paging         `json:"page"`
 		Data   []ConversationFlowInRes `json:"data"`
 	}
 
 	response := Response{
-		Paging: &util.Paging{
+		Paging: &general.Paging{
 			Total: total,
 			Page:  0,
 			Limit: len(flows),
 		},
 		Data: flowsInRes,
 	}
-	autil.WriteJSON(w, response)
+	util.WriteJSON(w, response)
 }
 
 func handleGetConversationFlow(w http.ResponseWriter, r *http.Request) {
@@ -141,7 +142,7 @@ func handleGetConversationFlow(w http.ResponseWriter, r *http.Request) {
 	flow := flows[0]
 	flowInRes := conversationfFlowToFlowInRes(&flow)
 
-	autil.WriteJSON(w, flowInRes)
+	util.WriteJSON(w, flowInRes)
 	return
 }
 
@@ -150,7 +151,7 @@ func handleUpdateConversationFlow(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	flowInReq := ConversationFlowInReq{}
-	err := autil.ReadJSON(r, &flowInReq)
+	err := util.ReadJSON(r, &flowInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -166,7 +167,7 @@ func handleUpdateConversationFlow(w http.ResponseWriter, r *http.Request) {
 
 	flowInRes := conversationfFlowToFlowInRes(updatedFlow)
 
-	autil.WriteJSON(w, flowInRes)
+	util.WriteJSON(w, flowInRes)
 }
 
 func handleDeleteConversationFlow(w http.ResponseWriter, r *http.Request) {

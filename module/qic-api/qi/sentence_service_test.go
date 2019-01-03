@@ -7,9 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/satori/go.uuid"
-
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	uuid "github.com/satori/go.uuid"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -169,6 +168,14 @@ func (m *mockSentenceSQLDao) Begin() (*sql.Tx, error) {
 
 func (m *mockSentenceSQLDao) Commit(tx *sql.Tx) error {
 	return tx.Commit()
+}
+
+func (m *mockSentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+	return nil
+}
+
+func (m *mockSentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+	return nil, nil
 }
 
 func (m *mockSentenceSQLDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
@@ -366,6 +373,10 @@ func (m *mockSentenceSQLDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) 
 	}
 
 	return uint64(len(data)), nil
+}
+
+func (m *mockTagSQLDao) Begin() (*sql.Tx, error) {
+	return nil, nil
 }
 func TestCheckSentenceAuth(t *testing.T) {
 	sentenceMockDataSetup()

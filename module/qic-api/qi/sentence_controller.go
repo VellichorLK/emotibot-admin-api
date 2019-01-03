@@ -110,9 +110,14 @@ func handleModifySentence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = UpdateSentence(uuid, requestBody.Name, enterprise, requestBody.Tags)
+	affected, err := UpdateSentence(uuid, requestBody.Name, enterprise, requestBody.Tags)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	if affected == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "No record is deleted"), http.StatusBadRequest)
 		return
 	}
 
@@ -121,9 +126,13 @@ func handleModifySentence(w http.ResponseWriter, r *http.Request) {
 func handleDeleteSentence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := parseID(r)
-	_, err := SoftDeleteSentence(uuid, enterprise)
+	affected, err := SoftDeleteSentence(uuid, enterprise)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if affected == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "No record is deleted"), http.StatusBadRequest)
 		return
 	}
 }

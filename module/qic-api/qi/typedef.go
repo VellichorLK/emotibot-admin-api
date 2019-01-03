@@ -4,16 +4,16 @@ import (
 	"database/sql"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 )
 
 type GroupsResponse struct {
-	Paging *util.Paging       `json:"paging"`
+	Paging *general.Paging    `json:"paging"`
 	Data   []model.GroupWCond `json:"data"`
 }
 
 type SimpleGroupsResponse struct {
-	Paging *util.Paging        `json:"paging"`
+	Paging *general.Paging     `json:"paging"`
 	Data   []model.SimpleGroup `json:"data"`
 }
 
@@ -37,6 +37,7 @@ type SentenceGroupInResponse struct {
 
 //TagDao is tag resource manipulating interface, which itself should support ACID transaction.
 type TagDao interface {
+	Begin() (*sql.Tx, error)
 	Tags(tx *sql.Tx, query model.TagQuery) ([]model.Tag, error)
 	NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error)
 	DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error)
@@ -54,3 +55,17 @@ const (
 	DPage  = 1
 	DLimit = 10
 )
+
+//TagResponse is the Get handler response body struct.
+type TagResponse struct {
+	Paging general.Paging `json:"paging"`
+	Data   []tag          `json:"data"`
+}
+
+type tag struct {
+	TagUUID      string   `json:"tag_id,omitempty"`
+	TagName      string   `json:"tag_name,omitempty"`
+	TagType      string   `json:"tag_type,omitempty"`
+	PosSentences []string `json:"pos_sentences,omitempty"`
+	NegSentences []string `json:"neg_sentences,omitempty"`
+}

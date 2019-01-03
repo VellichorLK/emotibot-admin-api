@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -17,7 +17,6 @@ type ConversationRule struct {
 	Min         int
 	Max         int
 	Severity    int8
-	Type        int8
 	Flows       []SimpleConversationFlow
 	CreateTime  int64
 	UpdateTime  int64
@@ -26,7 +25,7 @@ type ConversationRule struct {
 type ConversationRuleFilter struct {
 	UUID       []string
 	Name       string
-	Method     int8 // TODO
+	Method     int8
 	Enterprise string
 	Severity   int8
 	IsDeleted  int8
@@ -45,6 +44,7 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sql SqlLik
 	fields := []string{
 		fldUUID,
 		fldName,
+		CRMethod,
 		fldEnterprise,
 		CRScore,
 		CRDescription,
@@ -59,6 +59,7 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sql SqlLik
 	values := []interface{}{
 		rule.UUID,
 		rule.Name,
+		rule.Method,
 		rule.Enterprise,
 		rule.Score,
 		rule.Description,
@@ -238,7 +239,6 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			cRule = &rule
 		}
 		cRule.Flows = append(cRule.Flows, flow)
-		logger.Info.Printf("rules.flows: %+v\n", cRule.Flows)
 	}
 
 	if cRule != nil {
