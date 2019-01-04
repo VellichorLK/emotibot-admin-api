@@ -45,6 +45,9 @@
                 "answer": {
                     "type": "nested"
                 },
+                "raw_answer": {
+                    "type": "keyword"
+                },
                 "module": {
                     "type": "keyword"
                 },
