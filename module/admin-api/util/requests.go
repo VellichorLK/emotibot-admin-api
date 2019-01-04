@@ -413,3 +413,43 @@ func Redirect(url string, w http.ResponseWriter, req *http.Request, timeout int)
 	}
 	w.Write([]byte(string(body[:n])))
 }
+
+//HTTPPostJSONWithStatusByteResp do the http post and return the status,response body, err
+func HTTPPostJSONWithStatusByteResp(url string, data interface{}, timeout time.Duration) (int, []byte, error) {
+	if url == "" {
+		return 0, nil, errors.New("Invalid url")
+	}
+
+	var client *http.Client
+
+	if timeout > 0 {
+		client = &http.Client{
+			Timeout: timeout,
+		}
+	} else {
+		client = &http.Client{}
+	}
+
+	jsonByte, err := json.Marshal(data)
+	if err != nil {
+		return 0, nil, err
+	}
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(jsonByte)))
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := client.Do(req)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return 0, nil, nil
+	}
+
+	return response.StatusCode, body, nil
+}
