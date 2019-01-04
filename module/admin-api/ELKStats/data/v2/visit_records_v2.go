@@ -195,7 +195,7 @@ var VisitRecordsTableHeader = []data.TableHeaderItem{
 		ID:   common.VisitRecordsMetricFeedbackTime,
 	},
 	data.TableHeaderItem{
-		Text: "出话阀值",
+		Text: "出话阈值",
 		ID:   common.VisitRecordsMetricThreshold,
 	},
 }
@@ -221,7 +221,7 @@ var VisitRecordsExportHeader = []string{
 	"反馈",
 	"客制化反馈",
 	"反馈时间",
-	"出话阀值",
+	"出话阈值",
 }
 
 type VisitRecordsExportResponse struct {
