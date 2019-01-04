@@ -14,8 +14,8 @@ import (
 	"emotibot.com/emotigo/pkg/api/dal/v1"
 
 	statDataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
-	statServiceV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
 	statServiceCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
+	statServiceV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -138,20 +138,14 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 			SkippedSize: 0,
 			Status:      ReportStatusRunning,
 		}
-		id, err := reportService.NewReport(newReport)
-		if err != nil {
-			logger.Error.Printf("Failed to create new report, %v", err)
-			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
-			return
-		}
 		model, err := simpleFTService.GetFTModel(appid)
 		if err == sql.ErrNoRows {
-			newReportError(reportService, "bad request, need train model before use", id)
+			newReportError(reportService, "bad request, need train model before use", 0)
 			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "找不到Model，请先透过SSM训练"), nil)
 			return
 		}
 		if err != nil {
-			newReportError(reportService, "Failed to get simpleFT model, "+err.Error(), id)
+			newReportError(reportService, "Failed to get simpleFT model, "+err.Error(), 0)
 			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
 			return
 		}
@@ -159,7 +153,7 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		for _, h := range result.Hits {
 			found, err := dalClient.IsStandardQuestion(appid, h.UserQ)
 			if err != nil {
-				newReportError(reportService, "dal client error"+err.Error(), id)
+				newReportError(reportService, "dal client error "+err.Error(), 0)
 				util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
 				return
 			}
@@ -172,6 +166,12 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 				"value": h.UserQ,
 			}
 			inputs = append(inputs, input)
+		}
+		id, err := reportService.NewReport(newReport)
+		if err != nil {
+			logger.Error.Printf("Failed to create new report, %v", err)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
+			return
 		}
 		var paramas = map[string]interface{}{
 			"model_version": model,
@@ -328,7 +328,11 @@ func newClusteringWork(rs ReportsService, rrs ReportRecordsService, cs ReportClu
 			if ok {
 				logger.Error.Printf("raw http error, %s", rawError.Body)
 			}
-			newReportError(rs, "faq clustering failed, "+err.Error(), reportID)
+			if rawError.StatusCode == http.StatusBadRequest {
+				newReportErrorWithStatus(rs, "faq clustering failed, "+err.Error(), reportID, ReportInvalidInput)
+			} else {
+				newReportError(rs, "faq clustering failed, "+err.Error(), reportID)
+			}
 			return err
 		}
 		for _, c := range clusterResult.Clusters {

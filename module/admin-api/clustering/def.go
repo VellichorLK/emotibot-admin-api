@@ -9,6 +9,7 @@ type ReportStatus int
 
 //defined status code of clustering report
 const (
+	ReportInvalidInput    = -2
 	ReportStatusError     = -1
 	ReportStatusRunning   = 0
 	ReportStatusCompleted = 1

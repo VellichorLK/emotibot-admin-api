@@ -83,9 +83,10 @@ type cluster struct {
 }
 
 type RawError struct {
-	Msg   string
-	Input interface{}
-	Body  []byte
+	StatusCode int
+	Msg        string
+	Input      interface{}
+	Body       []byte
 }
 
 func (e *RawError) Error() string {
@@ -118,32 +119,36 @@ func (c *Client) Clustering(ctx context.Context, parameters map[string]interface
 	logger.Trace.Println("faqcluster: Request Done, detail body. ", string(rawBody))
 	if resp.StatusCode != http.StatusOK {
 		return nil, &RawError{
-			Msg:   fmt.Sprintf("request status code is not OK, but %d", resp.StatusCode),
-			Input: reqbody,
-			Body:  rawBody,
+			StatusCode: resp.StatusCode,
+			Msg:        fmt.Sprintf("request status code is not OK, but %d", resp.StatusCode),
+			Input:      reqbody,
+			Body:       rawBody,
 		}
 	}
 	var response clusteringResponse
 	err = json.Unmarshal(rawBody, &response)
 	if err != nil {
 		return nil, &RawError{
-			Msg:   fmt.Sprintf("body decode failed, %v", err),
-			Input: reqbody,
-			Body:  rawBody,
+			StatusCode: resp.StatusCode,
+			Msg:        fmt.Sprintf("body decode failed, %v", err),
+			Input:      reqbody,
+			Body:       rawBody,
 		}
 	}
 	if response.Operation != StatusSuccess {
 		return nil, &RawError{
-			Msg:   fmt.Sprintf("operation %s as failed, %s", response.Operation, response.ErrorMsg),
-			Input: reqbody,
-			Body:  rawBody,
+			StatusCode: resp.StatusCode,
+			Msg:        fmt.Sprintf("operation %s as failed, %s", response.Operation, response.ErrorMsg),
+			Input:      reqbody,
+			Body:       rawBody,
 		}
 	}
 	if response.Result == nil {
 		return nil, &RawError{
-			Msg:   "result is null",
-			Input: reqbody,
-			Body:  rawBody,
+			StatusCode: resp.StatusCode,
+			Msg:        "result is null",
+			Input:      reqbody,
+			Body:       rawBody,
 		}
 	}
 	var result = Result{
