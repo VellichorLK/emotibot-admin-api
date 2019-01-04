@@ -32,19 +32,20 @@ func TestParseUUIDs(t *testing.T) {
 }
 
 func TestParseIf(t *testing.T) {
+	sm := &FlowStateMachine{}
 	expression := "if A then B then C"
-	stateMachine, err := Parse(expression)
+	err := sm.Digest(expression)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if len(stateMachine) != 4 {
+	if len(sm.Nodes) != 4 {
 		t.Errorf("parse expression(%s) failed", expression)
 		return
 	}
 
-	node, ok := stateMachine["start"]
+	node, ok := sm.Nodes["start"]
 	if !ok {
 		t.Error("does not have start node")
 		return
@@ -58,19 +59,21 @@ func TestParseIf(t *testing.T) {
 
 func TestParseMust(t *testing.T) {
 	expression := "must a then b"
-	stateMachine, err := Parse(expression)
+
+	sm := &FlowStateMachine{}
+	err := sm.Digest(expression)
 
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if len(stateMachine) != 3 {
+	if len(sm.Nodes) != 3 {
 		t.Errorf("parse expression(%s) failed", expression)
 		return
 	}
 
-	node, ok := stateMachine["start"]
+	node, ok := sm.Nodes["start"]
 	if !ok {
 		t.Error("does not have start node")
 		return
@@ -84,19 +87,20 @@ func TestParseMust(t *testing.T) {
 
 func TestParseSingleMust(t *testing.T) {
 	expression := "must a"
-	stateMachine, err := Parse(expression)
+	sm := FlowStateMachine{}
+	err := sm.Digest(expression)
 
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if len(stateMachine) != 2 {
+	if len(sm.Nodes) != 2 {
 		t.Errorf("parse expression(%s) failed", expression)
 		return
 	}
 
-	node, ok := stateMachine["start"]
+	node, ok := sm.Nodes["start"]
 	if !ok {
 		t.Error("does not have start node")
 		return
@@ -110,19 +114,20 @@ func TestParseSingleMust(t *testing.T) {
 
 func TestParseAnd(t *testing.T) {
 	expression := "if a then b and c"
-	stateMachine, err := Parse(expression)
+	sm := &FlowStateMachine{}
+	err := sm.Digest(expression)
 
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if len(stateMachine) != 3 {
+	if len(sm.Nodes) != 3 {
 		t.Errorf("parse expression(%s) failed", expression)
 		return
 	}
 
-	node, ok := stateMachine["start"]
+	node, ok := sm.Nodes["start"]
 	if !ok {
 		t.Error("does not have start node")
 		return
@@ -130,6 +135,105 @@ func TestParseAnd(t *testing.T) {
 
 	if !node.Final {
 		t.Errorf("parse expression(%s) failed", expression)
+		return
+	}
+}
+
+func TestIsAccept(t *testing.T) {
+	sm := &FlowStateMachine{}
+	expression := "if A then B then C"
+	err := sm.Digest(expression)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	target := "A|B|C"
+	accept := sm.IsAccept(target)
+
+	if !accept {
+		t.Error("accept input failed")
+		return
+	}
+
+	target = "B|C"
+	accept = sm.IsAccept(target)
+
+	if !accept {
+		t.Error("accept input failed")
+		return
+	}
+}
+
+func TestNotAccept(t *testing.T) {
+	sm := &FlowStateMachine{}
+	expression := "if A then B then C"
+	err := sm.Digest(expression)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	target := "A|B|D"
+	accept := sm.IsAccept(target)
+	if accept {
+		t.Error("accept wrong input")
+		return
+	}
+
+}
+
+func TestAcceptMust(t *testing.T) {
+	sm := &FlowStateMachine{}
+	expression := "must A then B then C"
+	err := sm.Digest(expression)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	target := "A|B|C"
+	accept := sm.IsAccept(target)
+	if !accept {
+		t.Error("accept input failed")
+		return
+	}
+
+	target = "B|C"
+	accept = sm.IsAccept(target)
+	if accept {
+		t.Error("accept wrong input")
+		return
+	}
+}
+
+func TestAccpetAnd(t *testing.T) {
+	sm := &FlowStateMachine{}
+	expression := "must A then B then C and D"
+	err := sm.Digest(expression)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	target := "A|B|C|B|D"
+	accept := sm.IsAccept(target)
+	if !accept {
+		t.Error("accept input failed")
+		return
+	}
+
+	target = "A|B|B|D|C"
+	accept = sm.IsAccept(target)
+	if !accept {
+		t.Error("accept input failed")
+		return
+	}
+
+	target = "B|C"
+	accept = sm.IsAccept(target)
+	if accept {
+		t.Error("accept wrong input")
 		return
 	}
 }
