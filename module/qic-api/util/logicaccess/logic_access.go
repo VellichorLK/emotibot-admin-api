@@ -1,4 +1,5 @@
-package cu
+//Package logicaccess
+package logicaccess
 
 import (
 	"encoding/json"
@@ -103,7 +104,7 @@ type PredictData struct {
 	Sentence   string `json:"sentence"`
 }
 
-//PredictResult stores the preidction result
+//PredictResult stores the prediction result
 type PredictResult struct {
 	Status      string        `json:"status"`
 	Threshold   int           `json:"threshold"`
@@ -115,7 +116,7 @@ type PredictResult struct {
 
 //LogicResult gives the logic result
 type LogicResult struct {
-	LogicRule   V1LogicRule    `json:"logic_rule"`
+	LogicRule   TrainLogic     `json:"logic_rule"`
 	Predictions [][]Prediction `json:"predictions"`
 }
 
@@ -134,8 +135,8 @@ type AttrResult struct {
 	MatchText string `json:"match_text,omitempty"`
 }
 
-//LogicAcces is the struct to implement the communicatoin with cu module
-type LogicAcces struct {
+//Client is the struct to implement the communicatoin with cu module
+type Client struct {
 	URL     string
 	Timeout time.Duration
 }
@@ -149,7 +150,7 @@ type callHTTPPost func(string, interface{}, time.Duration) (int, []byte, error)
 
 var caller callHTTPPost = util.HTTPPostJSONWithStatusByteResp
 
-func (a *LogicAcces) postToModule(url string, d interface{}) ([]byte, error) {
+func (a *Client) postToModule(url string, d interface{}) ([]byte, error) {
 	if d == nil {
 		return nil, ErrNoRequest
 	}
@@ -173,7 +174,7 @@ func (a *LogicAcces) postToModule(url string, d interface{}) ([]byte, error) {
 }
 
 //Train calls api /train in cu
-func (a *LogicAcces) Train(d *TrainUnit) error {
+func (a *Client) Train(d *TrainUnit) error {
 	if d == nil || d.Logic == nil {
 		return ErrNoRequest
 	}
@@ -199,7 +200,7 @@ func (a *LogicAcces) Train(d *TrainUnit) error {
 }
 
 //Status calls api /status to get the training status
-func (a *LogicAcces) Status(d *TrainAPPID) (string, error) {
+func (a *Client) Status(d *TrainAPPID) (string, error) {
 	resp, err := a.postToModule(a.URL+"/status", d)
 	if err != nil {
 		return "", err
@@ -214,7 +215,7 @@ func (a *LogicAcces) Status(d *TrainAPPID) (string, error) {
 }
 
 //PredictAndUnMarshal calls the cu module to predict the result and unmarshal
-func (a *LogicAcces) PredictAndUnMarshal(d *PredictRequest) (*PredictResult, error) {
+func (a *Client) PredictAndUnMarshal(d *PredictRequest) (*PredictResult, error) {
 	respBytes, err := a.postToModule(a.URL+"/predict", d)
 	if err != nil {
 		return nil, err
@@ -223,17 +224,17 @@ func (a *LogicAcces) PredictAndUnMarshal(d *PredictRequest) (*PredictResult, err
 }
 
 //Predict calls the cu module to predict the result
-func (a *LogicAcces) Predict(d *PredictRequest) ([]byte, error) {
+func (a *Client) Predict(d *PredictRequest) ([]byte, error) {
 	return a.postToModule(a.URL+"/predict", d)
 }
 
 //BatchPredict predicts the batch reuslt
-func (a *LogicAcces) BatchPredict(d *BatchPredictRequest) ([]byte, error) {
+func (a *Client) BatchPredict(d *BatchPredictRequest) ([]byte, error) {
 	return a.postToModule(a.URL+"/batch_predict", d)
 }
 
 //BatchPredictAndUnMarshal predicts the batch reuslt
-func (a *LogicAcces) BatchPredictAndUnMarshal(d *BatchPredictRequest) (*PredictResult, error) {
+func (a *Client) BatchPredictAndUnMarshal(d *BatchPredictRequest) (*PredictResult, error) {
 	respBytes, err := a.postToModule(a.URL+"/batch_predict", d)
 	if err != nil {
 		return nil, err
@@ -241,7 +242,7 @@ func (a *LogicAcces) BatchPredictAndUnMarshal(d *BatchPredictRequest) (*PredictR
 	return a.unmarshalResp(respBytes)
 }
 
-func (a *LogicAcces) unmarshalResp(d []byte) (*PredictResult, error) {
+func (a *Client) unmarshalResp(d []byte) (*PredictResult, error) {
 	var resp PredictResult
 	err := json.Unmarshal(d, &resp)
 	if err != nil {
@@ -251,13 +252,13 @@ func (a *LogicAcces) unmarshalResp(d []byte) (*PredictResult, error) {
 }
 
 //SessionCreate is used on the fly
-func (a *LogicAcces) SessionCreate(d *SessionRequest) error {
+func (a *Client) SessionCreate(d *SessionRequest) error {
 	_, err := a.postToModule(a.URL+"/session/create", d)
 	return err
 }
 
 //SessionDelete is called when the session is finished on the fly
-func (a *LogicAcces) SessionDelete(d *SessionRequest) error {
+func (a *Client) SessionDelete(d *SessionRequest) error {
 	_, err := a.postToModule(a.URL+"/session/delete",
 		struct {
 			*SessionRequest
@@ -269,7 +270,7 @@ func (a *LogicAcces) SessionDelete(d *SessionRequest) error {
 }
 
 //UnloadModel unloads the model when is no use
-func (a *LogicAcces) UnloadModel(d *TrainAPPID) error {
+func (a *Client) UnloadModel(d *TrainAPPID) error {
 	_, err := a.postToModule(a.URL+"/unload_model", d)
 	return err
 }
