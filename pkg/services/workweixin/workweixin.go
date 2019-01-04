@@ -9,6 +9,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -204,19 +205,28 @@ func NewTextMessage(receiver string, agentID int, text string) SendingMessage {
 }
 
 // SendMessages will send message to user
-func (c *Client) SendMessages(messages []SendingMessage) (*APIChatReturn, error) {
+func (c *Client) SendMessages(messages []SendingMessage) error {
+	errMsg := ""
 	for idx := range messages {
+		logger.Trace.Println("Send message, ", messages[idx])
 		if messages[idx] == nil {
 			continue
 		}
 		input, err := json.Marshal(messages[idx])
 		if err != nil {
 			logger.Error.Println("Marshal json fail:", err.Error())
-			return nil, err
+			return err
 		}
-		return c.Post(MsgSendURL, input)
+		ret, err := c.Post(MsgSendURL, input)
+		logger.Trace.Println("Get reply:", ret)
+		if err != nil {
+			errMsg += err.Error()
+		}
 	}
-	return nil, nil
+	if errMsg != "" {
+		return errors.New(errMsg)
+	}
+	return nil
 }
 
 // Post will post to work weixin with valid token

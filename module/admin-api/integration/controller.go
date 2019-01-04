@@ -42,15 +42,15 @@ func sendFromQueue() {
 		select {
 		case task := <-lineTaskQueue:
 			if task != nil {
-				logger.Trace.Println("Send line reply")
+				logger.Trace.Printf("Send %d line reply\n", len(task.Messages))
 				if _, err := task.Bot.ReplyMessage(task.ReplyToken, task.Messages).Do(); err != nil {
 					logger.Error.Println("Reply message fail: ", err.Error())
 				}
 			}
 		case task := <-workWeixinQueue:
 			if task != nil {
-				logger.Trace.Println("Send work weixin reply")
-				if _, err := task.Bot.SendMessages(task.Messages); err != nil {
+				logger.Trace.Printf("Send %d work weixin reply\n", len(task.Messages))
+				if err := task.Bot.SendMessages(task.Messages); err != nil {
 					logger.Error.Println("Reply message fail: ", err.Error())
 				}
 			}
