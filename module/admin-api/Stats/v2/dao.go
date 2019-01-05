@@ -41,7 +41,7 @@ func getAuditList(enterprise []string, appid []string, userid *string, module []
 	}
 
 	if module != nil && len(module) > 0 {
-		orCond := fmt.Sprintf("( module = ? %s )", strings.Repeat("OR module = ?", len(module)-1))
+		orCond := fmt.Sprintf("( module = ? %s )", strings.Repeat(" OR module = ?", len(module)-1))
 		conditions = append(conditions, orCond)
 		for idx := range module {
 			args = append(args, module[idx])
