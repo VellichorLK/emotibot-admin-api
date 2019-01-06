@@ -1117,8 +1117,18 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	defer func() {
 		ret := 0
-		auditMsg := fmt.Sprintf("%s%s %s %s %s",
-			util.Msg["Move"], util.Msg["Wordbank"], wbName, util.Msg["To"], parentName)
+		auditBuf := bytes.Buffer{}
+		auditBuf.WriteString(fmt.Sprintf("%s%s", util.Msg["Move"], util.Msg["Wordbank"]))
+
+		if wbName != "" {
+			auditBuf.WriteString(" ")
+			auditBuf.WriteString(wbName)
+		}
+		if parentName != "" {
+			auditBuf.WriteString(util.Msg["To"])
+			auditBuf.WriteString(" ")
+			auditBuf.WriteString(parentName)
+		}
 		if err == nil {
 			ret = 1
 			util.WriteJSON(w, util.GenRetObj(retCode, result))
@@ -1127,15 +1137,15 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 			case ApiError.REQUEST_ERROR:
 				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, result), http.StatusBadRequest)
 			case ApiError.DB_ERROR:
-				util.WriteJSONWithStatus(w, util.GenSimpleRetObj(retCode), http.StatusInternalServerError)
+				util.WriteJSONWithStatus(w, util.GenRetObj(retCode, err.Error()), http.StatusInternalServerError)
 			}
-			auditMsg += ": " + ApiError.GetErrorMsg(retCode)
+			auditBuf.WriteString(": " + ApiError.GetErrorMsg(retCode))
 			if s, ok := result.(string); ok {
-				auditMsg += ", " + s
+				auditBuf.WriteString(", " + s)
 			}
 		}
 		// util.AddAuditLog(appid, userID, userIP, audit.AuditModuleDictionary, audit.AuditOperationAdd, auditMsg, ret)
-		audit.AddAuditFromRequestAuto(r, auditMsg, ret)
+		audit.AddAuditFromRequestAuto(r, auditBuf.String(), ret)
 	}()
 
 	id, err := util.GetMuxIntVar(r, "id")
@@ -1148,13 +1158,15 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 		retCode, result = ApiError.REQUEST_ERROR, "invalid target"
 		return
 	}
-	if cid != -1 {
-		parentClass, _, err := GetWordbankClassV3(appid, cid)
+	if cid > 0 {
+		var parentClass *WordBankClassV3
+		parentClass, _, err = GetWordbankClassV3(appid, cid)
 		if err != nil {
 			retCode, result = ApiError.DB_ERROR, fmt.Sprintf("Get parent class error: %s", err.Error())
 			return
 		}
 		if parentClass == nil {
+			err = errors.New("Parent not existed")
 			retCode, result = ApiError.NOT_FOUND_ERROR, "Parent not existed"
 			return
 		}
