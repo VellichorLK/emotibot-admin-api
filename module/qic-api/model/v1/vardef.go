@@ -28,6 +28,7 @@ const (
 	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
+	tblCall             = "call"
 )
 
 //field name in Conversation table
@@ -104,7 +105,6 @@ const (
 	fldTagEnterprise = "enterprise"
 )
 const (
-	fldCallID    = "call_id"
 	fldCUPredict = "predict"
 	fldSentence  = "sentence"
 )
@@ -232,4 +232,32 @@ const (
 const (
 	CRCFRID  = "rule_id"
 	CRCFCFID = "cf_id"
+)
+
+const (
+	fldCallID               = "call_id"
+	fldCallUUID             = "call_uuid"
+	fldCallFileName         = "file_name"
+	fldCallFilePath         = "file_path"
+	fldCallDescription      = "description"
+	fldCallDuration         = "duration"
+	fldCallUploadTime       = "upload_time"
+	fldCallCallTime         = "call_time"
+	fldCallStaffID          = "staff_id"
+	fldCallStaffName        = "staff_name"
+	fldCallExt              = "extension"
+	fldCallDepartment       = "department"
+	fldCallCustomerID       = "customer_id"
+	fldCallCustomerName     = "customer_name"
+	fldCallCustomerPhone    = "customer_phone"
+	fldCallEnterprise       = "enterprise"
+	fldCallUploadedUser     = "uploader"
+	fldCallLeftSilenceTime  = "left_silence_time"
+	fldCallRightSilenceTime = "right_silence_time"
+	fldCallLeftSpeed        = "left_speed"
+	fldCallRightSpeed       = "right_speed"
+	fldCallType             = "type"
+	fldCallLeftChan         = "left_channel"
+	fldCallRightChan        = "right_channel"
+	fldCallStatus           = "status"
 )

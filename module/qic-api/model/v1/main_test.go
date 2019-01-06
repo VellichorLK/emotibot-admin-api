@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"flag"
 	"os"
 	"testing"
@@ -19,4 +20,12 @@ func skipIntergartion(t *testing.T) {
 		t.Skip("skip intergration test, please specify -intergation flag.")
 	}
 	return
+}
+
+func newIntegrationTestDB(t *testing.T) *sql.DB {
+	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1)/QISYS?parseTime=true&loc=Asia%2FTaipei")
+	if err != nil {
+		t.Fatal("expect db open success but got error: ", err)
+	}
+	return db
 }
