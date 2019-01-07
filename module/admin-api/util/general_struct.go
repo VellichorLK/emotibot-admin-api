@@ -102,6 +102,13 @@ func NewEntryPointWithCustom(method string, path string, cmd []string, callback 
 	return entrypoint
 }
 
+// CronTask define a cron task for a module
+// Period usage please read [ref](https://godoc.org/github.com/robfig/cron)
+type CronTask struct {
+	Period  string
+	Handler func()
+}
+
 // ModuleInfo if used to defined
 type ModuleInfo struct {
 	// ModuleName is needed for every Dictionary for get path
@@ -119,6 +126,10 @@ type ModuleInfo struct {
 
 	ModuleID int
 	Errors   map[int]string
+
+	// Module can setup its cron tasks
+	// key is the name os cron job, which will show in log
+	Cronjobs map[string]CronTask
 }
 
 func (module *ModuleInfo) SetEnvironments(env map[string]string) {

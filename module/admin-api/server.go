@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/pkg/misc/emotijwt"
 
 	"github.com/gorilla/mux"
+	"github.com/robfig/cron"
 
 	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
@@ -151,6 +152,7 @@ func main() {
 	}
 
 	go runOnetimeJob()
+	go setupCron()
 
 	logger.Info.Println("Start server on", serverURL)
 	err := http.ListenAndServe(serverURL, router)
@@ -444,6 +446,30 @@ func runOnetimeJob() {
 					}()
 					fun()
 				}()
+			}
+		}
+	}
+}
+
+func setupCron() {
+	c := cron.New()
+	for _, module := range modules {
+		if module.Cronjobs != nil {
+			for key, job := range module.Cronjobs {
+				funName := fmt.Sprintf("[%s@%s]", key, module.ModuleName)
+				err := c.AddFunc(job.Period, func() {
+					defer func() {
+						if r := recover(); r != nil {
+							logger.Error.Printf("Run period func %s error: %s\n", funName, r)
+						}
+					}()
+					now := time.Now()
+					logger.Trace.Printf("Exec %s at [%s]\n", funName, now.UTC())
+					job.Handler()
+				})
+				if err != nil {
+					logger.Error.Printf("Add cron job %s fail: %s\n", funName, err.Error())
+				}
 			}
 		}
 	}
