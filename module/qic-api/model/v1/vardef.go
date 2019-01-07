@@ -29,6 +29,7 @@ const (
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
 	tblCall             = "call"
+	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
 )
 
 //field name in Conversation table
@@ -260,4 +261,10 @@ const (
 	fldCallLeftChan         = "left_channel"
 	fldCallRightChan        = "right_channel"
 	fldCallStatus           = "status"
+)
+
+const (
+	fldCRGRelID          = "id"
+	fldCRGRelRuleGroupID = "rg_id"
+	fldCRGRelCallID      = "call_id"
 )

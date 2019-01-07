@@ -237,3 +237,36 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	}
 	return calls, err
 }
+
+func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []uint64) ([]int64, error) {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+	insertCols := []string{fldCRGRelCallID, fldCRGRelRuleGroupID}
+	rawQuery := "INSERT INTO `" + tblRelCallRuleGrp + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE (?" + strings.Repeat(",?", len(insertCols)-1) + ")"
+	stmt, err := delegatee.Prepare(rawQuery)
+	if err != nil {
+		return nil, fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer stmt.Close()
+	idGroup := make([]int64, 0, len(rulegroups))
+	hasSupportID := true
+	for _, r := range rulegroups {
+		result, err := stmt.Exec(call.ID, r)
+		if err != nil {
+			return nil, fmt.Errorf("create " + tblRelCallRuleGrp + " failed")
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			hasSupportID = false
+			continue
+		}
+		idGroup = append(idGroup, id)
+	}
+
+	if !hasSupportID {
+		return idGroup, ErrAutoIDDisabled
+	}
+
+	return idGroup, nil
+}

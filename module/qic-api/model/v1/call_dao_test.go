@@ -175,3 +175,19 @@ func TestIntegrationCallDaoNewCall(t *testing.T) {
 		})
 	}
 }
+
+func TestI11CallDaoSetRuleGroupRelations(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := CallSQLDao{
+		db: db,
+	}
+	set := getCallsSeed(t)
+	idGroup, err := dao.SetRuleGroupRelations(nil, set[0], []uint64{1, 2})
+	if err != nil {
+		t.Fatal("expect set releation to be ok, but got ", err)
+	}
+	if len(idGroup) != 2 {
+		t.Error("expect get two id in result, but got ", len(idGroup))
+	}
+}

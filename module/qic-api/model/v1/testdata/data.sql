@@ -134,3 +134,14 @@ ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE `Group`
 ADD COLUMN `type` TINYINT NOT NULL DEFAULT 0 COMMENT '0 for default, 1 for flow usage';
+
+
+CREATE TABLE IF NOT EXISTS `Relation_Call_RuleGroup` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `call_id` BIGINT UNSIGNED NOT NULL,
+  `rg_id` BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC),
+  INDEX `idx_call_id` (`call_id` ASC),
+  INDEX `idx_rg_id` (`rg_id` ASC))
+ENGINE = InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
