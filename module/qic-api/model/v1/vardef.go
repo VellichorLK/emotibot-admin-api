@@ -28,13 +28,10 @@ const (
 	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
-<<<<<<< HEAD
 	tblInspectTask      = "InspectorTask"
 	tblRelITOuline      = "Relation_InspectorTask_Outline"
-=======
 	tblCall             = "call"
 	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
->>>>>>> dda936f790480d56619e6ae5372c98428b13c03a
 )
 
 //field name in Conversation table
