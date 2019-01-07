@@ -13,6 +13,7 @@ type CallSQLDao struct {
 	db *sql.DB
 }
 
+//CallQuery is the query to get call table
 type CallQuery struct {
 	ID     []uint64
 	UUID   []string
@@ -125,11 +126,10 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
-		fldCallLeftChan, fldCallRightChan,
+		fldCallLeftChan, fldCallRightChan, fldCallStatus,
 	}
 	wheresql, data := query.whereSQL()
 	rawquery := "SELECT `" + strings.Join(selectCols, "`,`") + "` FROM `" + tblCall + "` " + wheresql + " ORDER BY `" + fldCallID + "`"
-
 	rows, err := delegatee.Query(rawquery, data...)
 	if err != nil {
 		logger.Error.Println("error raw sql", rawquery)
@@ -180,6 +180,9 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 
 		calls = append(calls, c)
 	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("scan error %v", err)
+	}
 	return calls, nil
 }
 
@@ -198,6 +201,38 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
 		fldCallLeftChan, fldCallRightChan,
 	}
-	_ = insertCols
-	return nil, fmt.Errorf("Func not finished yet.")
+
+	rawquery := "INSERT INTO `" + tblCall + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE(?" + strings.Repeat(",? ", len(insertCols)-1) + ")"
+	stmt, err := delegatee.Prepare(rawquery)
+	if err != nil {
+		return nil, fmt.Errorf("statement prepare failed")
+	}
+	var (
+		hasSupportID = true
+	)
+	for i, c := range calls {
+
+		r, err := stmt.Exec(c.UUID, c.FileName, c.FilePath,
+			c.Description, c.DurationSecond, c.UploadUnixTime,
+			c.CallUnixTime, c.StaffID, c.StaffName,
+			c.Ext, c.Department, c.CustomerID,
+			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
+			c.UploadUser, c.LeftSilenceTime, c.RightSilenceTime,
+			c.LeftSpeed, c.RightSpeed, c.Type, c.LeftChanRole, c.RightChanRole)
+		if err != nil {
+			return nil, fmt.Errorf("create new call failed, %v", err)
+		}
+		id, err := r.LastInsertId()
+		if err != nil {
+			hasSupportID = false
+			calls[i] = c
+			continue
+		}
+		c.ID = uint64(id)
+		calls[i] = c
+	}
+	if !hasSupportID {
+		err = ErrAutoIDDisabled
+	}
+	return calls, err
 }

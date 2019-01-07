@@ -116,3 +116,61 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 	}
 
 }
+
+func TestIntegrationCallDaoNewCall(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := CallSQLDao{
+		db: db,
+	}
+	exampleCall := Call{
+		UUID:           "d95c7d0eff8c49169c64a2225696423f",
+		DurationSecond: 120,
+		UploadUnixTime: 1546827856,
+		CallUnixTime:   1546827000,
+		StaffID:        "12345",
+		StaffName:      "tester",
+		Ext:            "66810",
+		Department:     "backend",
+		CustomerID:     "123",
+		CustomerName:   "david",
+		CustomerPhone:  "123456789",
+		EnterpriseID:   "csbot",
+		UploadUser:     "Berta",
+		Type:           CallTypeWholeFile,
+		LeftChanRole:   CallChanStaff,
+		RightChanRole:  CallChanCustomer,
+		Status:         CallStatusWaiting,
+	}
+	expectExampleCall := exampleCall
+	expectExampleCall.ID = 3
+	testtable := []struct {
+		Name   string
+		Input  []Call
+		Query  CallQuery
+		Output []Call
+	}{
+		{"", []Call{exampleCall}, CallQuery{UUID: []string{"d95c7d0eff8c49169c64a2225696423f"}}, []Call{expectExampleCall}},
+	}
+
+	for _, tc := range testtable {
+		t.Run(tc.Name, func(tt *testing.T) {
+			result, err := dao.NewCalls(nil, tc.Input)
+			if err != nil {
+				tt.Fatal("expect new calls to be ok, but got ", err)
+			}
+			if !reflect.DeepEqual(result, tc.Output) {
+				tt.Logf("compare with expect output failed:\n%+v\n%+v", result, tc.Output)
+				tt.Error("expect result to be same with output")
+			}
+			queryResult, err := dao.Calls(nil, tc.Query)
+			if err != nil {
+				tt.Fatal("expect call query to be ok, but got ", err)
+			}
+			if !reflect.DeepEqual(result, queryResult) {
+				tt.Logf("compare with query failed:\n%+v\n%+v\n", result, queryResult)
+				tt.Error("expect query back to be same ")
+			}
+		})
+	}
+}
