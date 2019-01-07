@@ -26,6 +26,7 @@ RUN go get github.com/tidwall/gjson
 RUN go get github.com/tidwall/sjson
 RUN go get github.com/sahilm/fuzzy
 RUN go get github.com/anknown/ahocorasick
+RUN go get github.com/robfig/cron
 # Unit-test binary
 RUN go get github.com/axw/gocov/...
 RUN go get github.com/AlekSi/gocov-xml
