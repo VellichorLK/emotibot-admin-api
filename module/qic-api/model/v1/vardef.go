@@ -28,6 +28,8 @@ const (
 	tblRelCFSG          = "Relation_ConversationFlow_SentenceGroup"
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
+	tblInspectTask      = "InspectorTask"
+	tblRelITOuline      = "Relation_InspectorTask_Outline"
 	tblCall             = "call"
 	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
 )
@@ -192,13 +194,15 @@ const (
 
 //common field name
 const (
-	fldID         = "id"
-	fldIsDelete   = "is_delete"
-	fldName       = "name"
-	fldEnterprise = "enterprise"
-	fldUUID       = "uuid"
-	fldCreateTime = "create_time"
-	fldUpdateTime = "update_time"
+	fldID          = "id"
+	fldIsDelete    = "is_delete"
+	fldName        = "name"
+	fldEnterprise  = "enterprise"
+	fldUUID        = "uuid"
+	fldCreateTime  = "create_time"
+	fldUpdateTime  = "update_time"
+	fldDescription = "description"
+	fldCreator     = "creator"
 )
 
 //relation field name
@@ -233,6 +237,25 @@ const (
 const (
 	CRCFRID  = "rule_id"
 	CRCFCFID = "cf_id"
+)
+
+// fields in InspectTask
+const (
+	ITCallStart         = "call_start"
+	ITCallEnd           = "call_end"
+	ITInspectPercentage = "inspector_percentage"
+	ITInspectByPerson   = "inspector_byperson"
+	ITPublishTime       = "publish_time"
+	ITReviewPercentage  = "review_percentage"
+	ITReviewByPerson    = "review_byperson"
+	ITExcluedInspected  = "exclude_inspected"
+	ITFormID            = "form_id"
+)
+
+// fields in Relation_InspectorTask_Outline
+const (
+	RITOTaskID   = "task_id"
+	RITOOulineID = "outline_id"
 )
 
 const (
