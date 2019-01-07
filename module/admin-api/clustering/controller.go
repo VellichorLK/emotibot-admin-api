@@ -210,6 +210,7 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 		Result      *result      `json:"results,omitempty"`
 		IgnoredSize int64        `json:"ignored_size"`
 		MarkedSize  int64        `json:"marked_size"`
+		SkippedSize int64        `json:"skipped_size"`
 		Status      ReportStatus `json:"status"`
 	}
 
@@ -238,6 +239,7 @@ func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs Report
 			Conditions:  report.Condition,
 			IgnoredSize: report.IgnoredSize,
 			MarkedSize:  report.MarkedSize,
+			SkippedSize: report.SkippedSize,
 			Status:      report.Status,
 		}
 		if report.Status == ReportStatusCompleted {

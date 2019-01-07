@@ -1,7 +1,6 @@
 package model
 
 import (
-	"database/sql"
 	"fmt"
 	"reflect"
 	"testing"
@@ -39,13 +38,11 @@ var goldenGroups = []Group{
 }
 
 func TestIntegrationSQLDaoGroup(t *testing.T) {
+	t.Skip("need to have the csv data to re-implement this test.")
 	if !isIntegration {
 		t.Skip("skip intergration test, please specify -intergation flag.")
 	}
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1)/QISYS?parseTime=true&loc=Asia%2FTaipei")
-	if err != nil {
-		t.Fatal("can not open mysql ", err)
-	}
+	db := newIntegrationTestDB(t)
 	dao := SQLDao{conn: db}
 	groups, err := dao.Group(nil, GroupQuery{})
 	if err != nil {
@@ -60,11 +57,7 @@ func TestIntegrationSQLDaoGroup(t *testing.T) {
 	if err != nil {
 		t.Fatal("dao group with type [1] query failed, ", err)
 	}
-	if len(groups) != 1 {
-		t.Error("expect groups to be 1, but got ", len(groups))
-	}
-	if !reflect.DeepEqual(groups[0], goldenGroups[0]) {
-		fmt.Printf("%v\n%v\n", groups[0], goldenGroups[0])
+	if !reflect.DeepEqual(groups, goldenGroups[:1]) {
 		t.Error("expect group 0 be equal to goldenGroups 0")
 	}
 	tx, _ := db.Begin()
