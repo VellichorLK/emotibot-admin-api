@@ -96,21 +96,22 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 			CallQuery{
 				UUID: []string{"ec94dfd6e3974671b8a3533c752e51a6"},
 			},
-			testset[0:],
+			testset[1:],
 		},
 		"query status": {
 			CallQuery{Status: []int8{CallStatusDone}},
-			testset[0:],
+			testset[1:],
 		},
 	}
 	for name, tc := range testTable {
 		t.Run(name, func(tt *testing.T) {
 			calls, err := dao.Calls(nil, tc.Input)
 			if err != nil {
-				t.Fatal("query calls expect to be ok, but got ", err)
+				tt.Fatal("query calls expect to be ok, but got ", err)
 			}
-			if reflect.DeepEqual(calls, tc.Output) {
-				t.Error("expect query result equal to the expect output, but not equal")
+			if !reflect.DeepEqual(calls, tc.Output) {
+				tt.Logf("calls:\n%+v\nexpect output:\n%+v", calls, tc.Output)
+				tt.Error("expect query result equal to the expect output, but not equal")
 			}
 		})
 	}
