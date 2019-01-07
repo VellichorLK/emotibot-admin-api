@@ -458,7 +458,7 @@ func getSSMLabels(appid string) ([]*SSMLabel, error) {
 		return nil, errors.New("DB not init")
 	}
 
-	queryStr := "SELECT id, name, description FROM tbl_robot_tag WHERE app_id = ?"
+	queryStr := "SELECT id, name, description FROM tbl_robot_tag WHERE app_id = ? OR app_id = 'system'"
 	rows, err := mySQL.Query(queryStr, appid)
 	if err != nil {
 		return nil, err
