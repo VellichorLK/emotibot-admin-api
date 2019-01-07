@@ -2,6 +2,7 @@ package qi
 
 import (
 	"database/sql"
+	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -27,6 +28,11 @@ func init() {
 			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
 			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
 
+			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
+			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
+			util.NewEntryPoint("PUT", "tags/{tag_id}", []string{}, HandlePutTags),
+			util.NewEntryPoint("DELETE", "tags/{tag_id}", []string{}, HandleDeleteTag),
+
 			util.NewEntryPoint("GET", "sentences", []string{}, handleGetSentences),
 			util.NewEntryPoint("POST", "sentences", []string{}, handleNewSentence),
 			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
@@ -50,6 +56,11 @@ func init() {
 			util.NewEntryPoint("GET", "rules/{id}", []string{}, handleGetConversationRule),
 			util.NewEntryPoint("PUT", "rules/{id}", []string{}, handleUpdateConversationRule),
 			util.NewEntryPoint("DELETE", "rules/{id}", []string{}, handleDeleteConversationRule),
+
+			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
+			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
+			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
