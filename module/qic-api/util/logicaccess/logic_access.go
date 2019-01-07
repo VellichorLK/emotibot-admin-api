@@ -144,6 +144,7 @@ type Client struct {
 //error message
 var (
 	ErrNoRequest = errors.New("No request data")
+	ErrRequest   = errors.New("Wrong request value")
 )
 
 type callHTTPPost func(string, interface{}, time.Duration) (int, []byte, error)
@@ -216,6 +217,9 @@ func (a *Client) Status(d *TrainAPPID) (string, error) {
 
 //PredictAndUnMarshal calls the cu module to predict the result and unmarshal
 func (a *Client) PredictAndUnMarshal(d *PredictRequest) (*PredictResult, error) {
+	if d == nil || d.Session == "" || d.Data == nil {
+		return nil, ErrRequest
+	}
 	respBytes, err := a.postToModule(a.URL+"/predict", d)
 	if err != nil {
 		return nil, err
@@ -225,16 +229,25 @@ func (a *Client) PredictAndUnMarshal(d *PredictRequest) (*PredictResult, error) 
 
 //Predict calls the cu module to predict the result
 func (a *Client) Predict(d *PredictRequest) ([]byte, error) {
+	if d == nil || d.Session == "" || d.Data == nil {
+		return nil, ErrRequest
+	}
 	return a.postToModule(a.URL+"/predict", d)
 }
 
 //BatchPredict predicts the batch reuslt
 func (a *Client) BatchPredict(d *BatchPredictRequest) ([]byte, error) {
+	if d == nil || d.Threshold < 0 || len(d.Data) == 0 {
+		return nil, ErrRequest
+	}
 	return a.postToModule(a.URL+"/batch_predict", d)
 }
 
 //BatchPredictAndUnMarshal predicts the batch reuslt
 func (a *Client) BatchPredictAndUnMarshal(d *BatchPredictRequest) (*PredictResult, error) {
+	if d == nil || d.Threshold < 0 || len(d.Data) == 0 {
+		return nil, ErrRequest
+	}
 	respBytes, err := a.postToModule(a.URL+"/batch_predict", d)
 	if err != nil {
 		return nil, err
@@ -253,12 +266,18 @@ func (a *Client) unmarshalResp(d []byte) (*PredictResult, error) {
 
 //SessionCreate is used on the fly
 func (a *Client) SessionCreate(d *SessionRequest) error {
+	if d == nil || d.Session == "" || d.Threshold < 0 {
+		return ErrRequest
+	}
 	_, err := a.postToModule(a.URL+"/session/create", d)
 	return err
 }
 
 //SessionDelete is called when the session is finished on the fly
 func (a *Client) SessionDelete(d *SessionRequest) error {
+	if d == nil || d.Session == "" || d.Threshold < 0 {
+		return ErrRequest
+	}
 	_, err := a.postToModule(a.URL+"/session/delete",
 		struct {
 			*SessionRequest

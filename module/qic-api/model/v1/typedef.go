@@ -10,6 +10,7 @@ type DBLike interface {
 	Begin() (*sql.Tx, error)
 	ClearTransition(tx *sql.Tx)
 	Commit(tx *sql.Tx) error
+	GetConn() *sql.DB
 }
 
 type DefaultDBLike struct {
@@ -33,6 +34,10 @@ func (dl *DefaultDBLike) Commit(tx *sql.Tx) (err error) {
 		return
 	}
 	return
+}
+
+func (dl *DefaultDBLike) GetConn() *sql.DB {
+	return dl.DB
 }
 
 type SqlLike interface {

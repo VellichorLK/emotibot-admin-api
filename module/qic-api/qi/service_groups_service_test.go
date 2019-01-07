@@ -125,6 +125,10 @@ func (m *mockDBLike) Commit(tx *sql.Tx) (err error) {
 	return
 }
 
+func (m *mockDBLike) GetConn() *sql.DB {
+	return nil
+}
+
 func restoreSentenceGroupTest(dbl model.DBLike, dao model.SentenceGroupsSqlDao, sdao model.SentenceDao) {
 	dbLike = dbl
 	sentenceGroupDao = dao
