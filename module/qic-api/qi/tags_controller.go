@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	uuid "github.com/satori/go.uuid"
 )
 
 //HandleGetTags handle the get request for tag.
@@ -41,7 +43,12 @@ func HandlePostTags(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, %v", err))
 		return
 	}
-
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("generate uuid failed, %v", err))
+		return
+	}
+	modelTag.UUID = hex.EncodeToString(uuid[:])
 	_, err = NewTag(*modelTag)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("new tag failed, %v", err))
@@ -120,7 +127,6 @@ func extractTag(r *http.Request) (*model.Tag, error) {
 	negSentences, _ := json.Marshal(reqBody.NegSentences)
 	timestamp := time.Now().Unix()
 	return &model.Tag{
-		UUID:             reqBody.TagUUID,
 		Enterprise:       enterpriseID,
 		Name:             reqBody.TagName,
 		Typ:              typno,
@@ -132,7 +138,6 @@ func extractTag(r *http.Request) (*model.Tag, error) {
 }
 
 type NewTagReq struct {
-	TagUUID      string   `json:"tag_id"`
 	TagName      string   `json:"tag_name"`
 	TagType      string   `json:"tag_type"`
 	PosSentences []string `json:"pos_sentences"`

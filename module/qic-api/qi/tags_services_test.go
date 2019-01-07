@@ -209,7 +209,7 @@ func TestNewTag(t *testing.T) {
 		},
 	}
 
-	id, err := NewTag(model.Tag{ID: 0})
+	id, err := NewTag(model.Tag{ID: 0, UUID: "4c9c82fb7b5845369a520b757ab03f8b"})
 	if err != nil {
 		t.Fatal("expect new tag to be ok, but got ", err)
 	}

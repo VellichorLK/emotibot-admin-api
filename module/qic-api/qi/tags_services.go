@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
@@ -75,6 +76,11 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 // NewTag create a tag from t.
 // incremental id will be returned, if the dao supported it.
 func NewTag(t model.Tag) (id uint64, err error) {
+
+	if _, err := uuid.FromString(t.UUID); t.UUID == "" && err != nil {
+		return 0, fmt.Errorf("tag UUID format is not correct")
+	}
+
 	input := []model.Tag{t}
 	createdTags, err := tagDao.NewTags(nil, input)
 	if err != nil {
