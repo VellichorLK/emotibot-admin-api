@@ -207,6 +207,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	if err != nil {
 		return nil, fmt.Errorf("statement prepare failed")
 	}
+	defer stmt.Close()
 	var (
 		hasSupportID = true
 	)
