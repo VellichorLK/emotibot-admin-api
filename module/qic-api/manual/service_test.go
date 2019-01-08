@@ -15,6 +15,42 @@ var mockTask model.InspectTask = model.InspectTask{
 
 var mockUsers map[string]string = map[string]string{
 	"aabbccdd": "passed",
+	"55690":    "aabbccdddd",
+}
+
+var mockStaffTaskInfo1 model.StaffTaskInfo = model.StaffTaskInfo{
+	TaskID:    int64(0),
+	StaffID:   "55688",
+	StaffName: "aabbccdd",
+	CallID:    int64(555),
+	Status:    0,
+	Type:      0,
+}
+
+var mockStaffTaskInfo2 model.StaffTaskInfo = model.StaffTaskInfo{
+	TaskID:    int64(0),
+	StaffID:   "55689",
+	StaffName: "aabbccddee",
+	CallID:    int64(556),
+	Status:    1,
+	Type:      0,
+}
+
+var mockStaffTaskInfo3 model.StaffTaskInfo = model.StaffTaskInfo{
+	TaskID:    int64(0),
+	StaffID:   "55690",
+	StaffName: "aabbccdddd",
+	CallID:    int64(555),
+	Status:    0,
+	Type:      1,
+}
+
+var mockTaskInfos map[int64]*[]model.StaffTaskInfo = map[int64]*[]model.StaffTaskInfo{
+	int64(0): &[]model.StaffTaskInfo{
+		mockStaffTaskInfo1,
+		mockStaffTaskInfo2,
+		mockStaffTaskInfo3,
+	},
 }
 
 type mockTaskDao struct{}
@@ -40,8 +76,12 @@ func (dao *mockTaskDao) GetBy(filter *model.InspectTaskFilter, sql model.SqlLike
 	return mockTasks, nil
 }
 
-func (DAO *mockTaskDao) Users(uids []string, sql model.SqlLike) (map[string]string, error) {
+func (dao *mockTaskDao) Users(uids []string, sql model.SqlLike) (map[string]string, error) {
 	return mockUsers, nil
+}
+
+func (dao *mockTaskDao) TasksInfoBy(filter *model.StaffTaskFilter, sql model.SqlLike) (map[int64]*[]model.StaffTaskInfo, error) {
+	return mockTaskInfos, nil
 }
 
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
@@ -69,14 +109,14 @@ func TestCreateTask(t *testing.T) {
 	oriManualDB, oriAuthDB, oriTaskDao := setupManualTest()
 	defer restoreManualTest(oriManualDB, oriAuthDB, oriTaskDao)
 
-	uuid, err := CreateTask(&mockTask)
+	id, err := CreateTask(&mockTask)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	if uuid != mockTask.UUID {
-		t.Errorf("create task failed, expect uuid: %s, but got: %s", uuid, mockTask.UUID)
+	if id != mockTask.ID {
+		t.Errorf("create task failed, expect id: %d, but got: %d", id, mockTask.ID)
 	}
 }
 
@@ -99,5 +139,35 @@ func TestGetTask(t *testing.T) {
 	task := tasks[0]
 	if task.Creator != mockUsers[mockTask.Creator] {
 		t.Errorf("wrong creator, expect: %s, but got: %s", mockUsers[mockTask.Creator], task.Creator)
+	}
+
+	if task.InspectNum != 1 {
+		t.Errorf("wrong inspect number, expect 1, but got: %d", task.InspectNum)
+		return
+	}
+
+	if task.InspectCount != 2 {
+		t.Errorf("wrong inspect count, expect 2, but got: %d", task.InspectNum)
+		return
+	}
+
+	if task.InspectTotal != 2 {
+		t.Errorf("wrong inspect count, expect 2, but got: %d", task.InspectNum)
+		return
+	}
+
+	if task.Reviewer != mockStaffTaskInfo3.StaffName {
+		t.Errorf("wrong reviewer name, expect %s, but got: %s", mockStaffTaskInfo3.StaffName, task.Reviewer)
+		return
+	}
+
+	if task.ReviewNum != 0 {
+		t.Errorf("wrong reviewer count, expect 0, but got: %d", task.ReviewNum)
+		return
+	}
+
+	if task.ReviewTotal != 1 {
+		t.Errorf("wrong reviewer count, expect 1, but got: %d", task.ReviewTotal)
+		return
 	}
 }

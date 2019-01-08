@@ -35,6 +35,7 @@ const (
 	tblScoreForm        = "ScoreForm"
 	tblOutline          = "Outline"
 	tblUsers            = "users"
+	tblRelITCallStaff   = "Relation_InspectorTask_Call_Staff"
 )
 
 //field name in Conversation table
@@ -207,6 +208,7 @@ const (
 	fldDescription = "description"
 	fldCreator     = "creator"
 	fldStatus      = "status"
+	fldType        = "type"
 )
 
 //relation field name
@@ -294,4 +296,16 @@ const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
+)
+
+// fields for Relation_InspectorTask_Call_Staff
+const (
+	RITCSTaskID  = "task_id"
+	RITCSStaffID = "staff_id"
+	RITCSCallID  = "call_id"
+)
+
+// fields for users
+const (
+	USERDisplayName = "display_name"
 )

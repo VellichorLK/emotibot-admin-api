@@ -31,6 +31,24 @@ type InspectTaskInReq struct {
 	IsInspecting int8          `json:"is_inspecting"`
 }
 
+type InspectTaskInRes struct {
+	ID           int64         `json:"task_id"`
+	Name         string        `json:"task_name"`
+	TimeRange    CallTimeRange `json:"call_time_range"`
+	Status       int8          `json:"task_status"`
+	Creator      string        `json:"task_creator"`
+	CreateTime   int64         `json:"create_time"`
+	FormName     string        `json:"form_name"`
+	Outlines     []string      `json:"outlines"`
+	PublishTime  int64         `json:"publish_time"`
+	InspectNum   int           `json:"inspector_num"`
+	InspectCount int           `json:"inspect_count"`
+	InspectTotal int           `json:"inspect_total"`
+	Reviewer     string        `json:"reviewer"`
+	ReviewNum    int           `json:"review_count"`
+	ReviewTotal  int           `json:"review_total"`
+}
+
 func inspectTaskInReqToInspectTask(inreq *InspectTaskInReq) (task *model.InspectTask) {
 	taskOutlines := make([]model.Outline, len(inreq.Outlines))
 	for idx := range inreq.Outlines {
@@ -55,6 +73,35 @@ func inspectTaskInReqToInspectTask(inreq *InspectTaskInReq) (task *model.Inspect
 	return
 }
 
+func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
+	outlines := make([]string, len(it.Outlines))
+	for idx, outline := range it.Outlines {
+		outlines[idx] = outline.Name
+	}
+
+	inRes := &InspectTaskInRes{
+		ID:         it.ID,
+		Name:       it.Name,
+		Outlines:   outlines,
+		Status:     it.Status,
+		Creator:    it.Creator,
+		CreateTime: it.CreateTime,
+		FormName:   it.Form.Name,
+		TimeRange: CallTimeRange{
+			StartTime: it.CallStart,
+			EndTime:   it.CallEnd,
+		},
+		PublishTime:  it.PublishTime,
+		InspectTotal: it.InspectTotal,
+		InspectCount: it.InspectCount,
+		InspectNum:   it.InspectNum,
+		Reviewer:     it.Reviewer,
+		ReviewNum:    it.ReviewNum,
+		ReviewTotal:  it.ReviewTotal,
+	}
+	return inRes
+}
+
 func handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	inreq := InspectTaskInReq{}
 	err := util.ReadJSON(r, &inreq)
@@ -65,8 +112,9 @@ func handleCreateTask(w http.ResponseWriter, r *http.Request) {
 
 	task := inspectTaskInReqToInspectTask(&inreq)
 	task.Enterprise = requestheader.GetEnterpriseID(r)
+	task.Creator = requestheader.GetUserID(r)
 
-	uuid, err := CreateTask(task)
+	id, err := CreateTask(task)
 	if err != nil {
 		logger.Error.Printf("error while create inspect task in handleCreateTask, reason: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -74,11 +122,11 @@ func handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Response struct {
-		UUID string `json:"task_id"`
+		ID int64 `json:"task_id"`
 	}
 
 	response := Response{
-		UUID: uuid,
+		ID: id,
 	}
 
 	util.WriteJSON(w, response)
@@ -115,7 +163,12 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 
 	type Response struct {
 		Paging general.Paging      `json:"paging"`
-		Data   []model.InspectTask `json:"data"`
+		Data   []*InspectTaskInRes `json:"data"`
+	}
+
+	tasksInRes := make([]*InspectTaskInRes, len(tasks))
+	for idx, task := range tasks {
+		tasksInRes[idx] = inspectTaskToInspectTaskInRes(&task)
 	}
 
 	response := Response{
@@ -124,7 +177,7 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 			Page:  filter.Page,
 			Limit: filter.Limit,
 		},
-		Data: tasks,
+		Data: tasksInRes,
 	}
 
 	util.WriteJSON(w, response)

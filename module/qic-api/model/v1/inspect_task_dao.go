@@ -14,13 +14,14 @@ type InspectTaskFilter struct {
 }
 
 type InspectTask struct {
+	ID                int64
 	UUID              string
 	Name              string
 	Enterprise        string
 	Description       string
 	CallStart         int64
 	CallEnd           int64
-	Status            int
+	Status            int8
 	Creator           string
 	CreateTime        int64
 	UpdateTime        int64
@@ -33,12 +34,27 @@ type InspectTask struct {
 	InspectPercentage int
 	InspectByPerson   int
 	Reviewer          string
-	ReviewCount       int
+	ReviewNum         int
 	ReviewTotal       int
 	ReviewPercentage  int
 	ReviewByPerson    int
 	Staffs            []string
 	ExcludeInspected  int8
+}
+
+type StaffTaskInfo struct {
+	TaskID    int64
+	StaffID   string
+	StaffName string
+	CallID    int64
+	Status    int8
+	Type      int8
+}
+
+type StaffTaskFilter struct {
+	TaskIDs  []int64
+	CallIDs  []int64
+	StaffIDs []string
 }
 
 type Outline struct {
@@ -56,6 +72,7 @@ type InspectTaskDao interface {
 	CountBy(filter *InspectTaskFilter, sql SqlLike) (int64, error)
 	GetBy(filter *InspectTaskFilter, sql SqlLike) ([]InspectTask, error)
 	Users(uids []string, sql SqlLike) (map[string]string, error)
+	TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
 }
 
 type InspectTaskSqlDao struct{}
@@ -176,7 +193,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter) (queryStr string, values [
 		LEFT JOIN %s as form ON it.%s = form.%s
 		LEFT JOIN %s as ritol ON it.%s = ritol.%s
 		LEFT JOIN %s as ot ON ritol.%s = ot.%s`,
-		fldUUID,
+		fldID,
 		fldName,
 		ITCallStart,
 		ITCallEnd,
@@ -203,7 +220,14 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter) (queryStr string, values [
 
 func (dao *InspectTaskSqlDao) CountBy(filter *InspectTaskFilter, sql SqlLike) (total int64, err error) {
 	queryStr, values := queryInspectTaskSQLBy(filter)
-	queryStr = fmt.Sprintf("SELECT COUNT(it.%s) FROM (%s) as it", fldUUID, queryStr)
+	queryStr = fmt.Sprintf(
+		"SELECT COUNT(it.%s) FROM (SELECT it.%s FROM (SELECT it.%s FROM (%s) as it) as it GROUP BY %s) as it",
+		fldID,
+		fldID,
+		fldID,
+		queryStr,
+		fldID,
+	)
 
 	rows, err := sql.Query(queryStr, values...)
 	if err != nil {
@@ -235,7 +259,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 		outline := Outline{}
 		task := InspectTask{}
 		rows.Scan(
-			&task.UUID,
+			&task.ID,
 			&task.Name,
 			&task.CallStart,
 			&task.CallEnd,
@@ -247,7 +271,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 			&outline.Name,
 		)
 
-		if cTask == nil || cTask.UUID != task.UUID {
+		if cTask == nil || cTask.ID != task.ID {
 			if cTask != nil {
 				tasks = append(tasks, *cTask)
 			}
@@ -263,23 +287,21 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 }
 
 func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[string]string, err error) {
-	idCondition := "WHERE"
+	idCondition := ""
 	values := make([]interface{}, len(uids))
 	if len(uids) > 0 {
 		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(uids)-1))
-		idCondition = fmt.Sprintf("%s %s", idCondition, idStr)
+		idCondition = fmt.Sprintf("WHERE %s IN (%s)", fldUUID, idStr)
 
 		for idx, uid := range uids {
 			values[idx] = uid
 		}
-	} else {
-		idCondition = ""
 	}
 
 	queryStr := fmt.Sprintf(
 		"SELECT %s, %s FROM %s %s",
 		fldUUID,
-		fldName,
+		USERDisplayName,
 		tblUsers,
 		idCondition,
 	)
@@ -300,6 +322,83 @@ func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[strin
 			&userName,
 		)
 		users[uuid] = userName
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (taskInfos map[int64]*[]StaffTaskInfo, err error) {
+	conditionStr := ""
+	conditions := []string{}
+	values := []interface{}{}
+	if len(filter.TaskIDs) > 0 {
+		idStr := "?"
+		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.TaskIDs)-1))
+		for _, id := range filter.TaskIDs {
+			values = append(values, id)
+		}
+		conditions = append(conditions, fmt.Sprintf("%s IN (%s)", RITCSTaskID, idStr))
+	}
+
+	if len(filter.CallIDs) > 0 {
+		idStr := fmt.Sprintf("?", filter.CallIDs[0])
+		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.CallIDs)-1))
+		for _, id := range filter.CallIDs {
+			values = append(values, id)
+		}
+		conditions = append(conditions, fmt.Sprintf("%s IN (%s)", RITCSCallID, idStr))
+	}
+
+	if len(filter.StaffIDs) > 0 {
+		idStr := fmt.Sprintf("?", filter.StaffIDs[0])
+		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.StaffIDs)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN (%s)", RITCSStaffID, idStr))
+		for _, id := range filter.StaffIDs {
+			values = append(values, id)
+		}
+	}
+
+	if len(conditions) > 0 {
+		conditionStr = fmt.Sprintf("WHERE %s", strings.Join(conditions, " and "))
+	}
+
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s, %s, %s, %s FROM %s %s",
+		RITCSTaskID,
+		RITCSCallID,
+		RITCSStaffID,
+		fldStatus,
+		fldType,
+		tblRelITCallStaff,
+		conditionStr,
+	)
+
+	rows, err := sql.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while query task info in dao.TasksInfoBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	taskInfos = map[int64]*[]StaffTaskInfo{}
+	for rows.Next() {
+		taskInfo := StaffTaskInfo{}
+		rows.Scan(
+			&taskInfo.TaskID,
+			&taskInfo.CallID,
+			&taskInfo.StaffID,
+			&taskInfo.Status,
+			&taskInfo.Type,
+		)
+
+		if taskInfosOfTask, ok := taskInfos[taskInfo.TaskID]; !ok {
+			infos := []StaffTaskInfo{
+				taskInfo,
+			}
+			taskInfos[taskInfo.TaskID] = &infos
+		} else {
+			infos := append(*taskInfosOfTask, taskInfo)
+			taskInfosOfTask = &infos
+		}
 	}
 	return
 }
