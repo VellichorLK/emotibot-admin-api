@@ -33,7 +33,7 @@ const (
 	// ErrnoBase64Decode means error when decode base64
 	ErrnoBase64Decode = -9
 
-	// ErrnoInitfailed means the package have not initialed resources for the api.
+	// ErrnoInitfailed means the package have not initialed resources (service/db) for the api.
 	ErrnoInitfailed = -10
 )
 
