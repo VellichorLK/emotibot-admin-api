@@ -32,6 +32,7 @@ const (
 	tblRelITOuline      = "Relation_InspectorTask_Outline"
 	tblCall             = "call"
 	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
+	tblTask             = "task"
 )
 
 //field name in Conversation table
@@ -284,10 +285,22 @@ const (
 	fldCallLeftChan         = "left_channel"
 	fldCallRightChan        = "right_channel"
 	fldCallStatus           = "status"
+	fldCallDemoFilePath     = "demo_file_path"
+	fldCallTaskID           = "task_id"
 )
 
 const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
+)
+
+const (
+	fldTaskID     = "task_id"
+	fldTaskStatus = "status"
+	// fldTaskDescription = "description"
+	fldTaskDeal       = "deal"
+	fldTaskSeries     = "series"
+	fldTaskCreateTime = "create_time"
+	fldTaskUpdateTime = "update_time"
 )

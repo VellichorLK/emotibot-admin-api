@@ -15,7 +15,7 @@ type CallSQLDao struct {
 
 //CallQuery is the query to get call table
 type CallQuery struct {
-	ID     []uint64
+	ID     []int64
 	UUID   []string
 	Status []int8
 }
@@ -57,7 +57,7 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 // Any pointer field is nullable in the schema.Call
 // Ext(分機號碼) is the receiver(staff) extension number.
 type Call struct {
-	ID               uint64
+	ID               int64
 	UUID             string
 	FileName         *string
 	FilePath         *string
@@ -82,6 +82,8 @@ type Call struct {
 	LeftChanRole     int8
 	RightChanRole    int8
 	Status           int8
+	DemoFilePath     *string
+	TaskID           int64
 }
 
 // the type of the call is created, different type indicate different incoming source of call.
@@ -127,6 +129,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
 		fldCallLeftChan, fldCallRightChan, fldCallStatus,
+		fldCallTaskID, fldCallDemoFilePath,
 	}
 	wheresql, data := query.whereSQL()
 	rawquery := "SELECT `" + strings.Join(selectCols, "`,`") + "` FROM `" + tblCall + "` " + wheresql + " ORDER BY `" + fldCallID + "`"
@@ -147,15 +150,21 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			rightSTime  sql.NullFloat64
 			lSpeed      sql.NullFloat64
 			rSpeed      sql.NullFloat64
+			demoFp      sql.NullString
 		)
-		rows.Scan(&c.ID, &c.UUID, &fileName,
+		err := rows.Scan(&c.ID, &c.UUID, &fileName,
 			&filePath, &description, &c.DurationSecond,
 			&c.UploadUnixTime, &c.CallUnixTime, &c.StaffID, &c.StaffName,
 			&c.Ext, &c.Department, &c.CustomerID,
 			&c.CustomerName, &c.CustomerPhone, &c.EnterpriseID,
 			&c.UploadUser, &leftSTime, &rightSTime,
-			&lSpeed, &rSpeed, &c.Type, &c.LeftChanRole, &c.RightChanRole, &c.Status)
-
+			&lSpeed, &rSpeed, &c.Type,
+			&c.LeftChanRole, &c.RightChanRole, &c.Status,
+			&c.TaskID, &demoFp,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %v", err)
+		}
 		if fileName.Valid {
 			c.FileName = &fileName.String
 		}
@@ -176,6 +185,9 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		}
 		if lSpeed.Valid {
 			c.LeftSpeed = &lSpeed.Float64
+		}
+		if demoFp.Valid {
+			c.DemoFilePath = &demoFp.String
 		}
 
 		calls = append(calls, c)
@@ -199,7 +211,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
-		fldCallLeftChan, fldCallRightChan,
+		fldCallLeftChan, fldCallRightChan, fldCallTaskID,
 	}
 
 	rawquery := "INSERT INTO `" + tblCall + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE(?" + strings.Repeat(",? ", len(insertCols)-1) + ")"
@@ -219,7 +231,8 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 			c.Ext, c.Department, c.CustomerID,
 			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
 			c.UploadUser, c.LeftSilenceTime, c.RightSilenceTime,
-			c.LeftSpeed, c.RightSpeed, c.Type, c.LeftChanRole, c.RightChanRole)
+			c.LeftSpeed, c.RightSpeed, c.Type,
+			c.LeftChanRole, c.RightChanRole, c.TaskID)
 		if err != nil {
 			return nil, fmt.Errorf("create new call failed, %v", err)
 		}
@@ -229,7 +242,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 			calls[i] = c
 			continue
 		}
-		c.ID = uint64(id)
+		c.ID = id
 		calls[i] = c
 	}
 	if !hasSupportID {

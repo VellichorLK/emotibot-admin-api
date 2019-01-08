@@ -21,53 +21,61 @@ func getCallsSeed(t *testing.T) []Call {
 	var calls = make([]Call, len(rows)-1)
 	for i, row := range rows[1:] {
 		c := calls[i]
-		c.ID, _ = strconv.ParseUint(row[0], 10, 64)
-		status, _ := strconv.ParseInt(row[1], 10, 8)
+		c.ID, _ = strconv.ParseInt(row[0], 10, 64)
+		taskID, _ := strconv.ParseInt(row[1], 10, 64)
+		c.TaskID = taskID
+
+		status, _ := strconv.ParseInt(row[2], 10, 8)
 		c.Status = int8(status)
-		c.UUID = row[2]
-		if row[3] != "NULL" {
-			c.FileName = &row[3]
-		}
+		c.UUID = row[3]
 		if row[4] != "NULL" {
-			c.FilePath = &row[4]
+			c.FileName = &row[4]
 		}
+
 		if row[5] != "NULL" {
-			c.Description = &row[5]
+			c.FilePath = &row[5]
 		}
-		c.DurationSecond, _ = strconv.Atoi(row[6])
-		c.UploadUnixTime, _ = strconv.ParseInt(row[7], 10, 64)
-		c.CallUnixTime, _ = strconv.ParseInt(row[8], 10, 64)
-		c.StaffID = row[9]
-		c.StaffName = row[10]
-		c.Ext = row[11]
-		c.Department = row[12]
-		c.CustomerID = row[13]
-		c.CustomerName = row[14]
-		c.CustomerPhone = row[15]
-		c.EnterpriseID = row[16]
-		c.UploadUser = row[17]
-		if row[18] != "NULL" {
-			lst, _ := strconv.ParseFloat(row[18], 64)
+		if row[6] != "NULL" {
+			c.DemoFilePath = &row[6]
+		}
+		if row[7] != "NULL" {
+			c.Description = &row[7]
+		}
+		c.DurationSecond, _ = strconv.Atoi(row[8])
+		c.UploadUnixTime, _ = strconv.ParseInt(row[9], 10, 64)
+		c.CallUnixTime, _ = strconv.ParseInt(row[10], 10, 64)
+		c.StaffID = row[11]
+		c.StaffName = row[12]
+		c.Ext = row[13]
+		c.Department = row[14]
+		c.CustomerID = row[15]
+		c.CustomerName = row[16]
+		c.CustomerPhone = row[17]
+		c.EnterpriseID = row[18]
+		c.UploadUser = row[19]
+		if row[20] != "NULL" {
+			lst, _ := strconv.ParseFloat(row[20], 64)
 			c.LeftSilenceTime = &lst
 		}
-		if row[19] != "NULL" {
-			rst, _ := strconv.ParseFloat(row[19], 64)
+		if row[21] != "NULL" {
+			rst, _ := strconv.ParseFloat(row[21], 64)
 			c.RightSilenceTime = &rst
 		}
-		if row[20] != "NULL" {
-			ls, _ := strconv.ParseFloat(row[20], 64)
+		if row[22] != "NULL" {
+			ls, _ := strconv.ParseFloat(row[22], 64)
 			c.LeftSpeed = &ls
 		}
-		if row[21] != "NULL" {
-			rs, _ := strconv.ParseFloat(row[21], 64)
+		if row[23] != "NULL" {
+			rs, _ := strconv.ParseFloat(row[23], 64)
 			c.RightSpeed = &rs
 		}
-		typ, _ := strconv.ParseInt(row[22], 10, 8)
+		typ, _ := strconv.ParseInt(row[24], 10, 8)
 		c.Type = int8(typ)
-		lc, _ := strconv.ParseInt(row[23], 10, 8)
+		lc, _ := strconv.ParseInt(row[25], 10, 8)
 		c.LeftChanRole = int8(lc)
-		rc, _ := strconv.ParseInt(row[24], 10, 8)
+		rc, _ := strconv.ParseInt(row[26], 10, 8)
 		c.RightChanRole = int8(rc)
+
 		calls[i] = c
 	}
 	return calls
@@ -89,7 +97,7 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 			CallQuery{}, testset,
 		},
 		"query id": {
-			CallQuery{ID: []uint64{1}},
+			CallQuery{ID: []int64{1}},
 			testset[:1],
 		},
 		"query uuid": {

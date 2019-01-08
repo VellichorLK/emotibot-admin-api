@@ -10,6 +10,7 @@ until [ "$(docker inspect -f {{.State.Health.Status}} mysql-integration)" == "he
 done;
 mysql -u root -ppassword -h 127.0.0.1 < $DIR/data.sql
 mysqlimport --local --ignore-lines=1 --fields-terminated-by=, --fields-optionally-enclosed-by=\" -h 127.0.0.1 --user root -ppassword QISYS ./call.csv
+mysqlimport --local --ignore-lines=1 --fields-terminated-by=, --fields-optionally-enclosed-by=\" -h 127.0.0.1 --user root -ppassword QISYS ./task.csv
 cd ../ && go test "$@" ./... -integration
 
 docker-compose -p $COMPOSE_PROJECT_NAME -f $DIR/integration.yaml down -t 3

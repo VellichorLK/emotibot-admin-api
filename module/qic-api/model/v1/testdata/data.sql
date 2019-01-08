@@ -145,3 +145,31 @@ CREATE TABLE IF NOT EXISTS `Relation_Call_RuleGroup` (
   INDEX `idx_call_id` (`call_id` ASC),
   INDEX `idx_rg_id` (`rg_id` ASC))
 ENGINE = InnoDB CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `call` DROP COLUMN apply_group_list;
+
+ALTER TABLE `call`
+ADD COLUMN `demo_file_path` varchar(1024) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'file path to the content for the demonstration' AFTER `file_path`;
+
+ALTER TABLE `call`
+ADD COLUMN `task_id` bigint(11) unsigned NOT NULL COMMENT 'id in the task table' AFTER `call_id`,
+ADD INDEX `idx_task_id` (`task_id` ASC);
+
+CREATE TABLE `task` (
+  `task_id` bigint(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'task id',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT '0' COMMENT 'task status',
+  `description` varchar(11) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'description of the task',
+  `deal` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'is the call deal',
+  `series` varchar(128) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT 'series for the task',
+  `create_time` bigint(20) NOT NULL DEFAULT '0' COMMENT 'create time of the task',
+  `update_time` bigint(20) NOT NULL DEFAULT '0' COMMENT 'last update of the task',
+  `creator` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'who create the task',
+  `updator` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'who is the last one update the task',
+  PRIMARY KEY (`task_id`),
+  KEY `idx_deal` (`deal`),
+  KEY `idx_serial` (`series`),
+  KEY `idx_create_time` (`create_time`),
+  KEY `idx_update_time` (`update_time`),
+  KEY `idx_creator` (`creator`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
