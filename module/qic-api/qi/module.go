@@ -3,9 +3,11 @@ package qi
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -88,6 +90,9 @@ func init() {
 					return
 				}
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
+
+				cuURL := envs["LOGIC_PREDICT_URL"]
+				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
 			},
 		},
 	}
