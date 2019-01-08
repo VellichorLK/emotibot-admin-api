@@ -93,25 +93,6 @@ func worker(ctx context.Context, target <-chan uint64,
 
 }
 
-func collector(ctx context.Context, response <-chan *logicaccess.AttrResult, collected []MatchedData) {
-
-	numOfData := len(collected) + 1
-	for {
-		select {
-		case d, more := <-response:
-			if !more {
-				return
-			}
-			if d != nil && d.SentenceID > 0 && d.SentenceID < numOfData {
-				idx := d.SentenceID - 1
-				collected[idx].Matched[d.Tag] = d
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
 //TagMatch checks each sentence for each tags
 func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*MatchedData, error) {
 
