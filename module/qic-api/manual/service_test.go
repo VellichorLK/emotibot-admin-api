@@ -13,9 +13,15 @@ var mockTask model.InspectTask = model.InspectTask{
 	Creator: "aabbccdd",
 }
 
-var mockUsers map[string]string = map[string]string{
-	"aabbccdd": "passed",
-	"55690":    "aabbccdddd",
+var mockUsers map[string]*model.Staff = map[string]*model.Staff{
+	"aabbccdd": &model.Staff{
+		UUID: "aabbccdd",
+		Name: "passed",
+	},
+	"55690": &model.Staff{
+		UUID: "55690",
+		Name: "aabbccdddd",
+	},
 }
 
 var mockStaffTaskInfo1 model.StaffTaskInfo = model.StaffTaskInfo{
@@ -76,11 +82,15 @@ func (dao *mockTaskDao) GetBy(filter *model.InspectTaskFilter, sql model.SqlLike
 	return mockTasks, nil
 }
 
-func (dao *mockTaskDao) Users(uids []string, sql model.SqlLike) (map[string]string, error) {
+func (dao *mockTaskDao) Users(uids []string, sql model.SqlLike) (map[string]*model.Staff, error) {
 	return mockUsers, nil
 }
 
-func (dao *mockTaskDao) TasksInfoBy(filter *model.StaffTaskFilter, sql model.SqlLike) (map[int64]*[]model.StaffTaskInfo, error) {
+func (dao *mockTaskDao) CountTaskInfoBy(filter *model.StaffTaskFilter, sql model.SqlLike) (int64, error) {
+	return int64(len(mockTaskInfos)), nil
+}
+
+func (dao *mockTaskDao) GetTasksInfoBy(filter *model.StaffTaskFilter, sql model.SqlLike) (map[int64]*[]model.StaffTaskInfo, error) {
 	return mockTaskInfos, nil
 }
 
@@ -137,17 +147,18 @@ func TestGetTask(t *testing.T) {
 	}
 
 	task := tasks[0]
-	if task.Creator != mockUsers[mockTask.Creator] {
-		t.Errorf("wrong creator, expect: %s, but got: %s", mockUsers[mockTask.Creator], task.Creator)
+	creator := mockUsers[mockTask.Creator]
+	if task.Creator != creator.Name {
+		t.Errorf("wrong creator, expect: %s, but got: %s", creator.Name, task.Creator)
 	}
 
-	if task.InspectNum != 1 {
-		t.Errorf("wrong inspect number, expect 1, but got: %d", task.InspectNum)
+	if task.InspectNum != 2 {
+		t.Errorf("wrong inspect number, expect 2, but got: %d", task.InspectNum)
 		return
 	}
 
-	if task.InspectCount != 2 {
-		t.Errorf("wrong inspect count, expect 2, but got: %d", task.InspectNum)
+	if task.InspectCount != 1 {
+		t.Errorf("wrong inspect count, expect 1, but got: %d", task.InspectNum)
 		return
 	}
 

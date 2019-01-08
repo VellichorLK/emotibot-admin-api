@@ -49,6 +49,22 @@ type InspectTaskInRes struct {
 	ReviewTotal  int           `json:"review_total"`
 }
 
+type InspectTaskInResFromNormalUser struct {
+	ID          int64         `json:"task_id"`
+	Name        string        `json:"task_name"`
+	TimeRange   CallTimeRange `json:"call_time_range"`
+	Status      int8          `json:"task_status"`
+	Creator     string        `json:"task_creator"`
+	CreateTime  int64         `json:"create_time"`
+	FormName    string        `json:"form_name"`
+	Outlines    []string      `json:"outlines"`
+	Type        int8          `json:"task_type"`
+	Count       int           `json:"count"`
+	Total       int           `json:"total"`
+	Reviewer    string        `json:"reviewer"`
+	PublishTime int64         `json:"publish_time"`
+}
+
 func inspectTaskInReqToInspectTask(inreq *InspectTaskInReq) (task *model.InspectTask) {
 	taskOutlines := make([]model.Outline, len(inreq.Outlines))
 	for idx := range inreq.Outlines {
@@ -84,7 +100,6 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 		Name:       it.Name,
 		Outlines:   outlines,
 		Status:     it.Status,
-		Creator:    it.Creator,
 		CreateTime: it.CreateTime,
 		FormName:   it.Form.Name,
 		TimeRange: CallTimeRange{
@@ -92,12 +107,44 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 			EndTime:   it.CallEnd,
 		},
 		PublishTime:  it.PublishTime,
-		InspectTotal: it.InspectTotal,
-		InspectCount: it.InspectCount,
-		InspectNum:   it.InspectNum,
 		Reviewer:     it.Reviewer,
+		InspectNum:   it.InspectNum,
+		InspectCount: it.InspectCount,
+		InspectTotal: it.InspectTotal,
 		ReviewNum:    it.ReviewNum,
 		ReviewTotal:  it.ReviewTotal,
+	}
+	return inRes
+}
+
+func inspectTaskToInspectTaskInResForNormalUser(it *model.InspectTask) *InspectTaskInResFromNormalUser {
+	outlines := make([]string, len(it.Outlines))
+	for idx, outline := range it.Outlines {
+		outlines[idx] = outline.Name
+	}
+
+	inRes := &InspectTaskInResFromNormalUser{
+		ID:         it.ID,
+		Name:       it.Name,
+		Outlines:   outlines,
+		Status:     it.Status,
+		Creator:    it.Creator,
+		CreateTime: it.CreateTime,
+		FormName:   it.Form.Name,
+		TimeRange: CallTimeRange{
+			StartTime: it.CallStart,
+			EndTime:   it.CallEnd,
+		},
+		PublishTime: it.PublishTime,
+		Reviewer:    it.Reviewer,
+	}
+
+	if it.Type == int8(0) {
+		inRes.Total = it.InspectTotal
+		inRes.Count = it.InspectCount
+	} else if it.Type == int8(1) {
+		inRes.Total = it.ReviewTotal
+		inRes.Count = it.ReviewNum
 	}
 	return inRes
 }
@@ -151,9 +198,30 @@ func parseTaskFilter(values *url.Values) *model.InspectTaskFilter {
 }
 
 func handleGetTasks(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+	user, err := GetUser(userID)
+	if err != nil {
+		logger.Error.Printf("error while get user in handleGetTasks, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
 	values := r.URL.Query()
 	filter := parseTaskFilter(&values)
 
+	if user.Type == int8(1) {
+		handleAdminUserGetTasks(filter, w)
+	} else if user.Type == int8(2) {
+		handleNormalUserGetTasks(userID, filter, w)
+	}
+}
+
+func handleAdminUserGetTasks(filter *model.InspectTaskFilter, w http.ResponseWriter) {
 	total, tasks, err := GetTasks(filter)
 	if err != nil {
 		logger.Error.Printf("error while get inspect tasks in handleGetTasks, reason: %s", err.Error())
@@ -169,6 +237,43 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 	tasksInRes := make([]*InspectTaskInRes, len(tasks))
 	for idx, task := range tasks {
 		tasksInRes[idx] = inspectTaskToInspectTaskInRes(&task)
+	}
+
+	response := Response{
+		Paging: general.Paging{
+			Total: total,
+			Page:  filter.Page,
+			Limit: filter.Limit,
+		},
+		Data: tasksInRes,
+	}
+
+	util.WriteJSON(w, response)
+}
+
+func handleNormalUserGetTasks(userID string, filter *model.InspectTaskFilter, w http.ResponseWriter) {
+	taskFilter := &model.StaffTaskFilter{
+		Page:  filter.Page,
+		Limit: filter.Limit,
+		StaffIDs: []string{
+			userID,
+		},
+	}
+	total, tasks, err := GetTasksOfUsers(taskFilter)
+	if err != nil {
+		logger.Error.Printf("error while get inspect tasks in handleGetTasks, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type Response struct {
+		Paging general.Paging                    `json:"paging"`
+		Data   []*InspectTaskInResFromNormalUser `json:"data"`
+	}
+
+	tasksInRes := make([]*InspectTaskInResFromNormalUser, len(tasks))
+	for idx, task := range tasks {
+		tasksInRes[idx] = inspectTaskToInspectTaskInResForNormalUser(&task)
 	}
 
 	response := Response{

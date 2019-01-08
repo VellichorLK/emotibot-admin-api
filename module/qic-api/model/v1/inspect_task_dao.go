@@ -1,12 +1,13 @@
 package model
 
 import (
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
 
 type InspectTaskFilter struct {
+	ID         []int64
 	UUID       []string
 	Page       int
 	Limit      int
@@ -40,6 +41,7 @@ type InspectTask struct {
 	ReviewByPerson    int
 	Staffs            []string
 	ExcludeInspected  int8
+	Type              int8
 }
 
 type StaffTaskInfo struct {
@@ -55,6 +57,8 @@ type StaffTaskFilter struct {
 	TaskIDs  []int64
 	CallIDs  []int64
 	StaffIDs []string
+	Page     int
+	Limit    int
 }
 
 type Outline struct {
@@ -67,12 +71,19 @@ type ScoreForm struct {
 	Name string
 }
 
+type Staff struct {
+	UUID string
+	Name string
+	Type int8
+}
+
 type InspectTaskDao interface {
 	Create(task *InspectTask, sql SqlLike) (int64, error)
 	CountBy(filter *InspectTaskFilter, sql SqlLike) (int64, error)
 	GetBy(filter *InspectTaskFilter, sql SqlLike) ([]InspectTask, error)
-	Users(uids []string, sql SqlLike) (map[string]string, error)
-	TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
+	Users(uids []string, sql SqlLike) (map[string]*Staff, error)
+	CountTaskInfoBy(filter *StaffTaskFilter, sql SqlLike) (int64, error)
+	GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
 }
 
 type InspectTaskSqlDao struct{}
@@ -245,9 +256,15 @@ func (dao *InspectTaskSqlDao) CountBy(filter *InspectTaskFilter, sql SqlLike) (t
 func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tasks []InspectTask, err error) {
 	queryStr, values := queryInspectTaskSQLBy(filter)
 
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		end := start + filter.Limit
+		queryStr = fmt.Sprintf("%s Limit %d, %d", queryStr, start, end)
+	}
+
 	rows, err := sql.Query(queryStr, values...)
 	if err != nil {
-		err = fmt.Errorf("error while get inspect tasks in dao.CountBy, err: %s", err.Error())
+		err = fmt.Errorf("error while get inspect tasks in dao.GetBy, err: %s", err.Error())
 		return
 	}
 	defer rows.Close()
@@ -286,7 +303,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 	return
 }
 
-func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[string]string, err error) {
+func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[string]*Staff, err error) {
 	idCondition := ""
 	values := make([]interface{}, len(uids))
 	if len(uids) > 0 {
@@ -299,9 +316,10 @@ func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[strin
 	}
 
 	queryStr := fmt.Sprintf(
-		"SELECT %s, %s FROM %s %s",
+		"SELECT %s, %s, %s FROM %s %s",
 		fldUUID,
 		USERDisplayName,
+		fldType,
 		tblUsers,
 		idCondition,
 	)
@@ -313,23 +331,25 @@ func (dao *InspectTaskSqlDao) Users(uids []string, sql SqlLike) (users map[strin
 	}
 	defer rows.Close()
 
-	users = map[string]string{}
+	users = map[string]*Staff{}
 	for rows.Next() {
-		uuid := ""
-		userName := ""
+		user := Staff{}
+
 		rows.Scan(
-			&uuid,
-			&userName,
+			&user.UUID,
+			&user.Name,
+			&user.Type,
 		)
-		users[uuid] = userName
+		users[user.UUID] = &user
 	}
 	return
 }
 
-func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (taskInfos map[int64]*[]StaffTaskInfo, err error) {
+func queryInspectTaskInfoSQLBy(filter *StaffTaskFilter) (queryStr string, values []interface{}) {
 	conditionStr := ""
 	conditions := []string{}
-	values := []interface{}{}
+	values = []interface{}{}
+
 	if len(filter.TaskIDs) > 0 {
 		idStr := "?"
 		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.TaskIDs)-1))
@@ -340,7 +360,7 @@ func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) 
 	}
 
 	if len(filter.CallIDs) > 0 {
-		idStr := fmt.Sprintf("?", filter.CallIDs[0])
+		idStr := "?"
 		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.CallIDs)-1))
 		for _, id := range filter.CallIDs {
 			values = append(values, id)
@@ -349,7 +369,7 @@ func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) 
 	}
 
 	if len(filter.StaffIDs) > 0 {
-		idStr := fmt.Sprintf("?", filter.StaffIDs[0])
+		idStr := "?"
 		idStr = fmt.Sprintf("%s %s", idStr, strings.Repeat(", ?", len(filter.StaffIDs)-1))
 		conditions = append(conditions, fmt.Sprintf("%s IN (%s)", RITCSStaffID, idStr))
 		for _, id := range filter.StaffIDs {
@@ -361,7 +381,7 @@ func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) 
 		conditionStr = fmt.Sprintf("WHERE %s", strings.Join(conditions, " and "))
 	}
 
-	queryStr := fmt.Sprintf(
+	queryStr = fmt.Sprintf(
 		"SELECT %s, %s, %s, %s, %s FROM %s %s",
 		RITCSTaskID,
 		RITCSCallID,
@@ -371,6 +391,43 @@ func (dao *InspectTaskSqlDao) TasksInfoBy(filter *StaffTaskFilter, sql SqlLike) 
 		tblRelITCallStaff,
 		conditionStr,
 	)
+	return
+}
+
+func (dao *InspectTaskSqlDao) CountTaskInfoBy(filter *StaffTaskFilter, sql SqlLike) (total int64, err error) {
+	queryStr, values := queryInspectTaskInfoSQLBy(filter)
+
+	queryStr = fmt.Sprintf(
+		"SELECT COUNT(info.%s) FROM (SELECT info.%s FROM (SELECT info.%s FROM (%s) as info) as info GROUP BY %s) as info",
+		RITCSTaskID,
+		RITCSTaskID,
+		RITCSTaskID,
+		queryStr,
+		RITCSTaskID,
+	)
+	logger.Info.Printf("queryStr: %s", queryStr)
+
+	rows, err := sql.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while count task information in dao.CountTaskInfoBy, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&total)
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (taskInfos map[int64]*[]StaffTaskInfo, err error) {
+	queryStr, values := queryInspectTaskInfoSQLBy(filter)
+
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		end := start + filter.Limit
+		queryStr = fmt.Sprintf("%s Limit %d, %d", queryStr, start, end)
+	}
 
 	rows, err := sql.Query(queryStr, values...)
 	if err != nil {
