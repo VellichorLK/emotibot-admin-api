@@ -90,14 +90,11 @@ func TestPredictAndUnMarshal(t *testing.T) {
 	SetupMockPostMethod()
 	c := &Client{URL: "http://127.0.0.1"}
 	var r PredictRequest
-	resp, err := c.PredictAndUnMarshal(&r)
-	if err != nil {
-		t.Errorf("expecting no error, but get %s\n", err)
+	_, err := c.PredictAndUnMarshal(&r)
+	if err == nil {
+		t.Fatalf("expecting error, but get no error\n")
 	}
 
-	if resp.Status != "OK" {
-		t.Errorf("expecting OK, but get %s\n", resp.Status)
-	}
 }
 
 func TestSessionCreate(t *testing.T) {
