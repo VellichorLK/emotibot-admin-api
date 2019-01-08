@@ -10,7 +10,7 @@ type DBLike interface {
 	Begin() (*sql.Tx, error)
 	ClearTransition(tx *sql.Tx)
 	Commit(tx *sql.Tx) error
-	Conn() *sql.DB
+	Conn() *sql.DB //return the conn
 }
 
 type DefaultDBLike struct {
