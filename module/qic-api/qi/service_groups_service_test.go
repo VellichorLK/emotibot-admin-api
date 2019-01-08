@@ -125,7 +125,7 @@ func (m *mockDBLike) Commit(tx *sql.Tx) (err error) {
 	return
 }
 
-func (m *mockDBLike) GetConn() *sql.DB {
+func (m *mockDBLike) Conn() *sql.DB {
 	return nil
 }
 

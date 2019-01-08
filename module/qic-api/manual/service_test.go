@@ -1,9 +1,10 @@
 package manual
 
 import (
+	"testing"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/test"
-	"testing"
 )
 
 var mockTask model.InspectTask = model.InspectTask{

@@ -43,5 +43,5 @@ func GetLevelsRel(from Levels, to Levels, id []uint64) ([]map[uint64][]uint64, e
 	if len(id) == 0 {
 		return nil, ErrNoID
 	}
-	return relationDao.GetLevelRelationID(dbLike.GetConn(), int(from), int(to), id)
+	return relationDao.GetLevelRelationID(dbLike.Conn(), int(from), int(to), id)
 }
