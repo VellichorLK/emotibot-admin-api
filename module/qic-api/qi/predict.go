@@ -6,7 +6,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 )
 
-var predictor *logicaccess.Client
+var predictor logicaccess.PredictClient
 
 //error message
 var (
