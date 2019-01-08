@@ -4,8 +4,11 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 	"net/http"
+	"net/url"
+	"strconv"
 )
 
 type CallTimeRange struct {
@@ -76,6 +79,52 @@ func handleCreateTask(w http.ResponseWriter, r *http.Request) {
 
 	response := Response{
 		UUID: uuid,
+	}
+
+	util.WriteJSON(w, response)
+}
+
+func parseTaskFilter(values *url.Values) *model.InspectTaskFilter {
+	filter := &model.InspectTaskFilter{}
+	var err error
+
+	pageStr := values.Get("page")
+	filter.Page, err = strconv.Atoi(pageStr)
+	if err != nil {
+		filter.Page = 0
+	}
+
+	limitStr := values.Get("limit")
+	filter.Limit, err = strconv.Atoi(limitStr)
+	if err != nil {
+		filter.Limit = 10
+	}
+	return filter
+}
+
+func handleGetTasks(w http.ResponseWriter, r *http.Request) {
+	values := r.URL.Query()
+	filter := parseTaskFilter(&values)
+
+	total, tasks, err := GetTasks(filter)
+	if err != nil {
+		logger.Error.Printf("error while get inspect tasks in handleGetTasks, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	type Response struct {
+		Paging general.Paging      `json:"paging"`
+		Data   []model.InspectTask `json:"data"`
+	}
+
+	response := Response{
+		Paging: general.Paging{
+			Total: total,
+			Page:  filter.Page,
+			Limit: filter.Limit,
+		},
+		Data: tasks,
 	}
 
 	util.WriteJSON(w, response)

@@ -22,6 +22,7 @@ func init() {
 		ModuleName: "manual",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "sampling/tasks", []string{}, handleCreateTask),
+			util.NewEntryPoint("GET", "sampling/tasks", []string{}, handleGetTasks),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

@@ -1,6 +1,7 @@
 package manual
 
 import (
+	"net/url"
 	"testing"
 )
 
@@ -57,6 +58,18 @@ func TestInspectTaskInReqToInspectTask(t *testing.T) {
 
 	if inreq.Form != it.Form.ID {
 		t.Errorf("transform inreq score form to task failed, expect %d, but got: %+v", inreq.Form, it.Form)
+		return
+	}
+}
+
+func TestParseTaskFilter(t *testing.T) {
+	values := url.Values{}
+	values.Add("page", "5")
+	values.Add("limit", "12")
+
+	filter := parseTaskFilter(&values)
+	if filter.Page != 5 || filter.Limit != 12 {
+		t.Errorf("error while parse filter from values, expect %s, %s, but got %d, %d", values["page"], values["limit"], filter.Page, filter.Limit)
 		return
 	}
 }

@@ -29,9 +29,12 @@ const (
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
 	tblInspectTask      = "InspectorTask"
-	tblRelITOuline      = "Relation_InspectorTask_Outline"
+	tblRelITOutline     = "Relation_InspectorTask_Outline"
 	tblCall             = "call"
 	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
+	tblScoreForm        = "ScoreForm"
+	tblOutline          = "Outline"
+	tblUsers            = "users"
 )
 
 //field name in Conversation table
@@ -203,6 +206,7 @@ const (
 	fldUpdateTime  = "update_time"
 	fldDescription = "description"
 	fldCreator     = "creator"
+	fldStatus      = "status"
 )
 
 //relation field name
@@ -254,8 +258,8 @@ const (
 
 // fields in Relation_InspectorTask_Outline
 const (
-	RITOTaskID   = "task_id"
-	RITOOulineID = "outline_id"
+	RITOTaskID     = "task_id"
+	RITOTOutlineID = "outline_id"
 )
 
 const (

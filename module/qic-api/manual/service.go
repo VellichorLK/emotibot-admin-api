@@ -3,6 +3,7 @@ package manual
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 )
 
@@ -38,5 +39,36 @@ func CreateTask(task *model.InspectTask) (uuid string, err error) {
 		return
 	}
 	err = manualDB.Commit(tx)
+	return
+}
+
+func GetTasks(filter *model.InspectTaskFilter) (total int64, tasks []model.InspectTask, err error) {
+	manualConn := manualDB.Conn()
+
+	total, err = taskDao.CountBy(filter, manualConn)
+	if err != nil {
+		return
+	}
+
+	tasks, err = taskDao.GetBy(filter, manualConn)
+	if err != nil {
+		return
+	}
+
+	userIDs := make([]string, len(tasks))
+	for idx, task := range tasks {
+		userIDs[idx] = task.Creator
+	}
+
+	authConn := authDB.Conn()
+	usersMap, err := taskDao.Users(userIDs, authConn)
+	if err != nil {
+		return
+	}
+
+	for idx := range tasks {
+		task := &tasks[idx]
+		task.Creator = usersMap[task.Creator]
+	}
 	return
 }
