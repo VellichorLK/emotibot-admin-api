@@ -11,9 +11,8 @@ COPY ./pkg ${GOPREFIX}/pkg
 #Use +8 Timezone for testing
 RUN cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime && echo "Asia/Taipe" > /etc/timezone
 WORKDIR ${GOPREFIX}/module/${PROJECT}
-RUN go get -v && go install
-RUN go test ./...
-RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && go install && cd ../; done;
+ARG VERSION
+RUN go get -v && go build -o ${PROJECT} -x -ldflags "-X main.VERSION=${VERSION} -X 'main.BUILD_TIME=`date`' -X 'main.GO_VERSION=`go version`'" server.go && mv ${PROJECT} /go/bin/${PROJECT}
 RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && CGO_ENABLED=0 GOOS=linux go build -o ${tool}_linux && cp ${tool}_linux /go/bin/ && cd ../; done;
 
 ## 复制上一个 stage 所编译出的 binary 至 scratch image
