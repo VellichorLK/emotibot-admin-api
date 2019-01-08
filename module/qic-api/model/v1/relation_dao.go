@@ -36,6 +36,7 @@ type RelationSQLDao struct {
 //error message
 var (
 	ErrOutOfLevel = errors.New("Out of levels")
+	ErroNoConn    = errors.New("No connection")
 )
 
 //GetLevelRelationID gives the relation ID
@@ -43,6 +44,10 @@ var (
 //the arguments of id means the parent id condition
 //return value is slice of map which means in each relation table, the parent id contains childs's
 func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, error) {
+
+	if delegatee == nil {
+		return nil, ErroNoConn
+	}
 	if to <= from {
 		return nil, nil
 	}
