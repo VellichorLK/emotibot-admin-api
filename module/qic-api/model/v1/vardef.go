@@ -37,6 +37,7 @@ const (
 	tblUsers            = "users"
 	tblRelITCallStaff   = "Relation_InspectorTask_Call_Staff"
 	tblTask             = "task"
+	tblRelITStaff       = "Relation_InspectorTask_Staff"
 )
 
 //field name in Conversation table
@@ -320,4 +321,10 @@ const (
 	fldTaskSeries     = "series"
 	fldTaskCreateTime = "create_time"
 	fldTaskUpdateTime = "update_time"
+)
+
+// fields for Relation_InspectorTask_Staff
+const (
+	RITStaffTaskID  = "task_id"
+	RITStaffStaffID = "staff_id"
 )

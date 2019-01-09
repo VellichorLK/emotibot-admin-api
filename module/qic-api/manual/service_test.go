@@ -94,6 +94,10 @@ func (dao *mockTaskDao) GetTasksInfoBy(filter *model.StaffTaskFilter, sql model.
 	return mockTaskInfos, nil
 }
 
+func (dao *mockTaskDao) Update(taskID int64, task *model.InspectTask, sql model.SqlLike) error {
+	return nil
+}
+
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
 	oriManualDB := manualDB
 	oriAuthDB := authDB

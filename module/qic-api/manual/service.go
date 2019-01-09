@@ -9,6 +9,7 @@ import (
 
 var (
 	ErrNilTask = fmt.Errorf("Nil InspectorTask Error")
+	ErrNoTask  = fmt.Errorf("The task does not exist")
 )
 
 var taskDao model.InspectTaskDao = &model.InspectTaskSqlDao{}
@@ -306,5 +307,33 @@ func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 		return
 	}
 	manualDB.Commit(tx)
+	return
+}
+
+func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (err error) {
+	// tx, err := manualDB.Begin()
+	// if err != nil {
+	// 	return
+	// }
+
+	// // get task
+	// filter := &model.InspectTaskFilter{
+	// 	ID: []int64{
+	// 		taskID,
+	// 	},
+	// 	Enterprise: enterprise,
+	// }
+	// tasks, err := taskDao.GetBy(filter, tx)
+	// if err != nil {
+	// 	return
+	// }
+
+	// if len(tasks) == 0 {
+	// 	err = ErrNoTask
+	// 	return
+	// }
+
+	// task := tasks[0]
+
 	return
 }

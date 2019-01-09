@@ -66,6 +66,12 @@ type InspectTaskInResFromNormalUser struct {
 	PublishTime int64         `json:"publish_time"`
 }
 
+type AssignTask struct {
+	Type     string   `json:"assign_type"`
+	Users    []string `json:"user_ids"`
+	Sampling Sampling `json:"sampling_rule"`
+}
+
 func inspectTaskInReqToInspectTask(inreq *InspectTaskInReq) (task *model.InspectTask) {
 	taskOutlines := make([]model.Outline, len(inreq.Outlines))
 	for idx := range inreq.Outlines {
@@ -419,4 +425,20 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+	user, err := GetUser(userID)
+	if err != nil {
+		logger.Error.Printf("error while get user in handleAssignStaffToTask, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user.Type != 1 {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
 }
