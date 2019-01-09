@@ -3,6 +3,8 @@ package qi
 import (
 	"database/sql"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -15,8 +17,11 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
 	tagDao     TagDao
+	callDao    CallDao
+	taskDao    TaskDao
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
+	volume     string
 )
 
 func init() {
@@ -65,6 +70,23 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
 		},
 		OneTimeFunc: map[string]func(){
+			"init volume": func() {
+				volume, _ := ModuleInfo.Environments["FILE_VOLUME"]
+				if volume == "" {
+					logger.Error.Println("module env \"FILE_VOLUME\" does not exist or empty, upload function will not work.")
+					return
+				}
+				//path.Clean will treat empty as current dir, we dont want this result
+				volume = path.Clean(volume)
+				if info, err := os.Stat(volume); os.IsNotExist(err) {
+					logger.Error.Println(volume + " is not exist.")
+					volume = ""
+				} else if !info.IsDir() {
+					logger.Error.Println(volume + " is not a dir.")
+					volume = ""
+				}
+
+			},
 			"init db": func() {
 				envs := ModuleInfo.Environments
 
@@ -93,6 +115,12 @@ func init() {
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
+				mdao := &mockCallDao{
+					mockdata:     exampleCallContent,
+					mockTaskData: exampleTaskContent,
+				}
+				callDao = mdao
+				taskDao = mdao
 			},
 		},
 	}

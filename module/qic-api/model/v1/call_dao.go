@@ -15,7 +15,7 @@ type CallSQLDao struct {
 
 //CallQuery is the query to get call table
 type CallQuery struct {
-	ID     []uint64
+	ID     []int64
 	UUID   []string
 	Status []int8
 }
@@ -57,31 +57,33 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 // Any pointer field is nullable in the schema.Call
 // Ext(分機號碼) is the receiver(staff) extension number.
 type Call struct {
-	ID               uint64
-	UUID             string
-	FileName         *string
-	FilePath         *string
-	Description      *string
-	DurationSecond   int
-	UploadUnixTime   int64
-	CallUnixTime     int64
-	StaffID          string
-	StaffName        string
-	Ext              string
-	Department       string
-	CustomerID       string
-	CustomerName     string
-	CustomerPhone    string
-	EnterpriseID     string
-	UploadUser       string
-	LeftSilenceTime  *float64
-	RightSilenceTime *float64
-	LeftSpeed        *float64
-	RightSpeed       *float64
-	Type             int8
-	LeftChanRole     int8
-	RightChanRole    int8
-	Status           int8
+	ID                 int64
+	UUID               string
+	FileName           *string
+	FilePath           *string
+	Description        *string
+	DurationMillSecond int
+	UploadUnixTime     int64
+	CallUnixTime       int64
+	StaffID            string
+	StaffName          string
+	Ext                string
+	Department         string
+	CustomerID         string
+	CustomerName       string
+	CustomerPhone      string
+	EnterpriseID       string
+	UploadUser         string
+	LeftSilenceTime    *float64
+	RightSilenceTime   *float64
+	LeftSpeed          *float64
+	RightSpeed         *float64
+	Type               int8
+	LeftChanRole       int8
+	RightChanRole      int8
+	Status             int8
+	DemoFilePath       *string
+	TaskID             int64
 }
 
 // the type of the call is created, different type indicate different incoming source of call.
@@ -127,6 +129,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
 		fldCallLeftChan, fldCallRightChan, fldCallStatus,
+		fldCallTaskID, fldCallDemoFilePath,
 	}
 	wheresql, data := query.whereSQL()
 	rawquery := "SELECT `" + strings.Join(selectCols, "`,`") + "` FROM `" + tblCall + "` " + wheresql + " ORDER BY `" + fldCallID + "`"
@@ -147,15 +150,21 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			rightSTime  sql.NullFloat64
 			lSpeed      sql.NullFloat64
 			rSpeed      sql.NullFloat64
+			demoFp      sql.NullString
 		)
-		rows.Scan(&c.ID, &c.UUID, &fileName,
-			&filePath, &description, &c.DurationSecond,
+		err := rows.Scan(&c.ID, &c.UUID, &fileName,
+			&filePath, &description, &c.DurationMillSecond,
 			&c.UploadUnixTime, &c.CallUnixTime, &c.StaffID, &c.StaffName,
 			&c.Ext, &c.Department, &c.CustomerID,
 			&c.CustomerName, &c.CustomerPhone, &c.EnterpriseID,
 			&c.UploadUser, &leftSTime, &rightSTime,
-			&lSpeed, &rSpeed, &c.Type, &c.LeftChanRole, &c.RightChanRole, &c.Status)
-
+			&lSpeed, &rSpeed, &c.Type,
+			&c.LeftChanRole, &c.RightChanRole, &c.Status,
+			&c.TaskID, &demoFp,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %v", err)
+		}
 		if fileName.Valid {
 			c.FileName = &fileName.String
 		}
@@ -176,6 +185,9 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		}
 		if lSpeed.Valid {
 			c.LeftSpeed = &lSpeed.Float64
+		}
+		if demoFp.Valid {
+			c.DemoFilePath = &demoFp.String
 		}
 
 		calls = append(calls, c)
@@ -199,7 +211,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
-		fldCallLeftChan, fldCallRightChan,
+		fldCallLeftChan, fldCallRightChan, fldCallTaskID,
 	}
 
 	rawquery := "INSERT INTO `" + tblCall + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE(?" + strings.Repeat(",? ", len(insertCols)-1) + ")"
@@ -214,12 +226,13 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	for i, c := range calls {
 
 		r, err := stmt.Exec(c.UUID, c.FileName, c.FilePath,
-			c.Description, c.DurationSecond, c.UploadUnixTime,
+			c.Description, c.DurationMillSecond, c.UploadUnixTime,
 			c.CallUnixTime, c.StaffID, c.StaffName,
 			c.Ext, c.Department, c.CustomerID,
 			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
 			c.UploadUser, c.LeftSilenceTime, c.RightSilenceTime,
-			c.LeftSpeed, c.RightSpeed, c.Type, c.LeftChanRole, c.RightChanRole)
+			c.LeftSpeed, c.RightSpeed, c.Type,
+			c.LeftChanRole, c.RightChanRole, c.TaskID)
 		if err != nil {
 			return nil, fmt.Errorf("create new call failed, %v", err)
 		}
@@ -229,7 +242,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 			calls[i] = c
 			continue
 		}
-		c.ID = uint64(id)
+		c.ID = id
 		calls[i] = c
 	}
 	if !hasSupportID {
@@ -269,4 +282,67 @@ func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegro
 	}
 
 	return idGroup, nil
+}
+
+func (c *CallSQLDao) SetCall(delegatee SqlLike, call Call) error {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+	updatepart, data := createCallUpdateSQL(call)
+	rawquery := "UPDATE `" + tblCall + "` SET " + updatepart + " WHERE `" + fldCallID + "` = ?"
+	data = append(data, call.ID)
+	_, err := delegatee.Exec(rawquery, data...)
+	if err != nil {
+		return fmt.Errorf("update execute failed, %v", err)
+	}
+	return nil
+
+}
+
+func (c *CallSQLDao) Count(delegatee SqlLike, query CallQuery) (int64, error) {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+	wheresql, data := query.whereSQL()
+	rawquery := "SELECT count(*) FROM " + tblCall + " " + wheresql
+	var count int64
+	err := delegatee.QueryRow(rawquery, data...).Scan(&count)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", rawquery)
+		return 0, fmt.Errorf("query failed, %v", err)
+	}
+	return count, nil
+}
+func createCallUpdateSQL(c Call) (string, []interface{}) {
+	parts := []string{}
+	updateCols := []string{
+		fldCallUUID, fldCallDuration, fldCallUploadTime,
+		fldCallFileName, fldCallFilePath, fldCallDescription,
+		fldCallCallTime, fldCallStaffID, fldCallStaffName,
+		fldCallExt, fldCallDepartment, fldCallCustomerID,
+		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
+		fldCallUploadedUser, fldCallType, fldCallLeftChan,
+		fldCallRightChan, fldCallStatus, fldCallDemoFilePath,
+		fldCallTaskID, fldCallLeftSilenceTime, fldCallRightSilenceTime,
+		fldCallLeftSpeed, fldCallRightSpeed,
+	}
+	data := []interface{}{
+		c.UUID, c.DurationMillSecond, c.UploadUnixTime,
+		c.FileName, c.FilePath, c.Description,
+		c.CallUnixTime, c.StaffID, c.StaffName,
+		c.Ext, c.Department, c.CustomerID,
+		c.CustomerName, c.CustomerPhone, c.EnterpriseID,
+		c.EnterpriseID, c.UploadUser, c.Type,
+		c.TaskID, c.LeftSilenceTime, c.RightSilenceTime,
+		c.LeftSpeed, c.RightSpeed,
+	}
+
+	for _, colName := range updateCols {
+		p := fmt.Sprintf("`%s` = ?", colName)
+		parts = append(parts, p)
+	}
+
+	rawsql := strings.Join(parts, " , ")
+	return rawsql, data
+
 }
