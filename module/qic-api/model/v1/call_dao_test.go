@@ -41,7 +41,7 @@ func getCallsSeed(t *testing.T) []Call {
 		if row[7] != "NULL" {
 			c.Description = &row[7]
 		}
-		c.DurationSecond, _ = strconv.Atoi(row[8])
+		c.DurationMillSecond, _ = strconv.Atoi(row[8])
 		c.UploadUnixTime, _ = strconv.ParseInt(row[9], 10, 64)
 		c.CallUnixTime, _ = strconv.ParseInt(row[10], 10, 64)
 		c.StaffID = row[11]
@@ -133,23 +133,23 @@ func TestIntegrationCallDaoNewCall(t *testing.T) {
 		db: db,
 	}
 	exampleCall := Call{
-		UUID:           "d95c7d0eff8c49169c64a2225696423f",
-		DurationSecond: 120,
-		UploadUnixTime: 1546827856,
-		CallUnixTime:   1546827000,
-		StaffID:        "12345",
-		StaffName:      "tester",
-		Ext:            "66810",
-		Department:     "backend",
-		CustomerID:     "123",
-		CustomerName:   "david",
-		CustomerPhone:  "123456789",
-		EnterpriseID:   "csbot",
-		UploadUser:     "Berta",
-		Type:           CallTypeWholeFile,
-		LeftChanRole:   CallChanStaff,
-		RightChanRole:  CallChanCustomer,
-		Status:         CallStatusWaiting,
+		UUID:               "d95c7d0eff8c49169c64a2225696423f",
+		DurationMillSecond: 120,
+		UploadUnixTime:     1546827856,
+		CallUnixTime:       1546827000,
+		StaffID:            "12345",
+		StaffName:          "tester",
+		Ext:                "66810",
+		Department:         "backend",
+		CustomerID:         "123",
+		CustomerName:       "david",
+		CustomerPhone:      "123456789",
+		EnterpriseID:       "csbot",
+		UploadUser:         "Berta",
+		Type:               CallTypeWholeFile,
+		LeftChanRole:       CallChanStaff,
+		RightChanRole:      CallChanCustomer,
+		Status:             CallStatusWaiting,
 	}
 	expectExampleCall := exampleCall
 	expectExampleCall.ID = 3

@@ -57,33 +57,33 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 // Any pointer field is nullable in the schema.Call
 // Ext(分機號碼) is the receiver(staff) extension number.
 type Call struct {
-	ID               int64
-	UUID             string
-	FileName         *string
-	FilePath         *string
-	Description      *string
-	DurationSecond   int
-	UploadUnixTime   int64
-	CallUnixTime     int64
-	StaffID          string
-	StaffName        string
-	Ext              string
-	Department       string
-	CustomerID       string
-	CustomerName     string
-	CustomerPhone    string
-	EnterpriseID     string
-	UploadUser       string
-	LeftSilenceTime  *float64
-	RightSilenceTime *float64
-	LeftSpeed        *float64
-	RightSpeed       *float64
-	Type             int8
-	LeftChanRole     int8
-	RightChanRole    int8
-	Status           int8
-	DemoFilePath     *string
-	TaskID           int64
+	ID                 int64
+	UUID               string
+	FileName           *string
+	FilePath           *string
+	Description        *string
+	DurationMillSecond int
+	UploadUnixTime     int64
+	CallUnixTime       int64
+	StaffID            string
+	StaffName          string
+	Ext                string
+	Department         string
+	CustomerID         string
+	CustomerName       string
+	CustomerPhone      string
+	EnterpriseID       string
+	UploadUser         string
+	LeftSilenceTime    *float64
+	RightSilenceTime   *float64
+	LeftSpeed          *float64
+	RightSpeed         *float64
+	Type               int8
+	LeftChanRole       int8
+	RightChanRole      int8
+	Status             int8
+	DemoFilePath       *string
+	TaskID             int64
 }
 
 // the type of the call is created, different type indicate different incoming source of call.
@@ -153,7 +153,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			demoFp      sql.NullString
 		)
 		err := rows.Scan(&c.ID, &c.UUID, &fileName,
-			&filePath, &description, &c.DurationSecond,
+			&filePath, &description, &c.DurationMillSecond,
 			&c.UploadUnixTime, &c.CallUnixTime, &c.StaffID, &c.StaffName,
 			&c.Ext, &c.Department, &c.CustomerID,
 			&c.CustomerName, &c.CustomerPhone, &c.EnterpriseID,
@@ -226,7 +226,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	for i, c := range calls {
 
 		r, err := stmt.Exec(c.UUID, c.FileName, c.FilePath,
-			c.Description, c.DurationSecond, c.UploadUnixTime,
+			c.Description, c.DurationMillSecond, c.UploadUnixTime,
 			c.CallUnixTime, c.StaffID, c.StaffName,
 			c.Ext, c.Department, c.CustomerID,
 			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
