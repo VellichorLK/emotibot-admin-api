@@ -1,9 +1,10 @@
 package model
 
 import (
-	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
+
+	_ "emotibot.com/emotigo/pkg/logger"
 )
 
 type ConversationFlow struct {
@@ -26,6 +27,7 @@ type SimpleConversationFlow struct {
 
 type ConversationFlowFilter struct {
 	UUID       []string
+	ID         []uint64
 	Name       string
 	Enterprise string
 	IsDelete   int8
@@ -119,6 +121,14 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldUUID, idStr))
 
 		for _, uuid := range filter.UUID {
+			values = append(values, uuid)
+		}
+	}
+
+	if len(filter.ID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldID, idStr))
+		for _, uuid := range filter.ID {
 			values = append(values, uuid)
 		}
 	}
