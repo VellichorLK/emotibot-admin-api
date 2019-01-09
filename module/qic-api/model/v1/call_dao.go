@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -299,6 +300,20 @@ func (c *CallSQLDao) SetCall(delegatee SqlLike, call Call) error {
 
 }
 
+func (c *CallSQLDao) Count(delegatee model.SqlLike, query CallQuery) (int64, error) {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+	wheresql, data := query.whereSQL()
+	rawquery := "SELECT count(*) FROM " + tblCall + " " + wheresql
+	var count int64
+	err := delegatee.QueryRow(rawquery, data...).Scan(&count)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", rawquery)
+		return 0, fmt.Errorf("query failed, %v", err)
+	}
+	return count, nil
+}
 func createCallUpdateSQL(c Call) (string, []interface{}) {
 	parts := []string{}
 	updateCols := []string{
