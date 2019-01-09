@@ -32,72 +32,6 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, calls)
 }
 
-func newCallQuery(r *http.Request) (*CallQueryRequest, error) {
-	var err error
-	query := CallQueryRequest{}
-	values := r.URL.Query()
-	order := values.Get("order")
-	if order == "" {
-		return nil, fmt.Errorf("require order query string")
-	}
-	query.Order = order
-	limit := values.Get("limit")
-	if limit == "" {
-		return nil, fmt.Errorf("require limit query string")
-	}
-	query.Limit, err = strconv.Atoi(limit)
-	if err != nil {
-		return nil, fmt.Errorf("limit is not a valid int, %v", err)
-	}
-	page := values.Get("page")
-	if page == "" {
-		return nil, fmt.Errorf("require page query string")
-	}
-	query.Page, err = strconv.Atoi(page)
-	if err != nil {
-		return nil, fmt.Errorf("page is not a valid int, %v", err)
-	}
-	if content := values.Get("content"); content != "" {
-		query.Content = &content
-	}
-	if start := values.Get("start"); start != "" {
-		startTime, err := strconv.ParseInt(start, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("start is not a valid int, %v", err)
-		}
-		query.StartTime = &startTime
-	}
-	if end := values.Get("end"); end != "" {
-		endTime, err := strconv.ParseInt(end, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("end is not a valid int, %v", err)
-		}
-		query.EndTime = &endTime
-	}
-	if status := values.Get("status"); status != "" {
-		statusTyp, err := strconv.ParseInt(status, 10, 8)
-		statusInt8 := int8(statusTyp)
-		if err != nil || callRoleTypStr(statusInt8) == "default" {
-			return nil, fmt.Errorf("status is not a valid statu int.")
-		}
-		query.Status = &statusInt8
-	}
-	if phone := values.Get("phone"); phone != "" {
-		query.Phone = &phone
-	}
-	if isTx := values.Get("transaction"); isTx != "" {
-		transaction, err := strconv.Atoi(isTx)
-		if err != nil || (transaction != 1 && transaction != 2) {
-			return nil, fmt.Errorf("transaction is not a valid value")
-		}
-		query.Transcation = &transaction
-	}
-	if extension := values.Get("cs_phone"); extension != "" {
-		query.Extention = &extension
-	}
-	return &query, nil
-}
-
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		CallID int64 `json:"call_id"`
@@ -200,26 +134,6 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-var callTypeDict = map[string]int8{
-	"guest": model.CallChanCustomer,
-	"host":  model.CallChanStaff,
-}
-
-func callRoleTyp(role string) int8 {
-	value, found := callTypeDict[role]
-	if !found {
-		return model.CallChanDefault
-	}
-	return value
-}
-func callRoleTypStr(typ int8) string {
-	for key, val := range callTypeDict {
-		if val == typ {
-			return key
-		}
-	}
-	return "default"
-}
 func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
