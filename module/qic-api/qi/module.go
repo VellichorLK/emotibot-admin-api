@@ -15,8 +15,11 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
 	tagDao     TagDao
+	callDao    CallDao
+	taskDao    TaskDao
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
+	volume     http.Dir
 )
 
 func init() {
@@ -65,6 +68,20 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
 		},
 		OneTimeFunc: map[string]func(){
+			"init volume": func() {
+				volumePath, found := ModuleInfo.Environments["FILE_VOLUME"]
+				if !found {
+					logger.Error.Println("module env \"FILE_VOLUME\" does not exist, upload function will not work.")
+				}
+
+				volume = http.Dir(volumePath)
+				if f, err := volume.Open("."); err != nil {
+					logger.Error.Println(volumePath + " is not openable.")
+				} else {
+					f.Close()
+				}
+
+			},
 			"init db": func() {
 				envs := ModuleInfo.Environments
 
@@ -93,6 +110,12 @@ func init() {
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
+				mdao := &mockCallDao{
+					mockdata:     exampleCallContent,
+					mockTaskData: exampleTaskContent,
+				}
+				callDao = mdao
+				taskDao = mdao
 			},
 		},
 	}

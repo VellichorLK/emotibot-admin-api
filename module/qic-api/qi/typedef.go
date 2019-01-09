@@ -69,3 +69,13 @@ type tag struct {
 	PosSentences []string `json:"pos_sentences,omitempty"`
 	NegSentences []string `json:"neg_sentences,omitempty"`
 }
+
+type CallDao interface {
+	Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
+	NewCalls(delegatee model.SqlLike, calls []model.Call) ([]model.Call, error)
+	SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []uint64) ([]int64, error)
+}
+
+type TaskDao interface {
+	CallTask(delegatee model.SqlLike, call model.Call) (model.Task, error)
+}
