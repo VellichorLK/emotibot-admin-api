@@ -16,21 +16,21 @@ type CallResp struct {
 	FileName         string  `json:"file_name,omitempty"`
 	CallTime         int64   `json:"call_time,omitempty"`
 	CallComment      string  `json:"call_comment,omitempty"`
-	Transaction      int64   `json:"transaction,omitempty"`
+	Transaction      int64   `json:"deal,omitempty"`
 	Series           string  `json:"series,omitempty"`
-	HostID           string  `json:"host_id,omitempty"`
-	HostName         string  `json:"host_name,omitempty"`
+	HostID           string  `json:"staff_id,omitempty"`
+	HostName         string  `json:"staff_name,omitempty"`
 	Extension        string  `json:"extension,omitempty"`
 	Department       string  `json:"department,omitempty"`
-	GuestID          string  `json:"guest_id,omitempty"`
-	GuestName        string  `json:"guest_name,omitempty"`
-	GuestPhone       string  `json:"guest_phone,omitempty"`
+	GuestID          string  `json:"customer_id,omitempty"`
+	GuestName        string  `json:"customer_name,omitempty"`
+	GuestPhone       string  `json:"customer_phone,omitempty"`
 	QiGroup          []int64 `json:"qi_group,omitempty"`
 	LeftChannel      string  `json:"left_channel,omitempty"`
 	RightChannel     string  `json:"right_channel,omitempty"`
 	Status           int64   `json:"status,omitempty"`
 	UploadTime       int64   `json:"upload_time,omitempty"`
-	CallLength       float64 `json:"call_length,omitempty"`
+	CallLength       float64 `json:"duration,omitempty"`
 	LeftSilenceRate  float64 `json:"left_silence_rate,omitempty"`
 	RightSilenceRate float64 `json:"right_silence_rate,omitempty"`
 	// ViolationNumber  int64   `json:"violation_number,omitempty"`
