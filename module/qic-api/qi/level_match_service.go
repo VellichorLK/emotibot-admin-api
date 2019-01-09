@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/pkg/logger"
 
+	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 )
 
@@ -20,15 +21,23 @@ var (
 
 //MatchedData stores the index of input and the matched ID (tag id) and its relative data
 type MatchedData struct {
-	Index   uint64
+	Index   int
 	Matched map[uint64]*logicaccess.AttrResult
 	lock    sync.Mutex
 }
 
-//ContainRelation is relation between parent and child
-type ContainRelation struct {
-	parent uint64
-	child  []uint64
+//ASRSegment is asr sentence structure
+type ASRSegment struct {
+	//ID       uint64
+	Sentence string
+	Speaker  int
+}
+
+//SenGroupCriteria is SentenceGroup matching criteria
+type SenGroupCriteria struct {
+	ID         uint64
+	SentenceID []uint64
+	Role       int
 }
 
 //SetData sets the data for thread-safe
@@ -55,7 +64,7 @@ const (
 )
 
 func worker(ctx context.Context, target <-chan uint64,
-	sentences []string, wg *sync.WaitGroup, collected []*MatchedData) {
+	segments []string, wg *sync.WaitGroup, collected []*MatchedData) {
 	defer wg.Done()
 	numOfData := len(collected) + 1
 	for {
@@ -64,7 +73,7 @@ func worker(ctx context.Context, target <-chan uint64,
 			if !more {
 				return
 			}
-			pr, err := BatchPredict(id, Threshold, sentences)
+			pr, err := BatchPredict(id, Threshold, segments)
 			if err != nil {
 				logger.Error.Printf("batch predict failed. %s\n", err)
 				return
@@ -100,12 +109,12 @@ func worker(ctx context.Context, target <-chan uint64,
 
 }
 
-//TagMatch checks each sentence for each tags
+//TagMatch checks each segment for each tags
 //return value: slice of matchData gives the each sentences and its matched tag and matched data
-func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*MatchedData, error) {
+func TagMatch(tags []uint64, segments []string, timeout time.Duration) ([]*MatchedData, error) {
 
 	numOfTags := len(tags)
-	numOfCtx := len(sentences)
+	numOfCtx := len(segments)
 
 	if numOfTags == 0 || numOfCtx == 0 {
 		return nil, ErrNoArgument
@@ -126,7 +135,7 @@ func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*Matc
 	for i := 0; i < numOfCtx; i++ {
 		matches[i] = &MatchedData{}
 		matches[i].Matched = make(map[uint64]*logicaccess.AttrResult)
-		matches[i].Index = uint64(i + 1)
+		matches[i].Index = i + 1
 	}
 
 	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
@@ -143,7 +152,7 @@ func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*Matc
 
 	//call goroutine to do job concurrency
 	for i := 0; i < Concurrency; i++ {
-		go worker(ctx, target, sentences, &wg, matches)
+		go worker(ctx, target, segments, &wg, matches)
 	}
 
 	wg.Wait()
@@ -151,28 +160,30 @@ func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*Matc
 	return matches, ctx.Err()
 }
 
-//SentencesMatch gives the sentence id that is matched by which segment
+//SentencesMatch gives the sentence id that is matched by which segment index
 //c is the argument map[sentence id][]tag id.
-func SentencesMatch(m []*MatchedData, c map[uint64][]uint64) (map[uint64][]uint64, error) {
+//senMatched is matched tag id for each segment
+func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[uint64][]int, error) {
+	//func SentencesMatch(m []*MatchedData, c map[uint64][]uint64) (map[uint64][]int, error) {
 
-	resp := make(map[uint64][]uint64, len(c))
+	resp := make(map[uint64][]int, len(c))
 
 	//for loop the criteria for each tag in each sentence
 	for sID, tagIDs := range c {
 		//compare the given matched tags in each segement to the criteria
-		for _, d := range m {
-			if d != nil && len(d.Matched) > 0 {
+		for idx, d := range senMatched {
+			if len(d) > 0 {
 				numOfChild := len(tagIDs)
 				var count int
 				//check whether this segment match all tags
 				for _, tagID := range tagIDs {
-					if _, ok := d.Matched[tagID]; !ok {
+					if _, ok := d[tagID]; !ok {
 						break
 					}
 					count++
 				}
 				if count == numOfChild {
-					resp[sID] = append(resp[sID], d.Index)
+					resp[sID] = append(resp[sID], idx+1)
 				}
 			}
 		}
@@ -180,10 +191,73 @@ func SentencesMatch(m []*MatchedData, c map[uint64][]uint64) (map[uint64][]uint6
 	return resp, nil
 }
 
+//SentenceGroupMatch matches the given matched sentence to sentence group
+//matchedSen is matched sentence id and the matched segment id
+//c is the sentenceGroup criteria used to judge whether the sentence group is meet
+//semgnets is the segments data
+//return value: the sentence group id which is meet by which segment index
+func SentenceGroupMatch(matchedSen map[uint64][]int,
+	c []SenGroupCriteria, segments []*ASRSegment) (map[uint64][]int, error) {
+	resp := make(map[uint64][]int, len(c))
+
+	numOfSegs := len(segments)
+	//for loop for each sentence group critera
+	for _, criteria := range c {
+
+		var checkNext bool
+		//for loop for each sentence in sentence group
+		for _, sID := range criteria.SentenceID {
+			if checkNext {
+				break
+			}
+			//check whether one of the segment is meet the sentence
+			if segIdxs, ok := matchedSen[sID]; ok {
+
+				//record which segment meet the sentence
+				for _, segIdx := range segIdxs {
+					if segIdx-1 < numOfSegs && segments[segIdx-1] != nil {
+
+						s := segments[segIdx-1]
+
+						//FIX ME
+						//check the role
+						if s.Speaker == criteria.Role {
+							resp[criteria.ID] = append(resp[criteria.ID], segIdxs...)
+							checkNext = true
+							break
+						}
+					}
+
+				}
+			}
+		}
+	}
+
+	return resp, nil
+}
+
+func extractTagMatchedData(tagMatchDat []*MatchedData) []map[uint64]bool {
+
+	numOfData := len(tagMatchDat)
+	resp := make([]map[uint64]bool, numOfData, numOfData)
+	for i := 0; i < numOfData; i++ {
+		resp[i] = make(map[uint64]bool)
+		d := tagMatchDat[i]
+		if d != nil {
+			for tagID := range d.Matched {
+				resp[i][tagID] = true
+			}
+		}
+	}
+
+	return resp
+
+}
+
 //RuleGroupCriteria gives the result of the criteria used to the group
 //the parameter timeout is used to wait for cu module result
-func RuleGroupCriteria(ruleGroup uint64, sentences []string, timeout time.Duration) ([]string, error) {
-	numOfLines := len(sentences)
+func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Duration) ([]string, error) {
+	numOfLines := len(segments)
 	if numOfLines == 0 {
 		return nil, ErrNoArgument
 	}
@@ -194,6 +268,7 @@ func RuleGroupCriteria(ruleGroup uint64, sentences []string, timeout time.Durati
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
 	}
+
 	//check the return level
 	tagLev := int(LevTag)
 	if len(levels) != tagLev {
@@ -212,8 +287,16 @@ func RuleGroupCriteria(ruleGroup uint64, sentences []string, timeout time.Durati
 		tagIDs = append(tagIDs, tIDs...)
 	}
 
+	//extract the words
+	lines := make([]string, 0, numOfLines)
+	for _, v := range segments {
+		if v != nil {
+			lines = append(lines, v.Sentence)
+		}
+	}
+
 	//do the checking, tag match
-	tagMatchDat, err := TagMatch(tagIDs, sentences, timeout)
+	tagMatchDat, err := TagMatch(tagIDs, lines, timeout)
 	if err != nil {
 		return nil, err
 	}
@@ -222,11 +305,56 @@ func RuleGroupCriteria(ruleGroup uint64, sentences []string, timeout time.Durati
 		return nil, err
 	}
 
+	segMatchedTag := extractTagMatchedData(tagMatchDat)
 	//do the checking, sentence match
-	senMatchDat, err := SentencesMatch(tagMatchDat, levels[sentenceLev])
+	senMatchDat, err := SentencesMatch(segMatchedTag, levels[sentenceLev])
 	if err != nil {
+		logger.Warn.Printf("doing sentence  match failed.%s\n", err)
 		return nil, err
 	}
-	_ = senMatchDat
+
+	//extract the sentence group id
+	ConContainSenGrp := levels[LevConversation]
+	senGrpIDs := make([]uint64, 0)
+	for _, v := range ConContainSenGrp {
+		senGrpIDs = append(senGrpIDs, v...)
+	}
+
+	//get the sentence group information for condition usage
+	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs}
+	_, senGrp, err := GetSentenceGroupsBy(sgFilter)
+
+	if err != nil {
+		logger.Error.Printf("get sentence group info failed.%s\n", err)
+		return nil, err
+	}
+	numOfSenGrp := len(senGrp)
+	if numOfSenGrp == 0 {
+		logger.Warn.Printf("No sentence group for %d rule group\n", ruleGroup)
+		return nil, nil
+	}
+
+	//transform the sentence group information to the sentence group critera struct
+	senGrpContainSen := levels[LevSenGroup]
+	senGrpCriteria := make([]SenGroupCriteria, 0, numOfSenGrp)
+	for i := 0; i < numOfSenGrp; i++ {
+		var c SenGroupCriteria
+		c.ID = uint64(senGrp[i].ID)
+		if segIDs, ok := senGrpContainSen[c.ID]; ok {
+			c.Role = senGrp[i].Role
+			c.SentenceID = segIDs
+			senGrpCriteria = append(senGrpCriteria, c)
+		} else {
+			logger.Warn.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", c.ID)
+		}
+	}
+
+	//do the check, sentence group
+	matchSgID, err := SentenceGroupMatch(senMatchDat, senGrpCriteria, segments)
+	if err != nil {
+		logger.Warn.Printf("doing sentence group match failed.%s\n", err)
+		return nil, err
+	}
+	_ = matchSgID
 	return nil, nil
 }

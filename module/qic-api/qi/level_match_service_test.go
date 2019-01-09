@@ -20,7 +20,7 @@ var mockCtxSentences = []string{
 	"妇女的权益在女童一下漠视我们的对话会全程录音可以吗",
 	"好因为你是花旗银行的贵宾卡右脑资料部分有银行提高"}
 
-var mockMatchIdx = []uint64{1, 7}
+var mockMatchIdx = []int{1, 7}
 var mockMatchTagID = []uint64{1, 6}
 var mockAllTagID = []uint64{1, 3, 5, 6, 9}
 
@@ -133,6 +133,8 @@ func TestSentenceMatch(t *testing.T) {
 		t.Fatalf("Expecting no error, but get %s\n", err)
 	}
 
+	segMatchedTag := extractTagMatchedData(matched)
+
 	senCriteria := make(map[uint64][]uint64)
 	senCriteria[1] = append(senCriteria[1], 1)
 	senCriteria[1] = append(senCriteria[1], 6)
@@ -140,7 +142,7 @@ func TestSentenceMatch(t *testing.T) {
 	senCriteria[9] = append(senCriteria[9], 2)
 	senCriteria[9] = append(senCriteria[9], 7)
 
-	senMatch, err := SentencesMatch(matched, senCriteria)
+	senMatch, err := SentencesMatch(segMatchedTag, senCriteria)
 	if err != nil {
 		t.Fatalf("Expecting no error, but get %s\n", err)
 	}
@@ -163,7 +165,7 @@ func TestSentenceMatch(t *testing.T) {
 	senCriteria[10] = append(senCriteria[10], 6)
 	senCriteria[10] = append(senCriteria[10], 6)
 
-	senMatch, err = SentencesMatch(matched, senCriteria)
+	senMatch, err = SentencesMatch(segMatchedTag, senCriteria)
 	if err != nil {
 		t.Fatalf("Expecting no error, but get %s\n", err)
 	}
@@ -200,4 +202,41 @@ func TestSentenceMatch(t *testing.T) {
 	} else {
 		t.Errorf("Expecting %d,%d sentence crieria meet, but get none\n", 1, 7)
 	}
+}
+
+func TestSentenceGroupMatch(t *testing.T) {
+
+	//	matchedSenID := []uint64{1, 5, 11}
+	//matchedSen := make(map[uint64][]int)
+
+	numOfSegs := 20
+	segments := make([]*ASRSegment, numOfSegs, numOfSegs)
+	for i := 0; i < numOfSegs; i++ {
+		segments[i] = new(ASRSegment)
+	}
+
+	matchedSenIDAndSegmentIdx := map[uint64][]int{1: {3, 5, 6}, 5: {3, 7}, 9: {11, 8}}
+	criteria := []SenGroupCriteria{{ID: 11, SentenceID: []uint64{5}},
+		{ID: 21, SentenceID: []uint64{9, 5}, Role: 1},
+		{ID: 31, SentenceID: []uint64{138, 139}},
+		{ID: 41, SentenceID: []uint64{1, 9}, Role: 0}}
+
+	result, err := SentenceGroupMatch(matchedSenIDAndSegmentIdx, criteria, segments)
+	if err != nil {
+		t.Fatalf("Expecting no error, but get %s\n", err)
+	}
+
+	//fmt.Printf("%v\n", result)
+	if len(result) != 2 {
+		t.Fatalf("Expecting %d sentence group is meet, but get %d\n", 2, len(result))
+	}
+	for sgID := range result {
+		switch sgID {
+		case 11:
+		case 41:
+		default:
+			t.Fatalf("Expecting %d,%d sentence group is meet, but get %d\n", 11, 41, sgID)
+		}
+	}
+
 }
