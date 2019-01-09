@@ -44,6 +44,10 @@ func (m *mockCallDao) CallTask(delegatee model.SqlLike, call model.Call) (model.
 	return model.Task{}, fmt.Errorf("no such task")
 }
 
+func (m *mockCallDao) SetCall(delegatee model.SqlLike, call model.Call) error {
+	return nil
+}
+
 func (m *mockCallDao) readMockTaskData() []model.Task {
 	reader := csv.NewReader(bytes.NewReader(m.mockTaskData))
 	rows, err := reader.ReadAll()

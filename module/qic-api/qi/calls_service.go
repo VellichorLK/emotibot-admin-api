@@ -46,6 +46,7 @@ type CallResp struct {
 
 //CallQueryRequest is the input struct of func Calls
 type CallQueryRequest struct {
+	ID          []int64
 	Order       string
 	Limit       int
 	Page        int
@@ -58,14 +59,31 @@ type CallQueryRequest struct {
 	Extention   *string
 }
 
-//Calls query the call and related information from different dao. and assemble it as a CallResp slice.
-func Calls(request CallQueryRequest) ([]CallResp, error) {
+func HasCall(id int64) (bool, error) {
+	calls, err := callDao.Calls(nil, model.CallQuery{
+		ID: []int64{id},
+	})
+	if err != nil {
+		return false, fmt.Errorf("dao query failed, %v", err)
+	}
+	if len(calls) > 0 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error) {
+	return callDao.Calls(delegatee, query)
+}
+
+//CallResps query the call and related information from different dao. and assemble it as a CallResp slice.
+func CallResps(request CallQueryRequest) ([]CallResp, error) {
 
 	query := model.CallQuery{}
 	if request.Status != nil {
 		query.Status = []int8{*request.Status}
 	}
-	calls, err := callDao.Calls(nil, query)
+	calls, err := Calls(nil, query)
 	if err != nil {
 		return nil, fmt.Errorf("call dao query failed, %v", err)
 	}
@@ -127,6 +145,10 @@ func NewCall(c model.Call) (int64, error) {
 	}
 
 	return calls[0].ID, nil
+}
+
+func UpdateCall(call model.Call) error {
+	return callDao.SetCall(nil, call)
 }
 
 func newCallQuery(r *http.Request) (*CallQueryRequest, error) {

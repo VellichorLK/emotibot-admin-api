@@ -6,7 +6,12 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"github.com/gorilla/mux"
 
@@ -18,16 +23,24 @@ import (
 )
 
 func CallsHandler(w http.ResponseWriter, r *http.Request) {
+	type response struct {
+		general.Paging
+		Data []CallResp
+	}
 	query, err := newCallQuery(r)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
 	}
-	calls, err := Calls(*query)
+	calls, err := CallResps(*query)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get call failed, %v", err))
 		return
 	}
+	// var resp = response{
+	// 	Total:
+	// }
+
 	util.WriteJSON(w, calls)
 }
 
@@ -88,35 +101,56 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int.", callID))
 	}
-	_ = id
-	// Calls(model.CallQuery{
-	// 	ID: []int64{id},
-	// })
-	// err := r.ParseForm()
-	// if err != nil {
-	// 	util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse form failed, %v", err))
-	// 	return
-	// }
-	// f, header, err := r.FormFile("upfile")
-	// if err != nil {
-	// 	util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("retrive upfile failed, %v", err))
-	// 	return
-	// }
-	// defer f.Close()
-	// //use 500 mb for limit now
-	// if header.Size > (500 * 1024 * 1024) {
-	// 	util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("upfile is over maximum size, %v", err))
-	// 	return
-	// }
-	// if ext := path.Ext(header.Filename); ext != "wav" {
-	// 	util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("extension '%s'is not valid, only wav is supported."), ext)
-	// 	return
-	// }
-	// if volume == "" {
-	// 	util.ReturnError(w, 999, fmt.Sprintf("volume is not exist, please contact ops and check init log for volume init error."))
-	// }
-	// filename := fmt.Sprintf("%s.wav", call_id)
-	// volume.Open()
+	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}})
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("failed to query call db, %v", err))
+		return
+	}
+	if len(calls) == 0 {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
+		return
+	}
+	err = r.ParseForm()
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request form failed, %v", err))
+		return
+	}
+	f, header, err := r.FormFile("upfile")
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("retrive upfile failed, %v", err))
+		return
+	}
+	defer f.Close()
+	//use 500 mb for limit now
+	if header.Size > (500 * 1024 * 1024) {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("upfile is over maximum size, %v", err))
+		return
+	}
+	if ext := path.Ext(header.Filename); ext != "wav" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("extension '%s' is not valid, only wav is supported.", ext))
+		return
+	}
+	if volume == "" {
+		util.ReturnError(w, 999, fmt.Sprintf("volume is not exist, please contact ops and check init log for volume init error."))
+		return
+	}
+	filename := fmt.Sprint(callID, ".wav")
+	fp := fmt.Sprint(volume, "/", filename)
+	outFile, err := os.Open(filename)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file failed, %v", err))
+		return
+	}
+	_, err = io.Copy(outFile, f)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("write file failed, %v", err))
+		return
+	}
+	c := calls[0]
+	c.FileName = &filename
+	c.FilePath = &fp
+	err = UpdateCall(c)
+
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request) {

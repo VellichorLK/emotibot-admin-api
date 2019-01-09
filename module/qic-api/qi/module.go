@@ -3,6 +3,8 @@ package qi
 import (
 	"database/sql"
 	"net/http"
+	"os"
+	"path"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -19,7 +21,7 @@ var (
 	taskDao    TaskDao
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
-	volume     http.Dir
+	volume     string
 )
 
 func init() {
@@ -69,16 +71,19 @@ func init() {
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
-				volumePath, found := ModuleInfo.Environments["FILE_VOLUME"]
-				if !found {
-					logger.Error.Println("module env \"FILE_VOLUME\" does not exist, upload function will not work.")
+				volume, _ := ModuleInfo.Environments["FILE_VOLUME"]
+				if volume == "" {
+					logger.Error.Println("module env \"FILE_VOLUME\" does not exist or empty, upload function will not work.")
+					return
 				}
-
-				volume = http.Dir(volumePath)
-				if f, err := volume.Open("."); err != nil {
-					logger.Error.Println(volumePath + " is not openable.")
-				} else {
-					f.Close()
+				//path.Clean will treat empty as current dir, we dont want this result
+				volume = path.Clean(volume)
+				if info, err := os.Stat(volume); os.IsNotExist(err) {
+					logger.Error.Println(volume + " is not exist.")
+					volume = ""
+				} else if !info.IsDir() {
+					logger.Error.Println(volume + " is not a dir.")
+					volume = ""
 				}
 
 			},

@@ -74,6 +74,7 @@ type CallDao interface {
 	Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
 	NewCalls(delegatee model.SqlLike, calls []model.Call) ([]model.Call, error)
 	SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []uint64) ([]int64, error)
+	SetCall(delegatee model.SqlLike, call model.Call) error
 }
 
 type TaskDao interface {

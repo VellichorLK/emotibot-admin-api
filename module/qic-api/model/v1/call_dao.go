@@ -283,3 +283,52 @@ func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegro
 
 	return idGroup, nil
 }
+
+func (c *CallSQLDao) SetCall(delegatee SqlLike, call Call) error {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+	updatepart, data := createCallUpdateSQL(call)
+	rawquery := "UPDATE `" + tblCall + "` SET " + updatepart + " WHERE `" + fldCallID + "` = ?"
+	data = append(data, call.ID)
+	_, err := delegatee.Exec(rawquery, data...)
+	if err != nil {
+		return fmt.Errorf("update execute failed, %v", err)
+	}
+	return nil
+
+}
+
+func createCallUpdateSQL(c Call) (string, []interface{}) {
+	parts := []string{}
+	updateCols := []string{
+		fldCallUUID, fldCallDuration, fldCallUploadTime,
+		fldCallFileName, fldCallFilePath, fldCallDescription,
+		fldCallCallTime, fldCallStaffID, fldCallStaffName,
+		fldCallExt, fldCallDepartment, fldCallCustomerID,
+		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
+		fldCallUploadedUser, fldCallType, fldCallLeftChan,
+		fldCallRightChan, fldCallStatus, fldCallDemoFilePath,
+		fldCallTaskID, fldCallLeftSilenceTime, fldCallRightSilenceTime,
+		fldCallLeftSpeed, fldCallRightSpeed,
+	}
+	data := []interface{}{
+		c.UUID, c.DurationMillSecond, c.UploadUnixTime,
+		c.FileName, c.FilePath, c.Description,
+		c.CallUnixTime, c.StaffID, c.StaffName,
+		c.Ext, c.Department, c.CustomerID,
+		c.CustomerName, c.CustomerPhone, c.EnterpriseID,
+		c.EnterpriseID, c.UploadUser, c.Type,
+		c.TaskID, c.LeftSilenceTime, c.RightSilenceTime,
+		c.LeftSpeed, c.RightSpeed,
+	}
+
+	for _, colName := range updateCols {
+		p := fmt.Sprintf("`%s` = ?", colName)
+		parts = append(parts, p)
+	}
+
+	rawsql := strings.Join(parts, " , ")
+	return rawsql, data
+
+}
