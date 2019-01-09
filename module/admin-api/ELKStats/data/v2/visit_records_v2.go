@@ -74,6 +74,7 @@ type VisitRecordsDataBase struct {
 	Emotion     string  `json:"emotion"`
 	Intent      string  `json:"intent"`
 	Module      string  `json:"module"`
+	Source      string  `json:"source"`
 }
 
 type VisitRecordsRawData struct {
@@ -83,7 +84,6 @@ type VisitRecordsRawData struct {
 	UniqueID       string                 `json:"unique_id"`
 	Answer         []data.Answer          `json:"answer"`
 	CustomInfo     map[string]interface{} `json:"custom_info"`
-	Source         string                 `json:"source"`
 	Note           string                 `json:"note"`
 	IsMarked       bool                   `json:"isMarked"`
 	IsIgnored      bool                   `json:"isIgnored"`
@@ -123,7 +123,6 @@ type VisitRecordsQueryResult struct {
 
 type VisitRecordsExportData struct {
 	VisitRecordsCommon
-	Source       string  `json:"source"`
 	EmotionScore float64 `json:"emotion_score"`
 	IntentScore  float64 `json:"intent_score"`
 	CustomInfo   string  `json:"custom_info"`
@@ -173,6 +172,10 @@ var VisitRecordsTableHeader = []data.TableHeaderItem{
 	data.TableHeaderItem{
 		Text: "出话模组",
 		ID:   common.VisitRecordsMetricModule,
+	},
+	data.TableHeaderItem{
+		Text: "出话来源",
+		ID:   common.VisitRecordsMetricSource,
 	},
 	data.TableHeaderItem{
 		Text: "标准问题分类",
