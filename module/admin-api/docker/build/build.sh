@@ -19,4 +19,4 @@ DOCKER_FILE="${DIR}/Dockerfile.build"
 valid_config "${DIR}/docker-compose.yml"
 
 # Build docker image
-docker-compose -f ${DIR}/docker-compose.yml build --build-arg PROJECT=${MODULE}
+docker-compose -f ${DIR}/docker-compose.yml build --build-arg PROJECT=${MODULE} --build-arg VERSION=${TAG}

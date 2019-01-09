@@ -45,6 +45,12 @@ var constant = map[string]interface{}{
 	"API_PREFIX": "api",
 }
 
+var (
+	VERSION    string
+	BUILD_TIME string
+	GO_VERSION string
+)
+
 var initErrors = []error{}
 
 var modules = []*util.ModuleInfo{
@@ -333,9 +339,17 @@ func setRoute() *mux.Router {
 		}
 	}
 	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
-	router.HandleFunc("/_health_check", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(fmt.Sprintf("/%s/_health_check", constant["API_PREFIX"]), func(w http.ResponseWriter, r *http.Request) {
 		// A very simple health check.
 		ret := healthCheck()
+		util.WriteJSON(w, ret)
+	})
+	router.HandleFunc(fmt.Sprintf("/%s/_info", constant["API_PREFIX"]), func(w http.ResponseWriter, r *http.Request) {
+		ret := map[string]string{
+			"VERSION":    VERSION,
+			"BUILD_TIME": BUILD_TIME,
+			"GO_VERSION": GO_VERSION,
+		}
 		util.WriteJSON(w, ret)
 	})
 	return router

@@ -3,6 +3,8 @@ package Robot
 import (
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -64,6 +66,9 @@ func init() {
 				Version:     2,
 				IgnoreAppID: true,
 			}),
+
+			util.NewEntryPoint("GET", "configs", []string{"view"}, config.HandleGetRobotConfigs),
+			util.NewEntryPoint("PUT", "config", []string{"edit"}, config.HandleSetRobotConfig),
 		},
 		OneTimeFunc: map[string]func(){
 			"SyncRobotProfileToSolr": SyncOnce,
