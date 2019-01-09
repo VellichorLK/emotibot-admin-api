@@ -9,6 +9,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+//CallResp is the UI struct of the call.
 type CallResp struct {
 	FileName         string  `json:"file_name,omitempty"`
 	CallTime         int64   `json:"call_time,omitempty"`
@@ -43,6 +44,7 @@ type CallResp struct {
 	// RightAngry       float64 `json:"right_angry,omitempty"`
 }
 
+//CallQueryRequest is the input struct of func Calls
 type CallQueryRequest struct {
 	Order       string
 	Limit       int
@@ -56,6 +58,7 @@ type CallQueryRequest struct {
 	Extention   *string
 }
 
+//Calls query the call and related information from different dao. and assemble it as a CallResp slice.
 func Calls(request CallQueryRequest) ([]CallResp, error) {
 
 	query := model.CallQuery{}
@@ -110,6 +113,7 @@ func Calls(request CallQueryRequest) ([]CallResp, error) {
 	return result, nil
 }
 
+//NewCall create a call based on the input.
 func NewCall(c model.Call) (int64, error) {
 	_, err := uuid.FromString(c.UUID)
 	if err != nil {
