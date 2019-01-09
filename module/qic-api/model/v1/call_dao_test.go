@@ -89,6 +89,7 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 	}
 	testset := getCallsSeed(t)
 	t.Logf("testset: %+v", testset)
+	var exampleTimeStart int64 = 1546598521
 	testTable := map[string]struct {
 		Input  CallQuery
 		Output []Call
@@ -109,6 +110,18 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 		"query status": {
 			CallQuery{Status: []int8{CallStatusDone}},
 			testset[1:],
+		},
+		"query call time start": {
+			CallQuery{CallTimeStart: &exampleTimeStart},
+			testset,
+		},
+		"query call time end": {
+			CallQuery{CallTimeEnd: &exampleTimeStart},
+			testset[:1],
+		},
+		"query staff id": {
+			CallQuery{StaffID: []string{"1"}},
+			testset,
 		},
 	}
 	for name, tc := range testTable {

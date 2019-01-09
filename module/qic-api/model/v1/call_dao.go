@@ -15,9 +15,12 @@ type CallSQLDao struct {
 
 //CallQuery is the query to get call table
 type CallQuery struct {
-	ID     []int64
-	UUID   []string
-	Status []int8
+	ID            []int64
+	UUID          []string
+	Status        []int8
+	CallTimeStart *int64
+	CallTimeEnd   *int64
+	StaffID       []string
 }
 
 func (c *CallQuery) whereSQL() (string, []interface{}) {
@@ -44,6 +47,23 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 		cond := fmt.Sprintf("%s IN (? %s)", fldCallStatus, strings.Repeat(",? ", len(c.Status)-1))
 		conditions = append(conditions, cond)
 		for _, s := range c.Status {
+			bindData = append(bindData, s)
+		}
+	}
+	if c.CallTimeStart != nil {
+		cond := fmt.Sprintf("`%s` >= ?", fldCallCallTime)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.CallTimeStart)
+	}
+	if c.CallTimeEnd != nil {
+		cond := fmt.Sprintf("`%s` <= ?", fldCallCallTime)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.CallTimeEnd)
+	}
+	if len(c.StaffID) > 0 {
+		cond := fmt.Sprintf("%s IN (? %s)", fldCallStaffID, strings.Repeat(",? ", len(c.StaffID)-1))
+		conditions = append(conditions, cond)
+		for _, s := range c.StaffID {
 			bindData = append(bindData, s)
 		}
 	}
