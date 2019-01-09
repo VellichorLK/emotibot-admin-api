@@ -60,14 +60,14 @@ type RangeConstraint struct {
 
 //TrainTagData is the structure of tag usage
 type TrainTagData struct {
-	Tag         string   `json:"tag"`
+	Tag         uint64   `json:"tag,string"`
 	PosSentence []string `json:"pos_sentences"`
 	NegSentence []string `json:"neg_sentences"`
 }
 
 //TrainKeywordData is the structure keyword
 type TrainKeywordData struct {
-	Tag   string   `json:"tag"`
+	Tag   uint64   `json:"tag,string"`
 	Words []string `json:"words"`
 }
 
@@ -130,9 +130,20 @@ type Prediction struct {
 type AttrResult struct {
 	PredictData
 	Score     int    `json:"score"`
-	Tag       string `json:"tag"`
+	Tag       uint64 `json:"tag,string"`
 	Match     string `json:"match,omitempty"`
 	MatchText string `json:"match_text,omitempty"`
+}
+
+//PredictClient used to communicate with cu module
+type PredictClient interface {
+	Train(d *TrainUnit) error
+	Status(d *TrainAPPID) (string, error)
+	PredictAndUnMarshal(d *PredictRequest) (*PredictResult, error)
+	BatchPredictAndUnMarshal(d *BatchPredictRequest) (*PredictResult, error)
+	SessionCreate(d *SessionRequest) error
+	SessionDelete(d *SessionRequest) error
+	UnloadModel(d *TrainAPPID) error
 }
 
 //Client is the struct to implement the communicatoin with cu module
