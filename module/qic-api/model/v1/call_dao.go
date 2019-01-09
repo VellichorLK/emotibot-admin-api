@@ -13,6 +13,12 @@ type CallSQLDao struct {
 	db *sql.DB
 }
 
+func NewCallSQLDao(db *sql.DB) *CallSQLDao {
+	return &CallSQLDao{
+		db: db,
+	}
+}
+
 //CallQuery is the query to get call table
 type CallQuery struct {
 	ID            []int64
@@ -21,6 +27,12 @@ type CallQuery struct {
 	CallTimeStart *int64
 	CallTimeEnd   *int64
 	StaffID       []string
+	EnterpriseID  *string
+	CustomerPhone *string
+	DealStatus    *int8
+	Ext           *string
+	Department    *string
+	Paging        *Pagination
 }
 
 func (c *CallQuery) whereSQL() (string, []interface{}) {
@@ -66,6 +78,33 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 		for _, s := range c.StaffID {
 			bindData = append(bindData, s)
 		}
+	}
+	if c.EnterpriseID != nil {
+		cond := fmt.Sprintf("`%s`=?", fldCallEnterprise)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.EnterpriseID)
+	}
+	if c.CustomerPhone != nil {
+		cond := fmt.Sprintf("`%s`=?", fldCallCustomerPhone)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.CustomerPhone)
+	}
+	// deal status need to query the task, we will implement this later
+	// if c.DealStatus != nil {
+	// 	cond := fmt.Sprintf("`%s`=?", f)
+	// 	conditions = append(conditions, cond)
+	// 	bindData = append(bindData, c.CustomerPhone)
+	// }
+
+	if c.Ext != nil {
+		cond := fmt.Sprintf("`%s`=?", fldCallExt)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.Ext)
+	}
+	if c.Department != nil {
+		cond := fmt.Sprintf("`%s`=?", fldCallDepartment)
+		conditions = append(conditions, cond)
+		bindData = append(bindData, c.Department)
 	}
 	if len(conditions) > 0 {
 		rawSQL = " WHERE " + strings.Join(conditions, " AND ")
@@ -136,6 +175,21 @@ const (
 	CallStatusFailed = 9
 )
 
+func ValidCallStatus(status int8) bool {
+	switch status {
+	case CallStatusWaiting:
+		fallthrough
+	case CallStatusRunning:
+		fallthrough
+	case CallStatusDone:
+		fallthrough
+	case CallStatusFailed:
+		return true
+	default:
+		return false
+	}
+}
+
 // Calls get the query result of call resource.
 func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 	if delegatee == nil {
@@ -152,7 +206,11 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallTaskID, fldCallDemoFilePath,
 	}
 	wheresql, data := query.whereSQL()
-	rawquery := "SELECT `" + strings.Join(selectCols, "`,`") + "` FROM `" + tblCall + "` " + wheresql + " ORDER BY `" + fldCallID + "`"
+	limitsql := ""
+	if query.Paging != nil {
+		query.Paging.offsetSQL()
+	}
+	rawquery := "SELECT `" + strings.Join(selectCols, "`,`") + "` FROM `" + tblCall + "` " + wheresql + " " + limitsql + " ORDER BY `" + fldCallID + "` DESC"
 	rows, err := delegatee.Query(rawquery, data...)
 	if err != nil {
 		logger.Error.Println("error raw sql", rawquery)

@@ -12,6 +12,12 @@ type TaskDao struct {
 	db *sql.DB
 }
 
+func NewTaskDao(db *sql.DB) *TaskDao {
+	return &TaskDao{
+		db: db,
+	}
+}
+
 type Task struct {
 	ID     int64
 	Status int8
