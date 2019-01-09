@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"emotibot.com/emotigo/module/qic-api/util/general"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	uuid "github.com/satori/go.uuid"
 )
@@ -77,12 +79,15 @@ func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
 }
 
 //CallResps query the call and related information from different dao. and assemble it as a CallResp slice.
-func CallResps(request CallQueryRequest) ([]CallResp, error) {
+func CallResps(request CallQueryRequest) (*CallsResponse, error) {
 
 	query := model.CallQuery{}
+	//TODO: QUERY NOT IMPELEMENTED YET
 	if request.Status != nil {
 		query.Status = []int8{*request.Status}
 	}
+
+	total, err := callDao.Count(nil, query)
 	calls, err := Calls(nil, query)
 	if err != nil {
 		return nil, fmt.Errorf("call dao query failed, %v", err)
@@ -128,7 +133,15 @@ func CallResps(request CallQueryRequest) ([]CallResp, error) {
 		}
 		result = append(result, r)
 	}
-	return result, nil
+
+	return &CallsResponse{
+		Paging: general.Paging{
+			Total: total,
+			Limit: request.Limit,
+			Page:  request.Page,
+		},
+		Data: result,
+	}, nil
 }
 
 //NewCall create a call based on the input.

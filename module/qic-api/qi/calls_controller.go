@@ -11,7 +11,6 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"github.com/gorilla/mux"
 
@@ -23,25 +22,19 @@ import (
 )
 
 func CallsHandler(w http.ResponseWriter, r *http.Request) {
-	type response struct {
-		general.Paging
-		Data []CallResp
-	}
+
 	query, err := newCallQuery(r)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
 	}
-	calls, err := CallResps(*query)
+	resp, err := CallResps(*query)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get call failed, %v", err))
 		return
 	}
-	// var resp = response{
-	// 	Total:
-	// }
 
-	util.WriteJSON(w, calls)
+	util.WriteJSON(w, resp)
 }
 
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
