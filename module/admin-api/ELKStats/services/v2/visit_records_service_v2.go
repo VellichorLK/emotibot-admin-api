@@ -38,6 +38,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricEmotion,
 		dataCommon.VisitRecordsMetricIntent,
 		dataCommon.VisitRecordsMetricModule,
+		dataCommon.VisitRecordsMetricSource,
 		"unique_id",
 		"isMarked",
 		"isIgnored",
@@ -224,6 +225,7 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 			Emotion:     rawRecord.Emotion,
 			Intent:      rawRecord.Intent,
 			Module:      rawRecord.Module,
+			Source:      rawRecord.Source,
 		},
 		Answer:         strings.Join(answers, ", "),
 		FaqCategoryID:  rawRecord.FaqCategoryID,
@@ -307,7 +309,6 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 
 	recordPtr = &dataV2.VisitRecordsExportData{
 		VisitRecordsCommon: *recordCommon,
-		Source:             rawRecord.Source,
 		EmotionScore:       rawRecord.EmotionScore,
 		IntentScore:        rawRecord.IntentScore,
 		CustomInfo:         customInfo,
