@@ -40,6 +40,12 @@ type SenGroupCriteria struct {
 	Role       int
 }
 
+//ConFlowCriteria is conversation flow matching critera
+type ConFlowCriteria struct {
+	ID         uint64
+	expression string
+}
+
 //SetData sets the data for thread-safe
 func (m *MatchedData) SetData(d *logicaccess.AttrResult) {
 
@@ -254,6 +260,18 @@ func extractTagMatchedData(tagMatchDat []*MatchedData) []map[uint64]bool {
 
 }
 
+//ConversationFlowMatch gives the id of conversationFlow that meet the critera
+func ConversationFlowMatch(matchSgID map[uint64][]int,
+	criteria []*ConFlowCriteria, senGrpUUIDMapID map[string]uint64) (map[uint64]bool, error) {
+	for _, c := range criteria {
+		if c != nil {
+			//c.expression
+		}
+	}
+
+	return nil, nil
+}
+
 //RuleGroupCriteria gives the result of the criteria used to the group
 //the parameter timeout is used to wait for cu module result
 func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Duration) ([]string, error) {
@@ -316,8 +334,10 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	//extract the sentence group id
 	ConContainSenGrp := levels[LevConversation]
 	senGrpIDs := make([]uint64, 0)
-	for _, v := range ConContainSenGrp {
-		senGrpIDs = append(senGrpIDs, v...)
+	cfIDs := make([]uint64, 0, len(ConContainSenGrp))
+	for cfID, senGrpIDList := range ConContainSenGrp {
+		senGrpIDs = append(senGrpIDs, senGrpIDList...)
+		cfIDs = append(cfIDs, cfID)
 	}
 
 	//get the sentence group information for condition usage
@@ -337,6 +357,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	//transform the sentence group information to the sentence group critera struct
 	senGrpContainSen := levels[LevSenGroup]
 	senGrpCriteria := make([]SenGroupCriteria, 0, numOfSenGrp)
+	senGrpUUIDMapID := make(map[string]uint64)
 	for i := 0; i < numOfSenGrp; i++ {
 		var c SenGroupCriteria
 		c.ID = uint64(senGrp[i].ID)
@@ -344,6 +365,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 			c.Role = senGrp[i].Role
 			c.SentenceID = segIDs
 			senGrpCriteria = append(senGrpCriteria, c)
+			senGrpUUIDMapID[senGrp[i].UUID] = c.ID
 		} else {
 			logger.Warn.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", c.ID)
 		}
@@ -356,5 +378,29 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		return nil, err
 	}
 	_ = matchSgID
+
+	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
+	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
+	if err != nil {
+		logger.Error.Printf("get conversation flow failed.%s\n", err)
+		return nil, err
+	}
+	numOfCFInfo := len(cfInfo)
+	cfCriteria := make([]*ConFlowCriteria, 0, numOfCFInfo)
+	for _, info := range cfInfo {
+		var c ConFlowCriteria
+		c.ID = uint64(info.ID)
+		c.expression = info.Expression
+		cfCriteria = append(cfCriteria, &c)
+	}
+
+	cfMatched, err := ConversationFlowMatch(matchSgID, cfCriteria, senGrpUUIDMapID)
+	if err != nil {
+		logger.Warn.Printf("doing conversation flow match failed.%s\n", err)
+		return nil, err
+	}
+
+	_ = cfMatched
+
 	return nil, nil
 }
