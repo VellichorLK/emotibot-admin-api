@@ -44,6 +44,10 @@ func (m *mockCallDao) CallTask(delegatee model.SqlLike, call model.Call) (model.
 	return model.Task{}, fmt.Errorf("no such task")
 }
 
+func (m *mockCallDao) Count(delegatee model.SqlLike, query model.CallQuery) (int64, error) {
+	return int64(len(m.readMockCallData())), nil
+}
+
 func (m *mockCallDao) SetCall(delegatee model.SqlLike, call model.Call) error {
 	return nil
 }

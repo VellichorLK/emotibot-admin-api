@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -300,7 +299,7 @@ func (c *CallSQLDao) SetCall(delegatee SqlLike, call Call) error {
 
 }
 
-func (c *CallSQLDao) Count(delegatee model.SqlLike, query CallQuery) (int64, error) {
+func (c *CallSQLDao) Count(delegatee SqlLike, query CallQuery) (int64, error) {
 	if delegatee == nil {
 		delegatee = c.db
 	}
