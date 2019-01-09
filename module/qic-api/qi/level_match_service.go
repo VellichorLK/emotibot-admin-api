@@ -3,6 +3,7 @@ package qi
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,9 +20,15 @@ var (
 
 //MatchedData stores the index of input and the matched ID (tag id) and its relative data
 type MatchedData struct {
-	Index   int
+	Index   uint64
 	Matched map[uint64]*logicaccess.AttrResult
 	lock    sync.Mutex
+}
+
+//ContainRelation is relation between parent and child
+type ContainRelation struct {
+	parent uint64
+	child  []uint64
 }
 
 //SetData sets the data for thread-safe
@@ -94,6 +101,7 @@ func worker(ctx context.Context, target <-chan uint64,
 }
 
 //TagMatch checks each sentence for each tags
+//return value: slice of matchData gives the each sentences and its matched tag and matched data
 func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*MatchedData, error) {
 
 	numOfTags := len(tags)
@@ -118,12 +126,18 @@ func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*Matc
 	for i := 0; i < numOfCtx; i++ {
 		matches[i] = &MatchedData{}
 		matches[i].Matched = make(map[uint64]*logicaccess.AttrResult)
-		matches[i].Index = i + 1
+		matches[i].Index = uint64(i + 1)
 	}
 
+	sort.Slice(tags, func(i, j int) bool { return tags[i] < tags[j] })
+	var lastTag uint64
 	//start to input the target tag id
 	for _, v := range tags {
-		target <- v
+		//avoid the duplicate tag
+		if lastTag != v {
+			target <- v
+			lastTag = v
+		}
 	}
 	close(target)
 
@@ -135,4 +149,84 @@ func TagMatch(tags []uint64, sentences []string, timeout time.Duration) ([]*Matc
 	wg.Wait()
 
 	return matches, ctx.Err()
+}
+
+//SentencesMatch gives the sentence id that is matched by which segment
+//c is the argument map[sentence id][]tag id.
+func SentencesMatch(m []*MatchedData, c map[uint64][]uint64) (map[uint64][]uint64, error) {
+
+	resp := make(map[uint64][]uint64, len(c))
+
+	//for loop the criteria for each tag in each sentence
+	for sID, tagIDs := range c {
+		//compare the given matched tags in each segement to the criteria
+		for _, d := range m {
+			if d != nil && len(d.Matched) > 0 {
+				numOfChild := len(tagIDs)
+				var count int
+				//check whether this segment match all tags
+				for _, tagID := range tagIDs {
+					if _, ok := d.Matched[tagID]; !ok {
+						break
+					}
+					count++
+				}
+				if count == numOfChild {
+					resp[sID] = append(resp[sID], d.Index)
+				}
+			}
+		}
+	}
+	return resp, nil
+}
+
+//RuleGroupCriteria gives the result of the criteria used to the group
+//the parameter timeout is used to wait for cu module result
+func RuleGroupCriteria(ruleGroup uint64, sentences []string, timeout time.Duration) ([]string, error) {
+	numOfLines := len(sentences)
+	if numOfLines == 0 {
+		return nil, ErrNoArgument
+	}
+
+	//get the relation table from RuleGroup to Tag
+	levels, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{ruleGroup})
+	if err != nil {
+		logger.Error.Printf("get level relations failed. %s\n", err)
+		return nil, err
+	}
+	//check the return level
+	tagLev := int(LevTag)
+	if len(levels) != tagLev {
+		logger.Error.Printf("get less relation table. %d\n", tagLev)
+		return nil, err
+	}
+
+	sentenceLev := int(LevSentence)
+	numOfSens := len(levels[sentenceLev])
+
+	//extract the sentence id and tag id
+	senIDs := make([]uint64, 0, numOfSens)
+	tagIDs := make([]uint64, 0, numOfSens)
+	for sID, tIDs := range levels[sentenceLev] {
+		senIDs = append(senIDs, sID)
+		tagIDs = append(tagIDs, tIDs...)
+	}
+
+	//do the checking, tag match
+	tagMatchDat, err := TagMatch(tagIDs, sentences, timeout)
+	if err != nil {
+		return nil, err
+	}
+	if len(tagMatchDat) != numOfLines {
+		logger.Error.Printf("get less tag match sentence. %d\n", numOfLines)
+		return nil, err
+	}
+
+	//do the checking, sentence match
+	senMatchDat, err := SentencesMatch(tagMatchDat, levels[sentenceLev])
+	if err != nil {
+		return nil, err
+	}
+	_ = senMatchDat
+	return nil, nil
 }

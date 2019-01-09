@@ -20,7 +20,7 @@ var mockCtxSentences = []string{
 	"妇女的权益在女童一下漠视我们的对话会全程录音可以吗",
 	"好因为你是花旗银行的贵宾卡右脑资料部分有银行提高"}
 
-var mockMatchIdx = []int{1, 7}
+var mockMatchIdx = []uint64{1, 7}
 var mockMatchTagID = []uint64{1, 6}
 var mockAllTagID = []uint64{1, 3, 5, 6, 9}
 
@@ -44,19 +44,19 @@ func (m *mockPredictClient) BatchPredictAndUnMarshal(d *logicaccess.BatchPredict
 
 	if d.ID == mockMatchTagID[0] {
 		attr.Tag = mockMatchTagID[0]
-		attr.SentenceID = mockMatchIdx[0]
+		attr.SentenceID = int(mockMatchIdx[0])
 		attr.Sentence = mockCtxSentences[attr.SentenceID-1]
 		attr.Score = 87
 		resp.Dialogue = append(resp.Dialogue, attr)
 	} else if d.ID == mockMatchTagID[1] {
 		attr.Tag = mockMatchTagID[1]
-		attr.SentenceID = mockMatchIdx[0]
+		attr.SentenceID = int(mockMatchIdx[0])
 		attr.Sentence = mockCtxSentences[attr.SentenceID-1]
 		attr.Score = 87
 		resp.Dialogue = append(resp.Dialogue, attr)
 
 		attr.Tag = mockMatchTagID[1]
-		attr.SentenceID = mockMatchIdx[1]
+		attr.SentenceID = int(mockMatchIdx[1])
 		attr.Sentence = mockCtxSentences[attr.SentenceID-1]
 		attr.Score = 94
 		resp.Dialogue = append(resp.Dialogue, attr)
@@ -122,5 +122,82 @@ func TestTagMatch(t *testing.T) {
 			}
 
 		}
+	}
+}
+
+func TestSentenceMatch(t *testing.T) {
+	predictor = &mockPredictClient{}
+	tags := mockAllTagID
+	matched, err := TagMatch(tags, mockCtxSentences, 3*time.Second)
+	if err != nil {
+		t.Fatalf("Expecting no error, but get %s\n", err)
+	}
+
+	senCriteria := make(map[uint64][]uint64)
+	senCriteria[1] = append(senCriteria[1], 1)
+	senCriteria[1] = append(senCriteria[1], 6)
+
+	senCriteria[9] = append(senCriteria[9], 2)
+	senCriteria[9] = append(senCriteria[9], 7)
+
+	senMatch, err := SentencesMatch(matched, senCriteria)
+	if err != nil {
+		t.Fatalf("Expecting no error, but get %s\n", err)
+	}
+
+	if len(senMatch) != 1 {
+		t.Errorf("Expecting has %d matched sentence, but get %d\n", 1, len(senMatch))
+	}
+	if matchedSeg, ok := senMatch[1]; ok {
+		if len(matchedSeg) != 1 {
+			t.Errorf("Expecting has %d matched segment, but get %d\n", 1, len(matchedSeg))
+		} else {
+			if matchedSeg[0] != 1 {
+				t.Errorf("Expecting %d segment meet criteria 1, but get segment %d meet\n", 1, matchedSeg[0])
+			}
+		}
+	} else {
+		t.Errorf("Expecting %d sentence crieria meet, but get none\n", 1)
+	}
+
+	senCriteria[10] = append(senCriteria[10], 6)
+	senCriteria[10] = append(senCriteria[10], 6)
+
+	senMatch, err = SentencesMatch(matched, senCriteria)
+	if err != nil {
+		t.Fatalf("Expecting no error, but get %s\n", err)
+	}
+
+	if len(senMatch) != 2 {
+		t.Errorf("Expecting has %d matched sentence, but get %d\n", 2, len(senMatch))
+	}
+	if matchedSeg, ok := senMatch[1]; ok {
+		if len(matchedSeg) != 1 {
+			t.Errorf("Expecting has %d matched segment, but get %d\n", 1, len(matchedSeg))
+		} else {
+			if matchedSeg[0] != 1 {
+				t.Errorf("Expecting %d segment meet criteria 1, but get segment %d meet\n", 1, matchedSeg[0])
+			}
+		}
+	} else {
+		t.Errorf("Expecting %d sentence crieria meet, but get none\n", 1)
+	}
+
+	if matchedSeg, ok := senMatch[10]; ok {
+		if len(matchedSeg) != 2 {
+			t.Errorf("Expecting has %d matched segment, but get %d\n", 2, len(matchedSeg))
+		} else {
+			for _, matchIdx := range matchedSeg {
+				switch matchIdx {
+				case 1:
+				case 7:
+				default:
+					t.Errorf("Expecting %d,%d segment meet criteria 10, but get segment %d meet\n", 1, 7, matchedSeg[0])
+				}
+			}
+
+		}
+	} else {
+		t.Errorf("Expecting %d,%d sentence crieria meet, but get none\n", 1, 7)
 	}
 }
