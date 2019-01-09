@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -84,6 +84,7 @@ type InspectTaskDao interface {
 	Users(uids []string, sql SqlLike) (map[string]*Staff, error)
 	CountTaskInfoBy(filter *StaffTaskFilter, sql SqlLike) (int64, error)
 	GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
+	Update(taskID int64, task *InspectTask, sql SqlLike) error
 }
 
 type InspectTaskSqlDao struct{}
@@ -405,7 +406,6 @@ func (dao *InspectTaskSqlDao) CountTaskInfoBy(filter *StaffTaskFilter, sql SqlLi
 		queryStr,
 		RITCSTaskID,
 	)
-	logger.Info.Printf("queryStr: %s", queryStr)
 
 	rows, err := sql.Query(queryStr, values...)
 	if err != nil {
@@ -455,6 +455,67 @@ func (dao *InspectTaskSqlDao) GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLik
 		} else {
 			infos := append(*taskInfosOfTask, taskInfo)
 			taskInfosOfTask = &infos
+		}
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) Update(taskID int64, task *InspectTask, sql SqlLike) (err error) {
+	updateFields := []string{}
+	values := []interface{}{}
+	if task.Name != "" {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", fldName))
+		values = append(values, task.Name)
+	}
+
+	if task.CallStart > 0 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", ITCallStart))
+		values = append(values, task.CallStart)
+	}
+
+	if task.CallEnd > 0 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", ITCallEnd))
+		values = append(values, task.CallEnd)
+	}
+
+	if task.Description != "" {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", fldDescription))
+		values = append(values, task.Description)
+	}
+
+	if task.ExcludeInspected > -1 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", ITExcluedInspected))
+		values = append(values, task.ExcludeInspected)
+	}
+
+	if task.Form.ID > 0 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", ITFormID))
+		values = append(values, task.Form.ID)
+	}
+
+	if task.Status > -1 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", fldStatus))
+		values = append(values, task.Status)
+	}
+
+	if task.PublishTime > 0 {
+		updateFields = append(updateFields, fmt.Sprintf("%s=?", ITPublishTime))
+		values = append(values, task.PublishTime)
+	}
+
+	if len(updateFields) > 0 {
+		updateStr := fmt.Sprintf(
+			"UPDATE %s SET %s WHERE %s=?",
+			tblInspectTask,
+			strings.Join(updateFields, ", "),
+			fldID,
+		)
+
+		values = append(values, taskID)
+		_, err = sql.Exec(updateStr, values...)
+		if err != nil {
+			err = fmt.Errorf("error while update inspect task in dao.Update, err: %s", err.Error())
+			return
 		}
 	}
 	return

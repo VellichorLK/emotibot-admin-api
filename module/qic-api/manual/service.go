@@ -286,3 +286,25 @@ func GetUser(id string) (user *model.Staff, err error) {
 	user = usersMap[id]
 	return
 }
+
+// UpdateTask only updates publish time
+func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
+	tx, err := manualDB.Begin()
+	if err != nil {
+		return
+	}
+	defer manualDB.ClearTransition(tx)
+
+	taskModified := &model.InspectTask{
+		Status:           -1,
+		PublishTime:      task.PublishTime,
+		ExcludeInspected: -1,
+	}
+
+	err = taskDao.Update(taskID, taskModified, tx)
+	if err != nil {
+		return
+	}
+	manualDB.Commit(tx)
+	return
+}

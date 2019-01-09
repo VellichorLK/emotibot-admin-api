@@ -29,6 +29,7 @@ type InspectTaskInReq struct {
 	Form         int64         `json:"form_id"`
 	Sampling     Sampling      `json:"sampling_rule"`
 	IsInspecting int8          `json:"is_inspecting"`
+	PublishTime  int64         `json:"publish_time"`
 }
 
 type InspectTaskInRes struct {
@@ -85,6 +86,7 @@ func inspectTaskInReqToInspectTask(inreq *InspectTaskInReq) (task *model.Inspect
 		InspectByPerson:   inreq.Sampling.ByPerson,
 		CallStart:         inreq.TimeRange.StartTime,
 		CallEnd:           inreq.TimeRange.EndTime,
+		PublishTime:       inreq.PublishTime,
 	}
 	return
 }
@@ -378,4 +380,30 @@ func handleNormalUserGetTask(w http.ResponseWriter, r *http.Request) {
 	taskInRes := inspectTaskToInspectTaskInResForNormalUser(&task)
 
 	util.WriteJSON(w, taskInRes)
+}
+
+func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
+	taskIDstr := general.ParseID(r)
+	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	inreq := InspectTaskInReq{}
+	err = util.ReadJSON(r, &inreq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	logger.Info.Printf("inreq: %+v", inreq)
+
+	task := inspectTaskInReqToInspectTask(&inreq)
+
+	err = UpdateTask(taskID, task)
+	if err != nil {
+		logger.Error.Printf("error while update inspect task in handleUpdateTask, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
