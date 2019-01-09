@@ -98,6 +98,10 @@ func (dao *mockTaskDao) Update(taskID int64, task *model.InspectTask, sql model.
 	return nil
 }
 
+func (dao *mockTaskDao) AssignInspectTasks(assigns []model.StaffTaskInfo, sql model.SqlLike) error {
+	return nil
+}
+
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
 	oriManualDB := manualDB
 	oriAuthDB := authDB

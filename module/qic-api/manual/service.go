@@ -2,9 +2,12 @@ package manual
 
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/qi"
 	"emotibot.com/emotigo/module/qic-api/util/general"
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
+	"math"
+	"math/rand"
 )
 
 var (
@@ -311,29 +314,90 @@ func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 }
 
 func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (err error) {
-	// tx, err := manualDB.Begin()
-	// if err != nil {
-	// 	return
-	// }
+	tx, err := manualDB.Begin()
+	if err != nil {
+		return
+	}
+	logger.Info.Print("1\n")
 
-	// // get task
-	// filter := &model.InspectTaskFilter{
-	// 	ID: []int64{
-	// 		taskID,
-	// 	},
-	// 	Enterprise: enterprise,
-	// }
-	// tasks, err := taskDao.GetBy(filter, tx)
-	// if err != nil {
-	// 	return
-	// }
+	// get task
+	filter := &model.InspectTaskFilter{
+		ID: []int64{
+			taskID,
+		},
+		Enterprise: enterprise,
+	}
+	tasks, err := taskDao.GetBy(filter, tx)
+	logger.Info.Print("2\n")
+	if err != nil {
+		return
+	}
 
-	// if len(tasks) == 0 {
-	// 	err = ErrNoTask
-	// 	return
-	// }
+	if len(tasks) == 0 {
+		err = ErrNoTask
+		return
+	}
 
-	// task := tasks[0]
+	task := tasks[0]
 
+	// fetch matched calls
+	callQuery := model.CallQuery{
+		CallTimeStart: &task.CallStart,
+		CallTimeEnd:   &task.CallEnd,
+		StaffID:       inspectors,
+	}
+	logger.Info.Printf("callQuery: %+v\n", callQuery)
+	calls, err := qi.Calls(tx, callQuery)
+	logger.Info.Print("3\n")
+	if err != nil {
+		return
+	}
+
+	// calls to callTasks
+	callTasks, err := qi.TasksByCalls(calls)
+	logger.Info.Print("4\n")
+	if err != nil {
+		return
+	}
+
+	logger.Info.Printf("callTasks: %+v\n", callTasks)
+
+	// assign inspector to call task by sampling rules
+	percentage := task.InspectPercentage
+	// byperson := task.InspectByPerson
+	toInspectTasks := []*model.Task{}
+
+	if percentage != 0 {
+		total := len(callTasks)
+		totalInspect := math.Floor(float64(total*percentage) / float64(100))
+		end := int64(totalInspect)
+		toInspectTasks = callTasks[0:end]
+	} else {
+		// TODO: by person need to check
+		toInspectTasks = callTasks
+	}
+
+	// inspector to call task
+	assigns := []model.StaffTaskInfo{}
+	inspectorNum := len(inspectors)
+	for _, task := range toInspectTasks {
+		idx := rand.Intn(inspectorNum)
+		inspectorID := inspectors[idx]
+
+		assignTask := model.StaffTaskInfo{
+			StaffID: inspectorID,
+			TaskID:  taskID,
+			CallID:  task.ID,
+		}
+		assigns = append(assigns, assignTask)
+	}
+
+	err = taskDao.AssignInspectTasks(assigns, tx)
+	logger.Info.Print("5\n")
+	if err != nil {
+		return
+	}
+
+	err = manualDB.Commit(tx)
 	return
 }

@@ -87,6 +87,7 @@ type InspectTaskDao interface {
 	CountTaskInfoBy(filter *StaffTaskFilter, sql SqlLike) (int64, error)
 	GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
 	Update(taskID int64, task *InspectTask, sql SqlLike) error
+	AssignInspectTasks(assigns []StaffTaskInfo, sql SqlLike) error
 }
 
 type InspectTaskSqlDao struct{}
@@ -600,6 +601,38 @@ func (dao *InspectTaskSqlDao) Update(taskID int64, task *InspectTask, sql SqlLik
 			err = fmt.Errorf("error while update inspect task in dao.Update, err: %s", err.Error())
 			return
 		}
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) AssignInspectTasks(assigns []StaffTaskInfo, sql SqlLike) (err error) {
+	if len(assigns) == 0 {
+		return
+	}
+	valueStr := fmt.Sprintf("(?, ?, ?)%s", strings.Repeat(", (?, ?, ?)", len(assigns)-1))
+	values := []interface{}{}
+	for _, assign := range assigns {
+		values = append(values, assign.TaskID, assign.StaffID, assign.CallID)
+	}
+
+	fields := []string{
+		RITCSTaskID,
+		RITCSStaffID,
+		RITCSCallID,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	insertStr := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s",
+		tblRelITCallStaff,
+		fieldStr,
+		valueStr,
+	)
+
+	_, err = sql.Exec(insertStr, values...)
+	if err != nil {
+		fmt.Errorf("error while assign inspect tasks in dao.AssignInspectTasks, err: %s", err.Error())
+		return
 	}
 	return
 }

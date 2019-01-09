@@ -428,6 +428,15 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
+	taskIDstr := general.ParseID(r)
+	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	enterprise := requestheader.GetEnterpriseID(r)
+
 	userID := requestheader.GetUserID(r)
 	user, err := GetUser(userID)
 	if err != nil {
@@ -438,6 +447,23 @@ func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
 
 	if user.Type != 1 {
 		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	assigns := AssignTask{}
+	err = util.ReadJSON(r, &assigns)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if assigns.Type == "inspector" {
+		err = AssignInspectorTask(taskID, enterprise, assigns.Users)
+	}
+
+	if err != nil {
+		logger.Error.Printf("error while assign tasks in handleAssignStaffToTask, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
