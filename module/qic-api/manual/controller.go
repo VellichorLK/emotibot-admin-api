@@ -383,6 +383,19 @@ func handleNormalUserGetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+	user, err := GetUser(userID)
+	if err != nil {
+		logger.Error.Printf("error while get user in handleUpdateTask, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user.Type == 2 {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
 	taskIDstr := general.ParseID(r)
 	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
 	if err != nil {
