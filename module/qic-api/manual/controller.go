@@ -287,3 +287,95 @@ func handleNormalUserGetTasks(userID string, filter *model.InspectTaskFilter, w 
 
 	util.WriteJSON(w, response)
 }
+
+func handleGetTask(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+	user, err := GetUser(userID)
+	if err != nil {
+		logger.Error.Printf("error while get user in handleGetTasks, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Type == int8(1) {
+		handleAdminUserGetTask(w, r)
+	} else if user.Type == int8(2) {
+		handleNormalUserGetTask(w, r)
+	}
+}
+
+func handleAdminUserGetTask(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	taskIDstr := general.ParseID(r)
+	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	filter := &model.InspectTaskFilter{
+		ID: []int64{
+			taskID,
+		},
+		Enterprise: enterprise,
+	}
+
+	_, tasks, err := GetTasks(filter)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(tasks) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	task := tasks[0]
+	taskInRes := inspectTaskToInspectTaskInRes(&task)
+
+	util.WriteJSON(w, taskInRes)
+}
+
+func handleNormalUserGetTask(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+
+	taskIDstr := general.ParseID(r)
+	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	taskFilter := &model.StaffTaskFilter{
+		StaffIDs: []string{
+			userID,
+		},
+		TaskIDs: []int64{
+			taskID,
+		},
+	}
+
+	_, tasks, err := GetTasksOfUsers(taskFilter)
+	if err != nil {
+		logger.Error.Printf("error while get inspect tasks in handleGetTasks, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if len(tasks) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+
+	task := tasks[0]
+	taskInRes := inspectTaskToInspectTaskInResForNormalUser(&task)
+
+	util.WriteJSON(w, taskInRes)
+}
