@@ -2,7 +2,7 @@
     "index_patterns": [
         "emotibot-records-*"
     ],
-    "version": 20181206,
+    "version": 20190104,
     "settings": {
         "number_of_replicas": 1,
         "number_of_shards": 1

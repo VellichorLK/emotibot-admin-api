@@ -1,11 +1,12 @@
 package model
 
 import (
-	_ "emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	_ "emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -33,6 +34,7 @@ type SentenceGroup struct {
 
 type SentenceGroupFilter struct {
 	UUID       []string
+	ID         []uint64
 	Name       string
 	Role       int
 	Position   int
@@ -130,7 +132,7 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (
 func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
 
-	conditionStr := "WHERE "
+	conditionStr := ""
 	conditions := []string{}
 
 	if len(filter.UUID) > 0 {
@@ -138,7 +140,18 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		for _, uuid := range filter.UUID {
 			values = append(values, uuid)
 		}
-		conditionStr = fmt.Sprintf("%s %s IN (%s) and ", conditionStr, fldUUID, uuidStr)
+		conditionStr = fmt.Sprintf("%s IN (%s)", fldUUID, uuidStr)
+	}
+
+	if len(filter.ID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
+		for _, uuid := range filter.ID {
+			values = append(values, uuid)
+		}
+		if conditionStr != "" {
+			conditionStr += " AND "
+		}
+		conditionStr = fmt.Sprintf("%s %s IN (%s)", conditionStr, fldID, idStr)
 	}
 
 	if filter.Name != "" {
@@ -171,13 +184,16 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		values = append(values, filter.IsDelete)
 	}
 
-	if len(conditions) > 0 {
-		conditionStr = fmt.Sprintf("%s %s=?", conditionStr, conditions[0])
-		for _, condition := range conditions[1:] {
+	for _, condition := range conditions {
+		if conditionStr != "" {
 			conditionStr = fmt.Sprintf("%s and %s=?", conditionStr, condition)
+		} else {
+			conditionStr = fmt.Sprintf("%s=?", condition)
 		}
-	} else {
-		conditionStr = ""
+	}
+
+	if conditionStr != "" {
+		conditionStr = "WHERE " + conditionStr
 	}
 
 	queryStr = fmt.Sprintf(
