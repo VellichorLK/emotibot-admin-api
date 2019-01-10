@@ -291,7 +291,7 @@ func GetUser(id string) (user *model.Staff, err error) {
 	return
 }
 
-// UpdateTask only updates publish time
+// UpdateTask only updates publish time & status
 func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 	tx, err := manualDB.Begin()
 	if err != nil {
@@ -300,7 +300,7 @@ func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 	defer manualDB.ClearTransition(tx)
 
 	taskModified := &model.InspectTask{
-		Status:           -1,
+		Status:           task.Status,
 		PublishTime:      task.PublishTime,
 		ExcludeInspected: -1,
 	}

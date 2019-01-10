@@ -6,9 +6,15 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
+	"github.com/gorilla/mux"
 	"net/http"
 	"net/url"
 	"strconv"
+)
+
+const (
+	ADMIN_USER  = 1
+	NORMAL_USER = 2
 )
 
 type CallTimeRange struct {
@@ -222,9 +228,9 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 	values := r.URL.Query()
 	filter := parseTaskFilter(&values)
 
-	if user.Type == int8(1) {
+	if user.Type == ADMIN_USER {
 		handleAdminUserGetTasks(filter, w)
-	} else if user.Type == int8(2) {
+	} else if user.Type == NORMAL_USER {
 		handleNormalUserGetTasks(userID, filter, w)
 	}
 }
@@ -397,7 +403,7 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Type == 2 {
+	if user == nil || user.Type == NORMAL_USER {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
@@ -418,6 +424,7 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	logger.Info.Printf("inreq: %+v", inreq)
 
 	task := inspectTaskInReqToInspectTask(&inreq)
+	task.Status = int8(-1)
 
 	err = UpdateTask(taskID, task)
 	if err != nil {
@@ -445,7 +452,7 @@ func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user.Type != 1 {
+	if user == nil || user.Type == NORMAL_USER {
 		http.Error(w, "", http.StatusUnauthorized)
 		return
 	}
@@ -464,4 +471,43 @@ func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func handleInspectTaskPublish(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+	user, err := GetUser(userID)
+	if err != nil {
+		logger.Error.Printf("error while get user in handleInspectTaskPublish, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if user == nil || user.Type == NORMAL_USER {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	taskIDstr := general.ParseID(r)
+	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	vars := mux.Vars(r)
+	published := vars["published"]
+
+	task := &model.InspectTask{}
+	if published == "publish" {
+		task.Status = 1
+	} else {
+		task.Status = 0
+	}
+
+	err = UpdateTask(taskID, task)
+	if err != nil {
+		logger.Error.Printf("error while update task status in handleInspectTaskPublish, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

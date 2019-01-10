@@ -26,6 +26,7 @@ func init() {
 			util.NewEntryPoint("GET", "sampling/tasks/{id}", []string{}, handleGetTask),
 			util.NewEntryPoint("PATCH", "sampling/tasks/{id}", []string{}, handleUpdateTask),
 			util.NewEntryPoint("POST", "sampling/tasks/{id}/assign", []string{}, handleAssignStaffToTask),
+			util.NewEntryPoint("POST", "sampling/tasks/{id}/{published:publish|unpublish}", []string{}, handleInspectTaskPublish),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {
