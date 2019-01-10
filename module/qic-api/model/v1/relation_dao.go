@@ -64,6 +64,7 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	use := to - from
 	selectStr := ""
 	joinsStr := ""
+	orderStr := ""
 	var lastLevel relSelectFld
 
 	//compose the selected fields and join tables
@@ -72,18 +73,19 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 		if i == from {
 			joinsStr = level.tblName + " AS " + level.nickName
 			selectStr = level.nickName + "." + level.fields[0] + "," + level.nickName + "." + level.fields[1]
-
+			orderStr = level.nickName + "." + fldID + " ASC"
 		} else {
 			joinsStr = joinsStr + " LEFT JOIN " + level.tblName + " AS " + level.nickName + " ON " +
 				lastLevel.nickName + "." + lastLevel.fields[1] + "=" + level.nickName + "." + level.fields[0]
 			selectStr = selectStr + "," + level.nickName + "." + level.fields[1]
+			orderStr = orderStr + "," + level.nickName + "." + fldID + " ASC"
 		}
 		lastLevel = level
 	}
 	fromLevelTbl := leveltblMap[from]
 	querySQL := "SELECT " + selectStr + " FROM " + joinsStr +
 		" WHERE " + fromLevelTbl.nickName + "." + fromLevelTbl.fields[0] + " IN (?" + strings.Repeat(",?", numOfIDs-1) + ")" +
-		" ORDER BY " + leveltblMap[from].nickName + "." + fldID + " ASC"
+		" ORDER BY " + orderStr
 
 	//fmt.Printf("%s\n", querySQL)
 
@@ -120,14 +122,16 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 		for k, v := range relIDs {
 			val, ok := v.(*sql.NullInt64)
 			if !ok {
+				lastID = 0
 				logger.Error.Printf("transform to *uint64 failed\n")
 				continue
 			}
 			if !val.Valid {
+				lastID = 0
 				continue
 			}
 			varUint64 := uint64(val.Int64)
-			if k == 0 {
+			if lastID == 0 {
 				lastID = varUint64
 				continue
 			}
@@ -144,11 +148,13 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 
 			//already in the list
 			if recordDup[ithTbl][lastID][varUint64] {
+				lastID = varUint64
 				continue
 			} else {
 				recordDup[ithTbl][lastID][varUint64] = true
 			}
 			resp[ithTbl][lastID] = append(resp[ithTbl][lastID], varUint64)
+			lastID = varUint64
 		}
 	}
 
