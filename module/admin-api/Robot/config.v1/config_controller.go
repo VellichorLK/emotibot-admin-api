@@ -32,11 +32,13 @@ func HandleSetRobotConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err AdminErrors.AdminError
 	if value == "" {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, "empty value")
-		return
+		err = SetConfigToDefault(appid, configName)
+	} else {
+		err = SetConfig(appid, module, configName, value)
 	}
 
-	err := SetConfig(appid, module, configName, value)
 	util.Return(w, err, err == nil)
+	go util.ConsulUpdateBFOPSetting()
 }

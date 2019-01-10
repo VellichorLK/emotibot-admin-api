@@ -37,6 +37,7 @@ const (
 	ConsulIntentKey            = "intent/%s"
 	ConsulControllerSettingKey = "setting/controller"
 	ConsulReleaseInfoKey       = "release_versions"
+	ConsulBFOPConfigKey        = "setting/bfop_config"
 )
 
 // ConsulAPI define the method should be implemented by ConsulClient.
@@ -414,6 +415,12 @@ func ConsulGetControllerSetting() (string, int, error) {
 func ConsulSetControllerSetting(val string) (int, error) {
 	key := ConsulControllerSettingKey
 	return ConsulUpdateVal(key, val)
+}
+
+func ConsulUpdateBFOPSetting() (int, error) {
+	now := time.Now().Unix()
+	key := ConsulBFOPConfigKey
+	return ConsulUpdateVal(key, now)
 }
 
 func ConsulGetReleaseSetting() (map[string]string, int, error) {
