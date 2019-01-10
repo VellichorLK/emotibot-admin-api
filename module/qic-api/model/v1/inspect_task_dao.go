@@ -88,6 +88,8 @@ type InspectTaskDao interface {
 	GetTasksInfoBy(filter *StaffTaskFilter, sql SqlLike) (map[int64]*[]StaffTaskInfo, error)
 	Update(taskID int64, task *InspectTask, sql SqlLike) error
 	AssignInspectTasks(assigns []StaffTaskInfo, sql SqlLike) error
+	Outlines(SqlLike) ([]*Outline, error)
+	UsersByType(string, SqlLike) ([]*Staff, error)
 }
 
 type InspectTaskSqlDao struct{}
@@ -638,6 +640,55 @@ func (dao *InspectTaskSqlDao) AssignInspectTasks(assigns []StaffTaskInfo, sql Sq
 	if err != nil {
 		fmt.Errorf("error while assign inspect tasks in dao.AssignInspectTasks, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) Outlines(sql SqlLike) (outlines []*Outline, err error) {
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s FROM %s",
+		fldID,
+		fldName,
+		tblOutline,
+	)
+
+	rows, err := sql.Query(queryStr)
+	if err != nil {
+		logger.Error.Printf("error while query outlines in dao.Outlines, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	outlines = []*Outline{}
+	for rows.Next() {
+		outline := Outline{}
+		rows.Scan(
+			&outline.ID,
+			&outline.Name,
+		)
+		outlines = append(outlines, &outline)
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) UsersByType(userType string, sql SqlLike) (staffs []*Staff, err error) {
+	queryStr := "SELECT uuid, display_name FROM users WHERE user_name Like '" + userType + "%'"
+
+	rows, err := sql.Query(queryStr)
+	if err != nil {
+		logger.Error.Printf("error while query usrs in dao.UsersByType, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	staffs = []*Staff{}
+	for rows.Next() {
+		staff := Staff{}
+		rows.Scan(
+			&staff.UUID,
+			&staff.Name,
+		)
+		staffs = append(staffs, &staff)
 	}
 	return
 }

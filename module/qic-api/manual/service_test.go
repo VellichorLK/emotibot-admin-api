@@ -102,6 +102,14 @@ func (dao *mockTaskDao) AssignInspectTasks(assigns []model.StaffTaskInfo, sql mo
 	return nil
 }
 
+func (dao *mockTaskDao) Outlines(sql model.SqlLike) ([]*model.Outline, error) {
+	return []*model.Outline{}, nil
+}
+
+func (dao *mockTaskDao) UsersByType(utype string, sql model.SqlLike) ([]*model.Staff, error) {
+	return []*model.Staff{}, nil
+}
+
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
 	oriManualDB := manualDB
 	oriAuthDB := authDB

@@ -4,7 +4,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/qi"
 	"emotibot.com/emotigo/module/qic-api/util/general"
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"math"
 	"math/rand"
@@ -351,7 +351,6 @@ func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask
 
 	// calls to callTasks
 	callTasks, err := qi.TasksByCalls(calls)
-	logger.Info.Print("4\n")
 	if err != nil {
 		return
 	}
@@ -367,7 +366,6 @@ func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask
 	}
 	// byperson := task.InspectByPerson
 	toInspectTasks := []*model.Task{}
-	logger.Info.Print("5\n")
 
 	if percentage != 0 {
 		total := len(callTasks)
@@ -378,7 +376,6 @@ func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask
 		// TODO: by person need to check
 		toInspectTasks = callTasks
 	}
-	logger.Info.Print("6\n")
 
 	// inspector to call task
 	assigns := []model.StaffTaskInfo{}
@@ -395,14 +392,26 @@ func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask
 		}
 		assigns = append(assigns, assignTask)
 	}
-	logger.Info.Printf("%+v\n", assigns)
 
 	err = taskDao.AssignInspectTasks(assigns, tx)
 	if err != nil {
 		return
 	}
-	logger.Info.Print("8\n")
 
 	err = manualDB.Commit(tx)
 	return
+}
+
+func GetCallsOfUser(userID string) (calls []model.Call, err error) {
+	return
+}
+
+func GetOutlines() ([]*model.Outline, error) {
+	manualConn := manualDB.Conn()
+	return taskDao.Outlines(manualConn)
+}
+
+func GetUsers(userType string) ([]*model.Staff, error) {
+	authConn := authDB.Conn()
+	return taskDao.UsersByType(userType, authConn)
 }

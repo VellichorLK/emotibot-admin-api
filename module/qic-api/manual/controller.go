@@ -511,3 +511,44 @@ func handleInspectTaskPublish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func handleUserAssignedCalls(w http.ResponseWriter, r *http.Request) {
+	// userID := requestheader.GetUserID(r)
+
+	// GetTasksOfUsers()
+}
+
+func handleGetOutlines(w http.ResponseWriter, r *http.Request) {
+	outlines, err := GetOutlines()
+	if err != nil {
+		logger.Error.Printf("error while get outlines in handleGetOutline, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, outlines)
+}
+
+func handleGetInspectors(w http.ResponseWriter, r *http.Request) {
+	inspectors, err := GetUsers("inspector")
+
+	if err != nil {
+		logger.Error.Printf("error while get outlines in handleGetOutline, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, inspectors)
+}
+
+func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
+	staffs, err := GetUsers("staff")
+
+	if err != nil {
+		logger.Error.Printf("error while get outlines in handleGetOutline, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, staffs)
+}
