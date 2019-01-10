@@ -13,6 +13,7 @@ import (
 var roleMapping map[string]int = map[string]int{
 	"staff":    0,
 	"customer": 1,
+	"any":      2,
 }
 
 var positionMap map[string]int = map[string]int{
@@ -24,11 +25,13 @@ var positionMap map[string]int = map[string]int{
 var roleCodeMap map[int]string = map[int]string{
 	0: "staff",
 	1: "customer",
+	2: "any",
 }
 
 var positionCodeMap map[int]string = map[int]string{
 	0: "top",
 	1: "bottom",
+	2: "any",
 }
 
 type SetenceGroupsResponse struct {
