@@ -457,10 +457,7 @@ func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if assigns.Type == "inspector" {
-		err = AssignInspectorTask(taskID, enterprise, assigns.Users)
-	}
-
+	err = AssignInspectorTask(taskID, enterprise, &assigns)
 	if err != nil {
 		logger.Error.Printf("error while assign tasks in handleAssignStaffToTask, reason: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

@@ -313,12 +313,11 @@ func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 	return
 }
 
-func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (err error) {
+func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask) (err error) {
 	tx, err := manualDB.Begin()
 	if err != nil {
 		return
 	}
-	logger.Info.Print("1\n")
 
 	// get task
 	filter := &model.InspectTaskFilter{
@@ -328,7 +327,6 @@ func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (
 		Enterprise: enterprise,
 	}
 	tasks, err := taskDao.GetBy(filter, tx)
-	logger.Info.Print("2\n")
 	if err != nil {
 		return
 	}
@@ -344,11 +342,9 @@ func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (
 	callQuery := model.CallQuery{
 		CallTimeStart: &task.CallStart,
 		CallTimeEnd:   &task.CallEnd,
-		StaffID:       inspectors,
+		StaffID:       assignTask.Users,
 	}
-	logger.Info.Printf("callQuery: %+v\n", callQuery)
 	calls, err := qi.Calls(tx, callQuery)
-	logger.Info.Print("3\n")
 	if err != nil {
 		return
 	}
@@ -360,43 +356,52 @@ func AssignInspectorTask(taskID int64, enterprise string, inspectors []string) (
 		return
 	}
 
-	logger.Info.Printf("callTasks: %+v\n", callTasks)
-
 	// assign inspector to call task by sampling rules
 	percentage := task.InspectPercentage
+	taskType := int8(0)
+	// byperson := task.InspectByPerson
+	if assignTask.Type == "reviewer" {
+		percentage = assignTask.Sampling.Percentage
+		taskType = int8(1)
+		// byperson = assignTask.Sampling.ByPerson
+	}
 	// byperson := task.InspectByPerson
 	toInspectTasks := []*model.Task{}
+	logger.Info.Print("5\n")
 
 	if percentage != 0 {
 		total := len(callTasks)
-		totalInspect := math.Floor(float64(total*percentage) / float64(100))
+		totalInspect := math.Ceil(float64(total*percentage) / float64(100))
 		end := int64(totalInspect)
 		toInspectTasks = callTasks[0:end]
 	} else {
 		// TODO: by person need to check
 		toInspectTasks = callTasks
 	}
+	logger.Info.Print("6\n")
 
 	// inspector to call task
 	assigns := []model.StaffTaskInfo{}
-	inspectorNum := len(inspectors)
+	inspectorNum := len(assignTask.Users)
 	for _, task := range toInspectTasks {
 		idx := rand.Intn(inspectorNum)
-		inspectorID := inspectors[idx]
+		inspectorID := assignTask.Users[idx]
 
 		assignTask := model.StaffTaskInfo{
 			StaffID: inspectorID,
 			TaskID:  taskID,
 			CallID:  task.ID,
+			Type:    taskType,
 		}
 		assigns = append(assigns, assignTask)
 	}
+	logger.Info.Printf("%+v\n", assigns)
 
 	err = taskDao.AssignInspectTasks(assigns, tx)
-	logger.Info.Print("5\n")
 	if err != nil {
 		return
 	}
+	logger.Info.Print("8\n")
 
 	err = manualDB.Commit(tx)
 	return

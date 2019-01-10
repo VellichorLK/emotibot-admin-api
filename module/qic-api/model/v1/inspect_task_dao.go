@@ -267,7 +267,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, 
+		`SELECT it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s,
 		form.%s as fname, ot.%s as otname, rits.%s as staff_id FROM (SELECT * FROM %s %s %s) as it
 		LEFT JOIN %s as form ON it.%s = form.%s
 		%s as ritol ON it.%s = ritol.%s
@@ -281,6 +281,8 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		fldCreator,
 		fldCreateTime,
 		ITPublishTime,
+		ITInspectPercentage,
+		ITInspectByPerson,
 		fldName,
 		fldName,
 		RITStaffStaffID,
@@ -356,6 +358,8 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 			&task.Creator,
 			&task.CreateTime,
 			&task.PublishTime,
+			&task.InspectPercentage,
+			&task.InspectByPerson,
 			&form.Name,
 			&outline.Name,
 			&staff,
@@ -609,16 +613,17 @@ func (dao *InspectTaskSqlDao) AssignInspectTasks(assigns []StaffTaskInfo, sql Sq
 	if len(assigns) == 0 {
 		return
 	}
-	valueStr := fmt.Sprintf("(?, ?, ?)%s", strings.Repeat(", (?, ?, ?)", len(assigns)-1))
+	valueStr := fmt.Sprintf("(?, ?, ?, ?)%s", strings.Repeat(", (?, ?, ?, ?)", len(assigns)-1))
 	values := []interface{}{}
 	for _, assign := range assigns {
-		values = append(values, assign.TaskID, assign.StaffID, assign.CallID)
+		values = append(values, assign.TaskID, assign.StaffID, assign.CallID, assign.Type)
 	}
 
 	fields := []string{
 		RITCSTaskID,
 		RITCSStaffID,
 		RITCSCallID,
+		fldType,
 	}
 	fieldStr := strings.Join(fields, ", ")
 
