@@ -110,6 +110,10 @@ func (dao *mockTaskDao) UsersByType(utype string, sql model.SqlLike) ([]*model.S
 	return []*model.Staff{}, nil
 }
 
+func (dao *mockTaskDao) FinishTask(staff string, callID int64, sql model.SqlLike) (err error) {
+	return
+}
+
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
 	oriManualDB := manualDB
 	oriAuthDB := authDB

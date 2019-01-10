@@ -415,3 +415,8 @@ func GetUsers(userType string) ([]*model.Staff, error) {
 	authConn := authDB.Conn()
 	return taskDao.UsersByType(userType, authConn)
 }
+
+func FinishTask(staff string, callID int64) error {
+	manualConn := manualDB.Conn()
+	return taskDao.FinishTask(staff, callID, manualConn)
+}

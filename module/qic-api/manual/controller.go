@@ -552,3 +552,21 @@ func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
 
 	util.WriteJSON(w, staffs)
 }
+
+func handleFinishInspectTask(w http.ResponseWriter, r *http.Request) {
+	userID := requestheader.GetUserID(r)
+
+	callIDstr := general.ParseID(r)
+	callID, err := strconv.ParseInt(callIDstr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = FinishTask(userID, callID)
+	if err != nil {
+		logger.Error.Printf("error while set inspect task finished in handleFinishInspectTask, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}

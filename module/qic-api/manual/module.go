@@ -28,9 +28,10 @@ func init() {
 			util.NewEntryPoint("POST", "sampling/tasks/{id}/assign", []string{}, handleAssignStaffToTask),
 			util.NewEntryPoint("POST", "sampling/tasks/{id}/{published:publish|unpublish}", []string{}, handleInspectTaskPublish),
 			util.NewEntryPoint("POST", "sampling/calls", []string{}, handleUserAssignedCalls),
+			util.NewEntryPoint("POST", "sampling/calls/{id}", []string{}, handleFinishInspectTask),
 			util.NewEntryPoint("GET", "outline", []string{}, handleGetOutlines),
 			util.NewEntryPoint("GET", "inspector", []string{}, handleGetInspectors),
-			util.NewEntryPoint("GET", "staff", []string{}, handleGetCustomerStaffs),
+			util.NewEntryPoint("GET", "staff", []string{}, handleFinishInspectTask),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

@@ -90,6 +90,7 @@ type InspectTaskDao interface {
 	AssignInspectTasks(assigns []StaffTaskInfo, sql SqlLike) error
 	Outlines(SqlLike) ([]*Outline, error)
 	UsersByType(string, SqlLike) ([]*Staff, error)
+	FinishTask(string, int64, SqlLike) error
 }
 
 type InspectTaskSqlDao struct{}
@@ -689,6 +690,29 @@ func (dao *InspectTaskSqlDao) UsersByType(userType string, sql SqlLike) (staffs 
 			&staff.Name,
 		)
 		staffs = append(staffs, &staff)
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) FinishTask(staff string, callID int64, sql SqlLike) (err error) {
+	updateStr := fmt.Sprintf(
+		"UPDATE %s SET %s=1 WHERE %s=? and %s=?",
+		tblRelITCallStaff,
+		fldStatus,
+		RITCSStaffID,
+		RITCSCallID,
+	)
+	values := []interface{}{
+		staff,
+		callID,
+	}
+
+	logger.Info.Printf("values: %+v\n", values)
+
+	_, err = sql.Exec(updateStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while set inspect task finished in dao.FinishTask, err: %s", err.Error())
+		return
 	}
 	return
 }
