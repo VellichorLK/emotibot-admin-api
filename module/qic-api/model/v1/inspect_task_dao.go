@@ -227,6 +227,15 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		}
 	}
 
+	if len(filter.ID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldID, idStr))
+
+		for _, id := range filter.ID {
+			values = append(values, id)
+		}
+	}
+
 	doPageStr := ""
 	if doPage && filter.Limit > 0 {
 		start := filter.Page * filter.Limit
