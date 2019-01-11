@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -315,7 +315,6 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		RITStaffTaskID,
 		fldID,
 	)
-	logger.Info.Printf("queryStr: %s\n", queryStr)
 	return
 }
 
@@ -383,6 +382,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 				tasks = append(tasks, *cTask)
 			}
 			cTask = &task
+			cTask.Form = form
 
 			staffMap = map[string]bool{}
 			outlineMap = map[string]bool{}
@@ -665,7 +665,7 @@ func (dao *InspectTaskSqlDao) Outlines(sql SqlLike) (outlines []*Outline, err er
 
 	rows, err := sql.Query(queryStr)
 	if err != nil {
-		logger.Error.Printf("error while query outlines in dao.Outlines, err: %s", err.Error())
+		err = fmt.Errorf("error while query outlines in dao.Outlines, err: %s", err.Error())
 		return
 	}
 	defer rows.Close()
@@ -687,7 +687,7 @@ func (dao *InspectTaskSqlDao) UsersByType(userType string, sql SqlLike) (staffs 
 
 	rows, err := sql.Query(queryStr)
 	if err != nil {
-		logger.Error.Printf("error while query usrs in dao.UsersByType, err: %s", err.Error())
+		err = fmt.Errorf("error while query usrs in dao.UsersByType, err: %s", err.Error())
 		return
 	}
 	defer rows.Close()
@@ -716,8 +716,6 @@ func (dao *InspectTaskSqlDao) FinishTask(staff string, callID int64, sql SqlLike
 		staff,
 		callID,
 	}
-
-	logger.Info.Printf("values: %+v\n", values)
 
 	_, err = sql.Exec(updateStr, values...)
 	if err != nil {
