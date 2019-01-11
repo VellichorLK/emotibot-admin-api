@@ -407,6 +407,56 @@ func handleExportIntentV2(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func handleDeleteMultiIntentV2(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
+	var err AdminErrors.AdminError
+	var ret interface{}
+	var origIntents []*IntentV2
+
+	defer func() {
+		result := 0
+		var auditBuf bytes.Buffer
+		auditBuf.WriteString(localemsg.Get(locale, "DeleteIntent"))
+		if origIntents != nil || len(origIntents) > 0 {
+			auditBuf.WriteString(":")
+			for _, origIntent := range origIntents {
+				auditBuf.WriteString(" ")
+				auditBuf.WriteString(origIntent.Name)
+			}
+		}
+		auditMsg := auditBuf.String()
+		if err == nil || err.Errno() == AdminErrors.ErrnoNotFound {
+			result = 1
+			err = nil
+		} else {
+			ret = auditMsg
+		}
+		audit.AddAuditFromRequestAuto(r, auditMsg, result)
+		util.Return(w, err, ret)
+	}()
+
+	type inputFormat struct {
+		ID []int64 `json:"id"`
+	}
+
+	input := inputFormat{}
+	jsonErr := util.ReadJSON(r, &input)
+	if jsonErr != nil {
+		logger.Trace.Println("Get input json fail: ", jsonErr.Error())
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, localemsg.Get(locale, "IntentID"))
+		return
+	}
+
+	origIntents, err = GetIntents(appid, nil, "")
+	if err != nil {
+		return
+	}
+
+	err = DeleteIntents(appid, input.ID)
+	return
+}
+
 func getEnvironments() map[string]string {
 	return util.GetEnvOf(moduleName)
 }
