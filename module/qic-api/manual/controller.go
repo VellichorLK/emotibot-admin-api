@@ -228,6 +228,8 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 	values := r.URL.Query()
 	filter := parseTaskFilter(&values)
 
+	logger.Info.Printf("filter: %+v\n", filter)
+
 	if user.Type == ADMIN_USER {
 		handleAdminUserGetTasks(filter, w)
 	} else if user.Type == NORMAL_USER {
@@ -538,7 +540,20 @@ func handleGetInspectors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, inspectors)
+	// TODO: resolve inspector group
+	type StaffResponse struct {
+		Group      string         `json:"group_name"`
+		Insepctors []*model.Staff `json:"inspectors"`
+	}
+
+	response := []StaffResponse{
+		StaffResponse{
+			Group:      "预设质检员群组",
+			Insepctors: inspectors,
+		},
+	}
+
+	util.WriteJSON(w, response)
 }
 
 func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
@@ -550,7 +565,21 @@ func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, staffs)
+	// TODO: resolve customer staffs group
+
+	type StaffResponse struct {
+		Group  string         `json:"group_name"`
+		Staffs []*model.Staff `json:"staffs"`
+	}
+
+	response := []StaffResponse{
+		StaffResponse{
+			Group:  "预设座席群组",
+			Staffs: staffs,
+		},
+	}
+
+	util.WriteJSON(w, response)
 }
 
 func handleFinishInspectTask(w http.ResponseWriter, r *http.Request) {
@@ -569,4 +598,16 @@ func handleFinishInspectTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func handleGetScoreForms(w http.ResponseWriter, r *http.Request) {
+	scoreForms, err := GetScoreForms()
+	if err != nil {
+		logger.Error.Printf("error while get score forms in handleGetScoreForms, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, scoreForms)
+
 }

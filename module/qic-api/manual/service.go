@@ -420,3 +420,8 @@ func FinishTask(staff string, callID int64) error {
 	manualConn := manualDB.Conn()
 	return taskDao.FinishTask(staff, callID, manualConn)
 }
+
+func GetScoreForms() ([]*model.ScoreForm, error) {
+	manualConn := manualDB.Conn()
+	return taskDao.ScoreForms(manualConn)
+}

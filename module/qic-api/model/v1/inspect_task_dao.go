@@ -64,19 +64,19 @@ type StaffTaskFilter struct {
 }
 
 type Outline struct {
-	ID   int64
-	Name string
+	ID   int64  `json:"id"`
+	Name string `json:"text"`
 }
 
 type ScoreForm struct {
-	ID   int64
-	Name string
+	ID   int64  `json:"form_id"`
+	Name string `json:"form_name"`
 }
 
 type Staff struct {
-	UUID string
-	Name string
-	Type int8
+	UUID string `json:"id"`
+	Name string `json:"name"`
+	Type int8   `json:"-"`
 }
 
 type InspectTaskDao interface {
@@ -91,6 +91,7 @@ type InspectTaskDao interface {
 	Outlines(SqlLike) ([]*Outline, error)
 	UsersByType(string, SqlLike) ([]*Staff, error)
 	FinishTask(string, int64, SqlLike) error
+	ScoreForms(SqlLike) ([]*ScoreForm, error)
 }
 
 type InspectTaskSqlDao struct{}
@@ -713,6 +714,33 @@ func (dao *InspectTaskSqlDao) FinishTask(staff string, callID int64, sql SqlLike
 	if err != nil {
 		err = fmt.Errorf("error while set inspect task finished in dao.FinishTask, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) ScoreForms(sql SqlLike) (forms []*ScoreForm, err error) {
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s FROM %s",
+		fldID,
+		fldName,
+		tblScoreForm,
+	)
+
+	rows, err := sql.Query(queryStr)
+	if err != nil {
+		err = fmt.Errorf("error while get score forms in dao.ScoreForms, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	forms = []*ScoreForm{}
+	for rows.Next() {
+		form := ScoreForm{}
+		rows.Scan(
+			&form.ID,
+			&form.Name,
+		)
+		forms = append(forms, &form)
 	}
 	return
 }
