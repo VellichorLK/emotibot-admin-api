@@ -216,10 +216,10 @@ func TestSentenceGroupMatch(t *testing.T) {
 	}
 
 	matchedSenIDAndSegmentIdx := map[uint64][]int{1: {3, 5, 6}, 5: {3, 7}, 9: {11, 8}}
-	criteria := []SenGroupCriteria{{ID: 11, SentenceID: []uint64{5}},
-		{ID: 21, SentenceID: []uint64{9, 5}, Role: 1},
-		{ID: 31, SentenceID: []uint64{138, 139}},
-		{ID: 41, SentenceID: []uint64{1, 9}, Role: 0}}
+	criteria := map[uint64]*SenGroupCriteria{11: &SenGroupCriteria{ID: 11, SentenceID: []uint64{5}},
+		21: &SenGroupCriteria{ID: 21, SentenceID: []uint64{9, 5}, Role: 1},
+		31: &SenGroupCriteria{ID: 31, SentenceID: []uint64{138, 139}},
+		41: &SenGroupCriteria{ID: 41, SentenceID: []uint64{1, 9}, Role: 0}}
 
 	result, err := SentenceGroupMatch(matchedSenIDAndSegmentIdx, criteria, segments)
 	if err != nil {
@@ -236,6 +236,394 @@ func TestSentenceGroupMatch(t *testing.T) {
 		case 41:
 		default:
 			t.Fatalf("Expecting %d,%d sentence group is meet, but get %d\n", 11, 41, sgID)
+		}
+	}
+
+}
+
+func TestFCDigest(t *testing.T) {
+	c := &ConFlowCriteria{}
+	expression := "if A and B"
+	c.Expression = expression
+	err := c.FlowExpressionToNode()
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	}
+
+	expecting := []ExprNode{{uuid: "A"}, {uuid: "B"}}
+	if len(c.nodes) != len(expecting) {
+		t.Errorf("Expecting %d node, but get %d\n", len(expecting), len(c.nodes))
+		for i := 0; i < len(c.nodes); i++ {
+			t.Errorf("node %d uuid %s withNot %v isThen %v\n", i, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+		}
+	} else {
+
+		for i := 0; i < len(expecting); i++ {
+			if expecting[i].uuid != c.nodes[i].uuid ||
+				expecting[i].withNot != c.nodes[i].withNot ||
+				expecting[i].isThen != c.nodes[i].isThen {
+				t.Errorf("Expecting %d node uuid %s withNot %v isThen %v, but get uuid %s withNot %v isThen %v\n",
+					i, expecting[i].uuid, expecting[i].withNot, expecting[i].isThen, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+			}
+		}
+	}
+
+	expression = "if A and B and C then D and E"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err != nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+	expecting = []ExprNode{{uuid: "A"}, {uuid: "B"}, {uuid: "C"}, {uuid: "D", isThen: true}, {uuid: "E"}}
+	if len(c.nodes) != len(expecting) {
+		t.Errorf("Expecting %d node, but get %d\n", len(expecting), len(c.nodes))
+		for i := 0; i < len(c.nodes); i++ {
+			t.Errorf("node %d uuid %s withNot %v isThen %v\n", i, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+		}
+	} else {
+
+		for i := 0; i < len(expecting); i++ {
+			if expecting[i].uuid != c.nodes[i].uuid ||
+				expecting[i].withNot != c.nodes[i].withNot ||
+				expecting[i].isThen != c.nodes[i].isThen {
+				t.Errorf("Expecting %d node uuid %s withNot %v isThen %v, but get uuid %s withNot %v isThen %v\n",
+					i, expecting[i].uuid, expecting[i].withNot, expecting[i].isThen, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+			}
+		}
+	}
+
+	expression = "if A and not B and not C then D and not E"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err != nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+	expecting = []ExprNode{{uuid: "A"}, {uuid: "B", withNot: true}, {uuid: "C", withNot: true}, {uuid: "D", isThen: true}, {uuid: "E", withNot: true}}
+	if len(c.nodes) != len(expecting) {
+		t.Errorf("Expecting %d node, but get %d\n", len(expecting), len(c.nodes))
+		for i := 0; i < len(c.nodes); i++ {
+			t.Errorf("node %d uuid %s withNot %v isThen %v\n", i, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+		}
+	} else {
+
+		for i := 0; i < len(expecting); i++ {
+			if expecting[i].uuid != c.nodes[i].uuid ||
+				expecting[i].withNot != c.nodes[i].withNot ||
+				expecting[i].isThen != c.nodes[i].isThen {
+				t.Errorf("Expecting %d node uuid %s withNot %v isThen %v, but get uuid %s withNot %v isThen %v\n",
+					i, expecting[i].uuid, expecting[i].withNot, expecting[i].isThen, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+			}
+		}
+	}
+
+	expression = "if A and not B and not C then D and not not E"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err != nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+	expecting = []ExprNode{{uuid: "A"}, {uuid: "B", withNot: true}, {uuid: "C", withNot: true}, {uuid: "D", isThen: true}, {uuid: "E"}}
+	if len(c.nodes) != len(expecting) {
+		t.Errorf("Expecting %d node, but get %d\n", len(expecting), len(c.nodes))
+		for i := 0; i < len(c.nodes); i++ {
+			t.Errorf("node %d uuid %s withNot %v isThen %v\n", i, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+		}
+	} else {
+
+		for i := 0; i < len(expecting); i++ {
+			if expecting[i].uuid != c.nodes[i].uuid ||
+				expecting[i].withNot != c.nodes[i].withNot ||
+				expecting[i].isThen != c.nodes[i].isThen {
+				t.Errorf("Expecting %d node uuid %s withNot %v isThen %v, but get uuid %s withNot %v isThen %v\n",
+					i, expecting[i].uuid, expecting[i].withNot, expecting[i].isThen, c.nodes[i].uuid, c.nodes[i].withNot, c.nodes[i].isThen)
+			}
+		}
+	}
+
+	expression = "if A and B and"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+
+	expression = "if A and B and then"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+
+	expression = "if A and B if"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+
+	expression = "if A and B and not not not c d"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
+}
+
+func TestConversationFlowMatch(t *testing.T) {
+
+	senGrpUUIDMapID := map[string]uint64{"A": 1, "B": 2, "C": 3, "D": 4, "E": 5, "F": 6}
+	numOfSeg := 20
+
+	//case 1, must starts from A in the 3 lines and B
+	expression := "must A and B"
+	senGrpCriteria := map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 0, Range: 3},
+		2: &SenGroupCriteria{ID: 2},
+	}
+
+	cfCriteria := &ConFlowCriteria{Expression: expression, Repeat: 1}
+	matchSgID := map[uint64][]int{1: []int{3}, 2: []int{5, 7, 9}, 3: []int{4, 8}, 4: []int{11, 14}}
+
+	matched, err := ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+
+	matchSgID = map[uint64][]int{1: []int{3}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	//case 2, if starts from A then B in the next 5 lines
+	expression = "if A then B"
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 0, Range: 3},
+		2: &SenGroupCriteria{ID: 2, Range: 5},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{5, 7, 9}, 3: []int{4, 8}, 4: []int{11, 14}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+	//matched B but out of assigned range
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{11, 13, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+	//not matched A, but with if
+	matchSgID = map[uint64][]int{2: []int{5, 7, 9}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+
+	//case 3, must ends from A in the 10 lines and B
+	expression = "must A and B"
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 1, Range: 10},
+		2: &SenGroupCriteria{ID: 2},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{12}, 2: []int{14, 15, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	//case 4 must A and B then C and D then E
+
+	expression = "Must A and B then C and D then E"
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 0, Range: 3},
+		2: &SenGroupCriteria{ID: 2},
+		3: &SenGroupCriteria{ID: 3, Range: 3},
+		4: &SenGroupCriteria{ID: 4},
+		5: &SenGroupCriteria{ID: 5},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 7}, 3: []int{7, 11}, 4: []int{12, 14}, 5: []int{15}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 7}, 3: []int{7, 11}, 4: []int{12, 14}, 5: []int{11}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	//case 5
+
+	expression = "Must A and not B then C and not D"
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 0, Range: 3},
+		2: &SenGroupCriteria{ID: 2},
+		3: &SenGroupCriteria{ID: 3, Range: 3},
+		4: &SenGroupCriteria{ID: 4},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3}, 3: []int{6, 11}, 5: []int{15}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 7}, 3: []int{7, 11}, 4: []int{12, 14}, 5: []int{11}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{4, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	//repeat use case
+	cfCriteria.Repeat = 2
+
+	expression = "Must A then B"
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: 0, Range: 5},
+		2: &SenGroupCriteria{ID: 2, Range: 5},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3, 4}, 2: []int{5, 7, 9}, 3: []int{4, 8}, 4: []int{11, 14}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+	//not matched repeat 2
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{11, 13, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
+		}
+	}
+
+	//case 2 repeat
+	expression = "Must A"
+	cfCriteria.Repeat = 3
+	senGrpCriteria = map[uint64]*SenGroupCriteria{
+		1: &SenGroupCriteria{ID: 1, Position: -1},
+	}
+
+	cfCriteria.Expression = expression
+	matchSgID = map[uint64][]int{1: []int{3, 4, 7}, 2: []int{5, 7, 9}, 3: []int{4, 8}, 4: []int{11, 14}}
+
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if !matched {
+			t.Errorf("Expecting matched the flow conversation,but no\n")
+		}
+	}
+	//not matched repeat 2
+	matchSgID = map[uint64][]int{1: []int{3}, 2: []int{11, 13, 19}, 3: []int{4, 8}, 4: []int{11, 14}}
+	matched, err = ConversationFlowMatch(matchSgID, senGrpCriteria, cfCriteria, senGrpUUIDMapID, numOfSeg)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		if matched {
+			t.Errorf("Expecting not matched the flow conversation,but get matched\n")
 		}
 	}
 
