@@ -10,7 +10,7 @@ import (
 
 //RelationDao access the relational table
 type RelationDao interface {
-	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, error)
+	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error)
 }
 
 type relSelectFld struct {
@@ -43,22 +43,23 @@ var (
 //the value range of arguments, from and to, is 0~5
 //the arguments of id means the parent id condition
 //return value is slice of map which means in each relation table, the parent id contains childs's
-func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, error) {
+//[][]uint64 means the order of each parent id in each relation table
+func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
 
 	if delegatee == nil {
-		return nil, ErroNoConn
+		return nil, nil, ErroNoConn
 	}
 	if to <= from {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if to > numOfLevel || from < 0 {
-		return nil, ErrOutOfLevel
+		return nil, nil, ErrOutOfLevel
 	}
 
 	numOfIDs := len(id)
 	if numOfIDs == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	use := to - from
@@ -98,13 +99,14 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	rows, err := delegatee.Query(querySQL, idInterface...)
 	if err != nil {
 		logger.Error.Printf("Query error. %s\n%s\n", querySQL, err)
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
 	numOfScan := use + 1
 
 	resp := make([]map[uint64][]uint64, numOfScan, numOfScan)
+	order := make([][]uint64, numOfScan)
 	//records the duplicate id
 	recordDup := make([]map[uint64]map[uint64]bool, numOfScan, numOfScan)
 	relIDs := make([]interface{}, 0, numOfScan)
@@ -115,7 +117,7 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	for rows.Next() {
 		err = rows.Scan(relIDs...)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var lastID uint64
@@ -144,6 +146,7 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 
 			if recordDup[ithTbl][lastID] == nil {
 				recordDup[ithTbl][lastID] = make(map[uint64]bool)
+				order[ithTbl] = append(order[ithTbl], lastID)
 			}
 
 			//already in the list
@@ -158,5 +161,5 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 		}
 	}
 
-	return resp, nil
+	return resp, order, nil
 }

@@ -33,15 +33,15 @@ var (
 //GetLevelsRel gives  from the from level to to level.
 //id is the parent_id which is the second field in from level table
 //return value is slice of map which means in each relation table, the parent id contains childs's
-func GetLevelsRel(from Levels, to Levels, id []uint64) ([]map[uint64][]uint64, error) {
+func GetLevelsRel(from Levels, to Levels, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
 	if to <= from {
-		return nil, ErrWrongLevel
+		return nil, nil, ErrWrongLevel
 	}
 	if to > LevTag || from < LevRuleGroup {
-		return nil, ErrOutOfLevel
+		return nil, nil, ErrOutOfLevel
 	}
 	if len(id) == 0 {
-		return nil, ErrNoID
+		return nil, nil, ErrNoID
 	}
 	return relationDao.GetLevelRelationID(dbLike.Conn(), int(from), int(to), id)
 }

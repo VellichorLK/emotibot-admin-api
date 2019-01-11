@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,8 +16,9 @@ import (
 
 //error message
 var (
-	ErrNoArgument = errors.New("Need arguments")
-	ErrTimeoutSet = errors.New("timeout must be larger than zero")
+	ErrNoArgument      = errors.New("Need arguments")
+	ErrTimeoutSet      = errors.New("timeout must be larger than zero")
+	ErrWrongExpression = errors.New("wrong conversation flow expression")
 )
 
 //MatchedData stores the index of input and the matched ID (tag id) and its relative data
@@ -38,12 +40,91 @@ type SenGroupCriteria struct {
 	ID         uint64
 	SentenceID []uint64
 	Role       int
+	Position   int
+	Range      int
+}
+
+type ExprNode struct {
+	withNot bool
+	isThen  bool
+	uuid    string
 }
 
 //ConFlowCriteria is conversation flow matching critera
 type ConFlowCriteria struct {
 	ID         uint64
-	expression string
+	Repeat     int
+	Expression string
+
+	startMust bool
+	nodes     []*ExprNode
+}
+
+//FlowExpressionToNode converts the conversation flow expression to node
+func (c *ConFlowCriteria) FlowExpressionToNode() error {
+
+	token := strings.Split(c.Expression, " ")
+	numOfToken := len(token)
+	stack := make(chan string, 99999)
+
+	if numOfToken < 2 {
+		return ErrWrongExpression
+	}
+
+	lToken := strings.ToLower(token[0])
+	switch lToken {
+	case "if":
+	case "must":
+		c.startMust = true
+	default:
+		return ErrWrongExpression
+	}
+
+	stack <- lToken
+
+	for i := 1; i < numOfToken; i++ {
+
+		lToken := strings.ToLower(token[i])
+		switch lToken {
+		case "not":
+			stack <- lToken
+		case "and":
+			fallthrough
+		case "then":
+			if len(stack) != 0 {
+				return ErrWrongExpression
+			}
+			stack <- lToken
+		default:
+			if len(stack) == 0 {
+				return ErrWrongExpression
+			}
+			n := &ExprNode{}
+			numOfStack := len(stack)
+			for j := 0; j < numOfStack; j++ {
+				last := <-stack
+				switch last {
+				case "and":
+				case "not":
+					n.withNot = !n.withNot
+				case "then":
+					n.isThen = true
+				case "if":
+				case "must":
+				default:
+					return ErrWrongExpression
+				}
+			}
+			n.uuid = token[i]
+			c.nodes = append(c.nodes, n)
+		}
+
+	}
+
+	if len(stack) != 0 {
+		return ErrWrongExpression
+	}
+	return nil
 }
 
 //SetData sets the data for thread-safe
@@ -203,7 +284,7 @@ func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[ui
 //semgnets is the segments data
 //return value: the sentence group id which is meet by which segment index
 func SentenceGroupMatch(matchedSen map[uint64][]int,
-	c []SenGroupCriteria, segments []*ASRSegment) (map[uint64][]int, error) {
+	c map[uint64]*SenGroupCriteria, segments []*ASRSegment) (map[uint64][]int, error) {
 	resp := make(map[uint64][]int, len(c))
 
 	numOfSegs := len(segments)
@@ -229,7 +310,7 @@ func SentenceGroupMatch(matchedSen map[uint64][]int,
 						//check the role
 						if s.Speaker == criteria.Role {
 							resp[criteria.ID] = append(resp[criteria.ID], segIdxs...)
-							checkNext = true
+							//checkNext = true
 							break
 						}
 					}
@@ -260,16 +341,126 @@ func extractTagMatchedData(tagMatchDat []*MatchedData) []map[uint64]bool {
 
 }
 
-//ConversationFlowMatch gives the id of conversationFlow that meet the critera
-func ConversationFlowMatch(matchSgID map[uint64][]int,
-	criteria []*ConFlowCriteria, senGrpUUIDMapID map[string]uint64) (map[uint64]bool, error) {
-	for _, c := range criteria {
-		if c != nil {
-			//c.expression
-		}
+//ConversationFlowMatch checks one conversation at one time and give whether this convseration flow is meet or not
+//parameters:
+//matchSgID is the segment index for each sentence group that is matched
+//senGrpCriteria is the criteria for each sentence group
+//cfCriteria is the conversation flow criteria
+//senGrpUUIDMapID is the map from uuid to id in sentence group
+//totalSeg is the total lines in this user input context
+func ConversationFlowMatch(matchSgID map[uint64][]int, senGrpCriteria map[uint64]*SenGroupCriteria,
+	cfCriteria *ConFlowCriteria, senGrpUUIDMapID map[string]uint64, totalSeg int) (matched bool, err error) {
+
+	if cfCriteria == nil {
+		return
+	}
+	//empty the node in case for reuse
+	cfCriteria.nodes = []*ExprNode{}
+	cfCriteria.startMust = false
+	//transform the expression to node struct
+	err = cfCriteria.FlowExpressionToNode()
+	if err != nil {
+		logger.Error.Printf("Transform expresionn %s failed. %s\n", cfCriteria.Expression, err)
+		return
 	}
 
-	return nil, nil
+	//copy the matched sentence group id for later use
+	copyMatchSgID := make(map[uint64][]int, len(matchSgID))
+	for k, v := range matchSgID {
+		s := make([]int, len(v))
+		copy(s, v)
+		copyMatchSgID[k] = s
+	}
+
+	for z := 0; z < cfCriteria.Repeat; z++ {
+		var lastSegmentIdx int
+		useFirstSeg := true
+		//check for each sentence group which is already in order
+		for idx, v := range cfCriteria.nodes {
+
+			id, ok := senGrpUUIDMapID[v.uuid]
+			if !ok {
+				logger.Error.Printf("Cannot find uuid %s with its id\n", v.uuid)
+				return
+			}
+
+			criteria, ok := senGrpCriteria[id]
+			if !ok {
+				logger.Error.Printf("Cannot find sentence group %d with its information\n", id)
+				return
+			}
+
+			matchThisSenGrp := true
+			numOfMatchedSeg := len(copyMatchSgID[id])
+
+			if v.withNot {
+				if numOfMatchedSeg != 0 {
+					matchThisSenGrp = false
+				}
+			} else {
+				if numOfMatchedSeg == 0 {
+					matchThisSenGrp = false
+				}
+			}
+
+			if idx == 0 {
+				//no match at begining
+				if !matchThisSenGrp {
+					//starts with if
+					if !cfCriteria.startMust {
+						matched = true
+					}
+					return
+				}
+
+				switch criteria.Position {
+				//must start in n words
+				case 0:
+					if copyMatchSgID[id][0] > criteria.Range {
+						return
+					}
+				//must ends with this sentence group in the n last words
+				case 1:
+					if totalSeg-copyMatchSgID[id][numOfMatchedSeg-1] > criteria.Range {
+						return
+					}
+					useFirstSeg = false
+				//no assigned
+				default:
+				}
+			} else {
+				if !matchThisSenGrp {
+					return
+				}
+				if v.withNot {
+					continue
+				}
+				//check then scenario
+				if criteria.Range > 0 {
+					segIdx := copyMatchSgID[id][0]
+					if segIdx-lastSegmentIdx > criteria.Range || segIdx < lastSegmentIdx {
+						return
+					}
+				} else {
+					if v.isThen {
+						if copyMatchSgID[id][0] < lastSegmentIdx {
+							return
+						}
+					}
+				}
+			}
+
+			if useFirstSeg {
+				lastSegmentIdx = copyMatchSgID[id][0]
+				copyMatchSgID[id] = copyMatchSgID[id][1:]
+			} else {
+				lastSegmentIdx = copyMatchSgID[id][numOfMatchedSeg-1]
+				copyMatchSgID[id] = copyMatchSgID[id][:numOfMatchedSeg]
+			}
+		}
+	}
+	matched = true
+	return
 }
 
 //RuleGroupCriteria gives the result of the criteria used to the group
@@ -281,7 +472,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	}
 
 	//get the relation table from RuleGroup to Tag
-	levels, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{ruleGroup})
+	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{ruleGroup})
 	if err != nil {
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
@@ -332,10 +523,10 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	}
 
 	//extract the sentence group id
-	ConContainSenGrp := levels[LevConversation]
+	conContainSenGrp := levels[LevConversation]
 	senGrpIDs := make([]uint64, 0)
-	cfIDs := make([]uint64, 0, len(ConContainSenGrp))
-	for cfID, senGrpIDList := range ConContainSenGrp {
+	cfIDs := make([]uint64, 0, len(conContainSenGrp))
+	for cfID, senGrpIDList := range conContainSenGrp {
 		senGrpIDs = append(senGrpIDs, senGrpIDList...)
 		cfIDs = append(cfIDs, cfID)
 	}
@@ -356,18 +547,22 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 
 	//transform the sentence group information to the sentence group critera struct
 	senGrpContainSen := levels[LevSenGroup]
-	senGrpCriteria := make([]SenGroupCriteria, 0, numOfSenGrp)
-	senGrpUUIDMapID := make(map[string]uint64)
+	senGrpCriteria := make(map[uint64]*SenGroupCriteria)
+	senGrpUUIDMapID := make(map[string]uint64, numOfSenGrp)
+
 	for i := 0; i < numOfSenGrp; i++ {
-		var c SenGroupCriteria
-		c.ID = uint64(senGrp[i].ID)
-		if segIDs, ok := senGrpContainSen[c.ID]; ok {
-			c.Role = senGrp[i].Role
-			c.SentenceID = segIDs
-			senGrpCriteria = append(senGrpCriteria, c)
-			senGrpUUIDMapID[senGrp[i].UUID] = c.ID
+		id := uint64(senGrp[i].ID)
+		var criterion SenGroupCriteria
+		if senIDs, ok := senGrpContainSen[id]; ok {
+			senGrpCriteria[id] = &criterion
+			senGrpCriteria[id].ID = id
+			senGrpCriteria[id].Role = senGrp[i].Role
+			senGrpCriteria[id].Range = senGrp[i].Distance
+			senGrpCriteria[id].Position = senGrp[i].Position
+			senGrpCriteria[id].SentenceID = senIDs
+			senGrpUUIDMapID[senGrp[i].UUID] = id
 		} else {
-			logger.Warn.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", c.ID)
+			logger.Warn.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", id)
 		}
 	}
 
@@ -377,30 +572,38 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		logger.Warn.Printf("doing sentence group match failed.%s\n", err)
 		return nil, err
 	}
-	_ = matchSgID
 
+	//get the conversation flow inforamtion
 	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
 	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
 	if err != nil {
 		logger.Error.Printf("get conversation flow failed.%s\n", err)
 		return nil, err
 	}
-	numOfCFInfo := len(cfInfo)
-	cfCriteria := make([]*ConFlowCriteria, 0, numOfCFInfo)
-	for _, info := range cfInfo {
+
+	//sorting the matched segment index
+	for _, segIdxs := range matchSgID {
+		sort.Ints(segIdxs)
+	}
+
+	var matchedCF int
+	matchCFID := make(map[uint64]bool)
+	//doing check for each conversation flow
+	for i := 0; i < len(cfInfo); i++ {
 		var c ConFlowCriteria
-		c.ID = uint64(info.ID)
-		c.expression = info.Expression
-		cfCriteria = append(cfCriteria, &c)
-	}
+		c.ID = uint64(cfInfo[i].ID)
+		c.Expression = cfInfo[i].Expression
 
-	cfMatched, err := ConversationFlowMatch(matchSgID, cfCriteria, senGrpUUIDMapID)
-	if err != nil {
-		logger.Warn.Printf("doing conversation flow match failed.%s\n", err)
-		return nil, err
+		cfMatched, err := ConversationFlowMatch(matchSgID, senGrpCriteria, &c, senGrpUUIDMapID, numOfLines)
+		if err != nil {
+			logger.Error.Printf("getting the conversation flow match failed. %s\n", err)
+			return nil, err
+		}
+		if cfMatched {
+			matchCFID[c.ID] = true
+			matchedCF++
+		}
 	}
-
-	_ = cfMatched
 
 	return nil, nil
 }
