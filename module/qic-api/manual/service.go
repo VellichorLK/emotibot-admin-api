@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"time"
 )
 
 var (
@@ -31,6 +32,8 @@ func CreateTask(task *model.InspectTask) (id int64, err error) {
 	}
 
 	task.UUID = uuid
+	task.CreateTime = time.Now().Unix()
+	task.UpdateTime = time.Now().Unix()
 
 	tx, err := manualDB.Begin()
 	if err != nil {
