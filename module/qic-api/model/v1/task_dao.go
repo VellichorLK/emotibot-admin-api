@@ -18,9 +18,10 @@ type Task struct {
 	// Description string
 	IsDeal bool
 	//序號
-	Series      string
-	CreatedTime int64
-	UpdatedTime int64
+	Series        string
+	CreatedTime   int64
+	UpdatedTime   int64
+	CallsOfStaffs map[string][]Call
 	// Creator     string
 	// Updator     string
 }

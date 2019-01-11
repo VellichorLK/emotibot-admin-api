@@ -29,10 +29,15 @@ const (
 	tblConversationRule = "Rule"
 	tblRelCRCF          = "Relation_Rule_ConversationFlow"
 	tblInspectTask      = "InspectorTask"
-	tblRelITOuline      = "Relation_InspectorTask_Outline"
+	tblRelITOutline     = "Relation_InspectorTask_Outline"
 	tblCall             = "call"
 	tblRelCallRuleGrp   = "Relation_Call_RuleGroup"
+	tblScoreForm        = "ScoreForm"
+	tblOutline          = "Outline"
+	tblUsers            = "users"
+	tblRelITCallStaff   = "Relation_InspectorTask_Call_Staff"
 	tblTask             = "task"
+	tblRelITStaff       = "Relation_InspectorTask_Staff"
 )
 
 //field name in Conversation table
@@ -204,6 +209,8 @@ const (
 	fldUpdateTime  = "update_time"
 	fldDescription = "description"
 	fldCreator     = "creator"
+	fldStatus      = "status"
+	fldType        = "type"
 )
 
 //relation field name
@@ -255,8 +262,8 @@ const (
 
 // fields in Relation_InspectorTask_Outline
 const (
-	RITOTaskID   = "task_id"
-	RITOOulineID = "outline_id"
+	RITOTaskID     = "task_id"
+	RITOTOutlineID = "outline_id"
 )
 
 const (
@@ -295,6 +302,17 @@ const (
 	fldCRGRelCallID      = "call_id"
 )
 
+// fields for Relation_InspectorTask_Call_Staff
+const (
+	RITCSTaskID  = "task_id"
+	RITCSStaffID = "staff_id"
+	RITCSCallID  = "call_id"
+)
+
+// fields for users
+const (
+	USERDisplayName = "display_name"
+)
 const (
 	fldTaskID     = "task_id"
 	fldTaskStatus = "status"
@@ -303,4 +321,10 @@ const (
 	fldTaskSeries     = "series"
 	fldTaskCreateTime = "create_time"
 	fldTaskUpdateTime = "update_time"
+)
+
+// fields for Relation_InspectorTask_Staff
+const (
+	RITStaffTaskID  = "task_id"
+	RITStaffStaffID = "staff_id"
 )

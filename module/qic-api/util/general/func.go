@@ -1,8 +1,10 @@
 package general
 
 import (
+	"github.com/gorilla/mux"
 	"github.com/satori/go.uuid"
 	"math/rand"
+	"net/http"
 	"strings"
 )
 
@@ -25,4 +27,9 @@ func UUID() (uuidStr string, err error) {
 	uuidStr = uuidObj.String()
 	uuidStr = strings.Replace(uuidStr, "-", "", -1)
 	return
+}
+
+func ParseID(r *http.Request) (id string) {
+	vars := mux.Vars(r)
+	return vars["id"]
 }
