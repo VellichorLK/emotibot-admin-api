@@ -491,7 +491,7 @@ func TestGetSentence(t *testing.T) {
 func TestGetSentenceList(t *testing.T) {
 	sentenceMockDataSetup()
 	enterprise := mockSentenceDao.enterprises[0]
-	total, d, _ := GetSentenceList(enterprise, 1, 100)
+	total, d, _ := GetSentenceList(enterprise, 1, 100, nil, nil)
 	if total != uint64(len(d)) {
 		t.Errorf("expecting total(%d) == get data(%d), but not equal\n", total, len(d))
 	}

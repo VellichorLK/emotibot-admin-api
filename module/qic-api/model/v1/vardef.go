@@ -211,6 +211,7 @@ const (
 	fldCreator     = "creator"
 	fldStatus      = "status"
 	fldType        = "type"
+	fldCategoryID  = "category_id"
 )
 
 //relation field name
@@ -300,6 +301,7 @@ const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
+	fldLinkID            = "link_id"
 )
 
 // fields for Relation_InspectorTask_Call_Staff

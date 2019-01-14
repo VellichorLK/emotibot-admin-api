@@ -16,10 +16,11 @@ var (
 
 //DataSentence data structures of sentence level
 type DataSentence struct {
-	ID   uint64     `json:"id"`
-	UUID string     `json:"sentence_id,omitempty"`
-	Name string     `json:"sentence_name,omitempty"`
-	Tags []*DataTag `json:"tags"`
+	ID         uint64     `json:"id"`
+	CategoryID uint64     `json:"category_id,string"`
+	UUID       string     `json:"sentence_id,omitempty"`
+	Name       string     `json:"sentence_name,omitempty"`
+	Tags       []*DataTag `json:"tags"`
 }
 
 //DataTag is data struct of tag level
@@ -56,9 +57,13 @@ func GetSentence(uuid string, enterprise string) (*DataSentence, error) {
 }
 
 //GetSentenceList gets list of sentences queried by enterprise
-func GetSentenceList(enterprise string, page int, limit int) (uint64, []*DataSentence, error) {
-	var isDelete int8
-	q := &model.SentenceQuery{Enterprise: &enterprise, Limit: limit, Page: page, IsDelete: &isDelete}
+//parameters:
+//isdelete, nil for no constraint, 0 for not delete, 1 for deleted
+//categortID, nil for no constraint, 0 for the sentences in unknown category, others for category id
+func GetSentenceList(enterprise string, page int, limit int, isDelete *int8, categoryID *uint64) (uint64, []*DataSentence, error) {
+	//var isDelete int8
+	q := &model.SentenceQuery{Enterprise: &enterprise, Limit: limit, Page: page,
+		IsDelete: isDelete, CategoryID: categoryID}
 	count, err := sentenceDao.CountSentences(nil, q)
 	if err != nil {
 		return 0, nil, err
@@ -84,7 +89,7 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 	data := make([]*DataSentence, 0, numOfSens)
 	allTagIDs := make([]uint64, 0)
 	for i := 0; i < numOfSens; i++ {
-		d := &DataSentence{ID: sentences[i].ID, UUID: sentences[i].UUID, Name: sentences[i].Name}
+		d := &DataSentence{ID: sentences[i].ID, UUID: sentences[i].UUID, Name: sentences[i].Name, CategoryID: sentences[i].CategoryID}
 		d.Tags = make([]*DataTag, 0)
 		allTagIDs = append(allTagIDs, sentences[i].TagIDs...)
 		data = append(data, d)
