@@ -45,23 +45,13 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	simpleGroups := make([]model.SimpleGroup, len(groups), len(groups))
-	for i, group := range groups {
-		simpleGroup := model.SimpleGroup{
-			ID:   group.UUID,
-			Name: group.Name,
-		}
-
-		simpleGroups[i] = simpleGroup
-	}
-
-	response := SimpleGroupsResponse{
+	response := GroupsResponse{
 		Paging: &general.Paging{
 			Page:  filter.Page,
 			Limit: filter.Limit,
 			Total: total,
 		},
-		Data: simpleGroups,
+		Data: groups,
 	}
 
 	util.WriteJSON(w, response)
