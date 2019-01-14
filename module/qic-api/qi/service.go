@@ -28,11 +28,114 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	}
 	defer serviceDAO.ClearTranscation(tx)
 
-	// TODO: set code left channel & right channel
-	group.Condition.LeftChannelCode = 0
-	group.Condition.RightChannelCode = 1
+	if group.Name == nil {
+		name := ""
+		group.Name = &name
+	}
 
-	group.Enabled = 1
+	if group.Enabled == nil {
+		enabled := int8(1)
+		group.Enabled = &enabled
+	}
+
+	if group.Speed == nil {
+		speed := float64(0)
+		group.Speed = &speed
+	}
+
+	if group.SlienceDuration == nil {
+		duration := float64(0)
+		group.SlienceDuration = &duration
+	}
+
+	if group.Description == nil {
+		description := ""
+		group.Description = &description
+	}
+
+	if group.Condition != nil {
+		if group.Condition.FileName == nil {
+			fileName := ""
+			group.Condition.FileName = &fileName
+		}
+
+		if group.Condition.CallDuration == nil {
+			duration := int64(0)
+			group.Condition.CallDuration = &duration
+		}
+
+		if group.Condition.CallComment == nil {
+			comment := ""
+			group.Condition.CallComment = &comment
+		}
+
+		if group.Condition.Deal == nil {
+			deal := 0
+			group.Condition.Deal = &deal
+		}
+
+		if group.Condition.Series == nil {
+			series := ""
+			group.Condition.Series = &series
+		}
+
+		if group.Condition.StaffID == nil {
+			staffID := ""
+			group.Condition.StaffID = &staffID
+		}
+
+		if group.Condition.StaffName == nil {
+			staffName := ""
+			group.Condition.StaffName = &staffName
+		}
+
+		if group.Condition.Extension == nil {
+			extension := ""
+			group.Condition.Extension = &extension
+		}
+
+		if group.Condition.Department == nil {
+			department := ""
+			group.Condition.Department = &department
+		}
+
+		if group.Condition.ClientID == nil {
+			clientID := ""
+			group.Condition.ClientID = &clientID
+		}
+
+		if group.Condition.ClientName == nil {
+			clientName := ""
+			group.Condition.ClientName = &clientName
+		}
+
+		if group.Condition.ClientPhone == nil {
+			clientPhone := ""
+			group.Condition.ClientPhone = &clientPhone
+		}
+
+		// TODO: set code left channel & right channel
+		if group.Condition.LeftChannelCode == nil {
+			leftChannel := 0
+			group.Condition.LeftChannelCode = &leftChannel
+		}
+
+		if group.Condition.RightChannelCode == nil {
+			rightChannel := 1
+			group.Condition.RightChannelCode = &rightChannel
+		}
+
+		if group.Condition.CallStart == nil {
+			callStart := int64(0)
+			group.Condition.CallStart = &callStart
+		}
+
+		if group.Condition.CallEnd == nil {
+			callEnd := int64(0)
+			group.Condition.CallEnd = &callEnd
+		}
+	}
+
 	group.UUID = uuid.String()
 	group.UUID = strings.Replace(group.UUID, "-", "", -1)
 
@@ -46,16 +149,28 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 }
 
 func GetGroupBy(id string) (group *model.GroupWCond, err error) {
-	group, err = serviceDAO.GetGroupBy(id)
-	if err != nil || group == nil {
+	filter := &model.GroupFilter{
+		UUID: []string{
+			id,
+		},
+		Deal: -1,
+	}
+	groups, err := serviceDAO.GetGroupsBy(filter)
+	if err != nil {
 		return
 	}
 
-	fmt.Printf("group: %+v\n", group)
+	if len(groups) == 0 {
+		return
+	}
+
+	group = &groups[0]
 
 	// TODO: set channel name by code
-	group.Condition.LeftChannel = "staff"
-	group.Condition.RightChannel = "client"
+	staff := "staff"
+	client := "client"
+	group.Condition.LeftChannel = &staff
+	group.Condition.RightChannel = &client
 	return
 }
 
@@ -66,6 +181,14 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	}
 
 	groups, err = serviceDAO.GetGroupsBy(filter)
+	staff := "staff"
+	client := "client"
+	for idx := range groups {
+		group := &groups[idx]
+		group.Condition.LeftChannel = &staff
+		group.Condition.RightChannel = &client
+		group.RuleCount = len(*group.Rules)
+	}
 	return
 }
 
@@ -76,12 +199,108 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 	}
 	defer serviceDAO.ClearTranscation(tx)
 
+	// get original group to compare which fileds are need to be updated
+	originGroup, err := serviceDAO.GetGroupBy(id)
+	if err != nil {
+		return
+	}
+
 	err = serviceDAO.DeleteGroup(id, tx)
 	if err != nil {
 		return
 	}
 
+	if group.Name == nil {
+		group.Name = originGroup.Name
+	}
+
+	if group.Enabled == nil {
+		group.Enabled = originGroup.Enabled
+	}
+
+	if group.Speed == nil {
+		group.Speed = originGroup.Speed
+	}
+
+	if group.SlienceDuration == nil {
+		group.SlienceDuration = originGroup.SlienceDuration
+	}
+
+	if group.Description == nil {
+		group.Description = originGroup.Description
+	}
+
+	if group.Condition != nil {
+		if group.Condition.FileName == nil {
+			group.Condition.FileName = originGroup.Condition.FileName
+		}
+
+		if group.Condition.CallDuration == nil {
+			group.Condition.CallDuration = originGroup.Condition.CallDuration
+		}
+
+		if group.Condition.CallComment == nil {
+			group.Condition.CallComment = originGroup.Condition.CallComment
+		}
+
+		if group.Condition.Deal == nil {
+			group.Condition.Deal = originGroup.Condition.Deal
+		}
+
+		if group.Condition.Series == nil {
+			group.Condition.Series = originGroup.Condition.Series
+		}
+
+		if group.Condition.StaffID == nil {
+			group.Condition.StaffID = originGroup.Condition.StaffID
+		}
+
+		if group.Condition.StaffName == nil {
+			group.Condition.StaffName = originGroup.Condition.StaffName
+		}
+
+		if group.Condition.Extension == nil {
+			group.Condition.Extension = originGroup.Condition.Extension
+		}
+
+		if group.Condition.Department == nil {
+			group.Condition.Department = originGroup.Condition.Department
+		}
+
+		if group.Condition.ClientID == nil {
+			group.Condition.ClientID = originGroup.Condition.ClientID
+		}
+
+		if group.Condition.ClientName == nil {
+			group.Condition.ClientName = originGroup.Condition.ClientName
+		}
+
+		if group.Condition.ClientPhone == nil {
+			group.Condition.ClientPhone = originGroup.Condition.ClientPhone
+		}
+
+		if group.Condition.LeftChannelCode == nil {
+			group.Condition.LeftChannelCode = originGroup.Condition.LeftChannelCode
+		}
+
+		if group.Condition.RightChannelCode == nil {
+			group.Condition.RightChannelCode = originGroup.Condition.RightChannelCode
+		}
+
+		if group.Condition.CallStart == nil {
+			group.Condition.CallStart = originGroup.Condition.CallStart
+		}
+
+		if group.Condition.CallEnd == nil {
+			group.Condition.CallEnd = originGroup.Condition.CallEnd
+		}
+	} else {
+		group.Condition = originGroup.Condition
+	}
+
+	group.CreateTime = originGroup.CreateTime
 	group.UUID = id
+	group.Enterprise = group.Enterprise
 	_, err = serviceDAO.CreateGroup(group, tx)
 	if err != nil {
 		return

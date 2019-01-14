@@ -40,13 +40,16 @@ type SimpleGroup struct {
 type GroupWCond struct {
 	ID              int64           `json:"-"`
 	UUID            string          `json:"group_id,omitempty"`
-	Name            string          `json:"group_name,omitempty"`
+	Name            *string         `json:"group_name,omitempty"`
 	Enterprise      string          `json:",omitempty"`
-	Enabled         int             `json:"is_enable,omitempty"`
-	Speed           float64         `json:"limit_speed,omitempty"`
-	SlienceDuration float64         `json:"limit_silence,omitempty"`
-	Rules           []int64         `json:"rules"`
+	Enabled         *int8           `json:"is_enable,omitempty"`
+	Speed           *float64        `json:"limit_speed,omitempty"`
+	SlienceDuration *float64        `json:"limit_silence,omitempty"`
+	Rules           *[]int64        `json:"rules"`
 	Condition       *GroupCondition `json:"other,omitempty"`
+	CreateTime      int64           `json:"create_time,omitempty"`
+	Description     *string         `json:"description"`
+	RuleCount       int             `json:"rule_count"`
 }
 
 // Group
@@ -65,24 +68,24 @@ type Group struct {
 }
 
 type GroupCondition struct {
-	FileName         string `json:"file_name"`
-	CallDuration     int64  `json:"call_time"`
-	CallComment      string `json:"call_comment"`
-	Deal             int    `json:"transcation"`
-	Series           string `json:"series"`
-	StaffID          string `json:"host_id"`
-	StaffName        string `json:"host_name"`
-	Extension        string `json:"extension"`
-	Department       string `json:"department"`
-	ClientID         string `json:"guest_id"`
-	ClientName       string `json:"guest_name"`
-	ClientPhone      string `json:"guest_phone"`
-	LeftChannel      string `json:"left_channel"`
-	LeftChannelCode  int
-	RightChannel     string `json:"right_channel"`
-	RightChannelCode int
-	CallStart        int64 `json:"call_from"`
-	CallEnd          int64 `json:"call_end"`
+	FileName         *string `json:"file_name"`
+	CallDuration     *int64  `json:"call_time"`
+	CallComment      *string `json:"call_comment"`
+	Deal             *int    `json:"transcation"`
+	Series           *string `json:"series"`
+	StaffID          *string `json:"host_id"`
+	StaffName        *string `json:"host_name"`
+	Extension        *string `json:"extension"`
+	Department       *string `json:"department"`
+	ClientID         *string `json:"guest_id"`
+	ClientName       *string `json:"guest_name"`
+	ClientPhone      *string `json:"guest_phone"`
+	LeftChannel      *string `json:"left_channel"`
+	LeftChannelCode  *int    `json:"-"`
+	RightChannel     *string `json:"right_channel"`
+	RightChannelCode *int    `json:"-"`
+	CallStart        *int64  `json:"call_from"`
+	CallEnd          *int64  `json:"call_end"`
 }
 
 //InitDB is used to get the db in this module
@@ -133,6 +136,7 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 		"SELECT %s, %s FROM %s where %s=1",
 		RGID,
 		RGName,
+		fldCreateTime,
 		tblRuleGroup,
 		RGIsEnable,
 	)
@@ -156,6 +160,15 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 
 func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
+
+	groupStr := ""
+	if len(filter.UUID) > 0 {
+		groupStr = fmt.Sprintf("and %s IN (?%s)", fldUUID, strings.Repeat(", ?", len(filter.UUID)-1))
+		for _, id := range filter.UUID {
+			values = append(values, id)
+		}
+	}
+
 	conditions := []string{}
 	conditionStr := "WHERE"
 	if filter.FileName != "" {
@@ -218,18 +231,18 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		values = append(values, filter.StaffName)
 	}
 
-	if len(values) == 0 {
+	if len(conditions) == 0 {
 		conditionStr = ""
 	} else {
 		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
 	}
 
-	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
+	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	rrr.%s
-	FROM (SELECT * FROM %s %s) as gc
-	INNER JOIN (SELECT * FROM %s WHERE %s=0 and %s=1) as rg ON gc.%s = rg.%s
+	FROM (SELECT * FROM %s WHERE %s=0 %s) as rg
+	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	`
 
@@ -238,8 +251,11 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		RGID,
 		RGUUID,
 		RGName,
+		fldDescription,
 		RGLimitSpeed,
 		RGLimitSilence,
+		fldCreateTime,
+		fldGroupIsEnabled,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -255,15 +271,15 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		RGCLeftChannel,
 		RGCRightChannel,
 		RRRRuleID,
+		tblRuleGroup,
+		fldIsDelete,
+		groupStr,
 		tblRGC,
 		conditionStr,
-		tblRuleGroup,
-		RGIsDelete,
-		RGIsEnable,
+		fldID,
 		RGCGroupID,
-		RGID,
 		tblRelGrpRule,
-		RGID,
+		fldID,
 		RRRGroupID,
 	)
 	return
@@ -304,9 +320,11 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	}
 
 	queryStr, values := getGroupsSQL(filter)
-	start := filter.Page * filter.Limit
-	end := start + filter.Limit
-	queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		end := start + filter.Limit
+		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
+	}
 
 	rows, err := s.conn.Query(queryStr, values...)
 	if err != nil {
@@ -321,12 +339,16 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 		group := GroupWCond{}
 		condition := GroupCondition{}
 		var ruleID int64
+
 		rows.Scan(
 			&group.ID,
 			&group.UUID,
 			&group.Name,
+			&group.Description,
 			&group.Speed,
 			&group.SlienceDuration,
+			&group.CreateTime,
+			&group.Enabled,
 			&condition.FileName,
 			&condition.Deal,
 			&condition.Series,
@@ -352,11 +374,14 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			group.Condition = &condition
 
 			currentGroup = &group
-			currentGroup.Rules = []int64{
-				ruleID,
+			rules := []int64{}
+			if ruleID > int64(0) {
+				rules = append(rules, ruleID)
 			}
+			currentGroup.Rules = &rules
 		} else {
-			currentGroup.Rules = append(currentGroup.Rules, ruleID)
+			rules := append(*currentGroup.Rules, ruleID)
+			currentGroup.Rules = &rules
 		}
 	}
 
@@ -366,7 +391,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	return
 }
 
-func genInsertRelationSQL(id int64, rules []int64) (str string, values []interface{}) {
+func genInsertRelationSQL(id int64, rules *[]int64) (str string, values []interface{}) {
 	str = fmt.Sprintf(
 		"INSERT INTO %s (%s, %s) VALUES ",
 		tblRelGrpRule,
@@ -374,7 +399,7 @@ func genInsertRelationSQL(id int64, rules []int64) (str string, values []interfa
 		RRRRuleID,
 	)
 	values = []interface{}{}
-	for _, ruleID := range rules {
+	for _, ruleID := range *rules {
 		str = addCommaIfNotFirst(str, len(values) == 0)
 		str += " (?, ?)"
 		values = append(values, id, ruleID)
@@ -395,21 +420,24 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 
 	// insert group
 	insertStr := fmt.Sprintf(
-		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		tblRuleGroup,
 		RGUUID,
 		RGName,
 		RGEnterprise,
+		fldDescription,
 		RGCreateTime,
 		RGUpdateTime,
 		RGIsEnable,
 		RGLimitSpeed,
 		RGLimitSilence,
 	)
+
 	values := []interface{}{
 		group.UUID,
 		group.Name,
 		group.Enterprise,
+		group.Description,
 		now,
 		now,
 		group.Enabled,
@@ -473,7 +501,7 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	}
 
 	// insert into group_rule_map
-	if len(group.Rules) != 0 {
+	if group.Rules != nil && len(*group.Rules) != 0 {
 		insertStr, values = genInsertRelationSQL(groupID, group.Rules)
 
 		_, err = tx.Exec(insertStr, values...)
@@ -579,11 +607,12 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		return
 	}
 
-	group.Rules = make([]int64, 0)
+	group.Rules = new([]int64)
 	for rows.Next() {
 		var ruleID int64
 		rows.Scan(&ruleID)
-		group.Rules = append(group.Rules, ruleID)
+		rules := append(*group.Rules, ruleID)
+		group.Rules = &rules
 	}
 
 	return
