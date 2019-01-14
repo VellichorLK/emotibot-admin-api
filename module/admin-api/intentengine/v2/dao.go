@@ -32,6 +32,8 @@ type intentDaoInterface interface {
 
 	// DeleteIntent will delete intent with provided intentID only when intent is not read only
 	DeleteIntent(appid string, intentID int64) error
+	// DeleteIntents will delete intents with provided intentIDs only when intent is not read only
+	DeleteIntents(appid string, intentIDs []int64) error
 
 	// GetIntentsDetail will return all intents with full information of specific version
 	GetIntentsDetail(appid string, version *int) ([]*IntentV2, error)
@@ -408,6 +410,54 @@ func (dao intentDaoV2) DeleteIntent(appid string, intentID int64) (err error) {
 	fmt.Printf("\n\n%d, %s, %d\n\n", intentID, appid, now)
 	queryStr = "UPDATE intents SET status = -1, updatetime = ? WHERE id = ? AND appid = ?"
 	_, err = tx.Exec(queryStr, now, intentID, appid)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	return
+}
+func (dao intentDaoV2) DeleteIntents(appid string, intentIDs []int64) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return util.ErrDBNotInit
+	}
+
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	deletedIDs := []interface{}{}
+	for _, id := range intentIDs {
+		readOnly, err := checkIntent(tx, appid, id)
+		if err != nil {
+			continue
+		}
+		if !readOnly {
+			deletedIDs = append(deletedIDs, id)
+		}
+	}
+
+	if len(deletedIDs) == 0 {
+		return ErrReadOnlyIntent
+	}
+
+	queryStr := fmt.Sprintf("DELETE FROM intent_train_sets WHERE intent IN (?%s)", strings.Repeat(",?", len(deletedIDs)-1))
+	_, err = tx.Exec(queryStr, deletedIDs...)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().Unix()
+	updateParams := []interface{}{now, appid}
+	updateParams = append(updateParams, deletedIDs...)
+	queryStr = fmt.Sprintf("UPDATE intents SET status = -1, updatetime = ? WHERE appid = ? AND id IN (?%s)", strings.Repeat(",?", len(deletedIDs)-1))
+	_, err = tx.Exec(queryStr, updateParams...)
 	if err != nil {
 		return err
 	}

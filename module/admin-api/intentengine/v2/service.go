@@ -81,6 +81,17 @@ func DeleteIntent(appid string, intentID int64) AdminErrors.AdminError {
 	return nil
 }
 
+func DeleteIntents(appid string, intentIDs []int64) AdminErrors.AdminError {
+	err := dao.DeleteIntents(appid, intentIDs)
+	if err == sql.ErrNoRows {
+		return nil
+	} else if err != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
+	}
+
+	return nil
+}
+
 func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminError) {
 	ret = &StatusV2{
 		Status: statusNeedTrain,

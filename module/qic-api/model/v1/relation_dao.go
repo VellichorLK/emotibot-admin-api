@@ -10,7 +10,7 @@ import (
 
 //RelationDao access the relational table
 type RelationDao interface {
-	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, error)
+	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error)
 }
 
 type relSelectFld struct {
@@ -43,27 +43,29 @@ var (
 //the value range of arguments, from and to, is 0~5
 //the arguments of id means the parent id condition
 //return value is slice of map which means in each relation table, the parent id contains childs's
-func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, error) {
+//[][]uint64 means the order of each parent id in each relation table
+func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
 
 	if delegatee == nil {
-		return nil, ErroNoConn
+		return nil, nil, ErroNoConn
 	}
 	if to <= from {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	if to > numOfLevel || from < 0 {
-		return nil, ErrOutOfLevel
+		return nil, nil, ErrOutOfLevel
 	}
 
 	numOfIDs := len(id)
 	if numOfIDs == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	use := to - from
 	selectStr := ""
 	joinsStr := ""
+	orderStr := ""
 	var lastLevel relSelectFld
 
 	//compose the selected fields and join tables
@@ -72,18 +74,19 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 		if i == from {
 			joinsStr = level.tblName + " AS " + level.nickName
 			selectStr = level.nickName + "." + level.fields[0] + "," + level.nickName + "." + level.fields[1]
-
+			orderStr = level.nickName + "." + fldID + " ASC"
 		} else {
 			joinsStr = joinsStr + " LEFT JOIN " + level.tblName + " AS " + level.nickName + " ON " +
 				lastLevel.nickName + "." + lastLevel.fields[1] + "=" + level.nickName + "." + level.fields[0]
 			selectStr = selectStr + "," + level.nickName + "." + level.fields[1]
+			orderStr = orderStr + "," + level.nickName + "." + fldID + " ASC"
 		}
 		lastLevel = level
 	}
 	fromLevelTbl := leveltblMap[from]
 	querySQL := "SELECT " + selectStr + " FROM " + joinsStr +
 		" WHERE " + fromLevelTbl.nickName + "." + fromLevelTbl.fields[0] + " IN (?" + strings.Repeat(",?", numOfIDs-1) + ")" +
-		" ORDER BY " + leveltblMap[from].nickName + "." + fldID + " ASC"
+		" ORDER BY " + orderStr
 
 	//fmt.Printf("%s\n", querySQL)
 
@@ -96,13 +99,14 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	rows, err := delegatee.Query(querySQL, idInterface...)
 	if err != nil {
 		logger.Error.Printf("Query error. %s\n%s\n", querySQL, err)
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
 	numOfScan := use + 1
 
 	resp := make([]map[uint64][]uint64, numOfScan, numOfScan)
+	order := make([][]uint64, numOfScan)
 	//records the duplicate id
 	recordDup := make([]map[uint64]map[uint64]bool, numOfScan, numOfScan)
 	relIDs := make([]interface{}, 0, numOfScan)
@@ -113,21 +117,23 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	for rows.Next() {
 		err = rows.Scan(relIDs...)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var lastID uint64
 		for k, v := range relIDs {
 			val, ok := v.(*sql.NullInt64)
 			if !ok {
+				lastID = 0
 				logger.Error.Printf("transform to *uint64 failed\n")
 				continue
 			}
 			if !val.Valid {
+				lastID = 0
 				continue
 			}
 			varUint64 := uint64(val.Int64)
-			if k == 0 {
+			if lastID == 0 {
 				lastID = varUint64
 				continue
 			}
@@ -140,17 +146,20 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 
 			if recordDup[ithTbl][lastID] == nil {
 				recordDup[ithTbl][lastID] = make(map[uint64]bool)
+				order[ithTbl] = append(order[ithTbl], lastID)
 			}
 
 			//already in the list
 			if recordDup[ithTbl][lastID][varUint64] {
+				lastID = varUint64
 				continue
 			} else {
 				recordDup[ithTbl][lastID][varUint64] = true
 			}
 			resp[ithTbl][lastID] = append(resp[ithTbl][lastID], varUint64)
+			lastID = varUint64
 		}
 	}
 
-	return resp, nil
+	return resp, order, nil
 }

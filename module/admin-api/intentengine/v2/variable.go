@@ -50,8 +50,9 @@ var (
 		util.NewEntryPointWithVer("GET", "intents", []string{"view"}, handleGetIntentsV2, 2),
 		util.NewEntryPointWithVer("POST", "intent", []string{"create"}, handleAddIntentV2, 2),
 		util.NewEntryPointWithVer("GET", "intent/{intentID}", []string{"view"}, handleGetIntentV2, 2),
-		util.NewEntryPointWithVer("PATCH", "intent/{intentID}", []string{"view"}, handleUpdateIntentV2, 2),
-		util.NewEntryPointWithVer("DELETE", "intent/{intentID}", []string{"view"}, handleDeleteIntentV2, 2),
+		util.NewEntryPointWithVer("PATCH", "intent/{intentID}", []string{"edit"}, handleUpdateIntentV2, 2),
+		util.NewEntryPointWithVer("DELETE", "intent/{intentID}", []string{"delete"}, handleDeleteIntentV2, 2),
+		util.NewEntryPointWithVer("POST", "delete", []string{"delete"}, handleDeleteMultiIntentV2, 2),
 
 		util.NewEntryPointWithVer("GET", "intent/{intentID}/sentence/search", []string{"view"}, handleSearchSentence, 2),
 		util.NewEntryPointWithVer("GET", "sentence/search", []string{"view"}, handleSearchSentence, 2),
