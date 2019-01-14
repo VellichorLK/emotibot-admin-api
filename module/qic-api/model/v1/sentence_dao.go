@@ -46,6 +46,7 @@ type SentenceQuery struct {
 	Page       int
 	Limit      int
 	IsDelete   *int8
+	CategoryID *uint64
 }
 
 //SentenceNewRecord is used to create a new sentence
@@ -62,6 +63,7 @@ type SentenceSQLDao struct {
 //Sentence is sentence data in db
 type Sentence struct {
 	ID         uint64
+	CategoryID uint64
 	IsDelete   int8
 	Name       string
 	Enterprise string
@@ -130,6 +132,12 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 		params = append(params, *q.IsDelete)
 	}
 
+	if q.CategoryID != nil {
+		condition := fldCategoryID + "=?"
+		conditions = append(conditions, condition)
+		params = append(params, *q.CategoryID)
+	}
+
 	var whereSQL string
 	if len(conditions) > 0 {
 		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
@@ -173,8 +181,8 @@ func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentenc
 		condition, params = sq.whereSQL()
 	}
 
-	queryStr := fmt.Sprintf("SELECT a.%s,a.%s,a.%s,a.%s,a.%s,a.%s,a.%s,b.%s FROM (SELECT * FROM %s %s) as a LEFT JOIN %s as b on a.%s=b.%s",
-		fldID, fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldRelTagID,
+	queryStr := fmt.Sprintf("SELECT a.%s,a.%s,a.%s,a.%s,a.%s,a.%s,a.%s,a.%s,b.%s FROM (SELECT * FROM %s %s) as a LEFT JOIN %s as b on a.%s=b.%s",
+		fldID, fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, fldRelTagID,
 		tblSentence, condition,
 		tblRelSenTag, fldID, fldRelSenID)
 
@@ -189,7 +197,7 @@ func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentenc
 	for rows.Next() {
 		var s Sentence
 		var tagID sql.NullInt64
-		err = rows.Scan(&s.ID, &s.IsDelete, &s.Name, &s.Enterprise, &s.UUID, &s.CreateTime, &s.UpdateTime, &tagID)
+		err = rows.Scan(&s.ID, &s.IsDelete, &s.Name, &s.Enterprise, &s.UUID, &s.CreateTime, &s.UpdateTime, &s.CategoryID, &tagID)
 		if err != nil {
 			logger.Error.Printf("Scan error. %s\n", err)
 			return nil, err
