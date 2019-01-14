@@ -37,7 +37,13 @@ func handleGetSentences(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err), http.StatusBadRequest)
 		return
 	}
-	total, sentences, err := GetSentenceList(enterprise, page, limit)
+	id, err := getQueryCategoryID(r)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err), http.StatusBadRequest)
+		return
+	}
+	var isDelete int8
+	total, sentences, err := GetSentenceList(enterprise, page, limit, &isDelete, id)
 	if err != nil {
 		logger.Error.Printf("get sentence list failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -141,6 +147,18 @@ var (
 	errPage  = errors.New("Error page")
 	errLimit = errors.New("Error limit")
 )
+
+func getQueryCategoryID(r *http.Request) (*uint64, error) {
+	params := r.URL.Query()
+	category := params.Get("category_id")
+	if category == "" {
+		return nil, nil
+	}
+	var id uint64
+	var err error
+	id, err = strconv.ParseUint(category, 10, 64)
+	return &id, err
+}
 
 //return the page, limit, error
 func getPageLimit(r *http.Request) (int, int, error) {

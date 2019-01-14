@@ -211,6 +211,7 @@ const (
 	fldCreator     = "creator"
 	fldStatus      = "status"
 	fldType        = "type"
+	fldCategoryID  = "category_id"
 )
 
 //relation field name
