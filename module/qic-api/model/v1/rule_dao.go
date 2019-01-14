@@ -754,7 +754,7 @@ func (s SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]
 		return nil, util.ErrDBNotInit
 	}
 
-	querySQL := fmt.Sprintf("SELECT %s,%s FROM %s WHERE %s in (?%s)", fldLogicID, fldSentence, tblRecommend, fldLogicID, strings.Repeat(",?", len(logicIDs)-1))
+	querySQL := fmt.Sprintf("SELECT %s,%s FROM %s WHERE %s in (?%s)", fldLinkID, fldSentence, tblRecommend, fldLinkID, strings.Repeat(",?", len(logicIDs)-1))
 
 	numOfLogicID := len(logicIDs)
 	params := make([]interface{}, numOfLogicID, numOfLogicID)

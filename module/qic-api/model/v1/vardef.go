@@ -300,6 +300,7 @@ const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
+	fldLinkID            = "link_id"
 )
 
 // fields for Relation_InspectorTask_Call_Staff
