@@ -228,13 +228,12 @@ func GetRuleLogic(groupID uint64) ([]*model.QIResult, error) {
 	}
 
 	//collect recommends for logics
-	/*
-		logicRecommend, err := serviceDao.GetRecommendations(nil, logicIDs)
-		if err != nil {
-			logger.Error.Printf("get recommendation failed. %s\n", err)
-			return nil, err
-		}
-	*/
+
+	logicRecommend, err := serviceDao.GetRecommendations(nil, logicIDs)
+	if err != nil {
+		logger.Error.Printf("get recommendation failed. %s\n", err)
+		return nil, err
+	}
 
 	numOfRule := len(ruleOrder)
 	ruleRes := make([]*model.QIResult, 0, numOfRule)
@@ -249,11 +248,11 @@ func GetRuleLogic(groupID uint64) ([]*model.QIResult, error) {
 				logicID := localLogicIDs[i]
 				if logic, ok := logicsMap[logicID]; ok {
 					logicRes := &model.LogicResult{Name: logic.Name, ID: logicID, Recommend: make([]string, 0)}
-					/*
-						if recommendation, ok := logicRecommend[logicID]; ok {
-							logicRes.Recommend = recommendation
-						}
-					*/
+
+					if recommendation, ok := logicRecommend[logicID]; ok {
+						logicRes.Recommend = recommendation
+					}
+
 					result.LogicResult = append(result.LogicResult, logicRes)
 				}
 
