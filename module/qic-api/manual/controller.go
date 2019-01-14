@@ -127,6 +127,7 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 		InspectTotal: it.InspectTotal,
 		ReviewNum:    it.ReviewNum,
 		ReviewTotal:  it.ReviewTotal,
+		Creator:      it.Creator,
 	}
 	return inRes
 }
@@ -227,8 +228,6 @@ func handleGetTasks(w http.ResponseWriter, r *http.Request) {
 
 	values := r.URL.Query()
 	filter := parseTaskFilter(&values)
-
-	logger.Info.Printf("filter: %+v\n", filter)
 
 	if user.Type == ADMIN_USER {
 		handleAdminUserGetTasks(filter, w)

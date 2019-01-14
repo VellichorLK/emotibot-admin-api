@@ -248,7 +248,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 	if outlineNum > 0 {
 		outlineCondition = fmt.Sprintf(
 			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
-			tblRelITStaff,
+			tblRelITOutline,
 			RITOTOutlineID,
 			fmt.Sprintf("?%s", strings.Repeat(", ?", outlineNum-1)),
 		)
@@ -258,13 +258,13 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		}
 	}
 
-	staffCondition := fmt.Sprintf("LEFT JOIN %s", tblRelITStaff)
+	staffCondition := fmt.Sprintf("LEFT JOIN %s", tblRelITCallStaff)
 	staffNum := len(filter.Staffs)
 	if staffNum > 0 {
 		staffCondition = fmt.Sprintf(
 			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
-			tblRelITStaff,
-			RITStaffStaffID,
+			tblRelITCallStaff,
+			RITCSStaffID,
 			fmt.Sprintf("?%s", strings.Repeat(", ?", staffNum-1)),
 		)
 
@@ -281,11 +281,11 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 
 	queryStr = fmt.Sprintf(
 		`SELECT it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s,
-		form.%s as fname, ot.%s as otname, rits.%s as staff_id FROM (SELECT * FROM %s %s %s) as it
+		form.%s as fname, ot.%s as otname, ritcs.%s, ritcs.%s as staff_id FROM (SELECT * FROM %s %s %s) as it
 		LEFT JOIN %s as form ON it.%s = form.%s
 		%s as ritol ON it.%s = ritol.%s
 		LEFT JOIN %s as ot ON ritol.%s = ot.%s
-		%s as rits ON rits.%s = it.%s`,
+		%s as ritcs ON ritcs.%s = it.%s`,
 		fldID,
 		fldName,
 		ITCallStart,
@@ -298,6 +298,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		ITInspectByPerson,
 		fldName,
 		fldName,
+		fldType,
 		RITStaffStaffID,
 		tblInspectTask,
 		conditionStr,
@@ -361,6 +362,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 		outline := Outline{}
 		task := InspectTask{}
 		staff := ""
+		taskType := int8(0)
 		rows.Scan(
 			&task.ID,
 			&task.Name,
@@ -374,6 +376,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 			&task.InspectByPerson,
 			&form.Name,
 			&outline.Name,
+			&taskType,
 			&staff,
 		)
 
@@ -386,6 +389,8 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 
 			staffMap = map[string]bool{}
 			outlineMap = map[string]bool{}
+			cTask.CreateTime = cTask.CreateTime * 1000 // second to milisecond
+			cTask.PublishTime = cTask.PublishTime * 1000
 		}
 
 		if _, ok := outlineMap[outline.Name]; !ok {
@@ -396,6 +401,10 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 		if _, ok := staffMap[staff]; !ok {
 			cTask.Staffs = append(cTask.Staffs, staff)
 			staffMap[staff] = true
+		}
+
+		if taskType == int8(1) {
+			cTask.Reviewer = staff
 		}
 	}
 
