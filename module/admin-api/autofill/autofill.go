@@ -317,7 +317,7 @@ func resetIntentAutofills(appID string) error {
 				}
 				body.RelatedSentences = string(relatedSentencesJSON)
 
-				body.Sentence = nluResult.Sentence
+				body.Sentence = nluResult.Keyword.ToString()
 				body.SentenceCU = "{}"
 				body.SentenceKeywords = nluResult.Keyword.ToString()
 				body.SentenceType = nluResult.SentenceType
