@@ -3,8 +3,6 @@ package model
 import (
 	"fmt"
 	"strings"
-
-	_ "emotibot.com/emotigo/pkg/logger"
 )
 
 type ConversationRule struct {
