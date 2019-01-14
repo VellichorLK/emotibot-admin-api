@@ -473,7 +473,7 @@ func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint
 		return nil, nil, util.ErrDBNotInit
 	}
 
-	tableA := tblRelGrpRule
+	tableA := "Relation_Group_Rule"
 	tableB := tblRelRuleLogic
 	findIDSQL := fmt.Sprintf("SELECT a.%s,b.%s FROM %s AS a LEFT JOIN %s AS b on a.%s=b.%s WHERE a.%s=?",
 		fldRuleID, fldLogicID,
