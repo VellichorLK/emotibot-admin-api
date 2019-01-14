@@ -114,6 +114,10 @@ func (dao *mockTaskDao) FinishTask(staff string, callID int64, sql model.SqlLike
 	return
 }
 
+func (dao *mockTaskDao) ScoreForms(sql model.SqlLike) (forms []*model.ScoreForm, err error) {
+	return
+}
+
 func setupManualTest() (model.DBLike, model.DBLike, model.InspectTaskDao) {
 	oriManualDB := manualDB
 	oriAuthDB := authDB

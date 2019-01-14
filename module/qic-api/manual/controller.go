@@ -114,19 +114,20 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 		Name:       it.Name,
 		Outlines:   outlines,
 		Status:     it.Status,
-		CreateTime: it.CreateTime,
+		CreateTime: it.CreateTime * 1000, // second to milisecond
 		FormName:   it.Form.Name,
 		TimeRange: CallTimeRange{
-			StartTime: it.CallStart,
-			EndTime:   it.CallEnd,
+			StartTime: it.CallStart * 1000,
+			EndTime:   it.CallEnd * 1000,
 		},
-		PublishTime:  it.PublishTime,
+		PublishTime:  it.PublishTime * 1000,
 		Reviewer:     it.Reviewer,
 		InspectNum:   it.InspectNum,
 		InspectCount: it.InspectCount,
 		InspectTotal: it.InspectTotal,
 		ReviewNum:    it.ReviewNum,
 		ReviewTotal:  it.ReviewTotal,
+		Creator:      it.Creator,
 	}
 	return inRes
 }
@@ -421,7 +422,6 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	logger.Info.Printf("inreq: %+v", inreq)
 
 	task := inspectTaskInReqToInspectTask(&inreq)
 	task.Status = int8(-1)
@@ -538,7 +538,20 @@ func handleGetInspectors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, inspectors)
+	// TODO: resolve inspector group
+	type StaffResponse struct {
+		Group      string         `json:"group_name"`
+		Insepctors []*model.Staff `json:"inspectors"`
+	}
+
+	response := []StaffResponse{
+		StaffResponse{
+			Group:      "预设质检员群组",
+			Insepctors: inspectors,
+		},
+	}
+
+	util.WriteJSON(w, response)
 }
 
 func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
@@ -550,7 +563,21 @@ func handleGetCustomerStaffs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, staffs)
+	// TODO: resolve customer staffs group
+
+	type StaffResponse struct {
+		Group  string         `json:"group_name"`
+		Staffs []*model.Staff `json:"staffs"`
+	}
+
+	response := []StaffResponse{
+		StaffResponse{
+			Group:  "预设座席群组",
+			Staffs: staffs,
+		},
+	}
+
+	util.WriteJSON(w, response)
 }
 
 func handleFinishInspectTask(w http.ResponseWriter, r *http.Request) {
@@ -569,4 +596,16 @@ func handleFinishInspectTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func handleGetScoreForms(w http.ResponseWriter, r *http.Request) {
+	scoreForms, err := GetScoreForms()
+	if err != nil {
+		logger.Error.Printf("error while get score forms in handleGetScoreForms, reason: %s", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	util.WriteJSON(w, scoreForms)
+
 }

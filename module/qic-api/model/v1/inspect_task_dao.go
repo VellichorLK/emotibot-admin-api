@@ -1,7 +1,7 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -64,19 +64,19 @@ type StaffTaskFilter struct {
 }
 
 type Outline struct {
-	ID   int64
-	Name string
+	ID   int64  `json:"id"`
+	Name string `json:"text"`
 }
 
 type ScoreForm struct {
-	ID   int64
-	Name string
+	ID   int64  `json:"form_id"`
+	Name string `json:"form_name"`
 }
 
 type Staff struct {
-	UUID string
-	Name string
-	Type int8
+	UUID string `json:"id"`
+	Name string `json:"name"`
+	Type int8   `json:"-"`
 }
 
 type InspectTaskDao interface {
@@ -91,6 +91,7 @@ type InspectTaskDao interface {
 	Outlines(SqlLike) ([]*Outline, error)
 	UsersByType(string, SqlLike) ([]*Staff, error)
 	FinishTask(string, int64, SqlLike) error
+	ScoreForms(SqlLike) ([]*ScoreForm, error)
 }
 
 type InspectTaskSqlDao struct{}
@@ -226,6 +227,15 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		}
 	}
 
+	if len(filter.ID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldID, idStr))
+
+		for _, id := range filter.ID {
+			values = append(values, id)
+		}
+	}
+
 	doPageStr := ""
 	if doPage && filter.Limit > 0 {
 		start := filter.Page * filter.Limit
@@ -238,7 +248,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 	if outlineNum > 0 {
 		outlineCondition = fmt.Sprintf(
 			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
-			tblRelITStaff,
+			tblRelITOutline,
 			RITOTOutlineID,
 			fmt.Sprintf("?%s", strings.Repeat(", ?", outlineNum-1)),
 		)
@@ -248,13 +258,13 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		}
 	}
 
-	staffCondition := fmt.Sprintf("LEFT JOIN %s", tblRelITStaff)
+	staffCondition := fmt.Sprintf("LEFT JOIN %s", tblRelITCallStaff)
 	staffNum := len(filter.Staffs)
 	if staffNum > 0 {
 		staffCondition = fmt.Sprintf(
 			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
-			tblRelITStaff,
-			RITStaffStaffID,
+			tblRelITCallStaff,
+			RITCSStaffID,
 			fmt.Sprintf("?%s", strings.Repeat(", ?", staffNum-1)),
 		)
 
@@ -271,11 +281,11 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 
 	queryStr = fmt.Sprintf(
 		`SELECT it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s, it.%s,
-		form.%s as fname, ot.%s as otname, rits.%s as staff_id FROM (SELECT * FROM %s %s %s) as it
+		form.%s as fname, ot.%s as otname, ritcs.%s, ritcs.%s as staff_id FROM (SELECT * FROM %s %s %s) as it
 		LEFT JOIN %s as form ON it.%s = form.%s
 		%s as ritol ON it.%s = ritol.%s
 		LEFT JOIN %s as ot ON ritol.%s = ot.%s
-		%s as rits ON rits.%s = it.%s`,
+		%s as ritcs ON ritcs.%s = it.%s`,
 		fldID,
 		fldName,
 		ITCallStart,
@@ -288,6 +298,7 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		ITInspectByPerson,
 		fldName,
 		fldName,
+		fldType,
 		RITStaffStaffID,
 		tblInspectTask,
 		conditionStr,
@@ -305,7 +316,6 @@ func queryInspectTaskSQLBy(filter *InspectTaskFilter, doPage bool) (queryStr str
 		RITStaffTaskID,
 		fldID,
 	)
-	logger.Info.Printf("queryStr: %s\n", queryStr)
 	return
 }
 
@@ -352,6 +362,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 		outline := Outline{}
 		task := InspectTask{}
 		staff := ""
+		taskType := int8(0)
 		rows.Scan(
 			&task.ID,
 			&task.Name,
@@ -365,6 +376,7 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 			&task.InspectByPerson,
 			&form.Name,
 			&outline.Name,
+			&taskType,
 			&staff,
 		)
 
@@ -373,9 +385,12 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 				tasks = append(tasks, *cTask)
 			}
 			cTask = &task
+			cTask.Form = form
 
 			staffMap = map[string]bool{}
 			outlineMap = map[string]bool{}
+			cTask.CreateTime = cTask.CreateTime
+			cTask.PublishTime = cTask.PublishTime
 		}
 
 		if _, ok := outlineMap[outline.Name]; !ok {
@@ -386,6 +401,10 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 		if _, ok := staffMap[staff]; !ok {
 			cTask.Staffs = append(cTask.Staffs, staff)
 			staffMap[staff] = true
+		}
+
+		if taskType == int8(1) {
+			cTask.Reviewer = staff
 		}
 	}
 
@@ -655,7 +674,7 @@ func (dao *InspectTaskSqlDao) Outlines(sql SqlLike) (outlines []*Outline, err er
 
 	rows, err := sql.Query(queryStr)
 	if err != nil {
-		logger.Error.Printf("error while query outlines in dao.Outlines, err: %s", err.Error())
+		err = fmt.Errorf("error while query outlines in dao.Outlines, err: %s", err.Error())
 		return
 	}
 	defer rows.Close()
@@ -677,7 +696,7 @@ func (dao *InspectTaskSqlDao) UsersByType(userType string, sql SqlLike) (staffs 
 
 	rows, err := sql.Query(queryStr)
 	if err != nil {
-		logger.Error.Printf("error while query usrs in dao.UsersByType, err: %s", err.Error())
+		err = fmt.Errorf("error while query usrs in dao.UsersByType, err: %s", err.Error())
 		return
 	}
 	defer rows.Close()
@@ -707,12 +726,37 @@ func (dao *InspectTaskSqlDao) FinishTask(staff string, callID int64, sql SqlLike
 		callID,
 	}
 
-	logger.Info.Printf("values: %+v\n", values)
-
 	_, err = sql.Exec(updateStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while set inspect task finished in dao.FinishTask, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *InspectTaskSqlDao) ScoreForms(sql SqlLike) (forms []*ScoreForm, err error) {
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s FROM %s",
+		fldID,
+		fldName,
+		tblScoreForm,
+	)
+
+	rows, err := sql.Query(queryStr)
+	if err != nil {
+		err = fmt.Errorf("error while get score forms in dao.ScoreForms, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	forms = []*ScoreForm{}
+	for rows.Next() {
+		form := ScoreForm{}
+		rows.Scan(
+			&form.ID,
+			&form.Name,
+		)
+		forms = append(forms, &form)
 	}
 	return
 }
