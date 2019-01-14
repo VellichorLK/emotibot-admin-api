@@ -22,7 +22,7 @@ import (
 //HandleGetTags handle the get request for tag.
 func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	enterpriseID := requestheader.GetEnterpriseID(r)
-	limit, page, err := getPageLimit(r)
+	page, limit, err := getPageLimit(r)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("get page&limit failed, %v", err))
 		return
@@ -80,7 +80,7 @@ func HandlePutTags(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleDeleteTag(w http.ResponseWriter, r *http.Request) {
-	uuid, found := mux.Vars(r)["uuid"]
+	uuid, found := mux.Vars(r)["tag_id"]
 	if !found {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, path variable uuid is not found"))
 		return
