@@ -114,13 +114,13 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 		Name:       it.Name,
 		Outlines:   outlines,
 		Status:     it.Status,
-		CreateTime: it.CreateTime,
+		CreateTime: it.CreateTime * 1000, // second to milisecond
 		FormName:   it.Form.Name,
 		TimeRange: CallTimeRange{
 			StartTime: it.CallStart,
 			EndTime:   it.CallEnd,
 		},
-		PublishTime:  it.PublishTime,
+		PublishTime:  it.PublishTime * 1000,
 		Reviewer:     it.Reviewer,
 		InspectNum:   it.InspectNum,
 		InspectCount: it.InspectCount,
@@ -422,7 +422,6 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	logger.Info.Printf("inreq: %+v", inreq)
 
 	task := inspectTaskInReqToInspectTask(&inreq)
 	task.Status = int8(-1)

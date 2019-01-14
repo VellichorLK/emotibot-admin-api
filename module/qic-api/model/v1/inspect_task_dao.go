@@ -389,8 +389,8 @@ func (dao *InspectTaskSqlDao) GetBy(filter *InspectTaskFilter, sql SqlLike) (tas
 
 			staffMap = map[string]bool{}
 			outlineMap = map[string]bool{}
-			cTask.CreateTime = cTask.CreateTime * 1000 // second to milisecond
-			cTask.PublishTime = cTask.PublishTime * 1000
+			cTask.CreateTime = cTask.CreateTime
+			cTask.PublishTime = cTask.PublishTime
 		}
 
 		if _, ok := outlineMap[outline.Name]; !ok {
