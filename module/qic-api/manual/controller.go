@@ -117,8 +117,8 @@ func inspectTaskToInspectTaskInRes(it *model.InspectTask) *InspectTaskInRes {
 		CreateTime: it.CreateTime * 1000, // second to milisecond
 		FormName:   it.Form.Name,
 		TimeRange: CallTimeRange{
-			StartTime: it.CallStart,
-			EndTime:   it.CallEnd,
+			StartTime: it.CallStart * 1000,
+			EndTime:   it.CallEnd * 1000,
 		},
 		PublishTime:  it.PublishTime * 1000,
 		Reviewer:     it.Reviewer,

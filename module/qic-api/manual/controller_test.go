@@ -101,12 +101,12 @@ func TestInspectTaskToInspectTaskInRes(t *testing.T) {
 
 	itInRes := inspectTaskToInspectTaskInRes(it)
 
-	if itInRes.ID != it.ID || itInRes.Name != it.Name || itInRes.CreateTime != it.CreateTime || itInRes.PublishTime != it.PublishTime {
+	if itInRes.ID != it.ID || itInRes.Name != it.Name || itInRes.CreateTime != it.CreateTime*1000 || itInRes.PublishTime != it.PublishTime*1000 {
 		t.Errorf("parse inspect task failed, expect %+v, but got: %+v", it, itInRes)
 		return
 	}
 
-	if itInRes.TimeRange.StartTime != it.CallStart || itInRes.TimeRange.EndTime != it.CallEnd {
+	if itInRes.TimeRange.StartTime != it.CallStart*1000 || itInRes.TimeRange.EndTime != it.CallEnd*1000 {
 		t.Errorf("parse time range failed, expect: %+v, but got: %+v", it, itInRes.TimeRange)
 		return
 	}
