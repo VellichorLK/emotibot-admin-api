@@ -62,4 +62,5 @@ type GroupFilter struct {
 	CustomerPhone string
 	Page          int
 	Limit         int
+	UUID          []string
 }
