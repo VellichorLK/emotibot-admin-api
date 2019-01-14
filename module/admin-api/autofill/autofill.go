@@ -54,6 +54,9 @@ func UpdateAutofills(appID string, option *data.AutofillOption) {
 				case data.SyncTaskModeUpdate:
 					// Previous sync task was a reset task and was failed,
 					// redo the reset sync task
+					// TODO: Multi-modules supports, current implementation
+					//       cannot distinguish what previous failed sync task
+					//		 belongs to which module
 					if resetFailed {
 						err = resetIntentAutofills(appID)
 						if err != nil {
