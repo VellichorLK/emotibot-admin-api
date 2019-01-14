@@ -310,12 +310,11 @@ func resetIntentAutofills(appID string) error {
 
 				// Related sentences
 				relatedSentence := data.NewRelatedSentence(sentence)
-				relatedSentences := data.RelatedSentences{relatedSentence}
-				relatedSentencesJSON, err := json.Marshal(&relatedSentences)
+				relatedSentenceJSON, err := json.Marshal(&relatedSentence)
 				if err != nil {
 					return err
 				}
-				body.RelatedSentences = string(relatedSentencesJSON)
+				body.RelatedSentences = string(relatedSentenceJSON)
 
 				body.Sentence = nluResult.Keyword.ToString()
 				body.SentenceCU = "{}"

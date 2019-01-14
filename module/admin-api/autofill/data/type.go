@@ -43,8 +43,6 @@ func NewRelatedSentence(sentence string) *RelatedSentence {
 	}
 }
 
-type RelatedSentences []*RelatedSentence
-
 type Sentence struct {
 	ModuleID   int64
 	SentenceID int64
