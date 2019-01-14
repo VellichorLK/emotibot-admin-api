@@ -44,6 +44,7 @@ type SenGroupCriteria struct {
 	Range      int
 }
 
+//ExprNode is used to transform expression to node struct
 type ExprNode struct {
 	withNot bool
 	isThen  bool
@@ -58,6 +59,32 @@ type ConFlowCriteria struct {
 
 	startMust bool
 	nodes     []*ExprNode
+}
+
+//RuleCriteria is criteria for rule level
+type RuleCriteria struct {
+	ID     uint64
+	Min    int
+	Score  int
+	Method int
+	CFIDs  []uint64
+}
+
+//RuleMatchedResult is used to return for rule check result
+type RuleMatchedResult struct {
+	Valid bool
+	Score int //plus or minus
+}
+
+//RuleGrpCredit is the result of the segments
+type RuleGrpCredit struct {
+	RuleGrpID                uint64
+	Plus                     int
+	MatchedRules             []uint64
+	MatchedConversationFlows []uint64
+	MatchedSentenceGrps      []uint64
+	MatchedSentences         []uint64
+	MatchedTags              []uint64
 }
 
 //FlowExpressionToNode converts the conversation flow expression to node
@@ -463,6 +490,43 @@ func ConversationFlowMatch(matchSgID map[uint64][]int, senGrpCriteria map[uint64
 	return
 }
 
+//RuleMatch used to check whether the rule level meets. gives the map that the rule id meets the criterion and its plus score
+//paramters:
+//cfMatchID is the map recording the conversation flow id which meets the criterion
+func RuleMatch(cfMatchID map[uint64]bool, criteria map[uint64]*RuleCriteria) (map[uint64]*RuleMatchedResult, int, error) {
+	resp := make(map[uint64]*RuleMatchedResult, len(criteria))
+	var totalScore int
+	for ruleID, criterion := range criteria {
+		var count int
+		var matched bool
+		var plus int
+		for _, cfID := range criterion.CFIDs {
+			if v, ok := cfMatchID[cfID]; ok && v {
+				count++
+			}
+		}
+		if count >= criterion.Min {
+			matched = true
+		}
+		if criterion.Method == int(methodStringToCode["negative"]) {
+			matched = !matched
+		}
+
+		if matched {
+			if criterion.Score > 0 {
+				plus = plus + criterion.Score
+			}
+		} else {
+			if criterion.Score < 0 {
+				plus = plus + criterion.Score
+			}
+		}
+		totalScore += plus
+		resp[ruleID] = &RuleMatchedResult{Valid: matched, Score: plus}
+	}
+	return resp, totalScore, nil
+}
+
 //RuleGroupCriteria gives the result of the criteria used to the group
 //the parameter timeout is used to wait for cu module result
 func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Duration) ([]string, error) {
@@ -485,13 +549,12 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		return nil, err
 	}
 
-	sentenceLev := int(LevSentence)
-	numOfSens := len(levels[sentenceLev])
+	numOfSens := len(levels[LevSentence])
 
 	//extract the sentence id and tag id
 	senIDs := make([]uint64, 0, numOfSens)
 	tagIDs := make([]uint64, 0, numOfSens)
-	for sID, tIDs := range levels[sentenceLev] {
+	for sID, tIDs := range levels[LevSentence] {
 		senIDs = append(senIDs, sID)
 		tagIDs = append(tagIDs, tIDs...)
 	}
@@ -516,7 +579,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 
 	segMatchedTag := extractTagMatchedData(tagMatchDat)
 	//do the checking, sentence match
-	senMatchDat, err := SentencesMatch(segMatchedTag, levels[sentenceLev])
+	senMatchDat, err := SentencesMatch(segMatchedTag, levels[LevSentence])
 	if err != nil {
 		logger.Warn.Printf("doing sentence  match failed.%s\n", err)
 		return nil, err
@@ -532,7 +595,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	}
 
 	//get the sentence group information for condition usage
-	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs}
+	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs, IsDelete: -1, Position: -1, Role: -1}
 	_, senGrp, err := GetSentenceGroupsBy(sgFilter)
 
 	if err != nil {
@@ -574,7 +637,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	}
 
 	//get the conversation flow inforamtion
-	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
+	cfFilter := &model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}
 	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
 	if err != nil {
 		logger.Error.Printf("get conversation flow failed.%s\n", err)
@@ -586,7 +649,6 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		sort.Ints(segIdxs)
 	}
 
-	var matchedCF int
 	matchCFID := make(map[uint64]bool)
 	//doing check for each conversation flow
 	for i := 0; i < len(cfInfo); i++ {
@@ -601,9 +663,44 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		}
 		if cfMatched {
 			matchCFID[c.ID] = true
-			matchedCF++
 		}
 	}
+
+	ruleGrpContainRule := levels[LevRuleGroup]
+	ruleGrpIDs := make([]uint64, 0, len(ruleGrpContainRule))
+	ruleIDs := make([]uint64, 0, len(ruleGrpContainRule))
+	for rGrpID, ruleList := range ruleGrpContainRule {
+		ruleGrpIDs = append(ruleGrpIDs, rGrpID)
+		ruleIDs = append(ruleIDs, ruleList...)
+	}
+
+	ruleFilter := &model.ConversationRuleFilter{ID: ruleIDs, IsDeleted: -1, Severity: -1}
+	_, rules, err := GetConversationRulesBy(ruleFilter)
+	if err != nil {
+		logger.Error.Printf("get the rules failed.%s\n", err)
+		return nil, err
+	}
+	ruleCriteria := make(map[uint64]*RuleCriteria)
+	for _, v := range rules {
+		c := &RuleCriteria{}
+		c.ID = uint64(v.ID)
+		c.Method = int(v.Method)
+		c.Min = v.Min
+		c.Score = v.Score
+		for _, cfID := range v.Flows {
+			c.CFIDs = append(c.CFIDs, uint64(cfID.ID))
+		}
+		ruleCriteria[c.ID] = c
+	}
+
+	matchRule, totalScore, err := RuleMatch(matchCFID, ruleCriteria)
+	if err != nil {
+		logger.Error.Printf("rule level match failed.%s\n", err)
+		return nil, err
+	}
+
+	_ = matchRule
+	_ = totalScore
 
 	return nil, nil
 }

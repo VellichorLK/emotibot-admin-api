@@ -374,6 +374,14 @@ func TestFCDigest(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expecting has error,but get none\n")
 	}
+
+	expression = "if A and B and not and C"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
 }
 
 func TestConversationFlowMatch(t *testing.T) {
@@ -627,4 +635,104 @@ func TestConversationFlowMatch(t *testing.T) {
 		}
 	}
 
+}
+
+func TestRuleMatch(t *testing.T) {
+
+	var criteria map[uint64]*RuleCriteria
+	var expecting map[uint64]*RuleMatchedResult
+	cfMatchID := map[uint64]bool{
+		1:  true,
+		2:  false,
+		3:  true,
+		4:  true,
+		5:  true,
+		6:  false,
+		7:  true,
+		8:  true,
+		9:  true,
+		10: false,
+	}
+
+	criteria = map[uint64]*RuleCriteria{
+		1: &RuleCriteria{ID: 1, Min: 3, Score: -2, Method: 1, CFIDs: []uint64{1, 2, 3, 4}},
+	}
+	expecting = map[uint64]*RuleMatchedResult{
+		1: &RuleMatchedResult{Valid: true, Score: 0},
+	}
+	result, total, err := RuleMatch(cfMatchID, criteria)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		var expectingTotal int
+		for id, c := range expecting {
+			if val, ok := result[id]; ok {
+				if c.Valid != val.Valid || c.Score != val.Score {
+					t.Errorf("Expecting valid %t score %d, but get valid %t score %d\n", c.Valid, c.Score, val.Valid, val.Score)
+				}
+			} else {
+				t.Errorf("Expecting get %d result,but get no\n", id)
+			}
+			expectingTotal = expectingTotal + c.Score
+		}
+		if expectingTotal != total {
+			t.Errorf("Expecting total score %d, but get %d\n", expectingTotal, total)
+		}
+	}
+
+	criteria = map[uint64]*RuleCriteria{
+		1: &RuleCriteria{ID: 1, Min: 5, Score: -2, Method: 1, CFIDs: []uint64{1, 2, 3, 4}},
+	}
+	expecting = map[uint64]*RuleMatchedResult{
+		1: &RuleMatchedResult{Valid: false, Score: -2},
+	}
+	result, total, err = RuleMatch(cfMatchID, criteria)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		var expectingTotal int
+		for id, c := range expecting {
+			if val, ok := result[id]; ok {
+				if c.Valid != val.Valid || c.Score != val.Score {
+					t.Errorf("Expecting valid %t score %d, but get valid %t score %d\n", c.Valid, c.Score, val.Valid, val.Score)
+				}
+			} else {
+				t.Errorf("Expecting get %d result,but get no\n", id)
+			}
+			expectingTotal = expectingTotal + c.Score
+		}
+		if expectingTotal != total {
+			t.Errorf("Expecting total score %d, but get %d\n", expectingTotal, total)
+		}
+	}
+
+	criteria = map[uint64]*RuleCriteria{
+		1: &RuleCriteria{ID: 1, Min: 5, Score: 4, Method: 1, CFIDs: []uint64{1, 2, 3, 4}},
+		2: &RuleCriteria{ID: 2, Min: 5, Score: -2, Method: -1, CFIDs: []uint64{1, 2, 3, 4}},
+		3: &RuleCriteria{ID: 3, Min: 3, Score: 5, Method: 1, CFIDs: []uint64{1, 2, 3, 4}},
+	}
+	expecting = map[uint64]*RuleMatchedResult{
+		1: &RuleMatchedResult{Valid: false, Score: 0},
+		2: &RuleMatchedResult{Valid: true, Score: 0},
+		3: &RuleMatchedResult{Valid: true, Score: 5},
+	}
+	result, total, err = RuleMatch(cfMatchID, criteria)
+	if err != nil {
+		t.Errorf("Expecting no error,but get %s\n", err)
+	} else {
+		var expectingTotal int
+		for id, c := range expecting {
+			if val, ok := result[id]; ok {
+				if c.Valid != val.Valid || c.Score != val.Score {
+					t.Errorf("Expecting valid %t score %d, but get valid %t score %d\n", c.Valid, c.Score, val.Valid, val.Score)
+				}
+			} else {
+				t.Errorf("Expecting get %d result,but get no\n", id)
+			}
+			expectingTotal = expectingTotal + c.Score
+		}
+		if expectingTotal != total {
+			t.Errorf("Expecting total score %d, but get %d\n", expectingTotal, total)
+		}
+	}
 }
