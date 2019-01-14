@@ -374,6 +374,14 @@ func TestFCDigest(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expecting has error,but get none\n")
 	}
+
+	expression = "if A and B and not and C"
+	c.Expression = expression
+	c.nodes = []*ExprNode{}
+	err = c.FlowExpressionToNode()
+	if err == nil {
+		t.Errorf("Expecting has error,but get none\n")
+	}
 }
 
 func TestConversationFlowMatch(t *testing.T) {
