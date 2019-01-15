@@ -83,4 +83,5 @@ type CallDao interface {
 
 type TaskDao interface {
 	CallTask(delegatee model.SqlLike, call model.Call) (model.Task, error)
+	NewTask(delegatee model.SqlLike, task model.Task) (*model.Task, error)
 }
