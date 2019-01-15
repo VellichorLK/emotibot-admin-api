@@ -368,8 +368,10 @@ func (c *CallSQLDao) SetCall(delegatee SqlLike, call Call) error {
 	}
 	updatepart, data := createCallUpdateSQL(call)
 	rawquery := "UPDATE `" + tblCall + "` SET " + updatepart + " WHERE `" + fldCallID + "` = ?"
+
 	data = append(data, call.ID)
 	_, err := delegatee.Exec(rawquery, data...)
+
 	if err != nil {
 		return fmt.Errorf("update execute failed, %v", err)
 	}
@@ -404,13 +406,15 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 		fldCallTaskID, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed,
 	}
+
 	data := []interface{}{
 		c.UUID, c.DurationMillSecond, c.UploadUnixTime,
-		c.FileName, c.FilePath, c.Description,
+		*c.FileName, *c.FilePath, *c.Description,
 		c.CallUnixTime, c.StaffID, c.StaffName,
 		c.Ext, c.Department, c.CustomerID,
 		c.CustomerName, c.CustomerPhone, c.EnterpriseID,
-		c.EnterpriseID, c.UploadUser, c.Type,
+		c.UploadUser, c.Type, c.LeftChanRole,
+		c.RightChanRole, c.Status, c.DemoFilePath,
 		c.TaskID, c.LeftSilenceTime, c.RightSilenceTime,
 		c.LeftSpeed, c.RightSpeed,
 	}
