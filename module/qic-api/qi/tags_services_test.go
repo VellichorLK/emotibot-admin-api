@@ -106,6 +106,14 @@ func (t *testDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, er
 	}
 	return oo, err
 }
+func (t *testDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+	o, err := t.popOutput()
+	oo, ok := o.(int64)
+	if !ok {
+		return 0, fmt.Errorf("mockOutput %T is not expected type", o)
+	}
+	return oo, err
+}
 func (t *testDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
 	o, err := t.popOutput()
 	oo, ok := o.(error)

@@ -45,6 +45,7 @@ func init() {
 			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
 			util.NewEntryPoint("PUT", "sentences/{id}", []string{}, WithSenUUIDCheck(handleModifySentence)),
 			util.NewEntryPoint("DELETE", "sentences/{id}", []string{}, WithSenUUIDCheck(handleDeleteSentence)),
+			util.NewEntryPoint("PUT", "sentences/move/{id}", []string{}, handleMoveSentence),
 
 			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
 			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
