@@ -22,8 +22,9 @@ type pageResp struct {
 }
 
 type sentenceReq struct {
-	Name string   `json:"sentence_name"`
-	Tags []string `json:"tags"`
+	Name       string   `json:"sentence_name"`
+	CategoryID uint64   `json:"category_id,string"`
+	Tags       []string `json:"tags"`
 }
 
 type sentenceResp struct {
@@ -89,7 +90,7 @@ func handleNewSentence(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
-	d, err := NewSentence(enterprise, requestBody.Name, requestBody.Tags)
+	d, err := NewSentence(enterprise, requestBody.CategoryID, requestBody.Name, requestBody.Tags)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
