@@ -13,6 +13,7 @@ type CategoryDao interface {
 	InsertCategory(conn SqlLike, s *CategoryRequest) (int64, error)
 	SoftDeleteCategory(conn SqlLike, q *CategoryQuery) (int64, error)
 	CountCategory(conn SqlLike, q *CategoryQuery) (uint64, error)
+	UpdateCategory(conn SqlLike, id uint64, s *CategoryRequest) error
 }
 
 //CategorySQLDao is the structure to implement the db access
@@ -28,8 +29,8 @@ type CategoryRequest struct {
 //CategortInfo stores the category information used to return
 type CategortInfo struct {
 	ID         uint64 `json:"category_id,string"`
-	Name       string `json:"string"`
-	Enterprise string `json:"enterrprise"`
+	Name       string `json:"name"`
+	Enterprise string `json:"-"`
 }
 
 //CategoryQuery uses as query structure of category
@@ -174,4 +175,29 @@ func (c *CategorySQLDao) CountCategory(conn SqlLike, q *CategoryQuery) (uint64, 
 		return 0, err
 	}
 	return count, nil
+}
+
+// UpdateCategory updates category name in which meets the id
+func (c *CategorySQLDao) UpdateCategory(conn SqlLike, id uint64, r *CategoryRequest) (err error) {
+	if conn == nil {
+		return ErrNilSqlLike
+	}
+
+	if r == nil {
+		return ErrNeedCondition
+	}
+
+	updateStr := fmt.Sprintf(
+		"UPDATE %s SET %s=? WHERE %s=?",
+		tblCategory,
+		fldName,
+		fldID,
+	)
+
+	_, err = conn.Exec(updateStr, r.Name, id)
+	if err != nil {
+		logger.Error.Printf("udpate failed in UpdateCategory, %s\n %s %+v\n", err, updateStr, r)
+		return
+	}
+	return
 }
