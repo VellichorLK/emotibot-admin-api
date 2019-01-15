@@ -64,6 +64,12 @@ func init() {
 			util.NewEntryPoint("PUT", "rules/{id}", []string{}, handleUpdateConversationRule),
 			util.NewEntryPoint("DELETE", "rules/{id}", []string{}, handleDeleteConversationRule),
 
+			util.NewEntryPoint(http.MethodGet, "category", []string{}, handleGetCategoryies),
+			util.NewEntryPoint(http.MethodPost, "category", []string{}, handleCreateCategory),
+			util.NewEntryPoint(http.MethodGet, "category/{id}", []string{}, handleGetCategory),
+			util.NewEntryPoint(http.MethodPut, "category/{id}", []string{}, handleUpdateCatgory),
+			util.NewEntryPoint(http.MethodDelete, "category/{id}", []string{}, handleDeleteCategory),
+
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),

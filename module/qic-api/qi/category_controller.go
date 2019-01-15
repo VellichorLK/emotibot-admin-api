@@ -119,7 +119,26 @@ func handleGetCategory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateCatgory(w http.ResponseWriter, r *http.Request) {
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	category := model.CategoryRequest{}
+	err = util.ReadJSON(r, &category)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = UpdateCategory(id, &category)
+	if err != nil {
+		logger.Error.Printf("error while update category in handleUpdateCategory: reason: %s\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {

@@ -34,3 +34,8 @@ func GetCategorySentences(query *model.SentenceQuery) (total uint64, sentences [
 	sentences, err = sentenceDao.GetSentences(tx, query)
 	return
 }
+
+func UpdateCategory(id uint64, category *model.CategoryRequest) (err error) {
+	sqlConn := dbLike.Conn()
+	return categoryDao.UpdateCategory(sqlConn, id, category)
+}
