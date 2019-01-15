@@ -38,6 +38,7 @@ const (
 	tblRelITCallStaff   = "Relation_InspectorTask_Call_Staff"
 	tblTask             = "task"
 	tblRelITStaff       = "Relation_InspectorTask_Staff"
+	tblCategory         = "Category"
 )
 
 //field name in Conversation table
