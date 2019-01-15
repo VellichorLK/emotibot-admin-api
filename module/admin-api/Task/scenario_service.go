@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/autofill"
+	autofillData "emotibot.com/emotigo/module/admin-api/autofill/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 	uuid "github.com/satori/go.uuid"
@@ -273,6 +276,51 @@ func UpdateScenario(scenarioid, appid, userid, editingContent, editingLayout str
 		return ApiError.DB_ERROR, err
 	}
 	return ApiError.SUCCESS, nil
+}
+
+// UpdateTaskEngineIntents update the trigger intent list of a scenario
+func UpdateTaskEngineIntents(appID, scenarioID string, intents *[]string) (int, error) {
+	intentsInDB, err := getTaskEngineIntentList(appID, scenarioID)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+
+	identical := compareStringSlice(*intents, intentsInDB)
+	if identical {
+		logger.Trace.Printf("Skip intent list update process for scenario: %s. Intent list is identical with the one in DB", scenarioID)
+		return ApiError.SUCCESS, nil
+	}
+	logger.Trace.Printf("Found new intent list: %s, update intents for scenario: %s", *intents, scenarioID)
+
+	// save new intent list
+	err = saveIntents(appID, scenarioID, intents)
+	if err != nil {
+		return ApiError.DB_ERROR, err
+	}
+	// update autofills
+	option := autofillData.AutofillOption{
+		Module:   autofillData.AutofillModuleIntent,
+		TaskMode: autofillData.SyncTaskModeUpdate,
+	}
+	autofill.UpdateAutofills(appID, &option)
+	return ApiError.SUCCESS, nil
+}
+
+func compareStringSlice(a, b []string) bool {
+	if (a == nil) != (b == nil) {
+		return false
+	}
+	if len(a) != len(b) {
+		return false
+	}
+	sort.Strings(a)
+	sort.Strings(b)
+	for i, s := range a {
+		if s != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // encryptJSCode encrypt the js_code.main in editingContent
