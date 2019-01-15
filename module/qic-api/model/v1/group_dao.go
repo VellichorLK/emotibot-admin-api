@@ -136,7 +136,6 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 		"SELECT %s, %s FROM %s where %s=1",
 		RGID,
 		RGName,
-		fldCreateTime,
 		tblRuleGroup,
 		RGIsEnable,
 	)
