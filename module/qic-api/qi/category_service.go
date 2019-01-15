@@ -39,3 +39,15 @@ func UpdateCategory(id uint64, category *model.CategoryRequest) (err error) {
 	sqlConn := dbLike.Conn()
 	return categoryDao.UpdateCategory(sqlConn, id, category)
 }
+
+func DeleteCategory(id uint64) (err error) {
+	sqlConn := dbLike.Conn()
+	query := &model.CategoryQuery{
+		ID: []uint64{
+			id,
+		},
+	}
+
+	_, err = categoryDao.SoftDeleteCategory(sqlConn, query)
+	return
+}

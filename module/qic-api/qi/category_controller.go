@@ -142,5 +142,17 @@ func handleUpdateCatgory(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
+	err = DeleteCategory(id)
+	if err != nil {
+		logger.Error.Printf("error while update category in handleDeleteCategory: reason: %s\n", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
