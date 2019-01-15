@@ -10,7 +10,9 @@ import (
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"encoding/hex"
 	uuid "github.com/satori/go.uuid"
+	"time"
 )
 
 //CallResp is the UI struct of the call.
@@ -148,19 +150,62 @@ func CallResps(query model.CallQuery) (*CallsResponse, error) {
 }
 
 //NewCall create a call based on the input.
-func NewCall(c model.Call) (int64, error) {
-	_, err := uuid.FromString(c.UUID)
+func NewCall(c *NewCallReq) (int64, error) {
+	var err error
+	// create new call task
+	tx, err := dbLike.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("call UUID is not a valid uuid, %v", err)
+		return 0, fmt.Errorf("error while get transaction, %v", err)
 	}
-	calls, err := callDao.NewCalls(nil, []model.Call{c})
+	defer dbLike.ClearTransition(tx)
+
+	newTask := &model.Task{
+		Status: int8(0),
+		Series: c.Series,
+		IsDeal: c.Transaction == 1,
+	}
+
+	createdTask, err := taskDao.NewTask(tx, *newTask)
+	if err != nil {
+		return 0, err
+	}
+
+	// create uuid for call
+	uid, err := uuid.NewV4()
+	if err != nil {
+		return 0, err
+	}
+
+	call := &model.Call{
+		UUID:           hex.EncodeToString(uid[:]),
+		FileName:       &c.FileName,
+		Description:    &c.CallComment,
+		UploadUnixTime: time.Now().Unix(),
+		CallUnixTime:   c.CallTime,
+		StaffID:        c.HostID,
+		StaffName:      c.HostName,
+		Ext:            c.Extension,
+		Department:     c.Department,
+		CustomerID:     c.GuestID,
+		CustomerName:   c.GuestName,
+		CustomerPhone:  c.GuestPhone,
+		EnterpriseID:   c.Enterprise,
+		UploadUser:     c.UploadUser,
+		Type:           model.CallTypeWholeFile,
+		LeftChanRole:   callRoleTyp(c.LeftChannel),
+		RightChanRole:  callRoleTyp(c.RightChannel),
+		TaskID:         createdTask.ID,
+	}
+
+	calls, err := callDao.NewCalls(nil, []model.Call{*call})
 	if err == model.ErrAutoIDDisabled {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
 	}
 
-	return calls[0].ID, nil
+	err = dbLike.Commit(tx)
+	return calls[0].ID, err
 }
 
 func UpdateCall(call *model.Call) error {
