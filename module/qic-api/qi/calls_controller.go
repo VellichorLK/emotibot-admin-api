@@ -9,6 +9,8 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 
@@ -18,12 +20,29 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-	uuid "github.com/satori/go.uuid"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
+
+func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
+	c := getCall(w, r)
+	if c == nil {
+		return
+	}
+
+	//TODO: Detail need the result dao implemented
+	resp := CallDetail{
+		CallID:      c.ID,
+		Status:      c.Status,
+		VoiceResult: []interface{}{},
+		FileName:    *c.FileName,
+		CuResult:    []interface{}{},
+	}
+	util.WriteJSON(w, resp)
+}
 
 func CallsHandler(w http.ResponseWriter, r *http.Request) {
 
-	query, err := newCallQuery(r)
+	query, err := newModelCallQuery(r)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
@@ -46,64 +65,40 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
 	}
-	_ = req
-	guid, err := uuid.NewV4()
+
+	call := model.Call{
+		FileName:       &req.FileName,
+		Description:    &req.CallComment,
+		UploadUnixTime: time.Now().Unix(),
+		CallUnixTime:   req.CallTime,
+		StaffID:        req.HostID,
+		StaffName:      req.HostName,
+		Ext:            req.Extension,
+		Department:     req.Department,
+		CustomerID:     req.GuestID,
+		CustomerName:   req.GuestName,
+		CustomerPhone:  req.GuestPhone,
+		EnterpriseID:   requestheader.GetEnterpriseID(r),
+		UploadUser:     requestheader.GetUserID(r),
+		Type:           model.CallTypeWholeFile,
+		LeftChanRole:   callRoleTyp(req.LeftChannel),
+		RightChanRole:  callRoleTyp(req.RightChannel),
+	}
+	id, err := NewCall(call)
 	if err != nil {
-		//Use 999 for now, we dont have general backend error.
-		util.ReturnError(w, 999, fmt.Sprintf("generate uuid failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call from failed, %v", err))
 		return
 	}
-	_ = guid
-	// hyphenslessID := hex.EncodeToString(guid[:])
-	// call := model.Call{
-	// 	UUID:           hyphenslessID,
-	// 	Description:    &req.CallComment,
-	// 	UploadUnixTime: time.Now().Unix(),
-	// 	CallUnixTime:   req.CallTime,
-	// 	StaffID:        req.HostID,
-	// 	StaffName:      req.HostName,
-	// 	Ext:            req.Extension,
-	// 	Department:     req.Department,
-	// 	CustomerID:     req.GuestID,
-	// 	CustomerName:   req.GuestName,
-	// 	CustomerPhone:  req.GuestPhone,
-	// 	EnterpriseID:   requestheader.GetEnterpriseID(r),
-	// 	UploadUser:     requestheader.GetUserID(r),
-	// 	Type:           model.CallTypeWholeFile,
-	// 	LeftChanRole:   callRoleTyp(req.LeftChannel),
-	// 	RightChanRole:  callRoleTyp(req.RightChannel),
-	// }
-	// id, err := NewCall(call)
-	// if err != nil {
-	// 	util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call from failed, %v", err))
-	// 	return
-	// }
-	// resp := response{CallID: id}
-	// util.WriteJSON(w, resp)
-	resp := response{CallID: 3}
+	resp := response{CallID: id}
 	util.WriteJSON(w, resp)
 }
 
 func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	callID, found := mux.Vars(r)["call_id"]
-	if !found || callID == "" {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require call_id in path"))
+	c := getCall(w, r)
+	if c == nil {
 		return
 	}
-	id, err := strconv.ParseInt(callID, 10, 64)
-	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int.", callID))
-	}
-	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}})
-	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("failed to query call db, %v", err))
-		return
-	}
-	if len(calls) == 0 {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
-		return
-	}
-	err = r.ParseForm()
+	err := r.ParseForm()
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request form failed, %v", err))
 		return
@@ -119,7 +114,7 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("upfile is over maximum size, %v", err))
 		return
 	}
-	if ext := path.Ext(header.Filename); ext != "wav" {
+	if ext := path.Ext(header.Filename); strings.ToLower(ext) != ".wav" {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("extension '%s' is not valid, only wav is supported.", ext))
 		return
 	}
@@ -127,11 +122,11 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, 999, fmt.Sprintf("volume is not exist, please contact ops and check init log for volume init error."))
 		return
 	}
-	filename := fmt.Sprint(callID, ".wav")
+	filename := fmt.Sprint(c.ID, ".wav")
 	fp := fmt.Sprint(volume, "/", filename)
-	outFile, err := os.Open(filename)
+	outFile, err := os.Create(filename)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("create file failed, %v", err))
 		return
 	}
 	_, err = io.Copy(outFile, f)
@@ -139,25 +134,57 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("write file failed, %v", err))
 		return
 	}
-	c := calls[0]
-	c.FileName = &filename
 	c.FilePath = &fp
 	err = UpdateCall(c)
 
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	resp, err := http.Get("http://ccrma.stanford.edu/~jos/mp3/gtr-nylon22.mp3")
-	if err != nil {
-		logger.Error.Println("Get err ", err)
+	c := getCall(w, r)
+	if c == nil {
 		return
 	}
+	if c.FilePath == nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
+		return
+	}
+	f, err := os.Open(*c.FilePath)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))
+	}
+
 	w.Header().Set("content-type", "audio/mpeg")
-	_, err = io.Copy(w, resp.Body)
+	_, err = io.Copy(w, f)
 	if err != nil {
 		logger.Error.Println(err)
 		return
 	}
+	return
+
+}
+
+func getCall(w http.ResponseWriter, r *http.Request) *model.Call {
+	callID, found := mux.Vars(r)["call_id"]
+	if !found || callID == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require call_id in path"))
+		return nil
+	}
+	id, err := strconv.ParseInt(callID, 10, 64)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int.", callID))
+		return nil
+	}
+	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}})
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("failed to query call db, %v", err))
+		return nil
+	}
+	if len(calls) == 0 {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
+		return nil
+	}
+	c := calls[0]
+	return &c
 }
 
 func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
@@ -170,6 +197,12 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	err = json.Unmarshal(data, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("json unmarshal failed, %v", err)
+	}
+	if reqBody.LeftChannel == "" {
+		reqBody.LeftChannel = CallStaffRoleName
+	}
+	if reqBody.RightChannel == "" {
+		reqBody.RightChannel = CallCustomerRoleName
 	}
 	if _, found := callTypeDict[reqBody.LeftChannel]; !found {
 		return nil, fmt.Errorf("request body's left channel value %s is not valid. the mapping should be %v", reqBody.LeftChannel, callTypeDict)
@@ -196,3 +229,70 @@ type NewCallReq struct {
 	LeftChannel  string `json:"left_channel"`
 	RightChannel string `json:"right_channel"`
 }
+
+type CallDetail struct {
+	CallID      int64         `json:"call_id"`
+	Status      int8          `json:"status"`
+	VoiceResult []interface{} `json:"voice_result"`
+	FileName    string        `json:"file_name"`
+	CuResult    []interface{} `json:"cu_result"`
+}
+
+// type cuResult struct {
+// 	Score     float64    `json:"score"`
+// 	QiResult  []QiResult `json:"qi_result"`
+// 	GroupName string     `json:"group_name"`
+// }
+
+// type QiResult struct {
+// 	ControllerRule string        `json:"controller_rule"`
+// 	Valid          bool          `json:"valid"`
+// 	Method         int64         `json:"method"`
+// 	LogicResults   []LogicResult `json:"logic_results"`
+// }
+
+// type LogicResult struct {
+// 	Label     []Label `json:"label"`
+// 	LogicRule string  `json:"logic_rule"`
+// 	Valid     bool    `json:"valid"`
+// }
+
+// type Label struct {
+// 	Score *int64  `json:"score,omitempty"`
+// 	ID    []int64 `json:"id"`
+// 	Match []Match `json:"match"`
+// 	Tag   string  `json:"tag"`
+// 	Type  Type    `json:"type"`
+// }
+
+// type Match struct {
+// 	Score    int64   `json:"score"`
+// 	ID       int64   `json:"id"`
+// 	Tag      string  `json:"tag"`
+// 	Sentence string  `json:"sentence"`
+// 	Match    *string `json:"match,omitempty"`
+// }
+
+// type voiceResult struct {
+// 	Speaker   Speaker `json:"speaker"`
+// 	EndTime   float64 `json:"end_time"`
+// 	SentID    int64   `json:"sent_id"`
+// 	Emotion   float64 `json:"emotion"`
+// 	ASRText   *string `json:"asr_text"`
+// 	StartTime float64 `json:"start_time"`
+// 	Sret      int64   `json:"sret"`
+// }
+
+// type Type string
+
+// const (
+// 	Intent  Type = "intent"
+// 	Keyword Type = "keyword"
+// )
+
+// type Speaker string
+
+// const (
+// 	Guest Speaker = "guest"
+// 	Host  Speaker = "host"
+// )

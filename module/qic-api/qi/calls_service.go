@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -13,6 +15,7 @@ import (
 
 //CallResp is the UI struct of the call.
 type CallResp struct {
+	CallID           int64   `json:"call_id"`
 	FileName         string  `json:"file_name,omitempty"`
 	CallTime         int64   `json:"call_time,omitempty"`
 	CallComment      string  `json:"call_comment,omitempty"`
@@ -47,19 +50,19 @@ type CallResp struct {
 }
 
 //CallQueryRequest is the input struct of func Calls
-type CallQueryRequest struct {
-	ID          []int64
-	Order       string
-	Limit       int
-	Page        int
-	Content     *string
-	StartTime   *int64
-	EndTime     *int64
-	Status      *int8
-	Phone       *string
-	Transcation *int
-	Extention   *string
-}
+// type CallQueryRequest struct {
+// 	ID          []int64
+// 	Order       string
+// 	Limit       int
+// 	Page        int
+// 	Content     *string
+// 	StartTime   *int64
+// 	EndTime     *int64
+// 	Status      *int8
+// 	Phone       *string
+// 	Transcation *int
+// 	Extention   *string
+// }
 
 func HasCall(id int64) (bool, error) {
 	calls, err := callDao.Calls(nil, model.CallQuery{
@@ -79,18 +82,17 @@ func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
 }
 
 //CallResps query the call and related information from different dao. and assemble it as a CallResp slice.
-func CallResps(request CallQueryRequest) (*CallsResponse, error) {
-
-	query := model.CallQuery{}
-	//TODO: QUERY NOT IMPELEMENTED YET
-	if request.Status != nil {
-		query.Status = []int8{*request.Status}
+func CallResps(query model.CallQuery) (*CallsResponse, error) {
+	if query.Paging == nil {
+		return nil, fmt.Errorf("expect to have paging param")
 	}
-
 	total, err := callDao.Count(nil, query)
+	if err != nil {
+		return nil, fmt.Errorf("call dao count query failed, %v", err)
+	}
 	calls, err := Calls(nil, query)
 	if err != nil {
-		return nil, fmt.Errorf("call dao query failed, %v", err)
+		return nil, fmt.Errorf("call dao call query failed, %v", err)
 	}
 	var result = make([]CallResp, 0, len(calls))
 	for _, c := range calls {
@@ -103,6 +105,7 @@ func CallResps(request CallQueryRequest) (*CallsResponse, error) {
 			transaction = 1
 		}
 		r := CallResp{
+			CallID:       c.ID,
 			FileName:     *c.FileName,
 			CallTime:     c.CallUnixTime,
 			CallComment:  *c.Description,
@@ -137,8 +140,8 @@ func CallResps(request CallQueryRequest) (*CallsResponse, error) {
 	return &CallsResponse{
 		Paging: general.Paging{
 			Total: total,
-			Limit: request.Limit,
-			Page:  request.Page,
+			Limit: query.Paging.Limit,
+			Page:  query.Paging.Page,
 		},
 		Data: result,
 	}, nil
@@ -160,24 +163,30 @@ func NewCall(c model.Call) (int64, error) {
 	return calls[0].ID, nil
 }
 
-func UpdateCall(call model.Call) error {
-	return callDao.SetCall(nil, call)
+func UpdateCall(call *model.Call) error {
+	return callDao.SetCall(nil, *call)
 }
 
-func newCallQuery(r *http.Request) (*CallQueryRequest, error) {
+func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 	var err error
-	query := CallQueryRequest{}
+	query := model.CallQuery{}
+	paging := &model.Pagination{}
 	values := r.URL.Query()
-	order := values.Get("order")
-	if order == "" {
-		return nil, fmt.Errorf("require order query string")
+	// order := values.Get("order")
+	// if order == "" {
+	// 	return nil, fmt.Errorf("require order query string")
+	// }
+	// paging.Order = order
+	ent := requestheader.GetEnterpriseID(r)
+	if ent == "" {
+		return nil, fmt.Errorf("enterprise ID is required")
 	}
-	query.Order = order
+	query.EnterpriseID = &ent
 	limit := values.Get("limit")
 	if limit == "" {
 		return nil, fmt.Errorf("require limit query string")
 	}
-	query.Limit, err = strconv.Atoi(limit)
+	paging.Limit, err = strconv.Atoi(limit)
 	if err != nil {
 		return nil, fmt.Errorf("limit is not a valid int, %v", err)
 	}
@@ -185,55 +194,69 @@ func newCallQuery(r *http.Request) (*CallQueryRequest, error) {
 	if page == "" {
 		return nil, fmt.Errorf("require page query string")
 	}
-	query.Page, err = strconv.Atoi(page)
+	paging.Page, err = strconv.Atoi(page)
 	if err != nil {
 		return nil, fmt.Errorf("page is not a valid int, %v", err)
 	}
-	if content := values.Get("content"); content != "" {
-		query.Content = &content
-	}
+	query.Paging = paging
+
+	// if content := values.Get("content"); content != "" {
+	// 	query.Content = &content
+	// }
 	if start := values.Get("start"); start != "" {
 		startTime, err := strconv.ParseInt(start, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("start is not a valid int, %v", err)
 		}
-		query.StartTime = &startTime
+		query.CallTimeStart = &startTime
 	}
 	if end := values.Get("end"); end != "" {
 		endTime, err := strconv.ParseInt(end, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("end is not a valid int, %v", err)
 		}
-		query.EndTime = &endTime
+		query.CallTimeEnd = &endTime
 	}
-	if status := values.Get("status"); status != "" {
-		statusTyp, err := strconv.ParseInt(status, 10, 8)
-		statusInt8 := int8(statusTyp)
-		if err != nil || callRoleTypStr(statusInt8) == "default" {
-			return nil, fmt.Errorf("status is not a valid statu int.")
+	if statusGrp := values["status"]; len(statusGrp) > 0 {
+		query.Status = make([]int8, 0, len(statusGrp))
+		for _, status := range statusGrp {
+			statusTyp, err := strconv.ParseInt(status, 10, 8)
+			statusInt8 := int8(statusTyp)
+			if err != nil || !model.ValidCallStatus(statusInt8) {
+				return nil, fmt.Errorf("status %s is not a valid status flag", status)
+			}
+			query.Status = append(query.Status, statusInt8)
 		}
-		query.Status = &statusInt8
 	}
-	if phone := values.Get("phone"); phone != "" {
-		query.Phone = &phone
+	if phone := values.Get("customer_phone"); phone != "" {
+		query.CustomerPhone = &phone
 	}
-	if isTx := values.Get("transaction"); isTx != "" {
+	if isTx := values.Get("deal"); isTx != "" {
 		transaction, err := strconv.Atoi(isTx)
-		if err != nil || (transaction != 1 && transaction != 2) {
-			return nil, fmt.Errorf("transaction is not a valid value")
+		if err != nil || (transaction != 0 && transaction != 1) {
+			return nil, fmt.Errorf("deal is not a valid value")
 		}
-		query.Transcation = &transaction
+		txInt8 := int8(transaction)
+		query.DealStatus = &txInt8
 	}
-	if extension := values.Get("cs_phone"); extension != "" {
-		query.Extention = &extension
+	if extension := values.Get("extension"); extension != "" {
+		query.Ext = &extension
+	}
+	if department := values.Get("department"); department != "" {
+		query.Department = &department
 	}
 	return &query, nil
 }
 
 var callTypeDict = map[string]int8{
-	"guest": model.CallChanCustomer,
-	"host":  model.CallChanStaff,
+	CallStaffRoleName:    model.CallChanCustomer,
+	CallCustomerRoleName: model.CallChanStaff,
 }
+
+const (
+	CallStaffRoleName    = "staff"
+	CallCustomerRoleName = "customer"
+)
 
 func callRoleTyp(role string) int8 {
 	value, found := callTypeDict[role]

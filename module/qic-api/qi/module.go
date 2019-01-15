@@ -66,12 +66,13 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),
 			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
-				volume, _ := ModuleInfo.Environments["FILE_VOLUME"]
+				volume, _ = ModuleInfo.Environments["FILE_VOLUME"]
 				if volume == "" {
 					logger.Error.Println("module env \"FILE_VOLUME\" does not exist or empty, upload function will not work.")
 					return
@@ -85,6 +86,7 @@ func init() {
 					logger.Error.Println(volume + " is not a dir.")
 					volume = ""
 				}
+				logger.Info.Println("volume: ", volume, "is recognized.")
 
 			},
 			"init db": func() {
@@ -115,12 +117,8 @@ func init() {
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
-				mdao := &mockCallDao{
-					mockdata:     exampleCallContent,
-					mockTaskData: exampleTaskContent,
-				}
-				callDao = mdao
-				taskDao = mdao
+				callDao = model.NewCallSQLDao(sqlConn)
+				taskDao = model.NewTaskDao(sqlConn)
 			},
 		},
 	}
