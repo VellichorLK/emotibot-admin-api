@@ -3,24 +3,30 @@ package model
 import (
 	"fmt"
 	"strings"
-
-	_ "emotibot.com/emotigo/pkg/logger"
 )
 
+type RuleCompleteness struct {
+	RuleCompleted       int8
+	HasDescription      bool
+	HasConversationFlow bool
+	SetenceCompleted    int8
+}
+
 type ConversationRule struct {
-	ID          int64
-	UUID        string
-	Name        string
-	Method      int8
-	Score       int
-	Enterprise  string
-	Description string
-	Min         int
-	Max         int
-	Severity    int8
-	Flows       []SimpleConversationFlow
-	CreateTime  int64
-	UpdateTime  int64
+	ID           int64
+	UUID         string
+	Name         string
+	Method       int8
+	Score        int
+	Enterprise   string
+	Description  string
+	Min          int
+	Max          int
+	Severity     int8
+	Flows        []SimpleConversationFlow
+	CreateTime   int64
+	UpdateTime   int64
+	Completeness *RuleCompleteness
 }
 
 type ConversationRuleFilter struct {
@@ -245,14 +251,33 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 
 		if cRule == nil || cRule.UUID != rule.UUID {
 			if cRule != nil {
+				completeness := RuleCompleteness{
+					RuleCompleted:       int8(0),
+					HasDescription:      cRule.Description != "",
+					HasConversationFlow: len(cRule.Flows) > 0,
+					SetenceCompleted:    int8(0),
+				}
+				cRule.Completeness = &completeness
+
 				rules = append(rules, *cRule)
 			}
 			cRule = &rule
+			cRule.Flows = []SimpleConversationFlow{}
 		}
-		cRule.Flows = append(cRule.Flows, flow)
+		if flow.Name != "" {
+			cRule.Flows = append(cRule.Flows, flow)
+		}
 	}
 
 	if cRule != nil {
+		completeness := RuleCompleteness{
+			RuleCompleted:       int8(0),
+			HasDescription:      cRule.Description != "",
+			HasConversationFlow: len(cRule.Flows) > 0,
+			SetenceCompleted:    int8(0),
+		}
+		cRule.Completeness = &completeness
+
 		rules = append(rules, *cRule)
 	}
 	return

@@ -91,8 +91,8 @@ func TestHandleCreateGroup(t *testing.T) {
 		g := response.Data[idx]
 		targetG := mockGroups[idx]
 
-		if g.ID != targetG.UUID || g.Name != targetG.Name {
-			t.Errorf("expect ID: %s, Name: %s, but got %s, %s", targetG.UUID, targetG.Name, g.ID, g.Name)
+		if g.ID != targetG.UUID || g.Name != *targetG.Name {
+			t.Errorf("expect ID: %s, Name: %s, but got %s, %s", targetG.UUID, *targetG.Name, g.ID, g.Name)
 			return
 		}
 	}
@@ -129,7 +129,7 @@ func TestHandleGetGroup(t *testing.T) {
 		return
 	}
 
-	if !sameGroup(&group, mockGroup) {
+	if !sameGroup(&group, &mockGroups[0]) {
 		t.Errorf("expect group: %+v, but got %+v", mockGroup, group)
 		return
 	}

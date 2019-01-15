@@ -39,6 +39,12 @@ func TestConversationRuleToRuleInRes(t *testing.T) {
 		Severity: 1,
 		Method:   -1,
 		Score:    1,
+		Completeness: &model.RuleCompleteness{
+			RuleCompleted:       int8(0),
+			HasDescription:      true,
+			HasConversationFlow: false,
+			SetenceCompleted:    int8(0),
+		},
 	}
 
 	ruleInRes := conversationRuleToRuleInRes(rule)
