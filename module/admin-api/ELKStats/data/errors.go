@@ -40,6 +40,7 @@ const (
 	ErrCodeInvalidParameterDimension
 	ErrCodeInvalidParameterPlatform
 	ErrCodeInvalidParameterGender
+	ErrCodeInvalidParameterTop
 )
 
 type ErrorResponse struct {

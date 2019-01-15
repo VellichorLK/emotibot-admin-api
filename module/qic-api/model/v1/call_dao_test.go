@@ -18,9 +18,10 @@ func getCallsSeed(t *testing.T) []Call {
 	if err != nil {
 		t.Fatal("can not read call's testdata ", err)
 	}
-	var calls = make([]Call, len(rows)-1)
-	for i, row := range rows[1:] {
-		c := calls[i]
+	var calls = make([]Call, 0)
+	for i := len(rows[1:]); i >= 1; i-- {
+		row := rows[i]
+		var c Call
 		c.ID, _ = strconv.ParseInt(row[0], 10, 64)
 		taskID, _ := strconv.ParseInt(row[1], 10, 64)
 		c.TaskID = taskID
@@ -76,7 +77,7 @@ func getCallsSeed(t *testing.T) []Call {
 		rc, _ := strconv.ParseInt(row[26], 10, 8)
 		c.RightChanRole = int8(rc)
 
-		calls[i] = c
+		calls = append(calls, c)
 	}
 	return calls
 }
@@ -99,17 +100,17 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 		},
 		"query id": {
 			CallQuery{ID: []int64{1}},
-			testset[:1],
+			testset[1:],
 		},
 		"query uuid": {
 			CallQuery{
 				UUID: []string{"ec94dfd6e3974671b8a3533c752e51a6"},
 			},
-			testset[1:],
+			testset[:1],
 		},
 		"query status": {
 			CallQuery{Status: []int8{CallStatusDone}},
-			testset[1:],
+			testset[:1],
 		},
 		"query call time start": {
 			CallQuery{CallTimeStart: &exampleTimeStart},
@@ -117,7 +118,7 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 		},
 		"query call time end": {
 			CallQuery{CallTimeEnd: &exampleTimeStart},
-			testset[:1],
+			testset[1:],
 		},
 		"query staff id": {
 			CallQuery{StaffID: []string{"1"}},

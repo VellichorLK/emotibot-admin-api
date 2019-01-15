@@ -456,7 +456,7 @@ func TestNewSentence(t *testing.T) {
 	name := "mynewname"
 	enterprise := mockTagDao.enterprises[0]
 	tagUUID := []string{mockTagDao.uuid[2]}
-	d, _ := NewSentence(enterprise, name, tagUUID)
+	d, _ := NewSentence(enterprise, 0, name, tagUUID)
 	if d.Name != name {
 		t.Errorf("expecting name:%s, but get %s\n", name, d.Name)
 	}
