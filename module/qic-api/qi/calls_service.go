@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -85,9 +87,12 @@ func CallResps(query model.CallQuery) (*CallsResponse, error) {
 		return nil, fmt.Errorf("expect to have paging param")
 	}
 	total, err := callDao.Count(nil, query)
+	if err != nil {
+		return nil, fmt.Errorf("call dao count query failed, %v", err)
+	}
 	calls, err := Calls(nil, query)
 	if err != nil {
-		return nil, fmt.Errorf("call dao query failed, %v", err)
+		return nil, fmt.Errorf("call dao call query failed, %v", err)
 	}
 	var result = make([]CallResp, 0, len(calls))
 	for _, c := range calls {
@@ -172,6 +177,11 @@ func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 	// 	return nil, fmt.Errorf("require order query string")
 	// }
 	// paging.Order = order
+	ent := requestheader.GetEnterpriseID(r)
+	if ent == "" {
+		return nil, fmt.Errorf("enterprise ID is required")
+	}
+	query.EnterpriseID = &ent
 	limit := values.Get("limit")
 	if limit == "" {
 		return nil, fmt.Errorf("require limit query string")

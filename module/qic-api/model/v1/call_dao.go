@@ -42,21 +42,21 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 		conditions []string
 	)
 	if len(c.ID) > 0 {
-		cond := fmt.Sprintf("%s IN (? %s)", fldCallID, strings.Repeat(",? ", len(c.ID)-1))
+		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallID, strings.Repeat(",? ", len(c.ID)-1))
 		conditions = append(conditions, cond)
 		for _, id := range c.ID {
 			bindData = append(bindData, id)
 		}
 	}
 	if len(c.UUID) > 0 {
-		cond := fmt.Sprintf("%s IN (? %s)", fldCallUUID, strings.Repeat(",? ", len(c.UUID)-1))
+		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallUUID, strings.Repeat(",? ", len(c.UUID)-1))
 		conditions = append(conditions, cond)
 		for _, uuid := range c.UUID {
 			bindData = append(bindData, uuid)
 		}
 	}
 	if len(c.Status) > 0 {
-		cond := fmt.Sprintf("%s IN (? %s)", fldCallStatus, strings.Repeat(",? ", len(c.Status)-1))
+		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallStatus, strings.Repeat(",? ", len(c.Status)-1))
 		conditions = append(conditions, cond)
 		for _, s := range c.Status {
 			bindData = append(bindData, s)
@@ -65,15 +65,15 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 	if c.CallTimeStart != nil {
 		cond := fmt.Sprintf("`%s` >= ?", fldCallCallTime)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.CallTimeStart)
+		bindData = append(bindData, *c.CallTimeStart)
 	}
 	if c.CallTimeEnd != nil {
 		cond := fmt.Sprintf("`%s` <= ?", fldCallCallTime)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.CallTimeEnd)
+		bindData = append(bindData, *c.CallTimeEnd)
 	}
 	if len(c.StaffID) > 0 {
-		cond := fmt.Sprintf("%s IN (? %s)", fldCallStaffID, strings.Repeat(",? ", len(c.StaffID)-1))
+		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallStaffID, strings.Repeat(",? ", len(c.StaffID)-1))
 		conditions = append(conditions, cond)
 		for _, s := range c.StaffID {
 			bindData = append(bindData, s)
@@ -82,12 +82,12 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 	if c.EnterpriseID != nil {
 		cond := fmt.Sprintf("`%s`=?", fldCallEnterprise)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.EnterpriseID)
+		bindData = append(bindData, *c.EnterpriseID)
 	}
 	if c.CustomerPhone != nil {
 		cond := fmt.Sprintf("`%s`=?", fldCallCustomerPhone)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.CustomerPhone)
+		bindData = append(bindData, *c.CustomerPhone)
 	}
 	// deal status need to query the task, we will implement this later
 	// if c.DealStatus != nil {
@@ -99,12 +99,12 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 	if c.Ext != nil {
 		cond := fmt.Sprintf("`%s`=?", fldCallExt)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.Ext)
+		bindData = append(bindData, *c.Ext)
 	}
 	if c.Department != nil {
 		cond := fmt.Sprintf("`%s`=?", fldCallDepartment)
 		conditions = append(conditions, cond)
-		bindData = append(bindData, c.Department)
+		bindData = append(bindData, *c.Department)
 	}
 	if len(conditions) > 0 {
 		rawSQL = " WHERE " + strings.Join(conditions, " AND ")
@@ -382,7 +382,7 @@ func (c *CallSQLDao) Count(delegatee SqlLike, query CallQuery) (int64, error) {
 		delegatee = c.db
 	}
 	wheresql, data := query.whereSQL()
-	rawquery := "SELECT count(*) FROM " + tblCall + " " + wheresql
+	rawquery := "SELECT count(*) FROM `" + tblCall + "` " + wheresql
 	var count int64
 	err := delegatee.QueryRow(rawquery, data...).Scan(&count)
 	if err != nil {
