@@ -31,6 +31,11 @@ type sentenceResp struct {
 	UUID string `json:"sentence_id"`
 }
 
+func categoryCheck(enterprise string, categories []uint64) (bool, error) {
+	//FIXME, count the category
+	return true, nil
+}
+
 func handleGetSentences(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
@@ -65,6 +70,54 @@ func handleGetSentences(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func handleMoveSentence(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	categoryStr := parseID(r)
+
+	//check the category authorization
+	category, err := strconv.ParseUint(categoryStr, 10, 64)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	valid, err := categoryCheck(enterprise, []uint64{category})
+	if err != nil {
+		logger.Error.Printf("check category auth failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !valid {
+		util.WriteJSONWithStatus(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	//check sentence authorization
+	var sentences []string
+	err = util.ReadJSON(r, &sentences)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	valid, err = CheckSentenceAuth(sentences, enterprise)
+	if err != nil {
+		logger.Error.Printf("check sentence auth failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if !valid {
+		util.WriteJSONWithStatus(w, "", http.StatusUnauthorized)
+		return
+	}
+
+	_, err = MoveCategories(sentences, enterprise, category)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+}
+
 func handleGetSentence(w http.ResponseWriter, r *http.Request) {
 	uuid := parseID(r)
 	enterprise := requestheader.GetEnterpriseID(r)
@@ -90,6 +143,19 @@ func handleNewSentence(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
+
+	auth, err := categoryCheck(enterprise, []uint64{requestBody.CategoryID})
+	if err != nil {
+		logger.Error.Printf("get the category failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	if !auth {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such category id"), http.StatusBadRequest)
+		return
+	}
+
 	d, err := NewSentence(enterprise, requestBody.CategoryID, requestBody.Name, requestBody.Tags)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)

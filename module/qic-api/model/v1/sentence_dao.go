@@ -22,6 +22,7 @@ type SentenceDao interface {
 	CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, error)
 	InsertSenTagRelation(tx *sql.Tx, s *Sentence) error
 	GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error)
+	MoveCategories(x *sql.Tx, q *SentenceQuery, category uint64) (int64, error)
 }
 
 //error message
@@ -369,4 +370,29 @@ func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (
 	}
 
 	return tagToSentenceMap, nil
+}
+
+//MoveCategories update the category_id
+func (d *SentenceSQLDao) MoveCategories(tx *sql.Tx, q *SentenceQuery, category uint64) (int64, error) {
+	exe, err := genrateExecutor(d.conn, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	if q == nil {
+		return 0, ErrNeedCondition
+	}
+
+	condition, params := q.whereSQL()
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s=? %s",
+		tblSentence,
+		fldCategoryID, condition)
+
+	params = append([]interface{}{category}, params...)
+	res, err := exe.Exec(updateSQL, params...)
+	if err != nil {
+		logger.Error.Printf("update the category failed. %s\n %s %d\n", err, updateSQL, category)
+		return 0, err
+	}
+	return res.RowsAffected()
 }

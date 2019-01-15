@@ -272,3 +272,9 @@ func CheckSentenceAuth(sentenceUUID []string, enterprise string) (bool, error) {
 	}
 	return true, nil
 }
+
+//MoveCategories moves the sentence to the assigned category
+func MoveCategories(sentenceUUID []string, enterprise string, category uint64) (int64, error) {
+	q := &model.SentenceQuery{UUID: sentenceUUID, Enterprise: &enterprise}
+	return sentenceDao.MoveCategories(nil, q, category)
+}
