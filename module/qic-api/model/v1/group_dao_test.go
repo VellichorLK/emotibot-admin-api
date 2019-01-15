@@ -12,12 +12,12 @@ func TestGetGroupsSQL(t *testing.T) {
 		Extension: "abcdefg",
 	}
 
-	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
+	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	rrr.%s
-	FROM (SELECT * FROM %s WHERE %s = ? and %s = ?) as gc
-	INNER JOIN (SELECT * FROM %s WHERE %s=0 and %s=1) as rg ON gc.%s = rg.%s
+	FROM (SELECT * FROM %s WHERE %s=0 ) as rg
+	INNER JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	`
 	targetStr = fmt.Sprintf(
@@ -25,8 +25,11 @@ func TestGetGroupsSQL(t *testing.T) {
 		RGID,
 		RGUUID,
 		RGName,
+		fldDescription,
 		RGLimitSpeed,
 		RGLimitSilence,
+		fldCreateTime,
+		fldGroupIsEnabled,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -42,16 +45,13 @@ func TestGetGroupsSQL(t *testing.T) {
 		RGCLeftChannel,
 		RGCRightChannel,
 		RRRRuleID,
-		tblRGC,
-		RGCFileName,
-		RGCExtension,
 		tblRuleGroup,
-		RGIsDelete,
-		RGIsEnable,
+		fldIsDelete,
+		tblRGC,
+		fldID,
 		RGCGroupID,
-		RGID,
 		tblRelGrpRule,
-		RGID,
+		fldID,
 		RRRGroupID,
 	)
 
