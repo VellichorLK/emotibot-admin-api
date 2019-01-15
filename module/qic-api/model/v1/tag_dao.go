@@ -96,11 +96,11 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 	}
 	if t.Enterprise != nil {
 		conditions = append(conditions, fldTagEnterprise+" = ?")
-		bindedData = append(bindedData, t.Enterprise)
+		bindedData = append(bindedData, *t.Enterprise)
 	}
 	if t.Name != nil {
 		conditions = append(conditions, fldTagName+" = ?")
-		bindedData = append(bindedData, t.Name)
+		bindedData = append(bindedData, *t.Name)
 	}
 	if !t.IgnoreSoftDelete {
 		conditions = append(conditions, fldTagIsDeleted+" = ?")
