@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -17,6 +18,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
+
+// Top questions
+const DefaultTopQuestions = 20
+const MaxTopNQuestions = 1000
 
 var visitStatsQueryHandlers = map[string]dataV1.VisitStatsQueryHandler{
 	dataCommon.VisitStatsMetricConversations:   servicesV1.ConversationCounts,
@@ -213,6 +218,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	questionsType := r.URL.Query().Get("type")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
+	top := r.URL.Query().Get("top")
 
 	if questionsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
@@ -235,6 +241,24 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	topN := DefaultTopQuestions
+
+	if top != "" {
+		topN, err = strconv.Atoi(top)
+		if err != nil {
+			errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterTop, "top")
+			controllers.ReturnBadRequest(w, errResponse)
+			return
+		}
+
+		if topN > MaxTopNQuestions || topN < 1 {
+			errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterTop,
+				fmt.Sprintf("Invalid parameter: %d, allowed range: 1 to %d", topN, MaxTopNQuestions))
+			controllers.ReturnBadRequest(w, errResponse)
+			return
+		}
+	}
+
 	query := dataV1.VisitStatsQuery{
 		StatsQuery: data.StatsQuery{
 			CommonQuery: data.CommonQuery{
@@ -247,7 +271,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch questionsType {
 	case dataCommon.VisitQuestionsTypeTop:
-		questions, err := servicesV1.TopQuestions(query, 20)
+		questions, err := servicesV1.TopQuestions(query, topN)
 		if err != nil {
 			var errResponse data.ErrorResponse
 			if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
@@ -272,7 +296,7 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		query.AggInterval = aggInterval
 
-		questions, err := servicesV1.TopUnmatchQuestions(query, 20)
+		questions, err := servicesV1.TopUnmatchQuestions(query, topN)
 		if err != nil {
 			var errResponse data.ErrorResponse
 			if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
