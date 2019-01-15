@@ -372,7 +372,7 @@ func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (
 	return tagToSentenceMap, nil
 }
 
-//MoveCategories update the category_id
+//MoveCategories updates the category_id for given sentences
 func (d *SentenceSQLDao) MoveCategories(tx *sql.Tx, q *SentenceQuery, category uint64) (int64, error) {
 	exe, err := genrateExecutor(d.conn, tx)
 	if err != nil {
