@@ -28,8 +28,8 @@ type CategoryRequest struct {
 //CategortInfo stores the category information used to return
 type CategortInfo struct {
 	ID         uint64 `json:"category_id,string"`
-	Name       string `json:"string"`
-	Enterprise string `json:"enterrprise"`
+	Name       string `json:"name"`
+	Enterprise string `json:"-"`
 }
 
 //CategoryQuery uses as query structure of category
