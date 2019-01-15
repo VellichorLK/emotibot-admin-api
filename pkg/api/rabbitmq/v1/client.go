@@ -1,4 +1,6 @@
-package rabbitmqtool
+// Package rabbitmq v1 is the refractor version of the emotibot.com/emotigo/experimental/scalable_service/workers/golang_worker/RabbitMQTool.
+// It warp the RabbitMQ communication as a Client. And offer patterns of produce and consume.
+package rabbitmq
 
 import (
 	"fmt"
@@ -144,9 +146,11 @@ func (c *Client) IsUnreachable() bool {
 	return false
 }
 
-// Consume init a new channel, and start to consume task.
+type Consumer func([]byte) error
+
+// Consume init a new channel, and use consumer to consume task.
 //	notice: It will block the caller routine.
-func (c *Client) Consume(queueName string, doFunc func(string) string) error {
+func (c *Client) Consume(queueName string, consumer Consumer) error {
 
 	for {
 
@@ -195,20 +199,9 @@ func (c *Client) Consume(queueName string, doFunc func(string) string) error {
 		}
 
 		for d := range msgs {
-			response := doFunc(string(d.Body[:]))
-
-			err = ch.Publish(
-				"",        // exchange
-				d.ReplyTo, // routing key
-				false,     // mandatory
-				false,     // immediate
-				amqp.Publishing{
-					ContentType:   "text/plain",
-					CorrelationId: d.CorrelationId,
-					Body:          []byte(response),
-				})
+			err := consumer(d.Body)
 			if err != nil {
-				logger.Error.Println("Failed to publish message: ", err)
+				logger.Error.Println("Failed to consume message: ", err)
 				break
 			}
 			d.Ack(false)
@@ -219,4 +212,44 @@ func (c *Client) Consume(queueName string, doFunc func(string) string) error {
 
 	}
 
+}
+
+// Produce init a new channel, and use Producer to publish task.
+// 	notice: It will block the caller routine.
+func (c *Client) Produce(queueName string, contentType string, producer <-chan []byte) error {
+	for {
+		ch, err := c.Conn.Channel()
+		if err != nil {
+			return fmt.Errorf("failed to open a channel, %v", err)
+		}
+		defer ch.Close()
+		q, err := ch.QueueDeclare(
+			queueName, // name
+			false,     // durable
+			false,     // delete when unused
+			false,     // exclusive
+			false,     // no-wait
+			nil,       // arguments
+		)
+
+		if err != nil {
+			ch.Close()
+			return fmt.Errorf("failed to declare a queue, %v", err)
+		}
+		for response := range producer {
+			p := amqp.Publishing{
+				ContentType: contentType,
+				Body:        response,
+			}
+			err = ch.Publish(
+				"",     // exchange
+				q.Name, // routing key
+				false,  // mandatory
+				false,  // immediate
+				p,
+			)
+		}
+		ch.Close()
+		c.reconnect()
+	}
 }
