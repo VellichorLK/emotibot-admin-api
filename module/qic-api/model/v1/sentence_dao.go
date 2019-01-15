@@ -237,11 +237,11 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 	}
 
 	//insert into Sentence table
-	insertSenSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?)",
+	insertSenSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?,?)",
 		tblSentence,
-		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime)
+		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID)
 
-	res, err := exe.Exec(insertSenSQL, s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime)
+	res, err := exe.Exec(insertSenSQL, s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.CategoryID)
 	if err != nil {
 		logger.Error.Printf("insert sentence %s failed %s\n", insertSenSQL, err)
 		return 0, err

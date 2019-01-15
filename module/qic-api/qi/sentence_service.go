@@ -151,7 +151,7 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 }
 
 //NewSentence inserts a new sentence
-func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentence, error) {
+func NewSentence(enterprise string, category uint64, name string, tagUUID []string) (*DataSentence, error) {
 
 	//query tags ID
 	query := model.TagQuery{UUID: tagUUID, Enterprise: &enterprise}
@@ -179,7 +179,7 @@ func NewSentence(enterprise string, name string, tagUUID []string) (*DataSentenc
 	}
 	uuidStr := hex.EncodeToString(uuid[:])
 	s := &model.Sentence{IsDelete: 0, Name: name, Enterprise: enterprise,
-		CreateTime: now, UpdateTime: now, TagIDs: tagsID, UUID: uuidStr}
+		CreateTime: now, UpdateTime: now, TagIDs: tagsID, UUID: uuidStr, CategoryID: category}
 	tx, err := sentenceDao.Begin()
 	if err != nil {
 		logger.Error.Printf("create transaction failed. %s\n", err)
