@@ -9,10 +9,11 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
-	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"encoding/hex"
-	uuid "github.com/satori/go.uuid"
 	"time"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+	uuid "github.com/satori/go.uuid"
 )
 
 //CallResp is the UI struct of the call.
@@ -158,22 +159,24 @@ func NewCall(c *NewCallReq) (int64, error) {
 		return 0, fmt.Errorf("error while get transaction, %v", err)
 	}
 	defer dbLike.ClearTransition(tx)
-
+	timestamp := time.Now().Unix()
 	newTask := &model.Task{
-		Status: int8(0),
-		Series: c.Series,
-		IsDeal: c.Transaction == 1,
+		Status:      int8(0),
+		Series:      c.Series,
+		IsDeal:      c.Transaction == 1,
+		CreatedTime: timestamp,
+		UpdatedTime: timestamp,
 	}
 
 	createdTask, err := taskDao.NewTask(tx, *newTask)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("new task failed, %v", err)
 	}
 
 	// create uuid for call
 	uid, err := uuid.NewV4()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("new uuid failed, %v", err)
 	}
 
 	call := &model.Call{

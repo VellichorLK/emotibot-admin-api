@@ -65,11 +65,6 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	enterprise := requestheader.GetEnterpriseID(r)
-	userID := requestheader.GetUserID(r)
-	req.Enterprise = enterprise
-	req.UploadUser = userID
-
 	id, err := NewCall(req)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call from failed, %v", err))
@@ -202,6 +197,17 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	if _, found := callTypeDict[reqBody.RightChannel]; !found {
 		return nil, fmt.Errorf("request body's right channel value %s is not valid. the mapping should be %v", reqBody.RightChannel, callTypeDict)
 	}
+	enterprise := requestheader.GetEnterpriseID(r)
+	if enterprise == "" {
+		return nil, fmt.Errorf("enterpriseID is required")
+	}
+	reqBody.Enterprise = enterprise
+	userID := requestheader.GetUserID(r)
+	if userID == "" {
+		return nil, fmt.Errorf("user ID is required")
+	}
+	reqBody.UploadUser = userID
+
 	return reqBody, nil
 }
 
