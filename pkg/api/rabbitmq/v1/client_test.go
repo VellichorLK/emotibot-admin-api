@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/streadway/amqp"
@@ -110,4 +111,37 @@ func TestI11ProduceAndConsume(t *testing.T) {
 		t.Logf("received:%s\nexpect:%s\n", received, example)
 		t.Error("expect example to be same with received")
 	}
+}
+
+func TestI11Subscribe(t *testing.T) {
+	c := newIntegrationClient(t)
+	defer c.Close()
+	p := c.NewProducer(ProducerConfig{
+		QueueName:   "testing",
+		ContentType: "text/plain",
+	})
+	wg := sync.WaitGroup{}
+	products := 10
+	wg.Add(products)
+	go func() {
+		for i := 0; i < products; i++ {
+			p.Produce([]byte("hello world"))
+		}
+		// fmt.Println("produce finished")
+	}()
+	consumer := c.NewConsumer(ConsumerConfig{
+		QueueName: "testing",
+		maxRetry:  10,
+	})
+	received := 0
+	consumer.Subscribe(func(response []byte) error {
+		received++
+		wg.Done()
+		return nil
+	})
+	wg.Wait()
+	if received != 10 {
+		t.Error("expect subscribe receive 10 message, but got ", received)
+	}
+
 }

@@ -39,7 +39,7 @@ func (p *Producer) Produce(product []byte) error {
 		if p.isClosed {
 			return fmt.Errorf("producer is already closed")
 		}
-		ch := p.client.channel()
+		_, ch := p.client.rwChannels()
 		q, err = ch.QueueDeclare(
 			p.config.QueueName, // name
 			false,              // durable

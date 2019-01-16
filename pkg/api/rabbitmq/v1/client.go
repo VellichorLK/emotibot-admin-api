@@ -15,12 +15,13 @@ import (
 // Only get Client by NewClient or Dial function.
 // DO NOT CREATE Client by literal, or the monitor part will fail.
 type Client struct {
-	amqpURL string
-	Conn    Connection
-	config  ClientConfig
-	ch      *amqp.Channel
-	close   chan interface{}
-	lock    sync.RWMutex
+	amqpURL  string
+	Conn     Connection
+	config   ClientConfig
+	rChannel *amqp.Channel
+	wChannel *amqp.Channel
+	close    chan interface{}
+	lock     sync.RWMutex
 }
 
 // Connection abstract the dialing to the RabbitMQ connection.
@@ -128,6 +129,9 @@ var connect = func(c *Client, maxRetry int) error {
 		if c.Conn != nil {
 			c.Conn.Close()
 		}
+		if i > 0 {
+			time.Sleep(time.Duration(100) * time.Millisecond)
+		}
 		if maxRetry > 0 && i == maxRetry {
 			return fmt.Errorf("connection exceed maxRetry times: %d. err: %v", maxRetry, err)
 		}
@@ -136,12 +140,17 @@ var connect = func(c *Client, maxRetry int) error {
 			err = fmt.Errorf("dial to amqp url [%s] failed, %v", c.amqpURL, err)
 			continue
 		}
-		c.ch, err = c.Conn.Channel()
-		if err == nil {
-			break
+		c.wChannel, err = c.Conn.Channel()
+		if err != nil {
+			err = fmt.Errorf("create write channel failed, %v", err)
+			continue
 		}
-		err = fmt.Errorf("create channel failed, %v", err)
-		time.Sleep(1 * time.Second)
+		c.rChannel, err = c.Conn.Channel()
+		if err != nil {
+			err = fmt.Errorf("create read channel failed, %v", err)
+			continue
+		}
+		break
 	}
 	return err
 }
@@ -152,10 +161,10 @@ func (c *Client) reconnect() {
 }
 
 // channel get the most recent working channel from the Client.
-func (c *Client) channel() *amqp.Channel {
+func (c *Client) rwChannels() (*amqp.Channel, *amqp.Channel) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	return c.ch
+	return c.rChannel, c.wChannel
 }
 
 // IsUnreachable will try to create a channel with Conn. and return bool for successfulness.

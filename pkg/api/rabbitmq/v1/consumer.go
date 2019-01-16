@@ -22,34 +22,37 @@ type ConsumerConfig struct {
 // Task is the task that will be triggered if new message comes from queue.
 type Task func(message []byte) error
 
-func (c *Consumer) Subscribe(task Task) error {
-	for {
-		ch := c.client.channel()
-		msgs, err := ch.Consume(
-			c.config.QueueName, // queue
-			"",                 // consumer
-			false,              // auto-ack
-			false,              // exclusive
-			false,              // no-local
-			false,              // no-wait
-			nil,                // args
-		)
+// Subscribe will create a routine to check for the
+func (c *Consumer) Subscribe(task Task) {
+	go func() {
+		for {
+			ch, _ := c.client.rwChannels()
+			msgs, err := ch.Consume(
+				c.config.QueueName, // queue
+				"",                 // consumer
+				false,              // auto-ack
+				false,              // exclusive
+				false,              // no-local
+				false,              // no-wait
+				nil,                // args
+			)
 
-		if err != nil {
-			logger.Warn.Println("failed to register a consumer, ", err)
-			time.Sleep(time.Duration(3) * time.Second)
-			continue
-		}
-		for d := range msgs {
-			err := task(d.Body)
 			if err != nil {
-				logger.Warn.Println("Failed to consume message: ", err)
+				logger.Warn.Println("failed to register a consumer, ", err)
+				time.Sleep(time.Duration(100) * time.Millisecond)
 				continue
 			}
-			d.Ack(false)
+			for d := range msgs {
+				err := task(d.Body)
+				if err != nil {
+					logger.Warn.Println("Failed to consume message: ", err)
+					continue
+				}
+				d.Ack(false)
+			}
+			c.client.reconnect()
 		}
-		c.client.reconnect()
-	}
+	}()
 }
 func (c *Consumer) Consume() ([]byte, error) {
 	var err error
@@ -61,7 +64,7 @@ func (c *Consumer) Consume() ([]byte, error) {
 		if i > 0 {
 			time.Sleep(time.Duration(100) * time.Millisecond)
 		}
-		ch := c.client.channel()
+		ch, _ := c.client.rwChannels()
 		q, err := ch.QueueDeclare(
 			c.config.QueueName, // name
 			false,              // durable
