@@ -80,5 +80,34 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestI11Connect(t *testing.T) {
-	newIntegrationClient(t)
+	c := newIntegrationClient(t)
+	c.Close()
+}
+
+func TestI11ProduceAndConsume(t *testing.T) {
+	c := newIntegrationClient(t)
+	defer c.Close()
+	pc := ProducerConfig{
+		QueueName:   "testing",
+		ContentType: "text/plain",
+		MaxRetry:    10,
+	}
+	p := c.NewProducer(pc)
+	example := []byte("It is a test")
+	err := p.Produce(example)
+	if err != nil {
+		t.Fatal("produce failed, ", err)
+	}
+	consumer := c.NewConsumer(ConsumerConfig{
+		QueueName: "testing",
+		maxRetry:  10,
+	})
+	received, err := consumer.Consume()
+	if err != nil {
+		t.Fatalf("consume failed, %v", err)
+	}
+	if !reflect.DeepEqual(example, received) {
+		t.Logf("received:%s\nexpect:%s\n", received, example)
+		t.Error("expect example to be same with received")
+	}
 }

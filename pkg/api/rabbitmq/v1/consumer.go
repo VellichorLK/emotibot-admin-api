@@ -15,6 +15,7 @@ type Consumer struct {
 
 type ConsumerConfig struct {
 	QueueName string
+	maxRetry  int
 }
 
 // Task is the task that will be triggered if new message comes from queue.
@@ -49,27 +50,36 @@ func (c *Consumer) Subscribe(task Task) error {
 	}
 }
 func (c *Consumer) Consume() ([]byte, error) {
-	ch := c.client.channel()
-	q, err := ch.QueueDeclare(
-		c.config.QueueName, // name
-		false,              // durable
-		false,              // delete when unused
-		false,              // exclusive
-		false,              // no-wait
-		nil,                // arguments
-	)
+	var err error
+	maxRetry := c.config.maxRetry
+	for i := 0; ; i++ {
+		if maxRetry > 0 && i == maxRetry {
+			break
+		}
+		ch := c.client.channel()
+		q, err := ch.QueueDeclare(
+			c.config.QueueName, // name
+			false,              // durable
+			false,              // delete when unused
+			false,              // exclusive
+			false,              // no-wait
+			nil,                // arguments
+		)
 
-	if err != nil {
-		ch.Close()
-		return nil, fmt.Errorf("failed to declare a queue, %v", err)
+		if err != nil {
+			err = fmt.Errorf("failed to declare a queue, %v", err)
+			continue
+		}
+		msg, ok, err := ch.Get(q.Name, true)
+		if !ok {
+			err = fmt.Errorf("queue is empty")
+			continue
+		}
+		if err != nil {
+			err = fmt.Errorf("get message from queue failed, %v", err)
+			continue
+		}
+		return msg.Body, nil
 	}
-	msg, ok, err := ch.Get(q.Name, true)
-	if !ok {
-		return nil, fmt.Errorf("queue is empty")
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get message from queue failed, %v", err)
-	}
-	return msg.Body, nil
-
+	return nil, fmt.Errorf("exceed max retries %d, error: %v", c.config.maxRetry, err)
 }

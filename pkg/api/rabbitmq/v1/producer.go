@@ -23,12 +23,15 @@ type ProducerConfig struct {
 // It is a synchronize method to publish the product.
 // If the producer is already closed or publish failed, It will return a error.
 func (p *Producer) Produce(product []byte) error {
-
 	var (
-		err error
-		q   amqp.Queue
+		err      error
+		q        amqp.Queue
+		maxRetry = p.config.MaxRetry
 	)
-	for i := 0; i < p.config.MaxRetry; i++ {
+	for i := 0; ; i++ {
+		if maxRetry > 0 && i == maxRetry {
+			break
+		}
 		if p.isClosed {
 			return fmt.Errorf("producer is already closed")
 		}
@@ -57,15 +60,13 @@ func (p *Producer) Produce(product []byte) error {
 			false,  // immediate
 			publish,
 		)
-		if err != nil {
-			err = fmt.Errorf("publish to queue failed, %v", err)
-			continue
-		} else {
-			break
+		if err == nil {
+			return nil
 		}
+		err = fmt.Errorf("publish to queue failed, %v", err)
 	}
+	return fmt.Errorf("retry max times %d reached, error: %v", maxRetry, err)
 
-	return err
 }
 
 // Close will prevent any new product to be published by the producer.

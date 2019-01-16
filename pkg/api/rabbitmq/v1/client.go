@@ -19,6 +19,7 @@ type Client struct {
 	Conn    Connection
 	config  ClientConfig
 	ch      *amqp.Channel
+	close   chan interface{}
 	lock    sync.RWMutex
 }
 
@@ -85,6 +86,7 @@ func NewClient(config ClientConfig) (*Client, error) {
 		config:  config,
 		amqpURL: config.amqpURL(),
 		lock:    sync.RWMutex{},
+		close:   make(chan interface{}),
 	}
 	err := connect(c, config.MaxRetry)
 	if err != nil {
@@ -99,6 +101,7 @@ func Dial(url string) (*Client, error) {
 	c := &Client{
 		amqpURL: url,
 		lock:    sync.RWMutex{},
+		close:   make(chan interface{}),
 	}
 	err := connect(c, DefaultClientConfig.MaxRetry)
 	if err != nil {
@@ -108,14 +111,23 @@ func Dial(url string) (*Client, error) {
 	return c, nil
 }
 
+// Close will cancel persist check and close the connection.
+func (c *Client) Close() error {
+	c.close <- struct{}{}
+	err := c.Conn.Close()
+	return err
+}
+
 var connect = func(c *Client, maxRetry int) error {
 	var err error
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	if c.Conn != nil {
-		c.Conn.Close()
-	}
+
 	for i := 0; ; i++ {
+		//clean up old resource
+		if c.Conn != nil {
+			c.Conn.Close()
+		}
 		if maxRetry > 0 && i == maxRetry {
 			return fmt.Errorf("connection exceed maxRetry times: %d. err: %v", maxRetry, err)
 		}
@@ -126,11 +138,10 @@ var connect = func(c *Client, maxRetry int) error {
 		}
 		c.ch, err = c.Conn.Channel()
 		if err == nil {
-			c.Conn.Close()
 			break
 		}
 		err = fmt.Errorf("create channel failed, %v", err)
-		time.Sleep(5 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 	return err
 }
@@ -188,6 +199,8 @@ func keepConnAlive(c *Client) {
 			c.reconnect()
 			// renew a notifier
 			closeNotifier = c.Conn.NotifyClose(make(chan *amqp.Error))
+		case <-c.close:
+			return
 		}
 	}
 }
