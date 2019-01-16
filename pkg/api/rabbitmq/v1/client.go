@@ -7,41 +7,27 @@ import (
 	"sync"
 	"time"
 
-	"emotibot.com/emotigo/pkg/logger"
-
 	"github.com/streadway/amqp"
 )
 
-// DefaultClientConfig is the default configuration of the Client.
-// It will be used with Dial func or other Client without setting it with Config.
-var DefaultClientConfig = ClientConfig{
-	Host:     "127.0.0.1",
-	Port:     5672,
-	UserName: "guest",
-	Password: "guest",
-	MaxRetry: 10,
-}
-
-// Client can create a Connection to RabbitMQ server.
-// Which its setting can base on ClientConfig or amqpURL.
+// Client is a persist connection to RabbitMQ server which will maintain a single connection with channel.
+// It create the Connection by given config or amqpURL.
+// Only get Client by NewClient or Dial function.
+// DO NOT CREATE Client by literal, or the monitor part will fail.
 type Client struct {
-	Conn    Connection
 	amqpURL string
+	Conn    Connection
 	config  ClientConfig
-	Lock    sync.Mutex
+	ch      *amqp.Channel
+	lock    sync.RWMutex
 }
 
-// ClientConfig can be use to create a Client with NewClient function.
-//		MaxRetry: determine how many time. If you want to disable retry, please set it to 1. 0 will result to default config.
-type ClientConfig struct {
-	Host     string
-	Port     int
-	UserName string
-	Password string
-	MaxRetry int
-}
-
-// Connection represents the real dialer for the RabbitMQ connection.
+// Connection abstract the dialing to the RabbitMQ connection.
+// 	Connection should manage the serialization and deserialization of frames from IO
+// 	and dispatches the frames to the appropriate channel. All RPC methods and
+// 	asynchronous Publishing, Delivery, Ack, Nack and Return messages are
+// 	multiplexed on this channel. There must always be active receivers for every
+// 	asynchronous message on this connection.
 type Connection interface {
 	// Channel opens a unique, concurrent server channel to process the bulk of
 	// AMQP messages. Any error from methods on this receiver will render the
@@ -59,8 +45,23 @@ type Connection interface {
 	//     connection, including the underlying io, Channels, Notify listeners and
 	//     Channel consumers will also be closed.
 	Close() error
-	// NotifyBlocked(receiver chan amqp.Blocking) chan amqp.Blocking
-	// NotifyClose(receiver chan *amqp.Error) chan *amqp.Error
+	// NotifyBlocked registers a listener for RabbitMQ specific TCP flow control
+	// method extensions connection.blocked and connection.unblocked. Flow control
+	// is active with a reason when Blocking.Blocked is true. When a Connection is
+	// blocked, all methods will block across all connections until server
+	// resources become free again.
+	//
+	// This optional extension is supported by the server when the
+	// "connection.blocked" server capability key is true.
+	NotifyBlocked(receiver chan amqp.Blocking) chan amqp.Blocking
+	// NotifyClose registers a listener for close events either initiated by an
+	// error accompanying a connection.close method or by a normal shutdown.
+	//
+	// On normal shutdowns, the chan will be closed.
+	//
+	// To reconnect after a transport or protocol error, register a listener here
+	// and re-run your setup process.
+	NotifyClose(receiver chan *amqp.Error) chan *amqp.Error
 }
 
 // NewClient create the Client based on config. any empty setting will use the default setting.
@@ -83,8 +84,13 @@ func NewClient(config ClientConfig) (*Client, error) {
 	c := &Client{
 		config:  config,
 		amqpURL: config.amqpURL(),
-		Lock:    sync.Mutex{},
+		lock:    sync.RWMutex{},
 	}
+	err := connect(c, config.MaxRetry)
+	if err != nil {
+		return nil, fmt.Errorf("try connecting server failed with retries %d, %v", config.MaxRetry, err)
+	}
+	go keepConnAlive(c)
 	return c, nil
 }
 
@@ -92,164 +98,96 @@ func NewClient(config ClientConfig) (*Client, error) {
 func Dial(url string) (*Client, error) {
 	c := &Client{
 		amqpURL: url,
-		Lock:    sync.Mutex{},
+		lock:    sync.RWMutex{},
 	}
 	err := connect(c, DefaultClientConfig.MaxRetry)
 	if err != nil {
-		return nil, fmt.Errorf("dial failed, %v", err)
+		return nil, fmt.Errorf("connect failed, %v", err)
 	}
+	go keepConnAlive(c)
 	return c, nil
 }
 
-func (c *ClientConfig) amqpURL() string {
-	return fmt.Sprintf("amqp://%s:%s@%s:%d", c.UserName, c.Password, c.Host, c.Port)
-}
-
-func connect(c *Client, maxRetry int) error {
+var connect = func(c *Client, maxRetry int) error {
 	var err error
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.Conn != nil {
+		c.Conn.Close()
+	}
 	for i := 0; ; i++ {
-		if maxRetry > 0 && i < maxRetry {
-			return fmt.Errorf("connect to RabbitMQ server [%s] failed: %v", c.amqpURL, err)
+		if maxRetry > 0 && i == maxRetry {
+			return fmt.Errorf("connection exceed maxRetry times: %d. err: %v", maxRetry, err)
 		}
 		c.Conn, err = amqp.Dial(c.amqpURL)
+		if err != nil {
+			err = fmt.Errorf("dial to amqp url [%s] failed, %v", c.amqpURL, err)
+			continue
+		}
+		c.ch, err = c.Conn.Channel()
 		if err == nil {
+			c.Conn.Close()
 			break
 		}
+		err = fmt.Errorf("create channel failed, %v", err)
 		time.Sleep(5 * time.Second)
 	}
-	logger.Info.Printf("Connect to RabbitMQ server %s:%d success.", c.config.Host, c.config.Port)
-	return nil
+	return err
 }
 
-//reconnect will try to reconnect to RabbitMQ.
+// reconnect will try to reconnect the connection between RabbitMQ server
 func (c *Client) reconnect() {
-	c.Lock.Lock()
-	defer c.Lock.Unlock()
-	if c.IsUnreachable() {
-		connect(c, 0)
-	}
+	connect(c, 0)
+}
 
+// channel get the most recent working channel from the Client.
+func (c *Client) channel() *amqp.Channel {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return c.ch
 }
 
 // IsUnreachable will try to create a channel with Conn. and return bool for successfulness.
-// Any unreachable situation will let the Client to close its Connection.
 func (c *Client) IsUnreachable() bool {
 	if c.Conn == nil {
 		return true
 	}
 	ch, err := c.Conn.Channel()
 	if err != nil {
-		c.Conn.Close()
 		return true
 	}
 	defer ch.Close()
 	return false
 }
 
-type Consumer func([]byte) error
-
-// Consume init a new channel, and use consumer to consume task.
-//	notice: It will block the caller routine.
-func (c *Client) Consume(queueName string, consumer Consumer) error {
-
-	for {
-
-		ch, err := c.Conn.Channel()
-		if err != nil {
-			return fmt.Errorf("failed to open a channel, %v", err)
-		}
-
-		q, err := ch.QueueDeclare(
-			queueName, // name
-			false,     // durable
-			false,     // delete when unused
-			false,     // exclusive
-			false,     // no-wait
-			nil,       // arguments
-		)
-
-		if err != nil {
-			ch.Close()
-			return fmt.Errorf("failed to declare a queue, %v", err)
-		}
-
-		err = ch.Qos(
-			1,     // prefetch count
-			0,     // prefetch size
-			false, // global
-		)
-		if err != nil {
-			ch.Close()
-			return fmt.Errorf("failed to set Qos, %v", err)
-		}
-
-		msgs, err := ch.Consume(
-			q.Name, // queue
-			"",     // consumer
-			false,  // auto-ack
-			false,  // exclusive
-			false,  // no-local
-			false,  // no-wait
-			nil,    // args
-		)
-
-		if err != nil {
-			ch.Close()
-			return fmt.Errorf("failed to register a consumer, %v", err)
-		}
-
-		for d := range msgs {
-			err := consumer(d.Body)
-			if err != nil {
-				logger.Error.Println("Failed to consume message: ", err)
-				break
-			}
-			d.Ack(false)
-		}
-
-		ch.Close()
-		c.reconnect()
-
+// NewConsumer create a consumer with the config and associate the client.
+func (c *Client) NewConsumer(config ConsumerConfig) *Consumer {
+	return &Consumer{
+		client: c,
+		config: config,
 	}
-
 }
 
-// Produce init a new channel, and use Producer to publish task.
-// 	notice: It will block the caller routine.
-func (c *Client) Produce(queueName string, contentType string, producer <-chan []byte) error {
-	for {
-		ch, err := c.Conn.Channel()
-		if err != nil {
-			return fmt.Errorf("failed to open a channel, %v", err)
-		}
-		defer ch.Close()
-		q, err := ch.QueueDeclare(
-			queueName, // name
-			false,     // durable
-			false,     // delete when unused
-			false,     // exclusive
-			false,     // no-wait
-			nil,       // arguments
-		)
+// NewProducer create a producer with the config.
+func (c *Client) NewProducer(config ProducerConfig) *Producer {
+	p := &Producer{
+		client: c,
+		config: config,
+	}
+	return p
+}
 
-		if err != nil {
-			ch.Close()
-			return fmt.Errorf("failed to declare a queue, %v", err)
+func keepConnAlive(c *Client) {
+	if c.Conn == nil {
+		connect(c, 0)
+	}
+	closeNotifier := c.Conn.NotifyClose(make(chan *amqp.Error))
+	for {
+		select {
+		case <-closeNotifier:
+			c.reconnect()
+			// renew a notifier
+			closeNotifier = c.Conn.NotifyClose(make(chan *amqp.Error))
 		}
-		for response := range producer {
-			p := amqp.Publishing{
-				ContentType: contentType,
-				Body:        response,
-			}
-			err = ch.Publish(
-				"",     // exchange
-				q.Name, // routing key
-				false,  // mandatory
-				false,  // immediate
-				p,
-			)
-		}
-		ch.Close()
-		c.reconnect()
 	}
 }
