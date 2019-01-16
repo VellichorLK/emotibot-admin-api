@@ -77,38 +77,74 @@ type SessionsExportData struct {
 	CustomInfo string `json:"custom_info"`
 }
 
-var SessionsTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "会话ID",
-		ID:   common.SessionsMetricSessionID,
+var SessionsTableHeader = map[string][]data.TableHeaderItem{
+	"zh-cn": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "会话ID",
+			ID:   common.SessionsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "会话开始时间",
+			ID:   common.SessionsMetricStartTime,
+		},
+		data.TableHeaderItem{
+			Text: "会话结束时间",
+			ID:   common.SessionsMetricEndTime,
+		},
+		data.TableHeaderItem{
+			Text: "用户ID",
+			ID:   common.SessionsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "满意度",
+			ID:   common.SessionsMetricRating,
+		},
+		data.TableHeaderItem{
+			Text: "反馈选择",
+			ID:   common.SessionsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈文字",
+			ID:   common.SessionsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈时间",
+			ID:   common.SessionsMetricFeedbackTime,
+		},
 	},
-	data.TableHeaderItem{
-		Text: "会话开始时间",
-		ID:   common.SessionsMetricStartTime,
-	},
-	data.TableHeaderItem{
-		Text: "会话结束时间",
-		ID:   common.SessionsMetricEndTime,
-	},
-	data.TableHeaderItem{
-		Text: "用户ID",
-		ID:   common.SessionsMetricUserID,
-	},
-	data.TableHeaderItem{
-		Text: "满意度",
-		ID:   common.SessionsMetricRating,
-	},
-	data.TableHeaderItem{
-		Text: "反馈",
-		ID:   common.SessionsMetricFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "客制化反馈",
-		ID:   common.SessionsMetricCustomFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "反馈时间",
-		ID:   common.SessionsMetricFeedbackTime,
+	"zh-tw": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "會話ID",
+			ID:   common.SessionsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "會話開始時間",
+			ID:   common.SessionsMetricStartTime,
+		},
+		data.TableHeaderItem{
+			Text: "會話結束時間",
+			ID:   common.SessionsMetricEndTime,
+		},
+		data.TableHeaderItem{
+			Text: "用戶ID",
+			ID:   common.SessionsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "滿意度",
+			ID:   common.SessionsMetricRating,
+		},
+		data.TableHeaderItem{
+			Text: "反饋選擇",
+			ID:   common.SessionsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋文字",
+			ID:   common.SessionsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋時間",
+			ID:   common.SessionsMetricFeedbackTime,
+		},
 	},
 }
 
@@ -119,8 +155,8 @@ var SessionsExportHeader = []string{
 	"用户ID",
 	"满意度",
 	"客制化资讯",
-	"反馈",
-	"客制化反馈",
+	"反馈选择",
+	"反馈文字",
 	"反馈时间",
 }
 

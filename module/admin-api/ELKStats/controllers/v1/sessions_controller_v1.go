@@ -39,8 +39,9 @@ func SessionsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	locale := requestheader.GetLocale(r)
 	response := dataV1.SessionsResponse{
-		TableHeader: dataV1.SessionsTableHeader,
+		TableHeader: dataV1.SessionsTableHeader[locale],
 		Data:        result,
 		Limit:       query.Limit,
 		Page:        query.From/query.Limit + 1,
@@ -198,7 +199,7 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 
 			genders = append(genders, g)
 		}
-	}	
+	}
 
 	var page, limit int64
 
@@ -222,13 +223,13 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 			EndTime:      endTime,
 		},
 		Platforms: platforms,
-		Genders:      genders,
-		UserID:       request.UserID,
+		Genders:   genders,
+		UserID:    request.UserID,
 		RatingMax: request.RatingMax,
 		RatingMin: request.RatingMin,
-		Feedback:     request.Feedback,
-		From:         (page - 1) * int64(limit),
-		Limit:        limit,
+		Feedback:  request.Feedback,
+		From:      (page - 1) * int64(limit),
+		Limit:     limit,
 	}
 
 	if request.FeedbackStartTime != nil {

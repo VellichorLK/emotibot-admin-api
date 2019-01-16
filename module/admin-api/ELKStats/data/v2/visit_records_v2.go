@@ -128,90 +128,166 @@ type VisitRecordsExportData struct {
 	CustomInfo   string  `json:"custom_info"`
 }
 
-var VisitRecordsTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "会话ID",
-		ID:   common.VisitRecordsMetricSessionID,
+var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
+	"zh-cn": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "会话ID",
+			ID:   common.VisitRecordsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "多轮ID",
+			ID:   common.VisitRecordsMetricTESessionID,
+		},
+		data.TableHeaderItem{
+			Text: "用户ID",
+			ID:   common.VisitRecordsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "用户问题",
+			ID:   common.VisitRecordsMetricUserQ,
+		},
+		data.TableHeaderItem{
+			Text: "信心分数",
+			ID:   common.VisitRecordsMetricScore,
+		},
+		data.TableHeaderItem{
+			Text: "标准问题",
+			ID:   common.VisitRecordsMetricStdQ,
+		},
+		data.TableHeaderItem{
+			Text: "机器人回答",
+			ID:   common.VisitRecordsMetricAnswer,
+		},
+		data.TableHeaderItem{
+			Text: "访问时间",
+			ID:   common.VisitRecordsMetricLogTime,
+		},
+		data.TableHeaderItem{
+			Text: "情感",
+			ID:   common.VisitRecordsMetricEmotion,
+		},
+		data.TableHeaderItem{
+			Text: "意图",
+			ID:   common.VisitRecordsMetricIntent,
+		},
+		data.TableHeaderItem{
+			Text: "出话模块",
+			ID:   common.VisitRecordsMetricModule,
+		},
+		data.TableHeaderItem{
+			Text: "出话来源",
+			ID:   common.VisitRecordsMetricSource,
+		},
+		data.TableHeaderItem{
+			Text: "标准问题分类",
+			ID:   common.VisitRecordsMetricFaqCategoryName,
+		},
+		data.TableHeaderItem{
+			Text: "标准问题标签",
+			ID:   common.VisitRecordsMetricFaqRobotTagName,
+		},
+		data.TableHeaderItem{
+			Text: "反馈选择",
+			ID:   common.VisitRecordsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈文字",
+			ID:   common.VisitRecordsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈时间",
+			ID:   common.VisitRecordsMetricFeedbackTime,
+		},
+		data.TableHeaderItem{
+			Text: "出话阈值",
+			ID:   common.VisitRecordsMetricThreshold,
+		},
 	},
-	data.TableHeaderItem{
-		Text: "多輪場景ID",
-		ID:   common.VisitRecordsMetricTESessionID,
-	},
-	data.TableHeaderItem{
-		Text: "用户ID",
-		ID:   common.VisitRecordsMetricUserID,
-	},
-	data.TableHeaderItem{
-		Text: "用户问题",
-		ID:   common.VisitRecordsMetricUserQ,
-	},
-	data.TableHeaderItem{
-		Text: "信心分数",
-		ID:   common.VisitRecordsMetricScore,
-	},
-	data.TableHeaderItem{
-		Text: "标准问题",
-		ID:   common.VisitRecordsMetricStdQ,
-	},
-	data.TableHeaderItem{
-		Text: "机器人回答",
-		ID:   common.VisitRecordsMetricAnswer,
-	},
-	data.TableHeaderItem{
-		Text: "访问时间",
-		ID:   common.VisitRecordsMetricLogTime,
-	},
-	data.TableHeaderItem{
-		Text: "情感",
-		ID:   common.VisitRecordsMetricEmotion,
-	},
-	data.TableHeaderItem{
-		Text: "意图",
-		ID:   common.VisitRecordsMetricIntent,
-	},
-	data.TableHeaderItem{
-		Text: "出话模组",
-		ID:   common.VisitRecordsMetricModule,
-	},
-	data.TableHeaderItem{
-		Text: "出话来源",
-		ID:   common.VisitRecordsMetricSource,
-	},
-	data.TableHeaderItem{
-		Text: "标准问题分类",
-		ID:   common.VisitRecordsMetricFaqCategoryName,
-	},
-	data.TableHeaderItem{
-		Text: "标准问题标签",
-		ID:   common.VisitRecordsMetricFaqRobotTagName,
-	},
-	data.TableHeaderItem{
-		Text: "反馈",
-		ID:   common.VisitRecordsMetricFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "客制化反馈",
-		ID:   common.VisitRecordsMetricCustomFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "反馈时间",
-		ID:   common.VisitRecordsMetricFeedbackTime,
-	},
-	data.TableHeaderItem{
-		Text: "出话阈值",
-		ID:   common.VisitRecordsMetricThreshold,
+	"zh-tw": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "會話ID",
+			ID:   common.VisitRecordsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "多輪場景ID",
+			ID:   common.VisitRecordsMetricTESessionID,
+		},
+		data.TableHeaderItem{
+			Text: "用戶ID",
+			ID:   common.VisitRecordsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "用戶問題",
+			ID:   common.VisitRecordsMetricUserQ,
+		},
+		data.TableHeaderItem{
+			Text: "信心分數",
+			ID:   common.VisitRecordsMetricScore,
+		},
+		data.TableHeaderItem{
+			Text: "標準問題",
+			ID:   common.VisitRecordsMetricStdQ,
+		},
+		data.TableHeaderItem{
+			Text: "機器人回答",
+			ID:   common.VisitRecordsMetricAnswer,
+		},
+		data.TableHeaderItem{
+			Text: "訪問時間",
+			ID:   common.VisitRecordsMetricLogTime,
+		},
+		data.TableHeaderItem{
+			Text: "情感",
+			ID:   common.VisitRecordsMetricEmotion,
+		},
+		data.TableHeaderItem{
+			Text: "意圖",
+			ID:   common.VisitRecordsMetricIntent,
+		},
+		data.TableHeaderItem{
+			Text: "出話模組",
+			ID:   common.VisitRecordsMetricModule,
+		},
+		data.TableHeaderItem{
+			Text: "出話來源",
+			ID:   common.VisitRecordsMetricSource,
+		},
+		data.TableHeaderItem{
+			Text: "標準問題分類",
+			ID:   common.VisitRecordsMetricFaqCategoryName,
+		},
+		data.TableHeaderItem{
+			Text: "標準問題標籤",
+			ID:   common.VisitRecordsMetricFaqRobotTagName,
+		},
+		data.TableHeaderItem{
+			Text: "反饋選擇",
+			ID:   common.VisitRecordsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋文字",
+			ID:   common.VisitRecordsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋時間",
+			ID:   common.VisitRecordsMetricFeedbackTime,
+		},
+		data.TableHeaderItem{
+			Text: "出話閾值",
+			ID:   common.VisitRecordsMetricThreshold,
+		},
 	},
 }
 
 var VisitRecordsExportHeader = []string{
 	"会话ID",
-	"多輪場景ID",
+	"多轮ID",
 	"用户ID",
 	"用户问题",
 	"标准问题",
 	"机器人回答",
 	"匹配分数",
-	"出话模组",
+	"出话模块",
 	"出话来源",
 	"访问时间",
 	"情感",
@@ -221,8 +297,8 @@ var VisitRecordsExportHeader = []string{
 	"客制化资讯",
 	"FAQ 分类",
 	"FAQ 标签",
-	"反馈",
-	"客制化反馈",
+	"反馈选择",
+	"反馈文字",
 	"反馈时间",
 	"出话阈值",
 }

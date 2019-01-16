@@ -39,8 +39,9 @@ func TEVisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	locale := requestheader.GetLocale(r)
 	response := dataV1.TEVisitRecordsResponse{
-		TableHeader: dataV1.TEVisitRecordsTableHeader,
+		TableHeader: dataV1.TEVisitRecordsTableHeader[locale],
 		Data:        result,
 		Limit:       query.Limit,
 		Page:        query.From/query.Limit + 1,
