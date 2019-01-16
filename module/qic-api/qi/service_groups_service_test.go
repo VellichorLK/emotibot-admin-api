@@ -96,6 +96,10 @@ func (m *mockSentencesDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64,
 
 }
 
+func (m *mockSentencesDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockSentencesDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
 	return 0, nil
 }

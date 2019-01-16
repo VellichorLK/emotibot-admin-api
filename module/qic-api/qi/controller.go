@@ -8,14 +8,18 @@ import (
 	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
 	group := model.GroupWCond{}
 	err := util.ReadJSON(r, &group)
+
+	group.Enterprise = enterprise
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -28,7 +32,15 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	util.WriteJSON(w, createdGroup)
+	type GroupResponse struct {
+		UUID string `json:"group_id"`
+	}
+
+	response := GroupResponse{
+		UUID: createdGroup.UUID,
+	}
+
+	util.WriteJSON(w, response)
 }
 
 func handleGetGroups(w http.ResponseWriter, r *http.Request) {
@@ -45,23 +57,13 @@ func handleGetGroups(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	simpleGroups := make([]model.SimpleGroup, len(groups), len(groups))
-	for i, group := range groups {
-		simpleGroup := model.SimpleGroup{
-			ID:   group.UUID,
-			Name: group.Name,
-		}
-
-		simpleGroups[i] = simpleGroup
-	}
-
-	response := SimpleGroupsResponse{
+	response := GroupsResponse{
 		Paging: &general.Paging{
 			Page:  filter.Page,
 			Limit: filter.Limit,
 			Total: total,
 		},
-		Data: simpleGroups,
+		Data: groups,
 	}
 
 	util.WriteJSON(w, response)
@@ -93,6 +95,7 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request) {
 
 func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 
 	group := model.GroupWCond{}
 	err := util.ReadJSON(r, &group)
@@ -100,6 +103,8 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	group.Enterprise = enterprise
 
 	err = UpdateGroup(id, &group)
 	if err != nil {

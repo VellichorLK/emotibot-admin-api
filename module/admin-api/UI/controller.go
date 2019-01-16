@@ -39,6 +39,7 @@ func init() {
 				Version:     1,
 				IgnoreAppID: true,
 			}),
+			util.NewEntryPoint("GET", "modules", []string{}, handleGetUIModuleSetting),
 		},
 	}
 }
@@ -210,4 +211,10 @@ func handleUploadLogo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	util.Return(w, nil, nil)
+}
+
+func handleGetUIModuleSetting(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	ret, err := GetUIModules(appid)
+	util.Return(w, err, ret)
 }

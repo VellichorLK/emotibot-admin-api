@@ -46,8 +46,9 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	locale := requestheader.GetLocale(r)
 	response := dataV2.VisitRecordsResponse{
-		TableHeader: dataV2.VisitRecordsTableHeader,
+		TableHeader: dataV2.VisitRecordsTableHeader[locale],
 		Data:        result.Data,
 		TotalSize:   result.TotalSize,
 		IgnoredSize: result.IgnoredSize,

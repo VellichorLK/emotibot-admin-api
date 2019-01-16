@@ -45,6 +45,7 @@ func init() {
 			util.NewEntryPoint("GET", "sentences/{id}", []string{}, WithSenUUIDCheck(handleGetSentence)),
 			util.NewEntryPoint("PUT", "sentences/{id}", []string{}, WithSenUUIDCheck(handleModifySentence)),
 			util.NewEntryPoint("DELETE", "sentences/{id}", []string{}, WithSenUUIDCheck(handleDeleteSentence)),
+			util.NewEntryPoint("PUT", "sentences/move/{id}", []string{}, handleMoveSentence),
 
 			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
 			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
@@ -63,6 +64,12 @@ func init() {
 			util.NewEntryPoint("GET", "rules/{id}", []string{}, handleGetConversationRule),
 			util.NewEntryPoint("PUT", "rules/{id}", []string{}, handleUpdateConversationRule),
 			util.NewEntryPoint("DELETE", "rules/{id}", []string{}, handleDeleteConversationRule),
+
+			util.NewEntryPoint(http.MethodGet, "category", []string{}, handleGetCategoryies),
+			util.NewEntryPoint(http.MethodPost, "category", []string{}, handleCreateCategory),
+			util.NewEntryPoint(http.MethodGet, "category/{id}", []string{}, handleGetCategory),
+			util.NewEntryPoint(http.MethodPut, "category/{id}", []string{}, handleUpdateCatgory),
+			util.NewEntryPoint(http.MethodDelete, "category/{id}", []string{}, handleDeleteCategory),
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),

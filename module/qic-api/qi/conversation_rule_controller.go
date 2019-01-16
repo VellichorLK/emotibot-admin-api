@@ -10,6 +10,13 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type Completeness struct {
+	RuleCompleted       bool `json:"isRuleComplete"`
+	HasDescription      bool `json:"hasDescription"`
+	HasConversationFlow bool `json:"hasConversationFlow"`
+	SetenceCompleted    bool `json:"sentenceComplete"`
+}
+
 type ConversationRuleInReq struct {
 	UUID        string   `json:"rule_id"`
 	Name        string   `json:"rule_name"`
@@ -23,15 +30,16 @@ type ConversationRuleInReq struct {
 }
 
 type ConversationRuleInRes struct {
-	UUID        string                         `json:"rule_id"`
-	Name        string                         `json:"rule_name,omitempty"`
-	Description string                         `json:"description,omitempty"`
-	Severity    string                         `json:"severity,omitempty"`
-	Min         int                            `json:"min,omitempty"`
-	Max         int                            `json:"max,omitempty"`
-	Method      string                         `json:"method,omitempty"`
-	Score       int                            `json:"score,omitempty"`
-	Flows       []model.SimpleConversationFlow `json:"flows,omitempty"`
+	UUID         string                         `json:"rule_id"`
+	Name         string                         `json:"rule_name,omitempty"`
+	Description  string                         `json:"description,omitempty"`
+	Severity     string                         `json:"severity,omitempty"`
+	Min          int                            `json:"min,omitempty"`
+	Max          int                            `json:"max,omitempty"`
+	Method       string                         `json:"method,omitempty"`
+	Score        int                            `json:"score,omitempty"`
+	Flows        []model.SimpleConversationFlow `json:"flows"`
+	Completeness *Completeness                  `json:"completeness"`
 }
 
 var severityStringToCode map[string]int8 = map[string]int8{
@@ -88,6 +96,12 @@ func conversationRuleToRuleInRes(rule *model.ConversationRule) (ruleInRes *Conve
 		Score:       rule.Score,
 		Flows:       rule.Flows,
 		Description: rule.Description,
+		Completeness: &Completeness{
+			RuleCompleted:       rule.Completeness.RuleCompleted != int8(0),
+			HasDescription:      rule.Completeness.HasDescription,
+			HasConversationFlow: rule.Completeness.HasConversationFlow,
+			SetenceCompleted:    rule.Completeness.SetenceCompleted != int8(0),
+		},
 	}
 	return
 }
@@ -135,8 +149,8 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type Response struct {
-		Paging *general.Paging
-		Data   []ConversationRuleInRes
+		Paging *general.Paging         `json:"paging"`
+		Data   []ConversationRuleInRes `json:"data"`
 	}
 
 	rulesInRes := make([]ConversationRuleInRes, len(rules))

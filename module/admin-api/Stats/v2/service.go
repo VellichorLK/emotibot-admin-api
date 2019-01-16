@@ -8,7 +8,7 @@ import (
 )
 
 // GetRobotAuditRecord will get audit record of specific appid
-func GetRobotAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminError) {
+func GetRobotAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
 	if filter.UserID != "" {
 		userIDPtr = &filter.UserID
@@ -22,7 +22,7 @@ func GetRobotAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminErr
 
 	ret := AuditResult{
 		Total:  count,
-		Header: robotAuditHeaders,
+		Header: robotAuditHeaders[locale],
 		Logs:   logs,
 	}
 
@@ -30,7 +30,7 @@ func GetRobotAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminErr
 }
 
 // GetEnterpriseAuditRecord will get audit record of specific enterprise
-func GetEnterpriseAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminError) {
+func GetEnterpriseAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
 	if filter.UserID != "" {
 		userIDPtr = &filter.UserID
@@ -45,7 +45,7 @@ func GetEnterpriseAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.Adm
 
 	ret := AuditResult{
 		Total:  count,
-		Header: robotAuditHeaders,
+		Header: robotAuditHeaders[locale],
 		Logs:   logs,
 	}
 
@@ -53,7 +53,7 @@ func GetEnterpriseAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.Adm
 }
 
 // GetSystemAuditRecord will get audit record of specific enterprise
-func GetSystemAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminError) {
+func GetSystemAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
 	if filter.UserID != "" {
 		userIDPtr = &filter.UserID
@@ -67,7 +67,7 @@ func GetSystemAuditRecord(filter *AuditInput) (*AuditResult, AdminErrors.AdminEr
 
 	ret := AuditResult{
 		Total:  count,
-		Header: robotAuditHeaders,
+		Header: robotAuditHeaders[locale],
 		Logs:   logs,
 	}
 

@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 func handleListRobotAudit(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +15,9 @@ func handleListRobotAudit(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
 		return
 	}
-	records, err := GetRobotAuditRecord(&filter)
+
+	locale := requestheader.GetLocale(r)
+	records, err := GetRobotAuditRecord(&filter, locale)
 	if err != nil {
 		util.Return(w, err, nil)
 	} else {
@@ -28,7 +31,9 @@ func handleListEnterpriseAudit(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
 		return
 	}
-	records, err := GetEnterpriseAuditRecord(&filter)
+
+	locale := requestheader.GetLocale(r)
+	records, err := GetEnterpriseAuditRecord(&filter, locale)
 	if err != nil {
 		util.Return(w, err, nil)
 	} else {
@@ -42,7 +47,9 @@ func handleListSystemAudit(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, jsonErr.Error()), nil)
 		return
 	}
-	records, err := GetSystemAuditRecord(&filter)
+
+	locale := requestheader.GetLocale(r)
+	records, err := GetSystemAuditRecord(&filter, locale)
 	if err != nil {
 		util.Return(w, err, nil)
 	} else {

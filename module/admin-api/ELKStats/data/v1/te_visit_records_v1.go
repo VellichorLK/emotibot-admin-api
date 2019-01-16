@@ -62,54 +62,106 @@ type TEVisitRecordsData struct {
 	FeedbackTime string `json:"feedback_time"`
 }
 
-var TEVisitRecordsTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "场景会话ID",
-		ID:   common.TEVisitRecordsMetricTESessionID,
+var TEVisitRecordsTableHeader = map[string][]data.TableHeaderItem{
+	"zh-cn": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "场景会话ID",
+			ID:   common.TEVisitRecordsMetricTESessionID,
+		},
+		data.TableHeaderItem{
+			Text: "会话ID",
+			ID:   common.TEVisitRecordsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "用户ID",
+			ID:   common.TEVisitRecordsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "场景 ID",
+			ID:   common.TEVisitRecordsMetricScenarioID,
+		},
+		data.TableHeaderItem{
+			Text: "场景名称",
+			ID:   common.TEVisitRecordsMetricScenarioName,
+		},
+		data.TableHeaderItem{
+			Text: "最终结点ID",
+			ID:   common.TEVisitRecordsMetricLastNodeID,
+		},
+		data.TableHeaderItem{
+			Text: "最终结点名称",
+			ID:   common.TEVisitRecordsMetricLastNodeName,
+		},
+		data.TableHeaderItem{
+			Text: "触发时间",
+			ID:   common.TEVisitRecordsMetricTriggerTime,
+		},
+		data.TableHeaderItem{
+			Text: "完成时间",
+			ID:   common.TEVisitRecordsMetricFinishTime,
+		},
+		data.TableHeaderItem{
+			Text: "反馈选择",
+			ID:   common.TEVisitRecordsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈文字",
+			ID:   common.TEVisitRecordsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反馈时间",
+			ID:   common.TEVisitRecordsMetricFeedbackTime,
+		},
 	},
-	data.TableHeaderItem{
-		Text: "会话ID",
-		ID:   common.TEVisitRecordsMetricSessionID,
-	},
-	data.TableHeaderItem{
-		Text: "用户ID",
-		ID:   common.TEVisitRecordsMetricUserID,
-	},
-	data.TableHeaderItem{
-		Text: "场景 ID",
-		ID:   common.TEVisitRecordsMetricScenarioID,
-	},
-	data.TableHeaderItem{
-		Text: "场景名称",
-		ID:   common.TEVisitRecordsMetricScenarioName,
-	},
-	data.TableHeaderItem{
-		Text: "最终结点ID",
-		ID:   common.TEVisitRecordsMetricLastNodeID,
-	},
-	data.TableHeaderItem{
-		Text: "最终结点名称",
-		ID:   common.TEVisitRecordsMetricLastNodeName,
-	},
-	data.TableHeaderItem{
-		Text: "触发时间",
-		ID:   common.TEVisitRecordsMetricTriggerTime,
-	},
-	data.TableHeaderItem{
-		Text: "完成时间",
-		ID:   common.TEVisitRecordsMetricFinishTime,
-	},
-	data.TableHeaderItem{
-		Text: "反馈",
-		ID:   common.TEVisitRecordsMetricFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "客制化反馈",
-		ID:   common.TEVisitRecordsMetricCustomFeedback,
-	},
-	data.TableHeaderItem{
-		Text: "反馈时间",
-		ID:   common.TEVisitRecordsMetricFeedbackTime,
+	"zh-tw": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "場景會話ID",
+			ID:   common.TEVisitRecordsMetricTESessionID,
+		},
+		data.TableHeaderItem{
+			Text: "會話ID",
+			ID:   common.TEVisitRecordsMetricSessionID,
+		},
+		data.TableHeaderItem{
+			Text: "用戶ID",
+			ID:   common.TEVisitRecordsMetricUserID,
+		},
+		data.TableHeaderItem{
+			Text: "場景 ID",
+			ID:   common.TEVisitRecordsMetricScenarioID,
+		},
+		data.TableHeaderItem{
+			Text: "場景名稱",
+			ID:   common.TEVisitRecordsMetricScenarioName,
+		},
+		data.TableHeaderItem{
+			Text: "最終結點ID",
+			ID:   common.TEVisitRecordsMetricLastNodeID,
+		},
+		data.TableHeaderItem{
+			Text: "最終結點名稱",
+			ID:   common.TEVisitRecordsMetricLastNodeName,
+		},
+		data.TableHeaderItem{
+			Text: "觸發時間",
+			ID:   common.TEVisitRecordsMetricTriggerTime,
+		},
+		data.TableHeaderItem{
+			Text: "完成時間",
+			ID:   common.TEVisitRecordsMetricFinishTime,
+		},
+		data.TableHeaderItem{
+			Text: "反饋選擇",
+			ID:   common.TEVisitRecordsMetricFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋文字",
+			ID:   common.TEVisitRecordsMetricCustomFeedback,
+		},
+		data.TableHeaderItem{
+			Text: "反饋時間",
+			ID:   common.TEVisitRecordsMetricFeedbackTime,
+		},
 	},
 }
 
@@ -123,8 +175,8 @@ var TEVisitRecordsExportHeader = []string{
 	"最终结点名称",
 	"触发时间",
 	"完成时间",
-	"反馈",
-	"客制化反馈",
+	"反馈选择",
+	"反馈文字",
 	"反馈时间",
 }
 

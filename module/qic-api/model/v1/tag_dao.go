@@ -116,7 +116,7 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 
 func (p *Pagination) offsetSQL() string {
 	limit := mathutil.MaxInt(p.Limit, 0)
-	page := mathutil.MaxInt(p.Page-1, 1)
+	page := mathutil.MaxInt(p.Page-1, 0)
 	offset := limit * page
 	return fmt.Sprintf(" LIMIT %d, %d", offset, limit)
 }

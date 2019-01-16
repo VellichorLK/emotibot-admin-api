@@ -9,16 +9,17 @@ import (
 
 type mockDAO struct{}
 
+var mockName1 string = "test1"
+var mockName2 string = "test2"
+
 var mockGroups = []model.GroupWCond{
+	*mockGroup,
 	model.GroupWCond{
-		ID:   55688,
-		UUID: "ABCDE",
-		Name: "test1",
-	},
-	model.GroupWCond{
-		ID:   55699,
-		UUID: "CDEFG",
-		Name: "test2",
+		ID:        55699,
+		UUID:      "CDEFG",
+		Name:      &mockName2,
+		Condition: mockCondition,
+		Rules:     &[]int64{},
 	},
 }
 
@@ -72,32 +73,56 @@ func restoreDAO(originDAO model.GroupDAO) {
 	serviceDAO = originDAO
 }
 
+var fileName string = "FileName"
+var callDuration int64 = int64(55688)
+var comment string = "comment"
+var deal int = 1
+var series string = "series"
+var staffID string = "staff_id"
+var staffName string = "staff_name"
+var extension string = "extension"
+var department string = "department"
+var clientID string = "client_id"
+var clientName string = "client_name"
+var leftChannel string = "left_channel"
+var rightChannel string = "right_channel"
+var callStart int64 = int64(55699)
+var callEnd int64 = int64(55670)
+
 var mockCondition = &model.GroupCondition{
-	FileName:     "FileName",
-	CallDuration: 55688,
-	CallComment:  "comment",
-	Deal:         1,
-	Series:       "series",
-	StaffID:      "staff_id",
-	StaffName:    "staff_name",
-	Extension:    "extension",
-	Department:   "department",
-	ClientID:     "client_id",
-	ClientName:   "client_name",
-	LeftChannel:  "left_channel",
-	RightChannel: "right_channel",
-	CallStart:    55699,
-	CallEnd:      55670,
+	FileName:     &fileName,
+	CallDuration: &callDuration,
+	CallComment:  &comment,
+	Deal:         &deal,
+	Series:       &series,
+	StaffID:      &staffID,
+	StaffName:    &staffName,
+	Extension:    &extension,
+	Department:   &department,
+	ClientID:     &clientID,
+	ClientName:   &clientName,
+	LeftChannel:  &leftChannel,
+	RightChannel: &rightChannel,
+	CallStart:    &callStart,
+	CallEnd:      &callEnd,
+}
+
+var groupName string = "group_name"
+var groupEnabled int8 = int8(1)
+var groupSpeed float64 = 300
+var groupDuration float64 = 0.33
+var groupRules []int64 = []int64{
+	1, 2, 3,
 }
 
 var mockGroup = &model.GroupWCond{
-	Name:            "group_name",
+	Name:            &groupName,
 	Enterprise:      "enterpries",
-	Enabled:         1,
-	Speed:           300,
-	SlienceDuration: 0.33,
+	Enabled:         &groupEnabled,
+	Speed:           &groupSpeed,
+	SlienceDuration: &groupDuration,
 	Condition:       mockCondition,
-	Rules:           []int64{1, 2, 3},
+	Rules:           &groupRules,
 }
 
 func TestCreateGroup(t *testing.T) {
@@ -126,39 +151,41 @@ func TestCreateGroup(t *testing.T) {
 
 func sameGroup(g1, g2 *model.GroupWCond) bool {
 	same := true
-	if g1.Enabled != g2.Enabled || g1.Enterprise != g2.Enterprise || g1.Name != g2.Name || g1.SlienceDuration != g2.SlienceDuration || g1.Speed != g2.Speed {
+	if *g1.Enabled != *g2.Enabled || g1.Enterprise != g2.Enterprise || *g1.Name != *g2.Name || *g1.SlienceDuration != *g2.SlienceDuration || *g1.Speed != *g2.Speed {
 		same = false
 	}
 
-	if g1.Condition.CallComment != g2.Condition.CallComment || g1.Condition.CallDuration != g2.Condition.CallDuration {
+	if *g1.Condition.CallComment != *g2.Condition.CallComment || *g1.Condition.CallDuration != *g2.Condition.CallDuration {
 		same = false
 	}
 
-	if g1.Condition.CallStart != g2.Condition.CallStart || g1.Condition.Deal != g2.Condition.Deal {
+	if *g1.Condition.CallStart != *g2.Condition.CallStart || *g1.Condition.Deal != *g2.Condition.Deal {
 		same = false
 	}
 
-	if g1.Condition.Department != g2.Condition.Department || g1.Condition.Extension != g2.Condition.Extension {
+	if *g1.Condition.Department != *g2.Condition.Department || *g1.Condition.Extension != *g2.Condition.Extension {
 		same = false
 	}
 
-	if g1.Condition.FileName != g2.Condition.FileName || g1.Condition.LeftChannel != g2.Condition.LeftChannel {
+	if *g1.Condition.FileName != *g2.Condition.FileName || *g1.Condition.LeftChannel != *g2.Condition.LeftChannel {
 		same = false
 	}
 
-	if g1.Condition.RightChannel != g2.Condition.RightChannel || g1.Condition.Series != g2.Condition.Series {
+	if *g1.Condition.RightChannel != *g2.Condition.RightChannel || *g1.Condition.Series != *g2.Condition.Series {
 		same = false
 	}
 
-	if g1.Condition.StaffID != g2.Condition.StaffID || g1.Condition.StaffName != g2.Condition.StaffName {
+	if *g1.Condition.StaffID != *g2.Condition.StaffID || *g1.Condition.StaffName != *g2.Condition.StaffName {
 		same = false
 	}
 
-	if len(g1.Rules) != len(g2.Rules) {
+	if len(*g1.Rules) != len(*g2.Rules) {
 		same = false
 	} else {
-		for id := range g1.Rules {
-			if g1.Rules[id] != g2.Rules[id] {
+		g1Rules := *g1.Rules
+		g2Rules := *g2.Rules
+		for id := range *g1.Rules {
+			if g1Rules[id] != g2Rules[id] {
 				same = false
 				break
 			}
@@ -188,17 +215,6 @@ func TestGetSingleGroup(t *testing.T) {
 
 	if group.ID != mockGroups[0].ID {
 		t.Errorf("expect group id: %d, but get %d", mockGroups[0].ID, group.ID)
-		return
-	}
-
-	group, err = GetGroupBy(mockGroups[1].UUID)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if group != nil {
-		t.Errorf("expect nil group but get one")
 		return
 	}
 }

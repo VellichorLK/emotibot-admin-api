@@ -170,6 +170,10 @@ func (m *mockSentenceSQLDao) Commit(tx *sql.Tx) error {
 	return tx.Commit()
 }
 
+func (m *mockSentenceSQLDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockSentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
 	return nil
 }

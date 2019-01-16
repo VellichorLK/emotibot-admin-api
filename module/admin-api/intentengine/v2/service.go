@@ -342,13 +342,6 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 		}
 	}
 
-	// if len(sheets) == 2 {
-	// 	if sheets[0].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") &&
-	// 		sheets[1].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
-	// 		format = typeBF2
-	// 	}
-	// }
-
 	if format == typeBFOP {
 		logger.Trace.Println("Parse file with BFOP type")
 		return parseBFOPSheets(sheets, locale)
@@ -432,10 +425,6 @@ func getBF2ColumnIdx(row *xlsx.Row, locale string) (nameIdx, sentenceIdx int) {
 }
 
 func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, err error) {
-	// if len(sheets) != 2 {
-	// 	return nil, errors.New(localemsg.Get(locale, "IntentUploadSheetErr"))
-	// }
-
 	intentMap := map[string]*IntentV2{}
 	for idx := range sheets {
 		var sentenceType int
@@ -465,6 +454,9 @@ func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, e
 			}
 			name := strings.TrimSpace(cells[nameIdx].String())
 			sentence := strings.TrimSpace(cells[sentenceIdx].String())
+			if name == "" && sentence == "" {
+				continue
+			}
 			if name == "" {
 				return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadBF2RowNoNameTpl"),
 					sheets[idx].Name, rowIdx+1)
