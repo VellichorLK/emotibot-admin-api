@@ -10,7 +10,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 
@@ -66,25 +65,7 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	call := model.Call{
-		FileName:       &req.FileName,
-		Description:    &req.CallComment,
-		UploadUnixTime: time.Now().Unix(),
-		CallUnixTime:   req.CallTime,
-		StaffID:        req.HostID,
-		StaffName:      req.HostName,
-		Ext:            req.Extension,
-		Department:     req.Department,
-		CustomerID:     req.GuestID,
-		CustomerName:   req.GuestName,
-		CustomerPhone:  req.GuestPhone,
-		EnterpriseID:   requestheader.GetEnterpriseID(r),
-		UploadUser:     requestheader.GetUserID(r),
-		Type:           model.CallTypeWholeFile,
-		LeftChanRole:   callRoleTyp(req.LeftChannel),
-		RightChanRole:  callRoleTyp(req.RightChannel),
-	}
-	id, err := NewCall(call)
+	id, err := NewCall(req)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call from failed, %v", err))
 		return
@@ -124,7 +105,8 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	filename := fmt.Sprint(c.ID, ".wav")
 	fp := fmt.Sprint(volume, "/", filename)
-	outFile, err := os.Create(filename)
+
+	outFile, err := os.Create(fp)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("create file failed, %v", err))
 		return
@@ -136,6 +118,11 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	c.FilePath = &fp
 	err = UpdateCall(c)
+
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("update call failed, %v", err))
+		return
+	}
 
 }
 
@@ -210,6 +197,17 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	if _, found := callTypeDict[reqBody.RightChannel]; !found {
 		return nil, fmt.Errorf("request body's right channel value %s is not valid. the mapping should be %v", reqBody.RightChannel, callTypeDict)
 	}
+	enterprise := requestheader.GetEnterpriseID(r)
+	if enterprise == "" {
+		return nil, fmt.Errorf("enterpriseID is required")
+	}
+	reqBody.Enterprise = enterprise
+	userID := requestheader.GetUserID(r)
+	if userID == "" {
+		return nil, fmt.Errorf("user ID is required")
+	}
+	reqBody.UploadUser = userID
+
 	return reqBody, nil
 }
 
@@ -228,6 +226,8 @@ type NewCallReq struct {
 	GuestPhone   string `json:"guest_phone"`
 	LeftChannel  string `json:"left_channel"`
 	RightChannel string `json:"right_channel"`
+	Enterprise   string `json:"-"`
+	UploadUser   string `json:"-"`
 }
 
 type CallDetail struct {

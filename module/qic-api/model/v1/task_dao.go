@@ -18,6 +18,9 @@ func NewTaskDao(db *sql.DB) *TaskDao {
 	}
 }
 
+// Task represent the task table of the QISYS database.
+//	CallsOfStaffs is the virutal field for relationship with calls.
+//	which its key is StaffID.
 type Task struct {
 	ID     int64
 	Status int8
@@ -32,6 +35,7 @@ type Task struct {
 	// Updator     string
 }
 
+// NewTask insert task into db with the its fields.
 func (t *TaskDao) NewTask(delegatee SqlLike, task Task) (*Task, error) {
 	if delegatee == nil {
 		delegatee = t.db
@@ -54,6 +58,7 @@ func (t *TaskDao) NewTask(delegatee SqlLike, task Task) (*Task, error) {
 	return &task, nil
 }
 
+//TaskQuery is the query conditions of task table.
 type TaskQuery struct {
 	ID []int64
 }
@@ -78,6 +83,7 @@ func (q TaskQuery) whereSQL() (string, []interface{}) {
 	return rawCond, bindData
 }
 
+// CallTask query task by the given call.
 func (t *TaskDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
 	tasks, err := t.Task(delegatee, TaskQuery{ID: []int64{call.TaskID}})
 	if err != nil {
@@ -88,6 +94,7 @@ func (t *TaskDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
 	return tasks[0], err
 }
 
+// Task query the task by the given query.
 func (t *TaskDao) Task(delegatee SqlLike, query TaskQuery) ([]Task, error) {
 	if delegatee == nil {
 		delegatee = t.db
