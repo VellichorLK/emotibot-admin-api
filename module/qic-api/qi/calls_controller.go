@@ -117,13 +117,11 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	c.FilePath = &fp
-	err = UpdateCall(c)
-
+	err = ConfirmCall(c)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("update call failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("confirm call failed, %v", err))
 		return
 	}
-
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request) {

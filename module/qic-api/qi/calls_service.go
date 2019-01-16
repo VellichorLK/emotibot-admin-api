@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -211,8 +212,40 @@ func NewCall(c *NewCallReq) (int64, error) {
 	return calls[0].ID, err
 }
 
+//UpdateCall update the call data source
 func UpdateCall(call *model.Call) error {
 	return callDao.SetCall(nil, *call)
+}
+
+//ConfirmCall is the workflow to update call fp and
+func ConfirmCall(call *model.Call) error {
+	if call.FilePath == nil {
+		return fmt.Errorf("call FilePath should not be nil")
+	}
+	err := UpdateCall(call)
+	if err != nil {
+		return fmt.Errorf("update call db failed, %v", err)
+	}
+	input := ASRInput{
+		Version: 1.0,
+		CallID:  strconv.FormatInt(call.ID, 10),
+		Path:    *call.FilePath,
+	}
+	resp, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("marshal asr input failed, %v", err)
+	}
+	err = producer.Produce(resp)
+	if err != nil {
+		return fmt.Errorf("publish failed, %v", err)
+	}
+	return nil
+}
+
+type ASRInput struct {
+	Version float64 `json:"version"`
+	CallID  string  `json:"call_id"`
+	Path    string  `json:"path"`
 }
 
 func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {

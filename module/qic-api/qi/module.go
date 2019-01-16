@@ -2,6 +2,7 @@ package qi
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/pkg/api/rabbitmq/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -19,6 +21,7 @@ var (
 	tagDao     TagDao
 	callDao    CallDao
 	taskDao    TaskDao
+	producer   *rabbitmq.Producer
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
 	volume     string
@@ -126,6 +129,29 @@ func init() {
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
+			},
+			"init RabbitMQ": func() {
+				envs := ModuleInfo.Environments
+				host := envs["RABBITMQ_HOST"]
+				if host == "" {
+					logger.Error.Println("RABBITMQ_HOST is required!")
+					return
+				}
+				port := envs["RABBITMQ_PORT"]
+				if port == "" {
+					logger.Error.Println("RABBITMQ_PORT is required!")
+					return
+				}
+				client, err := rabbitmq.Dial(fmt.Sprintf("amqp://guest:guest@%s:%d"))
+				if err != nil {
+					logger.Error.Println("init rabbitmq client failed, %v", err)
+					return
+				}
+				producer = client.NewProducer(rabbitmq.ProducerConfig{
+					QueueName:   "src_queue",
+					ContentType: "application/json",
+					MaxRetry:    10,
+				})
 			},
 		},
 	}
