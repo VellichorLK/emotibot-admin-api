@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/streadway/amqp"
 )
@@ -31,6 +32,9 @@ func (p *Producer) Produce(product []byte) error {
 	for i := 0; ; i++ {
 		if maxRetry > 0 && i == maxRetry {
 			break
+		}
+		if i > 0 {
+			time.Sleep(time.Duration(100) * time.Millisecond)
 		}
 		if p.isClosed {
 			return fmt.Errorf("producer is already closed")

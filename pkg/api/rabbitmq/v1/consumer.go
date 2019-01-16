@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"fmt"
+	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -35,13 +36,14 @@ func (c *Consumer) Subscribe(task Task) error {
 		)
 
 		if err != nil {
-			c.client.Conn.Close()
-			return fmt.Errorf("failed to register a consumer, %v", err)
+			logger.Warn.Println("failed to register a consumer, ", err)
+			time.Sleep(time.Duration(3) * time.Second)
+			continue
 		}
 		for d := range msgs {
 			err := task(d.Body)
 			if err != nil {
-				logger.Error.Println("Failed to consume message: ", err)
+				logger.Warn.Println("Failed to consume message: ", err)
 				continue
 			}
 			d.Ack(false)
@@ -55,6 +57,9 @@ func (c *Consumer) Consume() ([]byte, error) {
 	for i := 0; ; i++ {
 		if maxRetry > 0 && i == maxRetry {
 			break
+		}
+		if i > 0 {
+			time.Sleep(time.Duration(100) * time.Millisecond)
 		}
 		ch := c.client.channel()
 		q, err := ch.QueueDeclare(
