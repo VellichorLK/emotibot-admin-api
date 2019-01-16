@@ -409,7 +409,7 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 
 	data := []interface{}{
 		c.UUID, c.DurationMillSecond, c.UploadUnixTime,
-		*c.FileName, *c.FilePath, *c.Description,
+		c.FileName, c.FilePath, c.Description,
 		c.CallUnixTime, c.StaffID, c.StaffName,
 		c.Ext, c.Department, c.CustomerID,
 		c.CustomerName, c.CustomerPhone, c.EnterpriseID,
