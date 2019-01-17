@@ -230,9 +230,10 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 	var cRule *ConversationRule
 	for rows.Next() {
 		rule := ConversationRule{}
-		flow := SimpleConversationFlow{}
+		var flowUUID *string
+		var flowName *string
 
-		rows.Scan(
+		err = rows.Scan(
 			&rule.ID,
 			&rule.UUID,
 			&rule.Name,
@@ -245,9 +246,14 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			&rule.Severity,
 			&rule.CreateTime,
 			&rule.UpdateTime,
-			&flow.UUID,
-			&flow.Name,
+			&flowUUID,
+			&flowName,
 		)
+
+		if err != nil {
+			err = fmt.Errorf("error while scan rule in dao.GetBy, err: %s", err.Error())
+			return
+		}
 
 		if cRule == nil || cRule.UUID != rule.UUID {
 			if cRule != nil {
@@ -264,7 +270,11 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			cRule = &rule
 			cRule.Flows = []SimpleConversationFlow{}
 		}
-		if flow.Name != "" {
+		if flowUUID != nil && flowName != nil {
+			flow := SimpleConversationFlow{
+				UUID: *flowUUID,
+				Name: *flowName,
+			}
 			cRule.Flows = append(cRule.Flows, flow)
 		}
 	}

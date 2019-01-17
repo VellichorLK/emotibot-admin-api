@@ -267,9 +267,10 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 	var cGroup *SentenceGroup // current group pointer
 	for rows.Next() {
 		group := SentenceGroup{}
-		simpleSentence := SimpleSentence{}
+		var sentenceUUID *string
+		var sentenceName *string
 
-		rows.Scan(
+		err = rows.Scan(
 			&group.ID,
 			&group.UUID,
 			&group.Name,
@@ -278,17 +279,30 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 			&group.Distance,
 			&group.CreateTime,
 			&group.UpdateTime,
-			&simpleSentence.UUID,
-			&simpleSentence.Name,
+			&sentenceUUID,
+			&sentenceName,
 		)
+
+		if err != nil {
+			err = fmt.Errorf("error while scan setence groups in dao.GetBy, err: %s", err.Error())
+			return
+		}
 
 		if cGroup == nil || group.UUID != cGroup.UUID {
 			if cGroup != nil {
 				groups = append(groups, *cGroup)
 			}
 			cGroup = &group
+			cGroup.Sentences = []SimpleSentence{}
 		}
-		cGroup.Sentences = append(cGroup.Sentences, simpleSentence)
+
+		if sentenceUUID != nil && sentenceName != nil {
+			simpleSentence := SimpleSentence{
+				UUID: *sentenceUUID,
+				Name: *sentenceName,
+			}
+			cGroup.Sentences = append(cGroup.Sentences, simpleSentence)
+		}
 	}
 
 	if cGroup != nil {

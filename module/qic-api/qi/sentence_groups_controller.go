@@ -19,7 +19,7 @@ var roleMapping map[string]int = map[string]int{
 var positionMap map[string]int = map[string]int{
 	"top":    0,
 	"bottom": 1,
-	"any":    2,
+	"":       2,
 }
 
 var roleCodeMap map[int]string = map[int]string{
@@ -31,7 +31,7 @@ var roleCodeMap map[int]string = map[int]string{
 var positionCodeMap map[int]string = map[int]string{
 	0: "top",
 	1: "bottom",
-	2: "any",
+	2: "",
 }
 
 type SetenceGroupsResponse struct {

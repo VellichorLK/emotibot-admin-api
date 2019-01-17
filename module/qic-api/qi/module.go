@@ -50,13 +50,13 @@ func init() {
 			util.NewEntryPoint("POST", "sentence-groups", []string{}, handleCreateSentenceGroup),
 			util.NewEntryPoint("GET", "sentence-groups", []string{}, handleGetSentenceGroups),
 			util.NewEntryPoint("GET", "sentence-groups/{id}", []string{}, handleGetSentenceGroup),
-			util.NewEntryPoint("PUT", "sentence-groups/{id}", []string{}, handleUpdateSentenceGroup),
+			util.NewEntryPoint(http.MethodPut, "sentence-groups/{id}", []string{}, handleUpdateSentenceGroup),
 			util.NewEntryPoint("DELETE", "sentence-groups/{id}", []string{}, handleDeleteSentenceGroup),
 
 			util.NewEntryPoint("POST", "conversation-flow", []string{}, handleCreateConversationFlow),
 			util.NewEntryPoint("GET", "conversation-flow", []string{}, handleGetConversationFlows),
 			util.NewEntryPoint("GET", "conversation-flow/{id}", []string{}, handleGetConversationFlow),
-			util.NewEntryPoint("PUT", "conversation-flow/{id}", []string{}, handleUpdateConversationFlow),
+			util.NewEntryPoint(http.MethodPut, "conversation-flow/{id}", []string{}, handleUpdateConversationFlow),
 			util.NewEntryPoint("DELETE", "conversation-flow/{id}", []string{}, handleDeleteConversationFlow),
 
 			util.NewEntryPoint("POST", "rules", []string{}, handleCreateConversationRule),

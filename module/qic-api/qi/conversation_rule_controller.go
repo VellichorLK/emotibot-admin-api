@@ -37,9 +37,10 @@ type ConversationRuleInRes struct {
 	Min          int                            `json:"min,omitempty"`
 	Max          int                            `json:"max,omitempty"`
 	Method       string                         `json:"method,omitempty"`
-	Score        int                            `json:"score,omitempty"`
+	Score        int                            `json:"score"`
 	Flows        []model.SimpleConversationFlow `json:"flows"`
 	Completeness *Completeness                  `json:"completeness"`
+	Expression   string                         `json:"expression"`
 }
 
 var severityStringToCode map[string]int8 = map[string]int8{
@@ -86,6 +87,7 @@ func ruleInReqToConversationRule(ruleInReq *ConversationRuleInReq) (rule *model.
 }
 
 func conversationRuleToRuleInRes(rule *model.ConversationRule) (ruleInRes *ConversationRuleInRes) {
+	logger.Info.Printf("rule: %+v\n", rule)
 	ruleInRes = &ConversationRuleInRes{
 		UUID:        rule.UUID,
 		Name:        rule.Name,
@@ -202,35 +204,36 @@ func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
+	logger.Info.Println("1")
 	enterprise := requestheader.GetEnterpriseID(r)
 	id := parseID(r)
 
 	ruleInReq := ConversationRuleInReq{}
+	logger.Info.Println("2")
 	err := util.ReadJSON(r, &ruleInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	logger.Info.Println("3")
 	rule := ruleInReqToConversationRule(&ruleInReq)
 	rule.Enterprise = enterprise
 	rule.UUID = id
 
+	logger.Info.Println("4")
 	updatedRule, err := UpdateConversationRule(id, rule)
 	if err != nil {
 		logger.Error.Printf("error while update rule in handleUpdateConversationRule, reason: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	logger.Info.Println("5")
 
 	if updatedRule == nil {
 		http.NotFound(w, r)
 		return
 	}
-
-	ruleInRes := conversationRuleToRuleInRes(updatedRule)
-
-	util.WriteJSON(w, ruleInRes)
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {

@@ -49,6 +49,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		fldUUID,
 		fldName,
 		fldEnterprise,
+		CRMin,
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
@@ -60,6 +61,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		flow.UUID,
 		flow.Name,
 		flow.Enterprise,
+		flow.Min,
 		flow.Expression,
 		flow.CreateTime,
 		flow.UpdateTime,
@@ -97,7 +99,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		}
 
 		for idx := range flow.SentenceGroups[1:] {
-			fieldStr += ", (?, ?)"
+			valueStr += ", (?, ?)"
 			values = append(values, flowID, flow.SentenceGroups[idx].ID)
 		}
 
@@ -158,13 +160,14 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s,cf.%s, sg.%s as sgUUID, sg.%s as sgName
+		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgUUID, sg.%s as sgName
 		 FROM (SELECT * FROM %s %s) as cf
 		 LEFT JOIN %s as rcfsg ON cf.%s = rcfsg.%s
 		 LEFT JOIN %s as sg ON rcfsg.%s = sg.%s`,
 		fldID,
 		fldUUID,
 		fldName,
+		CRMin,
 		fldEnterprise,
 		CFExpression,
 		fldCreateTime,
@@ -221,6 +224,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			&flow.ID,
 			&flow.UUID,
 			&flow.Name,
+			&flow.Min,
 			&flow.Enterprise,
 			&flow.Expression,
 			&flow.CreateTime,
@@ -236,7 +240,9 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			}
 			cFlow = &flow
 		}
-		cFlow.SentenceGroups = append(cFlow.SentenceGroups, sg)
+		if sg.UUID != "" && sg.Name != "" {
+			cFlow.SentenceGroups = append(cFlow.SentenceGroups, sg)
+		}
 	}
 
 	if cFlow != nil {
