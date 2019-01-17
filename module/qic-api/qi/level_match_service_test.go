@@ -1,9 +1,11 @@
 package qi
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
+	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 )
 
@@ -735,4 +737,457 @@ func TestRuleMatch(t *testing.T) {
 			t.Errorf("Expecting total score %d, but get %d\n", expectingTotal, total)
 		}
 	}
+}
+
+var groupsToRules = map[uint64][]uint64{
+	1: []uint64{11, 12, 13},
+}
+var rulesToCFs = map[uint64][]uint64{
+	11: []uint64{21, 22, 23}, //true
+	12: []uint64{24},         //false
+	13: []uint64{25},         //true
+}
+
+var expectRule = map[uint64]struct {
+	valid bool
+	score int
+}{
+	11: {valid: true, score: 5},
+	12: {valid: false, score: 0},
+	13: {valid: true, score: 5},
+}
+
+var cfsToSenGrps = map[uint64][]uint64{
+	21: []uint64{31, 32}, //if A then B
+	22: []uint64{33, 34}, //if C then D
+	23: []uint64{35, 36}, //if E then F
+	24: []uint64{31, 32}, //if A then B
+	25: []uint64{34, 35}, //if D then E
+}
+
+var expectCFCredit = map[uint64]bool{
+	21: false,
+	22: true,
+	23: true,
+	24: false,
+	25: true,
+}
+
+var cfsExpression = map[uint64]string{
+	21: "if A then B", //false
+	22: "if C then D", //true
+	23: "if E then F", //true
+	24: "if A then B", //false
+	25: "if D then E", //true
+}
+
+var sentenceGrpUUID = map[uint64]string{
+	31: "A",
+	32: "B",
+	33: "C",
+	34: "D",
+	35: "E",
+	36: "F",
+}
+
+//31->32
+//33->34
+//35->36
+//34->35
+
+//31,33,34,35,36
+var senGrpsToSens = map[uint64][]uint64{
+	31: []uint64{41},
+	32: []uint64{42},
+	33: []uint64{43},
+	34: []uint64{43, 44},
+	35: []uint64{45, 46},
+	36: []uint64{46},
+}
+var expectSenGrpdCredit = map[uint64]bool{
+	31: true,
+	32: false,
+	33: true,
+	34: true,
+	35: true,
+	36: true,
+}
+
+//41,43,45,46
+var sensToTags = map[uint64][]uint64{
+	41: []uint64{51},
+	42: []uint64{52, 51},
+	43: []uint64{53},
+	44: []uint64{54, 55},
+	45: []uint64{55},
+	46: []uint64{56},
+}
+
+var expectSensCredit = map[uint64]bool{
+	41: true,
+	42: false,
+	43: true,
+	44: false,
+	45: true,
+	46: true,
+}
+
+var expectTagSeg = map[uint64][]int{
+	51: []int{1, 7},
+	52: []int{2, 8},
+	53: []int{3, 9},
+	54: []int{4, 10},
+	55: []int{5},
+	56: []int{6},
+}
+
+var segToTags = map[int][]uint64{
+	1: []uint64{51},
+	2: []uint64{52},
+	3: []uint64{53},
+	4: []uint64{54},
+	5: []uint64{55},
+	6: []uint64{56},
+
+	7:  []uint64{51},
+	8:  []uint64{52},
+	9:  []uint64{53},
+	10: []uint64{54},
+}
+
+type mockRelationDao struct {
+}
+
+func (m *mockRelationDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+	resp := make([]map[uint64][]uint64, 0)
+	resp = append(resp, groupsToRules)
+	resp = append(resp, rulesToCFs)
+	resp = append(resp, cfsToSenGrps)
+	resp = append(resp, senGrpsToSens)
+	resp = append(resp, sensToTags)
+	return resp, nil, nil
+
+}
+
+type mockPredictClient2 struct {
+}
+
+func (m *mockPredictClient2) Train(d *logicaccess.TrainUnit) error {
+	return nil
+}
+func (m *mockPredictClient2) Status(d *logicaccess.TrainAPPID) (string, error) {
+	return "", nil
+}
+func (m *mockPredictClient2) PredictAndUnMarshal(d *logicaccess.PredictRequest) (*logicaccess.PredictResult, error) {
+	return nil, nil
+}
+
+func (m *mockPredictClient2) BatchPredictAndUnMarshal(d *logicaccess.BatchPredictRequest) (*logicaccess.PredictResult, error) {
+
+	var resp logicaccess.PredictResult
+
+	tagsToSegs := make(map[uint64][]int)
+	for seg, tags := range segToTags {
+		for _, tag := range tags {
+			tagsToSegs[tag] = append(tagsToSegs[tag], seg)
+		}
+	}
+
+	matched := len(tagsToSegs[d.ID])
+
+	for i := 0; i < matched; i++ {
+		var attr logicaccess.AttrResult
+
+		attr.Tag = d.ID
+		attr.SentenceID = tagsToSegs[d.ID][i]
+		attr.Score = 87 + i
+		resp.Dialogue = append(resp.Dialogue, attr)
+	}
+
+	return &resp, nil
+}
+func (m *mockPredictClient2) SessionCreate(d *logicaccess.SessionRequest) error {
+	return nil
+}
+func (m *mockPredictClient2) SessionDelete(d *logicaccess.SessionRequest) error {
+	return nil
+}
+func (m *mockPredictClient2) UnloadModel(d *logicaccess.TrainAPPID) error {
+	return nil
+}
+
+type mockdbLike struct {
+}
+
+func (m *mockdbLike) Begin() (*sql.Tx, error) {
+	return nil, nil
+}
+func (m *mockdbLike) ClearTransition(tx *sql.Tx) {
+
+}
+func (m *mockdbLike) Commit(tx *sql.Tx) error {
+	return nil
+}
+func (m *mockdbLike) Conn() *sql.DB {
+	return nil
+}
+
+type mockSentenceGroupsDao struct {
+}
+
+func (m *mockSentenceGroupsDao) Create(group *model.SentenceGroup, sql model.SqlLike) (*model.SentenceGroup, error) {
+	return nil, nil
+}
+func (m *mockSentenceGroupsDao) CountBy(filter *model.SentenceGroupFilter, sql model.SqlLike) (int64, error) {
+	return int64(len(senGrpsToSens)), nil
+}
+func (m *mockSentenceGroupsDao) GetBy(filter *model.SentenceGroupFilter, sql model.SqlLike) ([]model.SentenceGroup, error) {
+	var resp []model.SentenceGroup
+
+	for sgID, sIDs := range senGrpsToSens {
+		var s model.SentenceGroup
+		s.ID = int64(sgID)
+		s.Distance = -1
+		s.Position = -1
+		s.Role = -1
+		s.UUID = sentenceGrpUUID[uint64(s.ID)]
+		for _, sID := range sIDs {
+			var sentence model.SimpleSentence
+			sentence.ID = sID
+			s.Sentences = append(s.Sentences, sentence)
+		}
+		resp = append(resp, s)
+	}
+	return resp, nil
+}
+func (m *mockSentenceGroupsDao) Update(id string, group *model.SentenceGroup, sql model.SqlLike) (*model.SentenceGroup, error) {
+	return nil, nil
+}
+func (m *mockSentenceGroupsDao) Delete(id string, sqllike model.SqlLike) error {
+	return nil
+}
+
+type mockCfDao struct {
+}
+
+func (m *mockCfDao) Create(flow *model.ConversationFlow, sql model.SqlLike) (*model.ConversationFlow, error) {
+	return nil, nil
+}
+func (m *mockCfDao) CountBy(filter *model.ConversationFlowFilter, sql model.SqlLike) (int64, error) {
+	return int64(len(cfsToSenGrps)), nil
+}
+func (m *mockCfDao) GetBy(filter *model.ConversationFlowFilter, sql model.SqlLike) ([]model.ConversationFlow, error) {
+	var resp []model.ConversationFlow
+
+	for cfID, sgIDs := range cfsToSenGrps {
+		var s model.ConversationFlow
+		s.ID = int64(cfID)
+		s.Expression = cfsExpression[cfID]
+		s.Min = 1
+		for _, sgID := range sgIDs {
+			var senGrp model.SimpleSentenceGroup
+			senGrp.UUID = sentenceGrpUUID[sgID]
+			senGrp.ID = int64(sgID)
+			s.SentenceGroups = append(s.SentenceGroups, senGrp)
+		}
+		resp = append(resp, s)
+	}
+	return resp, nil
+}
+func (m *mockCfDao) Update(id string, flow *model.ConversationFlow, sql model.SqlLike) (*model.ConversationFlow, error) {
+	return nil, nil
+}
+func (m *mockCfDao) Delete(id string, sql model.SqlLike) error {
+	return nil
+}
+
+type mockRuleDao struct {
+}
+
+func (m *mockRuleDao) Create(rule *model.ConversationRule, sql model.SqlLike) (*model.ConversationRule, error) {
+	return nil, nil
+}
+func (m *mockRuleDao) CountBy(filter *model.ConversationRuleFilter, sql model.SqlLike) (int64, error) {
+	return int64(len(rulesToCFs)), nil
+}
+func (m *mockRuleDao) GetBy(filter *model.ConversationRuleFilter, sql model.SqlLike) ([]model.ConversationRule, error) {
+	var resp []model.ConversationRule
+
+	for rID, cfIDs := range rulesToCFs {
+		var s model.ConversationRule
+		s.ID = int64(rID)
+		s.Min = 1
+		s.Method = 1
+		s.Score = 5
+		for _, cfID := range cfIDs {
+			var cf model.SimpleConversationFlow
+
+			cf.ID = int64(cfID)
+			s.Flows = append(s.Flows, cf)
+		}
+		resp = append(resp, s)
+	}
+	return resp, nil
+}
+func (m *mockRuleDao) Delete(id string, sql model.SqlLike) error {
+	return nil
+}
+
+func TestRuleGroupCriteria(t *testing.T) {
+	mockRelation := &mockRelationDao{}
+	relationDao = mockRelation
+	predictor = &mockPredictClient2{}
+
+	dbLike = &mockdbLike{}
+
+	sentenceGroupDao = &mockSentenceGroupsDao{}
+	conversationFlowDao = &mockCfDao{}
+	conversationRuleDao = &mockRuleDao{}
+
+	segments := make([]*ASRSegment, 0, len(segToTags))
+	for i := 0; i < len(segToTags); i++ {
+		s := &ASRSegment{Speaker: i % 2}
+		segments = append(segments, s)
+	}
+
+	timeout := time.Duration(3 * time.Second)
+
+	c, err := RuleGroupCriteria(1, segments, timeout)
+	if err != nil {
+		t.Errorf("expecting no error, but get %s\n", err)
+	} else {
+		for groupID, ruleIDs := range groupsToRules {
+			var expect RuleGrpCredit
+
+			//generat the expecting result
+			expect.ID = groupID
+			for _, ruleID := range ruleIDs {
+				rule := &RuleCredit{ID: ruleID, Valid: expectRule[ruleID].valid, Score: expectRule[ruleID].score}
+				expect.Rules = append(expect.Rules, rule)
+				expect.Plus += rule.Score
+
+				cfs := rulesToCFs[ruleID]
+				for _, cf := range cfs {
+					cfresult := &ConversationFlowCredit{ID: cf, Valid: expectCFCredit[cf]}
+					rule.CFs = append(rule.CFs, cfresult)
+
+					senGrps := cfsToSenGrps[cf]
+					for _, senGrp := range senGrps {
+						senGrpResult := &SentenceGrpCredit{ID: senGrp, Valid: expectSenGrpdCredit[senGrp]}
+						cfresult.SentenceGrps = append(cfresult.SentenceGrps, senGrpResult)
+
+						sentences := senGrpsToSens[senGrp]
+						for _, sentence := range sentences {
+							senResult := &SentenceCredit{ID: sentence, Valid: expectSensCredit[sentence]}
+							senGrpResult.Sentences = append(senGrpResult.Sentences, senResult)
+							if senResult.Valid {
+								tags := sensToTags[sentence]
+								for _, tag := range tags {
+
+									segs := expectTagSeg[tag]
+
+									for _, seg := range segs {
+										tagResult := &TagCredit{ID: tag, SegmentIdx: seg}
+										senResult.Tags = append(senResult.Tags, tagResult)
+									}
+								}
+							}
+
+						}
+					}
+				}
+			}
+
+			//check the result
+			if expect.ID != c.ID {
+				t.Fatalf("expecting rule group id %d, but get %d\n", expect.ID, c.ID)
+			}
+			if len(expect.Rules) != len(c.Rules) {
+				t.Fatalf("expecting get %d rule result, but get %d\n", len(expect.Rules), len(c.Rules))
+			}
+
+			for ridx, rrules := range c.Rules {
+				expectR := expect.Rules[ridx]
+				if expectR.ID != rrules.ID {
+					t.Fatalf("expecting get %d'th rule %d, but get %d\n", ridx, expectR.ID, rrules.ID)
+				}
+
+				if expectR.Score != rrules.Score {
+					t.Fatalf("expecting %d'th rule %d get score %d, but get %d\n", ridx, expectR.ID, expectR.Score, rrules.Score)
+				}
+
+				if expectR.Valid != rrules.Valid {
+					t.Fatalf("expecting %d'th rule %d get valid %t, but get %t\n", ridx, expectR.ID, expectR.Valid, rrules.Valid)
+				}
+
+				if len(expectR.CFs) != len(rrules.CFs) {
+					t.Fatalf("expecting %d'th rule %d get %d conversation flow, but get %d\n", ridx, expectR.ID, len(expectR.CFs), len(rrules.CFs))
+				}
+
+				for cfIdx, cfs := range rrules.CFs {
+					expectCF := expectR.CFs[cfIdx]
+					if expectCF.ID != cfs.ID {
+						t.Fatalf("expecting %d'th rule %d %d'th conversation flow get id %d, but get %d\n",
+							ridx, expectR.ID, cfIdx, expectCF.ID, cfs.ID)
+					}
+					if expectCF.Valid != cfs.Valid {
+						t.Fatalf("expecting %d'th rule %d %d'th conversation flow id %d get valid %t, but get %t\n",
+							ridx, expectR.ID, cfIdx, expectCF.ID, expectCF.Valid, cfs.Valid)
+					}
+					if len(expectCF.SentenceGrps) != len(cfs.SentenceGrps) {
+						t.Fatalf("expecting %d'th rule %d %d'th conversation flow id %d get %d sentence group, but get %d\n",
+							ridx, expectR.ID, cfIdx, expectCF.ID, len(expectCF.SentenceGrps), len(cfs.SentenceGrps))
+					}
+
+					for senGrpIdx, senGrps := range cfs.SentenceGrps {
+						expectSenGrps := expectCF.SentenceGrps[senGrpIdx]
+						if expectSenGrps.ID != senGrps.ID {
+							t.Fatalf("expecting %d'th rule %d %d'th conversation flow %d %d'th sentence group get %d, but get %d\n",
+								ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, senGrps.ID)
+						}
+						if expectSenGrps.Valid != senGrps.Valid {
+							t.Fatalf("expecting %d'th rule %d %d'th conversation flow %d %d'th sentence group %d get valid %t, but get %t\n",
+								ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, expectSenGrps.Valid, senGrps.Valid)
+						}
+
+						if len(expectSenGrps.Sentences) != len(senGrps.Sentences) {
+							t.Fatalf("expecting %d'th rule %d %d'th conversation flow %d %d'th sentence group %d get %d sentence, but get %d\n",
+								ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, len(expectSenGrps.Sentences), len(senGrps.Sentences))
+						}
+
+						for senIdx, sentence := range senGrps.Sentences {
+							expectSen := expectSenGrps.Sentences[senIdx]
+							if expectSen.ID != sentence.ID {
+								t.Fatalf("expecting %d'th rule %d, %d'th conversation flow %d, %d'th sentence group %d,%d'th sentence get id %d, but get %d\n",
+									ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, senIdx, expectSen.ID, sentence.ID)
+							}
+
+							if expectSen.Valid != sentence.Valid {
+								t.Fatalf("expecting %d'th rule %d, %d'th conversation flow %d, %d'th sentence group %d,%d'th sentence id %d get valid %t, but get %t\n",
+									ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, senIdx, expectSen.ID, expectSen.Valid, sentence.Valid)
+							}
+
+							if len(expectSen.Tags) != len(sentence.Tags) {
+								t.Fatalf("expecting %d'th rule %d, %d'th conversation flow %d, %d'th sentence group %d,%d'th sentence id %d get %d tag, but get %d\n",
+									ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, senIdx, expectSen.ID, len(expectSen.Tags), len(sentence.Tags))
+							}
+
+							for tIdx, tag := range sentence.Tags {
+								expectTag := expectSen.Tags[tIdx]
+
+								if expectTag.ID != tag.ID {
+									t.Fatalf("expecting %d'th rule %d, %d'th conversation flow %d, %d'th sentence group %d,%d'th sentence id %d, %d'th tag get %d, but get %d\n",
+										ridx, expectR.ID, cfIdx, expectCF.ID, senGrpIdx, expectSenGrps.ID, senIdx, expectSen.ID, tIdx, expectTag.ID, tag.ID)
+								}
+							}
+						}
+					}
+				}
+
+			}
+			break
+		}
+
+	}
+
 }

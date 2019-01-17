@@ -16,6 +16,7 @@ type ConversationFlowInReq struct {
 	Type           string   `json:"type"`
 	Expression     string   `json:"expression"`
 	SentenceGroups []string `json:"sentence_groups"`
+	Min            int      `json:"min"`
 }
 
 type ConversationFlowInRes struct {
@@ -24,6 +25,7 @@ type ConversationFlowInRes struct {
 	Type           string                      `json:"type,omitempty"`
 	Expression     string                      `json:"expression,omitempty"`
 	SentenceGroups []model.SimpleSentenceGroup `json:"sentence_groups,omitempty"`
+	Min            int                         `json:"min"`
 }
 
 func flowInReqToConversationFlow(flowInReq *ConversationFlowInReq, enterprise string) (flow *model.ConversationFlow) {
@@ -33,6 +35,7 @@ func flowInReqToConversationFlow(flowInReq *ConversationFlowInReq, enterprise st
 		Enterprise: enterprise,
 		Type:       flowInReq.Type,
 		Expression: flowInReq.Expression,
+		Min:        flowInReq.Min,
 	}
 
 	simpleGroups := make([]model.SimpleSentenceGroup, len(flowInReq.SentenceGroups))
@@ -53,6 +56,7 @@ func conversationfFlowToFlowInRes(flow *model.ConversationFlow) ConversationFlow
 		Expression:     flow.Expression,
 		Type:           flow.Type,
 		SentenceGroups: flow.SentenceGroups,
+		Min:            flow.Min,
 	}
 }
 
