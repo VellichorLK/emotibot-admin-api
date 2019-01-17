@@ -128,7 +128,7 @@ func (c *ConFlowCriteria) FlowExpressionToNode() error {
 
 	token := strings.Split(c.Expression, " ")
 	numOfToken := len(token)
-	stack := make(chan string, 99999)
+	queue := make(chan string, 99999)
 
 	if numOfToken < 2 {
 		return ErrWrongExpression
@@ -143,29 +143,29 @@ func (c *ConFlowCriteria) FlowExpressionToNode() error {
 		return ErrWrongExpression
 	}
 
-	stack <- lToken
+	queue <- lToken
 
 	for i := 1; i < numOfToken; i++ {
 
 		lToken := strings.ToLower(token[i])
 		switch lToken {
 		case "not":
-			stack <- lToken
+			queue <- lToken
 		case "and":
 			fallthrough
 		case "then":
-			if len(stack) != 0 {
+			if len(queue) != 0 {
 				return ErrWrongExpression
 			}
-			stack <- lToken
+			queue <- lToken
 		default:
-			if len(stack) == 0 {
+			if len(queue) == 0 {
 				return ErrWrongExpression
 			}
 			n := &ExprNode{}
-			numOfStack := len(stack)
-			for j := 0; j < numOfStack; j++ {
-				last := <-stack
+			numOfQue := len(queue)
+			for j := 0; j < numOfQue; j++ {
+				last := <-queue
 				switch last {
 				case "and":
 				case "not":
@@ -184,7 +184,7 @@ func (c *ConFlowCriteria) FlowExpressionToNode() error {
 
 	}
 
-	if len(stack) != 0 {
+	if len(queue) != 0 {
 		return ErrWrongExpression
 	}
 	return nil
