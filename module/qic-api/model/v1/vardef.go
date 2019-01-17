@@ -77,13 +77,13 @@ const (
 
 //field name in Segment table
 const (
-	SegFieldID         = "segment_id"
-	SegFieldCallID     = "call_id"
-	SegFieldStartTime  = "start_time"
-	SegFieldEndTime    = "end_time"
-	SegFieldChannel    = "channel"
-	SegFieldCreateTiem = "create_time"
-	SegFieldAsrText    = "asr_text"
+	fldSegmentID         = "segment_id"
+	fldSegmentCallID     = "call_id"
+	fldSegmentStartTime  = "start_time"
+	fldSegmentEndTime    = "end_time"
+	fldSegmentChannel    = "channel"
+	fldSegmentCreateTime = "create_time"
+	fldSegmentText       = "asr_text"
 )
 
 //field name in Group Table

@@ -288,7 +288,7 @@ func (s SQLDao) InsertSegment(tx *sql.Tx, seg *Segment) (int64, error) {
 	table := tblSegment
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?)",
 		table,
-		SegFieldCallID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel, SegFieldCreateTiem, SegFieldAsrText,
+		fldSegmentCallID, fldSegmentStartTime, fldSegmentEndTime, fldSegmentChannel, fldSegmentCreateTime, fldSegmentText,
 	)
 
 	var res sql.Result
@@ -379,9 +379,9 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 
 	table := tblSegment
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s FROM %s WHERE %s=? ORDER BY %s ASC",
-		SegFieldID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel,
-		SegFieldCreateTiem, SegFieldAsrText,
-		table, SegFieldCallID, SegFieldStartTime)
+		fldSegmentID, fldSegmentStartTime, fldSegmentEndTime, fldSegmentChannel,
+		fldSegmentCreateTime, fldSegmentText,
+		table, fldSegmentCallID, fldSegmentStartTime)
 	var rows *sql.Rows
 	var err error
 	if tx != nil {
