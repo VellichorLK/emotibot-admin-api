@@ -11,6 +11,12 @@ type SegmentDao struct {
 	db DBLike
 }
 
+func NewSegmentDao(db DBLike) *SegmentDao {
+	return &SegmentDao{
+		db: db,
+	}
+}
+
 // RealSegment is the one to one mapping of the segment table schema.
 // Do not confused with another vad segment which named Segment in this package too.
 // It is the same thing but in different structure. Which used in different context.
@@ -18,8 +24,8 @@ type SegmentDao struct {
 type RealSegment struct {
 	ID        int64
 	CallID    int64
-	StartTime int64
-	EndTime   int64
+	StartTime float64
+	EndTime   float64
 	Channel   int8
 	Text      string
 	Emotions  []RealSegmentEmotion
