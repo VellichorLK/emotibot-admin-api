@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -52,24 +53,40 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("call's left channel role '%d' is unknown", c.LeftChanRole)
 	}
 	var segments = []model.RealSegment{}
-	// for _, ch := range staffChannels {
-	// 	for _, sen := range ch.Sentences {
-	// 		s := model.RealSegment{
-	// 			CallID:    callID,
-	// 			StartTime: sen.Start,
-	// 			EndTime:   sen.End,
-	// 			// Channel:
-	// 			Text: sen.ASR,
-	// 			Emotions: []model.RealSegmentEmotion{
-	// 				model.RealSegmentEmotion{
-	// 					Typ:   model.ETypAngry,
-	// 					Score: sen.Emotion,
-	// 				},
-	// 			},
-	// 		}
-	// 		segments = append(segments, s)
-	// 	}
-	// }
+
+	for _, sen := range resp.LeftChannel.Sentences {
+		s := model.RealSegment{
+			CallID:    callID,
+			StartTime: sen.Start,
+			EndTime:   sen.End,
+			Channel:   c.LeftChanRole,
+			Text:      sen.ASR,
+			Emotions: []model.RealSegmentEmotion{
+				model.RealSegmentEmotion{
+					Typ:   model.ETypAngry,
+					Score: sen.Emotion,
+				},
+			},
+		}
+		segments = append(segments, s)
+	}
+
+	for _, sen := range resp.RightChannel.Sentences {
+		s := model.RealSegment{
+			CallID:    callID,
+			StartTime: sen.Start,
+			EndTime:   sen.End,
+			Channel:   c.RightChanRole,
+			Text:      sen.ASR,
+			Emotions: []model.RealSegmentEmotion{
+				model.RealSegmentEmotion{
+					Typ:   model.ETypAngry,
+					Score: sen.Emotion,
+				},
+			},
+		}
+		segments = append(segments, s)
+	}
 
 	tx, err := dbLike.Begin()
 	if err != nil {
@@ -80,6 +97,12 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("new segment failed, %v", err)
 	}
 
+	sort.SliceStable(segments, func(i, j int) bool {
+		return segments[i].StartTime < segments[j].StartTime
+	})
+	// GetGroupsByFilter()
+	// serviceDAO.GetGroupsBy()
+	// RuleGroupCriteria()
 	return nil
 }
 

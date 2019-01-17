@@ -73,7 +73,7 @@ func restoreDAO(originDAO model.GroupDAO) {
 	serviceDAO = originDAO
 }
 
-func (m *mockDAO) Group(tx *sql.Tx, query model.GroupQuery) ([]model.Group, error) {
+func (m *mockDAO) Group(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error) {
 	return nil, nil
 }
 

@@ -10,7 +10,6 @@ const (
 	tblConversation     = "Conversation"
 	tblSegment          = "Segment"
 	tblSegmentEmotion   = "SegEmotionScore"
-	tblGroup            = "Group"
 	tblRelGrpRule       = "Relation_RuleGroup_Rule"
 	tblRelRuleLogic     = "Relation_Rule_Logic"
 	tblRule             = "Rule"
@@ -94,21 +93,6 @@ const (
 	fldSegEmoScore     = "score"
 )
 
-//field name in Group Table
-const (
-	fldGroupAppID          = "app_id"
-	fldGroupIsDeleted      = "is_delete"
-	fldGroupIsEnabled      = "is_enable"
-	fldGroupName           = "group_name"
-	fldGroupEnterprise     = "enterprise"
-	fldGroupDescription    = "description"
-	fldGroupCreatedTime    = "create_time"
-	fldGroupUpdatedTime    = "update_time"
-	fldGroupLimitedSpeed   = "limit_speed"
-	fldGroupLimitedSilence = "limit_silence"
-	fldGroupType           = "type"
-)
-
 //field name in Tag Table
 const (
 	fldTagID         = "id"
@@ -174,18 +158,18 @@ const (
 
 // field name in RuleGroup
 const (
-	RGID           = "id"
-	RGUUID         = "uuid"
-	RGIsDelete     = "is_delete"
-	RGName         = "name"
-	RGEnterprise   = "enterprise"
-	RGDescription  = "description"
-	RGCreateTime   = "create_time"
-	RGUpdateTime   = "update_time"
-	RGIsEnable     = "is_enable"
-	RGLimitSpeed   = "limit_speed"
-	RGLimitSilence = "limit_silence"
-	RGType         = "type"
+	fldRuleGrpID           = "id"
+	fldRuleGrpUUID         = "uuid"
+	fldRuleGrpIsDelete     = "is_delete"
+	fldRuleGrpName         = "name"
+	fldRuleGrpEnterpriseID = "enterprise"
+	fldRuleGrpDescription  = "description"
+	fldRuleGrpCreateTime   = "create_time"
+	fldRuleGrpUpdateTime   = "update_time"
+	fldRuleGrpIsEnable     = "is_enable"
+	fldRuleGrpLimitSpeed   = "limit_speed"
+	fldRuleGrpLimitSilence = "limit_silence"
+	fldRuleGrpType         = "type"
 )
 
 // field name Relation_RuleGroup_Rule

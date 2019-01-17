@@ -1,10 +1,11 @@
 package qi
 
 import (
-	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"fmt"
-	"github.com/satori/go.uuid"
 	"strings"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+	uuid "github.com/satori/go.uuid"
 )
 
 var (

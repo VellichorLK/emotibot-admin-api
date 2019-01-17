@@ -25,14 +25,14 @@ func TestGetGroupsSQL(t *testing.T) {
 	`
 	targetStr = fmt.Sprintf(
 		targetStr,
-		RGID,
-		RGUUID,
-		RGName,
+		fldRuleGrpID,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
 		fldDescription,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 		fldCreateTime,
-		fldGroupIsEnabled,
+		fldRuleGrpIsEnable,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -73,7 +73,7 @@ func TestGetGroupsSQL(t *testing.T) {
 
 var goldenGroups = []Group{
 	Group{
-		AppID:          1,
+		ID:             1,
 		Name:           "testing",
 		EnterpriseID:   "123456789",
 		Description:    "this is an integration test data",
@@ -83,10 +83,10 @@ var goldenGroups = []Group{
 		IsDelete:       false,
 		LimitedSpeed:   0,
 		LimitedSilence: 0,
-		typ:            0,
+		Typ:            0,
 	},
 	Group{
-		AppID:          2,
+		ID:             2,
 		Name:           "testing2",
 		EnterpriseID:   "123456789",
 		Description:    "this is another integration test data",
@@ -96,7 +96,7 @@ var goldenGroups = []Group{
 		IsDelete:       false,
 		LimitedSpeed:   0,
 		LimitedSilence: 0,
-		typ:            1,
+		Typ:            1,
 	},
 }
 
@@ -115,7 +115,7 @@ func TestIntegrationGroupSQLDaoGroup(t *testing.T) {
 		t.Error("expect groups should be 2, but got", len(groups))
 	}
 	groups, err = dao.Group(nil, GroupQuery{
-		Type: []int{0},
+		Type: []int8{0},
 	})
 	if err != nil {
 		t.Fatal("dao group with type [1] query failed, ", err)
@@ -146,7 +146,7 @@ func TestGroupSQLDaoGroup(t *testing.T) {
 		conn: db,
 	}
 	rows := exampleGroups(goldenGroups)
-	mocker.ExpectQuery("SELECT .+ FROM `" + tblGroup + "`").WillReturnRows(rows)
+	mocker.ExpectQuery("SELECT .+ FROM `" + tblRuleGroup + "`").WillReturnRows(rows)
 	groups, err := serviceDao.Group(nil, GroupQuery{})
 	if err != nil {
 		t.Fatal("expect dao.Group is ok, but got error: ", err)
@@ -157,13 +157,17 @@ func TestGroupSQLDaoGroup(t *testing.T) {
 }
 
 func exampleGroups(examples []Group) *sqlmock.Rows {
-	rows := sqlmock.NewRows([]string{fldGroupAppID, fldGroupIsDeleted, fldGroupName,
-		fldGroupEnterprise, fldGroupDescription, fldGroupCreatedTime, fldGroupUpdatedTime,
-		fldGroupIsEnabled, fldGroupLimitedSpeed, fldGroupLimitedSilence, fldGroupType})
+	groupCols := []string{
+		fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
+		fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
+		fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence, fldRuleGrpType,
+	}
+	rows := sqlmock.NewRows(groupCols)
 	for _, e := range examples {
-		rows.AddRow(e.AppID, e.IsDelete, e.Name,
+		rows.AddRow(e.ID, e.IsDelete, e.Name,
 			e.EnterpriseID, e.Description, e.CreatedTime, e.UpdatedTime,
-			e.IsEnable, e.LimitedSpeed, e.LimitedSilence, e.typ)
+			e.IsEnable, e.LimitedSpeed, e.LimitedSilence, e.Typ)
 	}
 
 	return rows

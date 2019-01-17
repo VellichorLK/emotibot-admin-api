@@ -89,7 +89,7 @@ type ConversationInfo struct {
 
 // GroupQuery can used to query the group table
 type GroupQuery struct {
-	Type         []int
+	Type         []int8
 	EnterpriseID *string
 }
 
@@ -136,23 +136,17 @@ type LogicResult struct {
 }
 
 func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
-	bindData = make([]interface{}, 0, 2)
-	whereSQL = "WHERE "
-	conditions := []string{}
-	if g.Type != nil || len(g.Type) > 0 {
-		condition := fldGroupType + " IN (?" + strings.Repeat(",?", len(g.Type)-1) + ")"
-		conditions = append(conditions, condition)
-		for _, t := range g.Type {
-			bindData = append(bindData, t)
-		}
+	builder := &whereBuilder{
+		ConcatLogic: andLogic,
+		conditions:  []string{},
+		data:        []interface{}{},
 	}
+	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
 	if g.EnterpriseID != nil {
-		condition := fldGroupEnterprise + " = ?"
-		conditions = append(conditions, condition)
-		bindData = append(bindData, *g.EnterpriseID)
+		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)
 	}
-	whereSQL += strings.Join(conditions, " AND ")
-	return whereSQL, bindData
+	rawsql, data := builder.Parse()
+	return " WHERE " + rawsql, data
 }
 
 func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {
@@ -428,7 +422,7 @@ func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint
 		fldRuleID, fldLogicID,
 		tableA, tableB,
 		fldRuleID, fldRuleID,
-		fldGroupAppID)
+		fldRuleGrpID)
 	rows, err := q.Query(findIDSQL, groupID)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
@@ -574,7 +568,7 @@ func (s SQLDao) InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int6
 		return 0, util.ErrDBNotInit
 	}
 
-	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldGroupAppID, fldCUPredict)
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldRuleGrpID, fldCUPredict)
 	result, err := q.Exec(insertSQL, callID, val)
 	if err != nil {
 		logger.Error.Println("raw sql: ", insertSQL)

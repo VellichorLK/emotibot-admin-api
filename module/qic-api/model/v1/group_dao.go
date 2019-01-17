@@ -16,7 +16,7 @@ type GroupDAO interface {
 	ClearTranscation(tx *sql.Tx)
 	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
-	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
+	Group(delegatee SqlLike, query GroupQuery) ([]Group, error)
 	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id string, tx *sql.Tx) error
@@ -54,9 +54,9 @@ type GroupWCond struct {
 	RuleCount       int             `json:"rule_count"`
 }
 
-// Group
+// Group is the one to one represent of rule group table schema
 type Group struct {
-	AppID          uint64
+	ID             int64
 	Name           string
 	EnterpriseID   string
 	Description    string
@@ -66,7 +66,7 @@ type Group struct {
 	IsEnable       bool
 	LimitedSpeed   int
 	LimitedSilence float32
-	typ            int
+	Typ            int8
 }
 
 type GroupCondition struct {
@@ -136,10 +136,10 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 
 	queryStr := fmt.Sprintf(
 		"SELECT %s, %s FROM %s where %s=1",
-		RGID,
-		RGName,
+		fldRuleGrpID,
+		fldRuleGrpName,
 		tblRuleGroup,
-		RGIsEnable,
+		fldRuleGrpIsEnable,
 	)
 
 	rows, err := s.conn.Query(queryStr)
@@ -232,7 +232,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		values = append(values, filter.StaffName)
 	}
 	if filter.EnterpriseID != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGEnterprise))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldRuleGrpEnterpriseID))
 	}
 	if len(conditions) == 0 {
 		conditionStr = ""
@@ -251,14 +251,14 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 
 	queryStr = fmt.Sprintf(
 		queryStr,
-		RGID,
-		RGUUID,
-		RGName,
+		fldRuleGrpID,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
 		fldDescription,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 		fldCreateTime,
-		fldGroupIsEnabled,
+		fldRuleGrpIsEnable,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -298,7 +298,7 @@ func (s *GroupSQLDao) CountGroupsBy(filter *GroupFilter) (total int64, err error
 	}
 
 	queryStr, values := getGroupsSQL(filter)
-	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", RGID, queryStr)
+	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", fldRuleGrpID, queryStr)
 
 	rows, err := s.conn.Query(queryStr, values...)
 	if err != nil {
@@ -425,15 +425,15 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	insertStr := fmt.Sprintf(
 		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		tblRuleGroup,
-		RGUUID,
-		RGName,
-		RGEnterprise,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
+		fldRuleGrpEnterpriseID,
 		fldDescription,
-		RGCreateTime,
-		RGUpdateTime,
-		RGIsEnable,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpCreateTime,
+		fldRuleGrpUpdateTime,
+		fldRuleGrpIsEnable,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 	)
 
 	values := []interface{}{
@@ -534,10 +534,10 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
 	FROM (SELECT * FROM %s WHERE %s=? and %s = 0) as g 
 	LEFT JOIN %s as gc ON g.%s = gc.%s`,
-		RGUUID,
-		RGName,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -553,10 +553,10 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		RGCLeftChannel,
 		RGCRightChannel,
 		tblRuleGroup,
-		RGUUID,
-		RGIsDelete,
+		fldRuleGrpUUID,
+		fldRuleGrpIsDelete,
 		tblRGC,
-		RGID,
+		fldRuleGrpID,
 		RGCGroupID,
 	)
 
@@ -637,8 +637,8 @@ func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	deleteStr := fmt.Sprintf(
 		"UPDATE %s SET %s = 1 WHERE %s = ?",
 		tblRuleGroup,
-		RGIsDelete,
-		RGUUID,
+		fldRuleGrpIsDelete,
+		fldRuleGrpUUID,
 	)
 	_, err = tx.Exec(deleteStr, id)
 	if err != nil {
@@ -647,27 +647,23 @@ func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	return
 }
 
-func (s *GroupSQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
-	type queryer interface {
-		Query(query string, args ...interface{}) (*sql.Rows, error)
+func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
 	}
-	var q queryer
-	if tx != nil {
-		q = tx
-	} else if s.conn != nil {
-		q = s.conn
-	} else {
-		return nil, util.ErrDBNotInit
+	groupCols := []string{
+		fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
+		fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
+		fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence, fldRuleGrpType,
 	}
 
-	sqlQuery := "SELECT `" + fldGroupAppID + "`, `" + fldGroupIsDeleted + "`, `" + fldGroupName + "`, `" + fldGroupEnterprise + "`, `" +
-		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsEnabled + "`, `" +
-		fldGroupLimitedSpeed + "`, `" + fldGroupLimitedSilence + "`, `" + fldGroupType + "` FROM `" + tblGroup + "`"
+	sqlQuery := fmt.Sprintf("SELECT `%s` FROM `%s`", strings.Join(groupCols, "`, `"), tblRuleGroup)
 	wherePart, bindData := query.whereSQL()
 	if len(bindData) > 0 {
 		sqlQuery += " " + wherePart
 	}
-	rows, err := q.Query(sqlQuery, bindData...)
+	rows, err := delegatee.Query(sqlQuery, bindData...)
 	if err != nil {
 		logger.Error.Println("raw sql: ", sqlQuery)
 		logger.Error.Println("raw bind-data: ", bindData)
@@ -677,9 +673,9 @@ func (s *GroupSQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	var groups = make([]Group, 0)
 	for rows.Next() {
 
-		var g = Group{}
+		var g Group
 		var isDeleted, isEnabled int
-		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
+		rows.Scan(&g.ID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.Typ)
 		if isDeleted == 1 {
 			g.IsDelete = true
 		}
@@ -694,4 +690,17 @@ func (s *GroupSQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
 	}
 
 	return groups, nil
+}
+
+func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) ([]Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	// ruleGroupCols = []string{
+	// 	fldGroupName,
+	// }
+	// "SELECT `%s` FROM `%s` AS c INNNER JOIN `%s` AS gc ON c.`%s` = g.`%s` "
+	// s.Group(delegatee, GroupQuery{
+	// })
+	return nil, nil
 }

@@ -185,7 +185,7 @@ func GetFlowGroup(enterprise string) ([]model.Group, error) {
 	if enterprise == "" {
 		return nil, nil
 	}
-	queryCondition := model.GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow}}
+	queryCondition := model.GroupQuery{EnterpriseID: &enterprise, Type: []int8{Flow}}
 	return groupDao.Group(nil, queryCondition)
 }
 
