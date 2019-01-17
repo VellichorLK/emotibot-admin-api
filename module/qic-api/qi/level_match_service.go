@@ -642,8 +642,8 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 				tagCredit.ID = data.Tag
 				tagCredit.Score = data.Score
 				tagCredit.SegmentIdx = data.SentenceID
-				tagCredit.match = data.Match
-				tagCredit.matchTxt = data.MatchText
+				tagCredit.Match = data.Match
+				tagCredit.MatchTxt = data.MatchText
 				credit.Tags = append(credit.Tags, &tagCredit)
 			}
 		}
