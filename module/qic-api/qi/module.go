@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -22,6 +23,7 @@ var (
 	callDao    CallDao
 	taskDao    TaskDao
 	producer   *rabbitmq.Producer
+	consumer   *rabbitmq.Consumer
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
 	volume     string
@@ -142,9 +144,14 @@ func init() {
 					logger.Error.Println("RABBITMQ_PORT is required!")
 					return
 				}
-				client, err := rabbitmq.Dial(fmt.Sprintf("amqp://guest:guest@%s:%d"))
+				_, err := strconv.Atoi(port)
 				if err != nil {
-					logger.Error.Println("init rabbitmq client failed, %v", err)
+					logger.Error.Println("RABBITMQ_PORT should be a valid int value, ", err)
+					return
+				}
+				client, err := rabbitmq.Dial(fmt.Sprintf("amqp://guest:guest@%s:%s", host, port))
+				if err != nil {
+					logger.Error.Println("init rabbitmq client failed, ", err)
 					return
 				}
 				producer = client.NewProducer(rabbitmq.ProducerConfig{
@@ -152,6 +159,11 @@ func init() {
 					ContentType: "application/json",
 					MaxRetry:    10,
 				})
+				consumer = client.NewConsumer(rabbitmq.ConsumerConfig{
+					QueueName: "dst_queue",
+					MaxRetry:  10,
+				})
+				consumer.Subscribe(ASRWorkFlow)
 			},
 		},
 	}
