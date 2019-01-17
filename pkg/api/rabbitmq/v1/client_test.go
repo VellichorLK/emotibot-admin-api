@@ -101,7 +101,7 @@ func TestI11ProduceAndConsume(t *testing.T) {
 	}
 	consumer := c.NewConsumer(ConsumerConfig{
 		QueueName: "testing",
-		maxRetry:  10,
+		MaxRetry:  10,
 	})
 	received, err := consumer.Consume()
 	if err != nil {
@@ -131,7 +131,7 @@ func TestI11Subscribe(t *testing.T) {
 	}()
 	consumer := c.NewConsumer(ConsumerConfig{
 		QueueName: "testing",
-		maxRetry:  10,
+		MaxRetry:  10,
 	})
 	received := 0
 	consumer.Subscribe(func(response []byte) error {

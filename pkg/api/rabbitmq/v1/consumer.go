@@ -16,7 +16,7 @@ type Consumer struct {
 
 type ConsumerConfig struct {
 	QueueName string
-	maxRetry  int
+	MaxRetry  int
 }
 
 // Task is the task that will be triggered if new message comes from queue.
@@ -56,7 +56,7 @@ func (c *Consumer) Subscribe(task Task) {
 }
 func (c *Consumer) Consume() ([]byte, error) {
 	var err error
-	maxRetry := c.config.maxRetry
+	maxRetry := c.config.MaxRetry
 	for i := 0; ; i++ {
 		if maxRetry > 0 && i == maxRetry {
 			break
@@ -89,5 +89,5 @@ func (c *Consumer) Consume() ([]byte, error) {
 		}
 		return msg.Body, nil
 	}
-	return nil, fmt.Errorf("exceed max retries %d, error: %v", c.config.maxRetry, err)
+	return nil, fmt.Errorf("exceed max retries %d, error: %v", c.config.MaxRetry, err)
 }
