@@ -126,6 +126,8 @@ func init() {
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
+				relationDao = &model.RelationSQLDao{}
+				creditDao = &model.CreditSQLDao{}
 			},
 		},
 	}

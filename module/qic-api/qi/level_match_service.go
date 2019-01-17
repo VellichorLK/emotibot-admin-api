@@ -81,6 +81,7 @@ type RuleMatchedResult struct {
 type RuleGrpCredit struct {
 	ID    uint64
 	Plus  int
+	Score int
 	Rules []*RuleCredit
 }
 
@@ -816,7 +817,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 
 	resp.ID = ruleGroup
 	resp.Plus = totalScore
-
+	resp.Score = 100 + totalScore
 	for _, ruleID := range ruleIDs {
 		cfIDs := levels[LevRule][ruleID]
 		credit := &RuleCredit{ID: ruleID}
