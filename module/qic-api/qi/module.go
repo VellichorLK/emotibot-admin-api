@@ -22,6 +22,7 @@ var (
 	tagDao     TagDao
 	callDao    CallDao
 	taskDao    TaskDao
+	segmentDao SegmentDao
 	producer   *rabbitmq.Producer
 	consumer   *rabbitmq.Consumer
 	sqlConn    *sql.DB
@@ -131,6 +132,8 @@ func init() {
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
+				segmentDao = model.NewSegmentDao(dbLike)
+
 			},
 			"init RabbitMQ": func() {
 				envs := ModuleInfo.Environments
