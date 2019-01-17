@@ -60,6 +60,7 @@ type GroupFilter struct {
 	CustomerID    string
 	CustomerName  string
 	CustomerPhone string
+	EnterpriseID  string
 	Page          int
 	Limit         int
 	UUID          []string

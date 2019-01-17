@@ -19,7 +19,6 @@ type RuleDao interface {
 	InsertSegment(tx *sql.Tx, seg *Segment) (int64, error)
 	GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInfo, error)
 	GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error)
-	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
 	GetGroupToLogicID(tx *sql.Tx, appID uint64) (map[uint64][]uint64, []uint64, error)
 	GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error)
 	GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error)
@@ -409,56 +408,6 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 	return segments, nil
 }
 
-//TODO Reractor this to group dao
-func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
-	type queryer interface {
-		Query(query string, args ...interface{}) (*sql.Rows, error)
-	}
-	var q queryer
-	if tx != nil {
-		q = tx
-	} else if s.conn != nil {
-		q = s.conn
-	} else {
-		return nil, util.ErrDBNotInit
-	}
-
-	sqlQuery := "SELECT `" + fldGroupAppID + "`, `" + fldGroupIsDeleted + "`, `" + fldGroupName + "`, `" + fldGroupEnterprise + "`, `" +
-		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsEnabled + "`, `" +
-		fldGroupLimitedSpeed + "`, `" + fldGroupLimitedSilence + "`, `" + fldGroupType + "` FROM `" + tblGroup + "`"
-	wherePart, bindData := query.whereSQL()
-	if len(bindData) > 0 {
-		sqlQuery += " " + wherePart
-	}
-	rows, err := q.Query(sqlQuery, bindData...)
-	if err != nil {
-		logger.Error.Println("raw sql: ", sqlQuery)
-		logger.Error.Println("raw bind-data: ", bindData)
-		return nil, fmt.Errorf("sql executed failed, %v", err)
-	}
-	defer rows.Close()
-	var groups = make([]Group, 0)
-	for rows.Next() {
-
-		var g = Group{}
-		var isDeleted, isEnabled int
-		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
-		if isDeleted == 1 {
-			g.IsDelete = true
-		}
-		if isEnabled == 1 {
-			g.IsEnable = true
-		}
-		groups = append(groups, g)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("sql scan failed, %v", err)
-	}
-
-	return groups, nil
-}
-
 //GetGroupToLogicID gets the id and name of logics in rule, rules in group
 func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint64, []uint64, error) {
 	type queryer interface {
@@ -737,7 +686,7 @@ func (s SQLDao) UpdateConversation(tx *sql.Tx, callID uint64, params map[string]
 }
 
 //GetRecommendations gets the recommendation wordings for each logic
-func (s SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error) {
+func (s *SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error) {
 	if len(logicIDs) == 0 {
 		return nil, nil
 	}

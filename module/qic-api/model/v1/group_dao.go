@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type GroupDAO interface {
@@ -15,6 +16,7 @@ type GroupDAO interface {
 	ClearTranscation(tx *sql.Tx)
 	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
+	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
 	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id string, tx *sql.Tx) error
@@ -229,7 +231,9 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffName))
 		values = append(values, filter.StaffName)
 	}
-
+	if filter.EnterpriseID != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", RGEnterprise))
+	}
 	if len(conditions) == 0 {
 		conditionStr = ""
 	} else {
@@ -643,6 +647,51 @@ func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	return
 }
 
-// func (s *GroupSQLDao) GetRules(enterprise string) (err error) {
+func (s *GroupSQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
+	type queryer interface {
+		Query(query string, args ...interface{}) (*sql.Rows, error)
+	}
+	var q queryer
+	if tx != nil {
+		q = tx
+	} else if s.conn != nil {
+		q = s.conn
+	} else {
+		return nil, util.ErrDBNotInit
+	}
 
-// }
+	sqlQuery := "SELECT `" + fldGroupAppID + "`, `" + fldGroupIsDeleted + "`, `" + fldGroupName + "`, `" + fldGroupEnterprise + "`, `" +
+		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsEnabled + "`, `" +
+		fldGroupLimitedSpeed + "`, `" + fldGroupLimitedSilence + "`, `" + fldGroupType + "` FROM `" + tblGroup + "`"
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := q.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	var groups = make([]Group, 0)
+	for rows.Next() {
+
+		var g = Group{}
+		var isDeleted, isEnabled int
+		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
+		if isDeleted == 1 {
+			g.IsDelete = true
+		}
+		if isEnabled == 1 {
+			g.IsEnable = true
+		}
+		groups = append(groups, g)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return groups, nil
+}

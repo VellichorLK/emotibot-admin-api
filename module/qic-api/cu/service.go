@@ -17,6 +17,7 @@ import (
 
 var (
 	serviceDao model.RuleDao
+	groupDao   model.GroupDAO
 	cache      timecache.TimeCache
 )
 
@@ -185,7 +186,7 @@ func GetFlowGroup(enterprise string) ([]model.Group, error) {
 		return nil, nil
 	}
 	queryCondition := model.GroupQuery{EnterpriseID: &enterprise, Type: []int{Flow}}
-	return serviceDao.Group(nil, queryCondition)
+	return groupDao.Group(nil, queryCondition)
 }
 
 //GetRuleLogic gets the logic in the rule, the rule in the group information

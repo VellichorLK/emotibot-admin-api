@@ -294,12 +294,6 @@ func initDB() {
 		logger.Error.Println("Init auth db fail")
 		initErrors = append(initErrors, err)
 	}
-
-	err = cu.InitDB()
-	if err != nil {
-		logger.Error.Println("Init cu(qi) db fail")
-		initErrors = append(initErrors, err)
-	}
 }
 
 func runOnetimeJob() {
