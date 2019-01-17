@@ -117,8 +117,8 @@ type SentenceCredit struct {
 type TagCredit struct {
 	ID         uint64
 	Score      int
-	match      string
-	matchTxt   string
+	Match      string
+	MatchTxt   string
 	SegmentIdx int
 	SegmentID  uint64 //for controller usage
 }
@@ -642,8 +642,8 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 				tagCredit.ID = data.Tag
 				tagCredit.Score = data.Score
 				tagCredit.SegmentIdx = data.SentenceID
-				tagCredit.match = data.Match
-				tagCredit.matchTxt = data.MatchText
+				tagCredit.Match = data.Match
+				tagCredit.MatchTxt = data.MatchText
 				credit.Tags = append(credit.Tags, &tagCredit)
 			}
 		}
