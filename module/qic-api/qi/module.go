@@ -167,6 +167,7 @@ func init() {
 					MaxRetry:  10,
 				})
 				consumer.Subscribe(ASRWorkFlow)
+				logger.Info.Println("init & subscribe to RabbitMQ success")
 			},
 		},
 	}

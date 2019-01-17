@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
+
+	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
@@ -219,17 +222,26 @@ func UpdateCall(call *model.Call) error {
 
 //ConfirmCall is the workflow to update call fp and
 func ConfirmCall(call *model.Call) error {
+	//TODO: if call already Confirmed, it should not be able to
 	if call.FilePath == nil {
 		return fmt.Errorf("call FilePath should not be nil")
 	}
 	err := UpdateCall(call)
+	//TODO: ADD Task update too.
 	if err != nil {
 		return fmt.Errorf("update call db failed, %v", err)
+	}
+	// Because ASR expect us to give its real system filepath
+	// which we only can hard coded or inject from env.
+	// TODO: TELL ASR TEAM TO FIX IT!!!
+	basePath, found := ModuleInfo.Environments["ASR_HARDCODE_VOLUME"]
+	if !found {
+		logger.Warn.Println("expect ASR_HARDCODE_VOLUME have setup, or asr may not be able to read the path.")
 	}
 	input := ASRInput{
 		Version: 1.0,
 		CallID:  strconv.FormatInt(call.ID, 10),
-		Path:    *call.FilePath,
+		Path:    path.Join(basePath, *call.FilePath),
 	}
 	resp, err := json.Marshal(input)
 	if err != nil {
