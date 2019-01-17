@@ -117,8 +117,8 @@ type SentenceCredit struct {
 type TagCredit struct {
 	ID         uint64
 	Score      int
-	match      string
-	matchTxt   string
+	Match      string
+	MatchTxt   string
 	SegmentIdx int
 	SegmentID  uint64 //for controller usage
 }
