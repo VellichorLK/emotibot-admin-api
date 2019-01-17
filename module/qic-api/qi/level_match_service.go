@@ -120,6 +120,7 @@ type TagCredit struct {
 	match      string
 	matchTxt   string
 	SegmentIdx int
+	SegmentID  uint64 //for controller usage
 }
 
 //FlowExpressionToNode converts the conversation flow expression to node
@@ -723,19 +724,6 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 		}
 
 	}
-	/*
-		for sgID := range matchSgID {
-			for _, sID := range levels[LevSenGroup][sgID] {
-				if sCredit, ok := sentenceCreditMap[sID]; ok {
-					senGrpCreditMap[sgID].Valid = true
-					senGrpCreditMap[sgID].Sentences = append(senGrpCreditMap[sgID].Sentences, sCredit)
-				} else {
-					logger.Error.Printf("sentence matched id %d doesn't exitst in credit map\n", sID)
-					return nil, ErrRequestNotEqualGet
-				}
-			}
-		}
-	*/
 	//--------------------------------------------------------------------------
 
 	//get the conversation flow inforamtion
