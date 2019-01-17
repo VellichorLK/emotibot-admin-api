@@ -17,6 +17,7 @@ type ConversationFlow struct {
 	SentenceGroups []SimpleSentenceGroup
 	CreateTime     int64
 	UpdateTime     int64
+	Min            int
 }
 
 type SimpleConversationFlow struct {
@@ -51,6 +52,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
+		fldMin,
 	}
 	fieldStr := strings.Join(fields, ", ")
 
@@ -61,6 +63,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		flow.Expression,
 		flow.CreateTime,
 		flow.UpdateTime,
+		flow.Min,
 	}
 	valueStr := "?"
 	valueStr = fmt.Sprintf("%s %s", valueStr, strings.Repeat(", ?", len(values)-1))
@@ -155,7 +158,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgUUID, sg.%s as sgName
+		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s,cf.%s, sg.%s as sgUUID, sg.%s as sgName
 		 FROM (SELECT * FROM %s %s) as cf
 		 LEFT JOIN %s as rcfsg ON cf.%s = rcfsg.%s
 		 LEFT JOIN %s as sg ON rcfsg.%s = sg.%s`,
@@ -166,6 +169,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
+		fldMin,
 		fldUUID,
 		fldName,
 		tblConversationflow,
@@ -221,6 +225,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			&flow.Expression,
 			&flow.CreateTime,
 			&flow.UpdateTime,
+			&flow.Min,
 			&sg.UUID,
 			&sg.Name,
 		)

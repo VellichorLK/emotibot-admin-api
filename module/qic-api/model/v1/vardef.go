@@ -213,6 +213,7 @@ const (
 	fldStatus      = "status"
 	fldType        = "type"
 	fldCategoryID  = "category_id"
+	fldMin         = "min"
 )
 
 //relation field name
