@@ -9,6 +9,7 @@ var ErrAutoIDDisabled = errors.New("dao does not support LastInsertId function")
 const (
 	tblConversation     = "Conversation"
 	tblSegment          = "Segment"
+	tblSegmentEmotion   = "SegEmotionScore"
 	tblGroup            = "Group"
 	tblRelGrpRule       = "Relation_RuleGroup_Rule"
 	tblRelRuleLogic     = "Relation_Rule_Logic"
@@ -84,6 +85,13 @@ const (
 	fldSegmentChannel    = "channel"
 	fldSegmentCreateTime = "create_time"
 	fldSegmentText       = "asr_text"
+)
+
+const (
+	fldSegEmoID        = "seg_emotion_id"
+	fldSegEmoSegmentID = "segment_id"
+	fldSegEmoType      = "type"
+	fldSegEmoScore     = "score"
 )
 
 //field name in Group Table
