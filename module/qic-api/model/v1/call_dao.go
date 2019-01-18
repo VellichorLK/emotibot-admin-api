@@ -35,59 +35,26 @@ type CallQuery struct {
 	Paging        *Pagination
 }
 
-func (c *CallQuery) whereSQL() (string, []interface{}) {
+func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 	var (
-		rawSQL     string
-		bindData   []interface{}
-		conditions []string
+		rawSQL  string
+		builder = NewWhereBuilder(andLogic, prefix)
 	)
-	if len(c.ID) > 0 {
-		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallID, strings.Repeat(",? ", len(c.ID)-1))
-		conditions = append(conditions, cond)
-		for _, id := range c.ID {
-			bindData = append(bindData, id)
-		}
-	}
-	if len(c.UUID) > 0 {
-		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallUUID, strings.Repeat(",? ", len(c.UUID)-1))
-		conditions = append(conditions, cond)
-		for _, uuid := range c.UUID {
-			bindData = append(bindData, uuid)
-		}
-	}
-	if len(c.Status) > 0 {
-		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallStatus, strings.Repeat(",? ", len(c.Status)-1))
-		conditions = append(conditions, cond)
-		for _, s := range c.Status {
-			bindData = append(bindData, s)
-		}
-	}
+	builder.In(fldCallID, int64ToWildCard(c.ID...))
+	builder.In(fldCallUUID, stringToWildCard(c.UUID...))
+	builder.In(fldCallStatus, int8ToWildCard(c.Status...))
 	if c.CallTimeStart != nil {
-		cond := fmt.Sprintf("`%s` >= ?", fldCallCallTime)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.CallTimeStart)
+		builder.Gte(fldCallCallTime, *c.CallTimeStart)
 	}
 	if c.CallTimeEnd != nil {
-		cond := fmt.Sprintf("`%s` <= ?", fldCallCallTime)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.CallTimeEnd)
+		builder.Lt(fldCallCallTime, *c.CallTimeEnd)
 	}
-	if len(c.StaffID) > 0 {
-		cond := fmt.Sprintf("`%s` IN (? %s)", fldCallStaffID, strings.Repeat(",? ", len(c.StaffID)-1))
-		conditions = append(conditions, cond)
-		for _, s := range c.StaffID {
-			bindData = append(bindData, s)
-		}
-	}
+	builder.In(fldCallStaffID, stringToWildCard(c.StaffID...))
 	if c.EnterpriseID != nil {
-		cond := fmt.Sprintf("`%s`=?", fldCallEnterprise)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.EnterpriseID)
+		builder.Eq(fldCallEnterprise, *c.EnterpriseID)
 	}
 	if c.CustomerPhone != nil {
-		cond := fmt.Sprintf("`%s`=?", fldCallCustomerPhone)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.CustomerPhone)
+		builder.Eq(fldCallCustomerPhone, *c.CustomerPhone)
 	}
 	// deal status need to query the task, we will implement this later
 	// if c.DealStatus != nil {
@@ -97,17 +64,14 @@ func (c *CallQuery) whereSQL() (string, []interface{}) {
 	// }
 
 	if c.Ext != nil {
-		cond := fmt.Sprintf("`%s`=?", fldCallExt)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.Ext)
+		builder.Eq(fldCallExt, *c.Ext)
 	}
 	if c.Department != nil {
-		cond := fmt.Sprintf("`%s`=?", fldCallDepartment)
-		conditions = append(conditions, cond)
-		bindData = append(bindData, *c.Department)
+		builder.Eq(fldCallDepartment, *c.Department)
 	}
-	if len(conditions) > 0 {
-		rawSQL = " WHERE " + strings.Join(conditions, " AND ")
+	rawSQL, bindData := builder.Parse()
+	if len(bindData) > 0 {
+		rawSQL = " WHERE " + rawSQL
 	}
 	return rawSQL, bindData
 }
@@ -205,7 +169,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallLeftChan, fldCallRightChan, fldCallStatus,
 		fldCallTaskID, fldCallDemoFilePath,
 	}
-	wheresql, data := query.whereSQL()
+	wheresql, data := query.whereSQL("")
 	limitsql := ""
 	if query.Paging != nil {
 		query.Paging.offsetSQL()
@@ -383,7 +347,7 @@ func (c *CallSQLDao) Count(delegatee SqlLike, query CallQuery) (int64, error) {
 	if delegatee == nil {
 		delegatee = c.db
 	}
-	wheresql, data := query.whereSQL()
+	wheresql, data := query.whereSQL("")
 	rawquery := "SELECT count(*) FROM `" + tblCall + "` " + wheresql
 	var count int64
 	err := delegatee.QueryRow(rawquery, data...).Scan(&count)

@@ -291,11 +291,15 @@ const (
 	fldCallTaskID           = "task_id"
 )
 
+// fields for Relation_Call_RuleGroup table
 const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
-	fldLinkID            = "link_id"
+)
+
+const (
+	fldLinkID = "link_id"
 )
 
 // fields for Relation_InspectorTask_Call_Staff

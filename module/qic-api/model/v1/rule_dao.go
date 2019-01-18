@@ -89,6 +89,7 @@ type ConversationInfo struct {
 
 // GroupQuery can used to query the group table
 type GroupQuery struct {
+	ID           []int64
 	Type         []int8
 	EnterpriseID *string
 }
@@ -141,12 +142,16 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 		conditions:  []string{},
 		data:        []interface{}{},
 	}
+	builder.In(fldRuleGrpID, int64ToWildCard(g.ID...))
 	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
 	if g.EnterpriseID != nil {
 		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)
 	}
 	rawsql, data := builder.Parse()
-	return " WHERE " + rawsql, data
+	if len(data) > 0 {
+		rawsql = " WHERE " + rawsql
+	}
+	return rawsql, data
 }
 
 func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {

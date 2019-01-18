@@ -21,6 +21,7 @@ type GroupDAO interface {
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id string, tx *sql.Tx) error
 	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
+	GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error)
 }
 
 type GroupSQLDao struct {
@@ -692,15 +693,71 @@ func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error
 	return groups, nil
 }
 
-func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) ([]Group, error) {
+// GroupsByCalls find the groups that asssociated with the call given by the query.
+// If success, a map of callID with slice of rule group is returned.
+func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error) {
 	if delegatee == nil {
 		delegatee = s.conn
 	}
-	// ruleGroupCols = []string{
-	// 	fldGroupName,
-	// }
-	// "SELECT `%s` FROM `%s` AS c INNNER JOIN `%s` AS gc ON c.`%s` = g.`%s` "
-	// s.Group(delegatee, GroupQuery{
-	// })
-	return nil, nil
+	rawsql := fmt.Sprintf("SELECT c.`%s`, gc.`%s` FROM `%s` AS c INNNER JOIN `%s` AS gc ON c.`%s` = gc.`%s` ",
+		//Select columns
+		fldCallID, fldCRGRelRuleGroupID,
+		//FROM table
+		tblCall, tblRelCallRuleGrp,
+		// ON Condition
+		fldCallID, fldCRGRelCallID,
+	)
+	wherepart, data := query.whereSQL("c")
+	if len(data) > 0 {
+		rawsql = rawsql + " " + wherepart
+	}
+	rows, err := delegatee.Query(rawsql, data...)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", rawsql)
+		return nil, fmt.Errorf("query error, %v", err)
+	}
+	defer rows.Close()
+	groupUniqueID := map[int64]struct{}{}
+	callRuleGrps := map[int64][]int64{}
+	for rows.Next() {
+		var (
+			callID      int64
+			ruleGroupID int64
+		)
+		err := rows.Scan(&callID, &ruleGroupID)
+		if err != nil {
+			return nil, fmt.Errorf("scan error, %v", err)
+		}
+		ruleGrps := callRuleGrps[callID]
+		ruleGrps = append(ruleGrps, ruleGroupID)
+		callRuleGrps[callID] = ruleGrps
+		groupUniqueID[ruleGroupID] = struct{}{}
+	}
+	gq := GroupQuery{}
+	for id := range groupUniqueID {
+		gq.ID = append(gq.ID, id)
+	}
+	// TODO: do not relied on another function.
+	// potential bug that can be trigger by time delay between querying relation & group table
+	groups, err := s.Group(delegatee, gq)
+	if err != nil {
+		return nil, fmt.Errorf("query group failed, %v", err)
+	}
+	ruleGrpDict := map[int64]Group{}
+	for _, ruleGrp := range groups {
+		ruleGrpDict[ruleGrp.ID] = ruleGrp
+	}
+	result := map[int64][]Group{}
+	for call, groups := range callRuleGrps {
+		ruleGrps := []Group{}
+		for _, id := range groups {
+			grp, found := ruleGrpDict[id]
+			if !found {
+				return nil, fmt.Errorf("relation table's call %d group %d is incorrect, may have corruption data", call, id)
+			}
+			ruleGrps = append(ruleGrps, grp)
+		}
+		result[call] = ruleGrps
+	}
+	return result, nil
 }
