@@ -591,7 +591,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	tagLev := int(LevTag)
 	if len(levels) != tagLev {
 		logger.Error.Printf("get less relation table. %d\n", tagLev)
-		return nil, err
+		return nil, errors.New("get less relation table.")
 	}
 
 	numOfSens := len(levels[LevSentence])
