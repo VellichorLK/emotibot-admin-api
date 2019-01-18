@@ -35,6 +35,26 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("call '%d' can not be found", callID)
 	}
 	c := calls[0]
+	c.Status = model.CallStatusRunning
+	err = UpdateCall(&c)
+	if err != nil {
+		return fmt.Errorf("call update status failed, %v", err)
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return fmt.Errorf("can not begin a transaction")
+	}
+	defer func() {
+		if err != nil {
+			c.Status = model.CallStatusFailed
+			updateErr := UpdateCall(&c)
+			if updateErr != nil {
+				logger.Error.Println("update call critical failed, ", updateErr)
+			}
+			tx.Rollback()
+		}
+	}()
 	var (
 		staffChannels    []vChannel
 		customerChannels []vChannel

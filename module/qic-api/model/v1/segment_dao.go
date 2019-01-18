@@ -22,13 +22,14 @@ func NewSegmentDao(db DBLike) *SegmentDao {
 // It is the same thing but in different structure. Which used in different context.
 //	Emotions is a virutal field for the relation with RealSegmentEmotion.
 type RealSegment struct {
-	ID        int64
-	CallID    int64
-	StartTime float64
-	EndTime   float64
-	Channel   int8
-	Text      string
-	Emotions  []RealSegmentEmotion
+	ID         int64
+	CallID     int64
+	StartTime  float64
+	EndTime    float64
+	CreateTime int64
+	Channel    int8
+	Text       string
+	Emotions   []RealSegmentEmotion
 }
 
 // RealSegmentEmotion is the one to one mapping of the SegEmotionScore table schema.
@@ -111,7 +112,7 @@ func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]R
 	}
 	segCols := []string{
 		fldSegmentCallID, fldSegmentStartTime, fldSegmentEndTime,
-		fldSegmentChannel, fldSegmentText,
+		fldSegmentCreateTime, fldSegmentChannel, fldSegmentText,
 	}
 	rawsql := "INSERT INTO `" + tblSegment + "` (`" + strings.Join(segCols, "`, `") + "`)  VALUE (?" + strings.Repeat(",?", len(segCols)-1) + ")"
 	stmt, err := delegatee.Prepare(rawsql)
@@ -132,7 +133,9 @@ func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]R
 	defer emotionStmt.Close()
 	var hasIncreID = true
 	for _, s := range segments {
-		result, err := stmt.Exec(s.CallID, s.StartTime, s.EndTime, s.Channel, s.Text)
+		result, err := stmt.Exec(
+			s.CallID, s.StartTime, s.EndTime,
+			s.CreateTime, s.Channel, s.Text)
 		if err != nil {
 			return nil, fmt.Errorf("segment statement execute failed, %v", err)
 		}
