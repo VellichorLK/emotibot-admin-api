@@ -80,6 +80,8 @@ type RuleMatchedResult struct {
 //RuleGrpCredit is the result of the segments
 type RuleGrpCredit struct {
 	ID    uint64
+	UUID  string
+	Name  string
 	Plus  int
 	Score int
 	Rules []*RuleCredit
@@ -88,6 +90,8 @@ type RuleGrpCredit struct {
 //RuleCredit stores the rule level result
 type RuleCredit struct {
 	ID    uint64
+	UUID  string
+	Name  string
 	Valid bool
 	Score int
 	CFs   []*ConversationFlowCredit
@@ -96,6 +100,8 @@ type RuleCredit struct {
 //ConversationFlowCredit stores the conversation flow level result
 type ConversationFlowCredit struct {
 	ID           uint64
+	UUID         string
+	Name         string
 	Valid        bool
 	SentenceGrps []*SentenceGrpCredit
 }
@@ -103,20 +109,27 @@ type ConversationFlowCredit struct {
 //SentenceGrpCredit stores the sentence group level result
 type SentenceGrpCredit struct {
 	ID        uint64
+	UUID      string
+	Name      string
 	Valid     bool
 	Sentences []*SentenceCredit
 }
 
 //SentenceCredit stores the matched sentence and its relative tag information
 type SentenceCredit struct {
-	ID    uint64
-	Valid bool
-	Tags  []*TagCredit
+	ID       uint64
+	UUID     string
+	Name     string
+	Valid    bool
+	Segments []int
+	Tags     []*TagCredit
 }
 
 //TagCredit stores the matched tag information and the segment id
 type TagCredit struct {
 	ID         uint64
+	UUID       string
+	Name       string
 	Score      int
 	Match      string
 	MatchTxt   string
