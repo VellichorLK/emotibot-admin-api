@@ -3,8 +3,6 @@ package model
 import (
 	"fmt"
 	"strings"
-
-	_ "emotibot.com/emotigo/pkg/logger"
 )
 
 type ConversationFlow struct {
@@ -32,6 +30,7 @@ type ConversationFlowFilter struct {
 	Name       string
 	Enterprise string
 	IsDelete   int8
+	SGUUID     []string
 }
 
 type ConversationFlowDao interface {
@@ -49,11 +48,10 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		fldUUID,
 		fldName,
 		fldEnterprise,
-		CRMin,
+		fldMin,
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
-		fldMin,
 	}
 	fieldStr := strings.Join(fields, ", ")
 
@@ -65,7 +63,6 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		flow.Expression,
 		flow.CreateTime,
 		flow.UpdateTime,
-		flow.Min,
 	}
 	valueStr := "?"
 	valueStr = fmt.Sprintf("%s %s", valueStr, strings.Repeat(", ?", len(values)-1))
@@ -100,7 +97,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 
 		for idx := range flow.SentenceGroups[1:] {
 			valueStr += ", (?, ?)"
-			values = append(values, flowID, flow.SentenceGroups[idx].ID)
+			values = append(values, flowID, flow.SentenceGroups[idx+1].ID)
 		}
 
 		insertStr = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tblRelCFSG, fieldStr, valueStr)
@@ -159,11 +156,24 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		conditionStr = ""
 	}
 
+	sgCondition := fmt.Sprintf("LEFT JOIN %s", tblSetnenceGroup)
+	if len(filter.SGUUID) > 0 {
+		sgCondition = fmt.Sprintf(
+			"INNER JOIN (SELECT * FROM %s WHERE %s IN (?%s))",
+			tblSetnenceGroup,
+			fldUUID,
+			strings.Repeat(", ?", len(filter.SGUUID)-1),
+		)
+		for _, sgUUID := range filter.SGUUID {
+			values = append(values, sgUUID)
+		}
+	}
+
 	queryStr = fmt.Sprintf(
 		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgUUID, sg.%s as sgName
 		 FROM (SELECT * FROM %s %s) as cf
 		 LEFT JOIN %s as rcfsg ON cf.%s = rcfsg.%s
-		 LEFT JOIN %s as sg ON rcfsg.%s = sg.%s`,
+		 %s as sg ON rcfsg.%s = sg.%s`,
 		fldID,
 		fldUUID,
 		fldName,
@@ -172,7 +182,6 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
-		fldMin,
 		fldUUID,
 		fldName,
 		tblConversationflow,
@@ -180,7 +189,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		tblRelCFSG,
 		fldID,
 		RCFSGCFID,
-		tblSetnenceGroup,
+		sgCondition,
 		RCFSGSGID,
 		fldID,
 	)
@@ -218,9 +227,10 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 	var cFlow *ConversationFlow // current conversatin flow
 	for rows.Next() {
 		flow := ConversationFlow{}
-		sg := SimpleSentenceGroup{}
+		var sgUUID *string
+		var sgName *string
 
-		rows.Scan(
+		err = rows.Scan(
 			&flow.ID,
 			&flow.UUID,
 			&flow.Name,
@@ -229,10 +239,14 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			&flow.Expression,
 			&flow.CreateTime,
 			&flow.UpdateTime,
-			&flow.Min,
-			&sg.UUID,
-			&sg.Name,
+			&sgUUID,
+			&sgName,
 		)
+
+		if err != nil {
+			err = fmt.Errorf("error while scan flow in dao.GetBy, err: %s", err.Error())
+			return
+		}
 
 		if cFlow == nil || cFlow.UUID != flow.UUID {
 			if cFlow != nil {
@@ -240,7 +254,11 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			}
 			cFlow = &flow
 		}
-		if sg.UUID != "" && sg.Name != "" {
+		if sgUUID != nil && sgName != nil {
+			sg := SimpleSentenceGroup{
+				UUID: *sgUUID,
+				Name: *sgName,
+			}
 			cFlow.SentenceGroups = append(cFlow.SentenceGroups, sg)
 		}
 	}
