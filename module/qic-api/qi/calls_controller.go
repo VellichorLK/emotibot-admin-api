@@ -67,7 +67,7 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 
 	id, err := NewCall(req)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call from failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call failed, %v", err))
 		return
 	}
 	resp := response{CallID: id}

@@ -221,8 +221,10 @@ func NewCall(c *NewCallReq) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("set rule group failed, %v", err)
 	}
-	err = dbLike.Commit(tx)
-	return calls[0].ID, err
+	if err = tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit new call transaction failed, %v", err)
+	}
+	return calls[0].ID, nil
 }
 
 //UpdateCall update the call data source
