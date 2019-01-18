@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -34,6 +35,31 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.WriteJSON(w, resp)
+}
+
+func HandleGetTag(w http.ResponseWriter, r *http.Request) {
+	tagID, found := mux.Vars(r)["tag_id"]
+	if !found {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "require path variable")
+		return
+	}
+	t, err := strconv.ParseUint(tagID, 10, 64)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "path var "+tagID+" is not valid number, "+err.Error())
+		return
+	}
+	tags, err := TagsByQuery(model.TagQuery{
+		ID: []uint64{t},
+	})
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("tag by query failed, %v", err))
+		return
+	}
+	if len(tags) == 0 {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("tag id %d is exist", t))
+	}
+	tag := tags[0]
+	util.WriteJSON(w, tag)
 }
 
 func HandlePostTags(w http.ResponseWriter, r *http.Request) {

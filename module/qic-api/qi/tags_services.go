@@ -30,14 +30,33 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 			Page:  page,
 		},
 	}
-	result, err := tagDao.Tags(nil, query)
-	if err != nil {
-		return nil, fmt.Errorf("get tag from dao failed, %v", err)
-	}
+
 	counts, err := tagDao.CountTags(nil, query)
 	if err != nil {
 		return nil, fmt.Errorf("get tag count from dao failed, %v", err)
 	}
+	tags, err := TagsByQuery(query)
+	if err != nil {
+		return nil, fmt.Errorf("call tags by query failed, %v", err)
+	}
+	resp = &TagResponse{
+		Paging: general.Paging{
+			Total: int64(counts),
+			Limit: limit,
+			Page:  page,
+		},
+		Data: tags,
+	}
+	return
+}
+
+func TagsByQuery(query model.TagQuery) ([]tag, error) {
+
+	result, err := tagDao.Tags(nil, query)
+	if err != nil {
+		return nil, fmt.Errorf("get tags from dao failed, %v", err)
+	}
+
 	var tags = make([]tag, 0, len(result))
 	for _, t := range result {
 		typ, found := tagTypeDict[t.Typ]
@@ -62,15 +81,7 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 			NegSentences: negSentences,
 		})
 	}
-	resp = &TagResponse{
-		Paging: general.Paging{
-			Total: int64(counts),
-			Limit: limit,
-			Page:  page,
-		},
-		Data: tags,
-	}
-	return
+	return tags, nil
 }
 
 // NewTag create a tag from t.

@@ -43,6 +43,7 @@ func init() {
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
+			util.NewEntryPoint("GET", "tags/{tag_id}", []string{}, HandleGetTag),
 			util.NewEntryPoint("PUT", "tags/{tag_id}", []string{}, HandlePutTags),
 			util.NewEntryPoint("DELETE", "tags/{tag_id}", []string{}, HandleDeleteTag),
 
