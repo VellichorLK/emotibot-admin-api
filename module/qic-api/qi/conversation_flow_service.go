@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -169,6 +170,11 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	flow.UpdateTime = time.Now().Unix()
 
 	updatedFlow, err = conversationFlowDao.Create(flow, tx)
+	if err != nil {
+		return
+	}
+	err = dbLike.Commit(tx)
+
 	if err != nil {
 		return
 	}
