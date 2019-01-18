@@ -79,7 +79,7 @@ const (
 
 //field name in Segment table
 const (
-	fldSegmentID         = "segment_id"
+	fldSegmentID         = "id"
 	fldSegmentCallID     = "call_id"
 	fldSegmentStartTime  = "start_time"
 	fldSegmentEndTime    = "end_time"
@@ -89,7 +89,7 @@ const (
 )
 
 const (
-	fldSegEmoID        = "seg_emotion_id"
+	fldSegEmoID        = "id"
 	fldSegEmoSegmentID = "segment_id"
 	fldSegEmoType      = "type"
 	fldSegEmoScore     = "score"
