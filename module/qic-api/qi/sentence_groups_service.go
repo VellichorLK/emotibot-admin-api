@@ -17,7 +17,7 @@ var (
 var sentenceGroupDao model.SentenceGroupsSqlDao = &model.SentenceGroupsSqlDaoImpl{}
 
 func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences []model.SimpleSentence, err error) {
-	simpleSentences = {}model.SimpleSentence{}
+	simpleSentences = []model.SimpleSentence{}
 	if len(group.Sentences) == 0 {
 		return
 	}
