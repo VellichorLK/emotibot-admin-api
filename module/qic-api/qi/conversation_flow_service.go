@@ -16,36 +16,39 @@ var (
 
 var conversationFlowDao model.ConversationFlowDao = &model.ConversationFlowSqlDaoImpl{}
 
-func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) (groups []model.SimpleSentenceGroup, err error) {
-	uuids := make([]string, len(flow.SentenceGroups))
-	for idx, _ := range flow.SentenceGroups {
-		uuids[idx] = flow.SentenceGroups[idx].UUID
-	}
-
-	var isDelete int8 = int8(0)
-	filter := &model.SentenceGroupFilter{
-		Enterprise: flow.Enterprise,
-		UUID:       uuids,
-		IsDelete:   isDelete,
-		Role:       -1,
-		Position:   -1,
-	}
-
-	sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
-	if err != nil {
-		return
-	}
-
-	groups = make([]model.SimpleSentenceGroup, len(sentenceGroups))
-	for idx := range sentenceGroups {
-		simpleGroup := model.SimpleSentenceGroup{
-			ID:   sentenceGroups[idx].ID,
-			UUID: sentenceGroups[idx].UUID,
-			Name: sentenceGroups[idx].Name,
+func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) ([]model.SimpleSentenceGroup, error) {
+	groups := []model.SimpleSentenceGroup{}
+	var err error
+	if len(flow.SentenceGroups) > 0 {
+		uuids := make([]string, len(flow.SentenceGroups))
+		for idx, _ := range flow.SentenceGroups {
+			uuids[idx] = flow.SentenceGroups[idx].UUID
 		}
-		groups[idx] = simpleGroup
+
+		var isDelete int8 = int8(0)
+		filter := &model.SentenceGroupFilter{
+			Enterprise: flow.Enterprise,
+			UUID:       uuids,
+			IsDelete:   isDelete,
+			Role:       -1,
+			Position:   -1,
+		}
+
+		sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
+		if err != nil {
+			return groups, err
+		}
+		groups = make([]model.SimpleSentenceGroup, len(sentenceGroups))
+		for idx := range sentenceGroups {
+			simpleGroup := model.SimpleSentenceGroup{
+				ID:   sentenceGroups[idx].ID,
+				UUID: sentenceGroups[idx].UUID,
+				Name: sentenceGroups[idx].Name,
+			}
+			groups[idx] = simpleGroup
+		}
 	}
-	return
+	return groups, err
 }
 
 func CreateConversationFlow(flow *model.ConversationFlow) (createdFlow *model.ConversationFlow, err error) {
