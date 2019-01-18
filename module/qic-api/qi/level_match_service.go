@@ -623,7 +623,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 		return nil, fmt.Errorf("tag match failed, %v", err)
 	}
 	if len(tagMatchDat) != numOfLines {
-		return nil, fmt.Errorf("get less tag match sentence %d with %d", tagMatchDat, numOfLines)
+		return nil, fmt.Errorf("get less tag match sentence %d with %d", len(tagMatchDat), numOfLines)
 	}
 	//--------------------------------------------------------------------------
 	//do the sentence check
