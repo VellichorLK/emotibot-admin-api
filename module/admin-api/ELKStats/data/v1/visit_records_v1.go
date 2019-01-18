@@ -109,21 +109,23 @@ type VisitRecordsDataBase struct {
 	LogTime   string  `json:"log_time"`
 	Emotion   string  `json:"emotion"`
 	QType     string  `json:"qtype"`
-	IsMarked  bool    `json:"isMarked"`
-	IsIgnored bool    `json:"isIgnored"`
 }
 
 type VisitRecordsData struct {
 	VisitRecordsDataBase
-	UniqueID string `json:"id"`
-	Answer   string `json:"answer"`
+	IsMarked  bool   `json:"is_marked"`
+	IsIgnored bool   `json:"is_ignored"`
+	UniqueID  string `json:"id"`
+	Answer    string `json:"answer"`
 }
 
 type VisitRecordsRawData struct {
 	VisitRecordsDataBase
-	Source   string        `json:"source"`
-	UniqueID string        `json:"unique_id"`
-	Answer   []data.Answer `json:"answer"`
+	IsMarked  bool          `json:"isMarked"`
+	IsIgnored bool          `json:"isIgnored"`
+	Source    string        `json:"source"`
+	UniqueID  string        `json:"unique_id"`
+	Answer    []data.Answer `json:"answer"`
 }
 
 type VisitRecordsHitResult struct {

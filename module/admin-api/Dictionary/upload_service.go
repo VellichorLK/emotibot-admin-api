@@ -531,6 +531,8 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		}
 	}
 
+	classWordbank = removeDuplicateInClassMap(classWordbank)
+
 	// log for debug
 	logger.Trace.Println("classReadOnly:")
 	for path, readOnly := range classReadOnly {
@@ -543,7 +545,6 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 			logger.Trace.Printf("\t\t%+v\n", *wb)
 		}
 	}
-
 	root, err = createV3ObjsFromParseContent(classReadOnly, classWordbank)
 	return
 }
@@ -682,6 +683,21 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 	}
 
 	return root, nil
+}
+
+func appendWithNoDuplicate(input []string, appendInput []string) []string {
+	existedWord := map[string]bool{}
+	for _, word := range input {
+		existedWord[word] = true
+	}
+	for _, word := range appendInput {
+		existedWord[word] = true
+	}
+	ret := make([]string, 0, len(input)+len(appendInput))
+	for key := range existedWord {
+		ret = append(ret, key)
+	}
+	return ret
 }
 
 func SaveWordbankV3Rows(appid string, root *WordBankClassV3) error {
@@ -924,4 +940,27 @@ func UpdateWordbankV3(appid string, id int, wb *WordBankV3) error {
 
 func MoveWordbankV3(appid string, id, cid int) error {
 	return moveWordbankV3(appid, id, cid)
+}
+
+func removeDuplicateInClassMap(classWordbank map[string][]*WordBankV3) map[string][]*WordBankV3 {
+	ret := map[string][]*WordBankV3{}
+	for path, wordbanks := range classWordbank {
+		existedWordbank := map[string]*WordBankV3{}
+
+		for _, wordbank := range wordbanks {
+			// if exist a same name wordbank in the class, merge the similar words.
+			if existed, ok := existedWordbank[wordbank.Name]; ok {
+				existed.SimilarWords = appendWithNoDuplicate(existed.SimilarWords, wordbank.SimilarWords)
+				continue
+			}
+			existedWordbank[wordbank.Name] = wordbank
+		}
+
+		newWordbanks := make([]*WordBankV3, 0, len(wordbanks))
+		for _, wordbank := range existedWordbank {
+			newWordbanks = append(newWordbanks, wordbank)
+		}
+		ret[path] = newWordbanks
+	}
+	return ret
 }

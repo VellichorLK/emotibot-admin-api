@@ -171,7 +171,7 @@ func addApp(appid, userid, name string) error {
 		(UserId, Count, Version, CreatedTime, PreductName, ApiKey, Status)
 		VALUES
 		(?, 0, 0, CURRENT_TIMESTAMP(), ?, ?, 1)`
-	_, err := mySQL.Exec(queryStr, userid, name, appid)
+	_, err := mySQL.Exec(queryStr, userid, appid, appid)
 	if err != nil {
 		return err
 	}
