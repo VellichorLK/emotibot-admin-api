@@ -293,7 +293,11 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	return calls, err
 }
 
-func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []Group) ([]int64, error) {
+// SetRuleGroupRelations insert relations between input call and rulegroups.
+// id is the created relation table's id group
+// err, if LastInsertId is not support for current driver, it will return ErrAutoIDDisabled.
+// Which user need to seem id as unreliable source and re-query again.
+func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []Group) (id []int64, err error) {
 	if delegatee == nil {
 		delegatee = c.db
 	}

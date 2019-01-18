@@ -216,7 +216,9 @@ func TestI11CallDaoSetRuleGroupRelations(t *testing.T) {
 		db: db,
 	}
 	set := getCallsSeed(t)
-	idGroup, err := dao.SetRuleGroupRelations(nil, set[0], []uint64{1, 2})
+	idGroup, err := dao.SetRuleGroupRelations(nil, set[0], []Group{
+		Group{ID: 1}, Group{ID: 2},
+	})
 	if err != nil {
 		t.Fatal("expect set releation to be ok, but got ", err)
 	}

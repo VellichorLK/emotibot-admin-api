@@ -130,7 +130,7 @@ type TagCredit struct {
 	Match      string
 	MatchTxt   string
 	SegmentIdx int
-	SegmentID  uint64 //for controller usage
+	SegmentID  int64 //for controller usage
 }
 
 //FlowExpressionToNode converts the conversation flow expression to node

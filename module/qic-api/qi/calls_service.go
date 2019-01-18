@@ -217,9 +217,9 @@ func NewCall(c *NewCallReq) (int64, error) {
 		return 0, fmt.Errorf("query group failed, %v", err)
 	}
 
-	callDao.SetRuleGroupRelations(tx, call, )
-	for := range calls {
-
+	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
+	if err != nil {
+		return 0, fmt.Errorf("set rule group failed, %v", err)
 	}
 	err = dbLike.Commit(tx)
 	return calls[0].ID, err

@@ -117,14 +117,14 @@ func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 					duplicateSegIDMap := make(map[uint64]bool)
 
 					for _, tag := range sen.Tags {
-						s := &model.SegmentMatch{SegID: tag.SegmentID, TagID: tag.ID, Score: tag.Score,
+						s := &model.SegmentMatch{SegID: uint64(tag.SegmentID), TagID: tag.ID, Score: tag.Score,
 							Match: tag.Match, MatchedText: tag.MatchTxt, CreateTime: now}
 						_, err = creditDao.InsertSegmentMatch(tx, s)
 						if err != nil {
 							logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
 							return err
 						}
-						duplicateSegIDMap[tag.SegmentID] = true
+						duplicateSegIDMap[uint64(tag.SegmentID)] = true
 					}
 
 					if sen.Valid {

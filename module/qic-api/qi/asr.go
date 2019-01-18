@@ -139,7 +139,7 @@ func ASRWorkFlow(output []byte) error {
 		tx.Rollback()
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
-	logger.Info.Println("finish asr flow for %v", resp.CallID)
+	logger.Info.Println("finish asr flow for ", resp.CallID)
 	return nil
 }
 
