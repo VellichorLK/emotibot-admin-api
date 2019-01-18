@@ -36,7 +36,7 @@ func getAuditList(enterprise []string, appid []string, userid *string, module []
 	}
 
 	if userid != nil {
-		conditions = append(conditions, "userid = ?")
+		conditions = append(conditions, "user_id = ?")
 		args = append(args, *userid)
 	}
 

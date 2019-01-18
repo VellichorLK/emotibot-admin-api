@@ -5,13 +5,21 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // GetRobotAuditRecord will get audit record of specific appid
 func GetRobotAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
+	// If query userid is real username, change it to userid
 	if filter.UserID != "" {
-		userIDPtr = &filter.UserID
+		userid, err := auth.GetUserID(filter.UserID)
+		if err == nil {
+			logger.Trace.Printf("Change username to id: %s -> %s\n", filter.UserID, userid)
+			userIDPtr = &userid
+		} else {
+			userIDPtr = &filter.UserID
+		}
 	}
 	modulePtr, opPtr := getModuleOpPtr(filter.Filter)
 	logs, count, err := getAuditList(nil, filter.RobotID, userIDPtr, modulePtr, opPtr, filter.Start, filter.End, filter.Page, filter.ListPerPage)
@@ -32,8 +40,15 @@ func GetRobotAuditRecord(filter *AuditInput, locale string) (*AuditResult, Admin
 // GetEnterpriseAuditRecord will get audit record of specific enterprise
 func GetEnterpriseAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
+	// If query userid is real username, change it to userid
 	if filter.UserID != "" {
-		userIDPtr = &filter.UserID
+		userid, err := auth.GetUserID(filter.UserID)
+		if err == nil {
+			logger.Trace.Printf("Change username to id: %s -> %s\n", filter.UserID, userid)
+			userIDPtr = &userid
+		} else {
+			userIDPtr = &filter.UserID
+		}
 	}
 	modulePtr, opPtr := getModuleOpPtr(filter.Filter)
 	// only search for empty appid record
@@ -55,8 +70,15 @@ func GetEnterpriseAuditRecord(filter *AuditInput, locale string) (*AuditResult, 
 // GetSystemAuditRecord will get audit record of specific enterprise
 func GetSystemAuditRecord(filter *AuditInput, locale string) (*AuditResult, AdminErrors.AdminError) {
 	var userIDPtr *string
+	// If query userid is real username, change it to userid
 	if filter.UserID != "" {
-		userIDPtr = &filter.UserID
+		userid, err := auth.GetUserID(filter.UserID)
+		if err == nil {
+			logger.Trace.Printf("Change username to id: %s -> %s\n", filter.UserID, userid)
+			userIDPtr = &userid
+		} else {
+			userIDPtr = &filter.UserID
+		}
 	}
 	modulePtr, opPtr := getModuleOpPtr(filter.Filter)
 	logs, count, err := getAuditList([]string{""}, []string{""}, userIDPtr, modulePtr, opPtr, filter.Start, filter.End, filter.Page, filter.ListPerPage)
