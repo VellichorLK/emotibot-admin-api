@@ -76,6 +76,9 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),
 			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
+
+			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
+			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -126,6 +129,9 @@ func init() {
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
+				relationDao = &model.RelationSQLDao{}
+				creditDao = &model.CreditSQLDao{}
+				trainer = predictor
 			},
 		},
 	}
