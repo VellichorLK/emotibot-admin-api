@@ -204,13 +204,23 @@ func NewCall(c *NewCallReq) (int64, error) {
 		TaskID:         createdTask.ID,
 	}
 
-	calls, err := callDao.NewCalls(nil, []model.Call{*call})
+	calls, err := callDao.NewCalls(tx, []model.Call{*call})
 	if err == model.ErrAutoIDDisabled {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
 	}
+	groups, err := serviceDAO.Group(tx, model.GroupQuery{
+		EnterpriseID: &c.Enterprise,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("query group failed, %v", err)
+	}
 
+	callDao.SetRuleGroupRelations(tx, call, )
+	for := range calls {
+
+	}
 	err = dbLike.Commit(tx)
 	return calls[0].ID, err
 }

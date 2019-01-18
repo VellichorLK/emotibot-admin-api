@@ -293,7 +293,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 	return calls, err
 }
 
-func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []uint64) ([]int64, error) {
+func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []Group) ([]int64, error) {
 	if delegatee == nil {
 		delegatee = c.db
 	}
@@ -307,7 +307,7 @@ func (c *CallSQLDao) SetRuleGroupRelations(delegatee SqlLike, call Call, rulegro
 	idGroup := make([]int64, 0, len(rulegroups))
 	hasSupportID := true
 	for _, r := range rulegroups {
-		result, err := stmt.Exec(call.ID, r)
+		result, err := stmt.Exec(call.ID, r.ID)
 		if err != nil {
 			return nil, fmt.Errorf("create " + tblRelCallRuleGrp + " failed")
 		}
