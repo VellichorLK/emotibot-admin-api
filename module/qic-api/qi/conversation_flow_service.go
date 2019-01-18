@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	_ "emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -114,6 +113,27 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	}
 	defer dbLike.ClearTransition(tx)
 
+	ruleFilter := &model.ConversationRuleFilter{
+		CFUUID: []string{
+			id,
+		},
+		Enterprise: enterprise,
+	}
+	rules, err := conversationRuleDao.GetBy(ruleFilter, tx)
+	if err != nil {
+		return
+	}
+
+	ruleFilter.CFUUID = []string{}
+	for _, rule := range rules {
+		ruleFilter.UUID = append(ruleFilter.UUID, rule.UUID)
+	}
+
+	rules, err = conversationRuleDao.GetBy(ruleFilter, tx)
+	if err != nil {
+		return
+	}
+
 	filter := &model.ConversationFlowFilter{
 		UUID: []string{
 			id,
@@ -152,7 +172,15 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	if err != nil {
 		return
 	}
-	dbLike.Commit(tx)
+
+	// update conversation rule which reference this flow
+	for idx := range rules {
+		rule := &rules[idx]
+		_, err = UpdateConversationRule(rule.UUID, rule)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
