@@ -111,11 +111,6 @@ func ASRWorkFlow(output []byte) error {
 		segments = append(segments, s)
 	}
 
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return fmt.Errorf("can not begin a transaction")
-	}
-
 	segments, err = segmentDao.NewSegments(tx, segments)
 	if err != nil {
 		tx.Rollback()
