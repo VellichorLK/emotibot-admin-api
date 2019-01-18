@@ -93,8 +93,6 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (
 	valueStr := fmt.Sprintf("?%s", strings.Repeat(", ?", len(fileds)-1))
 	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblSetnenceGroup, fieldStr, valueStr)
 
-	fmt.Printf("insertStr: %s\n", insertStr)
-
 	result, err := sql.Exec(insertStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while insert sentence group in dao.Create, err: %s", err.Error())
@@ -197,7 +195,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		LEFT JOIN %s as s ON rsgs.%s = s.%s`,
 		fldID,
@@ -210,6 +208,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		fldUpdateTime,
 		fldUUID,
 		fldName,
+		fldCategoryID,
 		tblSetnenceGroup,
 		conditionStr,
 		tblRelSGS,
@@ -269,6 +268,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 		group := SentenceGroup{}
 		var sentenceUUID *string
 		var sentenceName *string
+		var sentenceCID *uint64
 
 		err = rows.Scan(
 			&group.ID,
@@ -281,6 +281,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 			&group.UpdateTime,
 			&sentenceUUID,
 			&sentenceName,
+			&sentenceCID,
 		)
 
 		if err != nil {
@@ -296,10 +297,11 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 			cGroup.Sentences = []SimpleSentence{}
 		}
 
-		if sentenceUUID != nil && sentenceName != nil {
+		if sentenceUUID != nil && sentenceName != nil && sentenceCID != nil {
 			simpleSentence := SimpleSentence{
-				UUID: *sentenceUUID,
-				Name: *sentenceName,
+				UUID:       *sentenceUUID,
+				Name:       *sentenceName,
+				CategoryID: *sentenceCID,
 			}
 			cGroup.Sentences = append(cGroup.Sentences, simpleSentence)
 		}
