@@ -148,11 +148,11 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 				LogTime:   rawRecord.LogTime,
 				Emotion:   rawRecord.Emotion,
 				QType:     rawRecord.QType,
-				IsMarked:  rawRecord.IsMarked,
-				IsIgnored: rawRecord.IsIgnored,
 			},
-			UniqueID: rawRecord.UniqueID,
-			Answer:   strings.Join(answers, ", "),
+			IsMarked:  rawRecord.IsMarked,
+			IsIgnored: rawRecord.IsIgnored,
+			UniqueID:  rawRecord.UniqueID,
+			Answer:    strings.Join(answers, ", "),
 		}
 		r.Hits = append(r.Hits, record)
 	}
