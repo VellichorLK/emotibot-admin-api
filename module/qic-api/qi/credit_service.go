@@ -18,6 +18,7 @@ var (
 	levCFTyp      levelType = 20
 	levSenGrpTyp  levelType = 30
 	levSenTyp     levelType = 40
+	levSegTyp     levelType = 50
 )
 
 var unactivate = -1
@@ -108,11 +109,12 @@ func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 						s.Valid = matched
 					}
 
-					_, err := creditDao.InsertCredit(tx, s)
+					parentSen, err := creditDao.InsertCredit(tx, s)
 					if err != nil {
 						logger.Error.Printf("insert sentence credit %+v failed. %s\n", s, err)
 						return err
 					}
+					duplicateSegIDMap := make(map[uint64]bool)
 
 					for _, tag := range sen.Tags {
 						s := &model.SegmentMatch{SegID: tag.SegmentID, TagID: tag.ID, Score: tag.Score,
@@ -121,6 +123,20 @@ func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 						if err != nil {
 							logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
 							return err
+						}
+						duplicateSegIDMap[tag.SegmentID] = true
+					}
+
+					if sen.Valid {
+						for segID := range duplicateSegIDMap {
+							s := &model.SimpleCredit{CallID: call, Type: int(levSegTyp), ParentID: uint64(parentSen),
+								OrgID: segID, Score: 0, CreateTime: now, Revise: unactivate, Valid: matched}
+
+							_, err = creditDao.InsertCredit(tx, s)
+							if err != nil {
+								logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+								return err
+							}
 						}
 					}
 				}
