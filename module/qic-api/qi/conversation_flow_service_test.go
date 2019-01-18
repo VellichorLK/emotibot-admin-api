@@ -8,6 +8,14 @@ import (
 var mockConversationFlow1 model.ConversationFlow = model.ConversationFlow{
 	ID:   1,
 	Name: "flow1",
+	SentenceGroups: []model.SimpleSentenceGroup{
+		model.SimpleSentenceGroup{
+			UUID: "1",
+		},
+		model.SimpleSentenceGroup{
+			UUID: "2",
+		},
+	},
 }
 
 var mockConversationFlow2 model.ConversationFlow = model.ConversationFlow{
