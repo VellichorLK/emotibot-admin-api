@@ -699,7 +699,7 @@ func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int
 	if delegatee == nil {
 		delegatee = s.conn
 	}
-	rawsql := fmt.Sprintf("SELECT c.`%s`, gc.`%s` FROM `%s` AS c INNNER JOIN `%s` AS gc ON c.`%s` = gc.`%s` ",
+	rawsql := fmt.Sprintf("SELECT c.`%s`, gc.`%s` FROM `%s` AS c INNER JOIN `%s` AS gc ON c.`%s` = gc.`%s` ",
 		//Select columns
 		fldCallID, fldCRGRelRuleGroupID,
 		//FROM table
