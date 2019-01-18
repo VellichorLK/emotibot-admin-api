@@ -180,8 +180,8 @@ func TestTags(t *testing.T) {
 	}
 	tagDao = &testDao{
 		output: []interface{}{
-			expectTags,
 			uint(10),
+			expectTags,
 		},
 	}
 	resp, err := Tags("csbot", 1, 1)
