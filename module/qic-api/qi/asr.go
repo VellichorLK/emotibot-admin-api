@@ -100,10 +100,32 @@ func ASRWorkFlow(output []byte) error {
 	sort.SliceStable(segments, func(i, j int) bool {
 		return segments[i].StartTime < segments[j].StartTime
 	})
-	// GetGroupsByFilter()
-	// serviceDAO.GetGroupsBy()
-	// RuleGroupCriteria()
+	segWithSp := make([]*SegmentWithSpeaker, len(segments))
+	for _, s := range segments {
+		ws := &SegmentWithSpeaker{
+			RealSegment: s,
+			Speaker:     1,
+		}
+		segWithSp = append(segWithSp, ws)
+	}
+	callGroups, err := serviceDAO.GroupsByCalls(tx, model.CallQuery{ID: []int64{c.ID}})
+	if err != nil {
+		return fmt.Errorf("get groups by call failed, %v", err)
+	}
+	groups := callGroups[c.ID]
+	_ = groups
+	// for _, grp := range groups {
+
+	// 	// credit, err := RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
+
+	// }
+
 	return nil
+}
+
+type SegmentWithSpeaker struct {
+	model.RealSegment
+	Speaker int
 }
 
 // ASRResponse

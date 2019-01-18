@@ -29,13 +29,6 @@ type MatchedData struct {
 	lock    sync.Mutex
 }
 
-//ASRSegment is asr sentence structure
-type ASRSegment struct {
-	//ID       uint64
-	Sentence string
-	Speaker  int
-}
-
 //SenGroupCriteria is SentenceGroup matching criteria
 type SenGroupCriteria struct {
 	ID         uint64
@@ -115,9 +108,11 @@ type SentenceCredit struct {
 
 //TagCredit stores the matched tag information and the segment id
 type TagCredit struct {
-	ID         uint64
-	Score      int
-	Match      string
+	ID    uint64
+	Score int
+	// Match is the keyword that segment matched.
+	Match string
+	// MatchTxt is the segment text that matched with the Match.
 	MatchTxt   string
 	SegmentIdx int
 	SegmentID  uint64 //for controller usage
@@ -347,7 +342,7 @@ func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[ui
 //semgnets is the segments data
 //return value: the sentence group id which is meet by which segment index
 func SentenceGroupMatch(matchedSen map[uint64][]int,
-	c map[uint64]*SenGroupCriteria, segments []*ASRSegment) (map[uint64][]int, error) {
+	c map[uint64]*SenGroupCriteria, segments []*SegmentWithSpeaker) (map[uint64][]int, error) {
 	resp := make(map[uint64][]int, len(c))
 
 	numOfSegs := len(segments)
@@ -558,9 +553,12 @@ func RuleMatch(cfMatchID map[uint64]bool, criteria map[uint64]*RuleCriteria) (ma
 	return resp, totalScore, nil
 }
 
-//RuleGroupCriteria gives the result of the criteria used to the group
-//the parameter timeout is used to wait for cu module result
-func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Duration) (*RuleGrpCredit, error) {
+// RuleGroupCriteria gives the result of the criteria used to the group
+// ruleGroup is the id of the rule group to validate.
+// segments must be sorted by time ascended.
+// timeout is used to wait for cu module result.
+// if success, a RuleGrpCredit is returned.
+func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout time.Duration) (*RuleGrpCredit, error) {
 	numOfLines := len(segments)
 	if numOfLines == 0 {
 		return nil, ErrNoArgument
@@ -597,7 +595,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*ASRSegment, timeout time.Du
 	lines := make([]string, 0, numOfLines)
 	for _, v := range segments {
 		if v != nil {
-			lines = append(lines, v.Sentence)
+			lines = append(lines, v.Text)
 		}
 	}
 
