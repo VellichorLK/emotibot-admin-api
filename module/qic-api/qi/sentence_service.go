@@ -2,7 +2,6 @@ package qi
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"time"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
@@ -112,35 +111,26 @@ func getSentences(q *model.SentenceQuery) ([]*DataSentence, error) {
 		data[i].Tags = make([]*DataTag, 0)
 		for _, tagID := range sentences[i].TagIDs {
 			if tag, ok := tagsIDMap[tagID]; ok {
-				dataTag := &DataTag{UUID: tag.UUID, Name: tag.Name}
-				dataTag.PosSentence = make([]string, 0)
-				dataTag.NegSentence = make([]string, 0)
-				switch tag.Typ {
-				case 1:
-					dataTag.Type = "keyword"
-				case 2:
-					dataTag.Type = "dialogue_act"
-				case 3:
-					dataTag.Type = "user_response"
-				default:
-					dataTag.Type = "logic"
-					logger.Warn.Printf("tag %d has unknow type %d\n", tag.ID, tag.Typ)
-				}
+				dataTag := &DataTag{UUID: tag.UUID, Name: tag.Name, Type: tagTypeDict[tag.Typ]}
+				/*
+					dataTag.PosSentence = make([]string, 0)
+					dataTag.NegSentence = make([]string, 0)
 
-				if tag.PositiveSentence != "" {
-					err = json.Unmarshal([]byte(tag.PositiveSentence), &dataTag.PosSentence)
-					if err != nil {
-						logger.Error.Printf("umarshal tag positive %s failed. %s", tag.PositiveSentence, err)
-						return nil, err
-					}
-				}
-				if tag.NegativeSentence != "" {
-					err = json.Unmarshal([]byte(tag.NegativeSentence), &dataTag.NegSentence)
-					if err != nil {
-						logger.Error.Printf("umarshal tag negative %s failed. %s", tag.NegativeSentence, err)
-						return nil, err
-					}
-				}
+						if tag.PositiveSentence != "" {
+							err = json.Unmarshal([]byte(tag.PositiveSentence), &dataTag.PosSentence)
+							if err != nil {
+								logger.Error.Printf("umarshal tag positive %s failed. %s", tag.PositiveSentence, err)
+								return nil, err
+							}
+						}
+						if tag.NegativeSentence != "" {
+							err = json.Unmarshal([]byte(tag.NegativeSentence), &dataTag.NegSentence)
+							if err != nil {
+								logger.Error.Printf("umarshal tag negative %s failed. %s", tag.NegativeSentence, err)
+								return nil, err
+							}
+						}
+				*/
 
 				data[i].Tags = append(data[i].Tags, dataTag)
 			}
