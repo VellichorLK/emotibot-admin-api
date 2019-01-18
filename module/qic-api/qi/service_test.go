@@ -77,6 +77,10 @@ func (m *mockDAO) Group(delegatee model.SqlLike, query model.GroupQuery) ([]mode
 	return nil, nil
 }
 
+func (m *mockDAO) GroupsByCalls(delegatee model.SqlLike, query model.CallQuery) (map[int64][]model.Group, error) {
+	return nil, nil
+}
+
 var fileName string = "FileName"
 var callDuration int64 = int64(55688)
 var comment string = "comment"
