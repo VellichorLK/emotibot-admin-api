@@ -73,13 +73,18 @@ type RuleMatchedResult struct {
 //RuleGrpCredit is the result of the segments
 type RuleGrpCredit struct {
 	ID    uint64
+	UUID  string
+	Name  string
 	Plus  int
+	Score int
 	Rules []*RuleCredit
 }
 
 //RuleCredit stores the rule level result
 type RuleCredit struct {
 	ID    uint64
+	UUID  string
+	Name  string
 	Valid bool
 	Score int
 	CFs   []*ConversationFlowCredit
@@ -88,6 +93,8 @@ type RuleCredit struct {
 //ConversationFlowCredit stores the conversation flow level result
 type ConversationFlowCredit struct {
 	ID           uint64
+	UUID         string
+	Name         string
 	Valid        bool
 	SentenceGrps []*SentenceGrpCredit
 }
@@ -95,24 +102,31 @@ type ConversationFlowCredit struct {
 //SentenceGrpCredit stores the sentence group level result
 type SentenceGrpCredit struct {
 	ID        uint64
+	UUID      string
+	Name      string
 	Valid     bool
 	Sentences []*SentenceCredit
 }
 
 //SentenceCredit stores the matched sentence and its relative tag information
 type SentenceCredit struct {
-	ID    uint64
-	Valid bool
-	Tags  []*TagCredit
+	ID       uint64
+	UUID     string
+	Name     string
+	Valid    bool
+	Segments []int
+	Tags     []*TagCredit
 }
 
-//TagCredit stores the matched tag information and the segment id
+// TagCredit stores the matched tag information and the segment id
+//	Match is the keyword that segment matched.
+//	MatchTxt is the segment text that matched with the Match.
 type TagCredit struct {
-	ID    uint64
-	Score int
-	// Match is the keyword that segment matched.
-	Match string
-	// MatchTxt is the segment text that matched with the Match.
+	ID         uint64
+	UUID       string
+	Name       string
+	Score      int
+	Match      string
 	MatchTxt   string
 	SegmentIdx int
 	SegmentID  uint64 //for controller usage
@@ -575,7 +589,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	tagLev := int(LevTag)
 	if len(levels) != tagLev {
 		logger.Error.Printf("get less relation table. %d\n", tagLev)
-		return nil, err
+		return nil, errors.New("get less relation table.")
 	}
 
 	numOfSens := len(levels[LevSentence])
@@ -814,7 +828,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 
 	resp.ID = ruleGroup
 	resp.Plus = totalScore
-
+	resp.Score = 100 + totalScore
 	for _, ruleID := range ruleIDs {
 		cfIDs := levels[LevRule][ruleID]
 		credit := &RuleCredit{ID: ruleID}

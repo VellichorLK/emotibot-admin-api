@@ -39,6 +39,8 @@ const (
 	tblTask             = "task"
 	tblRelITStaff       = "Relation_InspectorTask_Staff"
 	tblCategory         = "Category"
+	tblPredictResult    = "CUPredictResult"
+	tblSegmentPredict   = "SegmentPredict"
 )
 
 //field name in Conversation table
@@ -327,4 +329,18 @@ const (
 const (
 	RITStaffTaskID  = "task_id"
 	RITStaffStaffID = "staff_id"
+)
+
+const (
+	fldParentID = "parent_id"
+	fldOrgID    = "org_id"
+	fldValid    = "valid"
+	fldRevise   = "revise"
+	fldScore    = "score"
+)
+
+const (
+	fldSegID     = "segment_id"
+	fldMatch     = "match"
+	fldMatchText = "match_text"
 )

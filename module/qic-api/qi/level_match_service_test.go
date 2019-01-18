@@ -1092,12 +1092,14 @@ func TestRuleGroupCriteria(t *testing.T) {
 									}
 								}
 							}
-
 						}
 					}
 				}
 			}
-
+			/*
+				b, _ := json.Marshal(expect)
+				fmt.Printf("%s\n", b)
+			*/
 			//check the result
 			if expect.ID != c.ID {
 				t.Fatalf("expecting rule group id %d, but get %d\n", expect.ID, c.ID)
