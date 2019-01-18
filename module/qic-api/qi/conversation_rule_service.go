@@ -157,7 +157,6 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 	rule.UpdateTime = time.Now().Unix()
 
 	updatedRule, err = conversationRuleDao.Create(rule, tx)
-	logger.Info.Printf("updatedRule: %+v\n", updatedRule)
 	if err != nil {
 		return
 	}
