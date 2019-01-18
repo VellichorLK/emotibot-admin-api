@@ -30,12 +30,12 @@ type SentenceGroupInReq struct {
 }
 
 type SentenceGroupInResponse struct {
-	ID               string                 `json:"sg_id,omitempty"`
-	Name             string                 `json:"sg_name,omitempty"`
-	Role             string                 `json:"role,omitempty"`
-	Position         string                 `json:"position,omitempty"`
+	ID               string                 `json:"sg_id"`
+	Name             string                 `json:"sg_name"`
+	Role             string                 `json:"role"`
+	Position         string                 `json:"position"`
 	PositionDistance int                    `json:"position_distance"`
-	Sentences        []model.SimpleSentence `json:"sentences,omitempty"`
+	Sentences        []model.SimpleSentence `json:"sentences"`
 }
 
 //TagDao is tag resource manipulating interface, which itself should support ACID transaction.

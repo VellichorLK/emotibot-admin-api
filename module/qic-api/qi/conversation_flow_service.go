@@ -16,36 +16,39 @@ var (
 
 var conversationFlowDao model.ConversationFlowDao = &model.ConversationFlowSqlDaoImpl{}
 
-func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) (groups []model.SimpleSentenceGroup, err error) {
-	uuids := make([]string, len(flow.SentenceGroups))
-	for idx, _ := range flow.SentenceGroups {
-		uuids[idx] = flow.SentenceGroups[idx].UUID
-	}
-
-	var isDelete int8 = int8(0)
-	filter := &model.SentenceGroupFilter{
-		Enterprise: flow.Enterprise,
-		UUID:       uuids,
-		IsDelete:   isDelete,
-		Role:       -1,
-		Position:   -1,
-	}
-
-	sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
-	if err != nil {
-		return
-	}
-
-	groups = make([]model.SimpleSentenceGroup, len(sentenceGroups))
-	for idx := range sentenceGroups {
-		simpleGroup := model.SimpleSentenceGroup{
-			ID:   sentenceGroups[idx].ID,
-			UUID: sentenceGroups[idx].UUID,
-			Name: sentenceGroups[idx].Name,
+func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) ([]model.SimpleSentenceGroup, error) {
+	groups := []model.SimpleSentenceGroup{}
+	var err error
+	if len(flow.SentenceGroups) > 0 {
+		uuids := make([]string, len(flow.SentenceGroups))
+		for idx, _ := range flow.SentenceGroups {
+			uuids[idx] = flow.SentenceGroups[idx].UUID
 		}
-		groups[idx] = simpleGroup
+
+		var isDelete int8 = int8(0)
+		filter := &model.SentenceGroupFilter{
+			Enterprise: flow.Enterprise,
+			UUID:       uuids,
+			IsDelete:   isDelete,
+			Role:       -1,
+			Position:   -1,
+		}
+
+		sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
+		if err != nil {
+			return groups, err
+		}
+		groups = make([]model.SimpleSentenceGroup, len(sentenceGroups))
+		for idx := range sentenceGroups {
+			simpleGroup := model.SimpleSentenceGroup{
+				ID:   sentenceGroups[idx].ID,
+				UUID: sentenceGroups[idx].UUID,
+				Name: sentenceGroups[idx].Name,
+			}
+			groups[idx] = simpleGroup
+		}
 	}
-	return
+	return groups, err
 }
 
 func CreateConversationFlow(flow *model.ConversationFlow) (createdFlow *model.ConversationFlow, err error) {
@@ -114,6 +117,27 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	}
 	defer dbLike.ClearTransition(tx)
 
+	ruleFilter := &model.ConversationRuleFilter{
+		CFUUID: []string{
+			id,
+		},
+		Enterprise: enterprise,
+	}
+	rules, err := conversationRuleDao.GetBy(ruleFilter, tx)
+	if err != nil {
+		return
+	}
+
+	ruleFilter.CFUUID = []string{}
+	for _, rule := range rules {
+		ruleFilter.UUID = append(ruleFilter.UUID, rule.UUID)
+	}
+
+	rules, err = conversationRuleDao.GetBy(ruleFilter, tx)
+	if err != nil {
+		return
+	}
+
 	filter := &model.ConversationFlowFilter{
 		UUID: []string{
 			id,
@@ -152,7 +176,20 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	if err != nil {
 		return
 	}
-	dbLike.Commit(tx)
+	err = dbLike.Commit(tx)
+
+	if err != nil {
+		return
+	}
+
+	// update conversation rule which reference this flow
+	for idx := range rules {
+		rule := &rules[idx]
+		_, err = UpdateConversationRule(rule.UUID, rule)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 

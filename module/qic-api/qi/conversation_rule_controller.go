@@ -37,9 +37,10 @@ type ConversationRuleInRes struct {
 	Min          int                            `json:"min,omitempty"`
 	Max          int                            `json:"max,omitempty"`
 	Method       string                         `json:"method,omitempty"`
-	Score        int                            `json:"score,omitempty"`
+	Score        int                            `json:"score"`
 	Flows        []model.SimpleConversationFlow `json:"flows"`
 	Completeness *Completeness                  `json:"completeness"`
+	Expression   string                         `json:"expression"`
 }
 
 var severityStringToCode map[string]int8 = map[string]int8{
@@ -227,10 +228,6 @@ func handleUpdateConversationRule(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-
-	ruleInRes := conversationRuleToRuleInRes(updatedRule)
-
-	util.WriteJSON(w, ruleInRes)
 }
 
 func handleDeleteConversationRule(w http.ResponseWriter, r *http.Request) {

@@ -17,6 +17,7 @@ var (
 var sentenceGroupDao model.SentenceGroupsSqlDao = &model.SentenceGroupsSqlDaoImpl{}
 
 func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences []model.SimpleSentence, err error) {
+	simpleSentences = []model.SimpleSentence{}
 	if len(group.Sentences) == 0 {
 		return
 	}
@@ -109,6 +110,28 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 	}
 	defer dbLike.ClearTransition(tx)
 
+	// fetch flow before disable old sentence group
+	flowFilter := &model.ConversationFlowFilter{
+		SGUUID: []string{
+			uuid,
+		},
+	}
+
+	flows, err := conversationFlowDao.GetBy(flowFilter, tx)
+	if err != nil {
+		return
+	}
+
+	flowFilter.SGUUID = []string{}
+	for _, flow := range flows {
+		flowFilter.UUID = append(flowFilter.UUID, flow.UUID)
+	}
+
+	flows, err = conversationFlowDao.GetBy(flowFilter, tx)
+	if err != nil {
+		return
+	}
+
 	filter := &model.SentenceGroupFilter{
 		UUID: []string{
 			uuid,
@@ -147,7 +170,21 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 
 	sentenceGroupDao.Create(group, tx)
 	updatedGroup = group
-	err = tx.Commit()
+
+	err = dbLike.Commit(tx)
+	if err != nil {
+		return
+	}
+
+	// update conversation flows which reference this sentence group
+	for idx := range flows {
+		flow := &flows[idx]
+		logger.Info.Printf("flow: %+v\n", flow)
+		_, err = UpdateConversationFlow(flow.UUID, flow.Enterprise, flow)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 

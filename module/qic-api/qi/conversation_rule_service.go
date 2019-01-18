@@ -16,6 +16,10 @@ var (
 var conversationRuleDao model.ConversationRuleDao = &model.ConversationRuleSqlDaoImpl{}
 
 func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) (simpleFlows []model.SimpleConversationFlow, err error) {
+	simpleFlows = []model.SimpleConversationFlow{}
+	if len(rule.Flows) == 0 {
+		return
+	}
 	uuids := make([]string, len(rule.Flows))
 	for idx, _ := range rule.Flows {
 		uuids[idx] = rule.Flows[idx].UUID
@@ -157,7 +161,6 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 	rule.UpdateTime = time.Now().Unix()
 
 	updatedRule, err = conversationRuleDao.Create(rule, tx)
-	logger.Info.Printf("updatedRule: %+v\n", updatedRule)
 	if err != nil {
 		return
 	}

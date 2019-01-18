@@ -37,6 +37,7 @@ type ConversationRuleFilter struct {
 	Enterprise string
 	Severity   int8
 	IsDeleted  int8
+	CFUUID     []string // filter by conversation flow uuid
 }
 
 type ConversationRuleDao interface {
@@ -167,12 +168,25 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 		conditionStr = ""
 	}
 
+	cfCondition := fmt.Sprintf("LEFT JOIN %s", tblConversationflow)
+	if len(filter.CFUUID) > 0 {
+		cfCondition = fmt.Sprintf(
+			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
+			tblConversationflow,
+			fldUUID,
+			fmt.Sprintf("?%s", strings.Repeat(", ?", len(filter.CFUUID)-1)),
+		)
+		for _, cfUUID := range filter.CFUUID {
+			values = append(values, cfUUID)
+		}
+	}
+
 	queryStr = fmt.Sprintf(
 		`SELECT cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s,
 		cf.%s as cfUUID, cf.%s as cfName
 		 FROM (SELECT * FROM %s %s) as cr
 		 LEFT JOIN %s as rcrcf ON cr.%s = rcrcf.%s
-		 LEFT JOIN %s as cf ON rcrcf.%s = cf.%s`,
+		 %s as cf ON rcrcf.%s = cf.%s`,
 		fldID,
 		fldUUID,
 		fldName,
@@ -192,7 +206,7 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 		tblRelCRCF,
 		fldID,
 		CRCFRID,
-		tblConversationflow,
+		cfCondition,
 		CRCFCFID,
 		fldID,
 	)
@@ -230,9 +244,10 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 	var cRule *ConversationRule
 	for rows.Next() {
 		rule := ConversationRule{}
-		flow := SimpleConversationFlow{}
+		var flowUUID *string
+		var flowName *string
 
-		rows.Scan(
+		err = rows.Scan(
 			&rule.ID,
 			&rule.UUID,
 			&rule.Name,
@@ -245,9 +260,14 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			&rule.Severity,
 			&rule.CreateTime,
 			&rule.UpdateTime,
-			&flow.UUID,
-			&flow.Name,
+			&flowUUID,
+			&flowName,
 		)
+
+		if err != nil {
+			err = fmt.Errorf("error while scan rule in dao.GetBy, err: %s", err.Error())
+			return
+		}
 
 		if cRule == nil || cRule.UUID != rule.UUID {
 			if cRule != nil {
@@ -264,7 +284,11 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			cRule = &rule
 			cRule.Flows = []SimpleConversationFlow{}
 		}
-		if flow.Name != "" {
+		if flowUUID != nil && flowName != nil {
+			flow := SimpleConversationFlow{
+				UUID: *flowUUID,
+				Name: *flowName,
+			}
 			cRule.Flows = append(cRule.Flows, flow)
 		}
 	}
