@@ -1,4 +1,4 @@
-def TestBaseImage='harbor.emotibot.com/library/go-build:99b290c5-1.10-standard'
+def TestBaseImage='harbor.emotibot.com/library/go-build:3694a219-1.10-alpine'
 def havePushed=false
 
 pipeline {

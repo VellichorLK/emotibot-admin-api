@@ -2,14 +2,17 @@ package qi
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/pkg/api/rabbitmq/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -19,6 +22,9 @@ var (
 	tagDao     TagDao
 	callDao    CallDao
 	taskDao    TaskDao
+	segmentDao SegmentDao
+	producer   *rabbitmq.Producer
+	consumer   *rabbitmq.Consumer
 	sqlConn    *sql.DB
 	dbLike     model.DBLike
 	volume     string
@@ -132,6 +138,43 @@ func init() {
 				relationDao = &model.RelationSQLDao{}
 				creditDao = &model.CreditSQLDao{}
 				trainer = predictor
+				segmentDao = model.NewSegmentDao(dbLike)
+
+			},
+			"init RabbitMQ": func() {
+				envs := ModuleInfo.Environments
+				host := envs["RABBITMQ_HOST"]
+				if host == "" {
+					logger.Error.Println("RABBITMQ_HOST is required!")
+					return
+				}
+				port := envs["RABBITMQ_PORT"]
+				if port == "" {
+					logger.Error.Println("RABBITMQ_PORT is required!")
+					return
+				}
+				_, err := strconv.Atoi(port)
+				if err != nil {
+					logger.Error.Println("RABBITMQ_PORT should be a valid int value, ", err)
+					return
+				}
+				client, err := rabbitmq.Dial(fmt.Sprintf("amqp://guest:guest@%s:%s", host, port))
+				if err != nil {
+					logger.Error.Println("init rabbitmq client failed, ", err)
+					return
+				}
+				producer = client.NewProducer(rabbitmq.ProducerConfig{
+					QueueName:   "src_queue",
+					ContentType: "application/json",
+					MaxRetry:    10,
+				})
+				consumer = client.NewConsumer(rabbitmq.ConsumerConfig{
+					QueueName: "dst_queue",
+					MaxRetry:  10,
+				})
+				consumer.Subscribe(ASRWorkFlow)
+				logger.Info.Println("init & subscribe to RabbitMQ success")
+
 			},
 		},
 	}

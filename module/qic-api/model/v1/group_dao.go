@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type GroupDAO interface {
@@ -15,10 +16,12 @@ type GroupDAO interface {
 	ClearTranscation(tx *sql.Tx)
 	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
+	Group(delegatee SqlLike, query GroupQuery) ([]Group, error)
 	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id string, tx *sql.Tx) error
 	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
+	GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error)
 }
 
 type GroupSQLDao struct {
@@ -52,9 +55,9 @@ type GroupWCond struct {
 	RuleCount       int             `json:"rule_count"`
 }
 
-// Group
+// Group is the one to one represent of rule group table schema
 type Group struct {
-	AppID          uint64
+	ID             int64
 	Name           string
 	EnterpriseID   string
 	Description    string
@@ -64,7 +67,7 @@ type Group struct {
 	IsEnable       bool
 	LimitedSpeed   int
 	LimitedSilence float32
-	typ            int
+	Typ            int8
 }
 
 type GroupCondition struct {
@@ -134,10 +137,10 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 
 	queryStr := fmt.Sprintf(
 		"SELECT %s, %s FROM %s where %s=1",
-		RGID,
-		RGName,
+		fldRuleGrpID,
+		fldRuleGrpName,
 		tblRuleGroup,
-		RGIsEnable,
+		fldRuleGrpIsEnable,
 	)
 
 	rows, err := s.conn.Query(queryStr)
@@ -229,7 +232,9 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffName))
 		values = append(values, filter.StaffName)
 	}
-
+	if filter.EnterpriseID != "" {
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldRuleGrpEnterpriseID))
+	}
 	if len(conditions) == 0 {
 		conditionStr = ""
 	} else {
@@ -247,14 +252,14 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 
 	queryStr = fmt.Sprintf(
 		queryStr,
-		RGID,
-		RGUUID,
-		RGName,
+		fldRuleGrpID,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
 		fldDescription,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 		fldCreateTime,
-		fldGroupIsEnabled,
+		fldRuleGrpIsEnable,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -294,7 +299,7 @@ func (s *GroupSQLDao) CountGroupsBy(filter *GroupFilter) (total int64, err error
 	}
 
 	queryStr, values := getGroupsSQL(filter)
-	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", RGID, queryStr)
+	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", fldRuleGrpID, queryStr)
 
 	rows, err := s.conn.Query(queryStr, values...)
 	if err != nil {
@@ -421,15 +426,15 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 	insertStr := fmt.Sprintf(
 		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		tblRuleGroup,
-		RGUUID,
-		RGName,
-		RGEnterprise,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
+		fldRuleGrpEnterpriseID,
 		fldDescription,
-		RGCreateTime,
-		RGUpdateTime,
-		RGIsEnable,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpCreateTime,
+		fldRuleGrpUpdateTime,
+		fldRuleGrpIsEnable,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 	)
 
 	values := []interface{}{
@@ -530,10 +535,10 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
 	FROM (SELECT * FROM %s WHERE %s=? and %s = 0) as g 
 	LEFT JOIN %s as gc ON g.%s = gc.%s`,
-		RGUUID,
-		RGName,
-		RGLimitSpeed,
-		RGLimitSilence,
+		fldRuleGrpUUID,
+		fldRuleGrpName,
+		fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -549,10 +554,10 @@ func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
 		RGCLeftChannel,
 		RGCRightChannel,
 		tblRuleGroup,
-		RGUUID,
-		RGIsDelete,
+		fldRuleGrpUUID,
+		fldRuleGrpIsDelete,
 		tblRGC,
-		RGID,
+		fldRuleGrpID,
 		RGCGroupID,
 	)
 
@@ -633,8 +638,8 @@ func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	deleteStr := fmt.Sprintf(
 		"UPDATE %s SET %s = 1 WHERE %s = ?",
 		tblRuleGroup,
-		RGIsDelete,
-		RGUUID,
+		fldRuleGrpIsDelete,
+		fldRuleGrpUUID,
 	)
 	_, err = tx.Exec(deleteStr, id)
 	if err != nil {
@@ -643,6 +648,116 @@ func (s *GroupSQLDao) DeleteGroup(id string, tx *sql.Tx) (err error) {
 	return
 }
 
-// func (s *GroupSQLDao) GetRules(enterprise string) (err error) {
+func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	groupCols := []string{
+		fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
+		fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
+		fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
+		fldRuleGrpLimitSilence, fldRuleGrpType,
+	}
 
-// }
+	sqlQuery := fmt.Sprintf("SELECT `%s` FROM `%s`", strings.Join(groupCols, "`, `"), tblRuleGroup)
+	wherePart, bindData := query.whereSQL()
+	if len(bindData) > 0 {
+		sqlQuery += " " + wherePart
+	}
+	rows, err := delegatee.Query(sqlQuery, bindData...)
+	if err != nil {
+		logger.Error.Println("raw sql: ", sqlQuery)
+		logger.Error.Println("raw bind-data: ", bindData)
+		return nil, fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+	var groups = make([]Group, 0)
+	for rows.Next() {
+
+		var g Group
+		var isDeleted, isEnabled int
+		rows.Scan(&g.ID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.Typ)
+		if isDeleted == 1 {
+			g.IsDelete = true
+		}
+		if isEnabled == 1 {
+			g.IsEnable = true
+		}
+		groups = append(groups, g)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+
+	return groups, nil
+}
+
+// GroupsByCalls find the groups that asssociated with the call given by the query.
+// If success, a map of callID with slice of rule group is returned.
+func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	rawsql := fmt.Sprintf("SELECT c.`%s`, gc.`%s` FROM `%s` AS c INNNER JOIN `%s` AS gc ON c.`%s` = gc.`%s` ",
+		//Select columns
+		fldCallID, fldCRGRelRuleGroupID,
+		//FROM table
+		tblCall, tblRelCallRuleGrp,
+		// ON Condition
+		fldCallID, fldCRGRelCallID,
+	)
+	wherepart, data := query.whereSQL("c")
+	if len(data) > 0 {
+		rawsql = rawsql + " " + wherepart
+	}
+	rows, err := delegatee.Query(rawsql, data...)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", rawsql)
+		return nil, fmt.Errorf("query error, %v", err)
+	}
+	defer rows.Close()
+	groupUniqueID := map[int64]struct{}{}
+	callRuleGrps := map[int64][]int64{}
+	for rows.Next() {
+		var (
+			callID      int64
+			ruleGroupID int64
+		)
+		err := rows.Scan(&callID, &ruleGroupID)
+		if err != nil {
+			return nil, fmt.Errorf("scan error, %v", err)
+		}
+		ruleGrps := callRuleGrps[callID]
+		ruleGrps = append(ruleGrps, ruleGroupID)
+		callRuleGrps[callID] = ruleGrps
+		groupUniqueID[ruleGroupID] = struct{}{}
+	}
+	gq := GroupQuery{}
+	for id := range groupUniqueID {
+		gq.ID = append(gq.ID, id)
+	}
+	// TODO: do not relied on another function.
+	// potential bug that can be trigger by time delay between querying relation & group table
+	groups, err := s.Group(delegatee, gq)
+	if err != nil {
+		return nil, fmt.Errorf("query group failed, %v", err)
+	}
+	ruleGrpDict := map[int64]Group{}
+	for _, ruleGrp := range groups {
+		ruleGrpDict[ruleGrp.ID] = ruleGrp
+	}
+	result := map[int64][]Group{}
+	for call, groups := range callRuleGrps {
+		ruleGrps := []Group{}
+		for _, id := range groups {
+			grp, found := ruleGrpDict[id]
+			if !found {
+				return nil, fmt.Errorf("relation table's call %d group %d is incorrect, may have corruption data", call, id)
+			}
+			ruleGrps = append(ruleGrps, grp)
+		}
+		result[call] = ruleGrps
+	}
+	return result, nil
+}

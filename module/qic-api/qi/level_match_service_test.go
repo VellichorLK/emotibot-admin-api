@@ -212,9 +212,9 @@ func TestSentenceGroupMatch(t *testing.T) {
 	//matchedSen := make(map[uint64][]int)
 
 	numOfSegs := 20
-	segments := make([]*ASRSegment, numOfSegs, numOfSegs)
+	segments := make([]*SegmentWithSpeaker, numOfSegs, numOfSegs)
 	for i := 0; i < numOfSegs; i++ {
-		segments[i] = new(ASRSegment)
+		segments[i] = new(SegmentWithSpeaker)
 	}
 
 	matchedSenIDAndSegmentIdx := map[uint64][]int{1: {3, 5, 6}, 5: {3, 7}, 9: {11, 8}}
@@ -1044,9 +1044,9 @@ func TestRuleGroupCriteria(t *testing.T) {
 	conversationFlowDao = &mockCfDao{}
 	conversationRuleDao = &mockRuleDao{}
 
-	segments := make([]*ASRSegment, 0, len(segToTags))
+	segments := make([]*SegmentWithSpeaker, 0, len(segToTags))
 	for i := 0; i < len(segToTags); i++ {
-		s := &ASRSegment{Speaker: i % 2}
+		s := &SegmentWithSpeaker{Speaker: i % 2}
 		segments = append(segments, s)
 	}
 

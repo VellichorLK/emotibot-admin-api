@@ -30,10 +30,30 @@ var (
 	ErrNoID       = errors.New("Must has id")
 )
 
-//GetLevelsRel gives  from the from level to to level.
-//id is the parent_id which is the second field in from level table
-//return value is slice of map which means in each relation table, the parent id contains childs's
-func GetLevelsRel(from Levels, to Levels, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+// GetLevelsRel assemble a relationTable from the from level to to level.
+// from and to indicate which level resource(ex: from LevRuleGroup, to LevTag. then it will check )
+// from must be lower than to, or a ErrWrongLevel will returned.
+// id is the from resource's primary key id. which will be the first level of map key
+// return values:
+//	- relationTable is a slice of map in each relation table. key is the from level's primary key id,
+//	  value is the to level's primary key id.
+//		ex:
+//		input: from RuleGroup to conversation, id [1]
+//		[]{
+//			RuleGroup -> rule
+// 			map{
+//				1: [1, 2],
+//			}
+//			rule -> conversation
+//			map{
+//				1: [1, 3, 5],
+//				2: [2, 4],
+//			}
+//		}
+//  - order is the the order of each parent id in each relation table.
+//  - err will be nil if success. if to or from level is a invalid number, a ErrOutOfLevel is returned.
+//	  If id is empty, ErrNoID is returned.
+func GetLevelsRel(from Levels, to Levels, id []uint64) (relationTable []map[uint64][]uint64, order [][]uint64, err error) {
 	if to <= from {
 		return nil, nil, ErrWrongLevel
 	}

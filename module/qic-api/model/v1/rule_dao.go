@@ -19,7 +19,6 @@ type RuleDao interface {
 	InsertSegment(tx *sql.Tx, seg *Segment) (int64, error)
 	GetConversationByUUID(tx *sql.Tx, uuid string) (*ConversationInfo, error)
 	GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error)
-	Group(tx *sql.Tx, query GroupQuery) ([]Group, error)
 	GetGroupToLogicID(tx *sql.Tx, appID uint64) (map[uint64][]uint64, []uint64, error)
 	GetRule(tx *sql.Tx, query RuleQuery) ([]*Rule, error)
 	GetLogic(tx *sql.Tx, query LogicQuery) ([]*Logic, error)
@@ -90,7 +89,8 @@ type ConversationInfo struct {
 
 // GroupQuery can used to query the group table
 type GroupQuery struct {
-	Type         []int
+	ID           []int64
+	Type         []int8
 	EnterpriseID *string
 }
 
@@ -137,23 +137,21 @@ type LogicResult struct {
 }
 
 func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
-	bindData = make([]interface{}, 0, 2)
-	whereSQL = "WHERE "
-	conditions := []string{}
-	if g.Type != nil || len(g.Type) > 0 {
-		condition := fldGroupType + " IN (?" + strings.Repeat(",?", len(g.Type)-1) + ")"
-		conditions = append(conditions, condition)
-		for _, t := range g.Type {
-			bindData = append(bindData, t)
-		}
+	builder := &whereBuilder{
+		ConcatLogic: andLogic,
+		conditions:  []string{},
+		data:        []interface{}{},
 	}
+	builder.In(fldRuleGrpID, int64ToWildCard(g.ID...))
+	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
 	if g.EnterpriseID != nil {
-		condition := fldGroupEnterprise + " = ?"
-		conditions = append(conditions, condition)
-		bindData = append(bindData, *g.EnterpriseID)
+		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)
 	}
-	whereSQL += strings.Join(conditions, " AND ")
-	return whereSQL, bindData
+	rawsql, data := builder.Parse()
+	if len(data) > 0 {
+		rawsql = " WHERE " + rawsql
+	}
+	return rawsql, data
 }
 
 func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {
@@ -288,7 +286,7 @@ func (s SQLDao) InsertSegment(tx *sql.Tx, seg *Segment) (int64, error) {
 	table := tblSegment
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?)",
 		table,
-		SegFieldCallID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel, SegFieldCreateTiem, SegFieldAsrText,
+		fldSegmentCallID, fldSegmentStartTime, fldSegmentEndTime, fldSegmentChannel, fldSegmentCreateTime, fldSegmentText,
 	)
 
 	var res sql.Result
@@ -379,9 +377,9 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 
 	table := tblSegment
 	querySQL := fmt.Sprintf("SELECT %s,%s,%s,%s,%s,%s FROM %s WHERE %s=? ORDER BY %s ASC",
-		SegFieldID, SegFieldStartTime, SegFieldEndTime, SegFieldChannel,
-		SegFieldCreateTiem, SegFieldAsrText,
-		table, SegFieldCallID, SegFieldStartTime)
+		fldSegmentID, fldSegmentStartTime, fldSegmentEndTime, fldSegmentChannel,
+		fldSegmentCreateTime, fldSegmentText,
+		table, fldSegmentCallID, fldSegmentStartTime)
 	var rows *sql.Rows
 	var err error
 	if tx != nil {
@@ -409,56 +407,6 @@ func (s SQLDao) GetSegmentByCallID(tx *sql.Tx, callID uint64) ([]*Segment, error
 	return segments, nil
 }
 
-//TODO Reractor this to group dao
-func (s SQLDao) Group(tx *sql.Tx, query GroupQuery) ([]Group, error) {
-	type queryer interface {
-		Query(query string, args ...interface{}) (*sql.Rows, error)
-	}
-	var q queryer
-	if tx != nil {
-		q = tx
-	} else if s.conn != nil {
-		q = s.conn
-	} else {
-		return nil, util.ErrDBNotInit
-	}
-
-	sqlQuery := "SELECT `" + fldGroupAppID + "`, `" + fldGroupIsDeleted + "`, `" + fldGroupName + "`, `" + fldGroupEnterprise + "`, `" +
-		fldGroupDescription + "`, `" + fldGroupCreatedTime + "`, `" + fldGroupUpdatedTime + "`, `" + fldGroupIsEnabled + "`, `" +
-		fldGroupLimitedSpeed + "`, `" + fldGroupLimitedSilence + "`, `" + fldGroupType + "` FROM `" + tblGroup + "`"
-	wherePart, bindData := query.whereSQL()
-	if len(bindData) > 0 {
-		sqlQuery += " " + wherePart
-	}
-	rows, err := q.Query(sqlQuery, bindData...)
-	if err != nil {
-		logger.Error.Println("raw sql: ", sqlQuery)
-		logger.Error.Println("raw bind-data: ", bindData)
-		return nil, fmt.Errorf("sql executed failed, %v", err)
-	}
-	defer rows.Close()
-	var groups = make([]Group, 0)
-	for rows.Next() {
-
-		var g = Group{}
-		var isDeleted, isEnabled int
-		rows.Scan(&g.AppID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.typ)
-		if isDeleted == 1 {
-			g.IsDelete = true
-		}
-		if isEnabled == 1 {
-			g.IsEnable = true
-		}
-		groups = append(groups, g)
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("sql scan failed, %v", err)
-	}
-
-	return groups, nil
-}
-
 //GetGroupToLogicID gets the id and name of logics in rule, rules in group
 func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint64, []uint64, error) {
 	type queryer interface {
@@ -479,7 +427,7 @@ func (s SQLDao) GetGroupToLogicID(tx *sql.Tx, groupID uint64) (map[uint64][]uint
 		fldRuleID, fldLogicID,
 		tableA, tableB,
 		fldRuleID, fldRuleID,
-		fldGroupAppID)
+		fldRuleGrpID)
 	rows, err := q.Query(findIDSQL, groupID)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
@@ -625,7 +573,7 @@ func (s SQLDao) InsertFlowResultTmp(tx *sql.Tx, callID uint64, val string) (int6
 		return 0, util.ErrDBNotInit
 	}
 
-	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldGroupAppID, fldCUPredict)
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s) VALUES (?,0,?)", tblCUPredict, fldCallID, fldRuleGrpID, fldCUPredict)
 	result, err := q.Exec(insertSQL, callID, val)
 	if err != nil {
 		logger.Error.Println("raw sql: ", insertSQL)
@@ -737,7 +685,7 @@ func (s SQLDao) UpdateConversation(tx *sql.Tx, callID uint64, params map[string]
 }
 
 //GetRecommendations gets the recommendation wordings for each logic
-func (s SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error) {
+func (s *SQLDao) GetRecommendations(tx *sql.Tx, logicIDs []uint64) (map[uint64][]string, error) {
 	if len(logicIDs) == 0 {
 		return nil, nil
 	}

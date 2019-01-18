@@ -116,14 +116,13 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("write file failed, %v", err))
 		return
 	}
-	c.FilePath = &fp
-	err = UpdateCall(c)
-
+	// Volume only used in ourself, not expose to outside.
+	c.FilePath = &filename
+	err = ConfirmCall(c)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("update call failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("confirm call failed, %v", err))
 		return
 	}
-
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request) {

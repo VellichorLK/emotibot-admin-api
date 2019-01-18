@@ -90,7 +90,11 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 	}
 	testset := getCallsSeed(t)
 	t.Logf("testset: %+v", testset)
-	var exampleTimeStart int64 = 1546598521
+	var (
+		timestart int64 = 1546598521
+		timeEnd   int64 = timestart + 60
+	)
+
 	testTable := map[string]struct {
 		Input  CallQuery
 		Output []Call
@@ -113,11 +117,18 @@ func TestCallDaoCallsIntegrations(t *testing.T) {
 			testset[:1],
 		},
 		"query call time start": {
-			CallQuery{CallTimeStart: &exampleTimeStart},
+			CallQuery{CallTimeStart: &timestart},
 			testset,
 		},
 		"query call time end": {
-			CallQuery{CallTimeEnd: &exampleTimeStart},
+			CallQuery{CallTimeEnd: &timeEnd},
+			testset[1:],
+		},
+		"query call time range": {
+			CallQuery{
+				CallTimeStart: &timestart,
+				CallTimeEnd:   &timeEnd,
+			},
 			testset[1:],
 		},
 		"query staff id": {
@@ -205,7 +216,9 @@ func TestI11CallDaoSetRuleGroupRelations(t *testing.T) {
 		db: db,
 	}
 	set := getCallsSeed(t)
-	idGroup, err := dao.SetRuleGroupRelations(nil, set[0], []uint64{1, 2})
+	idGroup, err := dao.SetRuleGroupRelations(nil, set[0], []Group{
+		Group{ID: 1}, Group{ID: 2},
+	})
 	if err != nil {
 		t.Fatal("expect set releation to be ok, but got ", err)
 	}

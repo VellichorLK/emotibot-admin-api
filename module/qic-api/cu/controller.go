@@ -230,7 +230,7 @@ func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid strin
 	resp := &model.QIFlowResult{FileName: conversation.FileName}
 
 	for i := 0; i < len(groups); i++ {
-		appIDStr := strconv.FormatUint(groups[i].AppID, 10)
+		appIDStr := strconv.FormatInt(groups[i].ID, 10)
 		predictContext := &V1PredictContext{AppID: appIDStr, Threshold: 50, Data: predictReq}
 
 		predictResult, err := predictByV1CuModule(predictContext)
@@ -239,7 +239,7 @@ func getCurrentQIFlowResult(w http.ResponseWriter, enterprise string, uuid strin
 			return nil, err
 		}
 
-		qiResult, err := GetRuleLogic(groups[0].AppID)
+		qiResult, err := GetRuleLogic(uint64(groups[0].ID))
 		if err != nil {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 			return nil, err

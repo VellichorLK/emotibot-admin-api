@@ -76,7 +76,7 @@ type tag struct {
 type CallDao interface {
 	Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
 	NewCalls(delegatee model.SqlLike, calls []model.Call) ([]model.Call, error)
-	SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []uint64) ([]int64, error)
+	SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []model.Group) ([]int64, error)
 	SetCall(delegatee model.SqlLike, call model.Call) error
 	Count(delegatee model.SqlLike, query model.CallQuery) (int64, error)
 }
@@ -84,4 +84,8 @@ type CallDao interface {
 type TaskDao interface {
 	CallTask(delegatee model.SqlLike, call model.Call) (model.Task, error)
 	NewTask(delegatee model.SqlLike, task model.Task) (*model.Task, error)
+}
+
+type SegmentDao interface {
+	NewSegments(delegatee model.SqlLike, segments []model.RealSegment) ([]model.RealSegment, error)
 }

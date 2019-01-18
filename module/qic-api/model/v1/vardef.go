@@ -9,7 +9,7 @@ var ErrAutoIDDisabled = errors.New("dao does not support LastInsertId function")
 const (
 	tblConversation     = "Conversation"
 	tblSegment          = "Segment"
-	tblGroup            = "Group"
+	tblSegmentEmotion   = "SegEmotionScore"
 	tblRelGrpRule       = "Relation_RuleGroup_Rule"
 	tblRelRuleLogic     = "Relation_Rule_Logic"
 	tblRule             = "Rule"
@@ -79,28 +79,20 @@ const (
 
 //field name in Segment table
 const (
-	SegFieldID         = "segment_id"
-	SegFieldCallID     = "call_id"
-	SegFieldStartTime  = "start_time"
-	SegFieldEndTime    = "end_time"
-	SegFieldChannel    = "channel"
-	SegFieldCreateTiem = "create_time"
-	SegFieldAsrText    = "asr_text"
+	fldSegmentID         = "id"
+	fldSegmentCallID     = "call_id"
+	fldSegmentStartTime  = "start_time"
+	fldSegmentEndTime    = "end_time"
+	fldSegmentChannel    = "channel"
+	fldSegmentCreateTime = "create_time"
+	fldSegmentText       = "asr_text"
 )
 
-//field name in Group Table
 const (
-	fldGroupAppID          = "app_id"
-	fldGroupIsDeleted      = "is_delete"
-	fldGroupIsEnabled      = "is_enable"
-	fldGroupName           = "group_name"
-	fldGroupEnterprise     = "enterprise"
-	fldGroupDescription    = "description"
-	fldGroupCreatedTime    = "create_time"
-	fldGroupUpdatedTime    = "update_time"
-	fldGroupLimitedSpeed   = "limit_speed"
-	fldGroupLimitedSilence = "limit_silence"
-	fldGroupType           = "type"
+	fldSegEmoID        = "id"
+	fldSegEmoSegmentID = "segment_id"
+	fldSegEmoType      = "type"
+	fldSegEmoScore     = "score"
 )
 
 //field name in Tag Table
@@ -168,18 +160,18 @@ const (
 
 // field name in RuleGroup
 const (
-	RGID           = "id"
-	RGUUID         = "uuid"
-	RGIsDelete     = "is_delete"
-	RGName         = "name"
-	RGEnterprise   = "enterprise"
-	RGDescription  = "description"
-	RGCreateTime   = "create_time"
-	RGUpdateTime   = "update_time"
-	RGIsEnable     = "is_enable"
-	RGLimitSpeed   = "limit_speed"
-	RGLimitSilence = "limit_silence"
-	RGType         = "type"
+	fldRuleGrpID           = "id"
+	fldRuleGrpUUID         = "uuid"
+	fldRuleGrpIsDelete     = "is_delete"
+	fldRuleGrpName         = "name"
+	fldRuleGrpEnterpriseID = "enterprise"
+	fldRuleGrpDescription  = "description"
+	fldRuleGrpCreateTime   = "create_time"
+	fldRuleGrpUpdateTime   = "update_time"
+	fldRuleGrpIsEnable     = "is_enable"
+	fldRuleGrpLimitSpeed   = "limit_speed"
+	fldRuleGrpLimitSilence = "limit_silence"
+	fldRuleGrpType         = "type"
 )
 
 // field name Relation_RuleGroup_Rule
@@ -301,11 +293,15 @@ const (
 	fldCallTaskID           = "task_id"
 )
 
+// fields for Relation_Call_RuleGroup table
 const (
 	fldCRGRelID          = "id"
 	fldCRGRelRuleGroupID = "rg_id"
 	fldCRGRelCallID      = "call_id"
-	fldLinkID            = "link_id"
+)
+
+const (
+	fldLinkID = "link_id"
 )
 
 // fields for Relation_InspectorTask_Call_Staff

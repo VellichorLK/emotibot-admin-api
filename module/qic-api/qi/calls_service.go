@@ -1,9 +1,13 @@
 package qi
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
+
+	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
@@ -200,19 +204,70 @@ func NewCall(c *NewCallReq) (int64, error) {
 		TaskID:         createdTask.ID,
 	}
 
-	calls, err := callDao.NewCalls(nil, []model.Call{*call})
+	calls, err := callDao.NewCalls(tx, []model.Call{*call})
 	if err == model.ErrAutoIDDisabled {
 		return 0, nil
 	} else if err != nil {
 		return 0, err
 	}
+	groups, err := serviceDAO.Group(tx, model.GroupQuery{
+		EnterpriseID: &c.Enterprise,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("query group failed, %v", err)
+	}
 
+	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
+	if err != nil {
+		return 0, fmt.Errorf("set rule group failed, %v", err)
+	}
 	err = dbLike.Commit(tx)
 	return calls[0].ID, err
 }
 
+//UpdateCall update the call data source
 func UpdateCall(call *model.Call) error {
 	return callDao.SetCall(nil, *call)
+}
+
+//ConfirmCall is the workflow to update call fp and
+func ConfirmCall(call *model.Call) error {
+	//TODO: if call already Confirmed, it should not be able to
+	if call.FilePath == nil {
+		return fmt.Errorf("call FilePath should not be nil")
+	}
+	err := UpdateCall(call)
+	//TODO: ADD Task update too.
+	if err != nil {
+		return fmt.Errorf("update call db failed, %v", err)
+	}
+	// Because ASR expect us to give its real system filepath
+	// which we only can hard coded or inject from env.
+	// TODO: TELL ASR TEAM TO FIX IT!!!
+	basePath, found := ModuleInfo.Environments["ASR_HARDCODE_VOLUME"]
+	if !found {
+		logger.Warn.Println("expect ASR_HARDCODE_VOLUME have setup, or asr may not be able to read the path.")
+	}
+	input := ASRInput{
+		Version: 1.0,
+		CallID:  strconv.FormatInt(call.ID, 10),
+		Path:    path.Join(basePath, *call.FilePath),
+	}
+	resp, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("marshal asr input failed, %v", err)
+	}
+	err = producer.Produce(resp)
+	if err != nil {
+		return fmt.Errorf("publish failed, %v", err)
+	}
+	return nil
+}
+
+type ASRInput struct {
+	Version float64 `json:"version"`
+	CallID  string  `json:"call_id"`
+	Path    string  `json:"path"`
 }
 
 func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
