@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
+
+	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
@@ -92,8 +95,10 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("can not begin a transaction")
 	}
+
 	segments, err = segmentDao.NewSegments(tx, segments)
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("new segment failed, %v", err)
 	}
 
@@ -108,18 +113,33 @@ func ASRWorkFlow(output []byte) error {
 		}
 		segWithSp = append(segWithSp, ws)
 	}
+	//TODO: calculate the 語速 & 靜音比
 	callGroups, err := serviceDAO.GroupsByCalls(tx, model.CallQuery{ID: []int64{c.ID}})
 	if err != nil {
+		tx.Rollback()
 		return fmt.Errorf("get groups by call failed, %v", err)
 	}
 	groups := callGroups[c.ID]
 	_ = groups
-	// for _, grp := range groups {
+	for _, grp := range groups {
 
-	// 	// credit, err := RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
-
-	// }
-
+		credit, err := RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("get rule group credit failed, %v", err)
+		}
+		err = StoreCredit(uint64(c.ID), credit)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("store credit failed, %v", err)
+		}
+	}
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("commit sql failed, %v", err)
+	}
+	logger.Info.Println("finish asr flow for %v", resp.CallID)
 	return nil
 }
 

@@ -3,6 +3,7 @@ package qi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -268,8 +269,8 @@ func worker(ctx context.Context, target <-chan uint64,
 
 }
 
-//TagMatch checks each segment for each tags
-//return value: slice of matchData gives the each sentences and its matched tag and matched data
+// TagMatch checks each segment for each tags.
+// return value: a slice of matchData gives the each sentences and its matched tag and matched data
 func TagMatch(tags []uint64, segments []string, timeout time.Duration) ([]*MatchedData, error) {
 
 	numOfTags := len(tags)
@@ -586,6 +587,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	}
 
 	//check the return level
+	//If the level is not the same, it might mean data corruption.
 	tagLev := int(LevTag)
 	if len(levels) != tagLev {
 		logger.Error.Printf("get less relation table. %d\n", tagLev)
@@ -593,6 +595,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	}
 
 	numOfSens := len(levels[LevSentence])
+	//sentence(句子)
 	sentenceCreditMap := make(map[uint64]*SentenceCredit)
 	//extract the sentence id and tag id
 	senIDs := make([]uint64, 0, numOfSens)
@@ -617,15 +620,16 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	//do the checking, tag match
 	tagMatchDat, err := TagMatch(tagIDs, lines, timeout)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tag match failed, %v", err)
 	}
 	if len(tagMatchDat) != numOfLines {
-		logger.Error.Printf("get less tag match sentence. %d\n", numOfLines)
-		return nil, err
+		return nil, fmt.Errorf("get less tag match sentence %d with %d", tagMatchDat, numOfLines)
 	}
 	//--------------------------------------------------------------------------
-
 	//do the sentence check
+	// segMatchedTag struct []map[uint64]bool,
+	// every slice index is a segment, which has a bunch of uint64(tag id),
+	// use map for quick search later
 	segMatchedTag := extractTagMatchedData(tagMatchDat)
 	//do the checking, sentence match
 	senMatchDat, err := SentencesMatch(segMatchedTag, levels[LevSentence])
@@ -643,19 +647,23 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 			credit = v
 			v.Valid = true
 		} else {
-			logger.Error.Printf("sentence matched id %d exitst in credit map, check the relation sentence to tag\n", senID)
+			logger.Error.Printf("sentence matched id %d exist in credit map, check the relation sentence to tag\n", senID)
 			return nil, ErrRequestNotEqualGet
 		}
 
 		for _, segIdx := range segIdxs {
+			// because slice is 0 based index, but cu is 1 based index.
 			matched := tagMatchDat[segIdx-1]
 			for _, data := range matched.Matched {
 				var tagCredit TagCredit
+				//TagID
 				tagCredit.ID = data.Tag
 				tagCredit.Score = data.Score
+				//SentenceID is the cu term for segment Idx, which is 1 based index
 				tagCredit.SegmentIdx = data.SentenceID
 				tagCredit.Match = data.Match
 				tagCredit.MatchTxt = data.MatchText
+				tagCredit.SegmentID = segments[segIdx-1].ID
 				credit.Tags = append(credit.Tags, &tagCredit)
 			}
 		}
