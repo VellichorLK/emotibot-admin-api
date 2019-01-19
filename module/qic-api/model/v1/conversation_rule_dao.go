@@ -12,6 +12,12 @@ type RuleCompleteness struct {
 	SetenceCompleted    int8
 }
 
+type SimpleConversationRule struct {
+	ID   int64  `json:"-"`
+	UUID string `json:"rule_id"`
+	Name string `json:"rule_name"`
+}
+
 type ConversationRule struct {
 	ID           int64
 	UUID         string
