@@ -17,7 +17,6 @@ type GroupDAO interface {
 	CountGroupsBy(filter *GroupFilter) (int64, error)
 	CreateGroup(group *GroupWCond, tx *sql.Tx) (*GroupWCond, error)
 	Group(delegatee SqlLike, query GroupQuery) ([]Group, error)
-	GetGroupBy(id string) (*GroupWCond, error)
 	// UpdateGroup(id int64, group *GroupWCond, tx *sql.Tx) error
 	DeleteGroup(id string, tx *sql.Tx) error
 	GetGroupsBy(filter *GroupFilter) ([]GroupWCond, error)
@@ -41,18 +40,18 @@ type SimpleGroup struct {
 
 // GroupWCond is Group with Condition struct
 type GroupWCond struct {
-	ID              int64           `json:"-"`
-	UUID            string          `json:"group_id,omitempty"`
-	Name            *string         `json:"group_name,omitempty"`
-	Enterprise      string          `json:",omitempty"`
-	Enabled         *int8           `json:"is_enable,omitempty"`
-	Speed           *float64        `json:"limit_speed,omitempty"`
-	SlienceDuration *float64        `json:"limit_silence,omitempty"`
-	Rules           *[]int64        `json:"rules"`
-	Condition       *GroupCondition `json:"other,omitempty"`
-	CreateTime      int64           `json:"create_time,omitempty"`
-	Description     *string         `json:"description"`
-	RuleCount       int             `json:"rule_count"`
+	ID              int64                     `json:"-"`
+	UUID            string                    `json:"group_id,omitempty"`
+	Name            *string                   `json:"group_name,omitempty"`
+	Enterprise      string                    `json:",omitempty"`
+	Enabled         *int8                     `json:"is_enable,omitempty"`
+	Speed           *float64                  `json:"limit_speed,omitempty"`
+	SlienceDuration *float64                  `json:"limit_silence,omitempty"`
+	Rules           *[]SimpleConversationRule `json:"rules"`
+	Condition       *GroupCondition           `json:"other,omitempty"`
+	CreateTime      int64                     `json:"create_time,omitempty"`
+	Description     *string                   `json:"description"`
+	RuleCount       int                       `json:"rule_count"`
 }
 
 // Group is the one to one represent of rule group table schema
@@ -171,6 +170,11 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		}
 	}
 
+	if filter.EnterpriseID != "" {
+		groupStr = fmt.Sprintf("%s and %s = ?", groupStr, fldRuleGrpEnterpriseID)
+		values = append(values, filter.EnterpriseID)
+	}
+
 	conditions := []string{}
 	conditionStr := "WHERE"
 	if filter.FileName != "" {
@@ -232,9 +236,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffName))
 		values = append(values, filter.StaffName)
 	}
-	if filter.EnterpriseID != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", fldRuleGrpEnterpriseID))
-	}
+
 	if len(conditions) == 0 {
 		conditionStr = ""
 	} else {
@@ -244,10 +246,11 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	rrr.%s
+	r.%s as rUUID, r.%s as rName
 	FROM (SELECT * FROM %s WHERE %s=0 %s) as rg
 	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
+	LEFT JOIN %s as r on rrr.%s = r.%s
 	`
 
 	queryStr = fmt.Sprintf(
@@ -274,7 +277,8 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
-		RRRRuleID,
+		fldUUID,
+		fldName,
 		tblRuleGroup,
 		fldIsDelete,
 		groupStr,
@@ -285,6 +289,9 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		tblRelGrpRule,
 		fldID,
 		RRRGroupID,
+		tblRule,
+		RRRRuleID,
+		fldID,
 	)
 	return
 }
@@ -342,7 +349,8 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	for rows.Next() {
 		group := GroupWCond{}
 		condition := GroupCondition{}
-		var ruleID int64
+		var rUUID *string // rule uuid
+		var rName *string // rule name
 
 		rows.Scan(
 			&group.ID,
@@ -367,7 +375,8 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			&condition.CallEnd,
 			&condition.LeftChannelCode,
 			&condition.RightChannelCode,
-			&ruleID,
+			&rUUID,
+			&rName,
 		)
 
 		if currentGroup == nil || group.ID != currentGroup.ID {
@@ -378,13 +387,16 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			group.Condition = &condition
 
 			currentGroup = &group
-			rules := []int64{}
-			if ruleID > int64(0) {
-				rules = append(rules, ruleID)
-			}
+			rules := []SimpleConversationRule{}
 			currentGroup.Rules = &rules
-		} else {
-			rules := append(*currentGroup.Rules, ruleID)
+		}
+
+		if rUUID != nil && rName != nil {
+			rule := SimpleConversationRule{
+				UUID: *rUUID,
+				Name: *rName,
+			}
+			rules := append(*currentGroup.Rules, rule)
 			currentGroup.Rules = &rules
 		}
 	}
@@ -395,7 +407,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	return
 }
 
-func genInsertRelationSQL(id int64, rules *[]int64) (str string, values []interface{}) {
+func genInsertRelationSQL(id int64, rules *[]SimpleConversationRule) (str string, values []interface{}) {
 	str = fmt.Sprintf(
 		"INSERT INTO %s (%s, %s) VALUES ",
 		tblRelGrpRule,
@@ -403,10 +415,10 @@ func genInsertRelationSQL(id int64, rules *[]int64) (str string, values []interf
 		RRRRuleID,
 	)
 	values = []interface{}{}
-	for _, ruleID := range *rules {
+	for _, rule := range *rules {
 		str = addCommaIfNotFirst(str, len(values) == 0)
 		str += " (?, ?)"
-		values = append(values, id, ruleID)
+		values = append(values, id, rule.ID)
 	}
 	return
 }
@@ -517,108 +529,6 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, tx *sql.Tx) (createdGroup *
 
 	group.ID = groupID
 	createdGroup = group
-	return
-}
-
-func (s *GroupSQLDao) GetGroupBy(id string) (group *GroupWCond, err error) {
-	if s.conn == nil {
-		err = s.initDB()
-		if err != nil {
-			err = fmt.Errorf("error while init db in dao.CreateGroup, err: %s", err.Error())
-			return
-		}
-	}
-
-	queryStr := fmt.Sprintf(
-		`SELECT g.%s, g.%s, g.%s, g.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s
-	FROM (SELECT * FROM %s WHERE %s=? and %s = 0) as g 
-	LEFT JOIN %s as gc ON g.%s = gc.%s`,
-		fldRuleGrpUUID,
-		fldRuleGrpName,
-		fldRuleGrpLimitSpeed,
-		fldRuleGrpLimitSilence,
-		RGCFileName,
-		RGCDeal,
-		RGCSeries,
-		RGCStaffID,
-		RGCStaffName,
-		RGCExtension,
-		RGCDepartment,
-		RGCCustomerID,
-		RGCCustomerName,
-		RGCCustomerPhone,
-		RGCCallStart,
-		RGCCallEnd,
-		RGCLeftChannel,
-		RGCRightChannel,
-		tblRuleGroup,
-		fldRuleGrpUUID,
-		fldRuleGrpIsDelete,
-		tblRGC,
-		fldRuleGrpID,
-		RGCGroupID,
-	)
-
-	rows, err := s.conn.Query(queryStr, id)
-	if err != nil {
-		err = fmt.Errorf("error while query group in dao.GetGroupBy, err: %s", err.Error())
-		return
-	}
-
-	for rows.Next() {
-		group = &GroupWCond{}
-		condition := GroupCondition{}
-
-		rows.Scan(
-			&group.UUID,
-			&group.Name,
-			&group.Speed,
-			&group.SlienceDuration,
-			&condition.FileName,
-			&condition.Deal,
-			&condition.Series,
-			&condition.StaffID,
-			&condition.StaffName,
-			&condition.Extension,
-			&condition.Department,
-			&condition.ClientID,
-			&condition.ClientName,
-			&condition.ClientPhone,
-			&condition.CallStart,
-			&condition.CallEnd,
-			&condition.LeftChannelCode,
-			&condition.RightChannelCode,
-		)
-		group.Condition = &condition
-	}
-
-	if group == nil {
-		return
-	}
-
-	// get rules under this group
-	queryStr = fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = ?",
-		RRRRuleID,
-		tblRelGrpRule,
-		RRRGroupID,
-	)
-	rows, err = s.conn.Query(queryStr, id)
-	if err != nil {
-		err = fmt.Errorf("error while get rules of group in dao.GetGroupBy, err: %s", err.Error())
-		return
-	}
-
-	group.Rules = new([]int64)
-	for rows.Next() {
-		var ruleID int64
-		rows.Scan(&ruleID)
-		rules := append(*group.Rules, ruleID)
-		group.Rules = &rules
-	}
-
 	return
 }
 
