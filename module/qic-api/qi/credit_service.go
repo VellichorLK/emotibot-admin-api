@@ -169,6 +169,8 @@ type HistoryCredit struct {
 
 //RetrieveCredit gets the credit by call id
 func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
+	//!!MUST make sure the return credits in order from parent to child level
+	//parent must be in the front of the child
 	credits, err := creditDao.GetCallCredit(dbLike.Conn(), call)
 	if err != nil {
 		logger.Error.Printf("get credits failed\n")

@@ -140,11 +140,11 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, call uint64) ([]*SimpleCredit
 
 	table := tblPredictResult
 	selectFldsStr := strings.Join(flds, ",")
-	rootSQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=? AND %s=0", selectFldsStr, table, fldCallID, fldParentID)
 
-	rows, err := conn.Query(rootSQL, call)
+	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=? ORDER BY %s ASC", selectFldsStr, table, fldCallID, fldType)
+	rows, err := conn.Query(querySQL, call)
 	if err != nil {
-		logger.Error.Printf("get rows failed. %s. sql:%s %d\n", err, rootSQL, call)
+		logger.Error.Printf("get rows failed. %s. sql:%s %d\n", err, querySQL, call)
 		return nil, err
 	}
 	defer rows.Close()
@@ -158,33 +158,6 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, call uint64) ([]*SimpleCredit
 			return nil, err
 		}
 		resp = append(resp, &s)
-	}
-	numOfRoot := len(resp)
-	if numOfRoot == 0 {
-		logger.Info.Printf("No matched call %d credit. sql:%s\n", call, rootSQL)
-		return nil, nil
-	}
-
-	for i := 0; i < numOfRoot; i++ {
-
-		childSQL := fmt.Sprintf("SELECT %s FROM (SELECT * FROM %s ORDER BY %s,%s) result, (SELECT @pv:=%d) initialisation WHERE find_in_set(%s, @pv) AND length(@pv := concat(@pv, ',', %s))",
-			selectFldsStr, table, fldParentID, fldID, resp[i].ID, fldParentID, fldID)
-
-		rows, err = conn.Query(childSQL)
-		if err != nil {
-			logger.Error.Printf("get rows failed. %s. sql:%s %d\n", err, childSQL, call)
-			return nil, err
-		}
-		defer rows.Close()
-		for rows.Next() {
-			var s SimpleCredit
-			err = rows.Scan(&s.ID, &s.CallID, &s.Type, &s.ParentID, &s.OrgID, &s.Valid, &s.Revise, &s.Score, &s.CreateTime, &s.UpdateTime)
-			if err != nil {
-				logger.Error.Printf("Scan failed. %s\n", err)
-				return nil, err
-			}
-			resp = append(resp, &s)
-		}
 	}
 
 	return resp, nil
