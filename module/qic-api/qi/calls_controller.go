@@ -25,14 +25,19 @@ import (
 func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
 	c := getCall(w, r)
 	if c == nil {
+		//already write error, just return
 		return
 	}
-
+	results, err := getSegments(*c)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get segment failed, %v", err))
+		return
+	}
 	//TODO: Detail need the result dao implemented
 	resp := CallDetail{
 		CallID:      c.ID,
 		Status:      c.Status,
-		VoiceResult: []interface{}{},
+		VoiceResult: results,
 		FileName:    *c.FileName,
 		CuResult:    []interface{}{},
 	}
@@ -134,7 +139,8 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
 		return
 	}
-	f, err := os.Open(*c.FilePath)
+	fp := path.Join(volume, *c.FilePath)
+	f, err := os.Open(fp)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))
 	}
@@ -232,7 +238,7 @@ type NewCallReq struct {
 type CallDetail struct {
 	CallID      int64         `json:"call_id"`
 	Status      int8          `json:"status"`
-	VoiceResult []interface{} `json:"voice_result"`
+	VoiceResult []voiceResult `json:"voice_result"`
 	FileName    string        `json:"file_name"`
 	CuResult    []interface{} `json:"cu_result"`
 }
@@ -272,15 +278,15 @@ type CallDetail struct {
 // 	Match    *string `json:"match,omitempty"`
 // }
 
-// type voiceResult struct {
-// 	Speaker   Speaker `json:"speaker"`
-// 	EndTime   float64 `json:"end_time"`
-// 	SentID    int64   `json:"sent_id"`
-// 	Emotion   float64 `json:"emotion"`
-// 	ASRText   *string `json:"asr_text"`
-// 	StartTime float64 `json:"start_time"`
-// 	Sret      int64   `json:"sret"`
-// }
+type voiceResult struct {
+	ASRText    string  `json:"asr_text"`
+	Emotion    float64 `json:"emotion"`
+	Speaker    string  `json:"speaker"`
+	StartTime  float64 `json:"start_time"`
+	EndTime    float64 `json:"end_time"`
+	SentenceID int64   `json:"sent_id"`
+	Sret       int64   `json:"sret"` //status
+}
 
 // type Type string
 
@@ -289,7 +295,7 @@ type CallDetail struct {
 // 	Keyword Type = "keyword"
 // )
 
-// type Speaker string
+type Speaker string
 
 // const (
 // 	Guest Speaker = "guest"
