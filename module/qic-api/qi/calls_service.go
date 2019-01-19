@@ -238,6 +238,7 @@ func ConfirmCall(call *model.Call) error {
 	if call.FilePath == nil {
 		return fmt.Errorf("call FilePath should not be nil")
 	}
+	call.Status = model.CallStatusRunning
 	err := UpdateCall(call)
 	//TODO: ADD Task update too.
 	if err != nil {

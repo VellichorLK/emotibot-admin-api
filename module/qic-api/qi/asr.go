@@ -35,7 +35,7 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("call '%d' can not be found", callID)
 	}
 	c := calls[0]
-	c.Status = model.CallStatusRunning
+	c.DurationMillSecond = int(resp.Length * 1000)
 	err = UpdateCall(&c)
 	if err != nil {
 		return fmt.Errorf("call update status failed, %v", err)
@@ -153,6 +153,11 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("commit sql failed, %v", err)
+	}
+	c.Status = model.CallStatusDone
+	err = callDao.SetCall(nil, c)
+	if err != nil {
+		logger.Error.Println("ASR finished, but status update failed. It will cause an unsync status. error: %v", err)
 	}
 	logger.Info.Println("finish asr flow for ", resp.CallID)
 	return nil
