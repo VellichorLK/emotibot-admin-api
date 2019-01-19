@@ -157,7 +157,7 @@ func ASRWorkFlow(output []byte) error {
 	c.Status = model.CallStatusDone
 	err = callDao.SetCall(nil, c)
 	if err != nil {
-		logger.Error.Println("ASR finished, but status update failed. It will cause an unsync status. error: %v", err)
+		logger.Error.Println("ASR finished, but status update failed. It will cause an unsync status. error: ", err)
 	}
 	logger.Info.Println("finish asr flow for ", resp.CallID)
 	return nil
