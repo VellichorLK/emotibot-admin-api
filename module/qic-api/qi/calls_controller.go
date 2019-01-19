@@ -294,10 +294,3 @@ type voiceResult struct {
 // 	Intent  Type = "intent"
 // 	Keyword Type = "keyword"
 // )
-
-type Speaker string
-
-// const (
-// 	Guest Speaker = "guest"
-// 	Host  Speaker = "host"
-// )

@@ -55,34 +55,18 @@ func ASRWorkFlow(output []byte) error {
 			tx.Rollback()
 		}
 	}()
-	var (
-		staffChannels    []vChannel
-		customerChannels []vChannel
-	)
-	switch c.LeftChanRole {
-	case model.CallChanStaff:
-		staffChannels = append(staffChannels, resp.LeftChannel)
-	case model.CallChanCustomer:
-		customerChannels = append(customerChannels, resp.LeftChannel)
-	default:
-		return fmt.Errorf("call's left channel role '%d' is unknown", c.LeftChanRole)
-	}
-	switch c.RightChanRole {
-	case model.CallChanStaff:
-		staffChannels = append(staffChannels, resp.RightChannel)
-	case model.CallChanCustomer:
-		customerChannels = append(customerChannels, resp.RightChannel)
-	default:
-		return fmt.Errorf("call's left channel role '%d' is unknown", c.LeftChanRole)
+	var channelRoles = map[int8]int{
+		1: int(c.LeftChanRole),
+		2: int(c.RightChanRole),
 	}
 	var segments = []model.RealSegment{}
-
+	//TODO: check sret & emotion = -1
 	for _, sen := range resp.LeftChannel.Sentences {
 		s := model.RealSegment{
 			CallID:    callID,
 			StartTime: sen.Start,
 			EndTime:   sen.End,
-			Channel:   c.LeftChanRole,
+			Channel:   1,
 			Text:      sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
@@ -99,7 +83,7 @@ func ASRWorkFlow(output []byte) error {
 			CallID:    callID,
 			StartTime: sen.Start,
 			EndTime:   sen.End,
-			Channel:   c.RightChanRole,
+			Channel:   2,
 			Text:      sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
@@ -124,7 +108,7 @@ func ASRWorkFlow(output []byte) error {
 	for _, s := range segments {
 		ws := &SegmentWithSpeaker{
 			RealSegment: s,
-			Speaker:     1,
+			Speaker:     channelRoles[s.Channel],
 		}
 		segWithSp = append(segWithSp, ws)
 	}
