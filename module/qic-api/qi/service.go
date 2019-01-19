@@ -12,6 +12,34 @@ var (
 	serviceDAO model.GroupDAO = &model.GroupSQLDao{}
 )
 
+func simpleConversationRulesOf(group *model.GroupWCond, sql model.SqlLike) (simpleRules []model.SimpleConversationRule, err error) {
+	simpleRules = []model.SimpleConversationRule{}
+	if group.Rules == nil || len(*group.Rules) == 0 {
+		return
+	}
+
+	ruleUUID := make([]string, len(*group.Rules))
+	for idx, rule := range *group.Rules {
+		ruleUUID[idx] = rule.UUID
+	}
+
+	rulefilter := &model.ConversationRuleFilter{
+		UUID:       ruleUUID,
+		Enterprise: group.Enterprise,
+	}
+
+	rules, err := conversationRuleDao.GetBy(rulefilter, sql)
+	for _, rule := range rules {
+		simpleRule := model.SimpleConversationRule{
+			ID:   rule.ID,
+			UUID: rule.UUID,
+			Name: rule.Name,
+		}
+		simpleRules = append(simpleRules, simpleRule)
+	}
+	return
+}
+
 func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err error) {
 	if group == nil || group.Condition == nil {
 		return
@@ -140,6 +168,12 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	group.UUID = uuid.String()
 	group.UUID = strings.Replace(group.UUID, "-", "", -1)
 
+	simpleRules, err := simpleConversationRulesOf(group, tx)
+	if err != nil {
+		return
+	}
+	group.Rules = &simpleRules
+
 	createdGroup, err = serviceDAO.CreateGroup(group, tx)
 	if err != nil {
 		return
@@ -188,7 +222,9 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 		group := &groups[idx]
 		group.Condition.LeftChannel = &staff
 		group.Condition.RightChannel = &client
-		group.RuleCount = len(*group.Rules)
+		if group.Rules != nil {
+			group.RuleCount = len(*group.Rules)
+		}
 	}
 	return
 }
@@ -201,10 +237,21 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 	defer serviceDAO.ClearTranscation(tx)
 
 	// get original group to compare which fileds are need to be updated
-	originGroup, err := serviceDAO.GetGroupBy(id)
+	filter := &model.GroupFilter{
+		UUID: []string{
+			id,
+		},
+		EnterpriseID: group.Enterprise,
+	}
+	groups, err := serviceDAO.GetGroupsBy(filter)
 	if err != nil {
 		return
 	}
+
+	if len(groups) == 0 {
+		return
+	}
+	originGroup := &groups[0]
 
 	err = serviceDAO.DeleteGroup(id, tx)
 	if err != nil {
@@ -299,6 +346,12 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 		group.Condition = originGroup.Condition
 	}
 
+	simpleRules, err := simpleConversationRulesOf(group, tx)
+	if err != nil {
+		return
+	}
+
+	group.Rules = &simpleRules
 	group.CreateTime = originGroup.CreateTime
 	group.UUID = id
 	group.Enterprise = group.Enterprise
