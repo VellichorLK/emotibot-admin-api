@@ -122,14 +122,18 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 		return
 	}
 
-	flowFilter.SGUUID = []string{}
-	for _, flow := range flows {
-		flowFilter.UUID = append(flowFilter.UUID, flow.UUID)
-	}
+	if len(flows) != 0 {
+		flowFilter.SGUUID = []string{}
+		for _, flow := range flows {
+			flowFilter.UUID = append(flowFilter.UUID, flow.UUID)
+		}
 
-	flows, err = conversationFlowDao.GetBy(flowFilter, tx)
-	if err != nil {
-		return
+		flows, err = conversationFlowDao.GetBy(flowFilter, tx)
+		if err != nil {
+			return
+		}
+	} else {
+		flows = []model.ConversationFlow{}
 	}
 
 	filter := &model.SentenceGroupFilter{
@@ -179,7 +183,6 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 	// update conversation flows which reference this sentence group
 	for idx := range flows {
 		flow := &flows[idx]
-		logger.Info.Printf("flow: %+v\n", flow)
 		_, err = UpdateConversationFlow(flow.UUID, flow.Enterprise, flow)
 		if err != nil {
 			return
