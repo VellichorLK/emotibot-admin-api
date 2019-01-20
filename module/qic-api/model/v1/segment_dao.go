@@ -71,6 +71,7 @@ func (s *SegmentQuery) whereSQL() (string, []interface{}) {
 }
 
 // Segments search the db by given query, and return a slice of found Segments
+// notice: the segments will be sorted by start time, which is much more convenient for the users
 func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error) {
 	if delegatee == nil {
 		delegatee = s.db.Conn()
@@ -81,7 +82,7 @@ func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegm
 		fldSegmentEndTime, fldSegmentChannel, fldSegmentText,
 	}
 	wherepart, binddata := query.whereSQL()
-	rawquery := "SELECT `" + strings.Join(selectCols, "`, `") + "` FROM `" + tblSegment + "` " + wherepart + " ORDER BY `" + fldSegmentCreateTime + "` "
+	rawquery := "SELECT `" + strings.Join(selectCols, "`, `") + "` FROM `" + tblSegment + "` " + wherepart + " ORDER BY `" + fldSegmentStartTime + "` "
 	if query.page != nil {
 		rawquery += query.page.offsetSQL()
 	}

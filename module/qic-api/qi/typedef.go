@@ -88,4 +88,5 @@ type TaskDao interface {
 
 type SegmentDao interface {
 	NewSegments(delegatee model.SqlLike, segments []model.RealSegment) ([]model.RealSegment, error)
+	Segments(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error)
 }
