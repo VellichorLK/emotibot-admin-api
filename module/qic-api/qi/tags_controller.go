@@ -22,7 +22,6 @@ import (
 
 //HandleGetTags handle the get request for tag.
 func HandleGetTags(w http.ResponseWriter, r *http.Request) {
-	RetrieveCredit(4444)
 	enterpriseID := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
 	if err != nil {
