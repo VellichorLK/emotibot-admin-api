@@ -12,7 +12,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
-var creditDao model.CreditDao
+var creditDao model.CreditDao = &model.CreditSQLDao{}
 
 type levelType int
 
@@ -176,7 +176,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 		logger.Error.Printf("get credits failed\n")
 		return nil, err
 	}
-
+	if len(credits) == 0 {
+		return []*HistoryCredit{}, nil
+	}
 	var rgIDs, ruleIDs, cfIDs, senGrpIDs, senIDs, segIDs []uint64
 
 	rgCreditsMap := make(map[uint64]*RuleGrpCredit)
@@ -203,6 +205,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if history, ok = creditTimeMap[v.CreateTime]; !ok {
 				history = &HistoryCredit{CreateTime: v.CreateTime}
 				creditTimeMap[v.CreateTime] = history
+				resp = append(resp, history)
 			}
 			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score}
 			history.Credit = append(history.Credit, credit)
@@ -270,105 +273,113 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	}
 
 	//get the rule group setting
-	_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs})
-	if err != nil {
-		logger.Error.Printf("get rule group %+v failed. %s\n", rgIDs, err)
-		return nil, err
-	}
-	for i := 0; i < len(groupsSet); i++ {
-		if group, ok := rgCreditsIDMap[uint64(groupsSet[i].ID)]; ok {
-			group.Setting = &groupsSet[i]
-		} else {
-			msg := fmt.Sprintf("return %d rule group doesn't meet request %+v\n", groupsSet[i].ID, rgIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+	if len(rgIDs) > 0 {
+		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs})
+		if err != nil {
+			logger.Error.Printf("get rule group %+v failed. %s\n", rgIDs, err)
+			return nil, err
+		}
+		for i := 0; i < len(groupsSet); i++ {
+			if group, ok := rgCreditsIDMap[uint64(groupsSet[i].ID)]; ok {
+				group.Setting = &groupsSet[i]
+			} else {
+				msg := fmt.Sprintf("return %d rule group doesn't meet request %+v\n", groupsSet[i].ID, rgIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
 
 	//get the rule setting
-	ruleSet, err := conversationRuleDao.GetBy(&model.ConversationRuleFilter{ID: ruleIDs, Severity: -1, IsDeleted: -1}, sqlConn)
-	if err != nil {
-		logger.Error.Printf("get rule %+v failed. %s\n", ruleIDs, err)
-		return nil, err
-	}
-	for i := 0; i < len(ruleSet); i++ {
-		if rule, ok := rCreditsIDMap[uint64(ruleSet[i].ID)]; ok {
-			ruleInRes := conversationRuleToRuleInRes(&ruleSet[i])
-			rule.Setting = ruleInRes
-		} else {
-			msg := fmt.Sprintf("return %d rule doesn't meet request %+v\n", ruleSet[i].ID, ruleIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+	if len(ruleIDs) > 0 {
+		ruleSet, err := conversationRuleDao.GetBy(&model.ConversationRuleFilter{ID: ruleIDs, Severity: -1, IsDeleted: -1}, sqlConn)
+		if err != nil {
+			logger.Error.Printf("get rule %+v failed. %s\n", ruleIDs, err)
+			return nil, err
+		}
+		for i := 0; i < len(ruleSet); i++ {
+			if rule, ok := rCreditsIDMap[uint64(ruleSet[i].ID)]; ok {
+				ruleInRes := conversationRuleToRuleInRes(&ruleSet[i])
+				rule.Setting = ruleInRes
+			} else {
+				msg := fmt.Sprintf("return %d rule doesn't meet request %+v\n", ruleSet[i].ID, ruleIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
-
 	//get the conversation flow setting
-	cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}, sqlConn)
-	if err != nil {
-		logger.Error.Printf("get conversation flow %+v failed. %s\n", cfIDs, err)
-		return nil, err
-	}
-	for i := 0; i < len(cfSet); i++ {
-		if cf, ok := cfCreditsIDMap[uint64(cfSet[i].ID)]; ok {
-			flowInRes := conversationfFlowToFlowInRes(&cfSet[i])
-			cf.Setting = &flowInRes
-		} else {
-			msg := fmt.Sprintf("return %d conversation flow doesn't meet request %+v\n", cfSet[i].ID, cfIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+	if len(cfIDs) > 0 {
+		cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}, sqlConn)
+		if err != nil {
+			logger.Error.Printf("get conversation flow %+v failed. %s\n", cfIDs, err)
+			return nil, err
+		}
+		for i := 0; i < len(cfSet); i++ {
+			if cf, ok := cfCreditsIDMap[uint64(cfSet[i].ID)]; ok {
+				flowInRes := conversationfFlowToFlowInRes(&cfSet[i])
+				cf.Setting = &flowInRes
+			} else {
+				msg := fmt.Sprintf("return %d conversation flow doesn't meet request %+v\n", cfSet[i].ID, cfIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
 
 	//get the sentence group setting
-	senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{Role: -1, Position: -1, ID: senGrpIDs, IsDelete: -1}, sqlConn)
-	if err != nil {
-		logger.Error.Printf("get sentence group %+v failed. %s\n", senGrpIDs, err)
-		return nil, err
-	}
-	for i := 0; i < len(senGrpSet); i++ {
-		if senGrp, ok := senGrpCreditsIDMap[uint64(senGrpSet[i].ID)]; ok {
-			groupInRes := sentenceGroupToSentenceGroupInResponse(&senGrpSet[i])
-			senGrp.Setting = &groupInRes
-		} else {
-			msg := fmt.Sprintf("return %d sentence group doesn't meet request %+v\n", senGrpSet[i].ID, senGrpIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+	if len(senGrpIDs) > 0 {
+		senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{Role: -1, Position: -1, ID: senGrpIDs, IsDelete: -1}, sqlConn)
+		if err != nil {
+			logger.Error.Printf("get sentence group %+v failed. %s\n", senGrpIDs, err)
+			return nil, err
+		}
+		for i := 0; i < len(senGrpSet); i++ {
+			if senGrp, ok := senGrpCreditsIDMap[uint64(senGrpSet[i].ID)]; ok {
+				groupInRes := sentenceGroupToSentenceGroupInResponse(&senGrpSet[i])
+				senGrp.Setting = &groupInRes
+			} else {
+				msg := fmt.Sprintf("return %d sentence group doesn't meet request %+v\n", senGrpSet[i].ID, senGrpIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
-
 	//get the sentences setting
-	senSet, err := getSentences(&model.SentenceQuery{ID: senIDs})
-	if err != nil {
-		logger.Error.Printf("get sentence  %+v failed. %s\n", senIDs, err)
-		return nil, err
-	}
-	for _, set := range senSet {
-		if sen, ok := senCreditsIDMap[set.ID]; ok {
-			sen.Setting = set
-		} else {
-			msg := fmt.Sprintf("return %d sentence  doesn't meet request %+v\n", set.ID, senIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+	if len(senIDs) > 0 {
+		senSet, err := getSentences(&model.SentenceQuery{ID: senIDs})
+		if err != nil {
+			logger.Error.Printf("get sentence  %+v failed. %s\n", senIDs, err)
+			return nil, err
+		}
+		for _, set := range senSet {
+			if sen, ok := senCreditsIDMap[set.ID]; ok {
+				sen.Setting = set
+			} else {
+				msg := fmt.Sprintf("return %d sentence  doesn't meet request %+v\n", set.ID, senIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
-
 	//get the matched segments
-	segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), segIDs)
-	if err != nil {
-		logger.Error.Printf("get matched segments  %+v failed. %s\n", segIDs, err)
-		return nil, err
-	}
+	if len(segIDs) > 0 {
+		segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), segIDs)
+		if err != nil {
+			logger.Error.Printf("get matched segments  %+v failed. %s\n", segIDs, err)
+			return nil, err
+		}
 
-	for _, matched := range segsMatch {
-		if seg, ok := segIDMap[matched.ID]; ok {
-			*seg = *matched
-		} else {
-			msg := fmt.Sprintf("return %d segment matched  doesn't meet request %+v\n", matched.ID, segIDs)
-			logger.Error.Printf("%s\n", msg)
-			return nil, errors.New(msg)
+		for _, matched := range segsMatch {
+			if seg, ok := segIDMap[matched.SegID]; ok {
+				*seg = *matched
+			} else {
+				msg := fmt.Sprintf("return %d segment matched  doesn't meet request %+v\n", matched.SegID, segIDs)
+				logger.Error.Printf("%s\n", msg)
+				return nil, errors.New(msg)
+			}
 		}
 	}
-
 	//desc order
 	sort.SliceStable(resp, func(i, j int) bool {
 		return resp[i].CreateTime > resp[j].CreateTime

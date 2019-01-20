@@ -187,6 +187,10 @@ func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, segments []uint64) ([]*Segm
 		fldUpdateTime,
 	}
 
+	for i := 0; i < len(flds); i++ {
+		flds[i] = "`" + flds[i] + "`"
+	}
+
 	fldStr := strings.Join(flds, ",")
 
 	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s in (?%s)",
@@ -208,7 +212,7 @@ func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, segments []uint64) ([]*Segm
 	for rows.Next() {
 		var seg SegmentMatch
 		err = rows.Scan(&seg.ID, &seg.SegID, &seg.TagID, &seg.Score, &seg.Match,
-			&seg.Match, &seg.MatchedText, &seg.CreateTime, &seg.UpdateTime)
+			&seg.MatchedText, &seg.CreateTime, &seg.UpdateTime)
 		if err != nil {
 			logger.Error.Printf("scan error. %s\n", err)
 			return nil, err
