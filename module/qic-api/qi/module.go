@@ -86,6 +86,8 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
+
+			util.NewEntryPoint(http.MethodGet, "credit/call/{id}", []string{}, WithCallIDCheck(handleGetCredit)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -137,7 +139,6 @@ func init() {
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
 				relationDao = &model.RelationSQLDao{}
-				creditDao = &model.CreditSQLDao{}
 				trainer = predictor
 				segmentDao = model.NewSegmentDao(dbLike)
 

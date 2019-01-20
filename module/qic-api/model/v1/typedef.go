@@ -64,4 +64,5 @@ type GroupFilter struct {
 	Page          int
 	Limit         int
 	UUID          []string
+	ID            []uint64
 }
