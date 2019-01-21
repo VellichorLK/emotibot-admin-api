@@ -33,6 +33,11 @@ var validMap = map[int]bool{
 	1: true,
 }
 
+//the const variable
+const (
+	BaseScore = 100
+)
+
 //StoreCredit stores the result of the quality
 func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 	if credit == nil {
@@ -164,6 +169,7 @@ func errCannotFindParent(id, parent uint64) error {
 //HistoryCredit records the time and its credit
 type HistoryCredit struct {
 	CreateTime int64            `json:"create_time"`
+	Score      int              `json:"score"`
 	Credit     []*RuleGrpCredit `json:"credit"`
 }
 
@@ -203,7 +209,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			var ok bool
 			var history *HistoryCredit
 			if history, ok = creditTimeMap[v.CreateTime]; !ok {
-				history = &HistoryCredit{CreateTime: v.CreateTime}
+				history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
 				creditTimeMap[v.CreateTime] = history
 				resp = append(resp, history)
 			}

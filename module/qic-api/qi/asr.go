@@ -120,6 +120,8 @@ func ASRWorkFlow(output []byte) error {
 	}
 	groups := callGroups[c.ID]
 	_ = groups
+	credits := make([]*RuleGrpCredit, 0, len(groups))
+	score := BaseScore
 	for _, grp := range groups {
 
 		credit, err := RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
@@ -127,6 +129,11 @@ func ASRWorkFlow(output []byte) error {
 			tx.Rollback()
 			return fmt.Errorf("get rule group credit failed, %v", err)
 		}
+		credits = append(credits, credit)
+		score += credit.Score
+	}
+	for _, credit := range credits {
+		credit.Score = score
 		err = StoreCredit(uint64(c.ID), credit)
 		if err != nil {
 			tx.Rollback()

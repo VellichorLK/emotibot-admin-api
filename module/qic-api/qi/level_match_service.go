@@ -830,7 +830,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 
 	resp.ID = ruleGroup
 	resp.Plus = totalScore
-	resp.Score = 100 + totalScore
+	resp.Score = totalScore
 	for _, ruleID := range ruleIDs {
 		cfIDs := levels[LevRule][ruleID]
 		credit := &RuleCredit{ID: ruleID}
