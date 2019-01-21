@@ -87,7 +87,7 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 
-			util.NewEntryPoint(http.MethodGet, "credit/call/{id}", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "call/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

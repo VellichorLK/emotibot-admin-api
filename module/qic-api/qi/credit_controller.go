@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/logger"
+	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -13,8 +14,7 @@ import (
 )
 
 func handleGetCredit(w http.ResponseWriter, r *http.Request) {
-	enterprise := requestheader.GetEnterpriseID(r)
-	callStr := parseID(r)
+	callStr := mux.Vars(r)["call_id"]
 
 	//check the category authorization
 	call, err := strconv.ParseUint(callStr, 10, 64)
@@ -29,8 +29,6 @@ func handleGetCredit(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-
-	_ = enterprise
 
 	err = util.WriteJSON(w, resp)
 	if err != nil {
