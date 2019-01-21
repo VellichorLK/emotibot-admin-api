@@ -24,9 +24,9 @@ import (
 type CallResp struct {
 	CallID           int64   `json:"call_id"`
 	FileName         string  `json:"file_name,omitempty"`
-	CallTime         int64   `json:"call_time,omitempty"`
-	CallComment      string  `json:"call_comment,omitempty"`
-	Transaction      int64   `json:"deal,omitempty"`
+	CallTime         int64   `json:"call_time"`
+	CallComment      string  `json:"call_comment"`
+	Transaction      int64   `json:"deal"`
 	Series           string  `json:"series,omitempty"`
 	HostID           string  `json:"staff_id,omitempty"`
 	HostName         string  `json:"staff_name,omitempty"`
@@ -35,14 +35,14 @@ type CallResp struct {
 	GuestID          string  `json:"customer_id,omitempty"`
 	GuestName        string  `json:"customer_name,omitempty"`
 	GuestPhone       string  `json:"customer_phone,omitempty"`
-	QiGroup          []int64 `json:"qi_group,omitempty"`
 	LeftChannel      string  `json:"left_channel,omitempty"`
 	RightChannel     string  `json:"right_channel,omitempty"`
-	Status           int64   `json:"status,omitempty"`
-	UploadTime       int64   `json:"upload_time,omitempty"`
-	CallLength       float64 `json:"duration,omitempty"`
+	Status           int64   `json:"status"`
+	UploadTime       int64   `json:"upload_time"`
+	CallLength       float64 `json:"duration"`
 	LeftSilenceRate  float64 `json:"left_silence_rate,omitempty"`
 	RightSilenceRate float64 `json:"right_silence_rate,omitempty"`
+	// QiGroup          []int64 `json:"qi_group,omitempty"`
 	// ViolationNumber  int64   `json:"violation_number,omitempty"`
 	// CriticalNumber   string  `json:"critical_number,omitempty"`
 	// ReviewStatus     string  `json:"review_status,omitempty"`

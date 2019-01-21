@@ -149,6 +149,7 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	_, err = io.Copy(w, f)
 	if err != nil {
 		logger.Error.Println(err)
+		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))
 		return
 	}
 	return
