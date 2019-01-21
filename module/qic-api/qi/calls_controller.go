@@ -39,7 +39,6 @@ func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
 		Status:      c.Status,
 		VoiceResult: results,
 		FileName:    *c.FileName,
-		CuResult:    []interface{}{},
 	}
 	util.WriteJSON(w, resp)
 }
@@ -241,43 +240,7 @@ type CallDetail struct {
 	Status      int8          `json:"status"`
 	VoiceResult []voiceResult `json:"voice_result"`
 	FileName    string        `json:"file_name"`
-	CuResult    []interface{} `json:"cu_result"`
 }
-
-// type cuResult struct {
-// 	Score     float64    `json:"score"`
-// 	QiResult  []QiResult `json:"qi_result"`
-// 	GroupName string     `json:"group_name"`
-// }
-
-// type QiResult struct {
-// 	ControllerRule string        `json:"controller_rule"`
-// 	Valid          bool          `json:"valid"`
-// 	Method         int64         `json:"method"`
-// 	LogicResults   []LogicResult `json:"logic_results"`
-// }
-
-// type LogicResult struct {
-// 	Label     []Label `json:"label"`
-// 	LogicRule string  `json:"logic_rule"`
-// 	Valid     bool    `json:"valid"`
-// }
-
-// type Label struct {
-// 	Score *int64  `json:"score,omitempty"`
-// 	ID    []int64 `json:"id"`
-// 	Match []Match `json:"match"`
-// 	Tag   string  `json:"tag"`
-// 	Type  Type    `json:"type"`
-// }
-
-// type Match struct {
-// 	Score    int64   `json:"score"`
-// 	ID       int64   `json:"id"`
-// 	Tag      string  `json:"tag"`
-// 	Sentence string  `json:"sentence"`
-// 	Match    *string `json:"match,omitempty"`
-// }
 
 type voiceResult struct {
 	ASRText    string  `json:"asr_text"`
@@ -288,10 +251,3 @@ type voiceResult struct {
 	SentenceID int64   `json:"sent_id"`
 	Sret       int64   `json:"sret"` //status
 }
-
-// type Type string
-
-// const (
-// 	Intent  Type = "intent"
-// 	Keyword Type = "keyword"
-// )
