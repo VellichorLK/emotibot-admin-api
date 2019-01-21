@@ -19,7 +19,7 @@ var mockGroups = []model.GroupWCond{
 		UUID:      "CDEFG",
 		Name:      &mockName2,
 		Condition: mockCondition,
-		Rules:     &[]int64{},
+		Rules:     &[]model.SimpleConversationRule{},
 	},
 }
 
@@ -119,11 +119,20 @@ var groupName string = "group_name"
 var groupEnabled int8 = int8(1)
 var groupSpeed float64 = 300
 var groupDuration float64 = 0.33
-var groupRules []int64 = []int64{
-	1, 2, 3,
+var groupRules []model.SimpleConversationRule = []model.SimpleConversationRule{
+	model.SimpleConversationRule{
+		ID: 1,
+	},
+	model.SimpleConversationRule{
+		ID: 2,
+	},
+	model.SimpleConversationRule{
+		ID: 3,
+	},
 }
 
 var mockGroup = &model.GroupWCond{
+	UUID:            "123456",
 	Name:            &groupName,
 	Enterprise:      "enterpries",
 	Enabled:         &groupEnabled,
@@ -131,14 +140,36 @@ var mockGroup = &model.GroupWCond{
 	SlienceDuration: &groupDuration,
 	Condition:       mockCondition,
 	Rules:           &groupRules,
+	RuleCount:       3,
+}
+
+func setupGroupMockTest() (model.DBLike, model.GroupDAO, model.ConversationRuleDao) {
+	m := &mockDAO{}
+	originDao := serviceDAO
+	serviceDAO = m
+
+	mockRuleDao := &mockConversationRuleDao{}
+	originRuleDao := conversationRuleDao
+	conversationRuleDao = mockRuleDao
+
+	originDBLike := dbLike
+	mockDBLike := &mockDBLike{}
+	dbLike = mockDBLike
+
+	return originDBLike, originDao, originRuleDao
+}
+
+func restoreGroupMock(originDBLike model.DBLike, originDao model.GroupDAO, originRuleDao model.ConversationRuleDao) {
+	dbLike = originDBLike
+	serviceDAO = originDao
+	conversationRuleDao = originRuleDao
+	return
 }
 
 func TestCreateGroup(t *testing.T) {
 	// mock dao
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
+	originDBLike, originDao, originRuleDao := setupGroupMockTest()
+	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
 
 	createdGroup, err := CreateGroup(mockGroup)
 	if err != nil {
@@ -193,7 +224,9 @@ func sameGroup(g1, g2 *model.GroupWCond) bool {
 		g1Rules := *g1.Rules
 		g2Rules := *g2.Rules
 		for id := range *g1.Rules {
-			if g1Rules[id] != g2Rules[id] {
+			g1Rule := g1Rules[id]
+			g2Rule := g2Rules[id]
+			if g1Rule.UUID != g2Rule.UUID || g1Rule.Name != g2Rule.Name {
 				same = false
 				break
 			}
@@ -205,10 +238,8 @@ func sameGroup(g1, g2 *model.GroupWCond) bool {
 
 func TestGetSingleGroup(t *testing.T) {
 	// mock dao
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
+	originDBLike, originDao, originRuleDao := setupGroupMockTest()
+	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
 
 	group, err := GetGroupBy(mockGroups[0].UUID)
 	if err != nil {
