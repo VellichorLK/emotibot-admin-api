@@ -402,6 +402,41 @@ func (dao *AutofillDao) getIntents(appID string, table string) ([]string, error)
 	return names, nil
 }
 
+// GetTECurrentIntentIDs returns current intent IDs used by Task Engine
+func (dao *AutofillDao) GetTECurrentIntentIDs(appID string) ([]int64, error) {
+	if dao.db == nil {
+		return nil, ErrDBNotInit
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT i.id
+		FROM %s as i
+		INNER JOIN %s as t
+		ON i.name = t.name
+		WHERE app_id = ? AND version = (
+			SELECT MAX(version)
+			FROM intents
+			WHERE appid = ?)`, IntentsTable, TaskEngineIntentsTable)
+
+	rows, err := dao.db.Query(queryStr, appID, appID)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]int64, 0)
+
+	for rows.Next() {
+		var id int64
+		err = rows.Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
 // UpdateTEPrevIntents replace all intents in taskengine_intents_prev with given intents
 func (dao *AutofillDao) UpdateTEPrevIntents(appID string, intents []string) (err error) {
 	if dao.db == nil {

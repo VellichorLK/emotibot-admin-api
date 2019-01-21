@@ -260,6 +260,17 @@ func resetIntentAutofills(appID string) error {
 	// Sentence: autofill bodies
 	autofillBodies := make(map[string][]*data.AutofillBody)
 
+	// Current intent IDs used by Task Engine
+	teIntentIDs, err := autofillDao.GetTECurrentIntentIDs(appID)
+	if err != nil {
+		return err
+	}
+
+	teIntentIDsMap := make(map[int64]bool)
+	for _, teIntentID := range teIntentIDs {
+		teIntentIDsMap[teIntentID] = true
+	}
+
 	var lastSentenceID int64 = -1
 
 	// Batch loading intent sentences
@@ -322,7 +333,13 @@ func resetIntentAutofills(appID string) error {
 				body.SentenceType = nluResult.SentenceType
 				body.SentencePos = nluResult.Segment.ToFullString()
 				body.Source = time.Now().Format("2006-01-02 15:04:05")
-				body.Enabled = false
+
+				// Autofill enabled
+				enabled := false
+				if _, ok := teIntentIDsMap[body.ModuleID]; ok {
+					enabled = true
+				}
+				body.Enabled = enabled
 			}
 		}
 
