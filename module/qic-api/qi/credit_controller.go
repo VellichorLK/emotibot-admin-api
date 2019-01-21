@@ -15,7 +15,6 @@ import (
 
 func handleGetCredit(w http.ResponseWriter, r *http.Request) {
 	callStr := mux.Vars(r)["call_id"]
-
 	//check the category authorization
 	call, err := strconv.ParseUint(callStr, 10, 64)
 	if err != nil {
@@ -40,7 +39,7 @@ func handleGetCredit(w http.ResponseWriter, r *http.Request) {
 func WithCallIDCheck(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enterprise := requestheader.GetEnterpriseID(r)
-		callStr := parseID(r)
+		callStr := mux.Vars(r)["call_id"]
 		call, err := strconv.ParseInt(callStr, 10, 64)
 		if err != nil {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
