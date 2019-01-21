@@ -175,6 +175,13 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		values = append(values, filter.EnterpriseID)
 	}
 
+	if len(filter.ID) > 0 {
+		groupStr += fmt.Sprintf(" and %s IN (?%s)", fldID, strings.Repeat(", ?", len(filter.ID)-1))
+		for _, id := range filter.ID {
+			values = append(values, id)
+		}
+	}
+
 	conditions := []string{}
 	conditionStr := "WHERE"
 	if filter.FileName != "" {

@@ -73,50 +73,46 @@ type RuleMatchedResult struct {
 
 //RuleGrpCredit is the result of the segments
 type RuleGrpCredit struct {
-	ID    uint64
-	UUID  string
-	Name  string
-	Plus  int
-	Score int
-	Rules []*RuleCredit
+	ID      uint64            `json:"id"`
+	Plus    int               `json:"-"`
+	Score   int               `json:"score"`
+	Rules   []*RuleCredit     `json:"rules"`
+	Setting *model.GroupWCond `json:"setting"`
 }
 
 //RuleCredit stores the rule level result
 type RuleCredit struct {
-	ID    uint64
-	UUID  string
-	Name  string
-	Valid bool
-	Score int
-	CFs   []*ConversationFlowCredit
+	ID      uint64                    `json:"id"`
+	Valid   bool                      `json:"valid"`
+	Score   int                       `json:"score"`
+	CFs     []*ConversationFlowCredit `json:"conversation_flow"`
+	Setting *ConversationRuleInRes    `json:"setting"`
 }
 
 //ConversationFlowCredit stores the conversation flow level result
 type ConversationFlowCredit struct {
-	ID           uint64
-	UUID         string
-	Name         string
-	Valid        bool
-	SentenceGrps []*SentenceGrpCredit
+	ID           uint64                 `json:"id"`
+	Valid        bool                   `json:"valid"`
+	SentenceGrps []*SentenceGrpCredit   `json:"sentence_group"`
+	Setting      *ConversationFlowInRes `json:"setting"`
 }
 
 //SentenceGrpCredit stores the sentence group level result
 type SentenceGrpCredit struct {
-	ID        uint64
-	UUID      string
-	Name      string
-	Valid     bool
-	Sentences []*SentenceCredit
+	ID        uint64                   `json:"id"`
+	Valid     bool                     `json:"valid"`
+	Sentences []*SentenceCredit        `json:"sentences"`
+	Setting   *SentenceGroupInResponse `json:"setting"`
 }
 
 //SentenceCredit stores the matched sentence and its relative tag information
 type SentenceCredit struct {
-	ID       uint64
-	UUID     string
-	Name     string
-	Valid    bool
-	Segments []int
-	Tags     []*TagCredit
+	ID              uint64                `json:"id"`
+	Valid           bool                  `json:"valid"`
+	Segments        []int                 `json:"-"`
+	Tags            []*TagCredit          `json:"-"`
+	MatchedSegments []*model.SegmentMatch `json:"segments"`
+	Setting         *DataSentence         `json:"setting"`
 }
 
 // TagCredit stores the matched tag information and the segment id
@@ -124,8 +120,6 @@ type SentenceCredit struct {
 //	MatchTxt is the segment text that matched with the Match.
 type TagCredit struct {
 	ID         uint64
-	UUID       string
-	Name       string
 	Score      int
 	Match      string
 	MatchTxt   string
