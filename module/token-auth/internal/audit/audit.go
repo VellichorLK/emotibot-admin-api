@@ -18,9 +18,9 @@ const (
 	AuditModuleManageEnterprise = "manage_enterprise"
 )
 
-var auditDB dao.DB
+var auditDB dao.DBV3
 
-func SetDB(db dao.DB) {
+func SetDB(db dao.DBV3) {
 	auditDB = db
 }
 

@@ -38,7 +38,9 @@ type DB interface {
 	UpdateApp(enterpriseID string, app data.App) (*data.App, error)
 	DisableApp(enterpriseID string, AppID string) (bool, error)
 	DeleteApp(enterpriseID string, AppID string) (bool, error)
+}
 
+type DBV3 interface {
 	// v3
 	GetEnterpriseAppListV3(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error)
 	GetEnterprisesV3() ([]*data.EnterpriseV3, error)
