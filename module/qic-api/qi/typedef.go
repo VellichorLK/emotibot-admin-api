@@ -90,3 +90,13 @@ type SegmentDao interface {
 	NewSegments(delegatee model.SqlLike, segments []model.RealSegment) ([]model.RealSegment, error)
 	Segments(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error)
 }
+
+type controllerError struct {
+	error
+	errNo int
+}
+
+type adminError interface {
+	error
+	ErrorNo() int
+}

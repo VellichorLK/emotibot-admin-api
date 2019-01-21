@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	// "strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -38,24 +37,13 @@ func HandleGetTags(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleGetTag(w http.ResponseWriter, r *http.Request) {
-	tagID, found := mux.Vars(r)["tag_id"]
-	if !found {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, "require path variable")
+	tag, err := tagFromRequest(r)
+	if ae, ok := err.(adminError); ok {
+		util.ReturnError(w, ae.ErrorNo(), ae.Error())
+	} else if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get tag by request failed, %v", err))
 		return
 	}
-
-	tags, err := TagsByQuery(model.TagQuery{
-		UUID: []string{tagID},
-	})
-
-	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("tag by query failed, %v", err))
-		return
-	}
-	if len(tags) == 0 {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("tag id %s is exist", tagID))
-	}
-	tag := tags[0]
 	util.WriteJSON(w, tag)
 }
 
@@ -88,7 +76,7 @@ func HandlePutTags(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, %v", err))
 		return
 	}
-	uuid, found := mux.Vars(r)["uuid"]
+	uuid, found := mux.Vars(r)["tag_id"]
 	if !found {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, path variable uuid is not found"))
 		return
@@ -127,6 +115,34 @@ func TagType(typ string) (int8, error) {
 		return 0, fmt.Errorf("bad request, type %s is not valid", typ)
 	}
 	return typNo, nil
+}
+
+// tagFromRequest find the tag by the request's path variable "tag_id" and other infos.
+// If no tags is found or request is invalid, a controllerError will return.
+// If no error is found in the process, first tag it found will return.
+func tagFromRequest(r *http.Request) (*model.Tag, error) {
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	uuid, found := mux.Vars(r)["tag_id"]
+	if !found {
+		return nil, controllerError{
+			error: fmt.Errorf("path variable tag_id is not found"),
+			errNo: AdminErrors.ErrnoRequestError,
+		}
+	}
+	tags, err := tagDao.Tags(nil, model.TagQuery{
+		UUID:       []string{uuid},
+		Enterprise: &enterpriseID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("tag by query failed, %v", err)
+	}
+	if len(tags) < 1 {
+		return nil, controllerError{
+			error: fmt.Errorf("tag is not exist"),
+			errNo: AdminErrors.ErrnoRequestError,
+		}
+	}
+	return &tags[0], nil
 }
 
 func extractTag(r *http.Request) (*model.Tag, error) {
