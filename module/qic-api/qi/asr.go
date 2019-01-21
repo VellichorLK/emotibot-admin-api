@@ -97,7 +97,6 @@ func ASRWorkFlow(output []byte) error {
 
 	segments, err = segmentDao.NewSegments(tx, segments)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("new segment failed, %v", err)
 	}
 
@@ -115,18 +114,15 @@ func ASRWorkFlow(output []byte) error {
 	//TODO: calculate the 語速 & 靜音比
 	callGroups, err := serviceDAO.GroupsByCalls(tx, model.CallQuery{ID: []int64{c.ID}})
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("get groups by call failed, %v", err)
 	}
 	groups := callGroups[c.ID]
-	_ = groups
 	credits := make([]*RuleGrpCredit, 0, len(groups))
 	score := BaseScore
 	for _, grp := range groups {
-
-		credit, err := RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
+		var credit *RuleGrpCredit
+		credit, err = RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
 		if err != nil {
-			tx.Rollback()
 			return fmt.Errorf("get rule group credit failed, %v", err)
 		}
 		credits = append(credits, credit)
@@ -136,13 +132,11 @@ func ASRWorkFlow(output []byte) error {
 		credit.Score = score
 		err = StoreCredit(uint64(c.ID), credit)
 		if err != nil {
-			tx.Rollback()
 			return fmt.Errorf("store credit failed, %v", err)
 		}
 	}
 	err = tx.Commit()
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
 	c.Status = model.CallStatusDone
