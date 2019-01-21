@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
