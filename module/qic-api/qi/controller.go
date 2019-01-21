@@ -14,6 +14,43 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type GroupInReq struct {
+	UUID            string                `json:"group_id"`
+	Name            *string               `json:"group_name"`
+	Enabled         *int8                 `json:"is_enable"`
+	Speed           *float64              `json:"limit_speed"`
+	SlienceDuration *float64              `json:"limit_silence"`
+	Rules           []string              `json:"rules"`
+	Condition       *model.GroupCondition `json:"other"`
+	CreateTime      int64                 `json:"create_time"`
+	Description     *string               `json:"description"`
+	RuleCount       int                   `json:"rule_count"`
+}
+
+func groupInReqToGroupWCond(inreq *GroupInReq) *model.GroupWCond {
+	group := &model.GroupWCond{
+		UUID:            inreq.UUID,
+		Name:            inreq.Name,
+		Enabled:         inreq.Enabled,
+		Speed:           inreq.Speed,
+		SlienceDuration: inreq.SlienceDuration,
+		Condition:       inreq.Condition,
+		CreateTime:      inreq.CreateTime,
+		Description:     inreq.Description,
+		RuleCount:       inreq.RuleCount,
+	}
+
+	simpleRules := []model.SimpleConversationRule{}
+	for _, ruleID := range inreq.Rules {
+		simpleRule := model.SimpleConversationRule{
+			UUID: ruleID,
+		}
+		simpleRules = append(simpleRules, simpleRule)
+	}
+	group.Rules = &simpleRules
+	return group
+}
+
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	group := model.GroupWCond{}
@@ -97,16 +134,16 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	id := parseID(r)
 	enterprise := requestheader.GetEnterpriseID(r)
 
-	group := model.GroupWCond{}
-	err := util.ReadJSON(r, &group)
+	groupInReq := GroupInReq{}
+	err := util.ReadJSON(r, &groupInReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
+	group := groupInReqToGroupWCond(&groupInReq)
 	group.Enterprise = enterprise
 
-	err = UpdateGroup(id, &group)
+	err = UpdateGroup(id, group)
 	if err != nil {
 		logger.Error.Printf("error while update group in handleUpdateGroup, reason: %s", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

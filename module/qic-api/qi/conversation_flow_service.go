@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	_ "emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -128,14 +127,19 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 		return
 	}
 
-	ruleFilter.CFUUID = []string{}
-	for _, rule := range rules {
-		ruleFilter.UUID = append(ruleFilter.UUID, rule.UUID)
-	}
+	if len(rules) > 0 {
+		ruleFilter.CFUUID = []string{}
+		ruleFilter.UUID = []string{}
+		for _, rule := range rules {
+			ruleFilter.UUID = append(ruleFilter.UUID, rule.UUID)
+		}
 
-	rules, err = conversationRuleDao.GetBy(ruleFilter, tx)
-	if err != nil {
-		return
+		rules, err = conversationRuleDao.GetBy(ruleFilter, tx)
+		if err != nil {
+			return
+		}
+	} else {
+		rules = []model.ConversationRule{}
 	}
 
 	filter := &model.ConversationFlowFilter{

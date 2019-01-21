@@ -28,10 +28,8 @@ func getTestRouter() *mux.Router {
 
 func TestHandleGetGroups(t *testing.T) {
 	// mockDAO is defined in service_test.go
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
+	originDBLike, originDao, originRuleDao := setupGroupMockTest()
+	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
 
 	reqBody, err := json.Marshal(mockGroup)
 	if err != nil {
@@ -64,10 +62,8 @@ func TestHandleGetGroups(t *testing.T) {
 
 func TestHandleCreateGroup(t *testing.T) {
 	// mockDAO is defined in service_test.go
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
+	originDBLike, originDao, originRuleDao := setupGroupMockTest()
+	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/qi/groups", nil)
@@ -100,10 +96,8 @@ func TestHandleCreateGroup(t *testing.T) {
 
 func TestHandleGetGroup(t *testing.T) {
 	// mockDAO is defined in service_test.go
-	originDAO := serviceDAO
-	m := &mockDAO{}
-	serviceDAO = m
-	defer restoreDAO(originDAO)
+	originDBLike, originDao, originRuleDao := setupGroupMockTest()
+	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
 
 	w := httptest.NewRecorder()
 	r, err := http.NewRequest(http.MethodGet, "/groups/ABCDE", nil)
@@ -129,8 +123,8 @@ func TestHandleGetGroup(t *testing.T) {
 		return
 	}
 
-	if !sameGroup(&group, &mockGroups[0]) {
-		t.Errorf("expect group: %+v, but got %+v", mockGroup, group)
+	if !sameGroup(&group, mockGroup) {
+		t.Errorf("expect group: %+v,\n but got %+v", mockGroup, group)
 		return
 	}
 }

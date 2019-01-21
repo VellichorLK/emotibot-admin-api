@@ -18,10 +18,11 @@ func TestGetGroupsSQL(t *testing.T) {
 	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	rrr.%s
+	r.%s as rUUID, r.%s as rName
 	FROM (SELECT * FROM %s WHERE %s=0 ) as rg
 	INNER JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
+	LEFT JOIN %s as r on rrr.%s = r.%s
 	`
 	targetStr = fmt.Sprintf(
 		targetStr,
@@ -47,7 +48,8 @@ func TestGetGroupsSQL(t *testing.T) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
-		RRRRuleID,
+		fldUUID,
+		fldName,
 		tblRuleGroup,
 		fldIsDelete,
 		tblRGC,
@@ -56,6 +58,9 @@ func TestGetGroupsSQL(t *testing.T) {
 		tblRelGrpRule,
 		fldID,
 		RRRGroupID,
+		tblConversationRule,
+		RRRRuleID,
+		fldID,
 	)
 
 	queryStr, values := getGroupsSQL(&filter)
