@@ -472,7 +472,7 @@ func (dao *AutofillDao) GetIntentSentences(appID string, intents []string,
 		return nil, ErrDBNotInit
 	}
 
-	const MAX_NUM_SENTENCES = 10000
+	const MaxNumOfSentences = 10000
 
 	queryStr := fmt.Sprintf(`
 		SELECT i.id, s.id, sentence
@@ -480,7 +480,7 @@ func (dao *AutofillDao) GetIntentSentences(appID string, intents []string,
 		INNER JOIN %s AS s
 		ON i.id = s.intent`, IntentsTable, IntentTrainSetsTable)
 	orderClause := "ORDER by s.id ASC"
-	limitClause := fmt.Sprintf("LIMIT %d", MAX_NUM_SENTENCES)
+	limitClause := fmt.Sprintf("LIMIT %d", MaxNumOfSentences)
 
 	var whereClause string
 	var queryParams []interface{}
