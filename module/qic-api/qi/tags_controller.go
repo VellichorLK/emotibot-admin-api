@@ -44,7 +44,12 @@ func HandleGetTag(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get tag by request failed, %v", err))
 		return
 	}
-	util.WriteJSON(w, tag)
+
+	t, err := toTag(*tag)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("validating tag failed, %v", err))
+	}
+	util.WriteJSON(w, t[0])
 }
 
 func HandlePostTags(w http.ResponseWriter, r *http.Request) {

@@ -161,11 +161,11 @@ func assertTag(te *testing.T, mt model.Tag, t tag) {
 		te.Fatal("unmarshal failed with model tag positive sentences payload ", mt.PositiveSentence, ": ", err)
 	}
 	if !reflect.DeepEqual(t.NegSentences, negSentences) {
-		te.Error("expect tag negative sentence to be the same, but got ", mt.NegativeSentence)
+		te.Errorf("expect tag negative sentence to be the same, but got %#v and %#v ", negSentences, t.NegSentences)
 		return
 	}
 	if !reflect.DeepEqual(t.PosSentences, posSentences) {
-		te.Error("expect tag positive sentence to be the same, but got ", mt.PositiveSentence)
+		te.Errorf("expect tag positive sentence to be the same, but got %#v and %#v", posSentences, t.PosSentences)
 		return
 	}
 }

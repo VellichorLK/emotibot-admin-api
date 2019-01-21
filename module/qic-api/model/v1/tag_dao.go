@@ -129,8 +129,11 @@ type queryer interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
 
-var tagSelectColumns = []string{fldTagID, fldTagUUID, fldTagIsDeleted, fldTagName,
-	fldTagType, fldTagPosSen, fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise}
+var tagSelectColumns = []string{
+	fldTagID, fldTagUUID, fldTagIsDeleted,
+	fldTagName, fldTagType, fldTagPosSen,
+	fldTagNegSen, fldTagCreateTime, fldTagUpdateTime,
+	fldTagEnterprise}
 
 // Tags fetch the tag resource from db or tx.
 // query determine condition and how many it should fetch.

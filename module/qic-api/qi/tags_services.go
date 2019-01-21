@@ -50,13 +50,9 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 	return
 }
 
-func TagsByQuery(query model.TagQuery) ([]tag, error) {
-
-	result, err := tagDao.Tags(nil, query)
-	if err != nil {
-		return nil, fmt.Errorf("get tags from dao failed, %v", err)
-	}
-
+// toTag transform model.Tag to the presentive tag for tag controller
+func toTag(result ...model.Tag) ([]tag, error) {
+	var err error
 	var tags = make([]tag, 0, len(result))
 	for _, t := range result {
 		typ, found := tagTypeDict[t.Typ]
@@ -82,6 +78,15 @@ func TagsByQuery(query model.TagQuery) ([]tag, error) {
 		})
 	}
 	return tags, nil
+}
+func TagsByQuery(query model.TagQuery) ([]tag, error) {
+
+	result, err := tagDao.Tags(nil, query)
+	if err != nil {
+		return nil, fmt.Errorf("get tags from dao failed, %v", err)
+	}
+
+	return toTag(result...)
 }
 
 // NewTag create a tag from t.
