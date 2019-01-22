@@ -268,15 +268,12 @@ func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
 		q = t.db
 	}
 	var (
-		wheresql, pagingsql string
-		data                []interface{}
+		wheresql string
+		data     []interface{}
 	)
 	wheresql, data = query.whereSQL()
-	if query.Paging != nil {
-		pagingsql = query.Paging.offsetSQL()
-	}
 	rawsql := "SELECT count(*) FROM `" + tblTags + "` " +
-		wheresql + " " + pagingsql
+		wheresql
 
 	var count uint
 	err := q.QueryRow(rawsql, data...).Scan(&count)

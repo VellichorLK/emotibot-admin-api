@@ -37,7 +37,7 @@ func TestHandleGetTag(t *testing.T) {
 					Name:             "Dexter",
 					Typ:              0,
 					PositiveSentence: `["test", "test2"]`,
-					NegativeSentence: ``,
+					NegativeSentence: `["test3"]`,
 					IsDeleted:        false,
 					CreateTime:       1548059418,
 					UpdateTime:       1548059418,
