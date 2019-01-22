@@ -157,13 +157,54 @@ func TestTagDaoCountTagsIntegration(t *testing.T) {
 	skipIntergartion(t)
 	dao := newTestingTagDao(t)
 	var enterprise = "csbot"
-	count, err := dao.CountTags(nil, TagQuery{
-		Enterprise: &enterprise,
-	})
-	if err != nil {
-		t.Fatal("expect count to be ok, but got error: ", err)
+	type args struct {
+		query TagQuery
 	}
-	if len(testTags) != int(count) {
-		t.Error("expect count to be ", len(testTags), ", but got ", int(count))
+	testcases := []struct {
+		Name     string
+		args     args
+		output   uint
+		hasError bool
+	}{
+		{
+			"enterprise only",
+			args{
+				query: TagQuery{
+					Enterprise: &enterprise,
+				},
+			},
+			uint(len(testTags)),
+			false,
+		},
+		{
+			"should ignore Paging",
+			args{
+				query: TagQuery{
+					Enterprise: &enterprise,
+					Paging: &Pagination{
+						Limit: 100,
+						Page:  1,
+					},
+				},
+			},
+			uint(len(testTags)),
+			false,
+		},
 	}
+
+	for _, tt := range testcases {
+		t.Run(tt.Name, func(t *testing.T) {
+			count, err := dao.CountTags(nil, tt.args.query)
+			if tt.hasError && err == nil {
+				t.Fatal("expect it is a bad case, but no error returned")
+			}
+			if !tt.hasError && err != nil {
+				t.Fatal("expect count to be ok, but got error: ", err)
+			}
+			if tt.output != count {
+				t.Error("expect count to be ", tt.output, ", but got ", count)
+			}
+		})
+	}
+
 }

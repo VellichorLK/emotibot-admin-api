@@ -260,6 +260,8 @@ func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) (int64, error) {
 	return count, nil
 }
 
+// CountTags counts the tags by the given query.
+// It will ignore the Paging in query to return a true count by the query conditions.
 func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
 	var q SqlLike
 	if tx != nil {
