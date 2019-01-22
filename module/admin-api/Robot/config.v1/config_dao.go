@@ -140,9 +140,9 @@ func (dao configMySQL) SetConfig(appid, module, configName, value string) error 
 	queryStr := `
 		INSERT INTO bfop_config
 		(appid, code, module, value, update_time) VALUES (?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE value = ?`
+		ON DUPLICATE KEY UPDATE value = ?, update_time = ?`
 	_, err = dao.db.Exec(queryStr,
-		appid, configName, module, value, now.Unix(), value)
+		appid, configName, module, value, now.Unix(), value, now.Unix())
 	if err != nil {
 		return err
 	}
@@ -159,10 +159,17 @@ func (dao configMySQL) SetConfigToDefault(appid, configName string) error {
 		return util.ErrDBNotInit
 	}
 
+	now := time.Now()
 	queryStr := `
-		DELETE FROM bfop_config
-		WHERE appid = ? AND code = ?`
-	_, err = dao.db.Exec(queryStr, appid, configName)
+	UPDATE bfop_config as config,
+		(SELECT value FROM bfop_config WHERE appid = '' AND code = ?) as d
+	SET
+		config.value = d.value,
+		config.update_time = ?
+	WHERE
+		config.appid = ? AND code = ?
+	`
+	_, err = dao.db.Exec(queryStr, configName, now.Unix(), appid, configName)
 	if err != nil {
 		return err
 	}
