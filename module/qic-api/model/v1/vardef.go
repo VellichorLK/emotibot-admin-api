@@ -41,6 +41,7 @@ const (
 	tblCategory         = "Category"
 	tblPredictResult    = "CUPredictResult"
 	tblSegmentPredict   = "SegmentPredict"
+	tblTrainedModel     = "trainedModel"
 )
 
 //field name in Conversation table

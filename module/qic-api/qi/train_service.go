@@ -12,7 +12,17 @@ import (
 )
 
 var (
-	trainer logicaccess.PredictClient
+	trainer  logicaccess.PredictClient
+	modelDao model.TrainedModelDao = &model.TrainedModelSQLDao{}
+)
+
+//the status code
+const (
+	MStatTraining = iota
+	MStatReady
+	MStatErr
+	MStatUsing
+	MStatDeletion
 )
 
 //TrainAllTags trains all tag, only for demo usage, not for production
@@ -110,4 +120,19 @@ func UnloadTags(tags []model.Tag) error {
 		}
 	}
 	return nil
+}
+
+//GetUsingModelByEnterprise gets the using model id
+func GetUsingModelByEnterprise(enterprise string) ([]*model.TModel, error) {
+	models, err := GetModelByEnterprise(enterprise, MStatUsing)
+	if err != nil {
+		logger.Error.Printf("get trained models failed.%s\n", err)
+	}
+	return models, err
+}
+
+//GetModelByEnterprise gets the model
+func GetModelByEnterprise(enterprise string, status int) ([]*model.TModel, error) {
+	q := &model.TModelQuery{Enterprise: &enterprise, Status: &status}
+	return modelDao.TrainedModelInfo(dbLike.Conn(), q)
 }

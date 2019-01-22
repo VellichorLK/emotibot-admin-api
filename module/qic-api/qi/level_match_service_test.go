@@ -885,25 +885,37 @@ func (m *mockPredictClient2) PredictAndUnMarshal(d *logicaccess.PredictRequest) 
 func (m *mockPredictClient2) BatchPredictAndUnMarshal(d *logicaccess.BatchPredictRequest) (*logicaccess.PredictResult, error) {
 
 	var resp logicaccess.PredictResult
+	/*
+		tagsToSegs := make(map[uint64][]int)
+		for seg, tags := range segToTags {
+			for _, tag := range tags {
+				tagsToSegs[tag] = append(tagsToSegs[tag], seg)
+			}
+		}
 
-	tagsToSegs := make(map[uint64][]int)
+		matched := len(tagsToSegs[d.ID])
+
+		for i := 0; i < matched; i++ {
+			var attr logicaccess.AttrResult
+
+			attr.Tag = d.ID
+			attr.SentenceID = tagsToSegs[d.ID][i]
+			attr.Score = 87 + i
+			resp.Dialogue = append(resp.Dialogue, attr)
+		}
+	*/
 	for seg, tags := range segToTags {
+
 		for _, tag := range tags {
-			tagsToSegs[tag] = append(tagsToSegs[tag], seg)
+
+			var attr logicaccess.AttrResult
+
+			attr.Tag = tag
+			attr.SentenceID = seg
+			attr.Score = 87
+			resp.Dialogue = append(resp.Dialogue, attr)
 		}
 	}
-
-	matched := len(tagsToSegs[d.ID])
-
-	for i := 0; i < matched; i++ {
-		var attr logicaccess.AttrResult
-
-		attr.Tag = d.ID
-		attr.SentenceID = tagsToSegs[d.ID][i]
-		attr.Score = 87 + i
-		resp.Dialogue = append(resp.Dialogue, attr)
-	}
-
 	return &resp, nil
 }
 func (m *mockPredictClient2) SessionCreate(d *logicaccess.SessionRequest) error {
@@ -1033,16 +1045,68 @@ func (m *mockRuleDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+type mockGroupDaoMatch struct {
+}
+
+func (m *mockGroupDaoMatch) Begin() (*sql.Tx, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) Commit(tx *sql.Tx) error {
+	return nil
+}
+
+func (m *mockGroupDaoMatch) ClearTranscation(tx *sql.Tx) {}
+
+func (m *mockGroupDaoMatch) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) GetGroupBy(id string) (*model.GroupWCond, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+	return 2, nil
+}
+
+func (m *mockGroupDaoMatch) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+	return []model.GroupWCond{
+		model.GroupWCond{Enterprise: "abcdeg"},
+	}, nil
+}
+
+func (m *mockGroupDaoMatch) DeleteGroup(id string, tx *sql.Tx) (err error) {
+	return
+}
+
+func (m *mockGroupDaoMatch) Group(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) GroupsByCalls(delegatee model.SqlLike, query model.CallQuery) (map[int64][]model.Group, error) {
+	return nil, nil
+}
+
+type mockTrainedModelDao struct {
+}
+
+func (m *mockTrainedModelDao) TrainedModelInfo(conn model.SqlLike, q *model.TModelQuery) ([]*model.TModel, error) {
+	return []*model.TModel{&model.TModel{ID: 4444}}, nil
+}
 func TestRuleGroupCriteria(t *testing.T) {
 	mockRelation := &mockRelationDao{}
 	relationDao = mockRelation
 	predictor = &mockPredictClient2{}
 
+	modelDao = &mockTrainedModelDao{}
 	dbLike = &mockdbLike{}
 
 	sentenceGroupDao = &mockSentenceGroupsDao{}
 	conversationFlowDao = &mockCfDao{}
 	conversationRuleDao = &mockRuleDao{}
+
+	serviceDAO = &mockGroupDaoMatch{}
 
 	segments := make([]*SegmentWithSpeaker, 0, len(segToTags))
 	for i := 0; i < len(segToTags); i++ {

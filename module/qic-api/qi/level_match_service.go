@@ -21,6 +21,8 @@ var (
 	ErrTimeoutSet         = errors.New("timeout must be larger than zero")
 	ErrWrongExpression    = errors.New("wrong conversation flow expression")
 	ErrRequestNotEqualGet = errors.New("request level record not equals to get")
+	ErrNoModels           = errors.New("No prediction model is available")
+	ErrNoRuleGroupFound   = errors.New("No rule group is found")
 )
 
 //MatchedData stores the index of input and the matched ID (tag id) and its relative data
@@ -213,7 +215,7 @@ type MatchedIdx struct {
 
 //Concurrency sets the number of goroutine used to call cu module
 const (
-	Concurrency = 5
+	Concurrency = 1
 	Threshold   = 60
 )
 
@@ -257,6 +259,7 @@ func worker(ctx context.Context, target <-chan uint64,
 				}
 			}
 		case <-ctx.Done():
+			fmt.Printf("i am here\n")
 			return
 		}
 	}
@@ -573,6 +576,21 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 		return nil, ErrNoArgument
 	}
 
+	groupsSet, err := serviceDAO.GetGroupsBy(&model.GroupFilter{Deal: -1, ID: []uint64{ruleGroup}})
+	if len(groupsSet) == 0 {
+		return nil, ErrNoRuleGroupFound
+	}
+
+	enterprise := groupsSet[0].Enterprise
+	models, err := GetUsingModelByEnterprise(enterprise)
+	numOfModels := len(models)
+	if numOfModels == 0 {
+		return nil, ErrNoModels
+	} else if numOfModels > 1 {
+		logger.Warn.Printf("More than 1 models is marked as using status with enterprise %s\n", enterprise)
+		logger.Warn.Printf("Using the first one %d as prediction model", models[0].ID)
+	}
+
 	//get the relation table from RuleGroup to Tag
 	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{ruleGroup})
 	if err != nil {
@@ -612,7 +630,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 
 	//--------------------------------------------------------------------------
 	//do the checking, tag match
-	tagMatchDat, err := TagMatch(tagIDs, lines, timeout)
+	tagMatchDat, err := TagMatch([]uint64{models[0].ID}, lines, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("tag match failed, %v", err)
 	}
