@@ -61,13 +61,15 @@ func ASRWorkFlow(output []byte) error {
 	}
 	var segments = []model.RealSegment{}
 	//TODO: check sret & emotion = -1
+	timestamp := time.Now().Unix()
 	for _, sen := range resp.LeftChannel.Sentences {
 		s := model.RealSegment{
-			CallID:    callID,
-			StartTime: sen.Start,
-			EndTime:   sen.End,
-			Channel:   1,
-			Text:      sen.ASR,
+			CallID:     callID,
+			CreateTime: timestamp,
+			StartTime:  sen.Start,
+			EndTime:    sen.End,
+			Channel:    1,
+			Text:       sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
 					Typ:   model.ETypAngry,
@@ -80,11 +82,12 @@ func ASRWorkFlow(output []byte) error {
 
 	for _, sen := range resp.RightChannel.Sentences {
 		s := model.RealSegment{
-			CallID:    callID,
-			StartTime: sen.Start,
-			EndTime:   sen.End,
-			Channel:   2,
-			Text:      sen.ASR,
+			CallID:     callID,
+			CreateTime: timestamp,
+			StartTime:  sen.Start,
+			EndTime:    sen.End,
+			Channel:    2,
+			Text:       sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
 					Typ:   model.ETypAngry,
