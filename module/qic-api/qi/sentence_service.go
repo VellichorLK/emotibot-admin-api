@@ -61,12 +61,15 @@ func GetSentence(uuid string, enterprise string) (*DataSentence, error) {
 //categortID, nil for no constraint, 0 for the sentences in unknown category, others for category id
 func GetSentenceList(enterprise string, page int, limit int, isDelete *int8, categoryID *uint64) (uint64, []*DataSentence, error) {
 	//var isDelete int8
-	q := &model.SentenceQuery{Enterprise: &enterprise, Limit: limit, Page: page,
+	q := &model.SentenceQuery{Enterprise: &enterprise,
 		IsDelete: isDelete, CategoryID: categoryID}
 	count, err := sentenceDao.CountSentences(nil, q)
 	if err != nil {
 		return 0, nil, err
 	}
+
+	q.Page = page
+	q.Limit = limit
 
 	if count > 0 {
 		data, err := getSentences(q)
