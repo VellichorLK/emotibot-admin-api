@@ -89,22 +89,42 @@ func TestTagDaoTags(t *testing.T) {
 	}
 }
 
-func TestTagDaoTagsIntegration(t *testing.T) {
+func TestI11TagDaoTags(t *testing.T) {
 	skipIntergartion(t)
 	dao := newTestingTagDao(t)
 	expectedTags := testTags[:2]
-	query := TagQuery{
-		ID:               []uint64{1, 2},
-		IgnoreSoftDelete: true,
+	type args struct {
+		query TagQuery
 	}
-	tags, err := dao.Tags(nil, query)
-	if err != nil {
-		t.Fatal("expect ok, but got error: ", err)
+	testcases := []struct {
+		Name   string
+		Args   args
+		Output []Tag
+	}{
+		{
+			Name: "Include soft deleted",
+			Args: args{
+				query: TagQuery{
+					ID:               []uint64{1, 2},
+					IgnoreSoftDelete: true,
+				},
+			},
+			Output: testTags[:2],
+		},
 	}
-	if !reflect.DeepEqual(tags, expectedTags) {
-		t.Logf("tags: %+v\n expected tags: %+v\n", tags, expectedTags)
-		t.Error("expect got tags but not the same")
+	for _, tt := range testcases {
+		t.Run(tt.Name, func(t *testing.T) {
+			tags, err := dao.Tags(nil, tt.Args.query)
+			if err != nil {
+				t.Fatal("expect ok, but got error: ", err)
+			}
+			if !reflect.DeepEqual(tags, tt.Output) {
+				t.Logf("tags: %+v\n expected tags: %+v\n", tags, expectedTags)
+				t.Error("expect got tags but not the same")
+			}
+		})
 	}
+
 }
 
 func TestTagDaoNewTagsIntegration(t *testing.T) {

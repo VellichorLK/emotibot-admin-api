@@ -75,6 +75,17 @@ func int64ToWildCard(inputs ...int64) []interface{} {
 	return outputs
 }
 
+func uint64ToWildCard(inputs ...uint64) []interface{} {
+	var outputs = make([]interface{}, len(inputs))
+	if len(outputs) == 0 {
+		return nil
+	}
+	for i, val := range inputs {
+		outputs[i] = val
+	}
+	return outputs
+}
+
 func int8ToWildCard(inputs ...int8) []interface{} {
 	var outputs = make([]interface{}, len(inputs))
 	if len(outputs) == 0 {

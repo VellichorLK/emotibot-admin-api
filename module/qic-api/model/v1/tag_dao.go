@@ -69,6 +69,7 @@ type TagQuery struct {
 	UUID             []string
 	Enterprise       *string
 	Name             *string
+	TagType          []int8
 	IgnoreSoftDelete bool
 	Paging           *Pagination
 }
@@ -80,38 +81,27 @@ type Pagination struct {
 }
 
 func (t *TagQuery) whereSQL() (string, []interface{}) {
-	var conditions []string
-	bindedData := make([]interface{}, 0)
-	if len(t.ID) > 0 {
-		conditions = append(conditions, fldTagID+" IN (?"+strings.Repeat(", ?", len(t.ID)-1)+")")
-		for _, id := range t.ID {
-			bindedData = append(bindedData, id)
-		}
-	}
-	if len(t.UUID) > 0 {
-		conditions = append(conditions, fldTagUUID+" IN (?"+strings.Repeat(", ?", len(t.UUID)-1)+")")
-		for _, uuid := range t.UUID {
-			bindedData = append(bindedData, uuid)
-		}
-	}
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldTagID, uint64ToWildCard(t.ID...))
+	builder.In(fldTagUUID, stringToWildCard(t.UUID...))
 	if t.Enterprise != nil {
-		conditions = append(conditions, fldTagEnterprise+" = ?")
-		bindedData = append(bindedData, *t.Enterprise)
+		builder.Eq(fldTagEnterprise, *t.Enterprise)
 	}
 	if t.Name != nil {
-		conditions = append(conditions, fldTagName+" = ?")
-		bindedData = append(bindedData, *t.Name)
+		builder.Eq(fldTagName, *t.Name)
+	}
+	if len(t.TagType) > 0 {
+		builder.In(fldTagType, int8ToWildCard(t.TagType...))
 	}
 	if !t.IgnoreSoftDelete {
-		conditions = append(conditions, fldTagIsDeleted+" = ?")
-		bindedData = append(bindedData, t.IgnoreSoftDelete)
+		builder.Eq(fldTagIsDeleted, t.IgnoreSoftDelete)
 	}
 
-	var rawsql string
-	if len(conditions) > 0 {
-		rawsql = "WHERE " + strings.Join(conditions, " AND ")
+	rawsql, data := builder.Parse()
+	if len(data) > 0 {
+		rawsql = "WHERE " + rawsql
 	}
-	return rawsql, bindedData
+	return rawsql, data
 }
 
 func (p *Pagination) offsetSQL() string {
