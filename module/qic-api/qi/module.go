@@ -83,11 +83,10 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),
 			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
-
-			util.NewEntryPoint(http.MethodGet, "call/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

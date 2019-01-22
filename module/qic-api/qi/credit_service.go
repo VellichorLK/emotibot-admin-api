@@ -273,7 +273,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 			segIDs = append(segIDs, v.OrgID)
 		default:
-			logger.Error.Printf("credit result %d id has the unknow type %d\n", v.ID, v.Type)
+			logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
 			continue
 		}
 	}

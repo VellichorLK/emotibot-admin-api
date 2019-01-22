@@ -205,7 +205,7 @@ func (m *MatchedData) SetData(d *logicaccess.AttrResult) {
 
 }
 
-//MatchedIdx stores which index of sentence matchs the target id
+//MatchedIdx stores which index of sentence matches the target id
 type MatchedIdx struct {
 	Index     []uint64
 	MatchedID uint64
@@ -348,7 +348,7 @@ func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[ui
 //SentenceGroupMatch matches the given matched sentence to sentence group
 //matchedSen is matched sentence id and the matched segment id
 //c is the sentenceGroup criteria used to judge whether the sentence group is meet
-//semgnets is the segments data
+//segments is the segments data
 //return value: the sentence group id which is meet by which segment index
 func SentenceGroupMatch(matchedSen map[uint64][]int,
 	c map[uint64]*SenGroupCriteria, segments []*SegmentWithSpeaker) (map[uint64][]int, error) {
@@ -403,7 +403,7 @@ func extractTagMatchedData(tagMatchDat []*MatchedData) []map[uint64]bool {
 
 }
 
-//ConversationFlowMatch checks one conversation at one time and give whether this convseration flow is meet or not
+//ConversationFlowMatch checks one conversation at one time and give whether this conversation flow is meet or not
 //parameters:
 //matchSgID is the segment index for each sentence group that is matched
 //senGrpCriteria is the criteria for each sentence group
@@ -526,7 +526,7 @@ func ConversationFlowMatch(matchSgID map[uint64][]int, senGrpCriteria map[uint64
 }
 
 //RuleMatch used to check whether the rule level meets. gives the map that the rule id meets the criterion and its plus score
-//paramters:
+//parameters:
 //cfMatchID is the map recording the conversation flow id which meets the criterion
 func RuleMatch(cfMatchID map[uint64]bool, criteria map[uint64]*RuleCriteria) (map[uint64]*RuleMatchedResult, int, error) {
 	resp := make(map[uint64]*RuleMatchedResult, len(criteria))
