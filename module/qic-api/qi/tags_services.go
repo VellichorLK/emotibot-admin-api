@@ -20,17 +20,13 @@ var tagTypeDict = map[int8]string{
 	3: "user_response",
 }
 
-//Tags is the service for getting the tags json response.
-func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
-	enterprise := entID
-	query := model.TagQuery{
-		Enterprise: &enterprise,
-		Paging: &model.Pagination{
-			Limit: limit,
-			Page:  page,
-		},
+// Tags is the service for getting the tags json response.
+// If the query.Paging is nil, response.paging.Limit & paging will be 0, 0.
+// If the query.Enterprise is nil, an error will be returned.
+func Tags(query model.TagQuery) (resp *TagResponse, err error) {
+	if query.Enterprise == nil {
+		return nil, fmt.Errorf("query must contain enterpriseID")
 	}
-
 	counts, err := tagDao.CountTags(nil, query)
 	if err != nil {
 		return nil, fmt.Errorf("get tag count from dao failed, %v", err)
@@ -42,10 +38,12 @@ func Tags(entID string, limit, page int) (resp *TagResponse, err error) {
 	resp = &TagResponse{
 		Paging: general.Paging{
 			Total: int64(counts),
-			Limit: limit,
-			Page:  page,
 		},
 		Data: tags,
+	}
+	if query.Paging != nil {
+		resp.Paging.Limit = query.Paging.Limit
+		resp.Paging.Page = query.Paging.Page
 	}
 	return
 }

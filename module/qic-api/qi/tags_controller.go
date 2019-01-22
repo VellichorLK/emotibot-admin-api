@@ -21,19 +21,48 @@ import (
 
 //HandleGetTags handle the get request for tag.
 func HandleGetTags(w http.ResponseWriter, r *http.Request) {
-	enterpriseID := requestheader.GetEnterpriseID(r)
-	page, limit, err := getPageLimit(r)
+	query, err := getTagQuery(r)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("get page&limit failed, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request failed, %v", err))
 		return
 	}
-	resp, err := Tags(enterpriseID, limit, page)
+	resp, err := Tags(*query)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 		return
 	}
 
 	util.WriteJSON(w, resp)
+}
+
+func getTagQuery(r *http.Request) (*model.TagQuery, error) {
+	enterpriseID := requestheader.GetEnterpriseID(r)
+	query := &model.TagQuery{
+		Enterprise: &enterpriseID,
+	}
+	page, limit, err := getPageLimit(r)
+	if err != nil {
+		return nil, fmt.Errorf("get page & limit failed")
+	}
+	if limit != 0 {
+		query.Paging = &model.Pagination{
+			Limit: limit,
+			Page:  page,
+		}
+	}
+	r.ParseForm()
+	types := r.Form["tag_type"]
+	if len(types) > 0 {
+		for _, typ := range types {
+			typno, err := TagType(typ)
+			if err != nil {
+				return nil, fmt.Errorf("invalid tag type '%s'", typ)
+			}
+			query.TagType = append(query.TagType, typno)
+		}
+	}
+
+	return query, nil
 }
 
 func HandleGetTag(w http.ResponseWriter, r *http.Request) {

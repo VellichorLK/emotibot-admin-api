@@ -178,31 +178,69 @@ func TestTags(t *testing.T) {
 			NegativeSentence: "[]",
 		},
 	}
-	tagDao = &testDao{
-		output: []interface{}{
-			uint(10),
-			expectTags,
+	tags, _ := toTag(expectTags...)
+	var enterprise = "csbot"
+	type args struct {
+		Query model.TagQuery
+	}
+	testcases := []struct {
+		Name   string
+		Args   args
+		Output TagResponse
+	}{
+		{
+			Name: "normal",
+			Args: args{
+				Query: model.TagQuery{
+					Enterprise: &enterprise,
+					Paging: &model.Pagination{
+						Page:  1,
+						Limit: 1,
+					},
+				},
+			},
+			Output: TagResponse{
+				Paging: general.Paging{
+					Total: 10,
+					Page:  1,
+					Limit: 1,
+				},
+				Data: tags,
+			},
+		},
+		{
+			Name: "unlimited tags",
+			Args: args{
+				Query: model.TagQuery{
+					Enterprise: &enterprise,
+				},
+			},
+			Output: TagResponse{
+				Paging: general.Paging{
+					Total: 10,
+				},
+				Data: tags,
+			},
 		},
 	}
-	resp, err := Tags("csbot", 1, 1)
-	if err != nil {
-		t.Fatal("expect tags called ok, but got error: ", err)
-	}
-	if len(resp.Data) != len(expectTags) {
-		t.Error("expect data to be ", len(expectTags), ", but got ", len(resp.Data))
-	}
-	for i, d := range resp.Data {
-		t.Log("data index: ", i)
-		assertTag(t, expectTags[i], d)
-	}
-	var expectedPaging = general.Paging{
-		Total: 10,
-		Page:  1,
-		Limit: 1,
-	}
-	if !reflect.DeepEqual(expectedPaging, resp.Paging) {
-		t.Logf("expected: %v\nreal: %v\n", expectedPaging, resp.Paging)
-		t.Error("expect paging data is correct, but got unexpected data.")
+	for _, tt := range testcases {
+		t.Run(tt.Name, func(t *testing.T) {
+			tagDao = &testDao{
+				output: []interface{}{
+					uint(10),
+					expectTags,
+				},
+			}
+			resp, err := Tags(tt.Args.Query)
+			if err != nil {
+				t.Fatal("expect tags called ok, but got error: ", err)
+			}
+			if !reflect.DeepEqual(*resp, tt.Output) {
+				t.Logf("expected: %+v\nreal: %+v\n", tt.Output, resp)
+				t.Error("expect paging data is correct, but got unexpected data.")
+			}
+
+		})
 	}
 }
 
@@ -229,6 +267,7 @@ func TestNewTag(t *testing.T) {
 		t.Fatal("expect new tag to handle error, but no error has returned")
 	}
 }
+
 func TestUpdateTags(t *testing.T) {
 	d := &testDao{
 		output: []interface{}{
