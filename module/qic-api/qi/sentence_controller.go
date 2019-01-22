@@ -227,21 +227,19 @@ func getQueryCategoryID(r *http.Request) (*uint64, error) {
 	return &id, err
 }
 
-//return the page, limit, error
-func getPageLimit(r *http.Request) (int, int, error) {
+// getPageLimit find the page and limit in the r's query string.
+// If not found, page and limit will be 1, 0
+// If a invalid value is given, errLimit or errPage will be returned.
+func getPageLimit(r *http.Request) (page int, limit int, err error) {
 	params := r.URL.Query()
 	limitStr := params.Get("limit")
 	pageStr := params.Get("page")
-	var limit, page int
-	var err error
 
 	if limitStr != "" {
 		limit, err = strconv.Atoi(limitStr)
-		if err != nil || limit <= 0 {
+		if err != nil || limit < 0 {
 			return 0, 0, errLimit
 		}
-	} else {
-		limit = DLimit
 	}
 
 	if pageStr != "" {
