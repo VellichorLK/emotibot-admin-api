@@ -37,7 +37,7 @@ type SimpleCredit struct {
 type SegmentMatch struct {
 	ID          uint64 `json:"id"`
 	SegID       uint64 `json:"segment_id"`
-	TagID       uint64 `json:"tag_id"`
+	TagID       uint64 `json:"-"`
 	Score       int    `json:"score"`
 	Match       string `json:"match"`
 	MatchedText string `json:"match_text"`
