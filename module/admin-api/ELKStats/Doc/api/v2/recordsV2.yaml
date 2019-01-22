@@ -112,6 +112,13 @@ components:
   #                                  Parameters                                  #
   ################################################################################
   parameters:
+    Authorization:
+      name: Authorization
+      description: 使用者連接權杖
+      in: header
+      required: true
+      schema:
+        type: string
     EnterpriseId:
       name: X-Enterpriseid
       description: 企业 ID
@@ -174,6 +181,7 @@ paths:
       summary: 搜寻日志
       description: 日志搜寻结果
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
       requestBody:
@@ -186,7 +194,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  tableheader:
+                  table_header:
                     description: 前台表格显示表格的标头
                     type: array
                     items:
@@ -212,7 +220,7 @@ paths:
                         taskengine_session_id:
                           description: 多轮场景会话 ID
                           type: string
-                        userId:
+                        user_id:
                           description: 用户 ID
                           type: string
                         user_q:
@@ -275,7 +283,7 @@ paths:
                   page:
                     description: 分页页码
                     type: integer
-                  total_sizes:
+                  total_size:
                     description: 日志总条数
                     type: integer
         400:
@@ -290,6 +298,7 @@ paths:
       summary: 日志导出
       description: 建立日志导出档案；同一企业同时间只能有一个日志导出任务在进行
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
@@ -313,6 +322,7 @@ paths:
   
   /records/export/{export_id}:
     parameters:
+      - $ref: '#/components/parameters/Authorization'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:
@@ -353,6 +363,7 @@ paths:
 
   /records/export/{export_id}/status:
     parameters:
+      - $ref: '#/components/parameters/Authorization'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:

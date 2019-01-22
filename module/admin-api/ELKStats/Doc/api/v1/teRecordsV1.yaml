@@ -66,6 +66,13 @@ components:
   #                                  Parameters                                  #
   ################################################################################
   parameters:
+    Authorization:
+      name: Authorization
+      description: 使用者連接權杖
+      in: header
+      required: true
+      schema:
+        type: string
     EnterpriseId:
       name: X-Enterpriseid
       description: 企业 ID
@@ -127,6 +134,7 @@ paths:
         - Query
       description: 日誌搜尋結果
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
       requestBody:
@@ -213,6 +221,7 @@ paths:
       summary: 日志导出
       description: 建立日志导出档案；同一企业同时间只能有一个日志导出任务在进行
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/EnterpriseId'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
@@ -236,9 +245,7 @@ paths:
   
   /teRecords/export/{export_id}:
     parameters:
-      - $ref: '#/components/parameters/EnterpriseId'
-      - $ref: '#/components/parameters/AppId'
-      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/Authorization'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:
@@ -279,9 +286,7 @@ paths:
 
   /teRecords/export/{export_id}/status:
     parameters:
-      - $ref: '#/components/parameters/EnterpriseId'
-      - $ref: '#/components/parameters/AppId'
-      - $ref: '#/components/parameters/UserId'
+      - $ref: '#/components/parameters/Authorization'
       - $ref: '#/components/parameters/ExportId'
     get:
       tags:

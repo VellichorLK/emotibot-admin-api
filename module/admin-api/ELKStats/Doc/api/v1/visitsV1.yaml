@@ -133,11 +133,57 @@ components:
       type: object
       allOf:
         - $ref: '#/components/schemas/VisitResponseStats'
+    TopStdQuestions:
+      type: object
+      properties:
+        path:
+          type: string
+          description: N/A
+        q:
+          type: integer
+          description: 问题总数
+        question:
+          type: string
+          description: 问题
+        rank:
+          type: integer
+          description: 总数排名
+    TopUnusedQuestions:
+      type: object
+      properties:
+        first_time:
+          type: string
+          description: 第一次此问题被发问的时间 (Unix time in string format)
+        first_time_text:
+          type: string
+          description: 第一次此问题被发问的时间 (YYYY-MM-DD HH:mm:ss format)
+        last_time:
+          type: string
+          description: 最后一次此问题被发问的时间 (Unix time in string format)
+        last_time_text:
+          type: string
+          description: 最后一次此问题被发问的时间 (YYYY-MM-DD HH:mm:ss format)
+        q:
+          type: integer
+          description: 问题总数
+        question:
+          type: string
+          description: 问题
+        rank:
+          type: integer
+          description: 总数排名
 
   ################################################################################
   #                                  Parameters                                  #
   ################################################################################
   parameters:
+    Authorization:
+      name: Authorization
+      description: 使用者連接權杖
+      in: header
+      required: true
+      schema:
+        type: string
     EnterpriseId:
       name: X-Enterpriseid
       description: 企业 ID
@@ -161,46 +207,35 @@ components:
         type: string
     StartTime:
       name: t1
-      description: 统计时间段开始时间
+      description: 统计时间段开始时间 (YYYYMMDD)
       in: query
       required: true
       schema:
         type: string
     EndTime:
       name: t2
-      description: 统计时间段结束时间
+      description: 统计时间段结束时间 (YYYYMMDD)
       in: query
       required: true
       schema:
         type: string
-    Type:
-      name: type
-      description: 统计类型
-      in: query
-      required: true
-      schema:
-        type: string
-        enum:
-          - time
-          - barchart
-    Filter:
-      name: filter
-      description: 统计子类型 (只有当 type = barchart 的时候生效)
-      in: query
-      schema:
-        type: string
-        enum:
-          - category
-          - qtype
     Category:
       name: category
       description: 统计維度 (只有当 filter = category 的时候生效)
       in: query
+      required: true
       schema:
         type: string
         enum:
           - platform
           - sex
+    TopN:
+      name: top
+      description: 欲回传的 Top 'N' 问题数量
+      in: query
+      schema:
+        type: integer
+        default: 20
     Locale:
       name: locale
       in: header
@@ -213,20 +248,18 @@ components:
           - zh-tw
   
 paths:
-  /visit:
+  /visit?type=time:
     post:
       tags:
         - Statistic
-      summary: 日志统计分析
+      summary: 日志统计分析 (访问数据统计(时间))
       description: 日志统计分析结果
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/StartTime'
         - $ref: '#/components/parameters/EndTime'
-        - $ref: '#/components/parameters/Type'
-        - $ref: '#/components/parameters/Filter'
-        - $ref: '#/components/parameters/Category'
       responses:
         200:
           description: 日志统计分析结果
@@ -235,11 +268,9 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/VisitResponseTimeStatsData'
-                  - $ref: '#/components/schemas/VisitResponseDimensionStatsData'
-                  - $ref: '#/components/schemas/VisitResponseQtypeStatsData'
                 type: object
                 properties:
-                  tableheader:
+                  table_header:
                     description: 前台表格显示表格的标头
                     type: array
                     items:
@@ -255,9 +286,154 @@ paths:
                     type: object
                     allOf:
                       - $ref: '#/components/schemas/VisitResponseTimeStatsTotal'
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+
+  /visit?type=barchart&filter=category:
+    post:
+      tags:
+        - Statistic
+      summary: 日志统计分析 (访问数据统计(维度))
+      description: 日志统计分析结果
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/Category'
+      responses:
+        200:
+          description: 日志统计分析结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/VisitResponseDimensionStatsData'
+                type: object
+                properties:
+                  table_header:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  total:
+                    type: object
+                    allOf:
                       - $ref: '#/components/schemas/VisitResponseDimensionStatsTotal'
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+ 
+  /visit?type=barchart&filter=qtype:
+    post:
+      tags:
+        - Statistic
+      summary: 日志统计分析 (问答类别统计)
+      description: 日志统计分析结果
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+      responses:
+        200:
+          description: 日志统计分析结果
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/VisitResponseQtypeStatsData'
+                type: object
+                properties:
+                  table_header:
+                    description: 前台表格显示表格的标头
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          description: 表格标头 ID
+                          type: string
+                        text:
+                          description: 表格标头文字
+                          type: string
+                  total:
+                    type: object
+                    allOf:
                       - $ref: '#/components/schemas/VisitResponseQtypeStatsTotal'
         400:
           description: Bad request
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+  
+  /question?type=top:
+    get:
+      tags:
+        - Statistic
+      summary: 熱點問題 Top N
+      description: Top N 熱點問題
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/TopN'
+      responses:
+        200:
+          description: Top N 热点问题结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopStdQuestions'
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
+        500:
+          description: Internal server error
+
+  /question?type=unused:
+    get:
+      tags:
+        - Statistic
+      summary: 未匹配问题 Top N
+      description: Top N 未匹配問題
+      parameters:
+        - $ref: '#/components/parameters/Authorization'
+        - $ref: '#/components/parameters/AppId'
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/TopN'
+      responses:
+        200:
+          description: Top N 未匹配问题结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopUnusedQuestions'
+        400:
+          description: Bad request
+        401:
+          description: Unauthorized
         500:
           description: Internal server error

@@ -15,6 +15,13 @@ components:
   #                                  Parameters                                  #
   ################################################################################
   parameters:
+    Authorization:
+      name: Authorization
+      description: 使用者連接權杖
+      in: header
+      required: true
+      schema:
+        type: string
     EnterpriseId:
       name: X-Enterpriseid
       description: 企业 ID
@@ -99,6 +106,7 @@ paths:
         - Statistic
       description: 日誌统计結果
       parameters:
+        - $ref: '#/components/parameters/Authorization'
         - $ref: '#/components/parameters/AppId'
         - $ref: '#/components/parameters/UserId'
         - $ref: '#/components/parameters/StartTime'
@@ -115,7 +123,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  tableheader:
+                  table_header:
                     description: 前台表格显示表格的标头
                     type: array
                     items:
