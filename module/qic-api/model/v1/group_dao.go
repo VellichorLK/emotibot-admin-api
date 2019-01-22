@@ -340,8 +340,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 	queryStr, values := getGroupsSQL(filter)
 	if filter.Limit > 0 {
 		start := filter.Page * filter.Limit
-		end := start + filter.Limit
-		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, end)
+		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
 	}
 
 	rows, err := s.conn.Query(queryStr, values...)
