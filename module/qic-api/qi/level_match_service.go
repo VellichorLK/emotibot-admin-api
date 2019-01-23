@@ -597,7 +597,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	//check the return level
 	//If the level is not the same, it might mean data corruption.
 	tagLev := int(LevTag)
-	if len(levels) >= tagLev {
+	if len(levels) < tagLev {
 		logger.Error.Printf("get less relation table. %d\n", tagLev)
 		return nil, errors.New("get less relation table.")
 	}
