@@ -37,7 +37,7 @@ type SimpleSentence struct {
 	ID         uint64 `json:"-"`
 	UUID       string `json:"sentence_id"`
 	Name       string `json:"sentence_name"`
-	CategoryID uint64 `json:"category_id"`
+	CategoryID uint64 `json:"category_id,string"`
 }
 
 //SentenceQuery uses as query structure of sentence
