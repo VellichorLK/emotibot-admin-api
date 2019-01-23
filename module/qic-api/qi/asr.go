@@ -47,12 +47,13 @@ func ASRWorkFlow(output []byte) error {
 	}
 	defer func() {
 		if err != nil {
+			//We need to release tx before update call, or it may be locked.
+			tx.Rollback()
 			c.Status = model.CallStatusFailed
 			updateErr := UpdateCall(&c)
 			if updateErr != nil {
 				logger.Error.Println("update call critical failed, ", updateErr)
 			}
-			tx.Rollback()
 		}
 	}()
 	var channelRoles = map[int8]int{
