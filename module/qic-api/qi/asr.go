@@ -128,7 +128,7 @@ func ASRWorkFlow(output []byte) error {
 		if !grp.IsEnable {
 			continue
 		}
-		credit, err = RuleGroupCriteria(grp, segWithSp, time.Duration(3)*time.Second)
+		credit, err = RuleGroupCriteria(grp, segWithSp, time.Duration(30)*time.Minute)
 		if err != nil {
 			return fmt.Errorf("get rule group credit failed, %v", err)
 		}
