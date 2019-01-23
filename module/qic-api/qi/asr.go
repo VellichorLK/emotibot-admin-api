@@ -107,7 +107,7 @@ func ASRWorkFlow(output []byte) error {
 	sort.SliceStable(segments, func(i, j int) bool {
 		return segments[i].StartTime < segments[j].StartTime
 	})
-	segWithSp := make([]*SegmentWithSpeaker, len(segments))
+	segWithSp := make([]*SegmentWithSpeaker, 0, len(segments))
 	for _, s := range segments {
 		ws := &SegmentWithSpeaker{
 			RealSegment: s,

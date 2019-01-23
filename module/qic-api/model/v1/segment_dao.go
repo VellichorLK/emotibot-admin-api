@@ -133,7 +133,7 @@ func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]R
 	}
 	defer emotionStmt.Close()
 	var hasIncreID = true
-	for _, s := range segments {
+	for i, s := range segments {
 		result, err := stmt.Exec(
 			s.CallID, s.StartTime, s.EndTime,
 			s.CreateTime, s.Channel, s.Text)
@@ -155,9 +155,10 @@ func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]R
 				hasIncreID = false
 			}
 		}
+		segments[i] = s
 	}
 	if !hasIncreID {
 		err = ErrAutoIDDisabled
 	}
-	return nil, err
+	return segments, err
 }
