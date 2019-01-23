@@ -161,7 +161,6 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 
 func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
-
 	groupStr := ""
 	if len(filter.UUID) > 0 {
 		groupStr = fmt.Sprintf("and %s IN (?%s)", fldUUID, strings.Repeat(", ?", len(filter.UUID)-1))
@@ -250,7 +249,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
 	}
 
-	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
+	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	r.%s as rUUID, r.%s as rName
@@ -270,6 +269,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		fldRuleGrpLimitSilence,
 		fldCreateTime,
 		fldRuleGrpIsEnable,
+		fldEnterprise,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -367,6 +367,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			&group.SlienceDuration,
 			&group.CreateTime,
 			&group.Enabled,
+			&group.Enterprise,
 			&condition.FileName,
 			&condition.Deal,
 			&condition.Series,
