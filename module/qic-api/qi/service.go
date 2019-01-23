@@ -242,7 +242,9 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 			id,
 		},
 		EnterpriseID: group.Enterprise,
+		Deal:         -1,
 	}
+
 	groups, err := serviceDAO.GetGroupsBy(filter)
 	if err != nil {
 		return

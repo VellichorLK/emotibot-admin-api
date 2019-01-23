@@ -161,25 +161,40 @@ func (s *GroupSQLDao) GetGroups() (groups []GroupWCond, err error) {
 
 func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
-
 	groupStr := ""
+	groupConditions := []string{}
 	if len(filter.UUID) > 0 {
-		groupStr = fmt.Sprintf("and %s IN (?%s)", fldUUID, strings.Repeat(", ?", len(filter.UUID)-1))
+		groupStr = fmt.Sprintf("%s IN (?%s)", fldUUID, strings.Repeat(", ?", len(filter.UUID)-1))
+		groupConditions = append(groupConditions, groupStr)
 		for _, id := range filter.UUID {
 			values = append(values, id)
 		}
 	}
 
 	if filter.EnterpriseID != "" {
-		groupStr = fmt.Sprintf("%s and %s = ?", groupStr, fldRuleGrpEnterpriseID)
+		groupStr = fmt.Sprintf("%s = ?", fldRuleGrpEnterpriseID)
+		groupConditions = append(groupConditions, groupStr)
 		values = append(values, filter.EnterpriseID)
 	}
 
 	if len(filter.ID) > 0 {
-		groupStr += fmt.Sprintf(" and %s IN (?%s)", fldID, strings.Repeat(", ?", len(filter.ID)-1))
+		groupStr = fmt.Sprintf("%s IN (?%s)", fldID, strings.Repeat(", ?", len(filter.ID)-1))
+		groupConditions = append(groupConditions, groupStr)
 		for _, id := range filter.ID {
 			values = append(values, id)
 		}
+	}
+
+	if filter.Delete != -1 {
+		groupStr = fmt.Sprintf("%s = ?", fldIsDelete)
+		groupConditions = append(groupConditions, groupStr)
+		values = append(values, filter.Delete)
+	}
+
+	if len(groupConditions) > 0 {
+		groupStr = fmt.Sprintf("%s %s", "WHERE", strings.Join(groupConditions, " and "))
+	} else {
+		groupStr = ""
 	}
 
 	conditions := []string{}
@@ -250,11 +265,11 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
 	}
 
-	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
+	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	r.%s as rUUID, r.%s as rName
-	FROM (SELECT * FROM %s WHERE %s=0 %s) as rg
+	FROM (SELECT * FROM %s %s) as rg
 	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	LEFT JOIN %s as r on rrr.%s = r.%s
@@ -270,6 +285,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		fldRuleGrpLimitSilence,
 		fldCreateTime,
 		fldRuleGrpIsEnable,
+		fldEnterprise,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -287,7 +303,6 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		fldUUID,
 		fldName,
 		tblRuleGroup,
-		fldIsDelete,
 		groupStr,
 		tblRGC,
 		conditionStr,
@@ -367,6 +382,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			&group.SlienceDuration,
 			&group.CreateTime,
 			&group.Enabled,
+			&group.Enterprise,
 			&condition.FileName,
 			&condition.Deal,
 			&condition.Series,

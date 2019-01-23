@@ -39,7 +39,13 @@ func flowInReqToConversationFlow(flowInReq *ConversationFlowInReq, enterprise st
 	}
 
 	if flowInReq.Min != nil {
-		flow.Min = *flowInReq.Min
+		if *flowInReq.Min == 0 {
+			flow.Min = 1
+		} else {
+			flow.Min = *flowInReq.Min
+		}
+	} else {
+		flow.Min = 1
 	}
 
 	simpleGroups := make([]model.SimpleSentenceGroup, len(flowInReq.SentenceGroups))

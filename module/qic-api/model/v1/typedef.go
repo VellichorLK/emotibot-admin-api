@@ -65,4 +65,5 @@ type GroupFilter struct {
 	Limit         int
 	UUID          []string
 	ID            []uint64
+	Delete        int8
 }
