@@ -2,6 +2,7 @@ package qi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -18,6 +19,11 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	uuid "github.com/satori/go.uuid"
+)
+
+var (
+	//ErrNotFound is indicated the resource is asked, but nowhere to found it.
+	ErrNotFound = errors.New("resource not found")
 )
 
 //CallResp is the UI struct of the call.
@@ -72,16 +78,36 @@ type CallResp struct {
 // }
 
 func HasCall(id int64) (bool, error) {
-	calls, err := callDao.Calls(nil, model.CallQuery{
+	count, err := callDao.Count(nil, model.CallQuery{
 		ID: []int64{id},
 	})
 	if err != nil {
 		return false, fmt.Errorf("dao query failed, %v", err)
 	}
-	if len(calls) > 0 {
+	if count > 0 {
 		return true, nil
 	}
 	return false, nil
+}
+
+// Call return a call by given callID and enterprise
+// If enterprise is empty, it will ignore it in conditions.
+// If callID can not found, a ErrNotFound will returned
+func Call(callID int64, enterprise string) (c model.Call, err error) {
+	query := model.CallQuery{
+		ID: []int64{callID},
+	}
+	if enterprise != "" {
+		query.EnterpriseID = &enterprise
+	}
+	calls, err := callDao.Calls(nil, query)
+	if err != nil {
+		return c, fmt.Errorf("get calls failed, %v", err)
+	}
+	if len(calls) < 1 {
+		return c, ErrNotFound
+	}
+	return calls[0], nil
 }
 
 func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error) {

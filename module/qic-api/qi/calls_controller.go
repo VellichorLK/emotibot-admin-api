@@ -23,9 +23,13 @@ import (
 )
 
 func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
-	c := getCall(w, r)
-	if c == nil {
-		//already write error, just return
+	c, err := callRequest(r)
+	if ae, ok := err.(adminError); ok {
+		util.ReturnError(w, ae.ErrorNo(), fmt.Sprintf("call request error: ", ae))
+		return
+	} else if err != nil {
+		//Unknown error
+		util.ReturnError(w, 666, fmt.Sprintf("unknown error, %v", err))
 		return
 	}
 	results, err := getSegments(*c)
@@ -79,15 +83,15 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	c := getCall(w, r)
-	if c == nil {
+	c, err := callRequest(r)
+	if ae, ok := err.(adminError); ok {
+		util.ReturnError(w, ae.ErrorNo(), ae.Error())
+		return
+	} else if err != nil {
+		util.ReturnError(w, 666, fmt.Sprintf("unknown error: %v", err))
 		return
 	}
-	err := r.ParseForm()
-	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request form failed, %v", err))
-		return
-	}
+
 	f, header, err := r.FormFile("upfile")
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("retrive upfile failed, %v", err))
@@ -130,8 +134,12 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	c := getCall(w, r)
-	if c == nil {
+	c, err := callRequest(r)
+	if ae, ok := err.(adminError); ok {
+		util.ReturnError(w, ae.ErrorNo(), ae.Error())
+		return
+	} else if err != nil {
+		util.ReturnError(w, 666, fmt.Sprintf("unknown error: %v", err))
 		return
 	}
 	if c.FilePath == nil {
@@ -155,28 +163,45 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func getCall(w http.ResponseWriter, r *http.Request) *model.Call {
-	callID, found := mux.Vars(r)["call_id"]
-	if !found || callID == "" {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require call_id in path"))
-		return nil
+// callRequest receive the request and get the call model from call_id.
+// an error will returned if failure happened.
+// the error return should be compatible to adminError interface.
+func callRequest(r *http.Request) (*model.Call, error) {
+	const IDKey = "call_id"
+	callID := mux.Vars(r)[IDKey]
+	if callID == "" {
+		return nil, controllerError{
+			error: fmt.Errorf("require %s in path", IDKey),
+			errNo: AdminErrors.ErrnoRequestError,
+		}
 	}
 	id, err := strconv.ParseInt(callID, 10, 64)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int.", callID))
-		return nil
+		return nil, controllerError{
+			error: fmt.Errorf("invalid call_id '%s', need to be int", callID),
+			errNo: AdminErrors.ErrnoRequestError,
+		}
 	}
-	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}})
+	enterprise := requestheader.GetEnterpriseID(r)
+	if enterprise == "" {
+		return nil, controllerError{
+			error: fmt.Errorf("empty enterprise ID"),
+			errNo: AdminErrors.ErrnoRequestError,
+		}
+	}
+	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}, EnterpriseID: &enterprise})
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("failed to query call db, %v", err))
-		return nil
+		return nil, controllerError{
+			error: fmt.Errorf("failed to query call db, %v", err),
+			errNo: AdminErrors.ErrnoDBError,
+		}
 	}
-	if len(calls) == 0 {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
-		return nil
+	if len(calls) < 1 {
+		return nil, controllerError{
+			error: fmt.Errorf("call_id '%s' is not exist", callID),
+		}
 	}
-	c := calls[0]
-	return &c
+	return &calls[0], nil
 }
 
 func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
