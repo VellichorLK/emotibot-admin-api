@@ -173,6 +173,6 @@ type DBV4 interface {
 
 	// AddAuditLog(auditLog data.AuditLog) error
 
-	// oauth part
-	GetOAuthClient(clientID string) error
+	// OAuth part
+	GetOAuthClient(clientID string) (*data.OAuthClient, error)
 }
