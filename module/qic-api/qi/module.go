@@ -134,7 +134,7 @@ func init() {
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
-				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(3 * time.Second)}
+				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
 				relationDao = &model.RelationSQLDao{}
