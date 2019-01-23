@@ -1128,7 +1128,7 @@ func TestRuleGroupCriteria(t *testing.T) {
 
 	timeout := time.Duration(3 * time.Second)
 
-	c, err := RuleGroupCriteria(1, segments, timeout)
+	c, err := RuleGroupCriteria(model.Group{ID: 1}, segments, timeout)
 	if err != nil {
 		t.Errorf("expecting no error, but get %s\n", err)
 	} else {
