@@ -95,7 +95,7 @@ type RuleCredit struct {
 type ConversationFlowCredit struct {
 	ID           uint64                 `json:"id"`
 	Valid        bool                   `json:"valid"`
-	SentenceGrps []*SentenceGrpCredit   `json:"sentence_group"`
+	SentenceGrps []*SentenceGrpCredit   `json:"sentence_groups"`
 	Setting      *ConversationFlowInRes `json:"setting"`
 }
 
@@ -113,7 +113,7 @@ type SentenceCredit struct {
 	Valid           bool                  `json:"valid"`
 	Segments        []int                 `json:"-"`
 	Tags            []*TagCredit          `json:"-"`
-	MatchedSegments []*model.SegmentMatch `json:"segments"`
+	MatchedSegments []*model.SegmentMatch `json:"segment_predictions"`
 	Setting         *DataSentence         `json:"setting"`
 }
 

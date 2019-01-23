@@ -274,5 +274,6 @@ type voiceResult struct {
 	StartTime  float64 `json:"start_time"`
 	EndTime    float64 `json:"end_time"`
 	SentenceID int64   `json:"sent_id"`
+	SegmentID  int64   `json:"segment_id"`
 	Sret       int64   `json:"sret"` //status
 }

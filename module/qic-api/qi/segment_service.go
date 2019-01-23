@@ -28,6 +28,7 @@ func getSegments(call model.Call) ([]voiceResult, error) {
 			Speaker:    channelsRole[s.Channel],
 			ASRText:    s.Text,
 			Sret:       200,
+			SegmentID:  s.ID,
 		}
 		//Since we dont have ster in db, we have to manually check it.
 		if vr.ASRText == "" {
