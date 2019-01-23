@@ -244,7 +244,7 @@ func worker(ctx context.Context, target <-chan uint64,
 			}
 
 			for i := 0; i < len(pr.Keyword); i++ {
-				v := pr.Dialogue[i]
+				v := pr.Keyword[i]
 				if v.SentenceID > 0 && v.SentenceID < numOfData {
 					idx := v.SentenceID - 1
 					collected[idx].SetData(&v)
@@ -252,7 +252,7 @@ func worker(ctx context.Context, target <-chan uint64,
 			}
 
 			for i := 0; i < len(pr.UsrResponse); i++ {
-				v := pr.Dialogue[i]
+				v := pr.UsrResponse[i]
 				if v.SentenceID > 0 && v.SentenceID < numOfData {
 					idx := v.SentenceID - 1
 					collected[idx].SetData(&v)
