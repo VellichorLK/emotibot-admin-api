@@ -236,6 +236,7 @@ func NewCall(c *NewCallReq) (int64, error) {
 	} else if err != nil {
 		return 0, err
 	}
+	call = &calls[0]
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
 		EnterpriseID: &c.Enterprise,
 	})
