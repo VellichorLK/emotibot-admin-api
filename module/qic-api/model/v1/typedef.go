@@ -66,4 +66,5 @@ type GroupFilter struct {
 	UUID          []string
 	ID            []uint64
 	Delete        int8
+	Rules         []string
 }

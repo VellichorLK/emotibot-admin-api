@@ -265,6 +265,19 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
 	}
 
+	ruleCondition := fmt.Sprintf("LEFT JOIN %s", tblRule)
+	if len(filter.Rules) > 0 {
+		ruleCondition = fmt.Sprintf(
+			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
+			tblRule,
+			fldUUID,
+			fmt.Sprintf("?%s", strings.Repeat(", ?", len(filter.Rules)-1)),
+		)
+		for _, ruleID := range filter.Rules {
+			values = append(values, ruleID)
+		}
+	}
+
 	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
@@ -272,7 +285,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	FROM (SELECT * FROM %s %s) as rg
 	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
-	LEFT JOIN %s as r on rrr.%s = r.%s
+	%s as r on rrr.%s = r.%s
 	`
 
 	queryStr = fmt.Sprintf(
@@ -311,7 +324,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		tblRelGrpRule,
 		fldID,
 		RRRGroupID,
-		tblRule,
+		ruleCondition,
 		RRRRuleID,
 		fldID,
 	)

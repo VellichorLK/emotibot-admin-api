@@ -127,6 +127,33 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 	}
 	defer dbLike.ClearTransition(tx)
 
+	// get groups which include this rule
+	groupFilter := &model.GroupFilter{
+		EnterpriseID: rule.Enterprise,
+		Rules: []string{
+			id,
+		},
+	}
+	_, groups, err := GetGroupsByFilter(groupFilter)
+	if err != nil {
+		return
+	}
+
+	if len(groups) > 0 {
+		groupFilter.Rules = []string{}
+		groupFilter.UUID = []string{}
+		for _, group := range groups {
+			groupFilter.UUID = append(groupFilter.UUID, group.UUID)
+		}
+
+		_, groups, err = GetGroupsByFilter(groupFilter)
+		if err != nil {
+			return
+		}
+	} else {
+		groups = []model.GroupWCond{}
+	}
+
 	filter := &model.ConversationRuleFilter{
 		UUID: []string{
 			id,
@@ -165,6 +192,15 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 		return
 	}
 	dbLike.Commit(tx)
+
+	// update groups which reference this rule
+	for idx := range groups {
+		group := &groups[idx]
+		err = UpdateGroup(group.UUID, group)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
