@@ -188,15 +188,15 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	var rgIDs, ruleIDs, cfIDs, senGrpIDs, senIDs, segIDs []uint64
 
 	rgCreditsMap := make(map[uint64]*RuleGrpCredit)
-	rgCreditsIDMap := make(map[uint64]*RuleGrpCredit)
+	rgSetIDMap := make(map[uint64]*model.GroupWCond)
 	rCreditsMap := make(map[uint64]*RuleCredit)
-	rCreditsIDMap := make(map[uint64]*RuleCredit)
+	rSetIDMap := make(map[uint64]*ConversationRuleInRes)
 	cfCreditsMap := make(map[uint64]*ConversationFlowCredit)
-	cfCreditsIDMap := make(map[uint64]*ConversationFlowCredit)
+	cfSetIDMap := make(map[uint64]*ConversationFlowInRes)
 	senGrpCreditsMap := make(map[uint64]*SentenceGrpCredit)
-	senGrpCreditsIDMap := make(map[uint64]*SentenceGrpCredit)
+	senGrpSetIDMap := make(map[uint64]*SentenceGroupInResponse)
 	senCreditsMap := make(map[uint64]*SentenceCredit)
-	senCreditsIDMap := make(map[uint64]*SentenceCredit)
+	senSetIDMap := make(map[uint64]*DataSentence)
 	segIDMap := make(map[uint64]*model.SegmentMatch)
 	creditTimeMap := make(map[int64]*HistoryCredit)
 
@@ -216,13 +216,25 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score}
 			history.Credit = append(history.Credit, credit)
 			rgCreditsMap[v.ID] = credit
-			rgCreditsIDMap[v.OrgID] = credit
+			if set, ok := rgSetIDMap[v.OrgID]; ok {
+				credit.Setting = set
+			} else {
+				set := &model.GroupWCond{}
+				rgSetIDMap[v.OrgID] = set
+				credit.Setting = set
+			}
 			rgIDs = append(rgIDs, v.OrgID)
 		case levRuleTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
 				credit := &RuleCredit{ID: v.OrgID, Score: v.Score, Valid: validMap[v.Valid]}
 				rCreditsMap[v.ID] = credit
-				rCreditsIDMap[v.OrgID] = credit
+				if set, ok := rSetIDMap[v.OrgID]; ok {
+					credit.Setting = set
+				} else {
+					set := &ConversationRuleInRes{}
+					rSetIDMap[v.OrgID] = set
+					credit.Setting = set
+				}
 				parentCredit.Rules = append(parentCredit.Rules, credit)
 				//rgCreditMap[v.ParentID] = parentCredit
 			} else {
@@ -233,7 +245,13 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if parentCredit, ok := rCreditsMap[v.ParentID]; ok {
 				credit := &ConversationFlowCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
 				cfCreditsMap[v.ID] = credit
-				cfCreditsIDMap[v.OrgID] = credit
+				if set, ok := cfSetIDMap[v.OrgID]; ok {
+					credit.Setting = set
+				} else {
+					set := &ConversationFlowInRes{}
+					cfSetIDMap[v.OrgID] = set
+					credit.Setting = set
+				}
 				parentCredit.CFs = append(parentCredit.CFs, credit)
 				//rCreditsMap[v.ParentID] = parentCredit
 			} else {
@@ -244,7 +262,13 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if parentCredit, ok := cfCreditsMap[v.ParentID]; ok {
 				credit := &SentenceGrpCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
 				senGrpCreditsMap[v.ID] = credit
-				senGrpCreditsIDMap[v.OrgID] = credit
+				if set, ok := senGrpSetIDMap[v.OrgID]; ok {
+					credit.Setting = set
+				} else {
+					set := &SentenceGroupInResponse{}
+					senGrpSetIDMap[v.OrgID] = set
+					credit.Setting = set
+				}
 				parentCredit.SentenceGrps = append(parentCredit.SentenceGrps, credit)
 				//cfCreditsMap[v.ParentID] = parentCredit
 			} else {
@@ -255,7 +279,13 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if parentCredit, ok := senGrpCreditsMap[v.ParentID]; ok {
 				credit := &SentenceCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
 				senCreditsMap[v.ID] = credit
-				senCreditsIDMap[v.OrgID] = credit
+				if set, ok := senSetIDMap[v.OrgID]; ok {
+					credit.Setting = set
+				} else {
+					set := &DataSentence{}
+					senSetIDMap[v.OrgID] = set
+					credit.Setting = set
+				}
 				parentCredit.Sentences = append(parentCredit.Sentences, credit)
 				//senGrpCreditsMap[v.ParentID] = parentCredit
 			} else {
@@ -264,9 +294,15 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			senIDs = append(senIDs, v.OrgID)
 		case levSegTyp:
 			if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
-				seg := &model.SegmentMatch{ID: v.OrgID}
-				parentCredit.MatchedSegments = append(parentCredit.MatchedSegments, seg)
-				segIDMap[v.OrgID] = seg
+
+				if seg, ok := segIDMap[v.OrgID]; ok {
+					parentCredit.MatchedSegments = append(parentCredit.MatchedSegments, seg)
+				} else {
+					seg := &model.SegmentMatch{ID: v.OrgID}
+					parentCredit.MatchedSegments = append(parentCredit.MatchedSegments, seg)
+					segIDMap[v.OrgID] = seg
+				}
+
 			} else {
 				return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
@@ -286,8 +322,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for i := 0; i < len(groupsSet); i++ {
-			if group, ok := rgCreditsIDMap[uint64(groupsSet[i].ID)]; ok {
-				group.Setting = &groupsSet[i]
+			if group, ok := rgSetIDMap[uint64(groupsSet[i].ID)]; ok {
+				*group = groupsSet[i]
 			} else {
 				msg := fmt.Sprintf("return %d rule group doesn't meet request %+v\n", groupsSet[i].ID, rgIDs)
 				logger.Error.Printf("%s\n", msg)
@@ -304,9 +340,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for i := 0; i < len(ruleSet); i++ {
-			if rule, ok := rCreditsIDMap[uint64(ruleSet[i].ID)]; ok {
+			if rule, ok := rSetIDMap[uint64(ruleSet[i].ID)]; ok {
 				ruleInRes := conversationRuleToRuleInRes(&ruleSet[i])
-				rule.Setting = ruleInRes
+				*rule = *ruleInRes
 			} else {
 				msg := fmt.Sprintf("return %d rule doesn't meet request %+v\n", ruleSet[i].ID, ruleIDs)
 				logger.Error.Printf("%s\n", msg)
@@ -322,9 +358,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for i := 0; i < len(cfSet); i++ {
-			if cf, ok := cfCreditsIDMap[uint64(cfSet[i].ID)]; ok {
+			if cf, ok := cfSetIDMap[uint64(cfSet[i].ID)]; ok {
 				flowInRes := conversationfFlowToFlowInRes(&cfSet[i])
-				cf.Setting = &flowInRes
+				*cf = flowInRes
 			} else {
 				msg := fmt.Sprintf("return %d conversation flow doesn't meet request %+v\n", cfSet[i].ID, cfIDs)
 				logger.Error.Printf("%s\n", msg)
@@ -341,9 +377,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for i := 0; i < len(senGrpSet); i++ {
-			if senGrp, ok := senGrpCreditsIDMap[uint64(senGrpSet[i].ID)]; ok {
+			if senGrp, ok := senGrpSetIDMap[uint64(senGrpSet[i].ID)]; ok {
 				groupInRes := sentenceGroupToSentenceGroupInResponse(&senGrpSet[i])
-				senGrp.Setting = &groupInRes
+				*senGrp = groupInRes
 			} else {
 				msg := fmt.Sprintf("return %d sentence group doesn't meet request %+v\n", senGrpSet[i].ID, senGrpIDs)
 				logger.Error.Printf("%s\n", msg)
@@ -359,8 +395,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for _, set := range senSet {
-			if sen, ok := senCreditsIDMap[set.ID]; ok {
-				sen.Setting = set
+			if sen, ok := senSetIDMap[set.ID]; ok {
+				*sen = *set
 			} else {
 				msg := fmt.Sprintf("return %d sentence  doesn't meet request %+v\n", set.ID, senIDs)
 				logger.Error.Printf("%s\n", msg)
