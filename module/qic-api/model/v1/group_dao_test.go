@@ -19,7 +19,7 @@ func TestGetGroupsSQL(t *testing.T) {
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	r.%s as rUUID, r.%s as rName
-	FROM (SELECT * FROM %s WHERE %s=0 ) as rg
+	FROM (SELECT * FROM %s WHERE is_delete = ?) as rg
 	INNER JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	LEFT JOIN %s as r on rrr.%s = r.%s
@@ -52,7 +52,6 @@ func TestGetGroupsSQL(t *testing.T) {
 		fldUUID,
 		fldName,
 		tblRuleGroup,
-		fldIsDelete,
 		tblRGC,
 		fldID,
 		RGCGroupID,
@@ -66,8 +65,8 @@ func TestGetGroupsSQL(t *testing.T) {
 
 	queryStr, values := getGroupsSQL(&filter)
 
-	if len(values) != 2 {
-		t.Error("expect values length 2")
+	if len(values) != 3 {
+		t.Error("expect values length 3")
 		return
 	}
 
