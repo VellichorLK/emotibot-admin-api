@@ -25,7 +25,7 @@ import (
 func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := callRequest(r)
 	if ae, ok := err.(adminError); ok {
-		util.ReturnError(w, ae.ErrorNo(), fmt.Sprintf("call request error: ", ae))
+		util.ReturnError(w, ae.ErrorNo(), fmt.Sprintf("call request error: %v", ae))
 		return
 	} else if err != nil {
 		//Unknown error
