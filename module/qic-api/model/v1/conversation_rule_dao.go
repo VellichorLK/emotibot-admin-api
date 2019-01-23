@@ -189,7 +189,7 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 
 	queryStr = fmt.Sprintf(
 		`SELECT cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s,
-		cf.%s as cfUUID, cf.%s as cfName
+		cf.%s as cfID, cf.%s as cfUUID, cf.%s as cfName
 		 FROM (SELECT * FROM %s %s) as cr
 		 LEFT JOIN %s as rcrcf ON cr.%s = rcrcf.%s
 		 %s as cf ON rcrcf.%s = cf.%s`,
@@ -205,6 +205,7 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 		CRSeverity,
 		fldCreateTime,
 		fldUpdateTime,
+		fldID,
 		fldUUID,
 		fldName,
 		tblConversationRule,
@@ -252,7 +253,7 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 		rule := ConversationRule{}
 		var flowUUID *string
 		var flowName *string
-
+		var flowID *int64
 		err = rows.Scan(
 			&rule.ID,
 			&rule.UUID,
@@ -266,6 +267,7 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			&rule.Severity,
 			&rule.CreateTime,
 			&rule.UpdateTime,
+			&flowID,
 			&flowUUID,
 			&flowName,
 		)
@@ -292,6 +294,7 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 		}
 		if flowUUID != nil && flowName != nil {
 			flow := SimpleConversationFlow{
+				ID:   *flowID,
 				UUID: *flowUUID,
 				Name: *flowName,
 			}

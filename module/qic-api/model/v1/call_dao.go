@@ -118,13 +118,13 @@ const (
 )
 
 // Channel type of the call
-// 	- 0: default,
-//	- 1: staff(客服)
-//	- 2: customer(客戶)
+//	- 0: staff(客服)
+//	- 1: customer(客戶)
+// 	- 9: default
 const (
-	CallChanDefault int8 = iota
-	CallChanStaff
+	CallChanStaff int8 = iota
 	CallChanCustomer
+	CallChanDefault = 9
 )
 
 // asr status types of the call
