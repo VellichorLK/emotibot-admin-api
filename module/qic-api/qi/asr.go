@@ -147,6 +147,10 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
 	c.Status = model.CallStatusDone
+	c.LeftSpeed = &resp.LeftChannel.Speed
+	c.RightSpeed = &resp.RightChannel.Speed
+	c.LeftSilenceTime = &resp.LeftChannel.Quiet
+	c.RightSilenceTime = &resp.RightChannel.Quiet
 	err = callDao.SetCall(nil, c)
 	if err != nil {
 		logger.Error.Println("ASR finished, but status update failed. It will cause an unsync status. error: ", err)
