@@ -15,7 +15,7 @@ func TestGetGroupsSQL(t *testing.T) {
 		Extension: "abcdefg",
 	}
 
-	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
+	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	r.%s as rUUID, r.%s as rName
@@ -34,6 +34,7 @@ func TestGetGroupsSQL(t *testing.T) {
 		fldRuleGrpLimitSilence,
 		fldCreateTime,
 		fldRuleGrpIsEnable,
+		fldEnterprise,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
