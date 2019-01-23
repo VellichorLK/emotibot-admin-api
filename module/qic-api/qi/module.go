@@ -139,7 +139,7 @@ func init() {
 				callDao = model.NewCallSQLDao(sqlConn)
 				taskDao = model.NewTaskDao(sqlConn)
 				relationDao = &model.RelationSQLDao{}
-				trainer = predictor
+				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
 
 			},

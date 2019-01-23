@@ -1094,6 +1094,18 @@ type mockTrainedModelDao struct {
 func (m *mockTrainedModelDao) TrainedModelInfo(conn model.SqlLike, q *model.TModelQuery) ([]*model.TModel, error) {
 	return []*model.TModel{&model.TModel{ID: 4444}}, nil
 }
+
+func (m *mockTrainedModelDao) DeleteModel(conn model.SqlLike, q *model.TModelQuery) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockTrainedModelDao) NewModel(conn model.SqlLike, q *model.TModel) (int64, error) {
+	return 0, nil
+}
+
+func (m *mockTrainedModelDao) UpdateModel(conn model.SqlLike, q *model.TModel) (int64, error) {
+	return 0, nil
+}
 func TestRuleGroupCriteria(t *testing.T) {
 	mockRelation := &mockRelationDao{}
 	relationDao = mockRelation
