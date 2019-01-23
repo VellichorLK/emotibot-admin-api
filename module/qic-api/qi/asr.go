@@ -125,7 +125,7 @@ func ASRWorkFlow(output []byte) error {
 	score := BaseScore
 	for _, grp := range groups {
 		var credit *RuleGrpCredit
-		credit, err = RuleGroupCriteria(uint64(grp.ID), segWithSp, time.Duration(3)*time.Second)
+		credit, err = RuleGroupCriteria(grp, segWithSp, time.Duration(3)*time.Second)
 		if err != nil {
 			return fmt.Errorf("get rule group credit failed, %v", err)
 		}

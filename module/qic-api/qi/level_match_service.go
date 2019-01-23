@@ -570,18 +570,14 @@ func RuleMatch(cfMatchID map[uint64]bool, criteria map[uint64]*RuleCriteria) (ma
 // segments must be sorted by time ascended.
 // timeout is used to wait for cu module result.
 // if success, a RuleGrpCredit is returned.
-func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout time.Duration) (*RuleGrpCredit, error) {
+func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, timeout time.Duration) (*RuleGrpCredit, error) {
 	numOfLines := len(segments)
 	if numOfLines == 0 {
 		return nil, ErrNoArgument
 	}
 
-	groupsSet, err := serviceDAO.GetGroupsBy(&model.GroupFilter{Deal: -1, ID: []uint64{ruleGroup}})
-	if len(groupsSet) == 0 {
-		return nil, ErrNoRuleGroupFound
-	}
-
-	enterprise := groupsSet[0].Enterprise
+	logger.Info.Printf("doing %d rule group credit with enterprise %s\n", ruleGroup.ID, ruleGroup.EnterpriseID)
+	enterprise := ruleGroup.EnterpriseID
 	models, err := GetUsingModelByEnterprise(enterprise)
 	numOfModels := len(models)
 	if numOfModels == 0 {
@@ -592,7 +588,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	}
 
 	//get the relation table from RuleGroup to Tag
-	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{ruleGroup})
+	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)})
 	if err != nil {
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
@@ -846,7 +842,7 @@ func RuleGroupCriteria(ruleGroup uint64, segments []*SegmentWithSpeaker, timeout
 	//stores the every result in every level
 	var resp RuleGrpCredit
 
-	resp.ID = ruleGroup
+	resp.ID = uint64(ruleGroup.ID)
 	resp.Plus = totalScore
 	resp.Score = totalScore
 	for _, ruleID := range ruleIDs {
