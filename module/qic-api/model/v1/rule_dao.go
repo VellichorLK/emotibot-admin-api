@@ -92,6 +92,7 @@ type GroupQuery struct {
 	ID               []int64
 	Type             []int8
 	EnterpriseID     *string
+	IsEnable         *bool
 	IgnoreSoftDelete bool
 }
 
@@ -147,6 +148,9 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
 	if g.EnterpriseID != nil {
 		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)
+	}
+	if g.IsEnable != nil {
+		builder.Eq(fldRuleGrpIsEnable, *g.IsEnable)
 	}
 	if !g.IgnoreSoftDelete {
 		builder.Eq(fldRuleGrpIsDelete, g.IgnoreSoftDelete)

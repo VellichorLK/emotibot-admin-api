@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -8,12 +9,12 @@ import (
 )
 
 type SegmentDao struct {
-	db DBLike
+	db *sql.DB
 }
 
 func NewSegmentDao(db DBLike) *SegmentDao {
 	return &SegmentDao{
-		db: db,
+		db: db.Conn(),
 	}
 }
 
@@ -74,7 +75,7 @@ func (s *SegmentQuery) whereSQL() (string, []interface{}) {
 // notice: the segments will be sorted by start time, which is much more convenient for the users
 func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error) {
 	if delegatee == nil {
-		delegatee = s.db.Conn()
+		delegatee = s.db
 	}
 
 	selectCols := []string{
@@ -109,7 +110,7 @@ func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegm
 // Best use with a delegatee transcation to avoid data corruption.
 func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error) {
 	if delegatee == nil {
-		delegatee = s.db.Conn()
+		delegatee = s.db
 	}
 	segCols := []string{
 		fldSegmentCallID, fldSegmentStartTime, fldSegmentEndTime,

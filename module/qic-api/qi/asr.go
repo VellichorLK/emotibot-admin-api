@@ -121,10 +121,13 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("get groups by call failed, %v", err)
 	}
 	groups := callGroups[c.ID]
-	credits := make([]*RuleGrpCredit, 0, len(groups))
+	credits := []*RuleGrpCredit{}
 	score := BaseScore
 	for _, grp := range groups {
 		var credit *RuleGrpCredit
+		if !grp.IsEnable {
+			continue
+		}
 		credit, err = RuleGroupCriteria(grp, segWithSp, time.Duration(3)*time.Second)
 		if err != nil {
 			return fmt.Errorf("get rule group credit failed, %v", err)
