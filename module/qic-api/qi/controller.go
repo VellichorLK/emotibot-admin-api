@@ -243,7 +243,7 @@ func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error)
 			return
 		}
 	} else {
-		filter.Limit = 10
+		filter.Limit = 0
 	}
 	return
 }
