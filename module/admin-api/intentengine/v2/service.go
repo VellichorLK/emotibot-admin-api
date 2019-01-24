@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/autofill"
+	autofillData "emotibot.com/emotigo/module/admin-api/autofill/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
@@ -230,6 +232,12 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(version, now, trainResultSuccess)
 		util.ConsulUpdateIntent(appid)
+
+		// Update autofills
+		autofill.UpdateAutofills(appid, &autofillData.AutofillOption{
+			Module:   autofillData.AutofillModuleIntent,
+			TaskMode: autofillData.SyncTaskModeReset,
+		})
 	default:
 		go checkIntentModelStatus(appid, modelID, version)
 	}

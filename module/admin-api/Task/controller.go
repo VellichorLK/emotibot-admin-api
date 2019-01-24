@@ -55,6 +55,9 @@ func init() {
 			util.NewEntryPoint("POST", "audit", []string{}, handleAudit),
 			util.NewEntryPoint("GET", "config", []string{}, handleGetConfig),
 
+			// scenario/intents
+			util.NewEntryPoint("PUT", "scenario/intents", []string{}, handleUpdateScenarioIntents),
+
 			// v2
 			util.NewEntryPointWithVer("GET", "scenarios", []string{}, handleGetApps, 2),
 			util.NewEntryPointWithVer("GET", "scenario", []string{}, handleGetScenario, 2),
@@ -70,6 +73,27 @@ func init() {
 	}
 }
 
+func handleUpdateScenarioIntents(w http.ResponseWriter, r *http.Request) {
+	appID := requestheader.GetAppID(r)
+	scenarioID := r.FormValue("scenario_id")
+	triggerIntents := r.FormValue("trigger_intents")
+	intents := []string{}
+	err := json.Unmarshal([]byte(triggerIntents), &intents)
+	if err != nil {
+		errno := ApiError.JSON_PARSE_ERROR
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+
+	errno, err := UpdateTaskEngineIntents(appID, scenarioID, &intents)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
+		return
+	}
+
+	util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, intents))
+	return
+}
 func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	teConfig, errno, err := GetTaskEngineConfig()
 	if err != nil {
