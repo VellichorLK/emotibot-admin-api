@@ -130,7 +130,7 @@ func setUpRoutes() {
 		Route{"ValidateToken", "GET", 3, "trace/token", nil, controller.TraceValidateTokenHandlerV3, []interface{}{}},
 
 		Route{"GetOauthLogin", "GET", 4, "oauth/login", nil, controller.GetOAuthLoginPage, []interface{}{}},
-		Route{"DoOauthLogin", "GET", 4, "oauth/login", nil, controller.HandleOAuthLoginPage, []interface{}{}},
+		Route{"DoOauthLogin", "POST", 4, "oauth/login", nil, controller.HandleOAuthLoginPage, []interface{}{}},
 		Route{"GetUserTokenFromCode", "GET", 4, "oauth/token", nil, controller.GetOAuthTokenViaCode, []interface{}{}},
 	}
 }
@@ -143,6 +143,7 @@ func setUpDB() {
 	db.InitDB(url, port, dbName, user, passwd)
 	service.SetDB(&db)
 	service.SetDBV3(&db)
+	service.SetDBV4(&db)
 
 	url, port, user, passwd, dbName = util.GetMySQLAuditConfig()
 	util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)

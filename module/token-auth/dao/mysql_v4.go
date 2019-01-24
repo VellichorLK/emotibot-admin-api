@@ -16,19 +16,22 @@ func (controller MYSQLController) GetOAuthClient(clientID string) (*data.OAuthCl
 	}
 
 	queryStr := `
-		SELECT secret
-		FROM oauth_client
+		SELECT secret, redirect_uri, status
+		FROM product
 		WHERE id = ?`
 	row := controller.connectDB.QueryRow(queryStr, clientID)
 
+	status := 0
 	ret := data.OAuthClient{ID: clientID}
-	err = row.Scan(&ret.Secret)
+	err = row.Scan(&ret.Secret, &ret.RedirectURI, &status)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
 		return nil, err
 	}
+
+	ret.Active = status > 0
 
 	return &ret, nil
 }

@@ -3,6 +3,8 @@ package cache
 import (
 	"fmt"
 	"time"
+
+	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
 // LocalCache will use cache in local memory
@@ -21,10 +23,15 @@ func NewLocalCache() LocalCache {
 
 // Get will get value in cache if key is valid
 func (cache LocalCache) Get(namespace, key string) interface{} {
+	util.LogTrace.Println("GET")
 	if _, ok := cache.Cache[namespace]; ok {
+		util.LogTrace.Println("Name space ok")
 		timeout := cache.Timeout[namespace][key]
 		if !isTimeout(timeout) {
+			util.LogTrace.Println("not timeout")
 			return cache.Cache[namespace][key]
+		} else {
+			cache.Set(namespace, key, nil, 0)
 		}
 	}
 	return nil
@@ -60,6 +67,11 @@ func (cache LocalCache) Set(namespace, key string, value interface{}, expire int
 		cache.Timeout[namespace] = map[string]int64{}
 	}
 
+	if value == nil {
+		delete(cache.Cache[namespace], key)
+		return
+	}
+
 	now := time.Now().Unix()
 	cache.Cache[namespace][key] = value
 
@@ -72,5 +84,5 @@ func (cache LocalCache) Set(namespace, key string, value interface{}, expire int
 
 func isTimeout(timeout int64) bool {
 	t := time.Now().Unix()
-	return t < 0 || t < timeout
+	return timeout >= 0 && t > timeout
 }
