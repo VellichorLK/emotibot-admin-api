@@ -415,7 +415,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 		)
 
 		if err != nil {
-			err = fmt.Errorf("error whiel scan rule group in dao.GetBy, err: %s", err.Error)
+			err = fmt.Errorf("error whiel scan rule group in dao.GetBy, err: %s", err.Error())
 			return
 		}
 
