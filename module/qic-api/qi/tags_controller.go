@@ -106,18 +106,29 @@ func HandlePostTags(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandlePutTags(w http.ResponseWriter, r *http.Request) {
-	modeltag, err := extractTag(r)
+	tg, err := tagFromRequest(r)
+	if ae, ok := err.(adminError); ok {
+		util.ReturnError(w, ae.ErrorNo(), ae.Error())
+	} else if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get tag by request failed, %v", err))
+		return
+	}
+	updateTag, err := extractTag(r)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, %v", err))
 		return
 	}
-	uuid, found := mux.Vars(r)["tag_id"]
-	if !found {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad input, path variable uuid is not found"))
-		return
-	}
-	modeltag.UUID = uuid
-	_, err = UpdateTag(*modeltag)
+	_, err = UpdateTag(model.Tag{
+		ID:               tg.ID,
+		UUID:             tg.UUID,
+		Enterprise:       updateTag.Enterprise,
+		Name:             updateTag.Name,
+		Typ:              updateTag.Typ,
+		PositiveSentence: updateTag.PositiveSentence,
+		NegativeSentence: updateTag.NegativeSentence,
+		CreateTime:       tg.CreateTime,
+		UpdateTime:       updateTag.UpdateTime,
+	})
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("update tag failed, %v", err))
 		return

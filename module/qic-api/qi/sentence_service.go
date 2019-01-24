@@ -240,7 +240,33 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	}
 
 	err = sentenceDao.Commit(tx)
-	return newID, err
+	if err != nil {
+		return 0, err
+	}
+	// Because the filter condition sentence UUID,
+	// will not get the sentence group with all sentence it has.
+	// So we have to re-query it.
+	sgs, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{
+		SetenceUUID: []string{s.UUID},
+	}, nil)
+	if err != nil {
+		return 0, err
+	}
+	sgIDGrp := []uint64{}
+	for _, sg := range sgs {
+		sgIDGrp = append(sgIDGrp, uint64(sg.ID))
+	}
+	sgs, err = sentenceGroupDao.GetBy(&model.SentenceGroupFilter{
+		ID: sgIDGrp,
+	}, nil)
+	for _, sg := range sgs {
+		_, err := UpdateSentenceGroup(sg.UUID, &sg)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return newID, nil
 }
 
 //SoftDeleteSentence sets the field, is_delete, in sentence to 1

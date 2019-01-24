@@ -118,48 +118,22 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 	defer func() {
 		tx.Rollback()
 	}()
-	var (
-		tags      []model.Tag
-		sentences []uint64
-	)
 
-	// we will try at least maxRetries time for delete operation
-	for i := 0; i <= 3; i++ {
-		var (
-			maxRetries    = 3
-			rowsCount     int64
-			tagsSentences map[uint64][]uint64
-		)
-		if i == maxRetries {
-			return 0, fmt.Errorf("unexpected affected rows count")
-		}
-		query := model.TagQuery{
-			UUID: []string{t.UUID},
-		}
-		tags, err = tagDao.Tags(tx, query)
-		if len(tags) != 1 {
-			return 0, fmt.Errorf("dao found %d tag with the query %+v", len(tags), t.UUID)
-		}
-		tg := tags[0]
-		tagsSentences, err = sentenceDao.GetRelSentenceIDByTagIDs(tx, []uint64{tg.ID})
-		if err != nil {
-			return 0, fmt.Errorf("dao get sentence id failed, %v", err)
-		}
-		sentences = tagsSentences[tg.ID]
-		query.ID = []uint64{tags[0].ID}
-		rowsCount, err = tagDao.DeleteTags(tx, query)
-		if err != nil {
-			return 0, fmt.Errorf("dao delete failed, %v", err)
-		}
-		if rowsCount == 1 {
-			//we got the success signal, continue normal flow.
-			break
-		}
+	tagsSentences, err := sentenceDao.GetRelSentenceIDByTagIDs(tx, []uint64{t.ID})
+	if err != nil {
+		return 0, fmt.Errorf("dao get sentence id failed, %v", err)
 	}
-
-	t.CreateTime = tags[0].CreateTime
+	rowsCount, err := tagDao.DeleteTags(tx, model.TagQuery{
+		ID: []uint64{t.ID},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("dao delete failed, %v", err)
+	}
+	if rowsCount != 1 {
+		return 0, fmt.Errorf("delete tag failed, no affected rows")
+	}
 	t.UpdateTime = time.Now().Unix()
-	tags, err = tagDao.NewTags(tx, []model.Tag{t})
+	tags, err := tagDao.NewTags(tx, []model.Tag{t})
 	// TODO: support elegant handle for sql driver not support return incremental id.
 	// if err == model.ErrAutoIDDisabled {
 	//	tagDao.Tags()
@@ -168,23 +142,49 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 	if err != nil {
 		return 0, fmt.Errorf("dao create new tags failed, %v", err)
 	}
-	logger.Trace.Println("sentences: ", sentences)
-
-	for _, sID := range sentences {
-		err = sentenceDao.InsertSenTagRelation(tx, &model.Sentence{
-			ID:     sID,
-			TagIDs: []uint64{tags[0].ID},
+	newTag := tags[0]
+	tx.Commit()
+	sentences := tagsSentences[t.ID]
+	// to avoid nil panic if tag have no sentences
+	if sentences == nil {
+		return newTag.ID, nil
+	}
+	for _, sid := range sentences {
+		s, err := sentenceDao.GetSentences(nil, &model.SentenceQuery{
+			ID: []uint64{sid},
 		})
 		if err != nil {
-			return 0, fmt.Errorf("dao insert sentence tag relation failed, %v", err)
+			return 0, fmt.Errorf("query sentences failed, %v", err)
+		}
+		if len(s) < 1 {
+			return 0, fmt.Errorf("sentence can not be found")
+		}
+		sTags, err := tagDao.Tags(nil, model.TagQuery{
+			ID: s[0].TagIDs,
+		})
+		if err != nil {
+			return 0, fmt.Errorf("get sentence's tag failed, %v", err)
+		}
+		tagUUIDGrp := []string{}
+		for _, st := range sTags {
+			tagUUIDGrp = append(tagUUIDGrp, st.UUID)
+		}
+		_, err = UpdateSentence(s[0].UUID, s[0].Name, s[0].Enterprise, tagUUIDGrp)
+		if err != nil {
+			return 0, fmt.Errorf("update sentence failed, %v", err)
 		}
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return 0, fmt.Errorf("tx commit failed, %v", err)
-	}
-	return tags[0].ID, nil
+	// for _, sID := range sentences {
+	// 	err = sentenceDao.InsertSenTagRelation(tx, &model.Sentence{
+	// 		ID:     sID,
+	// 		TagIDs: []uint64{tags[0].ID},
+	// 	})
+	// 	if err != nil {
+	// 		return 0, fmt.Errorf("dao insert sentence tag relation failed, %v", err)
+	// 	}
+	// }
+	return newTag.ID, nil
 }
 
 // DeleteTag delete the tag by dao.
