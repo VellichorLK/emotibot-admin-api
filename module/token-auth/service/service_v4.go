@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	"emotibot.com/emotigo/module/token-auth/dao"
+	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
 var useDBV4 dao.DBV4
@@ -62,4 +64,26 @@ func CheckOauthRequest(clientID, clientSecret, redirectURL string) (bool, error)
 	}
 
 	return true, nil
+}
+
+// AddEnterpriseV4 will add enterprise into system. If dryRun is true, it will only run for check
+func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
+	adminUser *data.UserDetailV3, dryRun bool, active bool) (enterpriseID string, err error) {
+	err = checkDB()
+	if err != nil {
+		return "", err
+	}
+
+	exists, err := useDBV3.EnterpriseInfoExistsV3(enterprise.Name)
+	if err != nil {
+		return "", err
+	} else if exists {
+		return "", util.ErrEnterpriseInfoExists
+	}
+
+	return useDBV4.AddEnterpriseV4(enterprise, modules, adminUser, dryRun, active)
+}
+
+func UpdateEnterpriseStatusV4(enterpriseID string, status bool) error {
+	return useDBV4.UpdateEnterpriseStatusV4(enterpriseID, status)
 }

@@ -112,9 +112,10 @@ type DBV4 interface {
 	// GetEnterpriseAppList(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error)
 	// GetEnterprises() ([]*data.EnterpriseV3, error)
 	// GetEnterprise(enterpriseID string) (*data.EnterpriseDetailV3, error)
-	// AddEnterprise(enterprise *data.EnterpriseV3, modules []string, adminUser *data.UserDetailV3) (string, error)
+	AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string, adminUser *data.UserDetailV3, dryRun, active bool) (string, error)
 	// UpdateEnterprise(enterprsieID string, newEnterprise *data.EnterpriseDetailV3, modules []string) error
 	// DeleteEnterprise(enterprsieID string) error
+	UpdateEnterpriseStatusV4(enterpriseID string, status bool) error
 
 	// EnterpriseExists(enterpriseID string) (bool, error)
 	// EnterpriseInfoExists(enterpriseName string) (bool, error)
