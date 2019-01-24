@@ -116,11 +116,13 @@ func ASRWorkFlow(output []byte) error {
 		segWithSp = append(segWithSp, ws)
 	}
 	//TODO: calculate the 語速 & 靜音比
-	callGroups, err := serviceDAO.GroupsByCalls(tx, model.CallQuery{ID: []int64{c.ID}})
+	isEnabled := true
+	groups, err := serviceDAO.Group(tx, model.GroupQuery{
+		IsEnable: &isEnabled,
+	})
 	if err != nil {
 		return fmt.Errorf("get groups by call failed, %v", err)
 	}
-	groups := callGroups[c.ID]
 	credits := []*RuleGrpCredit{}
 	score := BaseScore
 	for _, grp := range groups {
