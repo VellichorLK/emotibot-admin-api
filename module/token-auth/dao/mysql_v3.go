@@ -1843,8 +1843,11 @@ func insertCustomInfoWithTxV3(enterpriseID string, userID string,
 }
 
 func addModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *sql.Tx) (err error) {
+	var queryStr string
+	var queryParams []interface{}
+
 	// Copy system level modules for enterprise, set status to 0 by default
-	queryStr := fmt.Sprintf(`
+	queryStr = fmt.Sprintf(`
 		INSERT INTO %s (code, name, description, enterprise, cmd_list, status)
 		SELECT code, name, description, ?, cmd_list, 0
 		FROM %s
@@ -1861,14 +1864,22 @@ func addModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *sql.
 			SET status = 1
 			WHERE enterprise = ? AND code IN (?%s)`,
 			moduleTableV3, strings.Repeat(",?", len(modules)-1))
-		queryParams := []interface{}{enterpriseID}
+		queryParams = []interface{}{enterpriseID}
 		for _, module := range modules {
 			queryParams = append(queryParams, module)
 		}
-		_, err = t.Exec(queryStr, queryParams...)
-		if err != nil {
-			return
-		}
+	} else {
+		// Update status flags
+		queryStr = fmt.Sprintf(`
+			UPDATE %s
+			SET status = 1
+			WHERE enterprise = ?`,
+			moduleTableV3)
+		queryParams = []interface{}{enterpriseID}
+	}
+	_, err = t.Exec(queryStr, queryParams...)
+	if err != nil {
+		return
 	}
 
 	return

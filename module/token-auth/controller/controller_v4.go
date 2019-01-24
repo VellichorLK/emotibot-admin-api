@@ -2,16 +2,20 @@ package controller
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"emotibot.com/emotigo/module/token-auth/cache"
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
+	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 )
@@ -224,4 +228,226 @@ func GetOAuthTokenViaCode(w http.ResponseWriter, r *http.Request) {
 		Scope:        "",
 	}
 	util.Return(w, nil, &ret)
+}
+
+func EnterpriseAddHandlerV4(w http.ResponseWriter, r *http.Request) {
+	var enterprise *data.EnterpriseV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if enterprise != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentEnterpriseAdd, enterprise.Name)
+		} else {
+			auditMessage = data.AuditContentEnterpriseAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleManageEnterprise, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
+	name := r.FormValue("name")
+	if name == "" {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "name")
+		return
+	}
+
+	adminUser := r.FormValue("admin")
+	if adminUser == "" {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "admin")
+		return
+	}
+
+	adminReq := data.EnterpriseAdminRequestV3{}
+	err = json.Unmarshal([]byte(adminUser), &adminReq)
+	if err != nil {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "admin")
+		return
+	}
+
+	status, err := strconv.Atoi(r.FormValue("status"))
+	if err != nil {
+		err = nil
+		status = 0
+	}
+
+	enterpriseAdmin := data.UserDetailV3{
+		UserV3: data.UserV3{
+			UserName:    adminReq.Account,
+			DisplayName: adminReq.Name,
+			Email:       adminReq.Email,
+			Type:        enum.AdminUser,
+		},
+		Password: &adminReq.Password,
+	}
+	temp, _ := json.Marshal(enterpriseAdmin)
+	util.LogTrace.Println("Add admin user:", string(temp))
+
+	description := r.FormValue("description")
+
+	var modules []string
+	if r.FormValue("modules") == "" {
+		modules = []string{}
+	} else {
+		err = json.Unmarshal([]byte(r.FormValue("modules")), &modules)
+		if err != nil {
+			util.LogInfo.Println("Parse json fail: ", err.Error())
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "modules")
+			return
+		}
+	}
+
+	enterprise = &data.EnterpriseV3{
+		Name:        name,
+		Description: description,
+	}
+
+	id, err := service.AddEnterpriseV4(enterprise, modules, &enterpriseAdmin, false, status > 0)
+	if err != nil {
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "name")
+		case util.ErrUserEmailExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "admin emails")
+		case util.ErrUserNameExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "admin username")
+		default:
+			util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
+		}
+		return
+	}
+
+	newEnterprise, err := service.GetEnterpriseV3(id)
+	if err != nil || newEnterprise == nil {
+		util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
+		return
+	}
+
+	util.Return(w, nil, newEnterprise)
+}
+
+func EnterpriseTryAddHandlerV4(w http.ResponseWriter, r *http.Request) {
+	var enterprise *data.EnterpriseV3
+	var err error
+
+	name := r.FormValue("name")
+	if name == "" {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "name")
+		return
+	}
+
+	adminUser := r.FormValue("admin")
+	if adminUser == "" {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "admin")
+		return
+	}
+
+	adminReq := data.EnterpriseAdminRequestV3{}
+	err = json.Unmarshal([]byte(adminUser), &adminReq)
+	if err != nil {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "admin")
+		return
+	}
+
+	enterpriseAdmin := data.UserDetailV3{
+		UserV3: data.UserV3{
+			UserName:    adminReq.Account,
+			DisplayName: adminReq.Name,
+			Email:       adminReq.Email,
+			Type:        enum.AdminUser,
+		},
+		Password: &adminReq.Password,
+	}
+	temp, _ := json.Marshal(enterpriseAdmin)
+	util.LogTrace.Println("Add admin user:", string(temp))
+
+	description := r.FormValue("description")
+
+	var modules []string
+	if r.FormValue("modules") == "" {
+		modules = []string{}
+	} else {
+		err = json.Unmarshal([]byte(r.FormValue("modules")), &modules)
+		if err != nil {
+			util.LogInfo.Println("Parse json fail: ", err.Error())
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "modules")
+			return
+		}
+	}
+
+	enterprise = &data.EnterpriseV3{
+		Name:        name,
+		Description: description,
+	}
+
+	_, err = service.AddEnterpriseV4(enterprise, modules, &enterpriseAdmin, true, false)
+	if err != nil {
+		switch err {
+		case util.ErrEnterpriseInfoExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "name")
+		case util.ErrUserEmailExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "admin emails")
+		case util.ErrUserNameExists:
+			util.ReturnError(w, adminerrors.ErrnoRequestError, "admin username")
+		default:
+			util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
+		}
+		return
+	}
+
+	util.Return(w, nil, nil)
+}
+
+func EnterpriseActivateHandlerV4(w http.ResponseWriter, r *http.Request) {
+	updateEnterpriseStatus(w, r, true)
+}
+func EnterpriseDeactivateHandlerV4(w http.ResponseWriter, r *http.Request) {
+	updateEnterpriseStatus(w, r, false)
+}
+
+func updateEnterpriseStatus(w http.ResponseWriter, r *http.Request, status bool) {
+	vars := mux.Vars(r)
+
+	var enterpriseID string
+	var origEnterprise *data.EnterpriseDetailV3
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if origEnterprise != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentEnterpriseUpdate, origEnterprise.Name)
+		} else if enterpriseID != "" {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentEnterpriseUpdate, enterpriseID)
+		} else {
+			auditMessage = data.AuditContentEnterpriseUpdate
+		}
+
+		addAuditLog(r, audit.AuditModuleManageRobot, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
+	enterpriseID = vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, "enterprise id")
+		return
+	}
+
+	origEnterprise, err = service.GetEnterpriseV3(enterpriseID)
+	if err != nil {
+		util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
+		return
+	} else if origEnterprise == nil {
+		util.ReturnError(w, adminerrors.ErrnoNotFound, "enterprise")
+		return
+	}
+
+	err = service.UpdateEnterpriseStatusV4(enterpriseID, status)
+	if err != nil {
+		util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
+		return
+	}
+
+	util.Return(w, nil, true)
 }

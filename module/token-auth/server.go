@@ -132,6 +132,11 @@ func setUpRoutes() {
 		Route{"GetOauthLogin", "GET", 4, "oauth/login", nil, controller.GetOAuthLoginPage, []interface{}{}},
 		Route{"DoOauthLogin", "POST", 4, "oauth/login", nil, controller.HandleOAuthLoginPage, []interface{}{}},
 		Route{"GetUserTokenFromCode", "GET", 4, "oauth/token", nil, controller.GetOAuthTokenViaCode, []interface{}{}},
+
+		Route{"AddEnterprise", "POST", 4, "enterprise", nil, controller.EnterpriseAddHandlerV4, []interface{}{0}},
+		Route{"TrAddEnterprise", "POST", 4, "enterprise/try-create", nil, controller.EnterpriseTryAddHandlerV4, []interface{}{0}},
+		Route{"ActivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/active", nil, controller.EnterpriseActivateHandlerV4, []interface{}{0}},
+		Route{"DeactivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/deactive", nil, controller.EnterpriseDeactivateHandlerV4, []interface{}{0}},
 	}
 }
 
