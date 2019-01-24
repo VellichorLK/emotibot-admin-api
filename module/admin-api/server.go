@@ -35,8 +35,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"emotibot.com/emotigo/module/admin-api/util/solr"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/solr"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/misc/emotibothttpwriter"
@@ -209,7 +209,6 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 		}
 		return checkAuthHeader(appid, token) && checkPrivilegeWithAPI(module, cmd, token)
 	}
-
 	return true
 }
 

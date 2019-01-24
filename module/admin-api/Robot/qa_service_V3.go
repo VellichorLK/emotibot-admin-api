@@ -145,6 +145,10 @@ func SyncOnce() {
 }
 
 func SyncRobotProfileToSolr() (err error) {
+	return ForceSyncRobotProfileToSolr(false)
+}
+
+func ForceSyncRobotProfileToSolr(force bool) (err error) {
 	restart := false
 	body := ""
 	defer func() {
@@ -154,45 +158,49 @@ func SyncRobotProfileToSolr() (err error) {
 		}
 	}()
 
-	start, pid, err := tryStartSyncProcess(syncSolrTimeout)
-	if err != nil {
-		return
-	}
-	if !start {
-		logger.Info.Println("Pass sync, there is still process running")
-		return
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			msg := ""
-			switch r.(type) {
-			case error:
-				msg = (r.(error)).Error()
-			case string:
-				msg = r.(string)
-			default:
-				msg = fmt.Sprintf("%v", r)
-			}
-			finishSyncProcess(pid, false, msg)
-		} else if err != nil {
-			finishSyncProcess(pid, false, err.Error())
-		} else {
-			finishSyncProcess(pid, true, "")
-		}
-
-		restart, err = needProcessRobotData()
+	if !force {
+		var start bool
+		var pid int
+		start, pid, err = tryStartSyncProcess(syncSolrTimeout)
 		if err != nil {
-			logger.Error.Println("Check status fail: ", err.Error())
 			return
 		}
-		if restart {
-			logger.Trace.Println("Restart sync process")
-			time.Sleep(time.Second)
-			go SyncRobotProfileToSolr()
+		if !start {
+			logger.Info.Println("Pass sync, there is still process running")
+			return
 		}
-	}()
+		defer func() {
+			if r := recover(); r != nil {
+				msg := ""
+				switch r.(type) {
+				case error:
+					msg = (r.(error)).Error()
+				case string:
+					msg = r.(string)
+				default:
+					msg = fmt.Sprintf("%v", r)
+				}
+				finishSyncProcess(pid, false, msg)
+			} else if err != nil {
+				finishSyncProcess(pid, false, err.Error())
+			} else {
+				finishSyncProcess(pid, true, "")
+			}
 
-	rqIDs, ansIDs, delAnsIDs, tagInfos, appids, err := getProcessModifyRobotQA()
+			restart, err = needProcessRobotData()
+			if err != nil {
+				logger.Error.Println("Check status fail: ", err.Error())
+				return
+			}
+			if restart {
+				logger.Trace.Println("Restart sync process")
+				time.Sleep(time.Second)
+				go SyncRobotProfileToSolr()
+			}
+		}()
+	}
+
+	rqIDs, ansIDs, delAnsIDs, tagInfos, appids, err := getProcessModifyRobotQA(force)
 	if err != nil {
 		return
 	}
@@ -226,7 +234,7 @@ func SyncRobotProfileToSolr() (err error) {
 		}
 
 		jsonStr, _ := json.Marshal(validInfos)
-		logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
+		// logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
 		body, err = Service.IncrementAddSolr(jsonStr)
 		if err != nil {
 			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)

@@ -91,7 +91,7 @@ func BatchGetNLUResults(appid string, sentences []string) (map[string]*NLUResult
 					logger.Error.Println("Get NLU Result error:", err.Error())
 					ret = map[string]*NLUResult{}
 				}
-				logger.Trace.Printf("Worker %d finish query NLU, get %#v\n", workNo, ret)
+				logger.Trace.Printf("Worker %d finish query NLU\n", workNo)
 				resultsChan <- &ret
 			}
 		}(idx)
@@ -113,7 +113,9 @@ func BatchGetNLUResults(appid string, sentences []string) (map[string]*NLUResult
 	for packetNum > 0 {
 		groupResult := <-resultsChan
 		packetNum--
-		logger.Trace.Printf("Master get %#v\n", groupResult)
+		if groupResult != nil {
+			logger.Trace.Printf("Master get %d results\n", len(*groupResult))
+		}
 		for k, v := range *groupResult {
 			allResult[k] = v
 		}
@@ -139,7 +141,6 @@ func GetNLUResults(appid string, sentences []string) (map[string]*NLUResult, err
 	}
 
 	nluResult := []*NLUResult{}
-	logger.Trace.Println("NLU Response:", body)
 	err = json.Unmarshal([]byte(body), &nluResult)
 	if err != nil {
 		return nil, err

@@ -499,9 +499,11 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRebuildRobotQAV3(w http.ResponseWriter, r *http.Request) {
-	err := SyncRobotProfileToSolr()
+	// TODO: only force update data of robot itself
+	err := ForceSyncRobotProfileToSolr(true)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoAPIError, err.Error())
 	}
+	util.Return(w, nil, "success")
 	return
 }
