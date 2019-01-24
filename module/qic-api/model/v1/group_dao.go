@@ -386,7 +386,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 		var rUUID *string // rule uuid
 		var rName *string // rule name
 
-		rows.Scan(
+		err = rows.Scan(
 			&group.ID,
 			&group.UUID,
 			&group.Name,
@@ -413,6 +413,11 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter) (groups []GroupWCond, err
 			&rUUID,
 			&rName,
 		)
+
+		if err != nil {
+			err = fmt.Errorf("error whiel scan rule group in dao.GetBy, err: %s", err.Error)
+			return
+		}
 
 		if currentGroup == nil || group.ID != currentGroup.ID {
 			if currentGroup != nil {
