@@ -384,8 +384,8 @@ func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 }
 
 var callTypeDict = map[string]int8{
-	CallStaffRoleName:    model.CallChanCustomer,
-	CallCustomerRoleName: model.CallChanStaff,
+	CallStaffRoleName:    model.CallChanStaff,
+	CallCustomerRoleName: model.CallChanCustomer,
 }
 
 const (
