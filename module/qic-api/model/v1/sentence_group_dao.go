@@ -211,7 +211,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 	queryStr = fmt.Sprintf(
 		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
-		LEFT JOIN %s as s ON rsgs.%s = s.%s`,
+		%s as s ON rsgs.%s = s.%s`,
 		fldID,
 		fldUUID,
 		fldName,
