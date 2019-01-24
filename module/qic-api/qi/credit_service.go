@@ -318,7 +318,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the rule group setting
 	if len(rgIDs) > 0 {
-		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs})
+
+		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs, Delete: -1})
 		if err != nil {
 			logger.Error.Printf("get rule group %+v failed. %s\n", rgIDs, err)
 			return nil, err
