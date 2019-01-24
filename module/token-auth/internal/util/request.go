@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
 )
 
@@ -43,5 +42,5 @@ func Return(w http.ResponseWriter, adminErr adminerrors.AdminError, ret interfac
 }
 
 func ReturnError(w http.ResponseWriter, errno int, msg string) error {
-	return Return(w, AdminErrors.New(errno, msg), nil)
+	return Return(w, adminerrors.New(errno, msg), nil)
 }
