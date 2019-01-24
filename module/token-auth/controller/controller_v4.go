@@ -7,9 +7,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-
 	"emotibot.com/emotigo/module/token-auth/cache"
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
 
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
@@ -193,25 +192,25 @@ func GetOAuthTokenViaCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !valid {
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "invalid oauth client info"), nil)
+		util.Return(w, adminerrors.New(adminerrors.ErrnoRequestError, "invalid oauth client info"), nil)
 		return
 	}
 
 	userObj := authCache.Get("auth", code)
 	if userObj == nil {
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "invalid code"), nil)
+		util.Return(w, adminerrors.New(adminerrors.ErrnoRequestError, "invalid code"), nil)
 		return
 	}
 	user, ok := userObj.(*data.UserDetailV3)
 	if !ok {
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoTypeConvert, "invalid type conversion"), nil)
+		util.Return(w, adminerrors.New(adminerrors.ErrnoTypeConvert, "invalid type conversion"), nil)
 		return
 	}
 
 	token, err := user.GenerateToken()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "invalid oauth client info"), nil)
+		util.Return(w, adminerrors.New(adminerrors.ErrnoRequestError, "invalid oauth client info"), nil)
 		return
 	}
 
