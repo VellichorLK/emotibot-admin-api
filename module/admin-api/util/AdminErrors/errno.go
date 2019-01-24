@@ -35,6 +35,9 @@ const (
 
 	// ErrnoInitfailed means the package have not initialed resources (service/db) for the api.
 	ErrnoInitfailed = -10
+
+	// ErrnoTypeConvert means the error when convert interface to other data type.
+	ErrnoTypeConvert = -11
 )
 
 func GetReturnStatus(errno int) int {
@@ -46,6 +49,8 @@ func GetReturnStatus(errno int) int {
 	case ErrnoRequestError:
 		return http.StatusBadRequest
 	case ErrnoDBError:
+		fallthrough
+	case ErrnoTypeConvert:
 		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError

@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"encoding/json"
@@ -1986,7 +1986,7 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		value, key, err := handler.ValidateRequest(r)
 		if err != nil {
 			util.LogTrace.Println("Validate SSO fail: ", err.Error())
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			return
 		}
 
@@ -1995,14 +1995,14 @@ func ValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		if detailUser == nil {
 			msg := fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)
 			util.LogInfo.Printf(msg)
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			w.Write([]byte(msg))
 			return
 		}
 		if err != nil {
 			msg := fmt.Sprintf("Get SSO User error %s\n", err.Error())
 			util.LogInfo.Printf(msg)
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			w.Write([]byte(msg))
 			return
 		}
@@ -2051,14 +2051,14 @@ func TraceValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 		if detailUser == nil {
 			msg := fmt.Sprintf("SSO User not found (%s, %s)\n", key, value)
 			util.LogInfo.Printf(msg)
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			w.Write([]byte(msg))
 			return
 		}
 		if err != nil {
 			msg := fmt.Sprintf("Get SSO User error %s\n", err.Error())
 			util.LogInfo.Printf(msg)
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			w.Write([]byte(msg))
 			return
 		}
@@ -2084,7 +2084,7 @@ func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !valid {
-		returnUnauthorized(w)
+		ReturnUnauthorized(w)
 		return
 	}
 
@@ -2105,14 +2105,14 @@ func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
 		params := strings.Split(authorization, " ")
 		if params[0] != "Api" {
 			util.LogTrace.Println("Header format error: ", authorization)
-			returnUnauthorized(w)
+			ReturnUnauthorized(w)
 			return
 		}
 		apiKey = params[1]
 	}
 
 	if apiKey == "" {
-		returnUnauthorized(w)
+		ReturnUnauthorized(w)
 		return
 	}
 
@@ -2123,7 +2123,7 @@ func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if appid == "" {
-		returnUnauthorized(w)
+		ReturnUnauthorized(w)
 		return
 	}
 }

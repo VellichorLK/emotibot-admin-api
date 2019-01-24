@@ -1,4 +1,4 @@
-package main
+package controller
 
 import (
 	"database/sql"
@@ -572,7 +572,7 @@ func returnBadRequest(w http.ResponseWriter, column string) {
 	writeErrJSON(w, errMsg)
 }
 
-func returnUnauthorized(w http.ResponseWriter) {
+func ReturnUnauthorized(w http.ResponseWriter) {
 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 }
 

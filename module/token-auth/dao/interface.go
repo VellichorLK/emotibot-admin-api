@@ -38,7 +38,9 @@ type DB interface {
 	UpdateApp(enterpriseID string, app data.App) (*data.App, error)
 	DisableApp(enterpriseID string, AppID string) (bool, error)
 	DeleteApp(enterpriseID string, AppID string) (bool, error)
+}
 
+type DBV3 interface {
 	// v3
 	GetEnterpriseAppListV3(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error)
 	GetEnterprisesV3() ([]*data.EnterpriseV3, error)
@@ -103,4 +105,74 @@ type DB interface {
 	ClearExpireToken()
 
 	AddAuditLog(auditLog data.AuditLog) error
+}
+
+type DBV4 interface {
+	// all interface with DBV3
+	// GetEnterpriseAppList(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error)
+	// GetEnterprises() ([]*data.EnterpriseV3, error)
+	// GetEnterprise(enterpriseID string) (*data.EnterpriseDetailV3, error)
+	// AddEnterprise(enterprise *data.EnterpriseV3, modules []string, adminUser *data.UserDetailV3) (string, error)
+	// UpdateEnterprise(enterprsieID string, newEnterprise *data.EnterpriseDetailV3, modules []string) error
+	// DeleteEnterprise(enterprsieID string) error
+
+	// EnterpriseExists(enterpriseID string) (bool, error)
+	// EnterpriseInfoExists(enterpriseName string) (bool, error)
+
+	// GetUsers(enterpriseID string, admin bool) ([]*data.UserV3, error)
+	// GetUser(enterpriseID string, userID string) (*data.UserDetailV3, error)
+	// AddUser(enterpriseID string, user *data.UserDetailV3) (userID string, err error)
+	// UpdateUser(enterpriseID string, userID string, user *data.UserDetailV3) error
+	// DeleteUser(enterpriseID string, userID string) error
+
+	// GetAuthUser(account string, passwd string) (user *data.UserDetailV3, err error)
+	// GetUserPassword(userID string) (string, error)
+	// UserExists(userID string) (bool, error)
+	// EnterpriseUserInfoExists(userType int, enterpriseID string,
+	// 	userName string, userEmail string) (bool, string, string, error)
+
+	// GetApps(enterpriseID string) ([]*data.AppDetailV3, error)
+	// GetApp(enterpriseID string, appID string) (*data.AppDetailV3, error)
+	// AddApp(enterpriseID string, app *data.AppDetailV3) (string, error)
+	// UpdateApp(enterpriseID string, appID string, app *data.AppDetailV3) error
+	// DeleteApp(enterpriseID string, appID string) error
+
+	// AppExists(appID string) (bool, error)
+	// EnterpriseAppInfoExists(enterpriseID string, appName string) (bool, error)
+
+	// GetGroups(enterpriseID string) ([]*data.GroupDetailV3, error)
+	// GetGroup(enterpriseID string, groupID string) (*data.GroupDetailV3, error)
+	// AddGroup(enterpriseID string, group *data.GroupDetailV3, apps []string) (string, error)
+	// UpdateGroup(enterpriseID string, groupID string, group *data.GroupDetailV3, apps []string) error
+	// DeleteGroup(enterpriseID string, groupID string) error
+
+	// GroupExists(groupID string) (bool, error)
+	// EnterpriseGroupInfoExists(enterpriseID string, groupName string) (bool, error)
+
+	// GetRoles(enterpriseID string) ([]*data.RoleV3, error)
+	// GetRole(enterpriseID string, roleID string) (*data.RoleV3, error)
+	// AddRole(enterpriseID string, role *data.RoleV3) (string, error)
+	// UpdateRole(enterpriseID string, roleID string, role *data.RoleV3) error
+	// DeleteRole(enterpriseID string, roleID string) error
+
+	// RoleExists(roleID string) (bool, error)
+	// EnterpriseRoleInfoExists(enterpriseID string, roleName string) (bool, error)
+
+	// GetModules(enterpriseID string) ([]*data.ModuleDetailV3, error)
+
+	// GetEnterpriseID(appID string) (string, error)
+	// GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)
+
+	// GetAppSecret(appid string) (string, error)
+	// RenewAppSecret(appid string) (string, error)
+	// GenerateAppApiKey(appid string, expired int) (string, error)
+	// GetAppViaApiKey(apiKey string) (string, error)
+	// RemoveAppApiKey(appid, token string) error
+	// RemoveAppAllApiKey(appid string) error
+	// ClearExpireToken()
+
+	// AddAuditLog(auditLog data.AuditLog) error
+
+	// OAuth part
+	GetOAuthClient(clientID string) (*data.OAuthClient, error)
 }

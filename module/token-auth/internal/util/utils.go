@@ -3,9 +3,11 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"regexp"
 	"runtime"
+	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -69,4 +71,21 @@ func PrintRuntimeStack(maxStack int) {
 		}
 	}
 	logger.Trace.Printf(buf.String())
+}
+
+// GenRandomString will generate a string with length, which will only contains 0-9, a-z, A-Z
+func GenRandomString(length int) string {
+	rand.Seed(time.Now().Unix())
+	buf := bytes.Buffer{}
+	for buf.Len() < length {
+		var c uint8
+		for c < uint8('0') ||
+			(c > uint8('9') && c < uint8('A')) ||
+			(c > uint8('Z') && c < uint8('a')) ||
+			(c > uint8('z')) {
+			c = uint8(rand.Uint32() % 128)
+		}
+		buf.WriteRune(rune(c))
+	}
+	return buf.String()
 }
