@@ -33,18 +33,19 @@ type SentenceGroup struct {
 }
 
 type SentenceGroupFilter struct {
-	UUID       []string
-	ID         []uint64
-	Name       string
-	Role       int
-	Position   int
-	Distance   int
-	Enterprise string
-	CreateTime *time.Time
-	UpdateTime *time.Time
-	Page       int
-	Limit      int
-	IsDelete   int8
+	UUID        []string
+	ID          []uint64
+	Name        string
+	Role        int
+	Position    int
+	Distance    int
+	Enterprise  string
+	CreateTime  *time.Time
+	UpdateTime  *time.Time
+	Page        int
+	Limit       int
+	IsDelete    int8
+	SetenceUUID []string
 }
 
 type SentenceGroupsSqlDao interface {
@@ -194,8 +195,21 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		conditionStr = "WHERE " + conditionStr
 	}
 
+	sentenceCondition := fmt.Sprintf("LEFT JOIN %s", tblSentence)
+	if len(filter.SetenceUUID) > 0 {
+		sentenceCondition = fmt.Sprintf(
+			"INNER JOIN (SELECT * FROM %s WHERE %s IN (%s))",
+			tblSentence,
+			fldUUID,
+			fmt.Sprintf("?%s", strings.Repeat(", ?", len(filter.SetenceUUID)-1)),
+		)
+		for _, sUUID := range filter.SetenceUUID {
+			values = append(values, sUUID)
+		}
+	}
+
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		LEFT JOIN %s as s ON rsgs.%s = s.%s`,
 		fldID,
@@ -206,6 +220,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		SGRange,
 		fldCreateTime,
 		fldUpdateTime,
+		fldEnterprise,
 		fldUUID,
 		fldName,
 		fldCategoryID,
@@ -214,7 +229,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		tblRelSGS,
 		fldID,
 		RSGSSGID,
-		tblSentence,
+		sentenceCondition,
 		RSGSSID,
 		fldID,
 	)
@@ -278,6 +293,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 			&group.Distance,
 			&group.CreateTime,
 			&group.UpdateTime,
+			&group.Enterprise,
 			&sentenceUUID,
 			&sentenceName,
 			&sentenceCID,
