@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
 )
 
 type RetObj struct {
@@ -13,7 +13,7 @@ type RetObj struct {
 	Result  interface{} `json:"result"`
 }
 
-func Return(w http.ResponseWriter, adminErr AdminErrors.AdminError, ret interface{}) error {
+func Return(w http.ResponseWriter, adminErr adminerrors.AdminError, ret interface{}) error {
 	var obj RetObj
 	status := http.StatusOK
 	if adminErr != nil {
@@ -22,10 +22,10 @@ func Return(w http.ResponseWriter, adminErr AdminErrors.AdminError, ret interfac
 			Message: adminErr.String(),
 			Result:  ret,
 		}
-		status = AdminErrors.GetReturnStatus(adminErr.Errno())
+		status = adminerrors.GetReturnStatus(adminErr.Errno())
 	} else {
 		obj = RetObj{
-			Status:  AdminErrors.ErrnoSuccess,
+			Status:  adminerrors.ErrnoSuccess,
 			Message: "",
 			Result:  ret,
 		}
