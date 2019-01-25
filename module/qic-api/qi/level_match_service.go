@@ -219,7 +219,7 @@ const (
 	Threshold   = 60
 )
 
-func worker(ctx context.Context, target <-chan uint64,
+func worker(ctx context.Context, target <-chan uint64, errChan chan<- error,
 	segments []string, wg *sync.WaitGroup, collected []*MatchedData) {
 	defer wg.Done()
 	numOfData := len(collected) + 1
@@ -231,6 +231,7 @@ func worker(ctx context.Context, target <-chan uint64,
 			}
 			pr, err := BatchPredict(id, Threshold, segments)
 			if err != nil {
+				errChan <- err
 				logger.Error.Printf("batch predict failed. %s\n", err)
 				return
 			}
@@ -259,7 +260,6 @@ func worker(ctx context.Context, target <-chan uint64,
 				}
 			}
 		case <-ctx.Done():
-			fmt.Printf("i am here\n")
 			return
 		}
 	}
@@ -307,14 +307,22 @@ func TagMatch(tags []uint64, segments []string, timeout time.Duration) ([]*Match
 	}
 	close(target)
 
+	errChan := make(chan error, Concurrency)
 	//call goroutine to do job concurrency
 	for i := 0; i < Concurrency; i++ {
-		go worker(ctx, target, segments, &wg, matches)
+		go worker(ctx, target, errChan, segments, &wg, matches)
 	}
-
 	wg.Wait()
 
-	return matches, ctx.Err()
+	var err error
+	if len(errChan) > 0 {
+		err = <-errChan
+	}
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+
+	return matches, err
 }
 
 //SentencesMatch gives the sentence id that is matched by which segment index
