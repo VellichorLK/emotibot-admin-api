@@ -20,7 +20,7 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
 	tagDao     model.TagDao
-	callDao    CallDao
+	callDao    model.CallDao
 	taskDao    TaskDao
 	segmentDao SegmentDao
 	producer   *rabbitmq.Producer
