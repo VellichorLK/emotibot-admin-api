@@ -15,6 +15,8 @@ ARG PROJECT
 ENV GOPREFIX /go/src/emotibot.com
 RUN yum install --disableplugin=fastestmirror -y tzdata
 COPY --from=build-env /go/bin /usr/local/bin
+ARG PROJECT
+COPY ./module/${PROJECT}/template /usr/local/bin/template
 
 WORKDIR /usr/local/bin
 CMD ["./token-auth"]
