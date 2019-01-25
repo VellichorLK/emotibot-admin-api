@@ -17,7 +17,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-var autofillDao *dao.AutofillDao
+var autofillDao dao.Dao
 
 func Init() {
 	db := util.GetMainDB()

@@ -19,8 +19,8 @@ const (
 	IntentTrainSetsTable       = "intent_train_sets"
 )
 
-func NewDao(db *sql.DB) *AutofillDao {
-	return &AutofillDao{
+func NewDao(db *sql.DB) Dao {
+	return AutofillDao{
 		db: db,
 	}
 }
@@ -30,7 +30,7 @@ func NewDao(db *sql.DB) *AutofillDao {
 // and the caller is responsible for creating the sync task
 // 'resetFailed' flag is set to true if previous sync task was a reset task
 // and was failed
-func (dao *AutofillDao) TryGetSyncTaskLock(appID string, taskMode int64) (result bool,
+func (dao AutofillDao) TryGetSyncTaskLock(appID string, taskMode int64) (result bool,
 	resetFailed bool, err error) {
 	if dao.db == nil {
 		return false, false, ErrDBNotInit
@@ -205,7 +205,7 @@ func (dao *AutofillDao) TryGetSyncTaskLock(appID string, taskMode int64) (result
 
 // SyncTaskFinish delete the correspond row in task status table
 // which indicated the current sync task has completed or failed
-func (dao *AutofillDao) SyncTaskFinish(appID string, taskErr error) error {
+func (dao AutofillDao) SyncTaskFinish(appID string, taskErr error) error {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -288,7 +288,7 @@ func createSyncTaskWithTx(tx *sql.Tx, _startTime int64) (taskID int64, _err erro
 	return
 }
 
-func (dao *AutofillDao) markTaskExpired(taskID int64) error {
+func (dao AutofillDao) markTaskExpired(taskID int64) error {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -302,7 +302,7 @@ func (dao *AutofillDao) markTaskExpired(taskID int64) error {
 }
 
 // ShouldRerunSyncTask checks whether should rerun the sync task again or not
-func (dao *AutofillDao) ShouldRerunSyncTask(appID string) (bool, error) {
+func (dao AutofillDao) ShouldRerunSyncTask(appID string) (bool, error) {
 	if dao.db == nil {
 		return false, ErrDBNotInit
 	}
@@ -319,7 +319,7 @@ func (dao *AutofillDao) ShouldRerunSyncTask(appID string) (bool, error) {
 }
 
 // RerunSyncTask marks rerun flag to false, update start time and create new sync task
-func (dao *AutofillDao) RerunSyncTask(appID string) (err error) {
+func (dao AutofillDao) RerunSyncTask(appID string) (err error) {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -350,7 +350,7 @@ func (dao *AutofillDao) RerunSyncTask(appID string) (err error) {
 }
 
 // UpdateSyncTaskMode updates the mode of sync task
-func (dao *AutofillDao) UpdateSyncTaskMode(appID string, newMode int64) error {
+func (dao AutofillDao) UpdateSyncTaskMode(appID string, newMode int64) error {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -364,16 +364,16 @@ func (dao *AutofillDao) UpdateSyncTaskMode(appID string, newMode int64) error {
 }
 
 // GetTECurrentIntents returns current intent names used by Task Engine
-func (dao *AutofillDao) GetTECurrentIntents(appID string) ([]string, error) {
+func (dao AutofillDao) GetTECurrentIntents(appID string) ([]string, error) {
 	return dao.getIntents(appID, TaskEngineIntentsTable)
 }
 
 // GetTEPrevIntents returns previous intent names used by Task Engine
-func (dao *AutofillDao) GetTEPrevIntents(appID string) ([]string, error) {
+func (dao AutofillDao) GetTEPrevIntents(appID string) ([]string, error) {
 	return dao.getIntents(appID, TaskEngineIntentsPrevTable)
 }
 
-func (dao *AutofillDao) getIntents(appID string, table string) ([]string, error) {
+func (dao AutofillDao) getIntents(appID string, table string) ([]string, error) {
 	if dao.db == nil {
 		return nil, ErrDBNotInit
 	}
@@ -403,7 +403,7 @@ func (dao *AutofillDao) getIntents(appID string, table string) ([]string, error)
 }
 
 // GetTECurrentIntentIDs returns current intent IDs used by Task Engine
-func (dao *AutofillDao) GetTECurrentIntentIDs(appID string) ([]int64, error) {
+func (dao AutofillDao) GetTECurrentIntentIDs(appID string) ([]int64, error) {
 	if dao.db == nil {
 		return nil, ErrDBNotInit
 	}
@@ -438,7 +438,7 @@ func (dao *AutofillDao) GetTECurrentIntentIDs(appID string) ([]int64, error) {
 }
 
 // UpdateTEPrevIntents replace all intents in taskengine_intents_prev with given intents
-func (dao *AutofillDao) UpdateTEPrevIntents(appID string, intents []string) (err error) {
+func (dao AutofillDao) UpdateTEPrevIntents(appID string, intents []string) (err error) {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -485,7 +485,7 @@ func (dao *AutofillDao) UpdateTEPrevIntents(appID string, intents []string) (err
 }
 
 // DeleteAllTEPrevIntents deletes all intents in taskengine_intents_prev
-func (dao *AutofillDao) DeleteAllTEPrevIntents(appID string) error {
+func (dao AutofillDao) DeleteAllTEPrevIntents(appID string) error {
 	if dao.db == nil {
 		return ErrDBNotInit
 	}
@@ -501,7 +501,7 @@ func (dao *AutofillDao) DeleteAllTEPrevIntents(appID string) error {
 // GetIntentSentences returns the intent train set sentences
 // of given app ID and intent names
 // If @intents is nil, all intent train set sentences will be returned
-func (dao *AutofillDao) GetIntentSentences(appID string, intents []string,
+func (dao AutofillDao) GetIntentSentences(appID string, intents []string,
 	fromID int64) (sentences []*data.Sentence, err error) {
 	if dao.db == nil {
 		return nil, ErrDBNotInit
