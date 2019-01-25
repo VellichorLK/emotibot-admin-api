@@ -75,12 +75,6 @@ type Sentence struct {
 	TagIDs     []uint64
 }
 
-type executor interface {
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	QueryRow(query string, args ...interface{}) *sql.Row
-}
-
 //NewSentenceSQLDao generates the structure of SentenceSQLDao
 func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	return &SentenceSQLDao{
@@ -88,8 +82,8 @@ func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	}
 }
 
-func genrateExecutor(conn *sql.DB, tx *sql.Tx) (executor, error) {
-	var q executor
+func genrateExecutor(conn *sql.DB, tx *sql.Tx) (SqlLike, error) {
+	var q SqlLike
 	if tx != nil {
 		q = tx
 	} else if conn != nil {
