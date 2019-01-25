@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 	uuid "github.com/satori/go.uuid"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
@@ -95,6 +96,9 @@ func sentenceMockDataSetup() {
 	}
 
 	tagDao = mockTagDao
+
+	mockDBLike := &test.MockDBLike{}
+	dbLike = mockDBLike
 }
 
 type mockTagSQLDao struct {

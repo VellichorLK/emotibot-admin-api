@@ -173,7 +173,7 @@ func NewSentence(enterprise string, category uint64, name string, tagUUID []stri
 	uuidStr := hex.EncodeToString(uuid[:])
 	s := &model.Sentence{IsDelete: 0, Name: name, Enterprise: enterprise,
 		CreateTime: now, UpdateTime: now, TagIDs: tagsID, UUID: uuidStr, CategoryID: category}
-	tx, err := sentenceDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		logger.Error.Printf("create transaction failed. %s\n", err)
 		return nil, err
@@ -188,14 +188,14 @@ func NewSentence(enterprise string, category uint64, name string, tagUUID []stri
 	if err != nil {
 		return nil, err
 	}
-	sentenceDao.Commit(tx)
+	dbLike.Commit(tx)
 	sentence := &DataSentence{UUID: uuidStr, Name: name}
 	return sentence, nil
 }
 
 //UpdateSentence updates sentence, do soft delete and create new record
 func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID []string) (int64, error) {
-	tx, err := sentenceDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -239,7 +239,7 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 		return 0, err
 	}
 
-	err = sentenceDao.Commit(tx)
+	err = dbLike.Commit(tx)
 	if err != nil {
 		return 0, err
 	}
