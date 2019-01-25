@@ -11,7 +11,6 @@ import (
 )
 
 type TagDao interface {
-	Begin() (*sql.Tx, error)
 	Tags(tx *sql.Tx, query TagQuery) ([]Tag, error)
 	NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error)
 	DeleteTags(tx *sql.Tx, query TagQuery) (int64, error)
@@ -117,10 +116,6 @@ func (p *Pagination) offsetSQL() string {
 	page := mathutil.MaxInt(p.Page-1, 0)
 	offset := limit * page
 	return fmt.Sprintf(" LIMIT %d, %d", offset, limit)
-}
-
-func (t *TagSQLDao) Begin() (*sql.Tx, error) {
-	return t.db.Begin()
 }
 
 type queryer interface {

@@ -306,7 +306,6 @@ func TestUpdateTags(t *testing.T) {
 func TestDeleteTag(t *testing.T) {
 	tagDao = &testDao{
 		output: []interface{}{
-			mockTx(t),
 			int64(3),
 			mockTx(t),
 			int64(2),

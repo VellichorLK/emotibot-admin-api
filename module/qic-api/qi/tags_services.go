@@ -111,7 +111,7 @@ func NewTag(t model.Tag) (id uint64, err error) {
 // multiple update called on the same t will try it best to resolve to one state, but not guarantee success.
 // if conflicted can not be resolved, id will be 0 and err will be nil.
 func UpdateTag(t model.Tag) (id uint64, err error) {
-	tx, err := tagDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return 0, fmt.Errorf("dao init transaction failed, %v", err)
 	}
@@ -194,7 +194,7 @@ func DeleteTag(uuid ...string) error {
 	if len(uuid) == 0 {
 		return nil
 	}
-	tx, err := tagDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return fmt.Errorf("dao init transaction failed, %v", err)
 	}
