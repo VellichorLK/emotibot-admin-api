@@ -2,12 +2,23 @@ package test
 
 import (
 	"database/sql"
+	"fmt"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"os"
 )
 
 type MockDBLike struct{}
 
 func (m *MockDBLike) Begin() (*sql.Tx, error) {
-	return nil, nil
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		fmt.Printf("sqlmock new failed. %s\n", err)
+		os.Exit(-1)
+	}
+	mock.ExpectBegin()
+	mock.ExpectCommit()
+
+	return db.Begin()
 }
 
 func (m *MockDBLike) ClearTransition(tx *sql.Tx) {
