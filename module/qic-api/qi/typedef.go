@@ -61,11 +61,6 @@ type tag struct {
 	NegSentences []string `json:"neg_sentences,omitempty"`
 }
 
-type TaskDao interface {
-	CallTask(delegatee model.SqlLike, call model.Call) (model.Task, error)
-	NewTask(delegatee model.SqlLike, task model.Task) (*model.Task, error)
-}
-
 type SegmentDao interface {
 	NewSegments(delegatee model.SqlLike, segments []model.RealSegment) ([]model.RealSegment, error)
 	Segments(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error)
