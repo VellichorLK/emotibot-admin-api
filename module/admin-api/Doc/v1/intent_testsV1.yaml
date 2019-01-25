@@ -1,0 +1,685 @@
+openapi: 3.0.0
+info:
+  title: 意圖測試 V1
+  description: 意圖測試 v1 API
+  version: 1.0.0
+  contact:
+    name: Frank Chang
+    email: frankchang@emotibot.com
+
+servers:
+  - url: http://127.0.0.1:8182/api/v1/intent_tests
+
+components:
+  ###############################################################################
+  #                                   Schemas                                   #
+  ###############################################################################
+  schemas:
+    intentTest:
+      type: object
+      properties:
+        updated_time:
+          description: 意圖測試集測試時間
+          type: integer
+        test_intents_count:
+          description: 測試意圖總數
+          type: integer
+        test_sentences_count:
+          description: 測試語句總數
+          type: integer
+        true_positives:
+          description: 真陽個數 (測試語料意圖與所指定的意圖相符)
+          type: integer
+        false_positives:
+          description: 偽陽個數 (測試語料意圖與所指定的意圖不相符)
+          type: integer
+        true_negatives:
+          description: 真陰個數 (負類測試語料不符合任意的意圖)
+          type: integer
+        false_negatives:
+          description: 偽陰個數 (負類測試語料符合了任意的意圖)
+          type: integer
+        tester:
+          description: 測試帳號名稱
+          type: string
+    intentModel:
+      type: object
+      properties:
+        id:
+          description: 意圖模型 ID
+          type: integer
+        updated_time:
+          description: 意圖模型訓練時間
+          type: integer
+        intents_count:
+          description: 意圖總數
+          type: integer
+        sentences_count:
+          description: 意圖語料總數
+          type: integer
+    intentTestSentence:
+      type: object
+      properties:
+        id:
+          description: 測試語句 ID
+          type: integer
+        sentence:
+          description: 測試語句
+          type: string
+        result:
+          description: 測試結果 (0 - 未測試; 1 - 正確; 2 - 錯誤)
+          type: integer
+        score:
+          type: integer
+          description: 信心分數
+        answer:
+          type: string
+          description: 機器人預測意圖
+    usableIEModels:
+      type: object
+      properties:
+        version:
+          description: 意圖訓練版本
+          type: integer
+        model_id:
+          description: 意圖模型 ID
+          type: string
+        train_time:
+          description: 訓練時間
+          type: integer
+        intents_count:
+          description: 意圖模型意圖總數
+          type: integer
+        sentences_count:
+          description: 意圖模型語料總數
+          type: integer
+        diffs:
+          description: 意圖測試集與意圖模型的意圖差異
+          type: object
+          properties:
+            intents:
+              type: array
+              description: 意圖模型比目前意圖測試集還多的意圖
+              items:
+                type: string
+            test_intents:
+              type: array
+              description: 目前意圖測試集比意圖模型還多的意圖
+              items:
+                type: string
+        diffs_count:
+          description: 目前意圖測試集與意圖模型的意圖差異總數
+          type: integer
+    basicReturn:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          $ref: '#/components/schemas/message'
+    message:
+      type: string
+      enum:
+        - success
+        - db error
+        - io error
+        - consul server unavailable
+        - Error when send request to other API server
+        - Uploaded file still processing
+        - File extension should be xlsx
+        - File size should smaller than 2MB
+        - Multicustomer is not available
+        - File format error
+        - Get no info of given id
+        - Return from openapi has error
+
+  ################################################################################
+  #                                  Parameters                                  #
+  ################################################################################
+  parameters:
+    authorization:
+      name: Authorization
+      description: 使用者連接權杖
+      in: header
+      required: true
+      schema:
+        type: string
+    appId:
+      name: X-AppID
+      description: 操作的機器人ID
+      in: header
+      required: true
+      schema:
+        type: string
+    userId:
+      name: X-UserID
+      description: 操作的使用者ID
+      in: header
+      required: true
+      schema:
+        type: string
+    intentTestId:
+      name: intent-test-id
+      description: 意圖測試集ID
+      in: path
+      required: true
+      schema:
+        type: integer
+    intentId:
+      name: intent-id
+      description: 意圖 ID
+      in: path
+      required: true
+      schema:
+        type: integer
+    keyword:
+      name: keyword
+      description: 若有設定關鍵字時，會回傳有符合關鍵字的測試意圖或是測試語句相關內容
+      in: query
+      schema:
+        type: string
+        example: 吃飯飯
+    locale:
+      name: locale
+      in: header
+      description: 回傳資料使用語系，預設使用 zh-cn
+      required: false
+      schema:
+        type: string
+        enum:
+          - zh-cn
+          - zh-tw
+
+paths:
+  /:
+    get:
+      tags:
+        - 已測試
+      description: 回傳意圖測試列表
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+      responses:
+        200:
+          description: 意圖訓練集列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - type: object
+                    properties:
+                      result:
+                        type: object
+                        properties:
+                          latest:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                intent_test:
+                                  allOf:
+                                    - $ref: '#/components/schemas/intentTest'
+                                    - type: object
+                                      properties:
+                                        id:
+                                          description: 意圖測試集 ID
+                                          type: integer
+                                ie_model:
+                                  $ref: '#/components/schemas/intentModel'
+                          saved:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                intent_test:
+                                  allOf:
+                                    - $ref: '#/components/schemas/intentTest'
+                                    - type: object
+                                      properties:
+                                        id:
+                                          description: 意圖測試集 ID
+                                          type: integer
+                                        name:
+                                          description: 意圖測試集名稱
+                                          type: string
+                                ie_model:
+                                  $ref: '#/components/schemas/intentModel'
+        500:
+          description: Internal server error
+
+  /intents:
+    get:
+      tags:
+        - 編輯中
+      parameters:
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/keyword'
+      description: 取得目前編輯中的意圖測試集的意圖列表
+      responses:
+        200:
+          description: 編輯中的測試集意圖列表
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              description: 意圖 ID
+                              type: integer
+                            name:
+                              description: 意圖名稱
+                              type: string
+                            sentences_count:
+                              description: 測試語句總數
+                              type: integer
+                            type:
+                              description: 是否為正類測試意圖
+                              type: boolean
+        500:
+          description: Internal server error
+
+  /intents/{intent-id}:
+    parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/intentId'
+        - $ref: '#/components/parameters/keyword'
+    get:
+      tags:
+        - 編輯中/已測試
+      description: 取得所指定測試意圖的測試語句
+      responses:
+        200:
+          description: 測試意圖的測試語句
+          content:
+            application/json:
+              schema:
+                description: 意圖測試語句
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - type: object
+                    properties:
+                      result:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/intentTestSentence'
+        400:
+          description: Bad Request
+        404:
+          description: 所指定的測試意圖不存在
+        500:
+          description: Internal server error
+    patch:
+      tags:
+        - 編輯中/已測試
+      description: 更新所指定測試意圖的測試語句
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                update:
+                  type: string
+                  description: JSON 字串，內容為新增/更新的測試語句列表
+                  example: '[{"id": 1, "content": "更新測試語句"}, {"id": 0, "content": "新增測試語句"}]'
+                delete:
+                  type: string
+                  description: JSON 字串，內容為刪除的測試語句 ID 列表
+                  example: '[1,2,3]'
+      responses:
+        200:
+          description: 更新成功
+        400:
+          description: 輸入參數有誤
+        404:
+          description: 所指定的測試意圖不存在
+        500:
+          description: Internal server error
+
+  /import:
+    post:
+      tags:
+        - 編輯中
+      description: 上傳 Excel (*.xslx) 檔案，匯入意圖測試集
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+      requestBody:
+        description: 透過 formData 上傳 Excel 檔案
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        200:
+          description: 上傳成功
+        422:
+          description: 檔案格式不符，上傳失敗
+          content:
+            application/json:
+              schema:
+                properties:
+                  error:
+                    type: string
+                    enum:
+                      - File extension should be xlsx
+                      - File size should smaller than 2MB
+                      - File format error
+        500:
+          description: Internal server error
+  /export:
+    get:
+      tags:
+        - 編輯中
+      description: 下載編輯中意圖測試集 Excel (*.xslx) 檔案
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+      responses:
+        200:
+          description: 下載成功
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binaray
+        500:
+          description: Internal server error
+
+  /test:
+    post:
+      tags:
+        - 編輯中
+      description: 測試目前意圖測試集
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                intent_version:
+                  description: 所欲測試的意圖版本
+                  type: integer
+      responses:
+        200:
+          description: 意圖測試工作成功建立
+        500:
+          description: Internal server error
+
+  /models:
+    get:
+      tags:
+        - 編輯中
+      description: 回傳可使用意圖模型列表
+      responses:
+        200:
+          description: 可使用意圖模型列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  in_used:
+                    $ref: '#/components/schemas/usableIEModels'
+                  recent_trained:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/usableIEModels'
+                  recent_tested:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/usableIEModels'
+                  recent_saved:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/usableIEModels'
+        500:
+          description: Internal server error
+
+  /status:
+    get:
+      tags:
+        - 已測試
+      description: 目前意圖測試集測試狀態
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+      responses:
+        200:
+          description: 測試狀態值
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - type: object
+                    properties:
+                      result:
+                        type: object
+                        properties:
+                          version:
+                            type: integer
+                            description: 目前意圖測試集版本號 (當 status 為 Need test 或 Pending 時，值為 0)
+                          status:
+                            type: integer
+                            description: 測試狀態 (0 - Testing; 1 - Tested; 2 - Test failed; 3 - Need test; 4 - Pending)
+                          sentences_count:
+                            type: integer
+                            description: 測試語句總數 (當 status 為 Need test 或 Pending 時，值為 0)
+                          progress:
+                            type: integer
+                            description: 已完成測試語句數 (當 status 為 Need test 或 Pending 時，值為 0)
+        500:
+          description: Internal server error
+
+  /{intent-test-id}:
+    parameters:
+      - $ref: '#/components/parameters/authorization'
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/userId'
+      - $ref: '#/components/parameters/locale'
+      - $ref: '#/components/parameters/intentTestId'
+    get:
+      tags:
+        - 已測試
+      description: 取得意圖測試集詳細內容
+      parameters:
+        - $ref: '#/components/parameters/keyword'
+      responses:
+        200:
+          description: 意圖測試集詳細內容
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/basicReturn'
+                  - type: object
+                    properties:
+                      result:
+                        allOf:
+                          - $ref: '#/components/schemas/intentTest'
+                          - type: object
+                            properties:
+                              name:
+                                description: 意圖測試集名稱，預設為空字串
+                                type: string
+                              ie_model_updated_time:
+                                description: 測試時所使用的意圖模型的訓練時間 (用來作為意圖模型的版本資訊顯示給使用者)
+                                type: integer
+                              intents_count:
+                                description: 意圖總數
+                                type: integer
+                              sentences_count:
+                                description: 意圖語料總數
+                                type: integer
+                              saved:
+                                description: 此意圖測試集是否被保存
+                                type: boolean
+                              test_intents:
+                                type: array
+                                items:
+                                  type: object
+                                  properties:
+                                    id:
+                                      description: 測試意圖 ID
+                                      type: integer
+                                    name:
+                                      description: 測試意圖名稱
+                                      type: string
+                                    sentences_count:
+                                      description: 測試語句個數
+                                      type: integer
+                                    positives_count:
+                                      description: 測試意圖正確的語句個數
+                                      type: integer
+                                    type:
+                                      description: 是否為正類測試意圖
+                                      type: boolean
+        400:
+          description: Bad Request
+        404:
+          description: 所指定的意圖測試集不存在
+        500:
+          description: Internal server error
+    patch:
+      tags:
+        - 已測試
+      description: 更新所指定意圖測試集的資訊
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 新的意圖測試集名稱
+                  example: New Name
+      responses:
+        200:
+          description: 更新成功
+        404:
+          description: 所指定的意圖測試集不存在
+        500:
+          description: Internal server error
+
+  /{intent-test-id}/save:
+    post:
+      tags:
+        - 已測試
+      description: 保存測試紀錄
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/intentTestId'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  description: 測試紀錄名稱
+                  type: string
+      responses:
+        200:
+          description: 成功保存測試紀錄
+        400:
+          description: 輸入參數有誤/該測試集尚未經過測試
+        404:
+          description: 所指定的意圖測試集不存在
+        500:
+          description: Internal server error
+
+  /{intent-test-id}/unsave:
+    delete:
+      tags:
+        - 已測試
+      description: 不保存測試紀錄
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/intentTestId'
+      responses:
+        200:
+          description: 刪除成功
+        404:
+          description: 所指定的意圖測試集不存在
+        500:
+          description: Internal server error
+
+  /{intent-test-id}/export:
+    get:
+      tags:
+        - 已測試
+      description: 下載意圖測試集 Excel (*.xslx) 檔案
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/intentTestId'
+      responses:
+        200:
+          description: 下載成功
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binaray
+        404:
+          description: 所指定的意圖測試集不存在
+        500:
+          description: Internal server error
+
+  /{intent-test-id}/restore:
+    post:
+      tags:
+        - 已測試
+      description: 還原意圖測試集及此意圖測試所使用的意圖模型
+      parameters:
+        - $ref: '#/components/parameters/authorization'
+        - $ref: '#/components/parameters/appId'
+        - $ref: '#/components/parameters/userId'
+        - $ref: '#/components/parameters/locale'
+        - $ref: '#/components/parameters/intentTestId'
+      responses:
+        200:
+          description: 還原成功
+        404:
+          description: 所指定的意圖測試集或是其所使用的意圖模型不存在
+        500:
+          description: Internal server error
