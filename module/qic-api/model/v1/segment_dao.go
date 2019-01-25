@@ -8,12 +8,17 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-type SegmentDao struct {
+type SegmentDao interface {
+	NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error)
+	Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error)
+}
+
+type SegmentSQLDao struct {
 	db *sql.DB
 }
 
-func NewSegmentDao(db DBLike) *SegmentDao {
-	return &SegmentDao{
+func NewSegmentDao(db DBLike) *SegmentSQLDao {
+	return &SegmentSQLDao{
 		db: db.Conn(),
 	}
 }
@@ -73,7 +78,7 @@ func (s *SegmentQuery) whereSQL() (string, []interface{}) {
 
 // Segments search the db by given query, and return a slice of found Segments
 // notice: the segments will be sorted by start time, which is much more convenient for the users
-func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error) {
+func (s *SegmentSQLDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error) {
 	if delegatee == nil {
 		delegatee = s.db
 	}
@@ -108,7 +113,7 @@ func (s *SegmentDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegm
 
 // NewSegments will insert the segments and its emotions into the segment & emotion database.
 // Best use with a delegatee transcation to avoid data corruption.
-func (s *SegmentDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error) {
+func (s *SegmentSQLDao) NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error) {
 	if delegatee == nil {
 		delegatee = s.db
 	}

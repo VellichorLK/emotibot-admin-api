@@ -22,7 +22,7 @@ var (
 	tagDao     model.TagDao
 	callDao    model.CallDao
 	taskDao    model.TaskDao
-	segmentDao SegmentDao
+	segmentDao model.SegmentDao
 	producer   *rabbitmq.Producer
 	consumer   *rabbitmq.Consumer
 	sqlConn    *sql.DB
