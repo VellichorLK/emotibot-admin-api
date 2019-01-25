@@ -34,16 +34,16 @@ type ConversationFlowFilter struct {
 }
 
 type ConversationFlowDao interface {
-	Create(flow *ConversationFlow, sql SqlLike) (*ConversationFlow, error)
-	CountBy(filter *ConversationFlowFilter, sql SqlLike) (int64, error)
-	GetBy(filter *ConversationFlowFilter, sql SqlLike) ([]ConversationFlow, error)
-	Update(id string, flow *ConversationFlow, sql SqlLike) (*ConversationFlow, error)
-	Delete(id string, sql SqlLike) error
+	Create(flow *ConversationFlow, sqlLike SqlLike) (*ConversationFlow, error)
+	CountBy(filter *ConversationFlowFilter, sqlLike SqlLike) (int64, error)
+	GetBy(filter *ConversationFlowFilter, sqlLike SqlLike) ([]ConversationFlow, error)
+	Update(id string, flow *ConversationFlow, sqlLike SqlLike) (*ConversationFlow, error)
+	Delete(id string, sqlLike SqlLike) error
 }
 
 type ConversationFlowSqlDaoImpl struct{}
 
-func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLike) (createdFlow *ConversationFlow, err error) {
+func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sqlLike SqlLike) (createdFlow *ConversationFlow, err error) {
 	fields := []string{
 		fldUUID,
 		fldName,
@@ -69,7 +69,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 
 	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblConversationflow, fieldStr, valueStr)
 
-	result, err := sql.Exec(insertStr, values...)
+	result, err := sqlLike.Exec(insertStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while insert flow in dao.Create, err: %s", err.Error())
 		return
@@ -101,7 +101,7 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		}
 
 		insertStr = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tblRelCFSG, fieldStr, valueStr)
-		_, err = sql.Exec(insertStr, values...)
+		_, err = sqlLike.Exec(insertStr, values...)
 		if err != nil {
 			err = fmt.Errorf("error while insert flow to sentence group relation in dao.Create, err: %s", err.Error())
 			return
@@ -196,11 +196,11 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, sql SqlLike) (total int64, err error) {
+func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, sqlLike SqlLike) (total int64, err error) {
 	queryStr, values := queryConversationFlowsSQLBy(filter)
 	queryStr = fmt.Sprintf("SELECT COUNT(cf.%s) FROM (%s) as cf", fldID, queryStr)
 
-	rows, err := sql.Query(queryStr, values...)
+	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while count conversation flows in dao.CountBy, err: %s", err.Error())
 		return
@@ -213,10 +213,10 @@ func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, s
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql SqlLike) (flows []ConversationFlow, err error) {
+func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sqlLike SqlLike) (flows []ConversationFlow, err error) {
 	queryStr, values := queryConversationFlowsSQLBy(filter)
 
-	rows, err := sql.Query(queryStr, values...)
+	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while get conversation flows in dao.GetBy, err: %s", err.Error())
 		return
@@ -269,14 +269,14 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) Update(id string, flow *ConversationFlow, sql SqlLike) (updatedFlow *ConversationFlow, err error) {
+func (dao *ConversationFlowSqlDaoImpl) Update(id string, flow *ConversationFlow, sqlLike SqlLike) (updatedFlow *ConversationFlow, err error) {
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) Delete(id string, sql SqlLike) (err error) {
+func (dao *ConversationFlowSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err error) {
 	deleteStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblConversationflow, fldIsDelete, fldUUID)
 
-	_, err = sql.Exec(deleteStr, 1, id)
+	_, err = sqlLike.Exec(deleteStr, 1, id)
 	if err != nil {
 		err = fmt.Errorf("error while delete conversation flow in dao.Delete, reason: %s", err.Error())
 		return

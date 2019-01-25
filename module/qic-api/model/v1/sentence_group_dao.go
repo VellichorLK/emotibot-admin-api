@@ -49,17 +49,18 @@ type SentenceGroupFilter struct {
 }
 
 type SentenceGroupsSqlDao interface {
-	Create(group *SentenceGroup, sql SqlLike) (*SentenceGroup, error)
-	CountBy(filter *SentenceGroupFilter, sql SqlLike) (int64, error)
-	GetBy(filter *SentenceGroupFilter, sql SqlLike) ([]SentenceGroup, error)
-	Update(id string, group *SentenceGroup, sql SqlLike) (*SentenceGroup, error)
-	Delete(id string, sqllike SqlLike) error
+	Create(group *SentenceGroup, sqlLike SqlLike) (*SentenceGroup, error)
+	CountBy(filter *SentenceGroupFilter, sqlLike SqlLike) (int64, error)
+	GetBy(filter *SentenceGroupFilter, sqlLike SqlLike) ([]SentenceGroup, error)
+	// zGetBySentenceID(id []int64)
+	Update(id string, group *SentenceGroup, sqlLike SqlLike) (*SentenceGroup, error)
+	Delete(id string, sqlLike SqlLike) error
 }
 
 type SentenceGroupsSqlDaoImpl struct{}
 
-func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (createdGroup *SentenceGroup, err error) {
-	if sql == nil {
+func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLike) (createdGroup *SentenceGroup, err error) {
+	if sqlLike == nil {
 		err = ErrNilSqlLike
 		return
 	}
@@ -94,7 +95,7 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (
 	valueStr := fmt.Sprintf("?%s", strings.Repeat(", ?", len(fileds)-1))
 	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblSetnenceGroup, fieldStr, valueStr)
 
-	result, err := sql.Exec(insertStr, values...)
+	result, err := sqlLike.Exec(insertStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while insert sentence group in dao.Create, err: %s", err.Error())
 		return
@@ -117,7 +118,7 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sql SqlLike) (
 		valueStr = fmt.Sprintf("(?, ?) %s", strings.Repeat(", (?, ?)", len(group.Sentences)-1))
 		insertStr = fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES %s", tblRelSGS, RSGSSGID, RSGSSID, valueStr)
 
-		_, err = sql.Exec(insertStr, values...)
+		_, err = sqlLike.Exec(insertStr, values...)
 		if err != nil {
 			err = fmt.Errorf("error while insert sentence group to sentence relationin dao.Create, err: %s", err.Error())
 			return
@@ -258,8 +259,8 @@ func (dao *SentenceGroupsSqlDaoImpl) CountBy(filter *SentenceGroupFilter, sqlLik
 	return
 }
 
-func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlLike) (groups []SentenceGroup, err error) {
-	if sql == nil {
+func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike SqlLike) (groups []SentenceGroup, err error) {
+	if sqlLike == nil {
 		err = ErrNilSqlLike
 		return
 	}
@@ -270,7 +271,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
 	}
 
-	rows, err := sql.Query(queryStr, values...)
+	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while get sentence groups in dao.GetBy, err: %s", err.Error())
 		return
@@ -328,7 +329,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sql SqlL
 	return
 }
 
-func (dao *SentenceGroupsSqlDaoImpl) Update(id string, group *SentenceGroup, sql SqlLike) (updatedGroup *SentenceGroup, err error) {
+func (dao *SentenceGroupsSqlDaoImpl) Update(id string, group *SentenceGroup, sqlLike SqlLike) (updatedGroup *SentenceGroup, err error) {
 	return
 }
 
