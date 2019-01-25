@@ -395,7 +395,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the sentence group setting
 	if len(senGrpIDs) > 0 {
-		senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{Role: -1, Position: -1, ID: senGrpIDs, IsDelete: -1}, sqlConn)
+		senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{ID: senGrpIDs}, sqlConn)
 		if err != nil {
 			logger.Error.Printf("get sentence group %+v failed. %s\n", senGrpIDs, err)
 			return nil, err

@@ -116,8 +116,6 @@ func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	filter := &model.SentenceGroupFilter{
 		Limit:      0,
-		Role:       -1,
-		Position:   -1,
 		Enterprise: enterprise,
 	}
 
@@ -154,8 +152,6 @@ func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
 			id,
 		},
 		Enterprise: enterprise,
-		Role:       -1,
-		Position:   -1,
 		Limit:      0,
 	}
 

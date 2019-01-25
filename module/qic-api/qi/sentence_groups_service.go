@@ -141,8 +141,6 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 			uuid,
 		},
 		Enterprise: group.Enterprise,
-		Role:       -1,
-		Position:   -1,
 		Limit:      0,
 	}
 

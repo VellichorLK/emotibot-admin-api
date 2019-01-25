@@ -36,15 +36,15 @@ type SentenceGroupFilter struct {
 	UUID        []string
 	ID          []uint64
 	Name        string
-	Role        int
-	Position    int
+	Role        *int
+	Position    *int
 	Distance    int
 	Enterprise  string
 	CreateTime  *time.Time
 	UpdateTime  *time.Time
 	Page        int
 	Limit       int
-	IsDelete    int8
+	IsDelete    *int8
 	SetenceUUID []string
 }
 
@@ -52,7 +52,7 @@ type SentenceGroupsSqlDao interface {
 	Create(group *SentenceGroup, sqlLike SqlLike) (*SentenceGroup, error)
 	CountBy(filter *SentenceGroupFilter, sqlLike SqlLike) (int64, error)
 	GetBy(filter *SentenceGroupFilter, sqlLike SqlLike) ([]SentenceGroup, error)
-	// zGetBySentenceID(id []int64)
+	GetBySentenceID(id []int64, sqlLike SqlLike) ([]SentenceGroup, error)
 	Update(id string, group *SentenceGroup, sqlLike SqlLike) (*SentenceGroup, error)
 	Delete(id string, sqlLike SqlLike) error
 }
@@ -164,14 +164,14 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		values = append(values, filter.Enterprise)
 	}
 
-	if filter.Role != -1 {
+	if filter.Role != nil {
 		conditions = append(conditions, SGRole)
-		values = append(values, filter.Role)
+		values = append(values, *filter.Role)
 	}
 
-	if filter.Position != -1 {
+	if filter.Position != nil {
 		conditions = append(conditions, SGPoistion)
-		values = append(values, filter.Position)
+		values = append(values, *filter.Position)
 	}
 
 	if filter.Distance != 0 {
@@ -179,9 +179,9 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		values = append(values, filter.Distance)
 	}
 
-	if filter.IsDelete != -1 {
+	if filter.IsDelete != nil {
 		conditions = append(conditions, fldIsDelete)
-		values = append(values, filter.IsDelete)
+		values = append(values, *filter.IsDelete)
 	}
 
 	for _, condition := range conditions {
@@ -325,6 +325,59 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 
 	if cGroup != nil {
 		groups = append(groups, *cGroup)
+	}
+	return
+}
+
+func (dao *SentenceGroupsSqlDaoImpl) GetBySentenceID(id []int64, sqlLike SqlLike) (groups []SentenceGroup, err error) {
+	groups = []SentenceGroup{}
+	if len(id) == 0 {
+		return
+	}
+
+	builder := &whereBuilder{
+		ConcatLogic: andLogic,
+		conditions:  []string{},
+		data:        []interface{}{},
+	}
+
+	builder.In(fldID, int64ToWildCard(id...))
+	conditionStr, values := builder.Parse()
+
+	queryStr := fmt.Sprintf(
+		`SELECT %s FROM %s WHERE %s`,
+		RSGSSGID,
+		tblRelSGS,
+		conditionStr,
+	)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while query relation in dao.GetBySentenceID, err: %s\n", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	sgID := []uint64{}
+	for rows.Next() {
+		var sgid uint64
+		err = rows.Scan(&sgid)
+		if err != nil {
+			err = fmt.Errorf("error while scan sentence group id in dao.GetBySentenceID, err: %s\n", err.Error())
+			return
+		}
+		sgID = append(sgID, sgid)
+	}
+
+	if len(sgID) > 0 {
+		filter := &SentenceGroupFilter{
+			ID: sgID,
+		}
+		groups, err = dao.GetBy(filter, sqlLike)
+		if err != nil {
+			err = fmt.Errorf("error while get setence group in dao.GetBySentenceID, err: %s\n", err.Error())
+			return
+		}
 	}
 	return
 }

@@ -972,6 +972,11 @@ func (m *mockSentenceGroupsDao) GetBy(filter *model.SentenceGroupFilter, sql mod
 	}
 	return resp, nil
 }
+
+func (m *mockSentenceGroupsDao) GetBySentenceID(id []int64, sqlLike model.SqlLike) ([]model.SentenceGroup, error) {
+	return m.GetBy(nil, sqlLike)
+}
+
 func (m *mockSentenceGroupsDao) Update(id string, group *model.SentenceGroup, sql model.SqlLike) (*model.SentenceGroup, error) {
 	return nil, nil
 }

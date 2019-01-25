@@ -28,9 +28,7 @@ func simpleSentenceGroupsOf(flow *model.ConversationFlow, sql model.SqlLike) ([]
 		filter := &model.SentenceGroupFilter{
 			Enterprise: flow.Enterprise,
 			UUID:       uuids,
-			IsDelete:   isDelete,
-			Role:       -1,
-			Position:   -1,
+			IsDelete:   &isDelete,
 		}
 
 		sentenceGroups, err := sentenceGroupDao.GetBy(filter, sql)
