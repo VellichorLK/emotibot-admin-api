@@ -19,7 +19,7 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
-	tagDao     TagDao
+	tagDao     model.TagDao
 	callDao    CallDao
 	taskDao    TaskDao
 	segmentDao SegmentDao

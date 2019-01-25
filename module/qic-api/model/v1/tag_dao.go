@@ -10,6 +10,14 @@ import (
 	"emotibot.com/emotigo/pkg/misc/mathutil"
 )
 
+type TagDao interface {
+	Begin() (*sql.Tx, error)
+	Tags(tx *sql.Tx, query TagQuery) ([]Tag, error)
+	NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error)
+	DeleteTags(tx *sql.Tx, query TagQuery) (int64, error)
+	CountTags(tx *sql.Tx, query TagQuery) (uint, error)
+}
+
 //TagSQLDao is the DAO implemented in sql.
 type TagSQLDao struct {
 	db *sql.DB
