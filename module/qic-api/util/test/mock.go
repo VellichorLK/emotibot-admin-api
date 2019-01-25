@@ -25,8 +25,8 @@ func (m *MockDBLike) ClearTransition(tx *sql.Tx) {
 	return
 }
 
-func (m *MockDBLike) Commit(tx *sql.Tx) (err error) {
-	return
+func (m *MockDBLike) Commit(tx *sql.Tx) error {
+	return tx.Commit()
 }
 
 func (m *MockDBLike) Conn() *sql.DB {
