@@ -15,3 +15,14 @@ services:
       interval: 1s
       timeout: 1s
       retries: 10
+  init-db:
+    image: harbor.emotibot.com/emotivoice/init-db:2019012210-7362a40e-emotivoice
+    container_name: init-db
+    environment:
+    - INIT_MYSQL_INIT=true
+    - INIT_MYSQL_HOST=sql
+    - INIT_MYSQL_PORT=3306
+    - INIT_MYSQL_USER=root
+    - INIT_MYSQL_PASSWORD=password
+    depends_on:
+      - sql
