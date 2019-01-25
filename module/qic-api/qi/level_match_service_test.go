@@ -1048,35 +1048,21 @@ func (m *mockRuleDao) Delete(id string, sql model.SqlLike) error {
 type mockGroupDaoMatch struct {
 }
 
-func (m *mockGroupDaoMatch) Begin() (*sql.Tx, error) {
+func (m *mockGroupDaoMatch) CreateGroup(group *model.GroupWCond, sqlLike model.SqlLike) (*model.GroupWCond, error) {
 	return nil, nil
 }
 
-func (m *mockGroupDaoMatch) Commit(tx *sql.Tx) error {
-	return nil
-}
-
-func (m *mockGroupDaoMatch) ClearTranscation(tx *sql.Tx) {}
-
-func (m *mockGroupDaoMatch) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
-	return nil, nil
-}
-
-func (m *mockGroupDaoMatch) GetGroupBy(id string) (*model.GroupWCond, error) {
-	return nil, nil
-}
-
-func (m *mockGroupDaoMatch) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+func (m *mockGroupDaoMatch) CountGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) (int64, error) {
 	return 2, nil
 }
 
-func (m *mockGroupDaoMatch) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+func (m *mockGroupDaoMatch) GetGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return []model.GroupWCond{
 		model.GroupWCond{Enterprise: "abcdeg"},
 	}, nil
 }
 
-func (m *mockGroupDaoMatch) DeleteGroup(id string, tx *sql.Tx) (err error) {
+func (m *mockGroupDaoMatch) DeleteGroup(id string, sqlLike model.SqlLike) (err error) {
 	return
 }
 

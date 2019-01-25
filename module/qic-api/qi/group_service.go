@@ -51,11 +51,11 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 		return
 	}
 
-	tx, err := serviceDAO.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return
 	}
-	defer serviceDAO.ClearTranscation(tx)
+	defer dbLike.ClearTransition(tx)
 
 	if group.Name == nil {
 		name := ""
@@ -179,7 +179,7 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 		return
 	}
 
-	serviceDAO.Commit(tx)
+	dbLike.Commit(tx)
 	return
 }
 
@@ -190,7 +190,9 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 		},
 		Deal: -1,
 	}
-	groups, err := serviceDAO.GetGroupsBy(filter)
+
+	sqlConn := dbLike.Conn()
+	groups, err := serviceDAO.GetGroupsBy(filter, sqlConn)
 	if err != nil {
 		return
 	}
@@ -210,12 +212,16 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 }
 
 func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.GroupWCond, err error) {
-	total, err = serviceDAO.CountGroupsBy(filter)
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	total, err = serviceDAO.CountGroupsBy(filter, tx)
 	if err != nil {
 		return
 	}
 
-	groups, err = serviceDAO.GetGroupsBy(filter)
+	groups, err = serviceDAO.GetGroupsBy(filter, tx)
 	staff := "staff"
 	client := "client"
 	for idx := range groups {
@@ -230,11 +236,11 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 }
 
 func UpdateGroup(id string, group *model.GroupWCond) (err error) {
-	tx, err := serviceDAO.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return
 	}
-	defer serviceDAO.ClearTranscation(tx)
+	defer dbLike.ClearTransition(tx)
 
 	// get original group to compare which fileds are need to be updated
 	filter := &model.GroupFilter{
@@ -245,7 +251,7 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 		Deal:         -1,
 	}
 
-	groups, err := serviceDAO.GetGroupsBy(filter)
+	groups, err := serviceDAO.GetGroupsBy(filter, tx)
 	if err != nil {
 		return
 	}
@@ -362,22 +368,22 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 		return
 	}
 
-	err = tx.Commit()
+	err = dbLike.Commit(tx)
 	return
 }
 
 func DeleteGroup(id string) (err error) {
-	tx, err := serviceDAO.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return
 	}
-	defer serviceDAO.ClearTranscation(tx)
+	defer dbLike.ClearTransition(tx)
 
 	err = serviceDAO.DeleteGroup(id, tx)
 	if err != nil {
 		return
 	}
 
-	err = tx.Commit()
+	err = dbLike.Commit(tx)
 	return
 }

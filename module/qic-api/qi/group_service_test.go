@@ -1,7 +1,6 @@
 package qi
 
 import (
-	"database/sql"
 	"testing"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -23,17 +22,7 @@ var mockGroups = []model.GroupWCond{
 	},
 }
 
-func (m *mockDAO) Begin() (*sql.Tx, error) {
-	return nil, nil
-}
-
-func (m *mockDAO) Commit(tx *sql.Tx) error {
-	return nil
-}
-
-func (m *mockDAO) ClearTranscation(tx *sql.Tx) {}
-
-func (m *mockDAO) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
+func (m *mockDAO) CreateGroup(group *model.GroupWCond, sqlLike model.SqlLike) (*model.GroupWCond, error) {
 	createdGroup := &model.GroupWCond{
 		ID:              55688,
 		UUID:            "abcde",
@@ -57,15 +46,15 @@ func (m *mockDAO) GetGroupBy(id string) (*model.GroupWCond, error) {
 	}
 }
 
-func (m *mockDAO) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+func (m *mockDAO) CountGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) (int64, error) {
 	return int64(len(mockGroups)), nil
 }
 
-func (m *mockDAO) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+func (m *mockDAO) GetGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return mockGroups, nil
 }
 
-func (m *mockDAO) DeleteGroup(id string, tx *sql.Tx) (err error) {
+func (m *mockDAO) DeleteGroup(id string, sqlLike model.SqlLike) (err error) {
 	return
 }
 
