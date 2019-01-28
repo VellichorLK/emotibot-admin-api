@@ -9,9 +9,16 @@ import (
 	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
 )
 
+var (
+	folder        string
+	clientAddress string
+	appID         string
+)
+
 func main() {
 	flag.StringVar(&folder, "f", "./", "folder to scan for csv files. (default: ./)")
 	flag.StringVar(&clientAddress, "addr", "localhost:8888", "emotion-engine address(default: localhost:8888")
+	flag.StringVar(&appID, "d", "demo", "appID of the training subject")
 	flag.Parse()
 	var location http.FileSystem = http.Dir(folder)
 	file, err := location.Open("/")
@@ -26,7 +33,7 @@ func main() {
 		log.Fatal("dir is empty")
 	}
 	var model = emotionengine.Model{
-		AppID:        "demo",
+		AppID:        "demo2",
 		IsAutoReload: true,
 		Data:         make(map[string]emotionengine.Emotion, 0),
 	}
@@ -53,12 +60,10 @@ func main() {
 		log.Fatal("train failed, ", err)
 	}
 
-	log.Println("trained success, model_id: ", modelID, ", app_id: ", model.AppID)
+	log.Println("trained send, model_id: ", modelID, ", app_id: ", model.AppID)
+	log.Println("check /status api for ready")
 	log.Println("trained emotions:")
-	for emotionName, _ := range model.Data {
+	for emotionName := range model.Data {
 		log.Println(emotionName)
 	}
 }
-
-var folder string
-var clientAddress string
