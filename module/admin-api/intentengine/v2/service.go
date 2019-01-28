@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/autofill"
 	autofillData "emotibot.com/emotigo/module/admin-api/autofill/data"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
@@ -244,7 +244,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 }
 
 func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
-	wordbanks, errno, err := Dictionary.GetWordbanksV3(appid)
+	wordbanks, errno, err := dictionary.GetWordbanksV3(appid)
 	if err != nil {
 		return nil, AdminErrors.New(errno, err.Error())
 	}
@@ -279,7 +279,7 @@ func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
 	return ret, nil
 }
 
-func getIntentDictResp(wordBankClass *Dictionary.WordBankClassV3,
+func getIntentDictResp(wordBankClass *dictionary.WordBankClassV3,
 	classNames []string) (dicts []*TrainDict, err error) {
 	if !wordBankClass.IntentEngine {
 		return nil, nil

@@ -16,7 +16,6 @@ import (
 	"github.com/robfig/cron"
 
 	"emotibot.com/emotigo/module/admin-api/BF"
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/ELKStats"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
@@ -30,6 +29,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/autofill"
 	"emotibot.com/emotigo/module/admin-api/clustering"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/integration"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -56,7 +56,7 @@ var (
 var initErrors = []error{}
 
 var modules = []*util.ModuleInfo{
-	&Dictionary.ModuleInfo,
+	&dictionary.ModuleInfo,
 	&Switch.ModuleInfo,
 	&Robot.ModuleInfo,
 	&QA.ModuleInfo,

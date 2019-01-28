@@ -1,4 +1,4 @@
-package Dictionary
+package dictionary
 
 import (
 	"database/sql"
