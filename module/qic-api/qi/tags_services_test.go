@@ -245,27 +245,63 @@ func TestTags(t *testing.T) {
 }
 
 func TestNewTag(t *testing.T) {
-	var expectedTags = []model.Tag{
-		model.Tag{ID: 1},
-	}
-	tagDao = &testDao{
-		output: []interface{}{
-			expectedTags,
-			errors.New("test failed"),
+	testcases := []struct {
+		name        string
+		arg         model.Tag
+		mock        *testDao
+		expectID    uint64
+		expectError bool
+	}{
+		{
+			name: "normal",
+			arg: model.Tag{
+				UUID:             "4c9c82fb7b5845369a520b757ab03f8b",
+				PositiveSentence: `["1","2"]`,
+			},
+			mock: &testDao{
+				output: []interface{}{
+					[]model.Tag{
+						model.Tag{ID: 1},
+					},
+				},
+			},
+			expectID:    1,
+			expectError: false,
+		},
+		{
+			name: "db error",
+			arg: model.Tag{
+				UUID:             "4c9c82fb7b5845369a520b757ab03f8b",
+				PositiveSentence: `["1","2"]`,
+			},
+			mock: &testDao{
+				output: []interface{}{
+					errors.New("test failed"),
+				},
+			},
+			expectError: true,
 		},
 	}
 
-	id, err := NewTag(model.Tag{ID: 0, UUID: "4c9c82fb7b5845369a520b757ab03f8b"})
-	if err != nil {
-		t.Fatal("expect new tag to be ok, but got ", err)
+	for _, tt := range testcases {
+		t.Run(tt.name, func(t *testing.T) {
+			tagDao = tt.mock
+			id, err := NewTag(tt.arg)
+			if !tt.expectError && err != nil {
+				t.Fatal("expect new tag to be ok, but got ", err)
+			}
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expect new tag has error, but got nil")
+				}
+				return
+			}
+			if id != tt.expectID {
+				t.Error("expect new tag id to be ", tt.expectID, ", but got ", id)
+			}
+		})
 	}
-	if id != expectedTags[0].ID {
-		t.Error("expect new tag id to be ", expectedTags[0].ID, ", but got ", id)
-	}
-	_, err = NewTag(model.Tag{})
-	if err == nil {
-		t.Fatal("expect new tag to handle error, but no error has returned")
-	}
+
 }
 
 func TestUpdateTags(t *testing.T) {

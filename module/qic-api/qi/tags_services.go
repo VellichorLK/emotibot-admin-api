@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/logger"
+
 	uuid "github.com/satori/go.uuid"
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -89,12 +91,24 @@ func TagsByQuery(query model.TagQuery) ([]tag, error) {
 
 // NewTag create a tag from t.
 // incremental id will be returned, if the dao supported it.
+// If t is not valid(etc uuid or positive sentence is empty...) then an adminError will returned.
 func NewTag(t model.Tag) (id uint64, err error) {
 
 	if _, err := uuid.FromString(t.UUID); t.UUID == "" && err != nil {
-		return 0, fmt.Errorf("tag UUID format is not correct")
+		return 0, &controllerError{
+			errNo: AdminErrors.ErrnoRequestError,
+			error: fmt.Errorf("tag UUID '%s' format is not correct", t.UUID),
+		}
 	}
-
+	var ps []string
+	json.Unmarshal([]byte(t.PositiveSentence), &ps)
+	// If positive sentence is empty, cu model can not be trained.
+	if len(ps) < 1 {
+		return 0, &controllerError{
+			errNo: AdminErrors.ErrnoRequestError,
+			error: fmt.Errorf("must have at least one positive tag"),
+		}
+	}
 	input := []model.Tag{t}
 	createdTags, err := tagDao.NewTags(nil, input)
 	if err != nil {

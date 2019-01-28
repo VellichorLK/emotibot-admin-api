@@ -184,8 +184,11 @@ func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
 	} else {
 		s = t.db
 	}
-	tagInsertColumns := []string{fldTagUUID, fldTagEnterprise, fldTagName, fldTagType,
-		fldTagPosSen, fldTagNegSen}
+	tagInsertColumns := []string{
+		fldTagUUID, fldTagEnterprise, fldTagName,
+		fldTagType, fldTagPosSen, fldTagNegSen,
+		fldTagCreateTime, fldTagUpdateTime,
+	}
 	rawsql := "INSERT INTO `" + tblTags + "`(`" + strings.Join(tagInsertColumns, "` , `") + "`) VALUE (?" + strings.Repeat(", ?", len(tagInsertColumns)-1) + ")"
 	stmt, err := s.Prepare(rawsql)
 	if err != nil {
@@ -196,8 +199,11 @@ func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
 	results := make([]Tag, 0, len(tags))
 	var isReliable = true
 	for _, t := range tags {
-		result, err := stmt.Exec(t.UUID, t.Enterprise, t.Name, t.Typ,
-			t.PositiveSentence, t.NegativeSentence)
+		result, err := stmt.Exec(
+			t.UUID, t.Enterprise, t.Name,
+			t.Typ, t.PositiveSentence, t.NegativeSentence,
+			t.CreateTime, t.UpdateTime,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("insert sql failed, %v", err)
 		}
