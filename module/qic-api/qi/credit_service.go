@@ -196,12 +196,11 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	senGrpCreditsMap := make(map[uint64]*SentenceGrpCredit)
 	senGrpSetIDMap := make(map[uint64]*SentenceGroupInResponse)
 	senCreditsMap := make(map[uint64]*SentenceCredit)
-	senIDCreditsMap := make(map[uint64]*SentenceCredit)
 	senSetIDMap := make(map[uint64]*DataSentence)
 	//segIDMap := make(map[uint64]*model.SegmentMatch)
 	creditTimeMap := make(map[int64]*HistoryCredit)
 	senSegMap := make(map[uint64][]uint64)
-
+	senSegDup := make(map[uint64]map[uint64]bool)
 	var resp []*HistoryCredit
 
 	for _, v := range credits {
@@ -281,7 +280,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if parentCredit, ok := senGrpCreditsMap[v.ParentID]; ok {
 				credit := &SentenceCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
 				senCreditsMap[v.ID] = credit
-				senIDCreditsMap[v.OrgID] = credit
+				//senIDCreditsMap[v.OrgID] = credit
 				if set, ok := senSetIDMap[v.OrgID]; ok {
 					credit.Setting = set
 				} else {
@@ -296,42 +295,21 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			}
 			senIDs = append(senIDs, v.OrgID)
 		case levSegTyp:
-			/*
-				if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
-					_ = parentCredit
-				} else {
-					return nil, errCannotFindParent(v.ID, v.ParentID)
-				}
-			*/
-			/*
-				if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
-
-					if seg, ok := segIDMap[v.OrgID]; ok {
-						parentCredit.MatchedSegments = append(parentCredit.MatchedSegments, seg)
-					} else {
-						seg := &model.SegmentMatch{ID: v.OrgID}
-						parentCredit.MatchedSegments = append(parentCredit.MatchedSegments, seg)
-						segIDMap[v.OrgID] = seg
-					}
-
-				} else {
-					return nil, errCannotFindParent(v.ID, v.ParentID)
-				}
-			*/
-			/*
-				if _, ok := senSegMap[v.ParentID]; !ok {
-					senSegMap[v.ParentID] = make(map[uint64]bool)
-				}
-				senSegMap[v.ParentID][v.OrgID] = true
-			*/
-
 			if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
-				senSegMap[parentCredit.ID] = append(senSegMap[parentCredit.ID], v.OrgID)
+				sID := parentCredit.ID
+				if _, ok := senSegDup[sID]; ok {
+					if _, ok := senSegDup[sID][v.OrgID]; ok {
+						continue
+					}
+				} else {
+					senSegDup[sID] = make(map[uint64]bool)
+				}
+				senSegDup[sID][v.OrgID] = true
+				senSegMap[sID] = append(senSegMap[sID], v.OrgID)
 				segIDs = append(segIDs, v.OrgID)
 			} else {
 				return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
-
 		default:
 			logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
 			continue
@@ -340,7 +318,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the rule group setting
 	if len(rgIDs) > 0 {
-		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs})
+
+		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs, Delete: -1})
 		if err != nil {
 			logger.Error.Printf("get rule group %+v failed. %s\n", rgIDs, err)
 			return nil, err
@@ -401,6 +380,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for i := 0; i < len(senGrpSet); i++ {
+
 			if senGrp, ok := senGrpSetIDMap[uint64(senGrpSet[i].ID)]; ok {
 				groupInRes := sentenceGroupToSentenceGroupInResponse(&senGrpSet[i])
 				*senGrp = groupInRes
@@ -455,12 +435,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, errors.New("relation table less")
 		}
 
-		fmt.Printf("relation %v\n", relation[0])
-		fmt.Printf("sentence to seg map: %v\n", senSegMap)
-		//fmt.Printf("sentence credit:%v\n", senCreditsMap)
-		for senID, tagIDs := range relation[0] {
-			if credit, ok := senIDCreditsMap[senID]; ok {
-				//fmt.Printf("has sen %d\n", senID)
+		for _, credit := range senCreditsMap {
+			senID := credit.ID
+			if tagIDs, ok := relation[0][senID]; ok {
 				if segIDs, ok := senSegMap[senID]; ok {
 					for _, segID := range segIDs {
 						for _, tagID := range tagIDs {
@@ -468,33 +445,10 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 								credit.MatchedSegments = append(credit.MatchedSegments, matched)
 							}
 						}
-
 					}
 				}
-
-				//for _, tagID := range tagIDs {
-
-				/*
-					if matched, ok := tagToSegMap[tagID]; ok {
-						if _, ok := senSegMap[senID][matched.SegID]; ok {
-							credit.MatchedSegments = append(credit.MatchedSegments, matched)
-						}
-					}
-				*/
-				//}
 			}
 		}
-		/*
-			for _, matched := range segsMatch {
-				if seg, ok := segIDMap[matched.SegID]; ok {
-					*seg = *matched
-				} else {
-					msg := fmt.Sprintf("return %d segment matched  doesn't meet request %+v\n", matched.SegID, segIDs)
-					logger.Error.Printf("%s\n", msg)
-					return nil, errors.New(msg)
-				}
-			}
-		*/
 	}
 	//desc order
 	sort.SliceStable(resp, func(i, j int) bool {

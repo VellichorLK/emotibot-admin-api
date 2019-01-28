@@ -50,11 +50,6 @@ type UserRolesRequestV3 struct {
 
 // IsValid will check valid of not
 func (user UserDetailV3) IsValid() bool {
-	// return util.IsValidString(user.Email) &&
-	// 	util.IsValidString(user.Password) &&
-	// 	util.IsValidMD5(*user.Password) &&
-	// 	util.IsValidString(user.Enterprise) &&
-	// 	util.IsValidUUID(*user.Enterprise)
 	return util.IsValidString(&user.UserName) &&
 		util.IsValidString(user.Password) &&
 		util.IsValidMD5(*user.Password)

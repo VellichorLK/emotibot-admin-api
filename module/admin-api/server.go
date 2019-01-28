@@ -28,6 +28,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/Task"
 	"emotibot.com/emotigo/module/admin-api/UI"
 	"emotibot.com/emotigo/module/admin-api/auth"
+	"emotibot.com/emotigo/module/admin-api/autofill"
 	"emotibot.com/emotigo/module/admin-api/clustering"
 	"emotibot.com/emotigo/module/admin-api/integration"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
@@ -35,6 +36,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/solr"
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/misc/emotibothttpwriter"
@@ -135,16 +137,26 @@ func init() {
 		logger.Error.Println("Init ELKStats module failed: ", err.Error())
 		initErrors = append(initErrors, err)
 	}
+
 	err = clustering.Init()
 	if err != nil {
 		logger.Error.Println("Init Clustering module failed: ", err.Error())
 		initErrors = append(initErrors, err)
 	}
+
+	err = initSolr()
+	if err != nil {
+		logger.Error.Println("Init solr failed:", err.Error())
+		initErrors = append(initErrors, err)
+	}
+
 	err = Service.Init()
 	if err != nil {
 		logger.Error.Println("Init service module failed: ", err.Error())
 		initErrors = append(initErrors, err)
 	}
+
+	autofill.Init()
 }
 
 func main() {
@@ -197,7 +209,6 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 		}
 		return checkAuthHeader(appid, token) && checkPrivilegeWithAPI(module, cmd, token)
 	}
-
 	return true
 }
 
@@ -445,6 +456,22 @@ func initElasticsearch() (err error) {
 	}
 
 	return elasticsearch.Setup(host, port, basicAuthUsername, basicAuthPassword)
+}
+
+func initSolr() (err error) {
+	host := getServerEnv("SOLR_HOST")
+	port := getServerEnv("SOLR_PORT")
+
+	if host == "" {
+		return errors.New("SOLR_HOST env missing")
+	}
+
+	if port == "" {
+		return errors.New("SOLR_PORT env missing")
+	}
+
+	solr.Setup(host, port)
+	return nil
 }
 
 func runOnetimeJob() {

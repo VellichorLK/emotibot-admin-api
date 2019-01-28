@@ -1,4 +1,4 @@
-package AdminErrors
+package adminerrors
 
 import "net/http"
 

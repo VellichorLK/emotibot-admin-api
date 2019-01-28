@@ -587,7 +587,7 @@ func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	return
 }
 
-func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, appids []string, err error) {
+func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, appids []string, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -604,25 +604,49 @@ func getProcessModifyRobotQA() (rqIDs []interface{}, ansIDs []interface{}, delet
 	defer util.ClearTransition(t)
 
 	appidMap := map[string]bool{}
-	queryStr := `
-	SELECT id, qid, content, appid
-	FROM
-	(
-			SELECT id, r.qid as qid, content, appid, status, aid
-			FROM robot_profile_extend AS r
-			-- select answer changed from answer
-			LEFT JOIN
-				(
-					SELECT qid, GROUP_CONCAT(id) as aid
-					FROM robot_profile_answer
-					WHERE status = 1 OR status = -1
-					GROUP BY qid
-				) as changeQ
-			ON r.qid = changeQ.qid
-	) AS final
-	-- only get changed extend q, and extend q whose answer changed
-	WHERE final.status = 1 OR final.aid IS NOT NULL`
-	rqRows, err := t.Query(queryStr)
+
+	var queryStr string
+	var rqRows *sql.Rows
+	if forceMode {
+		// TODO: modify this sql, this will be
+		queryStr = `
+		SELECT id, qid, content, appid
+		FROM
+		(
+				SELECT id, r.qid as qid, content, appid, status, aid
+				FROM robot_profile_extend AS r
+				-- select all answer
+				LEFT JOIN
+					(
+						SELECT qid, GROUP_CONCAT(id) as aid
+						FROM robot_profile_answer
+						GROUP BY qid
+					) as changeQ
+				ON r.qid = changeQ.qid
+		) AS final
+		-- get all extend q who is not deleted
+		WHERE (final.status >= 0 OR final.aid IS NOT NULL)`
+	} else {
+		queryStr = `
+		SELECT id, qid, content, appid
+		FROM
+		(
+				SELECT id, r.qid as qid, content, appid, status, aid
+				FROM robot_profile_extend AS r
+				-- select answer changed from answer
+				LEFT JOIN
+					(
+						SELECT qid, GROUP_CONCAT(id) as aid
+						FROM robot_profile_answer
+						WHERE status = 1 OR status = -1
+						GROUP BY qid
+					) as changeQ
+				ON r.qid = changeQ.qid
+		) AS final
+		-- only get changed extend q, and extend q whose answer changed
+		WHERE final.status = 1 OR final.aid IS NOT NULL`
+	}
+	rqRows, err = t.Query(queryStr)
 	if err != nil {
 		return
 	}

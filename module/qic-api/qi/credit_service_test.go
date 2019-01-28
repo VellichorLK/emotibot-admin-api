@@ -2,6 +2,7 @@ package qi
 
 import (
 	"database/sql"
+	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 )
@@ -37,6 +38,21 @@ var mockMatched = []*model.SegmentMatch{
 	&model.SegmentMatch{ID: 2, SegID: 112, TagID: 2, Score: 78, Match: "fuck", MatchedText: "fuckyou"},
 	&model.SegmentMatch{ID: 3, SegID: 113, TagID: 3, Score: 78, Match: "hello", MatchedText: "helloworld"},
 	&model.SegmentMatch{ID: 4, SegID: 118, TagID: 4, Score: 78, Match: "no", MatchedText: "no comment"},
+}
+
+type mockRelationCreditDao struct {
+}
+
+func (m *mockRelationCreditDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+	resp := make([]map[uint64][]uint64, 0, 1)
+
+	senTag := make(map[uint64][]uint64)
+	senTag[109] = []uint64{1}
+	senTag[110] = []uint64{2, 3}
+	senTag[117] = []uint64{4}
+	resp = append(resp, senTag)
+	return resp, nil, nil
+
 }
 
 type mockCreditDao struct {
@@ -317,7 +333,6 @@ func getExpect() []*HistoryCredit {
 	return expect
 }
 
-/*
 func TestRetreiveCredit(t *testing.T) {
 	//creditDao = &mockGroupDaoCredit{}
 	creditDao = &mockCreditDao{}
@@ -326,6 +341,7 @@ func TestRetreiveCredit(t *testing.T) {
 	conversationFlowDao = &mockCFDaoCredit{}
 	sentenceGroupDao = &mockSenGrpCredit{}
 	sentenceDao = &mockSentenceSQLDaoCredit{}
+	relationDao = &mockRelationCreditDao{}
 	tagDao = &mockTagSQLDaoCredit{}
 	dbLike = &mockDBLike{}
 	credits, err := RetrieveCredit(1234)
@@ -435,4 +451,3 @@ func TestRetreiveCredit(t *testing.T) {
 
 	}
 }
-*/

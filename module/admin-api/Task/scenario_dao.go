@@ -188,6 +188,88 @@ func updateScenario(scenarioid, appid, userid, editingContent, editingLayout str
 	return tx.Commit()
 }
 
+func getTaskEngineIntentList(appID, scenarioID string) (intents []string, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return nil, err
+	}
+	queryStr := `
+		SELECT name
+		FROM taskengine_intents
+		WHERE app_id = ? AND scenario_id = ?`
+	var rows *sql.Rows
+	rows, err = mySQL.Query(queryStr, appID, scenarioID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	intents = []string{}
+	for rows.Next() {
+		var intent string
+		err = rows.Scan(&intent)
+		if err != nil {
+			return nil, err
+		}
+		intents = append(intents, intent)
+	}
+	return intents, nil
+}
+
+func saveIntents(appID, scenarioID string, intents *[]string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return err
+	}
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return err
+	}
+	defer util.ClearTransition(tx)
+
+	// delete old intents
+	err = deleteIntentsWithTransaction(appID, scenarioID, tx)
+	if err != nil {
+		return err
+	}
+
+	// save new intents
+	for _, intent := range *intents {
+		err = insertIntentWithTransaction(appID, scenarioID, intent, tx)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func deleteIntentsWithTransaction(appID, scenarioID string, tx *sql.Tx) (err error) {
+	queryStr := `
+		DELETE
+		FROM taskengine_intents
+		WHERE app_id = ? AND scenario_id = ?`
+	_, err = tx.Exec(queryStr, appID, scenarioID)
+	return err
+}
+
+func insertIntentWithTransaction(appID, scenarioID, intentName string, tx *sql.Tx) (err error) {
+	queryStr := `
+		INSERT INTO taskengine_intents (app_id, scenario_id, name)
+		VALUES (?, ?, ?)`
+	_, err = tx.Exec(queryStr, appID, scenarioID, intentName)
+	return err
+}
+
 func deleteScenario(scenarioid, appid string) (err error) {
 	defer func() {
 		util.ShowError(err)

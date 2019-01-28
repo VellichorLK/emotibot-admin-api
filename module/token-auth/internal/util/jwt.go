@@ -19,6 +19,10 @@ type CustomClaims struct {
 	jwt.StandardClaims
 }
 
+func GetJWTExpireTime() int {
+	return jwtExpireSeconds
+}
+
 func SetJWTExpireTime(seconds int) {
 	jwtExpireSeconds = seconds
 }

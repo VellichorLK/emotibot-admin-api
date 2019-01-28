@@ -4,12 +4,19 @@ import (
 	"database/sql"
 	"errors"
 
+	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
+var useDBV3 dao.DBV3
+
+func SetDBV3(db dao.DBV3) {
+	useDBV3 = db
+}
+
 func checkDB() error {
-	if useDB == nil {
+	if useDBV3 == nil {
 		return errors.New("DB hasn't set")
 	}
 	return nil
@@ -20,7 +27,7 @@ func GetSystemAdminsV3() ([]*data.UserV3, error) {
 	if err != nil {
 		return nil, err
 	}
-	return useDB.GetUsersV3("", true)
+	return useDBV3.GetUsersV3("", true)
 }
 
 func GetSystemAdminV3(adminID string) (*data.UserDetailV3, error) {
@@ -28,7 +35,7 @@ func GetSystemAdminV3(adminID string) (*data.UserDetailV3, error) {
 	if err != nil {
 		return nil, err
 	}
-	return useDB.GetUserV3("", adminID)
+	return useDBV3.GetUserV3("", adminID)
 }
 
 func AddSystemAdminV3(admin *data.UserDetailV3) (string, error) {
@@ -37,7 +44,7 @@ func AddSystemAdminV3(admin *data.UserDetailV3) (string, error) {
 		return "", err
 	}
 
-	exists, existedAdminName, _, err := useDB.EnterpriseUserInfoExistsV3(admin.Type, "",
+	exists, existedAdminName, _, err := useDBV3.EnterpriseUserInfoExistsV3(admin.Type, "",
 		admin.UserName, admin.Email)
 	if err != nil {
 		return "", err
@@ -47,7 +54,7 @@ func AddSystemAdminV3(admin *data.UserDetailV3) (string, error) {
 		}
 	}
 
-	return useDB.AddUserV3("", admin)
+	return useDBV3.AddUserV3("", admin)
 }
 
 func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetailV3, adminID string) error {
@@ -57,7 +64,7 @@ func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetail
 	}
 
 	if newAdmin.UserName != origAdmin.UserName || newAdmin.Email != origAdmin.Email {
-		exists, existedAdminName, _, err := useDB.EnterpriseUserInfoExistsV3(
+		exists, existedAdminName, _, err := useDBV3.EnterpriseUserInfoExistsV3(
 			newAdmin.Type, "", newAdmin.UserName, newAdmin.Email)
 		if err != nil {
 			return err
@@ -68,7 +75,7 @@ func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetail
 		}
 	}
 
-	return useDB.UpdateUserV3("", adminID, newAdmin)
+	return useDBV3.UpdateUserV3("", adminID, newAdmin)
 }
 
 func DeleteSystemAdminV3(adminID string) (bool, error) {
@@ -77,14 +84,14 @@ func DeleteSystemAdminV3(adminID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.UserExistsV3(adminID)
+	exists, err := useDBV3.UserExistsV3(adminID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteUserV3("", adminID)
+	err = useDBV3.DeleteUserV3("", adminID)
 	if err != nil {
 		return false, err
 	}
@@ -98,7 +105,7 @@ func GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetEnterprisesV3()
+	return useDBV3.GetEnterprisesV3()
 }
 
 func GetEnterpriseV3(enterpriseID string) (*data.EnterpriseDetailV3, error) {
@@ -107,7 +114,7 @@ func GetEnterpriseV3(enterpriseID string) (*data.EnterpriseDetailV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetEnterpriseV3(enterpriseID)
+	return useDBV3.GetEnterpriseV3(enterpriseID)
 }
 
 func AddEnterpriseV3(enterprise *data.EnterpriseV3, modules []string,
@@ -117,14 +124,14 @@ func AddEnterpriseV3(enterprise *data.EnterpriseV3, modules []string,
 		return "", err
 	}
 
-	exists, err := useDB.EnterpriseInfoExistsV3(enterprise.Name)
+	exists, err := useDBV3.EnterpriseInfoExistsV3(enterprise.Name)
 	if err != nil {
 		return "", err
 	} else if exists {
 		return "", util.ErrEnterpriseInfoExists
 	}
 
-	return useDB.AddEnterpriseV3(enterprise, modules, adminUser)
+	return useDBV3.AddEnterpriseV3(enterprise, modules, adminUser)
 }
 
 func UpdateEnterpriseV3(enterpriseID string, origEnterprise *data.EnterpriseDetailV3,
@@ -135,7 +142,7 @@ func UpdateEnterpriseV3(enterpriseID string, origEnterprise *data.EnterpriseDeta
 	}
 
 	if newEnterprise.Name != origEnterprise.Name {
-		exists, err := useDB.EnterpriseInfoExistsV3(newEnterprise.Name)
+		exists, err := useDBV3.EnterpriseInfoExistsV3(newEnterprise.Name)
 		if err != nil {
 			return err
 		} else if exists {
@@ -143,7 +150,7 @@ func UpdateEnterpriseV3(enterpriseID string, origEnterprise *data.EnterpriseDeta
 		}
 	}
 
-	return useDB.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
+	return useDBV3.UpdateEnterpriseV3(enterpriseID, newEnterprise, modules)
 }
 
 func DeleteEnterpriseV3(enterpriseID string) (bool, error) {
@@ -152,14 +159,14 @@ func DeleteEnterpriseV3(enterpriseID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteEnterpriseV3(enterpriseID)
+	err = useDBV3.DeleteEnterpriseV3(enterpriseID)
 	if err != nil {
 		return false, err
 	}
@@ -173,14 +180,14 @@ func GetUsersV3(enterpriseID string) ([]*data.UserV3, error) {
 		return nil, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return nil, err
 	} else if !exists {
 		return nil, nil
 	}
 
-	users, err := useDB.GetUsersV3(enterpriseID, false)
+	users, err := useDBV3.GetUsersV3(enterpriseID, false)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +201,7 @@ func GetUserV3(enterpriseID string, userID string) (*data.UserDetailV3, error) {
 		return nil, err
 	}
 
-	info, err := useDB.GetUserV3(enterpriseID, userID)
+	info, err := useDBV3.GetUserV3(enterpriseID, userID)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	} else if err != nil {
@@ -210,14 +217,14 @@ func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 		return "", err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	exists, existedUserName, _, err := useDB.EnterpriseUserInfoExistsV3(user.Type,
+	exists, existedUserName, _, err := useDBV3.EnterpriseUserInfoExistsV3(user.Type,
 		enterpriseID, user.UserName, user.Email)
 	if err != nil {
 		return "", err
@@ -232,7 +239,7 @@ func AddUserV3(enterpriseID string, user *data.UserDetailV3) (string, error) {
 		return "", err
 	}
 
-	return useDB.AddUserV3(enterpriseID, user)
+	return useDBV3.AddUserV3(enterpriseID, user)
 }
 
 func UpdateUserV3(enterpriseID string, userID string,
@@ -243,7 +250,7 @@ func UpdateUserV3(enterpriseID string, userID string,
 	}
 
 	if newUser.UserName != origUser.UserName || newUser.Email != origUser.Email {
-		exists, existedUserName, _, err := useDB.EnterpriseUserInfoExistsV3(newUser.Type, enterpriseID,
+		exists, existedUserName, _, err := useDBV3.EnterpriseUserInfoExistsV3(newUser.Type, enterpriseID,
 			newUser.UserName, newUser.Email)
 		if err != nil {
 			return err
@@ -259,7 +266,7 @@ func UpdateUserV3(enterpriseID string, userID string,
 		return err
 	}
 
-	return useDB.UpdateUserV3(enterpriseID, userID, newUser)
+	return useDBV3.UpdateUserV3(enterpriseID, userID, newUser)
 }
 
 func DeleteUserV3(enterpriseID string, userID string) (bool, error) {
@@ -268,14 +275,14 @@ func DeleteUserV3(enterpriseID string, userID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.UserExistsV3(userID)
+	exists, err := useDBV3.UserExistsV3(userID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteUserV3(enterpriseID, userID)
+	err = useDBV3.DeleteUserV3(enterpriseID, userID)
 	if err != nil {
 		return false, err
 	}
@@ -289,14 +296,14 @@ func GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 		return nil, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return nil, err
 	} else if !exists {
 		return nil, nil
 	}
 
-	return useDB.GetAppsV3(enterpriseID)
+	return useDBV3.GetAppsV3(enterpriseID)
 }
 
 func GetAppV3(enterpriseID string, appID string) (*data.AppDetailV3, error) {
@@ -305,7 +312,7 @@ func GetAppV3(enterpriseID string, appID string) (*data.AppDetailV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetAppV3(enterpriseID, appID)
+	return useDBV3.GetAppV3(enterpriseID, appID)
 }
 
 func AddAppV3(enterpriseID string, app *data.AppDetailV3) (appID string, err error) {
@@ -314,21 +321,21 @@ func AddAppV3(enterpriseID string, app *data.AppDetailV3) (appID string, err err
 		return "", err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	exists, err = useDB.EnterpriseAppInfoExistsV3(enterpriseID, app.Name)
+	exists, err = useDBV3.EnterpriseAppInfoExistsV3(enterpriseID, app.Name)
 	if err != nil {
 		return "", err
 	} else if exists {
 		return "", util.ErrAppInfoExists
 	}
 
-	return useDB.AddAppV3(enterpriseID, app)
+	return useDBV3.AddAppV3(enterpriseID, app)
 }
 
 func UpdateAppV3(enterpriseID string, appID string,
@@ -339,7 +346,7 @@ func UpdateAppV3(enterpriseID string, appID string,
 	}
 
 	if newApp.Name != origApp.Name {
-		exists, err := useDB.EnterpriseAppInfoExistsV3(enterpriseID, newApp.Name)
+		exists, err := useDBV3.EnterpriseAppInfoExistsV3(enterpriseID, newApp.Name)
 		if err != nil {
 			return err
 		} else if exists {
@@ -347,7 +354,7 @@ func UpdateAppV3(enterpriseID string, appID string,
 		}
 	}
 
-	return useDB.UpdateAppV3(enterpriseID, appID, newApp)
+	return useDBV3.UpdateAppV3(enterpriseID, appID, newApp)
 }
 
 func DeleteAppV3(enterpriseID string, appID string) (bool, error) {
@@ -356,14 +363,14 @@ func DeleteAppV3(enterpriseID string, appID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.AppExistsV3(appID)
+	exists, err := useDBV3.AppExistsV3(appID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteAppV3(enterpriseID, appID)
+	err = useDBV3.DeleteAppV3(enterpriseID, appID)
 	if err != nil {
 		return false, err
 	}
@@ -377,14 +384,14 @@ func GetGroupsV3(enterpriseID string) ([]*data.GroupDetailV3, error) {
 		return nil, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return nil, err
 	} else if !exists {
 		return nil, nil
 	}
 
-	return useDB.GetGroupsV3(enterpriseID)
+	return useDBV3.GetGroupsV3(enterpriseID)
 }
 
 func GetGroupV3(enterpriseID string, groupID string) (*data.GroupDetailV3, error) {
@@ -393,7 +400,7 @@ func GetGroupV3(enterpriseID string, groupID string) (*data.GroupDetailV3, error
 		return nil, err
 	}
 
-	return useDB.GetGroupV3(enterpriseID, groupID)
+	return useDBV3.GetGroupV3(enterpriseID, groupID)
 }
 
 func AddGroupV3(enterpriseID string, group *data.GroupDetailV3,
@@ -403,21 +410,21 @@ func AddGroupV3(enterpriseID string, group *data.GroupDetailV3,
 		return "", err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	exists, err = useDB.EnterpriseGroupInfoExistsV3(enterpriseID, group.Name)
+	exists, err = useDBV3.EnterpriseGroupInfoExistsV3(enterpriseID, group.Name)
 	if err != nil {
 		return "", err
 	} else if exists {
 		return "", util.ErrGroupInfoExists
 	}
 
-	return useDB.AddGroupV3(enterpriseID, group, apps)
+	return useDBV3.AddGroupV3(enterpriseID, group, apps)
 }
 
 func UpdateGroupV3(enterpriseID string, groupID string, origGroup *data.GroupDetailV3,
@@ -428,7 +435,7 @@ func UpdateGroupV3(enterpriseID string, groupID string, origGroup *data.GroupDet
 	}
 
 	if newGroup.Name != origGroup.Name {
-		exists, err := useDB.EnterpriseGroupInfoExistsV3(enterpriseID, newGroup.Name)
+		exists, err := useDBV3.EnterpriseGroupInfoExistsV3(enterpriseID, newGroup.Name)
 		if err != nil {
 			return err
 		} else if exists {
@@ -436,7 +443,7 @@ func UpdateGroupV3(enterpriseID string, groupID string, origGroup *data.GroupDet
 		}
 	}
 
-	return useDB.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
+	return useDBV3.UpdateGroupV3(enterpriseID, groupID, newGroup, apps)
 }
 
 func DeleteGroupV3(enterpriseID string, groupID string) (bool, error) {
@@ -445,14 +452,14 @@ func DeleteGroupV3(enterpriseID string, groupID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.GroupExistsV3(groupID)
+	exists, err := useDBV3.GroupExistsV3(groupID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteGroupV3(enterpriseID, groupID)
+	err = useDBV3.DeleteGroupV3(enterpriseID, groupID)
 	if err != nil {
 		return false, err
 	}
@@ -466,14 +473,14 @@ func GetRolesV3(enterpriseID string) ([]*data.RoleV3, error) {
 		return nil, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return nil, err
 	} else if !exists {
 		return nil, nil
 	}
 
-	return useDB.GetRolesV3(enterpriseID)
+	return useDBV3.GetRolesV3(enterpriseID)
 }
 
 func GetRoleV3(enterpriseID string, roleID string) (*data.RoleV3, error) {
@@ -482,7 +489,7 @@ func GetRoleV3(enterpriseID string, roleID string) (*data.RoleV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetRoleV3(enterpriseID, roleID)
+	return useDBV3.GetRoleV3(enterpriseID, roleID)
 }
 
 func AddRoleV3(enterpriseID string, role *data.RoleV3) (string, error) {
@@ -491,21 +498,21 @@ func AddRoleV3(enterpriseID string, role *data.RoleV3) (string, error) {
 		return "", err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	exists, err = useDB.EnterpriseRoleInfoExistsV3(enterpriseID, role.Name)
+	exists, err = useDBV3.EnterpriseRoleInfoExistsV3(enterpriseID, role.Name)
 	if err != nil {
 		return "", err
 	} else if exists {
 		return "", util.ErrRoleInfoExists
 	}
 
-	return useDB.AddRoleV3(enterpriseID, role)
+	return useDBV3.AddRoleV3(enterpriseID, role)
 }
 
 func UpdateRoleV3(enterpriseID string, roleID string, origRole *data.RoleV3,
@@ -516,7 +523,7 @@ func UpdateRoleV3(enterpriseID string, roleID string, origRole *data.RoleV3,
 	}
 
 	if newRole.Name != origRole.Name {
-		exists, err := useDB.EnterpriseRoleInfoExistsV3(enterpriseID, newRole.Name)
+		exists, err := useDBV3.EnterpriseRoleInfoExistsV3(enterpriseID, newRole.Name)
 		if err != nil {
 			return err
 		} else if exists {
@@ -524,7 +531,7 @@ func UpdateRoleV3(enterpriseID string, roleID string, origRole *data.RoleV3,
 		}
 	}
 
-	return useDB.UpdateRoleV3(enterpriseID, roleID, newRole)
+	return useDBV3.UpdateRoleV3(enterpriseID, roleID, newRole)
 }
 
 func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
@@ -533,14 +540,14 @@ func DeleteRoleV3(enterpriseID string, roleID string) (bool, error) {
 		return false, err
 	}
 
-	exists, err := useDB.RoleExistsV3(roleID)
+	exists, err := useDBV3.RoleExistsV3(roleID)
 	if err != nil {
 		return false, err
 	} else if !exists {
 		return false, nil
 	}
 
-	err = useDB.DeleteRoleV3(enterpriseID, roleID)
+	err = useDBV3.DeleteRoleV3(enterpriseID, roleID)
 	if err != nil {
 		return false, err
 	}
@@ -554,7 +561,7 @@ func LoginV3(account string, passwd string) (*data.UserDetailV3, error) {
 		return nil, err
 	}
 
-	return useDB.GetAuthUserV3(account, passwd)
+	return useDBV3.GetAuthUserV3(account, passwd)
 }
 
 func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
@@ -563,14 +570,14 @@ func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 		return nil, err
 	}
 
-	exists, err := useDB.EnterpriseExistsV3(enterpriseID)
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
 	if err != nil {
 		return nil, err
 	} else if !exists {
 		return nil, nil
 	}
 
-	return useDB.GetModulesV3(enterpriseID)
+	return useDBV3.GetModulesV3(enterpriseID)
 }
 
 func GetGlobalModulesV3() ([]*data.ModuleDetailV3, error) {
@@ -578,7 +585,7 @@ func GetGlobalModulesV3() ([]*data.ModuleDetailV3, error) {
 	if err != nil {
 		return nil, err
 	}
-	return useDB.GetModulesV3("")
+	return useDBV3.GetModulesV3("")
 }
 
 func GetUserPasswordV3(userID string) (string, error) {
@@ -587,14 +594,14 @@ func GetUserPasswordV3(userID string) (string, error) {
 		return "", err
 	}
 
-	exists, err := useDB.UserExistsV3(userID)
+	exists, err := useDBV3.UserExistsV3(userID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	return useDB.GetUserPasswordV3(userID)
+	return useDBV3.GetUserPasswordV3(userID)
 }
 
 func GetEnterpriseIDV3(appID string) (string, error) {
@@ -610,14 +617,14 @@ func GetEnterpriseIDV3(appID string) (string, error) {
 		return id, nil
 	}
 
-	exists, err := useDB.AppExistsV3(appID)
+	exists, err := useDBV3.AppExistsV3(appID)
 	if err != nil {
 		return "", err
 	} else if !exists {
 		return "", nil
 	}
 
-	id, err = useDB.GetEnterpriseIDV3(appID)
+	id, err = useDBV3.GetEnterpriseIDV3(appID)
 	if err != nil {
 		return "", err
 	}
@@ -632,14 +639,14 @@ func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
 
 	if user.Roles.GroupRoles != nil {
 		for _, groupRole := range user.Roles.GroupRoles {
-			exist, err := useDB.GroupExistsV3(groupRole.ID)
+			exist, err := useDBV3.GroupExistsV3(groupRole.ID)
 			if err != nil {
 				return err
 			} else if !exist {
 				return util.ErrRobotGroupNotExist
 			}
 
-			exist, err = useDB.RoleExistsV3(groupRole.Role)
+			exist, err = useDBV3.RoleExistsV3(groupRole.Role)
 			if err != nil {
 				return err
 			} else if !exist {
@@ -650,14 +657,14 @@ func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
 
 	if user.Roles.AppRoles != nil {
 		for _, appRole := range user.Roles.AppRoles {
-			exist, err := useDB.AppExistsV3(appRole.ID)
+			exist, err := useDBV3.AppExistsV3(appRole.ID)
 			if err != nil {
 				return err
 			} else if !exist {
 				return util.ErrRobotNotExist
 			}
 
-			exist, err = useDB.RoleExistsV3(appRole.Role)
+			exist, err = useDBV3.RoleExistsV3(appRole.Role)
 			if err != nil {
 				return err
 			} else if !exist {
@@ -670,15 +677,15 @@ func checkUserRoles(user *data.UserDetailV3, enterpriseID string) error {
 }
 
 func GetEnterpriseApp(enterpriseID *string, userID *string) ([]*data.EnterpriseAppListV3, error) {
-	return useDB.GetEnterpriseAppListV3(enterpriseID, userID)
+	return useDBV3.GetEnterpriseAppListV3(enterpriseID, userID)
 }
 
 func GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error) {
-	return useDB.GetUserV3ByKeyValue(key, value)
+	return useDBV3.GetUserV3ByKeyValue(key, value)
 }
 
 func CheckAppSecretValid(appid, secret string) (bool, error) {
-	key, err := useDB.GetAppSecretV3(appid)
+	key, err := useDBV3.GetAppSecretV3(appid)
 	if err != sql.ErrNoRows && err != nil {
 		return false, err
 	}
@@ -687,19 +694,19 @@ func CheckAppSecretValid(appid, secret string) (bool, error) {
 }
 
 func IssueNewApiKey(appid string, expired int) (string, error) {
-	return useDB.GenerateAppApiKeyV3(appid, expired)
+	return useDBV3.GenerateAppApiKeyV3(appid, expired)
 }
 
 func GetAppSecret(appid string) (string, error) {
-	return useDB.GetAppSecretV3(appid)
+	return useDBV3.GetAppSecretV3(appid)
 }
 
 func RenewAppSecret(appid string) (string, error) {
-	return useDB.RenewAppSecretV3(appid)
+	return useDBV3.RenewAppSecretV3(appid)
 }
 
 func GetAppViaApiKey(apiKey string) (string, error) {
-	appid, err := useDB.GetAppViaApiKey(apiKey)
+	appid, err := useDBV3.GetAppViaApiKey(apiKey)
 	if err == sql.ErrNoRows {
 		return "", nil
 	} else if err != nil {
@@ -709,5 +716,5 @@ func GetAppViaApiKey(apiKey string) (string, error) {
 }
 
 func ClearExpireToken() {
-	useDB.ClearExpireToken()
+	useDBV3.ClearExpireToken()
 }
