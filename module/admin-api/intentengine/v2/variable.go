@@ -40,6 +40,7 @@ const (
 const (
 	typeBFOP = iota
 	typeBF2
+	typeBF2New
 )
 
 var (
