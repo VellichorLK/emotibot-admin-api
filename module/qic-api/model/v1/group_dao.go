@@ -15,6 +15,7 @@ type GroupDAO interface {
 	Group(delegatee SqlLike, query GroupQuery) ([]Group, error)
 	DeleteGroup(id string, sqlLike SqlLike) error
 	GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) ([]GroupWCond, error)
+	GetGroupsByRuleID(id []int64, sqlLike SqlLike) ([]GroupWCond, error)
 	GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error)
 }
 
@@ -47,6 +48,7 @@ type GroupWCond struct {
 	CreateTime      int64                     `json:"create_time,omitempty"`
 	Description     *string                   `json:"description"`
 	RuleCount       int                       `json:"rule_count"`
+	Deleted         int8                      `json:"-"`
 }
 
 type GroupFilter struct {
@@ -226,10 +228,10 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		}
 	}
 
-	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
+	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	r.%s as rUUID, r.%s as rName
+	r.%s as rID, r.%s as rUUID, r.%s as rName
 	FROM (SELECT * FROM %s %s) as rg
 	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
@@ -247,6 +249,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		fldCreateTime,
 		fldRuleGrpIsEnable,
 		fldEnterprise,
+		fldIsDelete,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -261,6 +264,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
+		fldID,
 		fldUUID,
 		fldName,
 		tblRuleGroup,
@@ -317,6 +321,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 		condition := GroupCondition{}
 		var rUUID *string // rule uuid
 		var rName *string // rule name
+		var rID *int64
 
 		err = rows.Scan(
 			&group.ID,
@@ -328,6 +333,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 			&group.CreateTime,
 			&group.Enabled,
 			&group.Enterprise,
+			&group.Deleted,
 			&condition.FileName,
 			&condition.Deal,
 			&condition.Series,
@@ -342,6 +348,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 			&condition.CallEnd,
 			&condition.LeftChannelCode,
 			&condition.RightChannelCode,
+			&rID,
 			&rUUID,
 			&rName,
 		)
@@ -365,6 +372,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 
 		if rUUID != nil && rName != nil {
 			rule := SimpleConversationRule{
+				ID:   *rID,
 				UUID: *rUUID,
 				Name: *rName,
 			}
@@ -375,6 +383,56 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 
 	if currentGroup != nil {
 		groups = append(groups, *currentGroup)
+	}
+	return
+}
+
+func (s *GroupSQLDao) GetGroupsByRuleID(id []int64, sqlLike SqlLike) (groups []GroupWCond, err error) {
+	groups = []GroupWCond{}
+	if len(id) == 0 {
+		return
+	}
+
+	builder := &whereBuilder{
+		ConcatLogic: andLogic,
+		conditions:  []string{},
+		data:        []interface{}{},
+	}
+
+	builder.In(fldID, int64ToWildCard(id...))
+	conditionStr, values := builder.Parse()
+
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s",
+		RRRGroupID,
+		tblRelGrpRule,
+		conditionStr,
+	)
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while query group id in dao.GetGroupsByRuleID, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	groupID := []uint64{}
+	for rows.Next() {
+		var gid uint64
+		err = rows.Scan(&gid)
+		if err != nil {
+			err = fmt.Errorf("error while scan group id in dao.GetGroupsByRuleID, err: %s", err.Error())
+			return
+		}
+		groupID = append(groupID, gid)
+	}
+
+	filter := &GroupFilter{
+		ID: groupID,
+	}
+
+	groups, err = s.GetGroupsBy(filter, sqlLike)
+	if err != nil {
+		err = fmt.Errorf("error while query groups in dao.GetGroupsByRuleID, err: %s", err.Error())
 	}
 	return
 }
