@@ -424,6 +424,10 @@ func (s *GroupSQLDao) GetGroupsByRuleID(id []int64, sqlLike SqlLike) (groups []G
 		groupID = append(groupID, gid)
 	}
 
+	if len(groupID) == 0 {
+		return
+	}
+
 	filter := &GroupFilter{
 		ID: groupID,
 	}
