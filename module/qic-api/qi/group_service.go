@@ -188,7 +188,6 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 		UUID: []string{
 			id,
 		},
-		Deal: -1,
 	}
 
 	sqlConn := dbLike.Conn()
@@ -248,7 +247,6 @@ func UpdateGroup(id string, group *model.GroupWCond) (err error) {
 			id,
 		},
 		EnterpriseID: group.Enterprise,
-		Deal:         -1,
 	}
 
 	groups, err := serviceDAO.GetGroupsBy(filter, tx)
