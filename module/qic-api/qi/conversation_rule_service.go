@@ -206,17 +206,34 @@ func DeleteConversationRule(id string) (err error) {
 
 	rule := rules[0]
 
-	err = conversationRuleDao.Delete(id, tx)
-	if err != nil {
-		return
-	}
-
 	groups, err := serviceDAO.GetGroupsByRuleID([]int64{rule.ID}, tx)
 	if err != nil {
 		return
 	}
 
+	err = conversationRuleDao.Delete(id, tx)
+	if err != nil {
+		return
+	}
+
 	if len(groups) > 0 {
+		// remove the rule from groups which are related to this rule
+		for idx := range groups {
+			group := &groups[idx]
+			rules := *group.Rules
+			for j, rule := range rules {
+				if rule.UUID == id {
+					var newRules []model.SimpleConversationRule
+					if j == len(rules)-1 {
+						newRules = rules[:j]
+					} else {
+						newRules = append(rules[:j], rules[j+1:]...)
+					}
+					group.Rules = &newRules
+				}
+			}
+		}
+
 		err = propagateUpdateFromGroup(groups, rules, tx)
 		if err != nil {
 			return
