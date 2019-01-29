@@ -1,6 +1,7 @@
 package model
 
 import (
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -33,6 +34,7 @@ type ConversationRule struct {
 	CreateTime   int64
 	UpdateTime   int64
 	Completeness *RuleCompleteness
+	Deleted      int8
 }
 
 type ConversationRuleFilter struct {
@@ -48,14 +50,21 @@ type ConversationRuleFilter struct {
 
 type ConversationRuleDao interface {
 	Create(rule *ConversationRule, sqlLike SqlLike) (*ConversationRule, error)
+	CreateMany(rules []ConversationRule, sqlLike SqlLike) error
 	CountBy(filter *ConversationRuleFilter, sqlLike SqlLike) (int64, error)
 	GetBy(filter *ConversationRuleFilter, sqlLike SqlLike) ([]ConversationRule, error)
+	GetByFlowID([]int64, SqlLike) ([]ConversationRule, error)
 	Delete(id string, sqlLike SqlLike) error
+	DeleteMany(uuid []string, sqlLike SqlLike) error
 }
 
 type ConversationRuleSqlDaoImpl struct{}
 
-func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sqlLike SqlLike) (createdRule *ConversationRule, err error) {
+func getConversationRuleInsertSQL(rules []ConversationRule) (insertStr string, values []interface{}) {
+	if len(rules) == 0 {
+		return
+	}
+
 	fields := []string{
 		fldUUID,
 		fldName,
@@ -71,24 +80,75 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sqlLike Sq
 	}
 	fieldStr := strings.Join(fields, ", ")
 
-	values := []interface{}{
-		rule.UUID,
-		rule.Name,
-		rule.Method,
-		rule.Enterprise,
-		rule.Score,
-		rule.Description,
-		rule.Min,
-		rule.Max,
-		rule.Severity,
-		rule.CreateTime,
-		rule.UpdateTime,
-	}
-	valueStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(values)-1))
+	values = []interface{}{}
 
-	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblConversationRule, fieldStr, valueStr)
+	valueStr := fmt.Sprintf("(?%s)", strings.Repeat(", ?", len(fields)-1))
+	allValueStr := ""
+	for _, rule := range rules {
+		values = append(
+			values,
+			rule.UUID,
+			rule.Name,
+			rule.Method,
+			rule.Enterprise,
+			rule.Score,
+			rule.Description,
+			rule.Min,
+			rule.Max,
+			rule.Severity,
+			rule.CreateTime,
+			rule.UpdateTime,
+		)
+		allValueStr = fmt.Sprintf("%s%s,", allValueStr, valueStr)
+	}
+	// remove last comma
+	allValueStr = allValueStr[:len(allValueStr)-1]
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s",
+		tblConversationRule,
+		fieldStr,
+		allValueStr,
+	)
+	return
+}
+
+func getConversationRuleRelationInsertSQL(rules []ConversationRule) (insertStr string, values []interface{}) {
+	if len(rules) == 0 {
+		return
+	}
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES",
+		tblRelCRCF,
+		CRCFRID,
+		CRCFCFID,
+	)
+
+	valueStr := ""
+	values = []interface{}{}
+	for _, rule := range rules {
+		for _, flow := range rule.Flows {
+			valueStr += "(?, ?),"
+			values = append(values, rule.ID, flow.ID)
+		}
+	}
+	if len(values) > 0 {
+		// remove last comma
+		valueStr = valueStr[:len(valueStr)-1]
+	}
+
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+	return
+}
+
+func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sqlLike SqlLike) (createdRule *ConversationRule, err error) {
+	insertStr, values := getConversationRuleInsertSQL([]ConversationRule{*rule})
+
 	result, err := sqlLike.Exec(insertStr, values...)
 	if err != nil {
+		logger.Error.Printf("error while insert conversation rule in dao.Create, sql: %s\n", insertStr)
+		logger.Error.Printf("error while insert conversation rule in dao.Create, values: %+v\n", values)
 		err = fmt.Errorf("error while insert conversation rule in dao.Create, err: %s", err.Error())
 		return
 	}
@@ -100,8 +160,8 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sqlLike Sq
 	}
 
 	if len(rule.Flows) > 0 {
-		fieldStr = fmt.Sprintf("%s, %s", CRCFRID, CRCFCFID)
-		valueStr = "(?, ?)"
+		fieldStr := fmt.Sprintf("%s, %s", CRCFRID, CRCFCFID)
+		valueStr := "(?, ?)"
 		values = []interface{}{
 			ruleID,
 			rule.Flows[0].ID,
@@ -122,6 +182,60 @@ func (dao *ConversationRuleSqlDaoImpl) Create(rule *ConversationRule, sqlLike Sq
 	}
 	rule.ID = ruleID
 	createdRule = rule
+	return
+}
+
+func (dao *ConversationRuleSqlDaoImpl) CreateMany(rules []ConversationRule, sqlLike SqlLike) (err error) {
+	if len(rules) == 0 {
+		return
+	}
+	insertStr, values := getConversationRuleInsertSQL(rules)
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert rules in dao.CreateMany, sql: %s\n", insertStr)
+		logger.Error.Printf("error while insert rules in dao.CreateMany, values: %+v\n", values)
+		err = fmt.Errorf("error while insert rules in dao.CreateMany, err: %s\n", err.Error())
+		return
+	}
+
+	ruleUUID := make([]string, len(rules))
+	for i := 0; i < len(rules); i++ {
+		ruleUUID[i] = rules[i].UUID
+	}
+
+	filter := &ConversationRuleFilter{
+		UUID: ruleUUID,
+	}
+
+	// we need to get new id of rules
+	newRules, err := dao.GetBy(filter, sqlLike)
+	if err != nil {
+		logger.Error.Printf("error while get rules in dao.CreateMany, sql: %s\n", insertStr)
+		logger.Error.Printf("error while get rules in dao.CreateMany, values: %+v\n", values)
+		err = fmt.Errorf("error while get rules in dao.CreateMany, err: %s\n", err.Error())
+		return
+	}
+	ruleIndex := map[string]int{}
+	for idx, rule := range rules {
+		ruleIndex[rule.UUID] = idx
+	}
+
+	for _, newRule := range newRules {
+		idx := ruleIndex[newRule.UUID]
+		rules[idx].ID = newRule.ID
+	}
+
+	insertStr, values = getConversationRuleRelationInsertSQL(rules)
+	if len(values) > 0 {
+		_, err = sqlLike.Exec(insertStr, values...)
+		if err != nil {
+			logger.Error.Printf("error while insert rules to flows relation in dao.CreateMany, sql: %s\n", insertStr)
+			logger.Error.Printf("error while get rules to flows relation in dao.CreateMany, values: %+v\n", values)
+			err = fmt.Errorf("error while get rules to flows relation in dao.CreateMany, err: %s\n", err.Error())
+			return
+		}
+	}
 	return
 }
 
@@ -188,7 +302,7 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s,
+		`SELECT cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s, cr.%s,
 		cf.%s as cfID, cf.%s as cfUUID, cf.%s as cfName
 		 FROM (SELECT * FROM %s %s) as cr
 		 LEFT JOIN %s as rcrcf ON cr.%s = rcrcf.%s
@@ -203,6 +317,7 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 		CRMin,
 		CRMax,
 		CRSeverity,
+		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
 		fldID,
@@ -265,6 +380,7 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 			&rule.Min,
 			&rule.Max,
 			&rule.Severity,
+			&rule.Deleted,
 			&rule.CreateTime,
 			&rule.UpdateTime,
 			&flowID,
@@ -316,6 +432,53 @@ func (dao *ConversationRuleSqlDaoImpl) GetBy(filter *ConversationRuleFilter, sql
 	return
 }
 
+func (dao *ConversationRuleSqlDaoImpl) GetByFlowID(flowID []int64, sqlLike SqlLike) (rules []ConversationRule, err error) {
+	rules = []ConversationRule{}
+	if len(flowID) == 0 {
+		return
+	}
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(CRCFCFID, int64ToWildCard(flowID...))
+
+	conditionStr, values := builder.Parse()
+
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s",
+		CRCFRID,
+		tblRelCRCF,
+		conditionStr,
+	)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		err = fmt.Errorf("error while query rule id in dao.GetByFlowID, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	ruleID := []uint64{}
+	for rows.Next() {
+		var rid uint64
+		err = rows.Scan(&rid)
+		if err != nil {
+			err = fmt.Errorf("error while scan rule id in dao.GetByFlowID, err: %s", err.Error())
+			return
+		}
+		ruleID = append(ruleID, rid)
+	}
+
+	if len(ruleID) == 0 {
+		return
+	}
+
+	filter := &ConversationRuleFilter{
+		ID: ruleID,
+	}
+	logger.Info.Printf("filter: %+v\n", filter)
+	rules, err = dao.GetBy(filter, sqlLike)
+	return
+}
+
 func (dao *ConversationRuleSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err error) {
 	deleteStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblConversationRule, fldIsDelete, fldUUID)
 
@@ -323,6 +486,32 @@ func (dao *ConversationRuleSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err e
 	if err != nil {
 		err = fmt.Errorf("error while delete rule in dao.Delete, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *ConversationRuleSqlDaoImpl) DeleteMany(uuid []string, sqlLike SqlLike) (err error) {
+	builder := whereBuilder{
+		ConcatLogic: andLogic,
+		conditions:  []string{},
+		data:        []interface{}{},
+	}
+
+	builder.In(fldUUID, stringToWildCard(uuid...))
+	conditionStr, values := builder.Parse()
+
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s=1 WHERE %s",
+		tblConversationRule,
+		fldIsDelete,
+		conditionStr,
+	)
+
+	_, err = sqlLike.Exec(deleteStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while delete rules in dao.DeleteMany, sql: %s\n", deleteStr)
+		logger.Error.Printf("error while delete rules in dao.DeleteMany, values: %+v\n", values)
+		err = fmt.Errorf("error while delete rules in dao.DeleteMany, err: %s", err.Error())
 	}
 	return
 }

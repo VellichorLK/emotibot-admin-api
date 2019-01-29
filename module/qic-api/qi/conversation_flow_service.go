@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -114,32 +115,6 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	}
 	defer dbLike.ClearTransition(tx)
 
-	ruleFilter := &model.ConversationRuleFilter{
-		CFUUID: []string{
-			id,
-		},
-		Enterprise: enterprise,
-	}
-	rules, err := conversationRuleDao.GetBy(ruleFilter, tx)
-	if err != nil {
-		return
-	}
-
-	if len(rules) > 0 {
-		ruleFilter.CFUUID = []string{}
-		ruleFilter.UUID = []string{}
-		for _, rule := range rules {
-			ruleFilter.UUID = append(ruleFilter.UUID, rule.UUID)
-		}
-
-		rules, err = conversationRuleDao.GetBy(ruleFilter, tx)
-		if err != nil {
-			return
-		}
-	} else {
-		rules = []model.ConversationRule{}
-	}
-
 	filter := &model.ConversationFlowFilter{
 		UUID: []string{
 			id,
@@ -158,6 +133,10 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	}
 
 	originFlow := flows[0]
+	rules, err := conversationRuleDao.GetByFlowID([]int64{originFlow.ID}, tx)
+	if err != nil {
+		return
+	}
 
 	err = conversationFlowDao.Delete(id, tx)
 	if err != nil {
@@ -178,23 +157,79 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	if err != nil {
 		return
 	}
-	err = dbLike.Commit(tx)
 
+	ruleUUID := make([]string, len(rules))
+	for i := 0; i < len(rules); i++ {
+		ruleUUID[i] = rules[i].UUID
+	}
+
+	err = propagateUpdateFromRule(rules, []model.ConversationFlow{*updatedFlow}, tx)
 	if err != nil {
 		return
 	}
 
-	// update conversation rule which reference this flow
-	for idx := range rules {
-		rule := &rules[idx]
-		_, err = UpdateConversationRule(rule.UUID, rule)
-		if err != nil {
-			return
-		}
-	}
+	err = dbLike.Commit(tx)
 	return
 }
 
 func DeleteConversationFlow(id string) (err error) {
 	return conversationFlowDao.Delete(id, sqlConn)
+}
+
+func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.ConversationFlow, sqlLike model.SqlLike) (err error) {
+	if len(rules) == 0 || len(flows) == 0 {
+		return
+	}
+
+	// create flow map
+	flowMap := map[string]int64{}
+	for _, flow := range flows {
+		flowMap[flow.UUID] = flow.ID
+	}
+
+	for i := range rules {
+		rule := &rules[i]
+		for j, flow := range rule.Flows {
+			if flowID, ok := flowMap[flow.UUID]; ok {
+				rule.Flows[j].ID = flowID
+			}
+		}
+	}
+
+	ruleUUID := make([]string, len(rules))
+	for idx := range rules {
+		ruleUUID[idx] = rules[idx].UUID
+	}
+
+	ruleID := []int64{}
+	for _, rule := range rules {
+		ruleID = append(ruleID, rule.ID)
+	}
+
+	groups, err := serviceDAO.GetGroupsByRuleID(ruleID, sqlLike)
+	if err != nil {
+		return
+	}
+
+	err = conversationRuleDao.DeleteMany(ruleUUID, sqlLike)
+	if err != nil {
+		return
+	}
+
+	err = conversationRuleDao.CreateMany(rules, sqlLike)
+	if err != nil {
+		return
+	}
+
+	ruleFilter := &model.ConversationRuleFilter{
+		UUID:      ruleUUID,
+		IsDeleted: int8(0),
+	}
+	rules, err = conversationRuleDao.GetBy(ruleFilter, sqlLike)
+	if err != nil {
+		return
+	}
+
+	err = propagateUpdateFromGroup(groups, rules, sqlLike)
+	return
 }
