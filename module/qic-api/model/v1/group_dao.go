@@ -17,6 +17,8 @@ type GroupDAO interface {
 	GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) ([]GroupWCond, error)
 	GetGroupsByRuleID(id []int64, sqlLike SqlLike) ([]GroupWCond, error)
 	GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error)
+	CreateMany([]GroupWCond, SqlLike) error
+	DeleteMany([]string, SqlLike) error
 }
 
 type GroupSQLDao struct {
@@ -53,7 +55,7 @@ type GroupWCond struct {
 
 type GroupFilter struct {
 	FileName      string
-	Deal          int
+	Deal          *int
 	Series        string
 	CallStart     int64
 	CallEnd       int64
@@ -69,7 +71,7 @@ type GroupFilter struct {
 	Limit         int
 	UUID          []string
 	ID            []uint64
-	Delete        int8
+	Delete        *int8
 	Rules         []string
 }
 
@@ -135,10 +137,10 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		}
 	}
 
-	if filter.Delete != -1 {
+	if filter.Delete != nil {
 		groupStr = fmt.Sprintf("%s = ?", fldIsDelete)
 		groupConditions = append(groupConditions, groupStr)
-		values = append(values, filter.Delete)
+		values = append(values, *filter.Delete)
 	}
 
 	if len(groupConditions) > 0 {
@@ -179,9 +181,9 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 		values = append(values, filter.CustomerPhone)
 	}
 
-	if filter.Deal != -1 {
+	if filter.Deal != nil {
 		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCDeal))
-		values = append(values, filter.Deal)
+		values = append(values, *filter.Deal)
 	}
 
 	if filter.Department != "" {
@@ -233,7 +235,7 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
 	r.%s as rID, r.%s as rUUID, r.%s as rName
 	FROM (SELECT * FROM %s %s) as rg
-	INNER JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
+	LEFT JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	%s as r on rrr.%s = r.%s
 	`
@@ -393,13 +395,8 @@ func (s *GroupSQLDao) GetGroupsByRuleID(id []int64, sqlLike SqlLike) (groups []G
 		return
 	}
 
-	builder := &whereBuilder{
-		ConcatLogic: andLogic,
-		conditions:  []string{},
-		data:        []interface{}{},
-	}
-
-	builder.In(fldID, int64ToWildCard(id...))
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(RRRRuleID, int64ToWildCard(id...))
 	conditionStr, values := builder.Parse()
 
 	queryStr := fmt.Sprintf(
@@ -408,6 +405,7 @@ func (s *GroupSQLDao) GetGroupsByRuleID(id []int64, sqlLike SqlLike) (groups []G
 		tblRelGrpRule,
 		conditionStr,
 	)
+
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while query group id in dao.GetGroupsByRuleID, err: %s", err.Error())
@@ -437,29 +435,42 @@ func (s *GroupSQLDao) GetGroupsByRuleID(id []int64, sqlLike SqlLike) (groups []G
 	return
 }
 
-func genInsertRelationSQL(id int64, rules *[]SimpleConversationRule) (str string, values []interface{}) {
-	str = fmt.Sprintf(
-		"INSERT INTO %s (%s, %s) VALUES ",
+func genInsertRelationSQL(groups []GroupWCond) (insertStr string, values []interface{}) {
+	if len(groups) == 0 {
+		return
+	}
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES",
 		tblRelGrpRule,
 		RRRGroupID,
 		RRRRuleID,
 	)
+
+	variableStr := "(?, ?)"
+	valueStr := ""
 	values = []interface{}{}
-	for _, rule := range *rules {
-		str = addCommaIfNotFirst(str, len(values) == 0)
-		str += " (?, ?)"
-		values = append(values, id, rule.ID)
+	for _, group := range groups {
+		for _, rule := range *group.Rules {
+			values = append(values, group.ID, rule.ID)
+			valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+		}
 	}
+
+	if len(values) > 0 {
+		// remove last comma
+		valueStr = valueStr[:len(valueStr)-1]
+	}
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+
 	return
 }
 
-func (s *GroupSQLDao) CreateGroup(group *GroupWCond, sqlLike SqlLike) (createdGroup *GroupWCond, err error) {
-	now := time.Now().Unix()
-
-	// insert group
-	insertStr := fmt.Sprintf(
-		"INSERT INTO `%s` (%s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		tblRuleGroup,
+func genInsertGroupSQL(groups []GroupWCond) (insertStr string, values []interface{}) {
+	if len(groups) == 0 {
+		return
+	}
+	fields := []string{
 		fldRuleGrpUUID,
 		fldRuleGrpName,
 		fldRuleGrpEnterpriseID,
@@ -469,35 +480,49 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, sqlLike SqlLike) (createdGr
 		fldRuleGrpIsEnable,
 		fldRuleGrpLimitSpeed,
 		fldRuleGrpLimitSilence,
+	}
+	insertStr = fmt.Sprintf(
+		"INSERT INTO `%s` (%s) VALUES",
+		tblRuleGroup,
+		strings.Join(fields, ", "),
 	)
 
-	values := []interface{}{
-		group.UUID,
-		group.Name,
-		group.Enterprise,
-		group.Description,
-		now,
-		now,
-		group.Enabled,
-		group.Speed,
-		group.SlienceDuration,
+	variableStr := fmt.Sprintf(
+		"(?%s)",
+		strings.Repeat(", ?", len(fields)-1),
+	)
+
+	valueStr := ""
+	values = []interface{}{}
+	now := time.Now().Unix()
+	for _, group := range groups {
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+		values = append(
+			values,
+			group.UUID,
+			group.Name,
+			group.Enterprise,
+			group.Description,
+			now,
+			now,
+			group.Enabled,
+			group.Speed,
+			group.SlienceDuration,
+		)
 	}
-	result, err := sqlLike.Exec(insertStr, values...)
-	if err != nil {
-		err = fmt.Errorf("error while insert group in dao.CreateGroup, err: %s", err.Error())
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+
+	return
+}
+
+func genInsertConditionSQL(groups []GroupWCond) (insertStr string, values []interface{}) {
+	if len(groups) == 0 {
 		return
 	}
 
-	groupID, err := result.LastInsertId()
-	if err != nil {
-		err = fmt.Errorf("error while get group id in dao.CreateGroup, err: %s", err.Error())
-		return
-	}
-
-	// insert condition
-	insertStr = fmt.Sprintf(
-		"INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		tblRGC,
+	fields := []string{
 		RGCGroupID,
 		RGCFileName,
 		RGCDeal,
@@ -513,43 +538,92 @@ func (s *GroupSQLDao) CreateGroup(group *GroupWCond, sqlLike SqlLike) (createdGr
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
-	)
-	values = []interface{}{
-		groupID,
-		group.Condition.FileName,
-		group.Condition.Deal,
-		group.Condition.Series,
-		group.Condition.StaffID,
-		group.Condition.StaffName,
-		group.Condition.Extension,
-		group.Condition.Department,
-		group.Condition.ClientID,
-		group.Condition.ClientName,
-		group.Condition.ClientPhone,
-		group.Condition.CallStart,
-		group.Condition.CallEnd,
-		group.Condition.LeftChannelCode,
-		group.Condition.RightChannelCode,
 	}
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES",
+		tblRGC,
+		strings.Join(fields, ", "),
+	)
+
+	variableStr := fmt.Sprintf(
+		"(?%s)",
+		strings.Repeat(", ?", len(fields)-1),
+	)
+
+	valueStr := ""
+	values = []interface{}{}
+	for _, group := range groups {
+		values = append(
+			values,
+			group.ID,
+			group.Condition.FileName,
+			group.Condition.Deal,
+			group.Condition.Series,
+			group.Condition.StaffID,
+			group.Condition.StaffName,
+			group.Condition.Extension,
+			group.Condition.Department,
+			group.Condition.ClientID,
+			group.Condition.ClientName,
+			group.Condition.ClientPhone,
+			group.Condition.CallStart,
+			group.Condition.CallEnd,
+			group.Condition.LeftChannelCode,
+			group.Condition.RightChannelCode,
+		)
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+	}
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+
+	return
+}
+
+func (s *GroupSQLDao) CreateGroup(group *GroupWCond, sqlLike SqlLike) (createdGroup *GroupWCond, err error) {
+	// insert group
+	insertStr, values := genInsertGroupSQL([]GroupWCond{*group})
+
+	result, err := sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert group in dao.CreateGroup, sql: %s\n", insertStr)
+		logger.Error.Printf("error while insert group in dao.CreateGroup, values: %+v\n", values)
+		err = fmt.Errorf("error while insert group in dao.CreateGroup, err: %s", err.Error())
+		return
+	}
+
+	groupID, err := result.LastInsertId()
+	group.ID = groupID
+	if err != nil {
+		err = fmt.Errorf("error while get group id in dao.CreateGroup, err: %s", err.Error())
+		return
+	}
+
+	// insert condition
+	insertStr, values = genInsertConditionSQL([]GroupWCond{*group})
 
 	_, err = sqlLike.Exec(insertStr, values...)
 	if err != nil {
+		logger.Error.Printf("error while insert condition in dao.CreateGroup, sql: %s\n", insertStr)
+		logger.Error.Printf("error while insert condition in dao.CreateGroup, values: %+v\n", values)
 		err = fmt.Errorf("error while insert condition in dao.CreateGroup, err: %s", err.Error())
 		return
 	}
 
 	// insert into group_rule_map
 	if group.Rules != nil && len(*group.Rules) != 0 {
-		insertStr, values = genInsertRelationSQL(groupID, group.Rules)
+		insertStr, values = genInsertRelationSQL([]GroupWCond{*group})
 
 		_, err = sqlLike.Exec(insertStr, values...)
 		if err != nil {
+			logger.Error.Printf("error while insert relation_group_rule in dao.CreateGroup, sql: %s\n", insertStr)
+			logger.Error.Printf("error while insert relation_group_rule in dao.CreateGroup, values: %+v\n", values)
 			err = fmt.Errorf("error while insert relation_group_rule in dao.CreateGroup, err: %s", err.Error())
 			return
 		}
 	}
 
-	group.ID = groupID
 	createdGroup = group
 	return
 }
@@ -688,4 +762,85 @@ func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int
 		result[call] = ruleGrps
 	}
 	return result, nil
+}
+
+func (s *GroupSQLDao) CreateMany(groups []GroupWCond, sqlLike SqlLike) (err error) {
+	if len(groups) == 0 {
+		return
+	}
+
+	insertStr, values := genInsertGroupSQL(groups)
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert groups in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert groups in dao.CreateMany, values: %s", values)
+		err = fmt.Errorf("error while insert groups in dao.CreateMany, err: %s", err.Error())
+		return
+	}
+
+	groupUUID := make([]string, len(groups))
+	for idx := range groups {
+		groupUUID[idx] = groups[idx].UUID
+	}
+
+	deleted := int8(0)
+	filter := &GroupFilter{
+		UUID:   groupUUID,
+		Delete: &deleted,
+	}
+	newGroups, err := s.GetGroupsBy(filter, sqlLike)
+	if err != nil {
+		return
+	}
+
+	groupMap := map[string]int64{}
+	for _, group := range newGroups {
+		groupMap[group.UUID] = group.ID
+	}
+
+	for idx := range groups {
+		group := &groups[idx]
+		group.ID = groupMap[group.UUID]
+	}
+
+	insertStr, values = genInsertConditionSQL(groups)
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert conditions in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert conditions in dao.CreateMany, values: %s", values)
+		err = fmt.Errorf("error while insert conditions in dao.CreateMany, err: %s", err.Error())
+		return
+	}
+
+	insertStr, values = genInsertRelationSQL(groups)
+	if len(values) > 0 {
+		_, err = sqlLike.Exec(insertStr, values...)
+		if err != nil {
+			logger.Error.Printf("error while insert group rule reliation in dao.CreateMany, sql: %s", insertStr)
+			logger.Error.Printf("error while insert group rule reliation in dao.CreateMany, values: %s", values)
+			err = fmt.Errorf("error while insert group rule reliation in dao.CreateMany, err: %s", err.Error())
+		}
+	}
+	return
+}
+
+func (s *GroupSQLDao) DeleteMany(groupUUID []string, sqlLike SqlLike) (err error) {
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldUUID, stringToWildCard(groupUUID...))
+	conditionStr, values := builder.Parse()
+
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s = 1 WHERE %s",
+		tblRuleGroup,
+		fldIsDelete,
+		conditionStr,
+	)
+
+	_, err = sqlLike.Exec(deleteStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while delete groups in dao.DeleteMany, sql: %s\n", deleteStr)
+		logger.Error.Printf("error while delete groups in dao.DeleteMany, values: %+v\n", values)
+		err = fmt.Errorf("error while delete groups in dao.DeleteMany, err: %s", err.Error())
+	}
+	return
 }
