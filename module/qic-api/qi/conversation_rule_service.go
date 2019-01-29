@@ -246,6 +246,10 @@ func DeleteConversationRule(id string) (err error) {
 
 func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.ConversationRule, sqlLike model.SqlLike) error {
 	var err error
+	if len(groups) == 0 {
+		return err
+	}
+
 	// create rule map
 	ruleMap := map[string]int64{}
 	for _, rule := range rules {

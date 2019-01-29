@@ -173,7 +173,59 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 }
 
 func DeleteConversationFlow(id string) (err error) {
-	return conversationFlowDao.Delete(id, sqlConn)
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	filter := &model.ConversationFlowFilter{
+		UUID: []string{id},
+	}
+	flows, err := conversationFlowDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(flows) == 0 {
+		return
+	}
+
+	flow := flows[0]
+
+	rules, err := conversationRuleDao.GetByFlowID([]int64{flow.ID}, tx)
+	if err != nil {
+		return
+	}
+
+	err = conversationFlowDao.Delete(id, tx)
+	if err != nil {
+		return
+	}
+
+	if len(rules) > 0 {
+		// remove flow from related rules
+		for i := range rules {
+			rule := rules[i]
+			for j, flow := range rule.Flows {
+				var newFlows []model.SimpleConversationFlow
+				if flow.UUID == id {
+					if j == len(rule.Flows)-1 {
+						newFlows = rule.Flows[:j]
+					} else {
+						newFlows = append(rule.Flows[:j], rule.Flows[j+1:]...)
+					}
+					rule.Flows = newFlows
+				}
+			}
+		}
+
+		err = propagateUpdateFromRule(rules, flows, tx)
+		if err != nil {
+			return
+		}
+	}
+	return dbLike.Commit(tx)
 }
 
 func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.ConversationFlow, sqlLike model.SqlLike) (err error) {
@@ -225,6 +277,7 @@ func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.Conve
 		UUID:      ruleUUID,
 		IsDeleted: int8(0),
 	}
+
 	rules, err = conversationRuleDao.GetBy(ruleFilter, sqlLike)
 	if err != nil {
 		return
