@@ -235,9 +235,6 @@ func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.Conversat
 		ruleMap[rule.UUID] = rule.ID
 	}
 
-	logger.Info.Printf("groups: %+v\n", groups)
-	logger.Info.Printf("rules: %+v\n", rules)
-
 	groupUUID := []string{}
 	for i := range groups {
 		group := &groups[i]
