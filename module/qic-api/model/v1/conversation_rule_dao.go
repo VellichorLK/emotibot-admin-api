@@ -474,7 +474,6 @@ func (dao *ConversationRuleSqlDaoImpl) GetByFlowID(flowID []int64, sqlLike SqlLi
 	filter := &ConversationRuleFilter{
 		ID: ruleID,
 	}
-	logger.Info.Printf("filter: %+v\n", filter)
 	rules, err = dao.GetBy(filter, sqlLike)
 	return
 }
