@@ -210,28 +210,28 @@ func (m *mockSentenceSQLDaoCredit) Commit(tx *sql.Tx) error {
 	return nil
 }
 
-func (m *mockSentenceSQLDaoCredit) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+func (m *mockSentenceSQLDaoCredit) MoveCategories(x model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
 	return 0, nil
 }
 
-func (m *mockSentenceSQLDaoCredit) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+func (m *mockSentenceSQLDaoCredit) InsertSenTagRelation(tx model.SqlLike, s *model.Sentence) error {
 	return nil
 }
 
-func (m *mockSentenceSQLDaoCredit) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+func (m *mockSentenceSQLDaoCredit) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
 	return nil, nil
 }
 
-func (m *mockSentenceSQLDaoCredit) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
+func (m *mockSentenceSQLDaoCredit) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	return nil, nil
 }
-func (m *mockSentenceSQLDaoCredit) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
+func (m *mockSentenceSQLDaoCredit) InsertSentence(tx model.SqlLike, s *model.Sentence) (int64, error) {
 	return 0, nil
 }
-func (m *mockSentenceSQLDaoCredit) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
+func (m *mockSentenceSQLDaoCredit) SoftDeleteSentence(tx model.SqlLike, q *model.SentenceQuery) (int64, error) {
 	return 0, nil
 }
-func (m *mockSentenceSQLDaoCredit) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
+func (m *mockSentenceSQLDaoCredit) CountSentences(tx model.SqlLike, q *model.SentenceQuery) (uint64, error) {
 	return 0, nil
 }
 

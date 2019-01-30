@@ -58,7 +58,7 @@ func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 	s.Valid = unactivate
 	s.Revise = unactivate
 
-	tx, err := dbLike.Conn().Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		logger.Error.Printf("get transaction failed. %s\n", err)
 		return err

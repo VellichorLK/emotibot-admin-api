@@ -139,7 +139,7 @@ func init() {
 				taskDao = model.NewTaskDao(sqlConn)
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
-				segmentDao = model.NewSegmentDao(dbLike)
+				segmentDao = model.NewSegmentDao(dbLike.Conn())
 
 			},
 			"init RabbitMQ": func() {

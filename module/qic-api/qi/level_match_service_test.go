@@ -928,22 +928,6 @@ func (m *mockPredictClient2) UnloadModel(d *logicaccess.TrainAPPID) error {
 	return nil
 }
 
-type mockdbLike struct {
-}
-
-func (m *mockdbLike) Begin() (*sql.Tx, error) {
-	return nil, nil
-}
-func (m *mockdbLike) ClearTransition(tx *sql.Tx) {
-
-}
-func (m *mockdbLike) Commit(tx *sql.Tx) error {
-	return nil
-}
-func (m *mockdbLike) Conn() *sql.DB {
-	return nil
-}
-
 type mockSentenceGroupsDao struct {
 }
 
@@ -1112,7 +1096,7 @@ func TestRuleGroupCriteria(t *testing.T) {
 	predictor = &mockPredictClient2{}
 
 	modelDao = &mockTrainedModelDao{}
-	dbLike = &mockdbLike{}
+	dbLike = &mockDBLike{}
 
 	sentenceGroupDao = &mockSentenceGroupsDao{}
 	conversationFlowDao = &mockCfDao{}
