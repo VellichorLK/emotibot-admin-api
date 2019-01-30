@@ -87,49 +87,49 @@ func (m *mockSentencesDao) Commit(*sql.Tx) error {
 	return nil
 }
 
-func (m *mockSentencesDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
+func (m *mockSentencesDao) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	return mockSentences, nil
 }
 
-func (m *mockSentencesDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
+func (m *mockSentencesDao) InsertSentence(tx model.SqlLike, s *model.Sentence) (int64, error) {
 	return 0, nil
 
 }
 
-func (m *mockSentencesDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+func (m *mockSentencesDao) MoveCategories(tx model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
 	return 0, nil
 }
 
-func (m *mockSentencesDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
+func (m *mockSentencesDao) SoftDeleteSentence(tx model.SqlLike, q *model.SentenceQuery) (int64, error) {
 	return 0, nil
 }
 
-func (m *mockSentencesDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
+func (m *mockSentencesDao) CountSentences(tx model.SqlLike, q *model.SentenceQuery) (uint64, error) {
 	return 0, nil
 }
 
-func (m *mockSentencesDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+func (m *mockSentencesDao) InsertSenTagRelation(tx model.SqlLike, s *model.Sentence) error {
 	return nil
 }
 
-func (m *mockSentencesDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+func (m *mockSentencesDao) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
 	return nil, nil
 }
 
 type mockDBLike struct{}
 
-func (m *mockDBLike) Begin() (*sql.Tx, error) {
+func (m *mockDBLike) Begin() (model.SQLTx, error) {
 	return nil, nil
 }
-func (m *mockDBLike) ClearTransition(tx *sql.Tx) {
+func (m *mockDBLike) ClearTransition(tx model.SQLTx) {
 	return
 }
 
-func (m *mockDBLike) Commit(tx *sql.Tx) (err error) {
+func (m *mockDBLike) Commit(tx model.SQLTx) (err error) {
 	return
 }
 
-func (m *mockDBLike) Conn() *sql.DB {
+func (m *mockDBLike) Conn() model.SqlLike {
 	return nil
 }
 

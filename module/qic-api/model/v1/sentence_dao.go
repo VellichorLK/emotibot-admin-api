@@ -16,13 +16,13 @@ import (
 type SentenceDao interface {
 	Begin() (*sql.Tx, error)
 	Commit(*sql.Tx) error
-	GetSentences(tx *sql.Tx, q *SentenceQuery) ([]*Sentence, error)
-	InsertSentence(tx *sql.Tx, s *Sentence) (int64, error)
-	SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error)
-	CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, error)
-	InsertSenTagRelation(tx *sql.Tx, s *Sentence) error
-	GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error)
-	MoveCategories(x *sql.Tx, q *SentenceQuery, category uint64) (int64, error)
+	GetSentences(tx SqlLike, q *SentenceQuery) ([]*Sentence, error)
+	InsertSentence(tx SqlLike, s *Sentence) (int64, error)
+	SoftDeleteSentence(tx SqlLike, q *SentenceQuery) (int64, error)
+	CountSentences(tx SqlLike, q *SentenceQuery) (uint64, error)
+	InsertSenTagRelation(tx SqlLike, s *Sentence) error
+	GetRelSentenceIDByTagIDs(tx SqlLike, tagIDs []uint64) (map[uint64][]uint64, error)
+	MoveCategories(x SqlLike, q *SentenceQuery, category uint64) (int64, error)
 }
 
 //error message
@@ -88,7 +88,7 @@ func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	}
 }
 
-func genrateExecutor(conn *sql.DB, tx *sql.Tx) (executor, error) {
+func genrateExecutor(conn *sql.DB, tx SqlLike) (executor, error) {
 	var q executor
 	if tx != nil {
 		q = tx
@@ -171,7 +171,7 @@ func (d *SentenceSQLDao) Commit(tx *sql.Tx) error {
 }
 
 //GetSentences gets the sentences based on query condition
-func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentence, error) {
+func (d *SentenceSQLDao) GetSentences(tx SqlLike, sq *SentenceQuery) ([]*Sentence, error) {
 	q, err := genrateExecutor(d.conn, tx)
 	if err != nil {
 		return nil, err
@@ -223,7 +223,7 @@ func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentenc
 
 //InsertSentence inserts a new sentence and the relation between sentence and tag
 //if you insert both, must use transaction
-func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) {
+func (d *SentenceSQLDao) InsertSentence(tx SqlLike, s *Sentence) (int64, error) {
 	if s == nil {
 		return 0, nil
 	}
@@ -259,7 +259,7 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 }
 
 //InsertSenTagRelation inserts the Relation_Sentence_Tag
-func (d *SentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *Sentence) error {
+func (d *SentenceSQLDao) InsertSenTagRelation(tx SqlLike, s *Sentence) error {
 	if s == nil || len(s.TagIDs) == 0 || s.ID == 0 {
 		return ErrNeedRelation
 	}
@@ -287,7 +287,7 @@ func (d *SentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *Sentence) error {
 }
 
 //SoftDeleteSentence sets the field is_delete to 1
-func (d *SentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64, error) {
+func (d *SentenceSQLDao) SoftDeleteSentence(tx SqlLike, q *SentenceQuery) (int64, error) {
 	if q == nil || q.Enterprise == nil || len(q.UUID) == 0 {
 		return 0, ErrNeedCondition
 	}
@@ -308,7 +308,7 @@ func (d *SentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *SentenceQuery) (int64
 }
 
 //CountSentences counts number of records
-func (d *SentenceSQLDao) CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, error) {
+func (d *SentenceSQLDao) CountSentences(tx SqlLike, q *SentenceQuery) (uint64, error) {
 	exe, err := genrateExecutor(d.conn, tx)
 	if err != nil {
 		return 0, err
@@ -325,7 +325,7 @@ func (d *SentenceSQLDao) CountSentences(tx *sql.Tx, q *SentenceQuery) (uint64, e
 }
 
 //GetRelSentenceIDByTagIDs gets the sentence id which is related to tag id
-func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
 	exe, err := genrateExecutor(d.conn, tx)
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func (d *SentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (
 }
 
 //MoveCategories updates the category_id for given sentences
-func (d *SentenceSQLDao) MoveCategories(tx *sql.Tx, q *SentenceQuery, category uint64) (int64, error) {
+func (d *SentenceSQLDao) MoveCategories(tx SqlLike, q *SentenceQuery, category uint64) (int64, error) {
 	exe, err := genrateExecutor(d.conn, tx)
 	if err != nil {
 		return 0, err
