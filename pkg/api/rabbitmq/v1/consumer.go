@@ -39,7 +39,8 @@ func (c *Consumer) Subscribe(task Task) {
 
 			if err != nil {
 				logger.Warn.Println("failed to register a consumer, ", err)
-				time.Sleep(time.Duration(100) * time.Millisecond)
+				time.Sleep(time.Duration(3) * time.Second)
+				c.client.reconnect()
 				continue
 			}
 			for d := range msgs {

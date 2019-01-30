@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"github.com/tealeg/xlsx"
 )
@@ -172,8 +172,8 @@ func parseMsgAction(sheet *xlsx.Sheet) ([]*ActionGroup, error) {
 
 func parseNerMap(sheet *xlsx.Sheet) (map[string]*CustomNer, error) {
 	nerMap := map[string]*CustomNer{}
-	wordBankRow := new(Dictionary.WordBankRow)
-	lastWordBankRow := new(Dictionary.WordBankRow)
+	wordBankRow := new(dictionary.WordBankRow)
+	lastWordBankRow := new(dictionary.WordBankRow)
 	pathToEntitySynonymsList := make(map[string][]*EntitySynonyms)
 	if sheet.MaxRow <= 1 {
 		// skip nerMap parsing

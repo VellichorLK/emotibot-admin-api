@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -717,7 +717,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 	}
 	logger.Trace.Printf("appID: %+v", appID)
 
-	wordbanks, errno, err := Dictionary.GetWordbanksV3(appID)
+	wordbanks, errno, err := dictionary.GetWordbanksV3(appID)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 		return
@@ -736,7 +736,7 @@ func handleGetMapTableListV2(w http.ResponseWriter, r *http.Request) {
 
 // handleGetMapTableAllV2 load mapping table list for all appid from wordbank
 func handleGetMapTableAllV2(w http.ResponseWriter, r *http.Request) {
-	rootMap, errno, err := Dictionary.GetWordbanksAllV3()
+	rootMap, errno, err := dictionary.GetWordbanksAllV3()
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 		return

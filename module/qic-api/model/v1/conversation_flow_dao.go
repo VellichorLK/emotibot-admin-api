@@ -29,7 +29,7 @@ type ConversationFlowFilter struct {
 	ID         []uint64
 	Name       string
 	Enterprise string
-	IsDelete   int8
+	IsDelete   *int8
 	SGUUID     []string
 }
 
@@ -39,6 +39,9 @@ type ConversationFlowDao interface {
 	GetBy(filter *ConversationFlowFilter, sqlLike SqlLike) ([]ConversationFlow, error)
 	Update(id string, flow *ConversationFlow, sqlLike SqlLike) (*ConversationFlow, error)
 	Delete(id string, sqlLike SqlLike) error
+	GetBySentenceGroupID([]int64, SqlLike) ([]ConversationFlow, error)
+	CreateMany([]ConversationFlow, SqlLike) error
+	DeleteMany([]string, SqlLike) error
 }
 
 type ConversationFlowSqlDaoImpl struct{}
@@ -145,9 +148,9 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		values = append(values, filter.Name)
 	}
 
-	if filter.IsDelete != -1 {
+	if filter.IsDelete != nil {
 		conditions = append(conditions, fmt.Sprintf("%s=?", fldIsDelete))
-		values = append(values, filter.IsDelete)
+		values = append(values, *filter.IsDelete)
 	}
 
 	if len(conditions) > 0 {
@@ -281,5 +284,58 @@ func (dao *ConversationFlowSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err e
 		err = fmt.Errorf("error while delete conversation flow in dao.Delete, reason: %s", err.Error())
 		return
 	}
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) GetBySentenceGroupID(sgid []int64, sqlLike SqlLike) (flows []ConversationFlow, err error) {
+	flows := []ConversationFlow{}
+	if len(sgid) == 0 {
+		return
+	}
+
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(RCFSGSGID, int64ToWildCard(sgid))
+
+	conditionStr, values := builder.Parse()
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s",
+		RCFSGCFID,
+		tblRelCFSG,
+		conditionStr,
+	)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while get flow id in dao.GetBySentenceGroupID, sql: %s", queryStr)
+		logger.Error.Printf("error while get flow id in dao.GetBySentenceGroupID, values: %+v", values)
+		err = fmt.Errorf("error while get flow id in dao.GetBySentenceGroupID, err: %s", err.Error())
+		return
+	}
+
+	cfid := []uint64{}
+	for rows.Next() {
+		var id uint64
+		rows.Scan(&id)
+		cfid = append(cfid, id)
+	}
+
+	if len(cfid) == 0 {
+		return
+	}
+
+	filter := &ConversationFlowFilter{
+		ID: cfid,
+	}
+
+	flows, err = dao.GetBy(filter, sqlLike)
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) CreateMany(flows []ConversationFlow, sqlLike SqlLike) (err error) {
+
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) DeleteMany(uuids []string, sqlLike SqlLike) (err error) {
 	return
 }

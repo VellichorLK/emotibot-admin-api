@@ -1,4 +1,4 @@
-package Dictionary
+package dictionary
 
 import (
 	"bytes"
@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -1115,18 +1116,20 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 	var wbName string
 	var parentName string
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	defer func() {
 		ret := 0
 		auditBuf := bytes.Buffer{}
 		auditBuf.WriteString(fmt.Sprintf("%s%s", util.Msg["Move"], util.Msg["Wordbank"]))
 
 		if wbName != "" {
-			auditBuf.WriteString(" ")
+			auditBuf.WriteRune(' ')
 			auditBuf.WriteString(wbName)
 		}
 		if parentName != "" {
+			auditBuf.WriteRune(' ')
 			auditBuf.WriteString(util.Msg["To"])
-			auditBuf.WriteString(" ")
+			auditBuf.WriteRune(' ')
 			auditBuf.WriteString(parentName)
 		}
 		if err == nil {
@@ -1172,7 +1175,7 @@ func handleMoveWordbankV3(w http.ResponseWriter, r *http.Request) {
 		}
 		parentName = parentClass.Name
 	} else {
-		parentName = "/"
+		parentName = localemsg.Get(locale, "DictionaryNoClass")
 	}
 
 	origWordbank, _, err := GetWordbankV3(appid, id)

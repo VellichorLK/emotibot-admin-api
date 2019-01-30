@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -21,20 +20,12 @@ func ASRWorkFlow(output []byte) error {
 	if resp.Status != 0 {
 		return fmt.Errorf("asr status is non-success %d", resp.Status)
 	}
-	callID, err := strconv.ParseInt(resp.CallID, 10, 64)
-	if err != nil {
-		return fmt.Errorf("asr result's call_id '%s' is not a valid int.", resp.CallID)
+	c, err := Call(resp.CallID, "")
+	if err == ErrNotFound {
+		return err
+	} else if err != nil {
+		return fmt.Errorf("fetching call failed, %v", err)
 	}
-	calls, err := callDao.Calls(nil, model.CallQuery{
-		ID: []int64{callID},
-	})
-	if err != nil {
-		return fmt.Errorf("fetch call failed, %v", err)
-	}
-	if len(calls) == 0 {
-		return fmt.Errorf("call '%d' can not be found", callID)
-	}
-	c := calls[0]
 	c.DurationMillSecond = int(resp.Length * 1000)
 	err = UpdateCall(&c)
 	if err != nil {
@@ -56,49 +47,8 @@ func ASRWorkFlow(output []byte) error {
 			}
 		}
 	}()
-	var channelRoles = map[int8]int{
-		1: int(c.LeftChanRole),
-		2: int(c.RightChanRole),
-	}
-	var segments = []model.RealSegment{}
-	//TODO: check sret & emotion = -1
-	timestamp := time.Now().Unix()
-	for _, sen := range resp.LeftChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     callID,
-			CreateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    1,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					Typ:   model.ETypAngry,
-					Score: sen.Emotion,
-				},
-			},
-		}
-		segments = append(segments, s)
-	}
 
-	for _, sen := range resp.RightChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     callID,
-			CreateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    2,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					Typ:   model.ETypAngry,
-					Score: sen.Emotion,
-				},
-			},
-		}
-		segments = append(segments, s)
-	}
-
+	segments := resp.Segments()
 	segments, err = segmentDao.NewSegments(tx, segments)
 	if err != nil {
 		return fmt.Errorf("new segment failed, %v", err)
@@ -107,7 +57,12 @@ func ASRWorkFlow(output []byte) error {
 	sort.SliceStable(segments, func(i, j int) bool {
 		return segments[i].StartTime < segments[j].StartTime
 	})
-	segWithSp := make([]*SegmentWithSpeaker, 0, len(segments))
+
+	var channelRoles = map[int8]int{
+		1: int(c.LeftChanRole),
+		2: int(c.RightChanRole),
+	}
+	segWithSp := make([]*SegmentWithSpeaker, len(segments))
 	for _, s := range segments {
 		ws := &SegmentWithSpeaker{
 			RealSegment: s,
@@ -161,6 +116,50 @@ func ASRWorkFlow(output []byte) error {
 	return nil
 }
 
+// Segments transfer ASRResponse's sentence to []model.RealSegment
+func (resp *ASRResponse) Segments() []model.RealSegment {
+
+	var segments = []model.RealSegment{}
+	//TODO: check sret & emotion = -1
+	timestamp := time.Now().Unix()
+	for _, sen := range resp.LeftChannel.Sentences {
+		s := model.RealSegment{
+			CallID:     resp.CallID,
+			CreateTime: timestamp,
+			StartTime:  sen.Start,
+			EndTime:    sen.End,
+			Channel:    1,
+			Text:       sen.ASR,
+			Emotions: []model.RealSegmentEmotion{
+				model.RealSegmentEmotion{
+					Typ:   model.ETypAngry,
+					Score: sen.Emotion,
+				},
+			},
+		}
+		segments = append(segments, s)
+	}
+
+	for _, sen := range resp.RightChannel.Sentences {
+		s := model.RealSegment{
+			CallID:     resp.CallID,
+			CreateTime: timestamp,
+			StartTime:  sen.Start,
+			EndTime:    sen.End,
+			Channel:    2,
+			Text:       sen.ASR,
+			Emotions: []model.RealSegmentEmotion{
+				model.RealSegmentEmotion{
+					Typ:   model.ETypAngry,
+					Score: sen.Emotion,
+				},
+			},
+		}
+		segments = append(segments, s)
+	}
+	return nil
+}
+
 type SegmentWithSpeaker struct {
 	model.RealSegment
 	Speaker int
@@ -170,7 +169,7 @@ type SegmentWithSpeaker struct {
 type ASRResponse struct {
 	Version      float64  `json:"version"`
 	Status       int64    `json:"ret"`
-	CallID       string   `json:"call_id"`
+	CallID       int64    `json:"call_id,string"`
 	Length       float64  `json:"length"`
 	LeftChannel  vChannel `json:"left_channel"`
 	RightChannel vChannel `json:"right_channel"`

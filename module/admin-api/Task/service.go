@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -199,7 +199,7 @@ func GetMapTableList(appid, userID string) ([]string, int, error) {
 }
 
 // GetMapTableAllV2 parse and generate mapping table map from a WordBankClassV3 tree
-func GetMapTableAllV2(rootMap map[string]*Dictionary.WordBankClassV3) map[string]map[string][]*MapTuple {
+func GetMapTableAllV2(rootMap map[string]*dictionary.WordBankClassV3) map[string]map[string][]*MapTuple {
 	// appidToMapTupleMap map appid to a MapTupleMap which map mapTableName to a list of MapTuple
 	appidToMapTupleMap := map[string]map[string][]*MapTuple{}
 	for appid, root := range rootMap {
@@ -220,7 +220,7 @@ func GetMapTableAllV2(rootMap map[string]*Dictionary.WordBankClassV3) map[string
 	return appidToMapTupleMap
 }
 
-func wordbankV3ToMapTupleList(wb *Dictionary.WordBankV3) []*MapTuple {
+func wordbankV3ToMapTupleList(wb *dictionary.WordBankV3) []*MapTuple {
 	mapTupleList := []*MapTuple{}
 	for _, word := range wb.SimilarWords {
 		mapTuple := MapTuple{Key: word, Value: wb.Name}
@@ -230,7 +230,7 @@ func wordbankV3ToMapTupleList(wb *Dictionary.WordBankV3) []*MapTuple {
 }
 
 // GetMapTableListV2 parse and generate mapping table name list from a WordBankClassV3 tree
-func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
+func GetMapTableListV2(root *dictionary.WordBankClassV3) []string {
 	// mtMap map mapTableName to a list of WordBankV3
 	mtMap := parseWordBankClassV3Tree(root)
 
@@ -244,13 +244,13 @@ func GetMapTableListV2(root *Dictionary.WordBankClassV3) []string {
 	return mtList
 }
 
-func parseWordBankClassV3Tree(root *Dictionary.WordBankClassV3) (retMtMap map[string][]*Dictionary.WordBankV3) {
+func parseWordBankClassV3Tree(root *dictionary.WordBankClassV3) (retMtMap map[string][]*dictionary.WordBankV3) {
 	teRoot := root.GetChildByName(util.Msg["TaskEngineWordbank"])
 	if teRoot == nil {
 		return
 	}
 	// mtMap map mapTableName to a list of WordBankV3
-	mtMap := map[string][]*Dictionary.WordBankV3{}
+	mtMap := map[string][]*dictionary.WordBankV3{}
 	for _, child := range teRoot.Children {
 		tmpPath := make([]string, 0)
 		dfsMapTableScan(child, tmpPath, mtMap)
@@ -258,7 +258,7 @@ func parseWordBankClassV3Tree(root *Dictionary.WordBankClassV3) (retMtMap map[st
 	return mtMap
 }
 
-func dfsMapTableScan(wbc *Dictionary.WordBankClassV3, path []string, mtMap map[string][]*Dictionary.WordBankV3) {
+func dfsMapTableScan(wbc *dictionary.WordBankClassV3, path []string, mtMap map[string][]*dictionary.WordBankV3) {
 	newPath := make([]string, len(path))
 	copy(newPath, path)
 	newPath = append(newPath, wbc.Name)

@@ -3,10 +3,10 @@ package Robot
 import (
 	"net/http"
 
-	"emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+	config "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -130,7 +130,7 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 	// after init data, update consul to notify controller to init data
 	go util.ConsulUpdateRobotChat(appid)
 	go util.ConsulUpdateFunctionStatus(appid)
-	go Dictionary.TriggerUpdateWordbankV3(appid)
+	go dictionary.TriggerUpdateWordbankV3(appid)
 
 	// call multicustomer to handle robot QA
 	go util.McRebuildRobotQA(appid)

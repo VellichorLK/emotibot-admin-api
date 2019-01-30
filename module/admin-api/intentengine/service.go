@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/tealeg/xlsx"
@@ -442,7 +442,7 @@ func GetTrainingData(appID string, flag string, version ...int) (resp interface{
 		ver = version[0]
 	}
 
-	wordbanks, _, err := Dictionary.GetWordbanksV3(appID)
+	wordbanks, _, err := dictionary.GetWordbanksV3(appID)
 	if err != nil {
 		retCode = ApiError.DB_ERROR
 		return
@@ -472,7 +472,7 @@ func GetTrainingData(appID string, flag string, version ...int) (resp interface{
 }
 
 func getIntentEngineTrainingData(appID string, version int,
-	wordbanks *Dictionary.WordBankClassV3) (IntentEngineGetDataResponse, error) {
+	wordbanks *dictionary.WordBankClassV3) (IntentEngineGetDataResponse, error) {
 	ret := NewIntentEngineGetDataResponse()
 	ret.AppID = appID
 
@@ -516,7 +516,7 @@ func getIntentEngineTrainingData(appID string, version int,
 }
 
 func getRuleEngineTrainingData(appID string, version int,
-	wordbanks *Dictionary.WordBankClassV3) (RuleEngineGetDataResponse, error) {
+	wordbanks *dictionary.WordBankClassV3) (RuleEngineGetDataResponse, error) {
 	ret := NewRuleEngineGetDataResponse()
 	ret.AppID = appID
 
@@ -542,7 +542,7 @@ func getRuleEngineTrainingData(appID string, version int,
 }
 
 func getDictResp(flag string, dicts *[]interface{},
-	wordBankClass *Dictionary.WordBankClassV3,
+	wordBankClass *dictionary.WordBankClassV3,
 	classNames []string) error {
 	switch flag {
 	case "intent_engine":

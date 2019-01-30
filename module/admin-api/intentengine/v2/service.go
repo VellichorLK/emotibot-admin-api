@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/Dictionary"
 	"emotibot.com/emotigo/module/admin-api/autofill"
 	autofillData "emotibot.com/emotigo/module/admin-api/autofill/data"
+	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
@@ -244,7 +244,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 }
 
 func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
-	wordbanks, errno, err := Dictionary.GetWordbanksV3(appid)
+	wordbanks, errno, err := dictionary.GetWordbanksV3(appid)
 	if err != nil {
 		return nil, AdminErrors.New(errno, err.Error())
 	}
@@ -279,7 +279,7 @@ func GetTrainData(appid string) (*TrainDataResponse, AdminErrors.AdminError) {
 	return ret, nil
 }
 
-func getIntentDictResp(wordBankClass *Dictionary.WordBankClassV3,
+func getIntentDictResp(wordBankClass *dictionary.WordBankClassV3,
 	classNames []string) (dicts []*TrainDict, err error) {
 	if !wordBankClass.IntentEngine {
 		return nil, nil
@@ -348,6 +348,9 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 			format = typeBF2
 			break
 		}
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2NewSheetName") {
+			format = typeBF2New
+		}
 	}
 
 	if format == typeBFOP {
@@ -356,6 +359,9 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 	} else if format == typeBF2 {
 		logger.Trace.Println("Parse file with BF2 type")
 		return parseBF2Sheets(sheets, locale)
+	} else if format == typeBF2New {
+		logger.Trace.Println("Parse file with BF2 type ver2")
+		return parseBF2NewSheets(sheets, locale)
 	}
 	// this line must not happen
 	return nil, errors.New("Invalid type")
@@ -415,6 +421,22 @@ func parseBFOPSheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, 
 
 		intents = append(intents, &intent)
 	}
+	return
+}
+
+func getBF2NewColumnIdx(row *xlsx.Row, locale string) (nameIdx, positiveIdx, negativeIdx int) {
+	nameIdx, positiveIdx, negativeIdx = -1, -1, -1
+	for idx := range row.Cells {
+		cellStr := row.Cells[idx].String()
+		if cellStr == localemsg.Get(locale, "IntentName") {
+			nameIdx = idx
+		} else if cellStr == localemsg.Get(locale, "BF2NewPositive") {
+			positiveIdx = idx
+		} else if cellStr == localemsg.Get(locale, "BF2NewNegative") {
+			negativeIdx = idx
+		}
+	}
+	logger.Trace.Printf("Upload column idx: %d %d %d\n", nameIdx, positiveIdx, negativeIdx)
 	return
 }
 
@@ -486,6 +508,77 @@ func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, e
 				intentMap[name].Positive = &newList
 			} else {
 				newList := append(*intentMap[name].Negative, &SentenceV2{Content: sentence})
+				intentMap[name].NegativeCount++
+				intentMap[name].Negative = &newList
+			}
+		}
+	}
+
+	intents = []*IntentV2{}
+	for name := range intentMap {
+		intents = append(intents, intentMap[name])
+	}
+	return
+}
+
+func parseBF2NewSheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, err error) {
+	intentMap := map[string]*IntentV2{}
+	for idx := range sheets {
+		if sheets[idx].Name != localemsg.Get(locale, "IntentBF2NewSheetName") {
+			continue
+		}
+
+		rows := sheets[idx].Rows
+		if len(rows) == 0 {
+			return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadNoHeaderTpl"), sheets[idx].Name)
+		}
+
+		nameIdx, posIdx, negIdx := getBF2NewColumnIdx(rows[0], locale)
+		if nameIdx < 0 || nameIdx > 2 || posIdx < 0 || posIdx > 2 || negIdx < 0 || negIdx > 2 {
+			return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadHeaderErrTpl"), sheets[idx].Name)
+		}
+
+		rows = rows[1:]
+		for rowIdx := range rows {
+			cells := rows[rowIdx].Cells
+
+			name, posSentence, negSentence := "", "", ""
+			if nameIdx < len(cells) {
+				name = strings.TrimSpace(cells[nameIdx].String())
+			}
+
+			if posIdx < len(cells) {
+				posSentence = strings.TrimSpace(cells[posIdx].String())
+			}
+
+			if negIdx < len(cells) {
+				negSentence = strings.TrimSpace(cells[negIdx].String())
+			}
+			if name == "" && posSentence == "" && negSentence == "" {
+				continue
+			}
+			if name == "" {
+				return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadBF2RowNoNameTpl"),
+					sheets[idx].Name, rowIdx+1)
+			}
+			if posSentence == "" && negSentence == "" {
+				return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadBF2RowNoSentenceTpl"),
+					sheets[idx].Name, rowIdx+1)
+			}
+
+			if _, ok := intentMap[name]; !ok {
+				intentMap[name] = &IntentV2{Name: name}
+				intentMap[name].Positive = &([]*SentenceV2{})
+				intentMap[name].Negative = &([]*SentenceV2{})
+			}
+
+			if posSentence != "" {
+				newList := append(*intentMap[name].Positive, &SentenceV2{Content: posSentence})
+				intentMap[name].PositiveCount++
+				intentMap[name].Positive = &newList
+			}
+			if negSentence != "" {
+				newList := append(*intentMap[name].Negative, &SentenceV2{Content: negSentence})
 				intentMap[name].NegativeCount++
 				intentMap[name].Negative = &newList
 			}
