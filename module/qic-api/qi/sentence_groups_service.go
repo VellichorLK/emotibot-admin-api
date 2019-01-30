@@ -165,17 +165,65 @@ func UpdateSentenceGroup(uuid string, group *model.SentenceGroup) (updatedGroup 
 	return
 }
 
-func DeleteSentenceGroup(uuid string) error {
-	return sentenceGroupDao.Delete(uuid, sqlConn)
+func DeleteSentenceGroup(uuid string) (err error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	deleted := int8(0)
+	filter := &model.SentenceGroupFilter{
+		UUID:     []string{uuid},
+		IsDelete: &deleted,
+	}
+
+	groups, err := sentenceGroupDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(groups) == 0 {
+		return
+	}
+
+	group := groups[0]
+
+	flows, err := conversationFlowDao.GetBySentenceGroupID([]int64{group.ID}, tx)
+	if err != nil {
+		return
+	}
+
+	err = sentenceGroupDao.Delete(uuid, sqlConn)
+	if err != nil {
+		return
+	}
+
+	// remove sentence group from these flows
+	for i := range flows {
+		flow := &flows[i]
+		for j, sg := range flow.SentenceGroups {
+			if sg.ID == group.ID {
+				if j == len(flow.SentenceGroups)-1 {
+					flow.SentenceGroups = flow.SentenceGroups[:j]
+				} else {
+					flow.SentenceGroups = append(flow.SentenceGroups[:j], flow.SentenceGroups[j+1:]...)
+				}
+			}
+		}
+	}
+
+	err = propagateUpdateFromFlow(flows, groups, tx)
+	if err != nil {
+		return
+	}
+	return dbLike.Commit(tx)
 }
 
 func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.SentenceGroup, sqlLike model.SqlLike) (err error) {
 	if len(flows) == 0 || len(sgs) == 0 {
 		return
 	}
-
-	logger.Info.Printf("flows: %+v\n", flows)
-	logger.Info.Printf("sgs: %+v\n", sgs)
 
 	// update sg id in flows
 	sgMap := map[string]int64{}
