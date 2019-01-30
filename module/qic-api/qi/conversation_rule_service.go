@@ -29,7 +29,7 @@ func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) 
 	filter := &model.ConversationFlowFilter{
 		Enterprise: rule.Enterprise,
 		UUID:       uuids,
-		IsDelete:   isDelete,
+		IsDelete:   &isDelete,
 	}
 
 	flows, err := conversationFlowDao.GetBy(filter, sql)

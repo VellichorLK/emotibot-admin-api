@@ -763,7 +763,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	//--------------------------------------------------------------------------
 
 	//get the conversation flow inforamtion
-	cfFilter := &model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}
+	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
 	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
 	if err != nil {
 		logger.Error.Printf("get conversation flow failed.%s\n", err)

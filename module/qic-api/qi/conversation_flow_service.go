@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/pkg/logger"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -115,12 +115,13 @@ func UpdateConversationFlow(id, enterprise string, flow *model.ConversationFlow)
 	}
 	defer dbLike.ClearTransition(tx)
 
+	deleted := int8(0)
 	filter := &model.ConversationFlowFilter{
 		UUID: []string{
 			id,
 		},
 		Enterprise: enterprise,
-		IsDelete:   0,
+		IsDelete:   &deleted,
 	}
 
 	flows, err := conversationFlowDao.GetBy(filter, tx)

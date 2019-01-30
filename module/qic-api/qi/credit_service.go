@@ -355,7 +355,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	}
 	//get the conversation flow setting
 	if len(cfIDs) > 0 {
-		cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}, sqlConn)
+		cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs}, sqlConn)
 		if err != nil {
 			logger.Error.Printf("get conversation flow %+v failed. %s\n", cfIDs, err)
 			return nil, err
