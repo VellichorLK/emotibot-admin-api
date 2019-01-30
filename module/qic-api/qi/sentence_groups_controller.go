@@ -114,9 +114,11 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 
 func handleGetSentenceGroups(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
+	deleted := int8(0)
 	filter := &model.SentenceGroupFilter{
 		Limit:      0,
 		Enterprise: enterprise,
+		IsDelete:   &deleted,
 	}
 
 	total, groups, err := GetSentenceGroupsBy(filter)
