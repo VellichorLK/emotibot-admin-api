@@ -17,6 +17,7 @@ type ConversationFlow struct {
 	CreateTime     int64
 	UpdateTime     int64
 	Min            int
+	Deleted        int8
 }
 
 type SimpleConversationFlow struct {
@@ -208,7 +209,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgID, sg.%s as sgUUID, sg.%s as sgName
+		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgID, sg.%s as sgUUID, sg.%s as sgName
 		 FROM (SELECT * FROM %s %s) as cf
 		 LEFT JOIN %s as rcfsg ON cf.%s = rcfsg.%s
 		 %s as sg ON rcfsg.%s = sg.%s`,
@@ -220,6 +221,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
+		fldIsDelete,
 		fldID,
 		fldUUID,
 		fldName,
@@ -279,6 +281,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			&flow.Expression,
 			&flow.CreateTime,
 			&flow.UpdateTime,
+			&flow.Deleted,
 			&sgID,
 			&sgUUID,
 			&sgName,
@@ -416,6 +419,9 @@ func (dao *ConversationFlowSqlDaoImpl) CreateMany(flows []ConversationFlow, sqlL
 
 	// create flow sentence group relation
 	insertStr, values = getConversationFlowRelationInsertSQL(flows)
+	if len(values) == 0 {
+		return
+	}
 
 	_, err = sqlLike.Exec(insertStr, values...)
 	if err != nil {
