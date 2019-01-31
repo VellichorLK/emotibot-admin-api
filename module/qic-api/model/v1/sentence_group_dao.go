@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
@@ -30,6 +30,7 @@ type SentenceGroup struct {
 	Enterprise string
 	CreateTime int64
 	UpdateTime int64
+	Deleted    int8
 }
 
 type SentenceGroupFilter struct {
@@ -55,18 +56,19 @@ type SentenceGroupsSqlDao interface {
 	GetBySentenceID(id []int64, sqlLike SqlLike) ([]SentenceGroup, error)
 	Update(id string, group *SentenceGroup, sqlLike SqlLike) (*SentenceGroup, error)
 	Delete(id string, sqlLike SqlLike) error
+	CreateMany([]SentenceGroup, SqlLike) error
+	DeleteMany([]string, SqlLike) error
 }
 
 type SentenceGroupsSqlDaoImpl struct{}
 
-func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLike) (createdGroup *SentenceGroup, err error) {
-	if sqlLike == nil {
-		err = ErrNilSqlLike
+func getSentenceGroupInsertSQL(groups []SentenceGroup) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	if len(groups) == 0 {
 		return
 	}
 
-	// insert sentence group
-	fileds := []string{
+	fields := []string{
 		fldIsDelete,
 		fldName,
 		fldEnterprise,
@@ -77,46 +79,95 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 		fldCreateTime,
 		fldUpdateTime,
 	}
+	fieldStr := strings.Join(fields, "`, `")
+	fieldStr = fmt.Sprintf("`%s`", fieldStr)
 
-	values := []interface{}{
-		0,
-		group.Name,
-		group.Enterprise,
-		group.Role,
-		group.Position,
-		group.Distance,
-		group.UUID,
-		group.CreateTime,
-		group.UpdateTime,
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES",
+		tblSetnenceGroup,
+		fieldStr,
+	)
+
+	variableStr := fmt.Sprintf("(?%s)", strings.Repeat(", ?", len(fields)-1))
+	valueStr := ""
+	for _, group := range groups {
+		values = append(
+			values,
+			0,
+			group.Name,
+			group.Enterprise,
+			group.Role,
+			group.Position,
+			group.Distance,
+			group.UUID,
+			group.CreateTime,
+			group.UpdateTime,
+		)
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+	}
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+	return
+}
+
+func getSentenceGroupRelationInsertSQL(groups []SentenceGroup) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	if len(groups) == 0 {
+		return
 	}
 
-	fieldStr := strings.Join(fileds, "`, `")
-	fieldStr = fmt.Sprintf("`%s`", fieldStr)
-	valueStr := fmt.Sprintf("?%s", strings.Repeat(", ?", len(fileds)-1))
-	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblSetnenceGroup, fieldStr, valueStr)
+	insertStr = fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES", tblRelSGS, RSGSSGID, RSGSSID)
+
+	variableStr := "(?, ?)"
+	valueStr := ""
+	for _, group := range groups {
+		for _, sentence := range group.Sentences {
+			values = append(values, group.ID, sentence.ID)
+			valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+		}
+	}
+	if len(values) > 0 {
+		// remove last comma
+		valueStr = valueStr[:len(valueStr)-1]
+	}
+
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+	return
+}
+
+func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLike) (createdGroup *SentenceGroup, err error) {
+	if sqlLike == nil {
+		err = ErrNilSqlLike
+		return
+	}
+
+	insertStr, values := getSentenceGroupInsertSQL([]SentenceGroup{*group})
+	logger.Info.Printf("6\n")
 
 	result, err := sqlLike.Exec(insertStr, values...)
+	logger.Info.Printf("7\n")
 	if err != nil {
+		logger.Error.Printf("error while insert sentence group in dao.Create, sql: %s", insertStr)
+		logger.Error.Printf("error while insert sentence group in dao.Create, values: %s", values)
+		logger.Error.Printf("error while insert sentence group in dao.Create, err: %s", err.Error())
 		err = fmt.Errorf("error while insert sentence group in dao.Create, err: %s", err.Error())
 		return
 	}
 
 	groupID, err := result.LastInsertId()
+	logger.Info.Printf("8\n")
 	if err != nil {
 		err = fmt.Errorf("error while get group id in dao.Create, err: %s", err.Error())
 		return
 
 	}
+	group.ID = groupID
 
 	if len(group.Sentences) > 0 {
 		// create sentence group to sentence relation
-		values = []interface{}{}
-		for _, ss := range group.Sentences {
-			values = append(values, groupID, ss.ID)
-		}
-
-		valueStr = fmt.Sprintf("(?, ?) %s", strings.Repeat(", (?, ?)", len(group.Sentences)-1))
-		insertStr = fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES %s", tblRelSGS, RSGSSGID, RSGSSID, valueStr)
+		insertStr, values = getSentenceGroupRelationInsertSQL([]SentenceGroup{*group})
 
 		_, err = sqlLike.Exec(insertStr, values...)
 		if err != nil {
@@ -124,7 +175,6 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 			return
 		}
 	}
-	group.ID = groupID
 	createdGroup = group
 	return
 }
@@ -210,7 +260,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sID, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		%s as s ON rsgs.%s = s.%s`,
 		fldID,
@@ -222,6 +272,8 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		fldCreateTime,
 		fldUpdateTime,
 		fldEnterprise,
+		fldIsDelete,
+		fldID,
 		fldUUID,
 		fldName,
 		fldCategoryID,
@@ -284,6 +336,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 		var sentenceUUID *string
 		var sentenceName *string
 		var sentenceCID *uint64
+		var sentenceID *uint64
 
 		err = rows.Scan(
 			&group.ID,
@@ -295,6 +348,8 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 			&group.CreateTime,
 			&group.UpdateTime,
 			&group.Enterprise,
+			&group.Deleted,
+			&sentenceID,
 			&sentenceUUID,
 			&sentenceName,
 			&sentenceCID,
@@ -313,8 +368,9 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 			cGroup.Sentences = []SimpleSentence{}
 		}
 
-		if sentenceUUID != nil && sentenceName != nil && sentenceCID != nil {
+		if sentenceUUID != nil && sentenceName != nil && sentenceCID != nil && sentenceID != nil {
 			simpleSentence := SimpleSentence{
+				ID:         *sentenceID,
 				UUID:       *sentenceUUID,
 				Name:       *sentenceName,
 				CategoryID: *sentenceCID,
@@ -335,13 +391,9 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBySentenceID(id []int64, sqlLike SqlLike
 		return
 	}
 
-	builder := &whereBuilder{
-		ConcatLogic: andLogic,
-		conditions:  []string{},
-		data:        []interface{}{},
-	}
+	builder := NewWhereBuilder(andLogic, "")
 
-	builder.In(fldID, int64ToWildCard(id...))
+	builder.In(RSGSSID, int64ToWildCard(id...))
 	conditionStr, values := builder.Parse()
 
 	queryStr := fmt.Sprintf(
@@ -393,6 +445,88 @@ func (dao *SentenceGroupsSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err err
 	if err != nil {
 		err = fmt.Errorf("error while delete sentenct group in dao.Delete, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *SentenceGroupsSqlDaoImpl) CreateMany(groups []SentenceGroup, sqlLike SqlLike) (err error) {
+	if len(groups) == 0 {
+		return
+	}
+
+	insertStr, values := getSentenceGroupInsertSQL(groups)
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert sentence groups in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert sentence groups in dao.CreateMany, values: %s", values)
+		err = fmt.Errorf("error while insert sentence groups in dao.CreateMany, error: %s", err.Error())
+		return
+	}
+
+	groupUUID := make([]string, len(groups))
+	for idx, group := range groups {
+		groupUUID[idx] = group.UUID
+	}
+
+	deleted := int8(0)
+	filter := &SentenceGroupFilter{
+		UUID:     groupUUID,
+		IsDelete: &deleted,
+	}
+
+	newGroups, err := dao.GetBy(filter, sqlLike)
+	if err != nil {
+		return
+	}
+
+	// update groups id
+	groupMap := map[string]int64{}
+	for _, group := range newGroups {
+		groupMap[group.UUID] = group.ID
+	}
+
+	for i := range groups {
+		group := &groups[i]
+		group.ID = groupMap[group.UUID]
+	}
+
+	insertStr, values = getSentenceGroupRelationInsertSQL(groups)
+	if len(values) == 0 {
+		return
+	}
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert sentence group sentence relation in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert sentence group sentence relation in dao.CreateMany, values: %+v", values)
+		err = fmt.Errorf("error while insert sentence group sentence relation in dao.CreateMany, err: %s", err.Error())
+	}
+	return
+}
+
+func (dao *SentenceGroupsSqlDaoImpl) DeleteMany(groupUUID []string, sqlLike SqlLike) (err error) {
+	if len(groupUUID) == 0 {
+		return
+	}
+
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldUUID, stringToWildCard(groupUUID...))
+
+	conditionStr, values := builder.Parse()
+
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s = 1 WHERE %s",
+		tblSetnenceGroup,
+		fldIsDelete,
+		conditionStr,
+	)
+
+	_, err = sqlLike.Exec(deleteStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while delete sentence groups in dao.DeleteMany, sql: %s", deleteStr)
+		logger.Error.Printf("error while delete sentence groups in dao.DeleteMany, values: %+v", values)
+		err = fmt.Errorf("error while delete sentence groups in dao.DeleteMany, err: %s", err.Error())
 	}
 	return
 }
