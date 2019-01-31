@@ -18,12 +18,14 @@ var (
 //NavigationDao is the interface of navigation dao
 type NavigationDao interface {
 	NewFlow(conn SqlLike, p *NavFlow) (int64, error)
-	GetFlows(conn SqlLike, q *NavQuery) ([]*NavFlow, error)
+	GetFlows(conn SqlLike, q *NavQuery, l *NavLimit) ([]*NavFlow, error)
 	InsertRelation(conn SqlLike, parent int64, child int64) (int64, error)
 	DeleteRelation(conn SqlLike, parent int64) (int64, error)
 	SoftDeleteFlows(conn SqlLike, q *NavQuery) (int64, error)
 	DeleteFlows(conn SqlLike, q *NavQuery) (int64, error)
 	CountFlows(conn SqlLike, q *NavQuery) (int64, error)
+	CountNodes(conn SqlLike, navs []int64) (map[int64]int64, error)
+	GetNodeID(conn SqlLike, nav int64) ([]int64, error)
 	UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpdate) (int64, error)
 }
 
@@ -49,7 +51,6 @@ type NavFlowUpdate struct {
 	IgnoreIntent *int
 	IntentName   *string
 	IntentLinkID *int64
-	IsDelete     *int
 	UpdateTime   *int64
 }
 
@@ -59,6 +60,12 @@ type NavQuery struct {
 	UUID       []string
 	Enterprise *string
 	IsDelete   *int
+}
+
+//NavLimit is the limitation of the returned rows
+type NavLimit struct {
+	Page  int
+	Limit int
 }
 
 func (n *NavQuery) whereSQL() (condition string, bindData []interface{}, err error) {
@@ -97,7 +104,7 @@ func (n *NavigationSQLDao) NewFlow(conn SqlLike, p *NavFlow) (int64, error) {
 }
 
 //GetFlows gets the flow according to the query condition
-func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery) ([]*NavFlow, error) {
+func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery, l *NavLimit) ([]*NavFlow, error) {
 	if conn == nil {
 		return nil, ErroNoConn
 	}
@@ -107,6 +114,13 @@ func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery) ([]*NavFlow, erro
 	condition, params, err := q.whereSQL()
 	if err != nil {
 		return nil, ErrGenCondition
+	}
+
+	var limitStr string
+	if l != nil {
+		if l.Page > 0 && l.Limit > 0 {
+			limitStr = fmt.Sprintf("LIMIT %d OFFSET %d", l.Limit, (l.Page-1)*l.Limit)
+		}
 	}
 
 	flds := []string{
@@ -121,7 +135,7 @@ func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery) ([]*NavFlow, erro
 		fldUpdateTime,
 	}
 
-	querySQL := fmt.Sprintf("SELECT %s FROM %s %s", strings.Join(flds, ","), tblNavigation, condition)
+	querySQL := fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(flds, ","), tblNavigation, condition, limitStr)
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
 		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
@@ -209,6 +223,53 @@ func (n *NavigationSQLDao) CountFlows(conn SqlLike, q *NavQuery) (int64, error) 
 	return countRows(conn, tblNavigation, condition, params)
 }
 
+//CountNodes counts nodes
+func (n *NavigationSQLDao) CountNodes(conn SqlLike, navs []int64) (map[int64]int64, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	var condition string
+
+	numOfNavs := len(navs)
+	params := make([]interface{}, 0, numOfNavs)
+	for _, v := range navs {
+		params = append(params, v)
+	}
+	if numOfNavs > 0 {
+		condition = "WHERE a.`" + fldNavID + "` IN (?" + strings.Repeat(",?", numOfNavs-1) + ")"
+	}
+
+	if condition != "" {
+		condition += " AND"
+	} else {
+		condition += "WHERE"
+	}
+	condition += " b.`" + fldIsDelete + "`=0"
+
+	countSQL := fmt.Sprintf("select a.`%s`,COUNT(*) FROM %s AS a INNER JOIN %s AS b on a.`%s`=b.`%s` %s  GROUP BY a.`%s`",
+		fldNavID, tblRelNavSenGrp, tblSetnenceGroup,
+		fldSenGrpID, fldID,
+		condition, fldNavID)
+
+	rows, err := conn.Query(countSQL, params...)
+	if err != nil {
+		logger.Error.Printf("query sql failed. %s, %+v\n", countSQL, params)
+		return nil, err
+	}
+	defer rows.Close()
+	resp := make(map[int64]int64)
+	var nav, count int64
+	for rows.Next() {
+		err = rows.Scan(&nav, &count)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			break
+		}
+		resp[nav] = count
+	}
+	return resp, err
+}
+
 //UpdateFlows updates the flow
 func (n *NavigationSQLDao) UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpdate) (int64, error) {
 	if conn == nil {
@@ -248,6 +309,33 @@ func (n *NavigationSQLDao) UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpda
 	setSQL := fmt.Sprintf("UPDATE %s %s %s", tblNavigation, setStr, condition)
 	params := append(sparams, cparams...)
 	return execSQL(conn, setSQL, params)
+}
+
+//GetNodeID gets the id in sentenceGroup
+func (n *NavigationSQLDao) GetNodeID(conn SqlLike, nav int64) ([]int64, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	querySQL := fmt.Sprintf("SELECT `%s` FROM %s WHERE `%s`=?", fldSenGrpID, tblRelNavSenGrp, fldNavID)
+	rows, err := conn.Query(querySQL, nav)
+	if err != nil {
+		logger.Error.Printf("query failed. %s,%d. %s\n", querySQL, nav, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	senGrps := make([]int64, 0, 4)
+	var senGrp int64
+	for rows.Next() {
+		err = rows.Scan(&senGrp)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+		senGrps = append(senGrps, senGrp)
+	}
+	return senGrps, nil
+
 }
 
 //this function doesn't check input, only used internally.
@@ -291,7 +379,7 @@ func execSQL(conn SqlLike, exeSQL string, params []interface{}) (int64, error) {
 }
 
 func countRows(conn SqlLike, table string, condition string, params []interface{}) (int64, error) {
-	countSQL := fmt.Sprintf("COUNT (*) FROM %s %s", table, condition)
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", table, condition)
 	var count int64
 	err := conn.QueryRow(countSQL, params...).Scan(&count)
 	if err != nil {
@@ -335,6 +423,11 @@ func makePreprare(d interface{}, flds []string) (states []string, bindData []int
 	if reflect.Ptr == t.Kind() {
 		t = t.Elem()
 		vals = vals.Elem()
+	}
+
+	if t.Kind() != reflect.Struct {
+		err = errors.New("Only suppoert structure input")
+		return
 	}
 
 	numOfFlds := len(flds)
@@ -384,8 +477,14 @@ func makePreprare(d interface{}, flds []string) (states []string, bindData []int
 				case "*int":
 					val := vx.Interface().(*int)
 					bindData = append(bindData, *val)
+				case "*int8":
+					val := vx.Interface().(*int8)
+					bindData = append(bindData, *val)
 				case "*int64":
 					val := vx.Interface().(*int64)
+					bindData = append(bindData, *val)
+				case "*uint64":
+					val := vx.Interface().(*uint64)
 					bindData = append(bindData, *val)
 				default:
 					err = fmt.Errorf("unsupported type %s", f.Type.String())
