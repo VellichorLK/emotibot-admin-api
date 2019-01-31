@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	_ "emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/satori/go.uuid"
 )
 
@@ -208,6 +208,11 @@ func DeleteConversationFlow(id string) (err error) {
 		// remove flow from related rules
 		for i := range rules {
 			rule := rules[i]
+			if len(rule.Flows) == 1 {
+				rule.Flows = []model.SimpleConversationFlow{}
+				continue
+			}
+
 			for j, flow := range rule.Flows {
 				var newFlows []model.SimpleConversationFlow
 				if flow.UUID == id {
@@ -230,6 +235,8 @@ func DeleteConversationFlow(id string) (err error) {
 }
 
 func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.ConversationFlow, sqlLike model.SqlLike) (err error) {
+	logger.Info.Printf("rules: %+v", rules)
+	logger.Info.Printf("flows: %+v", flows)
 	if len(rules) == 0 || len(flows) == 0 {
 		return
 	}
@@ -240,23 +247,23 @@ func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.Conve
 		flowMap[flow.UUID] = flow.ID
 	}
 
+	ruleID := []int64{}
+	ruleUUID := []string{}
+	acitveRules := []model.ConversationRule{}
 	for i := range rules {
 		rule := &rules[i]
+		if rule.Deleted == 1 {
+			return
+		}
+
 		for j, flow := range rule.Flows {
 			if flowID, ok := flowMap[flow.UUID]; ok {
 				rule.Flows[j].ID = flowID
 			}
 		}
-	}
-
-	ruleUUID := make([]string, len(rules))
-	for idx := range rules {
-		ruleUUID[idx] = rules[idx].UUID
-	}
-
-	ruleID := []int64{}
-	for _, rule := range rules {
 		ruleID = append(ruleID, rule.ID)
+		ruleUUID = append(ruleUUID, rule.UUID)
+		acitveRules = append(acitveRules, *rule)
 	}
 
 	groups, err := serviceDAO.GetGroupsByRuleID(ruleID, sqlLike)
@@ -269,21 +276,11 @@ func propagateUpdateFromRule(rules []model.ConversationRule, flows []model.Conve
 		return
 	}
 
-	err = conversationRuleDao.CreateMany(rules, sqlLike)
+	err = conversationRuleDao.CreateMany(acitveRules, sqlLike)
 	if err != nil {
 		return
 	}
 
-	ruleFilter := &model.ConversationRuleFilter{
-		UUID:      ruleUUID,
-		IsDeleted: int8(0),
-	}
-
-	rules, err = conversationRuleDao.GetBy(ruleFilter, sqlLike)
-	if err != nil {
-		return
-	}
-
-	err = propagateUpdateFromGroup(groups, rules, sqlLike)
+	err = propagateUpdateFromGroup(groups, acitveRules, sqlLike)
 	return
 }

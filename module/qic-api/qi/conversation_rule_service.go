@@ -221,6 +221,12 @@ func DeleteConversationRule(id string) (err error) {
 		for idx := range groups {
 			group := &groups[idx]
 			rules := *group.Rules
+			if len(rules) == 0 {
+				newRules := []model.SimpleConversationRule{}
+				group.Rules = &newRules
+				continue
+			}
+
 			for j, rule := range rules {
 				if rule.UUID == id {
 					var newRules []model.SimpleConversationRule
@@ -245,6 +251,8 @@ func DeleteConversationRule(id string) (err error) {
 }
 
 func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.ConversationRule, sqlLike model.SqlLike) error {
+	logger.Info.Printf("groups: %+v", groups)
+	logger.Info.Printf("rules: %+v", rules)
 	var err error
 	if len(groups) == 0 {
 		return err
@@ -257,8 +265,13 @@ func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.Conversat
 	}
 
 	groupUUID := []string{}
+	activeGroups := []model.GroupWCond{}
 	for i := range groups {
 		group := &groups[i]
+		if group.Deleted == 1 {
+			continue
+		}
+
 		rules := *group.Rules
 		for j := range rules {
 			rule := &rules[j]
@@ -267,6 +280,7 @@ func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.Conversat
 			}
 		}
 		groupUUID = append(groupUUID, group.UUID)
+		activeGroups = append(activeGroups, *group)
 	}
 
 	err = serviceDAO.DeleteMany(groupUUID, sqlLike)
@@ -274,7 +288,7 @@ func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.Conversat
 		return err
 	}
 
-	err = serviceDAO.CreateMany(groups, sqlLike)
+	err = serviceDAO.CreateMany(activeGroups, sqlLike)
 	if err != nil {
 		return err
 	}

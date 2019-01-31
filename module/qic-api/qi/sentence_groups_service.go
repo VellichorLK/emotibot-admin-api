@@ -221,6 +221,8 @@ func DeleteSentenceGroup(uuid string) (err error) {
 }
 
 func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.SentenceGroup, sqlLike model.SqlLike) (err error) {
+	logger.Info.Printf("flows: %+v", flows)
+	logger.Info.Printf("sgs: %+v", sgs)
 	if len(flows) == 0 || len(sgs) == 0 {
 		return
 	}
@@ -231,18 +233,30 @@ func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.Sentenc
 		sgMap[sg.UUID] = sg.ID
 	}
 
-	flowUUID := make([]string, len(flows))
-	flowID := make([]int64, len(flows))
+	flowUUID := []string{}
+	flowID := []int64{}
+	activeFlows := []model.ConversationFlow{}
 	for i := range flows {
 		flow := &flows[i]
+		if flow.Deleted == 1 {
+			// ingore deleted flows
+			continue
+		}
+
+		if len(flow.SentenceGroups) == 1 {
+			flow.SentenceGroups = []model.SimpleSentenceGroup{}
+			continue
+		}
 		for j := range flow.SentenceGroups {
 			sentenceGroup := &flow.SentenceGroups[j]
 			if sgID, ok := sgMap[sentenceGroup.UUID]; ok {
 				sentenceGroup.ID = sgID
 			}
 		}
-		flowUUID[i] = flow.UUID
-		flowID[i] = flow.ID
+
+		flowUUID = append(flowUUID, flow.UUID)
+		flowID = append(flowID, flow.ID)
+		activeFlows = append(activeFlows, *flow)
 	}
 
 	err = conversationFlowDao.DeleteMany(flowUUID, sqlLike)
@@ -250,15 +264,7 @@ func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.Sentenc
 		return
 	}
 
-	err = conversationFlowDao.CreateMany(flows, sqlLike)
-	if err != nil {
-		return
-	}
-
-	flowFilter := &model.ConversationFlowFilter{
-		UUID: flowUUID,
-	}
-	newFlows, err := conversationFlowDao.GetBy(flowFilter, sqlLike)
+	err = conversationFlowDao.CreateMany(activeFlows, sqlLike)
 	if err != nil {
 		return
 	}
@@ -268,5 +274,5 @@ func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.Sentenc
 		return
 	}
 
-	return propagateUpdateFromRule(rules, newFlows, sqlLike)
+	return propagateUpdateFromRule(rules, activeFlows, sqlLike)
 }
