@@ -21,6 +21,7 @@ type SentenceDao interface {
 	InsertSenTagRelation(tx *sql.Tx, s *Sentence) error
 	GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error)
 	MoveCategories(x *sql.Tx, q *SentenceQuery, category uint64) (int64, error)
+	InsertSentences(*sql.Tx, []Sentence) error
 }
 
 //error message
@@ -197,6 +198,38 @@ func (d *SentenceSQLDao) GetSentences(tx *sql.Tx, sq *SentenceQuery) ([]*Sentenc
 	return sentences, nil
 }
 
+func getSentenceInsertSQL(sentences []Sentence) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	if len(sentences) == 0 {
+		return
+	}
+
+	fields := []string{
+		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	variableStr := fmt.Sprintf("(?%s)", strings.Repeat(", ?", len(fields)-1))
+	valueStr := ""
+	for _, s := range sentences {
+		values = append(
+			values,
+			s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.CategoryID,
+		)
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+	}
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s",
+		tblSentence,
+		fieldStr,
+		valueStr,
+	)
+	return
+}
+
 //InsertSentence inserts a new sentence and the relation between sentence and tag
 //if you insert both, must use transaction
 func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) {
@@ -215,11 +248,9 @@ func (d *SentenceSQLDao) InsertSentence(tx *sql.Tx, s *Sentence) (int64, error) 
 	}
 
 	//insert into Sentence table
-	insertSenSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?,?)",
-		tblSentence,
-		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID)
+	insertSenSQL, values := getSentenceInsertSQL([]Sentence{*s})
 
-	res, err := exe.Exec(insertSenSQL, s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.CategoryID)
+	res, err := exe.Exec(insertSenSQL, values...)
 	if err != nil {
 		logger.Error.Printf("insert sentence %s failed %s\n", insertSenSQL, err)
 		return 0, err
@@ -372,4 +403,77 @@ func (d *SentenceSQLDao) MoveCategories(tx *sql.Tx, q *SentenceQuery, category u
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func (d *SentenceSQLDao) InsertSentences(tx *sql.Tx, sentences []Sentence) (err error) {
+	if len(sentences) == 0 {
+		return
+	}
+
+	insertStr, values := getSentenceInsertSQL(sentences)
+	_, err = tx.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("insert sentences failed. sql: %s\n", insertStr)
+		logger.Error.Printf("values: %+v\n", values)
+		return
+	}
+
+	varaibleStr := "(?, ?)"
+	valueStr := ""
+	values = []interface{}{}
+	sUUID := []string{}
+	for _, s := range sentences {
+		for _ = range s.TagIDs {
+			valueStr = fmt.Sprintf("%s%s,", valueStr, varaibleStr)
+		}
+		sUUID = append(sUUID, s.UUID)
+	}
+
+	if valueStr == "" {
+		return
+	}
+
+	var deleted int8
+	sentenceQuery := &SentenceQuery{
+		UUID:     sUUID,
+		IsDelete: &deleted,
+	}
+
+	newSentences, err := d.GetSentences(tx, sentenceQuery)
+	if err != nil {
+		return
+	}
+
+	sentenceMap := map[string]uint64{}
+	for _, s := range newSentences {
+		sentenceMap[s.UUID] = s.ID
+	}
+
+	for _, s := range sentences {
+		for _, tag := range s.TagIDs {
+			values = append(
+				values,
+				sentenceMap[s.UUID],
+				tag,
+			)
+		}
+	}
+
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES %s",
+		tbleRelSentenceTag,
+		fldRelSenID,
+		fldRelTagID,
+		valueStr,
+	)
+
+	_, err = tx.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("insert sentences relations failed. sql: %s\n", insertStr)
+		logger.Error.Printf("values: %+v\n", values)
+	}
+	return
 }
