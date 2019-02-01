@@ -31,6 +31,7 @@ type UserKeySQLDao struct {
 
 type UserKeyDao interface {
 	UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error)
+	Counts(delegatee SqlLike, query UserKeyQuery) (int64, error)
 }
 
 type UserKeyQuery struct {
@@ -65,7 +66,7 @@ type UserKey struct {
 	UpdateTime int64
 }
 
-func NewUserKeyDao(db SqlLike) UserKeyDao {
+func NewUserKeyDao(db SqlLike) *UserKeySQLDao {
 	return &UserKeySQLDao{
 		db: db,
 	}
