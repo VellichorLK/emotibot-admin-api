@@ -53,6 +53,13 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 			},
 			expectOutput: exampleKeys[1:2],
 		},
+		{
+			name: "ignore soft deleted",
+			arg: UserKeyQuery{
+				IgnoreSoftDelete: true,
+			},
+			expectOutput: exampleKeys,
+		},
 	}
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {

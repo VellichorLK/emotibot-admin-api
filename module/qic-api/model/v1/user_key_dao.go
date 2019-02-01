@@ -34,10 +34,11 @@ type UserKeyDao interface {
 }
 
 type UserKeyQuery struct {
-	ID         []int64
-	InputNames []string
-	Enterprise string
-	paging     *Pagination
+	ID               []int64
+	InputNames       []string
+	Enterprise       string
+	IgnoreSoftDelete bool
+	paging           *Pagination
 }
 
 func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
@@ -46,6 +47,9 @@ func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
 	builder.In(fldUserKeyInputName, stringToWildCard(u.InputNames...))
 	if u.Enterprise != "" {
 		builder.Eq(fldUserKeyEnterprise, u.Enterprise)
+	}
+	if !u.IgnoreSoftDelete {
+		builder.Eq(fldUserKeyIsDelete, u.IgnoreSoftDelete)
 	}
 	return builder.ParseWithWhere()
 }
