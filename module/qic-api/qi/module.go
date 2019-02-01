@@ -89,6 +89,7 @@ func init() {
 			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation/{id}", []string{}, handleGetFlowSetting),
+			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/name", []string{}, handleModifyFlow),
 			util.NewEntryPoint(http.MethodDelete, "call-in/navigation/{id}", []string{}, handleDeleteFlow),
 			util.NewEntryPoint(http.MethodPost, "call-in/navigation", []string{}, handleNewFlow),
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation", []string{}, handleFlowList),

@@ -297,7 +297,6 @@ func (n *NavigationSQLDao) UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpda
 		fldIgoreIntent,
 		fldIntenName,
 		fldIntentLink,
-		fldIsDelete,
 		fldUpdateTime,
 	}
 

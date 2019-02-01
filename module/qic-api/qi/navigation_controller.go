@@ -202,3 +202,30 @@ func handleDeleteFlow(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+func handleModifyFlow(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	var req reqNewFlow
+	err = util.ReadJSON(r, &req)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	affected, err := UpdateFlow(id, enterprise, req.Name)
+	if err != nil {
+		logger.Error.Printf("update the flow failed. id:%d, err: %s\n", id, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if affected == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "No such flow id"), http.StatusBadRequest)
+		return
+	}
+}
