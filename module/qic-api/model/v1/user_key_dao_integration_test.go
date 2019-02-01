@@ -27,6 +27,7 @@ func newUserKeys(t *testing.T) []UserKey {
 }
 
 func TestITUserKeySQLDaoUserKeys(t *testing.T) {
+	skipIntergartion(t)
 	dao := UserKeySQLDao{
 		db: newIntegrationTestDB(t),
 	}
