@@ -47,7 +47,7 @@ func GetOAuthLoginPage(w http.ResponseWriter, r *http.Request) {
 		err := userInfo.SetValueWithToken(cookie.Value)
 		if err == nil {
 			code := util.GenRandomString(codeLength)
-			authCache.Set("auth", code, userInfo, 600)
+			authCache.Set("auth", code, &userInfo, 600)
 			w.Header().Set("Location", fmt.Sprintf("%s?code=%s&state=%s", redirectURI, url.PathEscape(code), url.PathEscape(state)))
 			w.WriteHeader(http.StatusMovedPermanently)
 			return
