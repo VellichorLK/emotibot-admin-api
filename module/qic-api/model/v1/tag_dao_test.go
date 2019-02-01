@@ -1,6 +1,8 @@
 package model
 
 import (
+	"encoding/csv"
+	"os"
 	"reflect"
 	"testing"
 
@@ -20,32 +22,28 @@ func newMockedTagDao(t *testing.T) (*TagSQLDao, sqlmock.Sqlmock) {
 	return dao, mocker
 }
 
-var testTags = []Tag{
-	Tag{
-		ID:               1,
-		UUID:             "94d58cb937f34291be262095ce974f2e",
-		Enterprise:       "csbot",
-		Name:             "Test1",
-		PositiveSentence: `["test1-1", "test1-2", "test1-3"]`,
-		NegativeSentence: `[]`,
-		IsDeleted:        true,
-		Typ:              0,
-		CreateTime:       1545901909,
-		UpdateTime:       1545901927,
-	},
-	Tag{
-		ID:               2,
-		UUID:             "5e46b3ee737c45afb29f2a243c1aae7e",
-		Enterprise:       "csbot",
-		Name:             "Test2",
-		PositiveSentence: `["test2-1"]`,
-		NegativeSentence: `["test2-2", "test2-3"]`,
-		IsDeleted:        false,
-		Typ:              1,
-		CreateTime:       1545901951,
-		UpdateTime:       1545901959,
-	},
+func seedTags() []Tag {
+	f, err := os.Open("./testdata/seed/Tag.tsv")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	reader := csv.NewReader(f)
+	reader.Comma = '\t'
+	records, err := reader.ReadAll()
+	if err != nil {
+		panic(err)
+	}
+	var tags []Tag
+	for i := 1; i < len(records); i++ {
+		t := &Tag{}
+		Binding(t, records[i])
+		tags = append(tags, *t)
+	}
+	return tags
 }
+
+var testTags []Tag
 
 func TestNewTagSQLDao(t *testing.T) {
 	newMockedTagDao(t)

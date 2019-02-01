@@ -57,16 +57,17 @@ type GroupWCond struct {
 // Group is the one to one represent of rule group table schema
 type Group struct {
 	ID             int64
+	IsDelete       bool
 	Name           string
 	EnterpriseID   string
 	Description    string
 	CreatedTime    int64
 	UpdatedTime    int64
-	IsDelete       bool
 	IsEnable       bool
 	LimitedSpeed   int
 	LimitedSilence float32
 	Typ            int8
+	UUID           string
 }
 
 type GroupCondition struct {

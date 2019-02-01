@@ -52,9 +52,9 @@ func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
 
 type UserKey struct {
 	ID         int64
-	InputName  string
 	Name       string
 	Enterprise string
+	InputName  string
 	Type       int8
 	IsDeleted  bool
 	CreateTime int64
@@ -97,11 +97,15 @@ func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserK
 	var userKeys []UserKey
 	for rows.Next() {
 		var key UserKey
+		var isDelete int8
 		rows.Scan(
 			&key.ID, &key.Name, &key.Enterprise,
-			&key.InputName, &key.Type, &key.IsDeleted,
+			&key.InputName, &key.Type, &isDelete,
 			&key.CreateTime, &key.UpdateTime,
 		)
+		if isDelete != 0 {
+			key.IsDeleted = true
+		}
 		userKeys = append(userKeys, key)
 	}
 	if err = rows.Err(); err != nil {

@@ -44,22 +44,16 @@ func Transaction(dao *tagSQLDao) (tagDao TagDao, commitcb func() error, err erro
 
 //Tag is the basic unit of the training rule. which also will be used in cu training model.
 type Tag struct {
-	// ID is the inner id for the tag. which is changed after each modify.
-	ID uint64
-	// UUID is the presentation id for the tag, which will not changed after created
-	UUID string
-	// Enterprise is the id of enterprise the tag belong to.
-	Enterprise string
-	// Name should be unique in the tags of the same enterprise.
-	Name string
-	// Typ is the status
-	Typ              int8
-	PositiveSentence string
-	NegativeSentence string
-	// IsDelete is the soft delete flag.
-	IsDeleted  bool
-	CreateTime int64
-	UpdateTime int64
+	ID               uint64 // the inner id for the tag. which is changed after each modify.
+	IsDeleted        bool   // IsDelete is the soft delete flag.
+	Name             string // the unique name in the tags of the same enterprise.
+	Typ              int8   // status
+	PositiveSentence string // json payload of positive data, cu training will need at least one element
+	NegativeSentence string // json payload of negative data
+	CreateTime       int64
+	UpdateTime       int64
+	Enterprise       string // the id of enterprise the tag belong to.
+	UUID             string // the presentation id for the tag, which will not changed after created
 }
 
 // TagQuery is the query against tag datastore, all fields is the condition which should be nilable.

@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"os"
 	"reflect"
-	"strconv"
 	"testing"
 )
 
@@ -20,47 +19,9 @@ func newUserKeys(t *testing.T) []UserKey {
 	}
 	var keys []UserKey
 	for i := 1; i < len(records); i++ {
-		var (
-			j   = 0
-			rec = records[i]
-			key UserKey
-			err error
-		)
-		key.ID, err = strconv.ParseInt(rec[j], 10, 64)
-		if err != nil {
-			t.Fatalf("parse col %d as id failed, %v", i, err)
-		}
-		j++
-		key.Name = rec[j]
-		j++
-		key.Enterprise = rec[j]
-		j++
-		key.InputName = rec[j]
-		j++
-		typ, err := strconv.ParseInt(rec[j], 10, 8)
-		if err != nil {
-			t.Fatalf("parse col %d as type failed, %v", j, err)
-		}
-		key.Type = int8(typ)
-		j++
-		isdelete, err := strconv.ParseInt(rec[j], 10, 8)
-		if err != nil {
-			t.Fatalf("parse col %d as is_delete failed, %v", j, err)
-		}
-		if isdelete != 0 {
-			key.IsDeleted = true
-		}
-		j++
-		key.CreateTime, err = strconv.ParseInt(rec[j], 10, 64)
-		if err != nil {
-			t.Fatalf("parse col %d as create time failed %v", j, err)
-		}
-		j++
-		key.UpdateTime, err = strconv.ParseInt(rec[j], 10, 64)
-		if err != nil {
-			t.Fatalf("parse col %d as update time failed, %v", j, err)
-		}
-		keys = append(keys, key)
+		key := &UserKey{}
+		Binding(key, records[i])
+		keys = append(keys, *key)
 	}
 	return keys
 }

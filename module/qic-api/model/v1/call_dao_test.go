@@ -8,7 +8,7 @@ import (
 )
 
 func getCallsSeed(t *testing.T) []Call {
-	f, err := os.Open("./testdata/call.csv")
+	f, err := os.Open("./testdata/seed/call.csv")
 	if err != nil {
 		t.Fatal("can not open call's testdata, ", err)
 	}

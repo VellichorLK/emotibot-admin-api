@@ -9,7 +9,7 @@ import (
 )
 
 func getTasksSeed(t *testing.T) []Task {
-	f, err := os.Open("./testdata/task.csv")
+	f, err := os.Open("./testdata/seed/task.csv")
 	if err != nil {
 		t.Fatal("can not open call's testdata, ", err)
 	}
@@ -68,7 +68,7 @@ func TestI11TaskDaoCallTask(t *testing.T) {
 	}
 }
 
-func TestI11TaskDaoNewTask(t *testing.T) {
+func TestITTaskDaoNewTask(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
 	dao := TaskDao{db: db}
