@@ -46,7 +46,7 @@ type intentDaoInterface interface {
 	GetLatestVersion(appid string) (version int, err error)
 	UpdateLatestIntents(appid string, intents []*IntentV2) (err error)
 	UpdateVersionStart(version int, start int64, modelID string) (err error)
-	UpdateVersionStatus(version int, end int64, status int) (err error)
+	UpdateVersionStatus(appid string, version int, end int64, status int) (err error)
 
 	// SearchIntentOfSentence will check if sentence existed in specific version or not.
 	// If not existed, return err will be sql.ErrNoRows
@@ -262,6 +262,12 @@ func (dao intentDaoV2) AddIntent(appid, name string, positive, negative []string
 	intent.ID = newID
 	intent.Name = name
 
+	// Create correspond intent test
+	err = insertIntentTest(tx, appid, intent.Name, timestamp)
+	if err != nil {
+		return nil, err
+	}
+
 	positiveList := []*SentenceV2{}
 	negativeList := []*SentenceV2{}
 
@@ -340,6 +346,11 @@ func (dao intentDaoV2) ModifyIntent(appid string, intentID int64, name string,
 
 	timestamp := time.Now().Unix()
 
+	err = updateIntentTest(tx, appid, intentID, name, timestamp)
+	if err != nil {
+		return
+	}
+
 	queryStr := "UPDATE intents SET name = ?, updatetime = ? WHERE id = ?"
 	_, err = tx.Exec(queryStr, name, timestamp, intentID)
 	if err != nil {
@@ -414,6 +425,12 @@ func (dao intentDaoV2) DeleteIntent(appid string, intentID int64) (err error) {
 		return err
 	}
 
+	// Delete correspond intent test
+	err = deleteIntentTest(tx, appid, intentID)
+	if err != nil {
+		return err
+	}
+
 	err = tx.Commit()
 	return
 }
@@ -458,6 +475,12 @@ func (dao intentDaoV2) DeleteIntents(appid string, intentIDs []int64) (err error
 	updateParams = append(updateParams, deletedIDs...)
 	queryStr = fmt.Sprintf("UPDATE intents SET status = -1, updatetime = ? WHERE appid = ? AND id IN (?%s)", strings.Repeat(",?", len(deletedIDs)-1))
 	_, err = tx.Exec(queryStr, updateParams...)
+	if err != nil {
+		return err
+	}
+
+	// Delete correspond intent tests
+	err = deleteIntentTests(tx, appid, deletedIDs)
 	if err != nil {
 		return err
 	}
@@ -630,9 +653,15 @@ func (dao intentDaoV2) UpdateLatestIntents(appid string, intents []*IntentV2) (e
 	}
 
 	now := time.Now().Unix()
+
 	err = insertIntents(tx, appid, nil, intents, now)
 	if err != nil {
 		return
+	}
+
+	err = syncIntentTests(tx, appid, now)
+	if err != nil {
+		return err
 	}
 
 	err = tx.Commit()
@@ -651,7 +680,8 @@ func (dao intentDaoV2) UpdateVersionStart(version int, start int64, modelID stri
 	_, err = dao.db.Exec(queryStr, modelID, start, version)
 	return
 }
-func (dao intentDaoV2) UpdateVersionStatus(version int, end int64, status int) (err error) {
+func (dao intentDaoV2) UpdateVersionStatus(appid string, version int, end int64,
+	status int) (err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -660,8 +690,26 @@ func (dao intentDaoV2) UpdateVersionStatus(version int, end int64, status int) (
 		return util.ErrDBNotInit
 	}
 
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
 	queryStr := "UPDATE intent_versions SET end_train = ?, result = ? WHERE version = ?"
-	_, err = dao.db.Exec(queryStr, end, status, version)
+	_, err = tx.Exec(queryStr, end, status, version)
+	if err != nil {
+		return
+	}
+
+	if status == trainResultSuccess {
+		err = toggleInUsedIEModelWithTx(tx, appid, version)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = tx.Commit()
 	return
 }
 
@@ -762,6 +810,7 @@ func insertIntents(tx db, appid string, version *int, intents []*IntentV2, now i
 		if err != nil {
 			return
 		}
+
 		if intent.Positive != nil {
 			for _, info := range *intent.Positive {
 				sentenceValues = append(sentenceValues, info.Content, intent.ID, typePositive)
@@ -1050,6 +1099,244 @@ func checkIntent(tx db, appid string, intentID int64) (readOnly bool, err error)
 	}
 
 	return version != nil, nil
+}
+
+func insertIntentTest(tx db, appid string, intentName string,
+	updatedTime int64) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	queryStr := `
+		INSERT INTO intent_test_intents (app_id, intent_name, updated_time)
+		SELECT ?, ?, ?
+		FROM intent_test_intents
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM intent_test_intents
+			WHERE app_id = ? AND intent_name = ? AND version IS NULL
+		)
+		LIMIT 1`
+	_, err := tx.Exec(queryStr, appid, intentName, updatedTime, appid, intentName)
+	if err != nil {
+		return err
+	}
+
+	// Create negative test intent if not exists
+	err = insertNegativeIntentTestIfNotExists(tx, appid, updatedTime)
+	return err
+}
+
+func insertNegativeIntentTestIfNotExists(tx db, appid string,
+	updatedTime int64) error {
+	queryStr := `
+		INSERT INTO intent_test_intents (app_id, intent_name, updated_time)
+		SELECT ?, NULL, ?
+		FROM intent_test_intents
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM intent_test_intents
+			WHERE app_id = ? AND intent_name IS NULL AND version IS NULL
+		)
+		LIMIT 1`
+	_, err := tx.Exec(queryStr, appid, updatedTime, appid)
+	return err
+}
+
+func updateIntentTest(tx db, appid string, intentID int64, newName string,
+	updatedTime int64) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	queryStr := `
+		UPDATE intent_test_intents
+		SET intent_name = ?, updated_time = ?
+		WHERE app_id = ? AND intent_name = (
+			SELECT name
+			FROM intents
+			WHERE id = ?
+		) AND version IS NULL`
+	_, err := tx.Exec(queryStr, newName, updatedTime, appid, intentID)
+	return err
+}
+
+func deleteIntentTest(tx db, appid string, intentID int64) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	var testIntentID int64
+	queryStr := `
+		SELECT id
+		FROM intent_test_intents
+		WHERE intent_name = (
+			SELECT name
+			FROM intents
+			WHERE id = ?
+		)`
+	err := tx.QueryRow(queryStr, intentID).Scan(&testIntentID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return err
+	}
+
+	queryStr = `
+		UPDATE intent_test_sentences
+		SET result = 0, score = NULL, answer = NULL, test_intent = (
+			SELECT id
+			FROM intent_test_intents
+			WHERE app_id = ? AND intent_name IS NULL AND version IS NULL
+		)
+		WHERE test_intent = ?`
+	_, err = tx.Exec(queryStr, appid, testIntentID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = `DELETE FROM intent_test_intents WHERE id = ?`
+	_, err = tx.Exec(queryStr, testIntentID)
+	return err
+}
+
+func deleteIntentTests(tx db, appid string, intentIDs []interface{}) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	if len(intentIDs) > 0 {
+		testIntentIDs := []interface{}{}
+
+		queryStr := fmt.Sprintf(`
+			SELECT id
+			FROM intent_test_intents
+			WHERE intent_name IN (
+				SELECT name
+				FROM intents
+				WHERE id IN (?%s)
+			)`, strings.Repeat(", ?", len(intentIDs)-1))
+		rows, err := tx.Query(queryStr, intentIDs...)
+		if err != nil {
+			return err
+		}
+
+		for rows.Next() {
+			var testIntentID int64
+			err = rows.Scan(&testIntentID)
+			if err != nil {
+				return err
+			}
+			testIntentIDs = append(testIntentIDs, testIntentID)
+		}
+
+		if len(testIntentIDs) > 0 {
+			inClause := strings.Repeat(", ?", len(testIntentIDs)-1)
+			queryStr = fmt.Sprintf(`
+				UPDATE intent_test_sentences
+				SET result = 0, score = NULL, answer = NULL, test_intent = (
+					SELECT id
+					FROM intent_test_intents
+					WHERE app_id = ? AND intent_name IS NULL AND version IS NULL
+				)
+				WHERE test_intent IN (?%s)`, inClause)
+			queryParams := append([]interface{}{appid}, testIntentIDs...)
+			_, err := tx.Exec(queryStr, queryParams...)
+			if err != nil {
+				return err
+			}
+
+			queryStr = fmt.Sprintf(`
+				DELETE FROM intent_test_intents WHERE id IN (?%s)`,
+				inClause)
+			_, err = tx.Exec(queryStr, testIntentIDs...)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func syncIntentTests(tx db, appid string, updatedTime int64) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	// Insert new test intents which intent name exists in 'intents' table
+	// but not in 'intent_test_intents' table
+	queryStr := `
+		INSERT INTO intent_test_intents (app_id, intent_name, version, updated_time)
+		SELECT ?, name, NULL, ?
+		FROM intents
+		WHERE appid = ? AND version IS NULL AND name NOT IN (
+			SELECT intent_name
+			FROM intent_test_intents
+			WHERE app_id = ? AND version IS NULL AND intent_name IS NOT NULL
+		)`
+	_, err := tx.Exec(queryStr, appid, updatedTime, appid, appid)
+	if err != nil {
+		return err
+	}
+
+	// Move deleted test intents' sentences to negative test intent
+	queryStr = `
+		UPDATE intent_test_sentences
+		SET result = 0, score = NULL, answer = NULL, test_intent = (
+			SELECT id
+			FROM intent_test_intents
+			WHERE app_id = ? AND intent_name IS NULL AND version IS NULL
+		)
+		WHERE test_intent IN (
+			SELECT id
+			FROM intent_test_intents
+			WHERE app_id = ? AND version IS NULL AND intent_name NOT IN (
+				SELECT name
+				FROM intents
+				WHERE appid = ? AND version IS NULL
+			)
+		)`
+	_, err = tx.Exec(queryStr, appid, appid, appid)
+	if err != nil {
+		return err
+	}
+
+	// Delete test intents which intent name does not exists in 'intents' table
+	// but does exist in 'intent_test_intents' table
+	queryStr = `
+		DELETE
+		FROM intent_test_intents
+		WHERE app_id = ? AND version IS NULL AND intent_name NOT IN (
+			SELECT name
+			FROM intents
+			WHERE appid = ? AND version IS NULL
+		)`
+	_, err = tx.Exec(queryStr, appid, appid)
+	if err != nil {
+		return err
+	}
+
+	// Create negative test intent if not exists
+	return insertNegativeIntentTestIfNotExists(tx, appid, updatedTime)
+}
+
+func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
+	intentVersion int) (err error) {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	queryStr := `
+		UPDATE intent_versions
+		SET in_used =
+			CASE
+				WHEN in_used = 1 THEN 0
+				WHEN version = ? THEN 1
+				ELSE in_used
+			END
+		WHERE appid = ?`
+	_, err = tx.Exec(queryStr, intentVersion, appID)
+	return
 }
 
 func getLikeValue(val string) string {
