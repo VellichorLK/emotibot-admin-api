@@ -38,7 +38,7 @@ func TestITTagDaoTags(t *testing.T) {
 					IgnoreSoftDelete: true,
 				},
 			},
-			Output: testTags[:2],
+			Output: testTags,
 		},
 	}
 	for _, tt := range testcases {

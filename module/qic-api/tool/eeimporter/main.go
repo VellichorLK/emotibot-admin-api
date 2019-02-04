@@ -33,7 +33,7 @@ func main() {
 		log.Fatal("dir is empty")
 	}
 	var model = emotionengine.Model{
-		AppID:        "demo2",
+		AppID:        appID,
 		IsAutoReload: true,
 		Data:         make(map[string]emotionengine.Emotion, 0),
 	}

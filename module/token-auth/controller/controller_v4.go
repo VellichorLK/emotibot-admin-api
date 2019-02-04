@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"emotibot.com/emotigo/module/token-auth/cache"
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
@@ -59,6 +60,22 @@ func GetOAuthLoginPage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Invalid state"))
 		return
+	}
+
+	cookie, _ := r.Cookie("oauth_token")
+	if cookie != nil {
+		util.LogTrace.Println("Use cookie,", cookie.Value)
+
+		userInfo := data.UserDetailV3{}
+		err := userInfo.SetValueWithToken(cookie.Value)
+		if err == nil {
+			code := util.GenRandomString(codeLength)
+			authCache.Set("auth", code, &userInfo, 600)
+			w.Header().Set("Location", fmt.Sprintf("%s?code=%s&state=%s", redirectURI, url.PathEscape(code), url.PathEscape(state)))
+			w.WriteHeader(http.StatusMovedPermanently)
+			return
+		}
+		util.LogTrace.Println("Invalid user token,", err.Error())
 	}
 
 	ret, err := service.CheckOauthLoginRequest(clientID, redirectURI)
@@ -162,6 +179,11 @@ func HandleOAuthLoginPage(w http.ResponseWriter, r *http.Request) {
 
 	code = util.GenRandomString(codeLength)
 	authCache.Set("auth", code, user, 600)
+
+	token, err := user.GenerateToken()
+	expiration := time.Now().Add(time.Duration(util.GetJWTExpireTime()) * time.Second)
+	cookie := http.Cookie{Name: "oauth_token", Value: token, Expires: expiration}
+	http.SetCookie(w, &cookie)
 }
 
 func GetOAuthTokenViaCode(w http.ResponseWriter, r *http.Request) {

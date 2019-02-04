@@ -34,6 +34,15 @@ func (w *whereBuilder) Parse() (string, []interface{}) {
 	return rawsql, w.data
 }
 
+func (w *whereBuilder) ParseWithWhere() (string, []interface{}) {
+	rawsql := strings.Join(w.conditions, fmt.Sprintf(" %s ", w.ConcatLogic))
+
+	if len(w.data) > 0 {
+		rawsql = " WHERE " + rawsql
+	}
+	return rawsql, w.data
+}
+
 // In will create a condition that field should include inputs.
 func (w *whereBuilder) In(fieldName string, inputs []interface{}) {
 	if len(inputs) > 0 {
