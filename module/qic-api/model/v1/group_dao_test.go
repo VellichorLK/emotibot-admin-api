@@ -10,7 +10,6 @@ import (
 
 func TestGetGroupsSQL(t *testing.T) {
 	filter := GroupFilter{
-		Deal:      -1,
 		FileName:  "test.wav",
 		Extension: "abcdefg",
 	}
