@@ -202,6 +202,11 @@ func DeleteSentenceGroup(uuid string) (err error) {
 	// remove sentence group from these flows
 	for i := range flows {
 		flow := &flows[i]
+		if len(flow.SentenceGroups) == 1 {
+			flow.SentenceGroups = []model.SimpleSentenceGroup{}
+			continue
+		}
+
 		for j, sg := range flow.SentenceGroups {
 			if sg.ID == group.ID {
 				if j == len(flow.SentenceGroups)-1 {
@@ -243,10 +248,6 @@ func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.Sentenc
 			continue
 		}
 
-		if len(flow.SentenceGroups) == 1 {
-			flow.SentenceGroups = []model.SimpleSentenceGroup{}
-			continue
-		}
 		for j := range flow.SentenceGroups {
 			sentenceGroup := &flow.SentenceGroups[j]
 			if sgID, ok := sgMap[sentenceGroup.UUID]; ok {
@@ -258,6 +259,8 @@ func propagateUpdateFromFlow(flows []model.ConversationFlow, sgs []model.Sentenc
 		flowID = append(flowID, flow.ID)
 		activeFlows = append(activeFlows, *flow)
 	}
+
+	logger.Info.Printf("flowUUID: %v\n", flowUUID)
 
 	err = conversationFlowDao.DeleteMany(flowUUID, sqlLike)
 	if err != nil {

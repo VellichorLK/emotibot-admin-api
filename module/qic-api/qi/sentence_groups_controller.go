@@ -149,12 +149,14 @@ func handleGetSentenceGroup(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	id := parseID(r)
 
+	var deleted int8
 	filter := &model.SentenceGroupFilter{
 		UUID: []string{
 			id,
 		},
 		Enterprise: enterprise,
 		Limit:      0,
+		IsDelete:   &deleted,
 	}
 
 	total, groups, err := GetSentenceGroupsBy(filter)
