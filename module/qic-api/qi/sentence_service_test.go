@@ -109,7 +109,7 @@ type mockTagSQLDao struct {
 	uuid            []string
 }
 
-func (m *mockTagSQLDao) Tags(tx *sql.Tx, q model.TagQuery) ([]model.Tag, error) {
+func (m *mockTagSQLDao) Tags(tx model.SqlLike, q model.TagQuery) ([]model.Tag, error) {
 	tags := make([]model.Tag, 0)
 	for _, id := range q.ID {
 		if v, ok := mockTagDao.data[id]; ok {
@@ -138,14 +138,14 @@ func (m *mockTagSQLDao) Tags(tx *sql.Tx, q model.TagQuery) ([]model.Tag, error) 
 	return tags, nil
 }
 
-func (m *mockTagSQLDao) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) {
+func (m *mockTagSQLDao) NewTags(tx model.SqlLike, tags []model.Tag) ([]model.Tag, error) {
 	return nil, nil
 }
 
-func (m *mockTagSQLDao) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error) {
+func (m *mockTagSQLDao) DeleteTags(tx model.SqlLike, query model.TagQuery) (int64, error) {
 	return 0, nil
 }
-func (m *mockTagSQLDao) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
+func (m *mockTagSQLDao) CountTags(tx model.SqlLike, query model.TagQuery) (uint, error) {
 	return 0, nil
 }
 
@@ -385,6 +385,10 @@ func (m *mockSentenceSQLDao) CountSentences(tx model.SqlLike, q *model.SentenceQ
 
 func (m *mockTagSQLDao) Begin() (*sql.Tx, error) {
 	return nil, nil
+}
+
+func (m *mockSentenceSQLDao) InsertSentences(tx model.SqlLike, sentences []model.Sentence) error {
+	return nil
 }
 func TestCheckSentenceAuth(t *testing.T) {
 	sentenceMockDataSetup()

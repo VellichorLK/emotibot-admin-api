@@ -1,12 +1,12 @@
 package qi
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 var mockCtxSentences = []string{
@@ -968,6 +968,14 @@ func (m *mockSentenceGroupsDao) Delete(id string, sqllike model.SqlLike) error {
 	return nil
 }
 
+func (m *mockSentenceGroupsDao) CreateMany(sgs []model.SentenceGroup, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSentenceGroupsDao) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
 type mockCfDao struct {
 }
 
@@ -1002,6 +1010,18 @@ func (m *mockCfDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockCfDao) CreateMany(flows []model.ConversationFlow, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCfDao) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCfDao) GetBySentenceGroupID(SGID []int64, sql model.SqlLike) ([]model.ConversationFlow, error) {
+	return nil, nil
+}
+
 type mockRuleDao struct {
 }
 
@@ -1034,6 +1054,18 @@ func (m *mockRuleDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockRuleDao) GetByFlowID(flowID []int64, sql model.SqlLike) ([]model.ConversationRule, error) {
+	return nil, nil
+}
+
+func (m *mockRuleDao) CreateMany(rules []model.ConversationRule, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockRuleDao) DeleteMany(ruleUUID []string, sql model.SqlLike) error {
+	return nil
+}
+
 type mockGroupDaoMatch struct {
 }
 
@@ -1063,6 +1095,18 @@ func (m *mockGroupDaoMatch) GroupsByCalls(delegatee model.SqlLike, query model.C
 	return nil, nil
 }
 
+func (m *mockGroupDaoMatch) CreateMany(groups []model.GroupWCond, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoMatch) DeleteMany(groupUUID []string, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoMatch) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
+	return nil, nil
+}
+
 type mockTrainedModelDao struct {
 }
 
@@ -1087,7 +1131,7 @@ func TestRuleGroupCriteria(t *testing.T) {
 	predictor = &mockPredictClient2{}
 
 	modelDao = &mockTrainedModelDao{}
-	dbLike = &mockDBLike{}
+	dbLike = &test.MockDBLike{}
 
 	sentenceGroupDao = &mockSentenceGroupsDao{}
 	conversationFlowDao = &mockCfDao{}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 type mockDAO struct{}
@@ -68,6 +69,18 @@ func (m *mockDAO) Group(delegatee model.SqlLike, query model.GroupQuery) ([]mode
 
 func (m *mockDAO) GroupsByCalls(delegatee model.SqlLike, query model.CallQuery) (map[int64][]model.Group, error) {
 	return nil, nil
+}
+
+func (m *mockDAO) CreateMany(groups []model.GroupWCond, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockDAO) DeleteMany(groupUUID []string, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockDAO) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
+	return mockGroups, nil
 }
 
 var fileName string = "FileName"
@@ -142,7 +155,7 @@ func setupGroupMockTest() (model.DBLike, model.GroupDAO, model.ConversationRuleD
 	conversationRuleDao = mockRuleDao
 
 	originDBLike := dbLike
-	mockDBLike := &mockDBLike{}
+	mockDBLike := &test.MockDBLike{}
 	dbLike = mockDBLike
 
 	return originDBLike, originDao, originRuleDao

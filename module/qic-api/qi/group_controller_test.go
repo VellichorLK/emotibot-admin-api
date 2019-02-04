@@ -142,7 +142,7 @@ func TestParseGroupFilter(t *testing.T) {
 		return
 	}
 
-	if filter.FileName != values.Get("file_name") || filter.Deal != 1 || filter.Series != values.Get("series") || filter.CallStart != 10056 {
+	if filter.FileName != values.Get("file_name") || filter.Deal != nil || filter.Series != values.Get("series") || filter.CallStart != 10056 {
 		t.Error("parse group filter failed")
 		return
 	}

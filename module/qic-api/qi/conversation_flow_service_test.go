@@ -2,6 +2,7 @@ package qi
 
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 	"testing"
 )
 
@@ -51,6 +52,18 @@ func (m *mockConversationFlowDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockConversationFlowDao) CreateMany(flows []model.ConversationFlow, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockConversationFlowDao) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockConversationFlowDao) GetBySentenceGroupID(SGID []int64, sql model.SqlLike) ([]model.ConversationFlow, error) {
+	return mockConversationFlows, nil
+}
+
 func restoreConversationFlowTest(origindbLike model.DBLike, originCFDao model.ConversationFlowDao, originSGDao model.SentenceGroupsSqlDao) {
 	dbLike = origindbLike
 	conversationFlowDao = originCFDao
@@ -59,7 +72,7 @@ func restoreConversationFlowTest(origindbLike model.DBLike, originCFDao model.Co
 
 func setupConversationFlowMock() (model.DBLike, model.ConversationFlowDao, model.SentenceGroupsSqlDao) {
 	originDBLike := dbLike
-	mockDBLike := &mockDBLike{}
+	mockDBLike := &test.MockDBLike{}
 	dbLike = mockDBLike
 
 	originCFDao := conversationFlowDao
