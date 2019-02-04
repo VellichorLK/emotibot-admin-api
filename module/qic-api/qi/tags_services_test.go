@@ -74,7 +74,7 @@ func (t *testDao) Commit(tx *sql.Tx) error {
 	return tx.Commit()
 }
 
-func (t *testDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
+func (t *testDao) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	o, err := t.popOutput()
 	oo, ok := o.([]*model.Sentence)
 	if !ok {
@@ -82,7 +82,7 @@ func (t *testDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sen
 	}
 	return oo, err
 }
-func (t *testDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
+func (t *testDao) InsertSentence(tx model.SqlLike, s *model.Sentence) (int64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(int64)
 	if !ok {
@@ -90,7 +90,7 @@ func (t *testDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
 	}
 	return oo, err
 }
-func (t *testDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
+func (t *testDao) SoftDeleteSentence(tx model.SqlLike, q *model.SentenceQuery) (int64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(int64)
 	if !ok {
@@ -98,7 +98,7 @@ func (t *testDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64,
 	}
 	return oo, err
 }
-func (t *testDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
+func (t *testDao) CountSentences(tx model.SqlLike, q *model.SentenceQuery) (uint64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(uint64)
 	if !ok {
@@ -106,7 +106,7 @@ func (t *testDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, er
 	}
 	return oo, err
 }
-func (t *testDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+func (t *testDao) MoveCategories(x model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(int64)
 	if !ok {
@@ -114,7 +114,7 @@ func (t *testDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uin
 	}
 	return oo, err
 }
-func (t *testDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+func (t *testDao) InsertSenTagRelation(tx model.SqlLike, s *model.Sentence) error {
 	o, err := t.popOutput()
 	oo, ok := o.(error)
 	if !ok {
@@ -125,7 +125,7 @@ func (t *testDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
 	}
 	return oo
 }
-func (t *testDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+func (t *testDao) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
 	o, err := t.popOutput()
 	oo, ok := o.(map[uint64][]uint64)
 	if !ok {

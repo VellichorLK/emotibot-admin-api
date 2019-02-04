@@ -1,13 +1,13 @@
 package qi
 
 import (
-	"database/sql"
-	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
-	"github.com/satori/go.uuid"
 	"strings"
 	"time"
+
+	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 
 var sentenceGroupDao model.SentenceGroupsSqlDao = &model.SentenceGroupsSqlDaoImpl{}
 
-func simpleSentencesOf(group *model.SentenceGroup, tx *sql.Tx) (simpleSentences []model.SimpleSentence, err error) {
+func simpleSentencesOf(group *model.SentenceGroup, tx model.SQLTx) (simpleSentences []model.SimpleSentence, err error) {
 	simpleSentences = []model.SimpleSentence{}
 	if len(group.Sentences) == 0 {
 		return

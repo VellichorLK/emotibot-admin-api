@@ -174,19 +174,19 @@ func (m *mockSentenceSQLDao) Commit(tx *sql.Tx) error {
 	return tx.Commit()
 }
 
-func (m *mockSentenceSQLDao) MoveCategories(x *sql.Tx, q *model.SentenceQuery, category uint64) (int64, error) {
+func (m *mockSentenceSQLDao) MoveCategories(x model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
 	return 0, nil
 }
 
-func (m *mockSentenceSQLDao) InsertSenTagRelation(tx *sql.Tx, s *model.Sentence) error {
+func (m *mockSentenceSQLDao) InsertSenTagRelation(tx model.SqlLike, s *model.Sentence) error {
 	return nil
 }
 
-func (m *mockSentenceSQLDao) GetRelSentenceIDByTagIDs(tx *sql.Tx, tagIDs []uint64) (map[uint64][]uint64, error) {
+func (m *mockSentenceSQLDao) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
 	return nil, nil
 }
 
-func (m *mockSentenceSQLDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([]*model.Sentence, error) {
+func (m *mockSentenceSQLDao) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	if q == nil {
 		return nil, nil
 	}
@@ -259,7 +259,7 @@ func (m *mockSentenceSQLDao) GetSentences(tx *sql.Tx, q *model.SentenceQuery) ([
 	return sentences, nil
 
 }
-func (m *mockSentenceSQLDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int64, error) {
+func (m *mockSentenceSQLDao) InsertSentence(tx model.SqlLike, s *model.Sentence) (int64, error) {
 	if s == nil {
 		return 0, nil
 	}
@@ -269,7 +269,7 @@ func (m *mockSentenceSQLDao) InsertSentence(tx *sql.Tx, s *model.Sentence) (int6
 	mockSentenceDao.uuidData[s.UUID] = s
 	return int64(id), nil
 }
-func (m *mockSentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQuery) (int64, error) {
+func (m *mockSentenceSQLDao) SoftDeleteSentence(tx model.SqlLike, q *model.SentenceQuery) (int64, error) {
 	if q == nil {
 		return 0, nil
 	}
@@ -313,7 +313,7 @@ func (m *mockSentenceSQLDao) SoftDeleteSentence(tx *sql.Tx, q *model.SentenceQue
 	}
 	return count, nil
 }
-func (m *mockSentenceSQLDao) CountSentences(tx *sql.Tx, q *model.SentenceQuery) (uint64, error) {
+func (m *mockSentenceSQLDao) CountSentences(tx model.SqlLike, q *model.SentenceQuery) (uint64, error) {
 	if q == nil {
 		return 0, nil
 	}

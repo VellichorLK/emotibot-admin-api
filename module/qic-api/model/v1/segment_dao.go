@@ -1,7 +1,6 @@
 package model
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
@@ -14,7 +13,7 @@ type SegmentDao interface {
 }
 
 type SegmentSQLDao struct {
-	db *sql.DB
+	db SqlLike
 }
 
 func NewSegmentDao(db DBLike) *SegmentSQLDao {

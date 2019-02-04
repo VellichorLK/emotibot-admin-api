@@ -12,7 +12,6 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
-	"database/sql"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
@@ -277,7 +276,7 @@ func DeleteTag(uuid ...string) error {
 	return err
 }
 
-func propagateUpdateFromSentence(sentences []*model.Sentence, newTag, oldTag uint64, enterprise string, tx *sql.Tx) (err error) {
+func propagateUpdateFromSentence(sentences []*model.Sentence, newTag, oldTag uint64, enterprise string, tx model.SQLTx) (err error) {
 	logger.Info.Printf("tags %+v\n", newTag)
 	logger.Info.Printf("sentences: %+v\n", sentences)
 	if len(sentences) == 0 {

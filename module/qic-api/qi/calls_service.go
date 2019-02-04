@@ -188,7 +188,7 @@ func NewCall(c *NewCallReq) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error while get transaction, %v", err)
 	}
-	defer dbLike.ClearTransition(tx)
+	defer tx.Rollback()
 	timestamp := time.Now().Unix()
 	newTask := &model.Task{
 		Status:      int8(0),
