@@ -28,14 +28,18 @@ const (
 	UserKeyTypArray
 )
 
+var _ UserKeyDao = &UserKeySQLDao{}
+
+// UserKeySQLDao is the implementation of SQL operation to User Key Table.
 type UserKeySQLDao struct {
 	db SqlLike
 }
 
+// UserKeyDao is the abstract of the operations to User Key Table.
 type UserKeyDao interface {
 	NewUserKey(delegatee SqlLike, key UserKey) (UserKey, error)
 	UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error)
-	Counts(delegatee SqlLike, query UserKeyQuery) (int64, error)
+	// Counts(delegatee SqlLike, query UserKeyQuery) (int64, error)
 }
 
 type UserKeyQuery struct {
@@ -43,7 +47,7 @@ type UserKeyQuery struct {
 	InputNames       []string
 	Enterprise       string
 	IgnoreSoftDelete bool
-	paging           *Pagination
+	Paging           *Pagination
 }
 
 func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
@@ -122,8 +126,8 @@ func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserK
 	}
 	offsetPart := ""
 	wherePart, data := query.whereSQL("")
-	if query.paging != nil {
-		offsetPart = query.paging.offsetSQL()
+	if query.Paging != nil {
+		offsetPart = query.Paging.offsetSQL()
 	}
 	rawsql := fmt.Sprintf("SELECT `%s` FROM `%s` %s ORDER BY `%s` %s",
 		strings.Join(selectCols, "`,`"),
@@ -156,4 +160,22 @@ func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserK
 		return nil, fmt.Errorf("sql scan error, %v", err)
 	}
 	return userKeys, nil
+}
+
+// CountUserKeys return the total number of the UserKeys.
+func (u *UserKeySQLDao) CountUserKeys(delegatee SqlLike, query UserKeyQuery) (int64, error) {
+	if delegatee == nil {
+		delegatee = u.db
+	}
+	wherepart, data := query.whereSQL("")
+	rawsql := fmt.Sprintf("SELECT COUNT(*) FROM `%s` %s",
+		tblUserKey,
+		wherepart,
+	)
+	var total int64
+	err := delegatee.QueryRow(rawsql, data...).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("query row failed, %v", err)
+	}
+	return total, nil
 }

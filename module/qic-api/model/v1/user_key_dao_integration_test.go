@@ -36,6 +36,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 		name         string
 		arg          UserKeyQuery
 		expectOutput []UserKey
+		expectCount  int64
 		expectError  bool
 	}{
 		{
@@ -44,6 +45,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 				ID: []int64{1},
 			},
 			expectOutput: exampleKeys[0:1],
+			expectCount:  1,
 		},
 		{
 			name: "query uuid",
@@ -53,6 +55,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 				},
 			},
 			expectOutput: exampleKeys[1:2],
+			expectCount:  1,
 		},
 		{
 			name: "ignore soft deleted",
@@ -60,6 +63,19 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 				IgnoreSoftDelete: true,
 			},
 			expectOutput: exampleKeys,
+			expectCount:  int64(len(exampleKeys)),
+		},
+		{
+			name: "query with pagination",
+			arg: UserKeyQuery{
+				IgnoreSoftDelete: true,
+				Paging: &Pagination{
+					Limit: 1,
+					Page:  1,
+				},
+			},
+			expectOutput: exampleKeys[0:1],
+			expectCount:  int64(len(exampleKeys)),
 		},
 	}
 	for _, tt := range testTable {
@@ -74,6 +90,13 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 			if !reflect.DeepEqual(keys, tt.expectOutput) {
 				t.Logf("keys: %+v\nexpect:%+v\n", keys, tt.expectOutput)
 				t.Error("non-equal output for result")
+			}
+			total, err := dao.CountUserKeys(nil, tt.arg)
+			if err != nil {
+				t.Fatal("expect count ok, but got ", err)
+			}
+			if tt.expectCount != total {
+				t.Errorf("expect count to be %d, but got %d", tt.expectCount, total)
 			}
 		})
 	}
@@ -105,9 +128,10 @@ func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
 		t.Logf("request: %+v\ncreated: %+v\n", key, createdKey)
 		t.Error("expect created key to be the same, but not equal")
 	}
-	keys, err := dao.UserKeys(nil, UserKeyQuery{
+	query := UserKeyQuery{
 		ID: []int64{createdKey.ID},
-	})
+	}
+	keys, err := dao.UserKeys(nil, query)
 	if err != nil {
 		t.Fatal("expect query ok, but got ", err)
 	}
