@@ -202,6 +202,9 @@ func (m *mockSenGrpCredit) Update(id string, group *model.SentenceGroup, sql mod
 func (m *mockSenGrpCredit) Delete(id string, sqllike model.SqlLike) error {
 	return nil
 }
+func (m *mockSenGrpCredit) GetNewBy(id []int64, filter *model.SentenceGroupFilter, sql model.SqlLike) ([]model.SentenceGroup, error) {
+	return nil, nil
+}
 
 func (m *mockSenGrpCredit) CreateMany(sgs []model.SentenceGroup, sql model.SqlLike) error {
 	return nil

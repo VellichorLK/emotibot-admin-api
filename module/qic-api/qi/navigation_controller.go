@@ -296,12 +296,11 @@ func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
 		flow := &model.NavFlowUpdate{}
 		ignore := 0
 		if typ == 1 {
-
-			//FIXME: add the type attribute later
 			groupInReq := SentenceGroupInReq{
 				Name:      req.IntentName,
 				Role:      req.Role,
 				Sentences: req.Sentences,
+				Type:      req.Type,
 			}
 
 			group := sentenceGroupInReqToSentenceGroup(&groupInReq)

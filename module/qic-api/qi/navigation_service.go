@@ -175,23 +175,18 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		return nil, err
 	}
 
-	uint64SenGrpIDs := make([]uint64, 0, len(senGrpsID)+1)
+	int64SenGrpIDs := make([]int64, 0, len(senGrpsID)+1)
 	for _, v := range senGrpsID {
-		uint64SenGrpIDs = append(uint64SenGrpIDs, uint64(v))
+		int64SenGrpIDs = append(int64SenGrpIDs, v)
 	}
 	if flow[0].IntentLinkID != 0 {
-		uint64SenGrpIDs = append(uint64SenGrpIDs, uint64(flow[0].IntentLinkID))
+		int64SenGrpIDs = append(int64SenGrpIDs, flow[0].IntentLinkID)
 	}
 
 	resp := &DetailNavFlow{Nodes: []model.SentenceGroup{}, NavFlow: *flow[0]}
 
-	if len(uint64SenGrpIDs) > 0 {
-		filter := &model.SentenceGroupFilter{
-			Role:     -1,
-			Position: -1,
-			ID:       uint64SenGrpIDs,
-		}
-		senGrps, err := sentenceGroupDao.GetBy(filter, dbLike.Conn())
+	if len(int64SenGrpIDs) > 0 {
+		senGrps, err := sentenceGroupDao.GetNewBy(int64SenGrpIDs, nil, dbLike.Conn())
 		if err != nil {
 			logger.Error.Printf("get sentence group failed. %s\n", err)
 			return nil, err

@@ -188,6 +188,7 @@ const (
 	SGRole     = "role"
 	SGPoistion = "position"
 	SGRange    = "range"
+	SGOptional = "optional"
 )
 
 // field name in Relation_SentenceGroup_Sentece
