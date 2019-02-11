@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	test "emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 var mockCredits = []*model.SimpleCredit{
@@ -88,23 +89,19 @@ func (m *mockGroupDaoCredit) Commit(tx *sql.Tx) error {
 
 func (m *mockGroupDaoCredit) ClearTranscation(tx *sql.Tx) {}
 
-func (m *mockGroupDaoCredit) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
+func (m *mockGroupDaoCredit) CreateGroup(group *model.GroupWCond, sqlLike model.SqlLike) (*model.GroupWCond, error) {
 	return nil, nil
 }
 
-func (m *mockGroupDaoCredit) GetGroupBy(id string) (*model.GroupWCond, error) {
-	return nil, nil
-}
-
-func (m *mockGroupDaoCredit) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+func (m *mockGroupDaoCredit) CountGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) (int64, error) {
 	return 2, nil
 }
 
-func (m *mockGroupDaoCredit) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+func (m *mockGroupDaoCredit) GetGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
 }
 
-func (m *mockGroupDaoCredit) DeleteGroup(id string, tx *sql.Tx) (err error) {
+func (m *mockGroupDaoCredit) DeleteGroup(id string, sqlLike model.SqlLike) (err error) {
 	return
 }
 
@@ -113,6 +110,18 @@ func (m *mockGroupDaoCredit) Group(delegatee model.SqlLike, query model.GroupQue
 }
 
 func (m *mockGroupDaoCredit) GroupsByCalls(delegatee model.SqlLike, query model.CallQuery) (map[int64][]model.Group, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoCredit) CreateMany(rules []model.GroupWCond, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoCredit) DeleteMany(ruleUUID []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoCredit) GetGroupsByRuleID(id []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
 }
 
@@ -130,6 +139,18 @@ func (m *mockRuleDaoCredit) GetBy(filter *model.ConversationRuleFilter, sql mode
 }
 func (m *mockRuleDaoCredit) Delete(id string, sql model.SqlLike) error {
 	return nil
+}
+
+func (m *mockRuleDaoCredit) CreateMany(rules []model.ConversationRule, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockRuleDaoCredit) DeleteMany(ruleUUID []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockRuleDaoCredit) GetByFlowID(flowID []int64, sql model.SqlLike) ([]model.ConversationRule, error) {
+	return nil, nil
 }
 
 type mockCFDaoCredit struct {
@@ -151,6 +172,18 @@ func (m *mockCFDaoCredit) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockCFDaoCredit) CreateMany(flows []model.ConversationFlow, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCFDaoCredit) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCFDaoCredit) GetBySentenceGroupID(SGID []int64, sql model.SqlLike) ([]model.ConversationFlow, error) {
+	return nil, nil
+}
+
 type mockSenGrpCredit struct {
 }
 
@@ -170,6 +203,18 @@ func (m *mockSenGrpCredit) Delete(id string, sqllike model.SqlLike) error {
 	return nil
 }
 
+func (m *mockSenGrpCredit) CreateMany(sgs []model.SentenceGroup, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSenGrpCredit) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSenGrpCredit) GetBySentenceID(id []int64, sql model.SqlLike) ([]model.SentenceGroup, error) {
+	return nil, nil
+}
+
 type mockTagSQLDaoCredit struct {
 	data            map[uint64]model.Tag
 	uuidData        map[string]model.Tag
@@ -178,18 +223,18 @@ type mockTagSQLDaoCredit struct {
 	uuid            []string
 }
 
-func (m *mockTagSQLDaoCredit) Tags(tx *sql.Tx, q model.TagQuery) ([]model.Tag, error) {
+func (m *mockTagSQLDaoCredit) Tags(tx model.SqlLike, q model.TagQuery) ([]model.Tag, error) {
 	return nil, nil
 }
 
-func (m *mockTagSQLDaoCredit) NewTags(tx *sql.Tx, tags []model.Tag) ([]model.Tag, error) {
+func (m *mockTagSQLDaoCredit) NewTags(tx model.SqlLike, tags []model.Tag) ([]model.Tag, error) {
 	return nil, nil
 }
 
-func (m *mockTagSQLDaoCredit) DeleteTags(tx *sql.Tx, query model.TagQuery) (int64, error) {
+func (m *mockTagSQLDaoCredit) DeleteTags(tx model.SqlLike, query model.TagQuery) (int64, error) {
 	return 0, nil
 }
-func (m *mockTagSQLDaoCredit) CountTags(tx *sql.Tx, query model.TagQuery) (uint, error) {
+func (m *mockTagSQLDaoCredit) CountTags(tx model.SqlLike, query model.TagQuery) (uint, error) {
 	return 0, nil
 }
 
@@ -237,6 +282,10 @@ func (m *mockSentenceSQLDaoCredit) CountSentences(tx model.SqlLike, q *model.Sen
 
 func (m *mockTagSQLDaoCredit) Begin() (*sql.Tx, error) {
 	return nil, nil
+}
+
+func (m *mockSentenceSQLDaoCredit) InsertSentences(tx model.SqlLike, sentences []model.Sentence) error {
+	return nil
 }
 
 /*
@@ -343,7 +392,7 @@ func TestRetreiveCredit(t *testing.T) {
 	sentenceDao = &mockSentenceSQLDaoCredit{}
 	relationDao = &mockRelationCreditDao{}
 	tagDao = &mockTagSQLDaoCredit{}
-	dbLike = &mockDBLike{}
+	dbLike = &test.MockDBLike{}
 	credits, err := RetrieveCredit(1234)
 	if err != nil {
 		t.Fatalf("expecting no error, but get %s\n", err)

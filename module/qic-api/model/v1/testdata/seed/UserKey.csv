@@ -1,0 +1,4 @@
+id,"name","enterprise","inputname",type,is_delete,create_time,update_time
+1,"公司號","csbot","companyname",1,0,1548842084,1548842084
+2,"地區","csbot2","location",1,0,1548842084,1548850000
+3,"已刪除","csbot","deleted",1,0,1548842100,1548842184

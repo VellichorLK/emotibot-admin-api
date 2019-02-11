@@ -1,0 +1,3 @@
+id	is_delete	"name"	type	"pos_sentences"	"neg_sentences"	create_time	update_time	"enterprise"	"uuid"
+1	1	"Test1"	0	"[""test1-1"", ""test1-2"", ""test1-3""]"	"[]"	1545901909	1545901927	"csbot"	"94d58cb937f34291be262095ce974f2e"
+2	0	"Test2"	1	"[""test2-1""]"	"[""test2-2"", ""test2-3""]"	1545901951	1548915066	"csbot"	"5e46b3ee737c45afb29f2a243c1aae7e"

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
 )
@@ -16,6 +17,7 @@ type ConversationFlow struct {
 	CreateTime     int64
 	UpdateTime     int64
 	Min            int
+	Deleted        int8
 }
 
 type SimpleConversationFlow struct {
@@ -29,21 +31,29 @@ type ConversationFlowFilter struct {
 	ID         []uint64
 	Name       string
 	Enterprise string
-	IsDelete   int8
+	IsDelete   *int8
 	SGUUID     []string
 }
 
 type ConversationFlowDao interface {
-	Create(flow *ConversationFlow, sql SqlLike) (*ConversationFlow, error)
-	CountBy(filter *ConversationFlowFilter, sql SqlLike) (int64, error)
-	GetBy(filter *ConversationFlowFilter, sql SqlLike) ([]ConversationFlow, error)
-	Update(id string, flow *ConversationFlow, sql SqlLike) (*ConversationFlow, error)
-	Delete(id string, sql SqlLike) error
+	Create(flow *ConversationFlow, sqlLike SqlLike) (*ConversationFlow, error)
+	CountBy(filter *ConversationFlowFilter, sqlLike SqlLike) (int64, error)
+	GetBy(filter *ConversationFlowFilter, sqlLike SqlLike) ([]ConversationFlow, error)
+	Update(id string, flow *ConversationFlow, sqlLike SqlLike) (*ConversationFlow, error)
+	Delete(id string, sqlLike SqlLike) error
+	GetBySentenceGroupID([]int64, SqlLike) ([]ConversationFlow, error)
+	CreateMany([]ConversationFlow, SqlLike) error
+	DeleteMany([]string, SqlLike) error
 }
 
 type ConversationFlowSqlDaoImpl struct{}
 
-func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLike) (createdFlow *ConversationFlow, err error) {
+func getConversationFlowInsertSQL(flows []ConversationFlow) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	if len(flows) == 0 {
+		return
+	}
+
 	fields := []string{
 		fldUUID,
 		fldName,
@@ -55,21 +65,66 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 	}
 	fieldStr := strings.Join(fields, ", ")
 
-	values := []interface{}{
-		flow.UUID,
-		flow.Name,
-		flow.Enterprise,
-		flow.Min,
-		flow.Expression,
-		flow.CreateTime,
-		flow.UpdateTime,
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES",
+		tblConversationflow,
+		fieldStr,
+	)
+
+	variableStr := fmt.Sprintf("(?%s)", strings.Repeat(", ?", len(fields)-1))
+	valueStr := ""
+	for _, flow := range flows {
+		values = append(
+			values,
+			flow.UUID,
+			flow.Name,
+			flow.Enterprise,
+			flow.Min,
+			flow.Expression,
+			flow.CreateTime,
+			flow.UpdateTime,
+		)
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
 	}
-	valueStr := "?"
-	valueStr = fmt.Sprintf("%s %s", valueStr, strings.Repeat(", ?", len(values)-1))
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
 
-	insertStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", tblConversationflow, fieldStr, valueStr)
+	return
+}
 
-	result, err := sql.Exec(insertStr, values...)
+func getConversationFlowRelationInsertSQL(flows []ConversationFlow) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES",
+		tblRelCFSG,
+		RCFSGCFID,
+		RCFSGSGID,
+	)
+
+	variableStr := "(?, ?)"
+	valueStr := ""
+	for _, flow := range flows {
+		for _, sentenceGroup := range flow.SentenceGroups {
+			values = append(values, flow.ID, sentenceGroup.ID)
+			valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+		}
+	}
+
+	if len(values) == 0 {
+		return
+	}
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf("%s %s", insertStr, valueStr)
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sqlLike SqlLike) (createdFlow *ConversationFlow, err error) {
+	insertStr, values := getConversationFlowInsertSQL([]ConversationFlow{*flow})
+
+	result, err := sqlLike.Exec(insertStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while insert flow in dao.Create, err: %s", err.Error())
 		return
@@ -80,34 +135,18 @@ func (dao *ConversationFlowSqlDaoImpl) Create(flow *ConversationFlow, sql SqlLik
 		err = fmt.Errorf("error while get flow id in dao.Create, err: %s", err.Error())
 		return
 	}
+	flow.ID = flowID
 
 	// create conversation flow to sentence group relation
 	if len(flow.SentenceGroups) > 0 {
-		fields = []string{
-			RCFSGCFID,
-			RCFSGSGID,
-		}
-		fieldStr = strings.Join(fields, ", ")
-
-		valueStr = "(?, ?)"
-		values = []interface{}{
-			flowID,
-			flow.SentenceGroups[0].ID,
-		}
-
-		for idx := range flow.SentenceGroups[1:] {
-			valueStr += ", (?, ?)"
-			values = append(values, flowID, flow.SentenceGroups[idx+1].ID)
-		}
-
-		insertStr = fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", tblRelCFSG, fieldStr, valueStr)
-		_, err = sql.Exec(insertStr, values...)
+		insertStr, values = getConversationFlowRelationInsertSQL([]ConversationFlow{*flow})
+		_, err = sqlLike.Exec(insertStr, values...)
 		if err != nil {
 			err = fmt.Errorf("error while insert flow to sentence group relation in dao.Create, err: %s", err.Error())
 			return
 		}
 	}
-	flow.ID = flowID
+
 	createdFlow = flow
 	return
 }
@@ -145,9 +184,9 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		values = append(values, filter.Name)
 	}
 
-	if filter.IsDelete != -1 {
+	if filter.IsDelete != nil {
 		conditions = append(conditions, fmt.Sprintf("%s=?", fldIsDelete))
-		values = append(values, filter.IsDelete)
+		values = append(values, *filter.IsDelete)
 	}
 
 	if len(conditions) > 0 {
@@ -170,7 +209,7 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgUUID, sg.%s as sgName
+		`SELECT cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, cf.%s, sg.%s as sgID, sg.%s as sgUUID, sg.%s as sgName
 		 FROM (SELECT * FROM %s %s) as cf
 		 LEFT JOIN %s as rcfsg ON cf.%s = rcfsg.%s
 		 %s as sg ON rcfsg.%s = sg.%s`,
@@ -182,6 +221,8 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 		CFExpression,
 		fldCreateTime,
 		fldUpdateTime,
+		fldIsDelete,
+		fldID,
 		fldUUID,
 		fldName,
 		tblConversationflow,
@@ -196,11 +237,11 @@ func queryConversationFlowsSQLBy(filter *ConversationFlowFilter) (queryStr strin
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, sql SqlLike) (total int64, err error) {
+func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, sqlLike SqlLike) (total int64, err error) {
 	queryStr, values := queryConversationFlowsSQLBy(filter)
 	queryStr = fmt.Sprintf("SELECT COUNT(cf.%s) FROM (%s) as cf", fldID, queryStr)
 
-	rows, err := sql.Query(queryStr, values...)
+	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while count conversation flows in dao.CountBy, err: %s", err.Error())
 		return
@@ -213,10 +254,10 @@ func (dao *ConversationFlowSqlDaoImpl) CountBy(filter *ConversationFlowFilter, s
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql SqlLike) (flows []ConversationFlow, err error) {
+func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sqlLike SqlLike) (flows []ConversationFlow, err error) {
 	queryStr, values := queryConversationFlowsSQLBy(filter)
 
-	rows, err := sql.Query(queryStr, values...)
+	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while get conversation flows in dao.GetBy, err: %s", err.Error())
 		return
@@ -227,6 +268,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 	var cFlow *ConversationFlow // current conversatin flow
 	for rows.Next() {
 		flow := ConversationFlow{}
+		var sgID *int64
 		var sgUUID *string
 		var sgName *string
 
@@ -239,6 +281,8 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 			&flow.Expression,
 			&flow.CreateTime,
 			&flow.UpdateTime,
+			&flow.Deleted,
+			&sgID,
 			&sgUUID,
 			&sgName,
 		)
@@ -256,6 +300,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 		}
 		if sgUUID != nil && sgName != nil {
 			sg := SimpleSentenceGroup{
+				ID:   *sgID,
 				UUID: *sgUUID,
 				Name: *sgName,
 			}
@@ -269,17 +314,143 @@ func (dao *ConversationFlowSqlDaoImpl) GetBy(filter *ConversationFlowFilter, sql
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) Update(id string, flow *ConversationFlow, sql SqlLike) (updatedFlow *ConversationFlow, err error) {
+func (dao *ConversationFlowSqlDaoImpl) Update(id string, flow *ConversationFlow, sqlLike SqlLike) (updatedFlow *ConversationFlow, err error) {
 	return
 }
 
-func (dao *ConversationFlowSqlDaoImpl) Delete(id string, sql SqlLike) (err error) {
+func (dao *ConversationFlowSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err error) {
 	deleteStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblConversationflow, fldIsDelete, fldUUID)
 
-	_, err = sql.Exec(deleteStr, 1, id)
+	_, err = sqlLike.Exec(deleteStr, 1, id)
 	if err != nil {
 		err = fmt.Errorf("error while delete conversation flow in dao.Delete, reason: %s", err.Error())
 		return
+	}
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) GetBySentenceGroupID(sgid []int64, sqlLike SqlLike) (flows []ConversationFlow, err error) {
+	flows = []ConversationFlow{}
+	if len(sgid) == 0 {
+		return
+	}
+
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(RCFSGSGID, int64ToWildCard(sgid...))
+
+	conditionStr, values := builder.Parse()
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s",
+		RCFSGCFID,
+		tblRelCFSG,
+		conditionStr,
+	)
+
+	logger.Info.Printf("queryStr: %s\n", queryStr)
+	logger.Info.Printf("values: %+v\n", values)
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while get flow id in dao.GetBySentenceGroupID, sql: %s", queryStr)
+		logger.Error.Printf("error while get flow id in dao.GetBySentenceGroupID, values: %+v", values)
+		err = fmt.Errorf("error while get flow id in dao.GetBySentenceGroupID, err: %s", err.Error())
+		return
+	}
+
+	cfid := []uint64{}
+	for rows.Next() {
+		var id uint64
+		rows.Scan(&id)
+		cfid = append(cfid, id)
+	}
+
+	if len(cfid) == 0 {
+		return
+	}
+
+	filter := &ConversationFlowFilter{
+		ID: cfid,
+	}
+
+	flows, err = dao.GetBy(filter, sqlLike)
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) CreateMany(flows []ConversationFlow, sqlLike SqlLike) (err error) {
+	if len(flows) == 0 {
+		return
+	}
+
+	insertStr, values := getConversationFlowInsertSQL(flows)
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert flows in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert flows in dao.CreateMany, values: %s", values)
+		err = fmt.Errorf("error while insert flows in dao.CreateMany, err: %s", err.Error())
+		return
+	}
+
+	// update flow ids
+	flowUUID := []string{}
+	for _, flow := range flows {
+		flowUUID = append(flowUUID, flow.UUID)
+	}
+
+	deleted := int8(0)
+	filter := &ConversationFlowFilter{
+		UUID:     flowUUID,
+		IsDelete: &deleted,
+	}
+
+	newFlows, err := dao.GetBy(filter, sqlLike)
+	if err != nil {
+		return
+	}
+
+	flowMap := map[string]int64{}
+	for _, newFlow := range newFlows {
+		flowMap[newFlow.UUID] = newFlow.ID
+	}
+
+	for idx := range flows {
+		flow := &flows[idx]
+		flow.ID = flowMap[flow.UUID]
+	}
+
+	// create flow sentence group relation
+	insertStr, values = getConversationFlowRelationInsertSQL(flows)
+	if len(values) == 0 {
+		return
+	}
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while insert flow sentence group relation in dao.CreateMany, sql: %s", insertStr)
+		logger.Error.Printf("error while insert flow sentence group relation in dao.CreateMany, values: %s", values)
+		err = fmt.Errorf("error while insert flow sentence group relation in dao.CreateMany, err: %s", err.Error())
+	}
+	return
+}
+
+func (dao *ConversationFlowSqlDaoImpl) DeleteMany(uuids []string, sqlLike SqlLike) (err error) {
+	builder := NewWhereBuilder(andLogic, "")
+
+	builder.In(fldUUID, stringToWildCard(uuids...))
+
+	conditionStr, values := builder.Parse()
+
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s = 1 WHERE %s",
+		tblConversationflow,
+		fldIsDelete,
+		conditionStr,
+	)
+
+	_, err = sqlLike.Exec(deleteStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while delete flows in dao.DeleteMany, sql: %s", deleteStr)
+		logger.Error.Printf("error while delete flows in dao.DeleteMany, values: %s", values)
+		err = fmt.Errorf("error while delete flows in dao.DeleteMany, err: %s", err.Error())
 	}
 	return
 }

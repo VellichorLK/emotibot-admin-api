@@ -202,14 +202,16 @@ func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error)
 	filter.CustomerName = values.Get("customer_name")
 	filter.CustomerPhone = values.Get("customer_phone")
 
+	deleted := int8(0)
+	filter.Delete = &deleted
+
 	dealStr := values.Get("deal")
 	if dealStr != "" {
-		filter.Deal, err = strconv.Atoi(dealStr)
+		deal, ierr := strconv.Atoi(dealStr)
+		filter.Deal = &deal
 		if err != nil {
-			return
+			return filter, ierr
 		}
-	} else {
-		filter.Deal = -1
 	}
 
 	callStartStr := values.Get("call_start")

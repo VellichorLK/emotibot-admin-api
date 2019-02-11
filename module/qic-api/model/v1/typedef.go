@@ -55,25 +55,3 @@ type SqlLike interface {
 	QueryRow(query string, args ...interface{}) *sql.Row
 	Prepare(query string) (*sql.Stmt, error)
 }
-
-type GroupFilter struct {
-	FileName      string
-	Deal          int
-	Series        string
-	CallStart     int64
-	CallEnd       int64
-	StaffID       string
-	StaffName     string
-	Extension     string
-	Department    string
-	CustomerID    string
-	CustomerName  string
-	CustomerPhone string
-	EnterpriseID  string
-	Page          int
-	Limit         int
-	UUID          []string
-	ID            []uint64
-	Delete        int8
-	Rules         []string
-}

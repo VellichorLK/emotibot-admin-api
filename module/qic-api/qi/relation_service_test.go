@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 type mockSQLRelationDao struct {
@@ -18,7 +19,7 @@ func mockRelationDoa() {
 }
 func TestGetLevelsRel(t *testing.T) {
 	mockRelationDoa()
-	mockDBLike := &mockDBLike{}
+	mockDBLike := &test.MockDBLike{}
 	dbLike = mockDBLike
 	var from, to Levels
 

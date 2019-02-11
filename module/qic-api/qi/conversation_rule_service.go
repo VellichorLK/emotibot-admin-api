@@ -30,7 +30,7 @@ func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) 
 	filter := &model.ConversationFlowFilter{
 		Enterprise: rule.Enterprise,
 		UUID:       uuids,
-		IsDelete:   isDelete,
+		IsDelete:   &isDelete,
 	}
 
 	flows, err := conversationFlowDao.GetBy(filter, sql)
@@ -51,6 +51,7 @@ func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) 
 		}
 		simpleFlows[idx] = simpleFlow
 	}
+	logger.Info.Printf("simpleFlows: %+v\n", simpleFlows)
 	return
 }
 
@@ -128,33 +129,6 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 	}
 	defer dbLike.ClearTransition(tx)
 
-	// get groups which include this rule
-	groupFilter := &model.GroupFilter{
-		EnterpriseID: rule.Enterprise,
-		Rules: []string{
-			id,
-		},
-	}
-	_, groups, err := GetGroupsByFilter(groupFilter)
-	if err != nil {
-		return
-	}
-
-	if len(groups) > 0 {
-		groupFilter.Rules = []string{}
-		groupFilter.UUID = []string{}
-		for _, group := range groups {
-			groupFilter.UUID = append(groupFilter.UUID, group.UUID)
-		}
-
-		_, groups, err = GetGroupsByFilter(groupFilter)
-		if err != nil {
-			return
-		}
-	} else {
-		groups = []model.GroupWCond{}
-	}
-
 	filter := &model.ConversationRuleFilter{
 		UUID: []string{
 			id,
@@ -178,6 +152,12 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 		return
 	}
 
+	// get groups which include this rule
+	groups, err := serviceDAO.GetGroupsByRuleID([]int64{originRule.ID}, tx)
+	if err != nil {
+		return
+	}
+
 	err = conversationRuleDao.Delete(id, tx)
 	if err != nil {
 		return
@@ -192,19 +172,127 @@ func UpdateConversationRule(id string, rule *model.ConversationRule) (updatedRul
 	if err != nil {
 		return
 	}
-	dbLike.Commit(tx)
 
-	// update groups which reference this rule
-	for idx := range groups {
-		group := &groups[idx]
-		err = UpdateGroup(group.UUID, group)
+	if len(groups) > 0 {
+		err = propagateUpdateFromGroup(groups, []model.ConversationRule{*updatedRule}, tx)
 		if err != nil {
 			return
 		}
 	}
+	err = dbLike.Commit(tx)
 	return
 }
 
 func DeleteConversationRule(id string) (err error) {
-	return conversationRuleDao.Delete(id, sqlConn)
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+	defer dbLike.ClearTransition(tx)
+
+	filter := &model.ConversationRuleFilter{
+		UUID: []string{
+			id,
+		},
+		IsDeleted: 0,
+	}
+	rules, err := conversationRuleDao.GetBy(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if len(rules) == 0 {
+		return
+	}
+
+	rule := rules[0]
+
+	groups, err := serviceDAO.GetGroupsByRuleID([]int64{rule.ID}, tx)
+	if err != nil {
+		return
+	}
+
+	err = conversationRuleDao.Delete(id, tx)
+	if err != nil {
+		return
+	}
+
+	if len(groups) > 0 {
+		// remove the rule from groups which are related to this rule
+		for idx := range groups {
+			group := &groups[idx]
+			rules := *group.Rules
+			if len(rules) == 0 {
+				newRules := []model.SimpleConversationRule{}
+				group.Rules = &newRules
+				continue
+			}
+
+			for j, rule := range rules {
+				if rule.UUID == id {
+					var newRules []model.SimpleConversationRule
+					if j == len(rules)-1 {
+						newRules = rules[:j]
+					} else {
+						newRules = append(rules[:j], rules[j+1:]...)
+					}
+					group.Rules = &newRules
+				}
+			}
+		}
+
+		err = propagateUpdateFromGroup(groups, rules, tx)
+		if err != nil {
+			return
+		}
+	}
+
+	dbLike.Commit(tx)
+	return
+}
+
+func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.ConversationRule, sqlLike model.SqlLike) error {
+	logger.Info.Printf("groups: %+v", groups)
+	logger.Info.Printf("rules: %+v", rules)
+	var err error
+	if len(groups) == 0 {
+		return err
+	}
+
+	// create rule map
+	ruleMap := map[string]int64{}
+	for _, rule := range rules {
+		ruleMap[rule.UUID] = rule.ID
+	}
+
+	groupUUID := []string{}
+	activeGroups := []model.GroupWCond{}
+	for i := range groups {
+		group := &groups[i]
+		if group.Deleted == 1 {
+			continue
+		}
+
+		rules := *group.Rules
+		for j := range rules {
+			rule := &rules[j]
+			if ruleID, ok := ruleMap[rule.UUID]; ok {
+				rule.ID = ruleID
+			}
+		}
+		groupUUID = append(groupUUID, group.UUID)
+		activeGroups = append(activeGroups, *group)
+	}
+
+	err = serviceDAO.DeleteMany(groupUUID, sqlLike)
+	if err != nil {
+		return err
+	}
+
+	err = serviceDAO.CreateMany(activeGroups, sqlLike)
+	if err != nil {
+		return err
+	}
+
+	return err
 }

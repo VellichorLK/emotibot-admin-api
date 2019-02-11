@@ -19,10 +19,10 @@ import (
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
-	tagDao     TagDao
-	callDao    CallDao
-	taskDao    TaskDao
-	segmentDao SegmentDao
+	tagDao     model.TagDao
+	callDao    model.CallDao
+	taskDao    model.TaskDao
+	segmentDao model.SegmentDao
 	producer   *rabbitmq.Producer
 	consumer   *rabbitmq.Consumer
 	sqlConn    *sql.DB
@@ -146,7 +146,7 @@ func init() {
 				taskDao = model.NewTaskDao(sqlConn)
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
-				segmentDao = model.NewSegmentDao(dbLike.Conn())
+				segmentDao = model.NewSegmentDao(dbLike)
 
 			},
 			"init RabbitMQ": func() {

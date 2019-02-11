@@ -1,12 +1,12 @@
 package qi
 
 import (
-	"database/sql"
 	"testing"
 	"time"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 var mockCtxSentences = []string{
@@ -956,10 +956,23 @@ func (m *mockSentenceGroupsDao) GetBy(filter *model.SentenceGroupFilter, sql mod
 	}
 	return resp, nil
 }
+
+func (m *mockSentenceGroupsDao) GetBySentenceID(id []int64, sqlLike model.SqlLike) ([]model.SentenceGroup, error) {
+	return m.GetBy(nil, sqlLike)
+}
+
 func (m *mockSentenceGroupsDao) Update(id string, group *model.SentenceGroup, sql model.SqlLike) (*model.SentenceGroup, error) {
 	return nil, nil
 }
 func (m *mockSentenceGroupsDao) Delete(id string, sqllike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSentenceGroupsDao) CreateMany(sgs []model.SentenceGroup, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSentenceGroupsDao) DeleteMany(id []string, sql model.SqlLike) error {
 	return nil
 }
 
@@ -997,6 +1010,18 @@ func (m *mockCfDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockCfDao) CreateMany(flows []model.ConversationFlow, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCfDao) DeleteMany(id []string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockCfDao) GetBySentenceGroupID(SGID []int64, sql model.SqlLike) ([]model.ConversationFlow, error) {
+	return nil, nil
+}
+
 type mockRuleDao struct {
 }
 
@@ -1029,38 +1054,36 @@ func (m *mockRuleDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
-type mockGroupDaoMatch struct {
-}
-
-func (m *mockGroupDaoMatch) Begin() (*sql.Tx, error) {
+func (m *mockRuleDao) GetByFlowID(flowID []int64, sql model.SqlLike) ([]model.ConversationRule, error) {
 	return nil, nil
 }
 
-func (m *mockGroupDaoMatch) Commit(tx *sql.Tx) error {
+func (m *mockRuleDao) CreateMany(rules []model.ConversationRule, sqlLike model.SqlLike) error {
 	return nil
 }
 
-func (m *mockGroupDaoMatch) ClearTranscation(tx *sql.Tx) {}
+func (m *mockRuleDao) DeleteMany(ruleUUID []string, sql model.SqlLike) error {
+	return nil
+}
 
-func (m *mockGroupDaoMatch) CreateGroup(group *model.GroupWCond, tx *sql.Tx) (*model.GroupWCond, error) {
+type mockGroupDaoMatch struct {
+}
+
+func (m *mockGroupDaoMatch) CreateGroup(group *model.GroupWCond, sqlLike model.SqlLike) (*model.GroupWCond, error) {
 	return nil, nil
 }
 
-func (m *mockGroupDaoMatch) GetGroupBy(id string) (*model.GroupWCond, error) {
-	return nil, nil
-}
-
-func (m *mockGroupDaoMatch) CountGroupsBy(filter *model.GroupFilter) (int64, error) {
+func (m *mockGroupDaoMatch) CountGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) (int64, error) {
 	return 2, nil
 }
 
-func (m *mockGroupDaoMatch) GetGroupsBy(filter *model.GroupFilter) ([]model.GroupWCond, error) {
+func (m *mockGroupDaoMatch) GetGroupsBy(filter *model.GroupFilter, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return []model.GroupWCond{
 		model.GroupWCond{Enterprise: "abcdeg"},
 	}, nil
 }
 
-func (m *mockGroupDaoMatch) DeleteGroup(id string, tx *sql.Tx) (err error) {
+func (m *mockGroupDaoMatch) DeleteGroup(id string, sqlLike model.SqlLike) (err error) {
 	return
 }
 
@@ -1069,6 +1092,18 @@ func (m *mockGroupDaoMatch) Group(delegatee model.SqlLike, query model.GroupQuer
 }
 
 func (m *mockGroupDaoMatch) GroupsByCalls(delegatee model.SqlLike, query model.CallQuery) (map[int64][]model.Group, error) {
+	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) CreateMany(groups []model.GroupWCond, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoMatch) DeleteMany(groupUUID []string, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockGroupDaoMatch) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
 }
 
@@ -1096,7 +1131,7 @@ func TestRuleGroupCriteria(t *testing.T) {
 	predictor = &mockPredictClient2{}
 
 	modelDao = &mockTrainedModelDao{}
-	dbLike = &mockDBLike{}
+	dbLike = &test.MockDBLike{}
 
 	sentenceGroupDao = &mockSentenceGroupsDao{}
 	conversationFlowDao = &mockCfDao{}

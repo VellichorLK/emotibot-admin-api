@@ -10,17 +10,16 @@ import (
 
 func TestGetGroupsSQL(t *testing.T) {
 	filter := GroupFilter{
-		Deal:      -1,
 		FileName:  "test.wav",
 		Extension: "abcdefg",
 	}
 
-	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, 
+	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
 	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	r.%s as rUUID, r.%s as rName
-	FROM (SELECT * FROM %s WHERE is_delete = ?) as rg
-	INNER JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
+	r.%s as rID, r.%s as rUUID, r.%s as rName
+	FROM (SELECT * FROM %s ) as rg
+	LEFT JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
 	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
 	LEFT JOIN %s as r on rrr.%s = r.%s
 	`
@@ -35,6 +34,7 @@ func TestGetGroupsSQL(t *testing.T) {
 		fldCreateTime,
 		fldRuleGrpIsEnable,
 		fldEnterprise,
+		fldIsDelete,
 		RGCFileName,
 		RGCDeal,
 		RGCSeries,
@@ -49,6 +49,7 @@ func TestGetGroupsSQL(t *testing.T) {
 		RGCCallEnd,
 		RGCLeftChannel,
 		RGCRightChannel,
+		fldID,
 		fldUUID,
 		fldName,
 		tblRuleGroup,
@@ -65,8 +66,8 @@ func TestGetGroupsSQL(t *testing.T) {
 
 	queryStr, values := getGroupsSQL(&filter)
 
-	if len(values) != 3 {
-		t.Error("expect values length 3")
+	if len(values) != 2 {
+		t.Error("expect values length 2")
 		return
 	}
 

@@ -173,7 +173,7 @@ func NewSentence(enterprise string, category uint64, name string, tagUUID []stri
 	uuidStr := hex.EncodeToString(uuid[:])
 	s := &model.Sentence{IsDelete: 0, Name: name, Enterprise: enterprise,
 		CreateTime: now, UpdateTime: now, TagIDs: tagsID, UUID: uuidStr, CategoryID: category}
-	tx, err := sentenceDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		logger.Error.Printf("create transaction failed. %s\n", err)
 		return nil, err
@@ -188,14 +188,14 @@ func NewSentence(enterprise string, category uint64, name string, tagUUID []stri
 	if err != nil {
 		return nil, err
 	}
-	sentenceDao.Commit(tx)
+	dbLike.Commit(tx)
 	sentence := &DataSentence{UUID: uuidStr, Name: name}
 	return sentence, nil
 }
 
 //UpdateSentence updates sentence, do soft delete and create new record
 func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID []string) (int64, error) {
-	tx, err := sentenceDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return 0, err
 	}
@@ -204,8 +204,19 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	//soft delete the sentence
 	var isDeleteInt int8
 	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise, IsDelete: &isDeleteInt}
-	affected, err := sentenceDao.SoftDeleteSentence(tx, q)
+	sentences, err := sentenceDao.GetSentences(tx, q)
+	if err != nil {
+		logger.Error.Printf("query sentences failed. %s\n", err)
+		return 0, err
+	}
 
+	if len(sentences) == 0 {
+		return 0, nil
+	}
+
+	sentence := sentences[0]
+
+	affected, err := sentenceDao.SoftDeleteSentence(tx, q)
 	//means already deleted or non of rows is matched the condition
 	if affected == 0 {
 		return 0, nil
@@ -221,6 +232,13 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	tagIDs := make([]uint64, numOfTags, numOfTags)
 	for i := 0; i < numOfTags; i++ {
 		tagIDs[i] = tags[i].ID
+	}
+
+	// get related sentence groups
+	sgs, err := sentenceGroupDao.GetBySentenceID([]int64{int64(sentence.ID)}, tx)
+	if err != nil {
+		logger.Error.Printf("query setence groups failed. %s\n", err)
+		return 0, err
 	}
 
 	//insert the sentence
@@ -239,31 +257,15 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 		return 0, err
 	}
 
-	err = sentenceDao.Commit(tx)
+	err = propagateUpdateFromSentenceGroup(sgs, []model.Sentence{*s}, tx)
 	if err != nil {
+		logger.Error.Printf("update sentence group relation failed. %s", err)
 		return 0, err
 	}
-	// Because the filter condition sentence UUID,
-	// will not get the sentence group with all sentence it has.
-	// So we have to re-query it.
-	sgs, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{
-		SetenceUUID: []string{s.UUID},
-	}, nil)
+
+	err = dbLike.Commit(tx)
 	if err != nil {
 		return 0, err
-	}
-	sgIDGrp := []uint64{}
-	for _, sg := range sgs {
-		sgIDGrp = append(sgIDGrp, uint64(sg.ID))
-	}
-	sgs, err = sentenceGroupDao.GetBy(&model.SentenceGroupFilter{
-		ID: sgIDGrp,
-	}, nil)
-	for _, sg := range sgs {
-		_, err := UpdateSentenceGroup(sg.UUID, &sg)
-		if err != nil {
-			return 0, err
-		}
 	}
 
 	return newID, nil
@@ -271,8 +273,123 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 
 //SoftDeleteSentence sets the field, is_delete, in sentence to 1
 func SoftDeleteSentence(sentenceUUID string, enterprise string) (int64, error) {
-	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise}
-	return sentenceDao.SoftDeleteSentence(nil, q)
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return 0, nil
+	}
+
+	var deleted int8
+	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise, IsDelete: &deleted}
+	sentences, err := sentenceDao.GetSentences(tx, q)
+	if err != nil {
+		logger.Error.Printf("query sentences failed. %s", err)
+		return 0, err
+	}
+
+	if len(sentences) == 0 {
+		return 0, nil
+	}
+
+	affected, err := sentenceDao.SoftDeleteSentence(tx, q)
+	if err != nil {
+		return affected, err
+	}
+
+	if affected == 0 {
+		return 0, nil
+	}
+
+	sentence := sentences[0]
+
+	sgs, err := sentenceGroupDao.GetBySentenceID([]int64{int64(sentence.ID)}, tx)
+	if err != nil {
+		logger.Error.Printf("query sentence group failed. %s", err)
+		return 0, err
+	}
+
+	// remove sentence from sentence group
+	for i := range sgs {
+		sg := &sgs[i]
+		logger.Info.Printf("sg: %+v\n", sg)
+		if len(sg.Sentences) == 1 {
+			sg.Sentences = []model.SimpleSentence{}
+			continue
+		}
+
+		for j := range sg.Sentences {
+			s := &sg.Sentences[j]
+			if s.ID == sentence.ID {
+				if j == len(sg.Sentences)-1 {
+					sg.Sentences = sg.Sentences[:j]
+				} else {
+					sg.Sentences = append(sg.Sentences[:j], sg.Sentences[j+1:]...)
+				}
+			}
+		}
+	}
+
+	err = propagateUpdateFromSentenceGroup(sgs, []model.Sentence{*sentence}, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	err = dbLike.Commit(tx)
+	return affected, err
+}
+
+func propagateUpdateFromSentenceGroup(sentenceGroups []model.SentenceGroup, sentences []model.Sentence, sqlLike model.SqlLike) (err error) {
+	logger.Info.Printf("sentenceGroups: %+v", sentenceGroups)
+	logger.Info.Printf("sentences: %+v", sentences)
+	if len(sentenceGroups) == 0 || len(sentences) == 0 {
+		return
+	}
+
+	// update sentence id in sentence groups
+	sentenceMap := map[string]int64{}
+	for _, sentence := range sentences {
+		sentenceMap[sentence.UUID] = int64(sentence.ID)
+	}
+
+	sgUUID := []string{}
+	sgID := []int64{}
+	activeSentenceGroups := []model.SentenceGroup{} // only update non-deleted sentence groups
+	for i := range sentenceGroups {
+		group := &sentenceGroups[i]
+		if group.Deleted == 1 {
+			// ignore deleted groups
+			continue
+		}
+
+		for j := range group.Sentences {
+			sentence := &group.Sentences[j]
+			if sentenceID, ok := sentenceMap[sentence.UUID]; ok {
+				sentence.ID = uint64(sentenceID)
+			}
+		}
+		sgUUID = append(sgUUID, group.UUID)
+		sgID = append(sgID, group.ID)
+		activeSentenceGroups = append(activeSentenceGroups, *group)
+	}
+
+	// get related flows of the sentence groups
+	flows, err := conversationFlowDao.GetBySentenceGroupID(sgID, sqlLike)
+	if err != nil {
+		return
+	}
+
+	// delete old sentence groups
+	err = sentenceGroupDao.DeleteMany(sgUUID, sqlLike)
+	if err != nil {
+		return
+	}
+
+	// create new sentence groups
+	err = sentenceGroupDao.CreateMany(activeSentenceGroups, sqlLike)
+	if err != nil {
+		return
+	}
+
+	return propagateUpdateFromFlow(flows, activeSentenceGroups, sqlLike)
 }
 
 //CheckSentenceAuth checks whether these uuid belongs to this enterprise
