@@ -79,3 +79,43 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 	}
 
 }
+
+func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
+	dao := UserKeySQLDao{
+		db: newIntegrationTestDB(t),
+	}
+	key := UserKey{
+		Name:       "地區",
+		Enterprise: "832ec03d470b49dab3a0f017bf27ff45",
+		InputName:  "c0032b4d3aa142a09e5ea10893707e7c",
+		Type:       UserKeyTypString,
+		IsDeleted:  false,
+		CreateTime: 1549857200,
+		UpdateTime: 1549857300,
+	}
+	createdKey, err := dao.NewUserKey(nil, key)
+	if err != nil {
+		t.Fatal("expect ok, but got ", err)
+	}
+	if createdKey.ID == 0 {
+		t.Fatal("expect key id to be assigned, but got zero")
+	}
+	key.ID = createdKey.ID
+	if !reflect.DeepEqual(key, createdKey) {
+		t.Logf("request: %+v\ncreated: %+v\n", key, createdKey)
+		t.Error("expect created key to be the same, but not equal")
+	}
+	keys, err := dao.UserKeys(nil, UserKeyQuery{
+		ID: []int64{createdKey.ID},
+	})
+	if err != nil {
+		t.Fatal("expect query ok, but got ", err)
+	}
+	if len(keys) != 1 {
+		t.Fatal("expect one element found, but got ", len(keys))
+	}
+	if !reflect.DeepEqual(keys[0], createdKey) {
+		t.Logf("keys[1]: %+v\nCreated: %+v\n", keys[0], createdKey)
+		t.Error("expect created key to be the same as keys 1")
+	}
+}

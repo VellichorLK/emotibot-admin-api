@@ -22,7 +22,10 @@ const (
 //UserKeyTyp is the constant value of the User Key type
 const (
 	UserKeyTypDefault int8 = iota
-	UserKeyTypArrayString
+	UserKeyTypString
+	UserKeyTypTime
+	UserKeyTypNumber
+	UserKeyTypArray
 )
 
 type UserKeySQLDao struct {
@@ -30,6 +33,7 @@ type UserKeySQLDao struct {
 }
 
 type UserKeyDao interface {
+	NewUserKey(delegatee SqlLike, key UserKey) (UserKey, error)
 	UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error)
 	Counts(delegatee SqlLike, query UserKeyQuery) (int64, error)
 }
@@ -70,6 +74,41 @@ func NewUserKeyDao(db SqlLike) *UserKeySQLDao {
 	return &UserKeySQLDao{
 		db: db,
 	}
+}
+
+func (u *UserKeySQLDao) NewUserKey(delegatee SqlLike, key UserKey) (UserKey, error) {
+	if delegatee == nil {
+		delegatee = u.db
+	}
+	insertCols := []string{
+		fldUserKeyName, fldUserKeyEnterprise, fldUserKeyInputName,
+		fldUserKeyType, fldUserKeyIsDelete, fldUserKeyCreateTime,
+		fldUserKeyUpdateTime,
+	}
+	rawsql := fmt.Sprintf("INSERT INTO `%s`(`%s`) VALUES(? %s)",
+		tblUserKey,
+		strings.Join(insertCols, "`, `"),
+		strings.Repeat(",? ", len(insertCols)-1),
+	)
+	var isDeleted int8
+	if key.IsDeleted {
+		isDeleted = 1
+	}
+	stmt, err := delegatee.Prepare(rawsql)
+	if err != nil {
+		return UserKey{}, fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.Exec(
+		key.Name, key.Enterprise, key.InputName,
+		key.Type, isDeleted, key.CreateTime,
+		key.UpdateTime,
+	)
+	if err != nil {
+		return UserKey{}, fmt.Errorf("insert stmt execute failed, %v", err)
+	}
+	key.ID, _ = result.LastInsertId()
+	return key, nil
 }
 
 func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error) {
