@@ -84,14 +84,31 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 	return err
 }
 
-//UpdateFlow updates the flow, currently only the flow name
-func UpdateFlow(nav int64, enterprise string, name string) (int64, error) {
+//UpdateFlowName updates the flow, currently only the flow name
+func UpdateFlowName(nav int64, enterprise string, name string) (int64, error) {
 	if dbLike == nil {
 		return 0, ErrNilCon
 	}
 
 	q := &model.NavQuery{ID: []int64{nav}, Enterprise: &enterprise}
 	d := &model.NavFlowUpdate{Name: &name}
+	affected, err := navDao.UpdateFlows(dbLike.Conn(), q, d)
+	if err != nil {
+		logger.Error.Printf("call update flow dao failed.%s\n", err)
+	}
+	return affected, err
+}
+
+//UpdateFlow updates the flow information in the database
+func UpdateFlow(nav int64, enterprise string, d *model.NavFlowUpdate) (int64, error) {
+	if dbLike == nil {
+		return 0, ErrNilCon
+	}
+	if d == nil {
+		return 0, ErrNilFlow
+	}
+
+	q := &model.NavQuery{ID: []int64{nav}, Enterprise: &enterprise}
 	affected, err := navDao.UpdateFlows(dbLike.Conn(), q, d)
 	if err != nil {
 		logger.Error.Printf("call update flow dao failed.%s\n", err)

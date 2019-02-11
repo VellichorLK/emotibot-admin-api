@@ -13,6 +13,13 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type reqCallInIntent struct {
+	IntentName string   `json:"intent_name"`
+	Role       string   `json:"role"`
+	Type       string   `json:"type"`
+	Sentences  []string `json:"sentences"`
+}
+
 type respDetailFlow struct {
 	IntentName string                    `json:"intent_name"`
 	Role       string                    `json:"role"`
@@ -218,7 +225,7 @@ func handleModifyFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	affected, err := UpdateFlow(id, enterprise, req.Name)
+	affected, err := UpdateFlowName(id, enterprise, req.Name)
 	if err != nil {
 		logger.Error.Printf("update the flow failed. id:%d, err: %s\n", id, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -228,4 +235,106 @@ func handleModifyFlow(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "No such flow id"), http.StatusBadRequest)
 		return
 	}
+}
+
+func handleNewNode(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	groupInReq := SentenceGroupInReq{}
+	err = util.ReadJSON(r, &groupInReq)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
+	group.Enterprise = enterprise
+	if group.Position == -1 || group.Role == -1 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
+		return
+	}
+
+	err = NewNode(id, group)
+	if err != nil {
+		logger.Error.Printf("create the node failed. id:%d, err: %s\n", id, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	//FIXME, add type and optional
+	resp := SentenceGroupInResponse{ID: group.UUID, Name: group.Name, Role: roleCodeMap[group.Role], Sentences: group.Sentences}
+	err = util.WriteJSON(w, resp)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+	}
+}
+
+func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	var req reqCallInIntent
+	err = util.ReadJSON(r, &req)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	if typ, ok := callInIntentMap[req.Type]; ok {
+
+		flow := &model.NavFlowUpdate{}
+		ignore := 0
+		if typ == 1 {
+
+			//FIXME: add the type attribute later
+			groupInReq := SentenceGroupInReq{
+				Name:      req.IntentName,
+				Role:      req.Role,
+				Sentences: req.Sentences,
+			}
+
+			group := sentenceGroupInReqToSentenceGroup(&groupInReq)
+			group.Enterprise = enterprise
+			if group.Position == -1 || group.Role == -1 {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
+				return
+			}
+
+			createdGroup, err := CreateSentenceGroup(group)
+			if err != nil {
+				logger.Error.Printf("error while create sentence in handleCreateSentenceGroup, reason: %s\n", err.Error())
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+				return
+			}
+			flow.IntentLinkID = &createdGroup.ID
+
+		} else {
+			ignore = 1
+		}
+		flow.IgnoreIntent = &ignore
+		if req.IntentName != "" {
+			flow.IntentName = &req.IntentName
+		}
+
+		_, err = UpdateFlow(id, enterprise, flow)
+		if err != nil {
+			logger.Error.Printf("update flow information failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
+
+	} else {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "wrong request type"), http.StatusBadRequest)
+	}
+
 }
