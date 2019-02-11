@@ -8,12 +8,17 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-type TaskDao struct {
+type TaskDao interface {
+	CallTask(delegatee SqlLike, call Call) (Task, error)
+	NewTask(delegatee SqlLike, task Task) (*Task, error)
+}
+
+type TaskSQLDao struct {
 	db *sql.DB
 }
 
-func NewTaskDao(db *sql.DB) *TaskDao {
-	return &TaskDao{
+func NewTaskDao(db *sql.DB) *TaskSQLDao {
+	return &TaskSQLDao{
 		db: db,
 	}
 }
@@ -36,7 +41,7 @@ type Task struct {
 }
 
 // NewTask insert task into db with the its fields.
-func (t *TaskDao) NewTask(delegatee SqlLike, task Task) (*Task, error) {
+func (t *TaskSQLDao) NewTask(delegatee SqlLike, task Task) (*Task, error) {
 	if delegatee == nil {
 		delegatee = t.db
 	}
@@ -84,7 +89,7 @@ func (q TaskQuery) whereSQL() (string, []interface{}) {
 }
 
 // CallTask query task by the given call.
-func (t *TaskDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
+func (t *TaskSQLDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
 	tasks, err := t.Task(delegatee, TaskQuery{ID: []int64{call.TaskID}})
 	if err != nil {
 		return Task{}, err
@@ -95,7 +100,7 @@ func (t *TaskDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
 }
 
 // Task query the task by the given query.
-func (t *TaskDao) Task(delegatee SqlLike, query TaskQuery) ([]Task, error) {
+func (t *TaskSQLDao) Task(delegatee SqlLike, query TaskQuery) ([]Task, error) {
 	if delegatee == nil {
 		delegatee = t.db
 	}

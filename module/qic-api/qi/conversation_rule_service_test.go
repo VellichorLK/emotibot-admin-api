@@ -2,6 +2,7 @@ package qi
 
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 	"testing"
 )
 
@@ -43,9 +44,21 @@ func (m *mockConversationRuleDao) Delete(id string, sql model.SqlLike) error {
 	return nil
 }
 
+func (m *mockConversationRuleDao) GetByFlowID(flowID []int64, sql model.SqlLike) ([]model.ConversationRule, error) {
+	return mockConversationRules, nil
+}
+
+func (m *mockConversationRuleDao) CreateMany(rules []model.ConversationRule, sqlLike model.SqlLike) error {
+	return nil
+}
+
+func (m *mockConversationRuleDao) DeleteMany(ruleUUID []string, sql model.SqlLike) error {
+	return nil
+}
+
 func setupConversationRuleMock() (model.DBLike, model.ConversationRuleDao, model.ConversationFlowDao) {
 	originDBLike := dbLike
-	mockDBLike := &mockDBLike{}
+	mockDBLike := &test.MockDBLike{}
 	dbLike = mockDBLike
 
 	originCRDao := conversationRuleDao

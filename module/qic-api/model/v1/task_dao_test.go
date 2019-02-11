@@ -56,7 +56,7 @@ func getTasksSeed(t *testing.T) []Task {
 func TestI11TaskDaoCallTask(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
-	dao := TaskDao{db: db}
+	dao := TaskSQLDao{db: db}
 	tasks := getTasksSeed(t)
 	task, err := dao.CallTask(nil, Call{TaskID: 1})
 	if err != nil {
@@ -71,7 +71,7 @@ func TestI11TaskDaoCallTask(t *testing.T) {
 func TestITTaskDaoNewTask(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
-	dao := TaskDao{db: db}
+	dao := TaskSQLDao{db: db}
 	newTask := Task{
 		Status:      2,
 		IsDeal:      true,

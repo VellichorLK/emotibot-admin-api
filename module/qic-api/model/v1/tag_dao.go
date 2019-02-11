@@ -10,13 +10,20 @@ import (
 	"emotibot.com/emotigo/pkg/misc/mathutil"
 )
 
+type TagDao interface {
+	Tags(tx SqlLike, query TagQuery) ([]Tag, error)
+	NewTags(tx SqlLike, tags []Tag) ([]Tag, error)
+	DeleteTags(tx SqlLike, query TagQuery) (int64, error)
+	CountTags(tx SqlLike, query TagQuery) (uint, error)
+}
+
 //TagSQLDao is the DAO implemented in sql.
 type TagSQLDao struct {
 	db *sql.DB
 }
 
 type tagSQLTransaction struct {
-	tx *sql.Tx
+	tx SqlLike
 }
 
 // NewTagSQLDao create a new tag sql dao, and check the TABLE already exist or not.
@@ -105,10 +112,6 @@ func (p *Pagination) offsetSQL() string {
 	return fmt.Sprintf(" LIMIT %d, %d", offset, limit)
 }
 
-func (t *TagSQLDao) Begin() (*sql.Tx, error) {
-	return t.db.Begin()
-}
-
 type queryer interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 }
@@ -121,7 +124,7 @@ var tagSelectColumns = []string{
 
 // Tags fetch the tag resource from db or tx.
 // query determine condition and how many it should fetch.
-func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
+func (t *TagSQLDao) Tags(tx SqlLike, query TagQuery) ([]Tag, error) {
 	var q SqlLike
 	if tx != nil {
 		q = tx
@@ -171,7 +174,7 @@ func (t *TagSQLDao) Tags(tx *sql.Tx, query TagQuery) ([]Tag, error) {
 
 // NewTags Insert the tag struct and return the tag inserted with latest id.
 // ErrAutoIDDisabled is returned If LastInsertId is not guaranteed.
-func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
+func (t *TagSQLDao) NewTags(tx SqlLike, tags []Tag) ([]Tag, error) {
 	var s SqlLike
 	if tx != nil {
 		s = tx
@@ -219,7 +222,7 @@ func (t *TagSQLDao) NewTags(tx *sql.Tx, tags []Tag) ([]Tag, error) {
 // soft deleted tags will still stayed in the db, but isDeleted will be flaged as true.
 // the true affected rows will be returned.
 // notice: query's paging struct still can affected how many it will deleted.
-func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) (int64, error) {
+func (t *TagSQLDao) DeleteTags(tx SqlLike, query TagQuery) (int64, error) {
 	var q SqlLike
 	if tx != nil {
 		q = tx
@@ -252,7 +255,7 @@ func (t *TagSQLDao) DeleteTags(tx *sql.Tx, query TagQuery) (int64, error) {
 
 // CountTags counts the tags by the given query.
 // It will ignore the Paging in query to return a true count by the query conditions.
-func (t *TagSQLDao) CountTags(tx *sql.Tx, query TagQuery) (uint, error) {
+func (t *TagSQLDao) CountTags(tx SqlLike, query TagQuery) (uint, error) {
 	var q SqlLike
 	if tx != nil {
 		q = tx

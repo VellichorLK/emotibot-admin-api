@@ -125,7 +125,7 @@ func NewTag(t model.Tag) (id uint64, err error) {
 // multiple update called on the same t will try it best to resolve to one state, but not guarantee success.
 // if conflicted can not be resolved, id will be 0 and err will be nil.
 func UpdateTag(t model.Tag) (id uint64, err error) {
-	tx, err := tagDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return 0, fmt.Errorf("dao init transaction failed, %v", err)
 	}
@@ -157,47 +157,29 @@ func UpdateTag(t model.Tag) (id uint64, err error) {
 		return 0, fmt.Errorf("dao create new tags failed, %v", err)
 	}
 	newTag := tags[0]
-	tx.Commit()
+
 	sentences := tagsSentences[t.ID]
 	// to avoid nil panic if tag have no sentences
 	if sentences == nil {
 		return newTag.ID, nil
 	}
-	for _, sid := range sentences {
-		s, err := sentenceDao.GetSentences(nil, &model.SentenceQuery{
-			ID: []uint64{sid},
-		})
-		if err != nil {
-			return 0, fmt.Errorf("query sentences failed, %v", err)
-		}
-		if len(s) < 1 {
-			return 0, fmt.Errorf("sentence can not be found")
-		}
-		sTags, err := tagDao.Tags(nil, model.TagQuery{
-			ID: s[0].TagIDs,
-		})
-		if err != nil {
-			return 0, fmt.Errorf("get sentence's tag failed, %v", err)
-		}
-		tagUUIDGrp := []string{}
-		for _, st := range sTags {
-			tagUUIDGrp = append(tagUUIDGrp, st.UUID)
-		}
-		_, err = UpdateSentence(s[0].UUID, s[0].Name, s[0].Enterprise, tagUUIDGrp)
-		if err != nil {
-			return 0, fmt.Errorf("update sentence failed, %v", err)
-		}
+
+	sentenceGrp, err := sentenceDao.GetSentences(tx, &model.SentenceQuery{
+		ID: sentences,
+	})
+
+	err = propagateUpdateFromSentence(sentenceGrp, newTag.ID, t.ID, t.Enterprise, tx)
+	if err != nil {
+		logger.Error.Printf("propage update  failed. %s", err)
+		return 0, err
 	}
 
-	// for _, sID := range sentences {
-	// 	err = sentenceDao.InsertSenTagRelation(tx, &model.Sentence{
-	// 		ID:     sID,
-	// 		TagIDs: []uint64{tags[0].ID},
-	// 	})
-	// 	if err != nil {
-	// 		return 0, fmt.Errorf("dao insert sentence tag relation failed, %v", err)
-	// 	}
-	// }
+	err = tx.Commit()
+	if err != nil {
+		logger.Error.Printf("commit transcation failed. %s", err)
+		return 0, err
+	}
+
 	return newTag.ID, nil
 }
 
@@ -208,16 +190,23 @@ func DeleteTag(uuid ...string) error {
 	if len(uuid) == 0 {
 		return nil
 	}
-	tx, err := tagDao.Begin()
+	tx, err := dbLike.Begin()
 	if err != nil {
 		return fmt.Errorf("dao init transaction failed, %v", err)
 	}
 	defer func() {
 		tx.Rollback()
 	}()
+
 	query := model.TagQuery{
-		UUID: uuid,
+		UUID:             uuid,
+		IgnoreSoftDelete: false,
 	}
+	tags, err := tagDao.Tags(tx, query)
+	if err != nil {
+		return fmt.Errorf("dao get tags failed. %v", err)
+	}
+
 	affectedrows, err := tagDao.DeleteTags(tx, query)
 	if err == model.ErrAutoIDDisabled {
 		logger.Warn.Println("tag table does not support affectedrow, we will continue to work, but we can not detect conflict now.")
@@ -230,6 +219,116 @@ func DeleteTag(uuid ...string) error {
 	if err != model.ErrAutoIDDisabled && int(affectedrows) != len(uuid) {
 		return fmt.Errorf("dao delete should delete %d of rows, but only %d. possible conflict operation at the same time", len(uuid), affectedrows)
 	}
-	tx.Commit()
-	return nil
+
+	tagMap := map[uint64]bool{}
+	tagID := []uint64{}
+	var enterprise string
+	for _, tag := range tags {
+		tagMap[tag.ID] = true
+		tagID = append(tagID, tag.ID)
+		enterprise = tag.Enterprise
+	}
+
+	sentences, err := sentenceDao.GetRelSentenceIDByTagIDs(tx, tagID)
+	if err != nil {
+		return fmt.Errorf("get sentences failed. %v", err)
+	}
+
+	sentenceID := []uint64{}
+	for _, v := range sentences {
+		sentenceID = append(sentenceID, v...)
+	}
+
+	sq := &model.SentenceQuery{
+		ID:         sentenceID,
+		Enterprise: &enterprise,
+	}
+
+	sentenceGrp, err := sentenceDao.GetSentences(tx, sq)
+	if err != nil {
+		return err
+	}
+
+	for i := range sentenceGrp {
+		s := sentenceGrp[i]
+		if len(s.TagIDs) == 1 {
+			s.TagIDs = []uint64{}
+			continue
+		}
+
+		for j, tag := range s.TagIDs {
+			if _, ok := tagMap[tag]; ok {
+				if j == len(s.TagIDs)-1 {
+					s.TagIDs = s.TagIDs[:j]
+				} else {
+					s.TagIDs = append(s.TagIDs[:j], s.TagIDs[j+1:]...)
+				}
+			}
+		}
+	}
+
+	err = propagateUpdateFromSentence(sentenceGrp, 0, 0, enterprise, tx)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	return err
+}
+
+func propagateUpdateFromSentence(sentences []*model.Sentence, newTag, oldTag uint64, enterprise string, tx model.SQLTx) (err error) {
+	logger.Info.Printf("tags %+v\n", newTag)
+	logger.Info.Printf("sentences: %+v\n", sentences)
+	if len(sentences) == 0 {
+		return
+	}
+
+	sUUID := []string{}
+	sID := []int64{}
+	activeSentences := []model.Sentence{}
+	for i := range sentences {
+		s := sentences[i]
+		if s.IsDelete == 1 {
+			continue
+		}
+
+		for j, tagID := range s.TagIDs {
+			if tagID == oldTag {
+				s.TagIDs[j] = newTag
+			}
+		}
+		sID = append(sID, int64(s.ID))
+		sUUID = append(sUUID, s.UUID)
+		activeSentences = append(activeSentences, *s)
+	}
+
+	// delete old sentences
+	var deleted int8
+	sentenceQuery := &model.SentenceQuery{
+		UUID:       sUUID,
+		IsDelete:   &deleted,
+		Enterprise: &enterprise,
+	}
+
+	logger.Info.Printf("sq: %+v\n", sentenceQuery)
+
+	_, err = sentenceDao.SoftDeleteSentence(tx, sentenceQuery)
+	if err != nil {
+		logger.Error.Printf("delete sentence failed. %s", err)
+		return
+	}
+
+	err = sentenceDao.InsertSentences(tx, activeSentences)
+	if err != nil {
+		logger.Error.Printf("insert sentences failed. %s", err)
+		return
+	}
+
+	sgs, err := sentenceGroupDao.GetBySentenceID(sID, tx)
+	if err != nil {
+		logger.Error.Printf("get sentence groups failed. %s", err)
+		return
+	}
+
+	return propagateUpdateFromSentenceGroup(sgs, activeSentences, tx)
 }

@@ -8,6 +8,14 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type CallDao interface {
+	Calls(delegatee SqlLike, query CallQuery) ([]Call, error)
+	NewCalls(delegatee SqlLike, calls []Call) ([]Call, error)
+	SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []Group) ([]int64, error)
+	SetCall(delegatee SqlLike, call Call) error
+	Count(delegatee SqlLike, query CallQuery) (int64, error)
+}
+
 //CallSQLDao is the sql implements of the call table
 type CallSQLDao struct {
 	db *sql.DB

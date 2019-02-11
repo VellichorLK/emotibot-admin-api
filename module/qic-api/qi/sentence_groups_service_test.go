@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/test"
 )
 
 var mockSentence1 *model.Sentence = &model.Sentence{}
@@ -69,11 +70,24 @@ func (m *mockSentenceGroupDao) GetBy(filter *model.SentenceGroupFilter, sql mode
 	return
 }
 
+func (m *mockSentenceGroupDao) GetBySentenceID(id []int64, sql model.SqlLike) (groups []model.SentenceGroup, err error) {
+	groups = mockSentenceGroups
+	return
+}
+
 func (m *mockSentenceGroupDao) Update(id string, group *model.SentenceGroup, sql model.SqlLike) (*model.SentenceGroup, error) {
 	return nil, nil
 }
 
 func (m *mockSentenceGroupDao) Delete(id string, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSentenceGroupDao) CreateMany(sgs []model.SentenceGroup, sql model.SqlLike) error {
+	return nil
+}
+
+func (m *mockSentenceGroupDao) DeleteMany(id []string, sql model.SqlLike) error {
 	return nil
 }
 
@@ -96,7 +110,7 @@ func (m *mockSentencesDao) InsertSentence(tx model.SqlLike, s *model.Sentence) (
 
 }
 
-func (m *mockSentencesDao) MoveCategories(tx model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
+func (m *mockSentencesDao) MoveCategories(x model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
 	return 0, nil
 }
 
@@ -116,20 +130,7 @@ func (m *mockSentencesDao) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []u
 	return nil, nil
 }
 
-type mockDBLike struct{}
-
-func (m *mockDBLike) Begin() (model.SQLTx, error) {
-	return nil, nil
-}
-func (m *mockDBLike) ClearTransition(tx model.SQLTx) {
-	return
-}
-
-func (m *mockDBLike) Commit(tx model.SQLTx) (err error) {
-	return
-}
-
-func (m *mockDBLike) Conn() model.SqlLike {
+func (m *mockSentencesDao) InsertSentences(tx model.SqlLike, sentences []model.Sentence) error {
 	return nil
 }
 
@@ -141,7 +142,7 @@ func restoreSentenceGroupTest(dbl model.DBLike, dao model.SentenceGroupsSqlDao, 
 
 func setupSentenceGroupTestMock() (model.DBLike, model.SentenceGroupsSqlDao, model.SentenceDao) {
 	originDBLike := dbLike
-	mockDBLike := &mockDBLike{}
+	mockDBLike := &test.MockDBLike{}
 	dbLike = mockDBLike
 
 	originSGDao := sentenceGroupDao

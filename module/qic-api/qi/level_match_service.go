@@ -697,7 +697,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	}
 
 	//get the sentence group information for condition usage
-	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs, IsDelete: -1, Position: -1, Role: -1}
+	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs}
 	_, senGrp, err := GetSentenceGroupsBy(sgFilter)
 
 	if err != nil {
@@ -763,7 +763,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	//--------------------------------------------------------------------------
 
 	//get the conversation flow inforamtion
-	cfFilter := &model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}
+	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
 	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
 	if err != nil {
 		logger.Error.Printf("get conversation flow failed.%s\n", err)

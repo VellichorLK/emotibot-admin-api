@@ -319,7 +319,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	//get the rule group setting
 	if len(rgIDs) > 0 {
 
-		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{Deal: -1, ID: rgIDs, Delete: -1})
+		_, groupsSet, err := GetGroupsByFilter(&model.GroupFilter{ID: rgIDs})
 		if err != nil {
 			logger.Error.Printf("get rule group %+v failed. %s\n", rgIDs, err)
 			return nil, err
@@ -355,7 +355,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	}
 	//get the conversation flow setting
 	if len(cfIDs) > 0 {
-		cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs, IsDelete: -1}, sqlConn)
+		cfSet, err := conversationFlowDao.GetBy(&model.ConversationFlowFilter{ID: cfIDs}, sqlConn)
 		if err != nil {
 			logger.Error.Printf("get conversation flow %+v failed. %s\n", cfIDs, err)
 			return nil, err
@@ -374,7 +374,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the sentence group setting
 	if len(senGrpIDs) > 0 {
-		senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{Role: -1, Position: -1, ID: senGrpIDs, IsDelete: -1}, sqlConn)
+		senGrpSet, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{ID: senGrpIDs}, sqlConn)
 		if err != nil {
 			logger.Error.Printf("get sentence group %+v failed. %s\n", senGrpIDs, err)
 			return nil, err

@@ -14,8 +14,6 @@ import (
 
 //SentenceDao defines the db access function
 type SentenceDao interface {
-	Begin() (*sql.Tx, error)
-	Commit(*sql.Tx) error
 	GetSentences(tx SqlLike, q *SentenceQuery) ([]*Sentence, error)
 	InsertSentence(tx SqlLike, s *Sentence) (int64, error)
 	SoftDeleteSentence(tx SqlLike, q *SentenceQuery) (int64, error)
@@ -23,6 +21,7 @@ type SentenceDao interface {
 	InsertSenTagRelation(tx SqlLike, s *Sentence) error
 	GetRelSentenceIDByTagIDs(tx SqlLike, tagIDs []uint64) (map[uint64][]uint64, error)
 	MoveCategories(x SqlLike, q *SentenceQuery, category uint64) (int64, error)
+	InsertSentences(SqlLike, []Sentence) error
 }
 
 //error message
@@ -75,12 +74,6 @@ type Sentence struct {
 	TagIDs     []uint64
 }
 
-type executor interface {
-	Query(query string, args ...interface{}) (*sql.Rows, error)
-	Exec(query string, args ...interface{}) (sql.Result, error)
-	QueryRow(query string, args ...interface{}) *sql.Row
-}
-
 //NewSentenceSQLDao generates the structure of SentenceSQLDao
 func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	return &SentenceSQLDao{
@@ -88,8 +81,8 @@ func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	}
 }
 
-func genrateExecutor(conn *sql.DB, tx SqlLike) (executor, error) {
-	var q executor
+func genrateExecutor(conn *sql.DB, tx SqlLike) (SqlLike, error) {
+	var q SqlLike
 	if tx != nil {
 		q = tx
 	} else if conn != nil {
@@ -154,22 +147,6 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 	return whereSQL, params
 }
 
-//Begin begins the transaction
-func (d *SentenceSQLDao) Begin() (*sql.Tx, error) {
-	if d.conn != nil {
-		return d.conn.Begin()
-	}
-	return nil, nil
-}
-
-//Commit commits the transaction
-func (d *SentenceSQLDao) Commit(tx *sql.Tx) error {
-	if tx != nil {
-		return tx.Commit()
-	}
-	return nil
-}
-
 //GetSentences gets the sentences based on query condition
 func (d *SentenceSQLDao) GetSentences(tx SqlLike, sq *SentenceQuery) ([]*Sentence, error) {
 	q, err := genrateExecutor(d.conn, tx)
@@ -221,6 +198,38 @@ func (d *SentenceSQLDao) GetSentences(tx SqlLike, sq *SentenceQuery) ([]*Sentenc
 	return sentences, nil
 }
 
+func getSentenceInsertSQL(sentences []Sentence) (insertStr string, values []interface{}) {
+	values = []interface{}{}
+	if len(sentences) == 0 {
+		return
+	}
+
+	fields := []string{
+		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	variableStr := fmt.Sprintf("(?%s)", strings.Repeat(", ?", len(fields)-1))
+	valueStr := ""
+	for _, s := range sentences {
+		values = append(
+			values,
+			s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.CategoryID,
+		)
+		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
+	}
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES %s",
+		tblSentence,
+		fieldStr,
+		valueStr,
+	)
+	return
+}
+
 //InsertSentence inserts a new sentence and the relation between sentence and tag
 //if you insert both, must use transaction
 func (d *SentenceSQLDao) InsertSentence(tx SqlLike, s *Sentence) (int64, error) {
@@ -239,11 +248,9 @@ func (d *SentenceSQLDao) InsertSentence(tx SqlLike, s *Sentence) (int64, error) 
 	}
 
 	//insert into Sentence table
-	insertSenSQL := fmt.Sprintf("INSERT INTO %s (%s,%s,%s,%s,%s,%s,%s) VALUES (?,?,?,?,?,?,?)",
-		tblSentence,
-		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID)
+	insertSenSQL, values := getSentenceInsertSQL([]Sentence{*s})
 
-	res, err := exe.Exec(insertSenSQL, s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.CategoryID)
+	res, err := exe.Exec(insertSenSQL, values...)
 	if err != nil {
 		logger.Error.Printf("insert sentence %s failed %s\n", insertSenSQL, err)
 		return 0, err
@@ -396,4 +403,77 @@ func (d *SentenceSQLDao) MoveCategories(tx SqlLike, q *SentenceQuery, category u
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func (d *SentenceSQLDao) InsertSentences(sqlLike SqlLike, sentences []Sentence) (err error) {
+	if len(sentences) == 0 {
+		return
+	}
+
+	insertStr, values := getSentenceInsertSQL(sentences)
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("insert sentences failed. sql: %s\n", insertStr)
+		logger.Error.Printf("values: %+v\n", values)
+		return
+	}
+
+	varaibleStr := "(?, ?)"
+	valueStr := ""
+	values = []interface{}{}
+	sUUID := []string{}
+	for _, s := range sentences {
+		for _ = range s.TagIDs {
+			valueStr = fmt.Sprintf("%s%s,", valueStr, varaibleStr)
+		}
+		sUUID = append(sUUID, s.UUID)
+	}
+
+	if valueStr == "" {
+		return
+	}
+
+	var deleted int8
+	sentenceQuery := &SentenceQuery{
+		UUID:     sUUID,
+		IsDelete: &deleted,
+	}
+
+	newSentences, err := d.GetSentences(sqlLike, sentenceQuery)
+	if err != nil {
+		return
+	}
+
+	sentenceMap := map[string]uint64{}
+	for _, s := range newSentences {
+		sentenceMap[s.UUID] = s.ID
+	}
+
+	for _, s := range sentences {
+		for _, tag := range s.TagIDs {
+			values = append(
+				values,
+				sentenceMap[s.UUID],
+				tag,
+			)
+		}
+	}
+
+	// remove last comma
+	valueStr = valueStr[:len(valueStr)-1]
+
+	insertStr = fmt.Sprintf(
+		"INSERT INTO %s (%s, %s) VALUES %s",
+		tbleRelSentenceTag,
+		fldRelSenID,
+		fldRelTagID,
+		valueStr,
+	)
+
+	_, err = sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("insert sentences relations failed. sql: %s\n", insertStr)
+		logger.Error.Printf("values: %+v\n", values)
+	}
+	return
 }
