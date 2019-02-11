@@ -6,6 +6,7 @@ import (
 )
 
 func TestITSegmentDaoNewSegments(t *testing.T) {
+	t.Log("I am running TestITSegmentDaoNewSegments")
 	skipIntergartion(t)
 	type args struct {
 		segments []RealSegment
@@ -46,7 +47,7 @@ func TestITSegmentDaoNewSegments(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &SegmentDao{
+			s := &SegmentSQLDao{
 				db: newIntegrationTestDB(t),
 			}
 			got, err := s.NewSegments(nil, tt.args.segments)
