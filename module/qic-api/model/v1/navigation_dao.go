@@ -245,11 +245,12 @@ func (n *NavigationSQLDao) CountNodes(conn SqlLike, navs []int64) (map[int64]int
 	} else {
 		condition += "WHERE"
 	}
-	condition += " b.`" + fldIsDelete + "`=0"
+	condition += " c.`" + fldIsDelete + "`=0"
 
-	countSQL := fmt.Sprintf("select a.`%s`,COUNT(*) FROM %s AS a INNER JOIN %s AS b on a.`%s`=b.`%s` %s  GROUP BY a.`%s`",
+	countSQL := fmt.Sprintf("select a.`%s`,COUNT(*) FROM %s AS a INNER JOIN %s AS b ON a.`%s`=b.`%s` INNER JOIN %s AS c ON b.`%s`=c.`%s` %s  GROUP BY a.`%s`",
 		fldNavID, tblRelNavSenGrp, tblSetnenceGroup,
 		fldSenGrpID, fldID,
+		tblSetnenceGroup, fldUUID, fldUUID,
 		condition, fldNavID)
 
 	rows, err := conn.Query(countSQL, params...)
