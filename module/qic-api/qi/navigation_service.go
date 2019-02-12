@@ -49,12 +49,15 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 	}
 	defer tx.Rollback()
 
-	simpleSentences, err := simpleSentencesOf(senGrp, tx)
-	if err != nil {
-		logger.Error.Printf("get the sentence failed. %s\n", err)
-		return err
+	//it's not optional
+	if senGrp.Optional == 0 {
+		simpleSentences, err := simpleSentencesOf(senGrp, tx)
+		if err != nil {
+			logger.Error.Printf("get the sentence failed. %s\n", err)
+			return err
+		}
+		senGrp.Sentences = simpleSentences
 	}
-	senGrp.Sentences = simpleSentences
 	uuid, err := general.UUID()
 	if err != nil {
 		logger.Error.Printf("generate uuid failed. %s\n", err)
