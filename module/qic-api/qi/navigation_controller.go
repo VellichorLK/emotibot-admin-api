@@ -311,6 +311,7 @@ func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
 
 			group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 			group.Enterprise = enterprise
+			group.Type = typeMapping["call_in"]
 			if group.Position == -1 || group.Role == -1 {
 				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
 				return
