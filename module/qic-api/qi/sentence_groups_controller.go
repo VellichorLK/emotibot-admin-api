@@ -105,6 +105,8 @@ func sentenceGroupToSentenceGroupInResponse(sg *model.SentenceGroup) (sgInRes Se
 		Position:         positionCodeMap[sg.Position],
 		PositionDistance: sg.Distance,
 		Sentences:        sg.Sentences,
+		Type:             typeCodeMap[sg.Type],
+		Optional:         sg.Optional == 1,
 	}
 	return
 }
