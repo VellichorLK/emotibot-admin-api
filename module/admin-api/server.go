@@ -30,6 +30,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/autofill"
 	"emotibot.com/emotigo/module/admin-api/clustering"
 	"emotibot.com/emotigo/module/admin-api/dictionary"
+	"emotibot.com/emotigo/module/admin-api/feedback"
 	"emotibot.com/emotigo/module/admin-api/integration"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -72,6 +73,7 @@ var modules = []*util.ModuleInfo{
 	&ELKStats.ModuleInfo,
 	&Service.ModuleInfo,
 	&integration.ModuleInfo,
+	&feedback.ModuleInfo,
 }
 
 var serverConfig map[string]string
