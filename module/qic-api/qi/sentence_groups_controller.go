@@ -81,10 +81,12 @@ func sentenceGroupInReqToSentenceGroup(sentenceGroupInReq *SentenceGroupInReq) (
 		group.Position = -1
 	}
 
-	if typeCode, ok := typeMapping[sentenceGroupInReq.Type]; ok {
-		group.Type = typeCode
-	} else {
-		group.Type = -1
+	if sentenceGroupInReq.Type != "" {
+		if typeCode, ok := typeMapping[sentenceGroupInReq.Type]; ok {
+			group.Type = typeCode
+		} else {
+			group.Type = -1
+		}
 	}
 
 	if sentenceGroupInReq.Optional {
