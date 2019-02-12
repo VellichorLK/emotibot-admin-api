@@ -208,6 +208,9 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 	} else {
 		page = *request.Page
 	}
+	if page <= 0 {
+		page = dataCommon.SessionsDefaultPage
+	}
 
 	if request.Limit == nil {
 		limit = dataCommon.SessionsDefaultPageLimit
