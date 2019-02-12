@@ -255,7 +255,8 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 
 	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 	group.Enterprise = enterprise
-	if group.Position == -1 || group.Role == -1 || group.Type == -1 {
+	group.Type = typeMapping["call_in"]
+	if group.Position == -1 || group.Role == -1 {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
 		return
 	}

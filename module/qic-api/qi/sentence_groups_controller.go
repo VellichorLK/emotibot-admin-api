@@ -123,7 +123,9 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 
 	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 	group.Enterprise = enterprise
-	if group.Position == -1 || group.Role == -1 || group.Type == -1 {
+	group.Type = typeMapping["normal"]
+	group.Optional = 0
+	if group.Position == -1 || group.Role == -1 {
 		http.Error(w, "bad sentence group", http.StatusBadRequest)
 		return
 	}
