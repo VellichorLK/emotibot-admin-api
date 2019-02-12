@@ -323,14 +323,14 @@ func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			flow.IntentLinkID = &createdGroup.ID
+			if req.IntentName != "" {
+				flow.IntentName = &req.IntentName
+			}
 
 		} else {
 			ignore = 1
 		}
 		flow.IgnoreIntent = &ignore
-		if req.IntentName != "" {
-			flow.IntentName = &req.IntentName
-		}
 
 		_, err = UpdateFlow(id, enterprise, flow)
 		if err != nil {
