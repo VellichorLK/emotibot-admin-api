@@ -73,6 +73,14 @@ func (w *whereBuilder) Lt(fieldName string, input interface{}) {
 	}
 }
 
+// Like use LIKE condition to search.
+func (w *whereBuilder) Like(fieldName string, input string) {
+	if input != "" {
+		w.conditions = append(w.conditions, fmt.Sprintf("%s`%s` LIKE ?", w.alias, fieldName))
+		w.data = append(w.data, input)
+	}
+}
+
 func int64ToWildCard(inputs ...int64) []interface{} {
 	var outputs = make([]interface{}, len(inputs))
 	if len(outputs) == 0 {

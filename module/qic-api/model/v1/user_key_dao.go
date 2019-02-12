@@ -44,6 +44,7 @@ type UserKeyDao interface {
 
 type UserKeyQuery struct {
 	ID               []int64
+	FuzzyName        string // search with LIKE *name*
 	InputNames       []string
 	Enterprise       string
 	IgnoreSoftDelete bool
@@ -60,9 +61,14 @@ func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
 	if !u.IgnoreSoftDelete {
 		builder.Eq(fldUserKeyIsDelete, u.IgnoreSoftDelete)
 	}
+	if u.FuzzyName != "" {
+		fuzzyName := strings.Replace(u.FuzzyName, "%", "\\%", -1)
+		builder.Like(fldUserKeyName, fmt.Sprintf("%%%s%%", fuzzyName))
+	}
 	return builder.ParseWithWhere()
 }
 
+// UserKey is the custom column representation in database
 type UserKey struct {
 	ID         int64
 	Name       string
@@ -74,12 +80,16 @@ type UserKey struct {
 	UpdateTime int64
 }
 
+// NewUserKeyDao create an UserKeySQLDao with the db.
 func NewUserKeyDao(db SqlLike) *UserKeySQLDao {
 	return &UserKeySQLDao{
 		db: db,
 	}
 }
 
+// NewUserKey insert the input key into it's db.
+// input key's id will be ignored.
+// If succeed, a UserKey with the real id will be returned.
 func (u *UserKeySQLDao) NewUserKey(delegatee SqlLike, key UserKey) (UserKey, error) {
 	if delegatee == nil {
 		delegatee = u.db
@@ -115,6 +125,7 @@ func (u *UserKeySQLDao) NewUserKey(delegatee SqlLike, key UserKey) (UserKey, err
 	return key, nil
 }
 
+// UserKeys fetch a slice of UserKey order by created time from the given query.
 func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error) {
 	if delegatee == nil {
 		delegatee = u.db
@@ -129,7 +140,7 @@ func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserK
 	if query.Paging != nil {
 		offsetPart = query.Paging.offsetSQL()
 	}
-	rawsql := fmt.Sprintf("SELECT `%s` FROM `%s` %s ORDER BY `%s` %s",
+	rawsql := fmt.Sprintf("SELECT `%s` FROM `%s` %s ORDER BY `%s` DESC %s",
 		strings.Join(selectCols, "`,`"),
 		tblUserKey,
 		wherePart,
@@ -142,7 +153,7 @@ func (u *UserKeySQLDao) UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserK
 		return nil, fmt.Errorf("sql query failed, %v", err)
 	}
 	defer rows.Close()
-	var userKeys []UserKey
+	var userKeys = []UserKey{}
 	for rows.Next() {
 		var key UserKey
 		var isDelete int8

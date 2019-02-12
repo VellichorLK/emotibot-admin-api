@@ -58,11 +58,27 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 			expectCount:  1,
 		},
 		{
+			name: "query fuzzy name",
+			arg: UserKeyQuery{
+				FuzzyName: "地",
+			},
+			expectOutput: exampleKeys[1:2],
+			expectCount:  1,
+		},
+		{
+			name: "query with wildcard char",
+			arg: UserKeyQuery{
+				FuzzyName: "%",
+			},
+			expectOutput: []UserKey{},
+			expectCount:  0,
+		},
+		{
 			name: "ignore soft deleted",
 			arg: UserKeyQuery{
 				IgnoreSoftDelete: true,
 			},
-			expectOutput: exampleKeys,
+			expectOutput: []UserKey{exampleKeys[2], exampleKeys[0], exampleKeys[1]},
 			expectCount:  int64(len(exampleKeys)),
 		},
 		{
@@ -74,7 +90,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 					Page:  1,
 				},
 			},
-			expectOutput: exampleKeys[0:1],
+			expectOutput: exampleKeys[2:],
 			expectCount:  int64(len(exampleKeys)),
 		},
 	}
@@ -88,7 +104,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 				t.Fatal("not expect error, but got error ", err)
 			}
 			if !reflect.DeepEqual(keys, tt.expectOutput) {
-				t.Logf("keys: %+v\nexpect:%+v\n", keys, tt.expectOutput)
+				t.Logf("keys: %#v\nexpect:%#v\n", keys, tt.expectOutput)
 				t.Error("non-equal output for result")
 			}
 			total, err := dao.CountUserKeys(nil, tt.arg)
