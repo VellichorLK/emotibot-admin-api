@@ -255,7 +255,7 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 
 	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 	group.Enterprise = enterprise
-	if group.Position == -1 || group.Role == -1 {
+	if group.Position == -1 || group.Role == -1 || group.Type == -1 {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
 		return
 	}
@@ -267,8 +267,7 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//FIXME, add type and optional
-	resp := SentenceGroupInResponse{ID: group.UUID, Name: group.Name, Role: roleCodeMap[group.Role], Sentences: group.Sentences}
+	resp := sentenceGroupToSentenceGroupInResponse(group)
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)

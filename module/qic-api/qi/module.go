@@ -94,6 +94,7 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "call-in/navigation", []string{}, handleNewFlow),
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation", []string{}, handleFlowList),
 			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/intent", []string{}, handleModifyIntent),
+			util.NewEntryPoint(http.MethodPost, "call-in/navigation/{id}/node", []string{}, handleNewNode),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
