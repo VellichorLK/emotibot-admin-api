@@ -151,10 +151,8 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 	}
 
 	insertStr, values := getSentenceGroupInsertSQL([]SentenceGroup{*group})
-	logger.Info.Printf("6\n")
 
 	result, err := sqlLike.Exec(insertStr, values...)
-	logger.Info.Printf("7\n")
 	if err != nil {
 		logger.Error.Printf("error while insert sentence group in dao.Create, sql: %s", insertStr)
 		logger.Error.Printf("error while insert sentence group in dao.Create, values: %s", values)
@@ -164,7 +162,6 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 	}
 
 	groupID, err := result.LastInsertId()
-	logger.Info.Printf("8\n")
 	if err != nil {
 		err = fmt.Errorf("error while get group id in dao.Create, err: %s", err.Error())
 		return
@@ -555,7 +552,11 @@ func (dao *SentenceGroupsSqlDaoImpl) GetNewBy(id []int64, filter *SentenceGroupF
 		queryStr := fmt.Sprintf("SELECT `%s` FROM %s WHERE %s in (SELECT %s FROM %s WHERE %s in (%s%s)) and %s=0",
 			fldID, tblSetnenceGroup, fldUUID, fldUUID, tblSetnenceGroup, fldID, "?", strings.Repeat(",?", len(id)-1), fldIsDelete)
 
-		rows, err := sqlLike.Query(queryStr, id)
+		idInterface := make([]interface{}, 0, len(id))
+		for _, v := range id {
+			idInterface = append(idInterface, v)
+		}
+		rows, err := sqlLike.Query(queryStr, idInterface...)
 		if err != nil {
 			err = fmt.Errorf("error while get sentence groups in dao.GetBy, err: %s", err.Error())
 			return nil, err

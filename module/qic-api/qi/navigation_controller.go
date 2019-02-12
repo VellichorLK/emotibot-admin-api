@@ -43,18 +43,20 @@ func detailFlowToSetting(d *DetailNavFlow) *respDetailFlow {
 		return &respDetailFlow{Sentences: []model.SimpleSentence{}}
 	}
 	resp := &respDetailFlow{}
-	if d.IntentLinkID == 0 || d.IgnoreIntent == 1 {
-		resp.Type = callInIntentCodeMap[0]
-	} else {
-		resp.Type = callInIntentCodeMap[1]
-		resp.IntentName = d.IntentName
-		resp.Role = roleCodeMap[d.SentenceGroup.Role]
-	}
 
 	if d.SentenceGroup.Sentences == nil {
 		resp.Sentences = []model.SimpleSentence{}
 	} else {
 		resp.Sentences = d.SentenceGroup.Sentences
+	}
+
+	if d.IntentLinkID == 0 || d.IgnoreIntent == 1 {
+		resp.Type = callInIntentCodeMap[0]
+		resp.Sentences = []model.SimpleSentence{}
+	} else {
+		resp.Type = callInIntentCodeMap[1]
+		resp.IntentName = d.IntentName
+		resp.Role = roleCodeMap[d.SentenceGroup.Role]
 	}
 
 	if d.Nodes == nil {
