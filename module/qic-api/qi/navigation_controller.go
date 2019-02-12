@@ -40,7 +40,7 @@ var callInIntentCodeMap = map[int]string{
 
 func detailFlowToSetting(d *DetailNavFlow) *respDetailFlow {
 	if d == nil {
-		return &respDetailFlow{Sentences: []model.SimpleSentence{}}
+		return &respDetailFlow{Sentences: []model.SimpleSentence{}, Nodes: []SentenceGroupInResponse{}}
 	}
 	resp := &respDetailFlow{}
 
@@ -85,6 +85,10 @@ func handleGetFlowSetting(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error.Printf("get the flow setting failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if setting == nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
 		return
 	}
 	resp := detailFlowToSetting(setting)
