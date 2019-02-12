@@ -79,7 +79,7 @@ var modules = []*util.ModuleInfo{
 var serverConfig map[string]string
 var logChannel chan util.AccessLog
 
-func init() {
+func initConfig() {
 	if len(os.Args) > 1 {
 		err := util.LoadConfigFromFile(os.Args[1])
 		if err != nil {
@@ -109,6 +109,7 @@ func logAvailablePath(router *mux.Router) {
 }
 
 func init() {
+	initConfig()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	logger.Info.Printf("Set GOMAXPROCS to %d\n", runtime.NumCPU())
 
@@ -159,6 +160,7 @@ func init() {
 	}
 
 	autofill.Init()
+	feedback.SetupDB(util.GetMainDB())
 }
 
 func main() {
