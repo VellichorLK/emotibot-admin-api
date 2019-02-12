@@ -68,6 +68,9 @@ type ConsulUpdateHandler func(key string, val interface{}) (int, error)
 // ConsulGetHandler should handle get kv store in consul.
 type ConsulGetHandler func(key string) (string, int, error)
 
+// ConsulDeleteHandler should handle delete key store in consul.
+type ConsulDeleteHandler func(key string) (string, int, error)
+
 // ConsulGetTreeHandler should handle get kv store recursively in consul.
 type ConsulGetTreeHandler func(key string) (map[string]string, int, error)
 
@@ -76,6 +79,7 @@ type ConsulClient struct {
 	lockHandler    ConsulLockHandler
 	updateHandler  ConsulUpdateHandler
 	getHandler     ConsulGetHandler
+	deleteHandler  ConsulDeleteHandler
 	getTreeHandler ConsulGetTreeHandler
 	Address        *url.URL //address should be a valid URL string, ex: http://127.0.0.1:8500/
 	client         *http.Client
@@ -108,6 +112,7 @@ func NewConsulClientWithCustomHTTP(address *url.URL, client *http.Client) *Consu
 	c.updateHandler = newDefaultUpdateHandler(client, address)
 	c.lockHandler = newDefaultLockHandler(client, address)
 	c.getHandler = newDefaultGetHandler(client, address)
+	c.deleteHandler = newDefaultDeleteHandler(client, address)
 	c.getTreeHandler = newDefaultGetTreeHandler(client, address)
 	return c
 }
@@ -261,6 +266,40 @@ func newDefaultGetHandler(c *http.Client, u *url.URL) ConsulGetHandler {
 	}
 }
 
+func newDefaultDeleteHandler(c *http.Client, u *url.URL) ConsulDeleteHandler {
+	return func(key string) (string, int, error) {
+		key = strings.TrimPrefix(key, "/")
+		k, err := url.Parse(key)
+		if err != nil {
+			logger.Error.Printf("Get error when parse url: %s\n", err.Error())
+			return "", 0, err
+		}
+		temp := u.ResolveReference(k)
+		request, err := http.NewRequest(http.MethodDelete, temp.String(), nil)
+		if err != nil {
+			//TODO: should Logging behavior be done at Controller level or API level?
+			logConsulError(err)
+			return "", ApiError.REQUEST_ERROR, err
+		}
+		logTraceConsul("delete", temp.String())
+		response, err := c.Do(request)
+		if err != nil {
+			logConsulError(err)
+			return "", ApiError.CONSUL_SERVICE_ERROR, err
+		}
+		defer response.Body.Close()
+		body, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			return "", ApiError.IO_ERROR, err
+		}
+		if response.StatusCode == http.StatusNotFound {
+			return "", ApiError.SUCCESS, nil
+		}
+
+		return string(body), ApiError.SUCCESS, nil
+	}
+}
+
 //newDefaultLockHandler generate a default behavior for acquiring lock. It basically use consul/api client for lock
 func newDefaultLockHandler(client *http.Client, addr *url.URL) ConsulLockHandler {
 	a, err := api.NewClient(&api.Config{
@@ -297,6 +336,10 @@ func (c *ConsulClient) ConsulUpdateVal(key string, val interface{}) (int, error)
 // ConsulGetVal get Consul KV Store by the given key, return value in string format
 func (c ConsulClient) ConsulGetVal(key string) (string, int, error) {
 	return c.getHandler(key)
+}
+
+func (c ConsulClient) ConsulDeleteKey(key string) (string, int, error) {
+	return c.deleteHandler(key)
 }
 
 // ConsulGetVal get Consul KV Store by the given key, return value in string format
@@ -440,6 +483,10 @@ func ConsulGetVal(key string) (string, int, error) {
 	return DefaultConsulClient.ConsulGetVal(key)
 }
 
+func ConsulDeleteKey(key string) (string, int, error) {
+	return DefaultConsulClient.ConsulDeleteKey(key)
+}
+
 func ConsulGetTreeFromRoot(key string) (map[string]string, int, error) {
 	return RootConsulClient.ConsulGetTreeVal(key)
 }
@@ -454,6 +501,15 @@ func ConsulGetLogo(enterprise string, iconType string) ([]byte, error) {
 		return nil, err
 	}
 	return base64.StdEncoding.DecodeString(value)
+}
+
+func ConsulDeleteLogo(enterprise string, iconType string) error {
+	if enterprise == "" {
+		enterprise = "system"
+	}
+	key := fmt.Sprintf("ui/icon/%s/%s", enterprise, iconType)
+	_, _, err := DefaultConsulClient.ConsulDeleteKey(key)
+	return err
 }
 
 func ConsulUpdateLogo(enterprise string, iconType string, input []byte) error {

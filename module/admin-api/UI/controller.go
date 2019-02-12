@@ -35,6 +35,7 @@ func init() {
 			util.NewEntryPoint("GET", "decrypt", []string{}, handleDecrypt),
 
 			util.NewEntryPoint("GET", "logo", []string{}, handleGetLogo),
+			util.NewEntryPoint("DELETE", "logo", []string{}, handleDeleteLogo),
 			util.NewEntryPointWithConfig("PUT", "logo", []string{"edit"}, handleUploadLogo, util.EntryConfig{
 				Version:     1,
 				IgnoreAppID: true,
@@ -175,6 +176,22 @@ func handleGetLogo(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 	}
 	w.Write(data)
+}
+
+func handleDeleteLogo(w http.ResponseWriter, r *http.Request) {
+	enterprise := r.URL.Query().Get("enterprise")
+	iconType := r.URL.Query().Get("type")
+	if iconType == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := util.ConsulDeleteLogo(enterprise, iconType)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
 }
 
 func handleUploadLogo(w http.ResponseWriter, r *http.Request) {
