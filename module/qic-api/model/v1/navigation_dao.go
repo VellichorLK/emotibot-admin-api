@@ -177,7 +177,8 @@ func (n *NavigationSQLDao) SoftDeleteFlows(conn SqlLike, q *NavQuery) (int64, er
 	if err != nil {
 		return 0, ErrGenCondition
 	}
-	updateSQL := fmt.Sprintf("UPDATE %s SET %s=1 %s", tblNavigation, fldIsDelete, condition)
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s=1,%s=%d %s", tblNavigation, fldIsDelete,
+		fldUpdateTime, time.Now().Unix(), condition)
 	return execSQL(conn, updateSQL, params)
 }
 
