@@ -255,7 +255,3 @@ func CountNodes(navs []int64) (map[int64]int64, error) {
 
 	return resp, err
 }
-
-func UpdateFlowIntent(nav int64, senGrp *model.SentenceGroup) error {
-	return nil
-}
