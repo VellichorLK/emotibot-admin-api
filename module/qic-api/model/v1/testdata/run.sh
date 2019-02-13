@@ -22,4 +22,4 @@ do
     docker exec -it mysql-integration mysqlimport --local --ignore-lines=1 --fields-terminated-by=\\t --fields-optionally-enclosed-by=\" -h 127.0.0.1 --user root -ppassword QISYS /$basename
 done
 cd ../ && go test "$@" ./... -integration
-docker-compose -p $COMPOSE_PROJECT_NAME -f $DIR/integration.yaml down -t 3 > /dev/null 2>&1
+docker-compose -p $COMPOSE_PROJECT_NAME -f $DIR/integration.yaml down -t -v --remove-orphans 3 > /dev/null 2>&1
