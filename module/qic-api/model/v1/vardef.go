@@ -42,6 +42,8 @@ const (
 	tblPredictResult    = "CUPredictResult"
 	tblSegmentPredict   = "SegmentPredict"
 	tblTrainedModel     = "TrainedModel"
+	tblNavigation       = "Navigation"
+	tblRelNavSenGrp     = "Relation_Nav_SenGrp"
 )
 
 //field name in Conversation table
@@ -186,6 +188,7 @@ const (
 	SGRole     = "role"
 	SGPoistion = "position"
 	SGRange    = "range"
+	SGOptional = "optional"
 )
 
 // field name in Relation_SentenceGroup_Sentece
@@ -344,4 +347,15 @@ const (
 	fldSegID     = "segment_id"
 	fldMatch     = "match"
 	fldMatchText = "match_text"
+)
+
+const (
+	fldIntenName   = "intent_name"
+	fldIgoreIntent = "ignore_intent"
+	fldIntentLink  = "intent_link_id"
+)
+
+const (
+	fldNavID    = "nav_id"
+	fldSenGrpID = "sg_id"
 )

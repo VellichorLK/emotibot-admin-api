@@ -91,6 +91,11 @@ func (m *mockSentenceGroupDao) DeleteMany(id []string, sql model.SqlLike) error 
 	return nil
 }
 
+func (m *mockSentenceGroupDao) GetNewBy(id []int64, filter *model.SentenceGroupFilter, sql model.SqlLike) (groups []model.SentenceGroup, err error) {
+	groups = mockSentenceGroups
+	return
+}
+
 type mockSentencesDao struct{}
 
 func (m *mockSentencesDao) Begin() (*sql.Tx, error) {
