@@ -158,4 +158,11 @@ func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
 		t.Logf("keys[1]: %+v\nCreated: %+v\n", keys[0], createdKey)
 		t.Error("expect created key to be the same as keys 1")
 	}
+	total, err := dao.DeleteUserKeys(nil, query)
+	if err != nil {
+		t.Fatal("expect delete ok, but got ", err)
+	}
+	if total != 1 {
+		t.Error("expect delete 1 row, but got ", total)
+	}
 }

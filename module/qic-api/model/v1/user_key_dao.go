@@ -28,20 +28,13 @@ const (
 	UserKeyTypArray
 )
 
-var _ UserKeyDao = &UserKeySQLDao{}
-
 // UserKeySQLDao is the implementation of SQL operation to User Key Table.
 type UserKeySQLDao struct {
 	db SqlLike
 }
 
-// UserKeyDao is the abstract of the operations to User Key Table.
-type UserKeyDao interface {
-	NewUserKey(delegatee SqlLike, key UserKey) (UserKey, error)
-	UserKeys(delegatee SqlLike, query UserKeyQuery) ([]UserKey, error)
-	// Counts(delegatee SqlLike, query UserKeyQuery) (int64, error)
-}
-
+// UserKeyQuery is the query for UserKey table
+// It exclude soft delete row by default
 type UserKeyQuery struct {
 	ID               []int64
 	FuzzyName        string // search with LIKE *name*
@@ -188,5 +181,24 @@ func (u *UserKeySQLDao) CountUserKeys(delegatee SqlLike, query UserKeyQuery) (in
 	if err != nil {
 		return 0, fmt.Errorf("query row failed, %v", err)
 	}
+	return total, nil
+}
+
+// DeleteUserKeys mark UserKey is_delete to true, which will not be query by default query.
+func (u *UserKeySQLDao) DeleteUserKeys(delegatee SqlLike, query UserKeyQuery) (int64, error) {
+	if delegatee == nil {
+		delegatee = u.db
+	}
+	wherePart, data := query.whereSQL("")
+	rawsql := fmt.Sprintf("UPDATE `%s` SET `%s` = 1 %s",
+		tblUserKey,
+		fldUserKeyIsDelete,
+		wherePart,
+	)
+	result, err := delegatee.Exec(rawsql, data...)
+	if err != nil {
+		return 0, fmt.Errorf("execute failed, %v", err)
+	}
+	total, _ := result.RowsAffected()
 	return total, nil
 }
