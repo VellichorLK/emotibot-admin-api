@@ -149,14 +149,14 @@ func handleFlowList(w http.ResponseWriter, r *http.Request) {
 
 	flows, err := GetFlows(q, page, limit)
 	if err != nil {
-		logger.Error.Printf("get the flow failed. %q:s, err: %s\n", *q, err)
+		logger.Error.Printf("get the flow failed. q: %+v, err: %s\n", *q, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	totalFlows, err := CountFlows(q)
 	if err != nil {
-		logger.Error.Printf("count the flows failed. %q:s, err: %s\n", *q, err)
+		logger.Error.Printf("count the flows failed. q: %+v, err: %s\n", *q, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
