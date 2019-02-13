@@ -120,6 +120,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 }
 
 func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
+	skipIntergartion(t)
 	dao := UserKeySQLDao{
 		db: newIntegrationTestDB(t),
 	}
