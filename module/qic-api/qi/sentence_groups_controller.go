@@ -98,6 +98,9 @@ func sentenceGroupInReqToSentenceGroup(sentenceGroupInReq *SentenceGroupInReq) (
 }
 
 func sentenceGroupToSentenceGroupInResponse(sg *model.SentenceGroup) (sgInRes SentenceGroupInResponse) {
+	if sg == nil {
+		return SentenceGroupInResponse{}
+	}
 	sgInRes = SentenceGroupInResponse{
 		ID:               sg.UUID,
 		Name:             sg.Name,
