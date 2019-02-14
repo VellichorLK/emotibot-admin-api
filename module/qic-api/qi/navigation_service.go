@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/json"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -10,7 +11,8 @@ import (
 )
 
 var (
-	navDao model.NavigationDao = &model.NavigationSQLDao{}
+	navDao         model.NavigationDao  = &model.NavigationSQLDao{}
+	navOnTheFlyDao model.NavOnTheFlyDao = &model.NavOnTheFlySQLDao{}
 )
 
 //NewFlow creates the new flow and sets the empty node and intent
@@ -264,4 +266,63 @@ func CountNodes(navs []int64) (map[int64]int64, error) {
 	}
 
 	return resp, err
+}
+
+//the speaker
+const (
+	ChannelSilence = iota
+	ChannelHost
+	ChannelGuest
+)
+
+//the Conversation type
+const (
+	AudioFile = iota
+	Flow
+)
+
+func createFlowConversation(enterprise string, user string, body *apiFlowCreateBody) (string, error) {
+
+	if dbLike == nil {
+		return "", ErrNilCon
+	}
+
+	usingStat := MStatUsing
+	models, err := modelDao.TrainedModelInfo(dbLike.Conn(),
+		&model.TModelQuery{Status: &usingStat, Enterprise: &enterprise})
+
+	if err != nil {
+		logger.Error.Printf("get model failed. %s\n", err)
+		return "", err
+	}
+
+	if len(models) == 0 {
+		logger.Warn.Printf("enterprise %s has no trained model and tries to use navigation flow\n", enterprise)
+		return "", ErrNoModels
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback()
+
+	reqCall := &NewCallReq{FileName: body.FileName, Enterprise: enterprise, Type: model.CallTypeRealTime, CallTime: body.CreateTime,
+		UploadUser: user, LeftChannel: "staff", RightChannel: "customer"}
+	call, err := NewCall(reqCall)
+
+	empty := &model.QIFlowResult{FileName: body.FileName}
+	emptStr, err := json.Marshal(empty)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return "", err
+	}
+	_, err = navOnTheFlyDao.InitConerationResult(tx, call.ID, int64(models[0].ID), string(emptStr))
+	if err != nil {
+		logger.Error.Printf("insert empty flow result failed")
+		return "", err
+	}
+	tx.Commit()
+
+	return call.UUID, nil
 }

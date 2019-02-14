@@ -181,12 +181,12 @@ func CallResps(query model.CallQuery) (*CallsResponse, error) {
 }
 
 //NewCall create a call based on the input.
-func NewCall(c *NewCallReq) (int64, error) {
+func NewCall(c *NewCallReq) (*model.Call, error) {
 	var err error
 	// create new call task
 	tx, err := dbLike.Begin()
 	if err != nil {
-		return 0, fmt.Errorf("error while get transaction, %v", err)
+		return nil, fmt.Errorf("error while get transaction, %v", err)
 	}
 	defer tx.Rollback()
 	timestamp := time.Now().Unix()
@@ -200,13 +200,13 @@ func NewCall(c *NewCallReq) (int64, error) {
 
 	createdTask, err := taskDao.NewTask(tx, *newTask)
 	if err != nil {
-		return 0, fmt.Errorf("new task failed, %v", err)
+		return nil, fmt.Errorf("new task failed, %v", err)
 	}
 
 	// create uuid for call
 	uid, err := uuid.NewV4()
 	if err != nil {
-		return 0, fmt.Errorf("new uuid failed, %v", err)
+		return nil, fmt.Errorf("new uuid failed, %v", err)
 	}
 
 	call := &model.Call{
@@ -224,17 +224,17 @@ func NewCall(c *NewCallReq) (int64, error) {
 		CustomerPhone:  c.GuestPhone,
 		EnterpriseID:   c.Enterprise,
 		UploadUser:     c.UploadUser,
-		Type:           model.CallTypeWholeFile,
 		LeftChanRole:   callRoleTyp(c.LeftChannel),
 		RightChanRole:  callRoleTyp(c.RightChannel),
 		TaskID:         createdTask.ID,
+		Type:           c.Type,
 	}
 
 	calls, err := callDao.NewCalls(tx, []model.Call{*call})
 	if err == model.ErrAutoIDDisabled {
-		return 0, nil
+		return nil, nil
 	} else if err != nil {
-		return 0, err
+		return nil, err
 	}
 	call = &calls[0]
 	isEnable := true
@@ -243,17 +243,17 @@ func NewCall(c *NewCallReq) (int64, error) {
 		IsEnable:     &isEnable,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("query group failed, %v", err)
+		return nil, fmt.Errorf("query group failed, %v", err)
 	}
 
 	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
 	if err != nil {
-		return 0, fmt.Errorf("set rule group failed, %v", err)
+		return nil, fmt.Errorf("set rule group failed, %v", err)
 	}
 	if err = tx.Commit(); err != nil {
-		return 0, fmt.Errorf("commit new call transaction failed, %v", err)
+		return nil, fmt.Errorf("commit new call transaction failed, %v", err)
 	}
-	return calls[0].ID, nil
+	return call, nil
 }
 
 //UpdateCall update the call data source
