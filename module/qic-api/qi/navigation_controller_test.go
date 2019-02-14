@@ -52,7 +52,7 @@ func TestHandleGetFlowSetting(t *testing.T) {
 func TestHandleNewFlow(t *testing.T) {
 	setUpMockNav()
 
-	rb := &reqNewFlow{Name: "hello world"}
+	rb := &reqNewFlow{Name: "hello world", IntentName: "intent1", Type: "intent"}
 	rbb, err := json.Marshal(rb)
 	if err != nil {
 		t.Error(err)
