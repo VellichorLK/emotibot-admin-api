@@ -68,7 +68,8 @@ func setUpMockNav() {
 }
 func TestNewFlow(t *testing.T) {
 	setUpMockNav()
-	id, err := NewFlow("mytest", "myenterprise")
+	rb := &reqNewFlow{Name: "hello world", IntentName: "intent1", Type: "intent"}
+	id, err := NewFlow(rb, "myenterprise")
 	if err != nil {
 		t.Fatalf("expecting no error, but get %s\n", err)
 	}
