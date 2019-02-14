@@ -2,6 +2,7 @@ package qi
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -325,4 +326,58 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	tx.Commit()
 
 	return call.UUID, nil
+}
+
+//Error msg
+var (
+	ErrSpeaker        = errors.New("Wrong speaker")
+	ErrEndTimeSmaller = errors.New("end time < start time")
+)
+
+//finishFlowQI finishs the flow, update information
+func finishFlowQI(req *apiFlowFinish, id int64, result *model.QIFlowResult) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+
+	calls, err := Calls(dbLike.Conn(), model.CallQuery{ID: []int64{id}})
+	if err != nil || len(calls) == 0 {
+		logger.Error.Printf("Get conversation [%d] error. %s\n", id, err)
+		return err
+	}
+
+	dur := req.FinishTime - calls[0].CallUnixTime
+	if dur < 0 {
+		return ErrEndTimeSmaller
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	resultStr, err := json.Marshal(result)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return err
+	}
+	_, err = navOnTheFlyDao.UpdateFlowResult(tx, calls[0].ID, string(resultStr))
+	if err != nil {
+		logger.Error.Printf("lupdate flow result failed. %s\n", err)
+		return err
+	}
+
+	calls[0].Status = 1
+	calls[0].DurationMillSecond = int(dur * 1000)
+
+	err = callDao.SetCall(tx, calls[0])
+	if err != nil {
+		logger.Error.Printf("lupdate streaming conversation finished status failed. %s\n", err)
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
 }

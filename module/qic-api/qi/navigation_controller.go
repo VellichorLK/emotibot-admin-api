@@ -389,3 +389,45 @@ func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Printf("%s\n", err)
 	}
 }
+
+type apiFlowFinish struct {
+	FinishTime int64 `json:"finish_time"`
+}
+
+func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
+	idStr := general.ParseID(r)
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	var requestBody apiFlowFinish
+	err = util.ReadJSON(r, &requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	/*
+		uuid := util.GetMuxVar(r, "id")
+		enterprise := requestheader.GetEnterpriseID(r)
+		resp, err := getCurrentQIFlowResult(w, enterprise, uuid)
+		if err != nil {
+			return
+		}
+		_ = resp
+	*/
+	//FIXME nil
+	err = finishFlowQI(&requestBody, id, nil)
+	if err != nil {
+		if err == ErrEndTimeSmaller {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("Finish the qi flow failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
+
+		return
+	}
+
+}

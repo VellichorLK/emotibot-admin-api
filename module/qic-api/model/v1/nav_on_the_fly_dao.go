@@ -9,7 +9,7 @@ import (
 //NavOnTheFlyDao is the interface of navigate on the fly
 type NavOnTheFlyDao interface {
 	InitConerationResult(conn SqlLike, callID int64, modelID int64, val string) (int64, error)
-	//	UpdateFlowResult(conn SqlLike, callID int64, val string) (int64, error)
+	UpdateFlowResult(conn SqlLike, callID int64, val string) (int64, error)
 	//	GetFlowResultFrom(conn SqlLike, callID int64) (*QIFlowResult, error)
 }
 
@@ -30,4 +30,19 @@ func (n *NavOnTheFlySQLDao) InitConerationResult(conn SqlLike, callID int64, mod
 		return 0, fmt.Errorf("sql executed failed, %v", err)
 	}
 	return result.LastInsertId()
+}
+
+//UpdateFlowResult updates the record the CUPredict for now
+func (n *NavOnTheFlySQLDao) UpdateFlowResult(conn SqlLike, callID int64, val string) (int64, error) {
+	if conn == nil {
+		return 0, ErrNilSqlLike
+	}
+	updateSQL := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblCUPredict, fldCUPredict, fldCallID)
+	result, err := conn.Exec(updateSQL, val, callID)
+	if err != nil {
+		logger.Error.Println("raw sql: ", updateSQL)
+		logger.Error.Printf("raw bind-data: [%v,%v]\n", callID, val)
+		return 0, fmt.Errorf("sql executed failed, %v", err)
+	}
+	return result.RowsAffected()
 }
