@@ -21,6 +21,7 @@ type reqCallInIntent struct {
 }
 
 type respDetailFlow struct {
+	Name       string                    `json:"name"`
 	IntentName string                    `json:"intent_name"`
 	Role       string                    `json:"role"`
 	Type       string                    `json:"type"`
@@ -43,7 +44,7 @@ func detailFlowToSetting(d *DetailNavFlow) *respDetailFlow {
 	if d == nil {
 		return &respDetailFlow{Sentences: []model.SimpleSentence{}, Nodes: []SentenceGroupInResponse{}}
 	}
-	resp := &respDetailFlow{}
+	resp := &respDetailFlow{Name: d.NavFlow.Name}
 
 	if d.SentenceGroup.Sentences == nil {
 		resp.Sentences = []model.SimpleSentence{}
