@@ -20,6 +20,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/module/qic-api/manual"
 	"emotibot.com/emotigo/module/qic-api/qi"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -36,6 +37,7 @@ var modules = []*util.ModuleInfo{
 	&qi.ModuleInfo,
 	&UI.ModuleInfo,
 	&manual.ModuleInfo,
+	&sensitive.ModuleInfo,
 }
 
 var serverConfig map[string]string
