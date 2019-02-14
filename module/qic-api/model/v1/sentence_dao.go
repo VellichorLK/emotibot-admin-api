@@ -74,6 +74,19 @@ type Sentence struct {
 	TagIDs     []uint64
 }
 
+func ToSimpleSentences(ss []*Sentence) []SimpleSentence {
+	simpleSentences := make([]SimpleSentence, len(ss))
+	for idx, s := range ss {
+		simpleSentences[idx] = SimpleSentence{
+			Name:       s.Name,
+			ID:         s.ID,
+			UUID:       s.UUID,
+			CategoryID: s.CategoryID,
+		}
+	}
+	return simpleSentences
+}
+
 //NewSentenceSQLDao generates the structure of SentenceSQLDao
 func NewSentenceSQLDao(conn *sql.DB) *SentenceSQLDao {
 	return &SentenceSQLDao{
