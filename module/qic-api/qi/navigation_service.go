@@ -14,9 +14,12 @@ var (
 )
 
 //NewFlow creates the new flow and sets the empty node and intent
-func NewFlow(name string, enterprise string) (int64, error) {
+func NewFlow(r *reqNewFlow, enterprise string) (int64, error) {
 	if dbLike == nil {
 		return 0, ErrNilCon
+	}
+	if r == nil {
+		return 0, ErrNilFlow
 	}
 	uuid, err := general.UUID()
 	if err != nil {
@@ -24,9 +27,17 @@ func NewFlow(name string, enterprise string) (int64, error) {
 		return 0, err
 	}
 	now := time.Now().Unix()
-	q := &model.NavFlow{Name: name, Enterprise: enterprise,
-		CreateTime: now, UpdateTime: now, IgnoreIntent: 1,
+	q := &model.NavFlow{Name: r.Name, Enterprise: enterprise,
+		CreateTime: now, UpdateTime: now,
 		UUID: uuid}
+
+	switch r.Type {
+	case "intent":
+		q.IntentName = r.IntentName
+	default:
+		q.IgnoreIntent = 1
+	}
+
 	id, err := navDao.NewFlow(dbLike.Conn(), q)
 	if err != nil {
 		logger.Error.Printf("Create new flow failed. %s\n", err)

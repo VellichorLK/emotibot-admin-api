@@ -29,6 +29,7 @@ type respDetailFlow struct {
 }
 
 var callInIntentMap = map[string]int{
+	"":       0,
 	"fixed":  0,
 	"intent": 1,
 }
@@ -50,7 +51,7 @@ func detailFlowToSetting(d *DetailNavFlow) *respDetailFlow {
 		resp.Sentences = d.SentenceGroup.Sentences
 	}
 
-	if d.IntentLinkID == 0 || d.IgnoreIntent == 1 {
+	if d.IgnoreIntent == 1 {
 		resp.Type = callInIntentCodeMap[0]
 		resp.Sentences = []model.SimpleSentence{}
 	} else {
@@ -96,7 +97,9 @@ func handleGetFlowSetting(w http.ResponseWriter, r *http.Request) {
 }
 
 type reqNewFlow struct {
-	Name string `json:"name"`
+	Name       string `json:"name"`
+	IntentName string `json:"intent_name"`
+	Type       string `json:"type"`
 }
 
 func handleNewFlow(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +110,7 @@ func handleNewFlow(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
-	id, err := NewFlow(req.Name, enterprise)
+	id, err := NewFlow(&req, enterprise)
 	if err != nil {
 		logger.Error.Printf("create the flow failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
