@@ -2,6 +2,7 @@ package model
 
 import (
 	"emotibot.com/emotigo/pkg/logger"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -12,10 +13,27 @@ const (
 	fldRelSWID             = "sw_id"
 	staffExceptionType     = 0
 	customerExceptionType  = 1
+	swCategoryType         = 1
 )
+
+//error message
+var (
+	ErrEmptyCategoryName = errors.New("Category name can not be nil")
+)
+
+type SensitiveWordFilter struct {
+	UUID       []string
+	Category   *int8
+	Enterprise *string
+	Name       string
+}
 
 type SensitiveWordDao interface {
 	Create(*SensitiveWord, SqlLike) (int64, error)
+	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
+	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
+
+	CreateCateogry(*SensitiveWordCategory, SqlLike) (int64, error)
 }
 
 type SensitiveWord struct {
@@ -27,6 +45,12 @@ type SensitiveWord struct {
 	CustomerException []SimpleSentence
 	Enterprise        string
 	CategoryID        int64
+}
+
+type SensitiveWordCategory struct {
+	ID         string
+	Name       string
+	Enterprise string
 }
 
 type SensitiveWordSqlDao struct {
@@ -152,6 +176,55 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 			logger.Error.Printf("values: %+v\n", values)
 			err = fmt.Errorf("insert sensitive word sentence relation in dao.Create, err: %s", err.Error())
 		}
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) CountBy(filter *SensitiveWordFilter, sqlLike SqlLike) (total int64, err error) {
+	return
+}
+
+func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLike) (sensitiveWords []SensitiveWord, err error) {
+	return
+}
+
+func (dao *SensitiveWordSqlDao) CreateCateogry(category *SensitiveWordCategory, sqlLike SqlLike) (rowID int64, err error) {
+	if category.Name == "" {
+		err = ErrEmptyCategoryName
+		return
+	}
+
+	fields := []string{
+		fldName,
+		fldEnterprise,
+		fldType,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	insertStr := fmt.Sprintf(
+		"INSERT INTO %s (%s) VALUES (?%s)",
+		tblCategory,
+		fieldStr,
+		strings.Repeat(", ?", len(fields)-1),
+	)
+
+	values := []interface{}{
+		category.Name,
+		category.Enterprise,
+		swCategoryType,
+	}
+
+	result, err := sqlLike.Exec(insertStr, values...)
+	if err != nil {
+		logger.Error.Printf("insert sensitive word category, sql: %s\n", insertStr)
+		logger.Error.Printf("values: %+v\n", values)
+		err = fmt.Errorf("insert sensitive word category failed in dao.CreateCateogry, err: %s", err.Error())
+		return
+	}
+
+	rowID, err = result.LastInsertId()
+	if err != nil {
+		err = fmt.Errorf("failed in get row id in dao.CreateCategory, err: %s", err.Error())
 	}
 	return
 }

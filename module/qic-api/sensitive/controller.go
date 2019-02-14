@@ -20,6 +20,11 @@ type SensitiveWordInReq struct {
 	Exception ExceptionInReq `json:"exception"`
 }
 
+type Category struct {
+	Name string `json:"name"`
+	ID   int64  `json:"category_id,string"`
+}
+
 func transformSensitiveWordInReqToSensitiveWord(inreq *SensitiveWordInReq) (word *model.SensitiveWord) {
 	if inreq == nil {
 		return
@@ -75,4 +80,38 @@ func handleCreateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 
 	util.WriteJSON(w, response)
 	return
+}
+
+func handleCreateSensitiveWordCategory(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	type Req struct {
+		Name string `json:"name"`
+	}
+
+	reqBody := Req{}
+	err := util.ReadJSON(r, &reqBody)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	id, err := CreateSensitiveWordCategory(reqBody.Name, enterprise)
+	if err != nil {
+		logger.Error.Printf("create sensitive word failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	category := &Category{
+		Name: reqBody.Name,
+		ID:   id,
+	}
+
+	err = util.WriteJSON(w, category)
+	if err != nil {
+		logger.Error.Printf("response category failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 }

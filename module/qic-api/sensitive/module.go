@@ -22,6 +22,9 @@ func init() {
 		ModuleName: "sensitive",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "word", []string{}, handleCreateSensitiveWord),
+
+			// category apis
+			util.NewEntryPoint("POST", "category", []string{}, handleCreateSensitiveWordCategory),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

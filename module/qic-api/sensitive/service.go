@@ -88,3 +88,13 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 	err = dbLike.Commit(tx)
 	return
 }
+
+func CreateSensitiveWordCategory(name, enterprise string) (int64, error) {
+	sqlConn := dbLike.Conn()
+
+	category := &model.SensitiveWordCategory{
+		Name:       name,
+		Enterprise: enterprise,
+	}
+	return swDao.CreateCateogry(category, sqlConn)
+}

@@ -16,6 +16,19 @@ func (dao *mockDAO) GetSensitiveWords() ([]string, error) {
 
 func (dao *mockDAO) Create(word *model.SensitiveWord, sqlLike model.SqlLike) (int64, error) {
 	return 1, nil
+
+}
+
+func (dao *mockDAO) CountBy(filter *model.SensitiveWordFilter, sqlLike model.SqlLike) (int64, error) {
+	return 1, nil
+}
+
+func (dao *mockDAO) GetBy(filter *model.SensitiveWordFilter, sqlLike model.SqlLike) ([]model.SensitiveWord, error) {
+	return []model.SensitiveWord{}, nil
+}
+
+func (dao *mockDAO) CreateCateogry(category *model.SensitiveWordCategory, sqlLike model.SqlLike) (int64, error) {
+	return 5, nil
 }
 
 func (dao *mockDAO) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
@@ -111,5 +124,23 @@ func TestCreateSensitiveWord(t *testing.T) {
 
 	if uid == "" {
 		t.Errorf("expect uid not be empty string, but got empty")
+	}
+}
+
+func TestCreateSensitiveWordCategory(t *testing.T) {
+	originDBLike, originDao, originSDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+
+	name := "test again"
+	enterprise := "1234"
+	id, err := CreateSensitiveWordCategory(name, enterprise)
+	if err != nil {
+		t.Errorf("wrror when create sensitive word category, err: %s", err.Error())
+		return
+	}
+
+	if id != 5 {
+		t.Errorf("expect 5 but got: %d", id)
+		return
 	}
 }
