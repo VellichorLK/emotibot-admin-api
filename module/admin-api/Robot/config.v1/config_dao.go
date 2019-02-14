@@ -7,6 +7,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+const moduleBFSource = "bf-env"
+
 type configDaoInterface interface {
 	GetDefaultConfigs() ([]*Config, error)
 	GetConfigs(appid string) ([]*Config, error)
@@ -53,6 +55,25 @@ func (dao configMySQL) GetDefaultConfigs() ([]*Config, error) {
 		}
 		ret = append(ret, &t)
 	}
+	rows.Close()
+
+	// Get configs from BF system
+	queryStr = "SELECT `name`, `value` FROM `ent_config` WHERE `module` not in ('helper', 'validator', 'functions')"
+	rows, err = dao.db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		t := Config{}
+		err = rows.Scan(&t.Code, &t.Value)
+		if err != nil {
+			return nil, err
+		}
+		t.Module = moduleBFSource
+		ret = append(ret, &t)
+	}
+	rows.Close()
 
 	return ret, nil
 }
@@ -91,11 +112,40 @@ func (dao configMySQL) GetConfigs(appid string) ([]*Config, error) {
 			configMap[t.Code] = &t
 		}
 	}
+	rows.Close()
 
 	ret := []*Config{}
 	for _, c := range configMap {
 		ret = append(ret, c)
 	}
+
+	// Get configs from BF system
+	queryStr =
+		"SELECT default.name, default.value, custom.value FROM " +
+			"(SELECT `name`, `value` FROM `ent_config` WHERE `module` not in ('helper', 'validator', 'functions')) AS `default` " +
+			"LEFT JOIN " +
+			"(SELECT `name`, `app_id`, `value` FROM `ent_config_appid_customization` WHERE `app_id` = ?) AS `custom` " +
+			"ON default.name = custom.name"
+
+	rows, err = dao.db.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		t := Config{}
+		var customValue *string
+		err = rows.Scan(&t.Code, &t.Value, &customValue)
+		if err != nil {
+			return nil, err
+		}
+		if customValue != nil {
+			t.Value = *customValue
+		}
+		t.Module = moduleBFSource
+		ret = append(ret, &t)
+	}
+	rows.Close()
 	return ret, nil
 }
 
@@ -120,10 +170,33 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 
 	ret := Config{}
 	err = row.Scan(&ret.Code, &ret.Module, &ret.Value, &ret.UpdateTime)
+	if err == nil {
+		return &ret, nil
+	}
+
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// If config not find in BFOP system, Get config from BF system
+	queryStr =
+		"SELECT default.name, default.value, custom.value FROM " +
+			"(SELECT `name`, `value` FROM `ent_config` WHERE name = ?) AS `default` " +
+			"LEFT JOIN " +
+			"(SELECT `name`, `app_id`, `value` FROM `ent_config_appid_customization` WHERE `app_id` = ?) AS `custom` " +
+			"ON default.name = custom.name"
+	row = dao.db.QueryRow(queryStr, configName, appid)
+
+	var customValue *string
+	err = row.Scan(&ret.Code, &ret.Value, &customValue)
 	if err != nil {
 		return nil, err
 	}
 
+	if customValue != nil {
+		ret.Value = *customValue
+	}
+	ret.Module = moduleBFSource
 	return &ret, nil
 }
 
@@ -136,17 +209,28 @@ func (dao configMySQL) SetConfig(appid, module, configName, value string) error 
 		return util.ErrDBNotInit
 	}
 
-	now := time.Now()
-	queryStr := `
-		INSERT INTO bfop_config
-		(appid, code, module, value, update_time) VALUES (?, ?, ?, ?, ?)
-		ON DUPLICATE KEY UPDATE value = ?, update_time = ?`
-	_, err = dao.db.Exec(queryStr,
-		appid, configName, module, value, now.Unix(), value, now.Unix())
-	if err != nil {
-		return err
+	if module == moduleBFSource {
+		queryStr := `
+			INSERT INTO ent_config_appid_customization
+			(name, app_id, value) VALUES (?, ?, ?)
+			ON DUPLICATE KEY UPDATE value = ?`
+		_, err = dao.db.Exec(queryStr,
+			configName, appid, value, value)
+		if err != nil {
+			return err
+		}
+	} else {
+		now := time.Now()
+		queryStr := `
+			INSERT INTO bfop_config
+			(appid, code, module, value, update_time) VALUES (?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE value = ?, update_time = ?`
+		_, err = dao.db.Exec(queryStr,
+			appid, configName, module, value, now.Unix(), value, now.Unix())
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
