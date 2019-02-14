@@ -73,12 +73,13 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := NewCall(req)
-	if err != nil {
+	call, err := NewCall(req)
+	if err != nil || call == nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call failed, %v", err))
 		return
 	}
-	resp := response{CallID: id}
+
+	resp := response{CallID: call.ID}
 	util.WriteJSON(w, resp)
 }
 
@@ -258,6 +259,7 @@ type NewCallReq struct {
 	RightChannel string `json:"right_channel"`
 	Enterprise   string `json:"-"`
 	UploadUser   string `json:"-"`
+	Type         int8   `json:"-"`
 }
 
 type CallDetail struct {

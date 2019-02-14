@@ -348,3 +348,44 @@ func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
+
+type apiFlowCreateBody struct {
+	CreateTime int64  `json:"create_time"`
+	FileName   string `json:"file_name"`
+}
+
+type apiFlowCreateResp struct {
+	UUID string `json:"id"`
+}
+
+//handleFlowCreate is the entry tp create the conversation on the fly
+func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
+	//get the first available bot and its first scenario
+	enterprise := requestheader.GetEnterpriseID(r)
+	user := requestheader.GetUserID(r)
+	//appid := requestheader.GetAppID(r)
+
+	var requestBody apiFlowCreateBody
+	err := util.ReadJSON(r, &requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	uuid, err := createFlowConversation(enterprise, user, &requestBody)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		if err == ErrNoModels {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, ErrNoModels.Error()), http.StatusBadRequest)
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	resp := &apiFlowCreateResp{UUID: uuid}
+	err = util.WriteJSON(w, resp)
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+	}
+}

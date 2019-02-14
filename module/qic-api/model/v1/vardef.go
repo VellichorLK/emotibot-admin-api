@@ -113,6 +113,7 @@ const (
 )
 const (
 	fldCUPredict = "predict"
+	fldAppID     = "app_id"
 	fldSentence  = "sentence"
 )
 
