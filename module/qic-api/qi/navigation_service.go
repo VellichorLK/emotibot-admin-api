@@ -221,7 +221,6 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		resp.Nodes = senGrps
 		resp.SentenceGroup = intent
 	}
-
 	return resp, nil
 }
 
