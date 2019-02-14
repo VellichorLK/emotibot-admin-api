@@ -830,6 +830,9 @@ func (s *GroupSQLDao) CreateMany(groups []GroupWCond, sqlLike SqlLike) (err erro
 }
 
 func (s *GroupSQLDao) DeleteMany(groupUUID []string, sqlLike SqlLike) (err error) {
+	if len(groupUUID) == 0 {
+		return
+	}
 	builder := NewWhereBuilder(andLogic, "")
 	builder.In(fldUUID, stringToWildCard(groupUUID...))
 	conditionStr, values := builder.Parse()

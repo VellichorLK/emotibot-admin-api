@@ -433,6 +433,9 @@ func (dao *ConversationFlowSqlDaoImpl) CreateMany(flows []ConversationFlow, sqlL
 }
 
 func (dao *ConversationFlowSqlDaoImpl) DeleteMany(uuids []string, sqlLike SqlLike) (err error) {
+	if len(uuids) == 0 {
+		return
+	}
 	builder := NewWhereBuilder(andLogic, "")
 
 	builder.In(fldUUID, stringToWildCard(uuids...))
