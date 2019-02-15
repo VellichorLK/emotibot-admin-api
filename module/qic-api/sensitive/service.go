@@ -126,3 +126,8 @@ func GetWordsUnderCategory(id int64, enterprise string) (total int64, words []mo
 	words, err = swDao.GetBy(filter, sqlConn)
 	return
 }
+
+func UpdateCategory(category *model.SensitiveWordCategory) (affectRows int64, err error) {
+	sqlConn := dbLike.Conn()
+	return swDao.UpdateCategory(category, sqlConn)
+}

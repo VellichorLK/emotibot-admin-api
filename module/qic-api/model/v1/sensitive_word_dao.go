@@ -42,6 +42,7 @@ type SensitiveWordDao interface {
 
 	CreateCateogry(*SensitiveWordCategory, SqlLike) (int64, error)
 	GetCategories(*SensitiveWordCategoryFilter, SqlLike) ([]SensitiveWordCategory, error)
+	UpdateCategory(*SensitiveWordCategory, SqlLike) (int64, error)
 }
 
 type SensitiveWord struct {
@@ -353,6 +354,29 @@ func (dao *SensitiveWordSqlDao) GetCategories(filter *SensitiveWordCategoryFilte
 		cate := SensitiveWordCategory{}
 		rows.Scan(&cate.ID, &cate.Name, &cate.Enterprise)
 		categories = append(categories, cate)
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) UpdateCategory(category *SensitiveWordCategory, sqlLike SqlLike) (affectedRows int64, err error) {
+	if category == nil {
+		return
+	}
+
+	updateStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblCategory, fldName, fldID)
+
+	result, err := sqlLike.Exec(updateStr, category.Name, category.ID)
+	if err != nil {
+		logger.Error.Printf("error while update category in dao.UpdateCategory, sql: %s\n", updateStr)
+		logger.Error.Printf("values: %s, %d\n", category.Name, category.ID)
+		err = fmt.Errorf("update categories failed, err: %s", err.Error())
+		return
+	}
+
+	affectedRows, err = result.RowsAffected()
+	if err != nil {
+		logger.Error.Printf("error while get affected rows in dao.UpdateCategory, sql: %s\n", updateStr)
+		err = fmt.Errorf("update categories failed, err: %s", err.Error())
 	}
 	return
 }

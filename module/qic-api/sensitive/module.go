@@ -27,6 +27,7 @@ func init() {
 			util.NewEntryPoint("POST", "category", []string{}, handleCreateSensitiveWordCategory),
 			util.NewEntryPoint("GET", "category", []string{}, handleGetCategory),
 			util.NewEntryPoint("GET", "category/{id}", []string{}, handleGetWordsUnderCategory),
+			util.NewEntryPoint("PUT", "category/{id}", []string{}, handleUpdateCategory),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

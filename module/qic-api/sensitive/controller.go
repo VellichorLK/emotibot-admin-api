@@ -30,6 +30,10 @@ type SensitiveWordInRes struct {
 	Category int64  `json:"category_id"`
 }
 
+type Req struct {
+	Name string `json:"name"`
+}
+
 func transformSensitiveWordInReqToSensitiveWord(inreq *SensitiveWordInReq) (word *model.SensitiveWord) {
 	if inreq == nil {
 		return
@@ -89,10 +93,6 @@ func handleCreateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 
 func handleCreateSensitiveWordCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-
-	type Req struct {
-		Name string `json:"name"`
-	}
 
 	reqBody := Req{}
 	err := util.ReadJSON(r, &reqBody)
@@ -154,12 +154,16 @@ func toSensitiveWordInRes(words []model.SensitiveWord) (inres []SensitiveWordInR
 	return
 }
 
+func parseID(r *http.Request) (int64, error) {
+	vars := mux.Vars(r)
+	return strconv.ParseInt(vars["id"], 10, 64)
+}
+
 func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	paging := request.Paging(r)
 
-	vars := mux.Vars(r)
-	categoryID, err := strconv.ParseInt(vars["id"], 10, 64)
+	categoryID, err := parseID(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -186,4 +190,31 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 
 	util.WriteJSON(w, response)
 	return
+}
+
+func handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reqBody := Req{}
+	err = util.ReadJSON(r, &reqBody)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	category := &model.SensitiveWordCategory{
+		Name: reqBody.Name,
+		ID:   id,
+	}
+
+	_, err = UpdateCategory(category)
+	if err != nil {
+		logger.Error.Printf("update category failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 }

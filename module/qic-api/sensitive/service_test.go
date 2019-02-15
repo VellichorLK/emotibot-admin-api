@@ -63,6 +63,10 @@ func (dao *mockDAO) GetCategories(filter *model.SensitiveWordCategoryFilter, sql
 	return mockCategories, nil
 }
 
+func (dao *mockDAO) UpdateCategory(category *model.SensitiveWordCategory, sqlLike model.SqlLike) (int64, error) {
+	return 1, nil
+}
+
 func (dao *mockDAO) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
 	return []*model.Sentence{}, nil
 }
@@ -238,5 +242,24 @@ func TestGetWordsUnderCategory(t *testing.T) {
 			t.Errorf("expect category id %d but got %d", targetW.CategoryID, w.CategoryID)
 			return
 		}
+	}
+}
+
+func TestUpdateCategory(t *testing.T) {
+	originDBLike, originDao, originSDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+
+	category := &model.SensitiveWordCategory{
+		Name: "55588",
+	}
+
+	affectedRows, err := UpdateCategory(category)
+	if err != nil {
+		t.Errorf("error when test update category, err: %s", err.Error())
+		return
+	}
+
+	if affectedRows != 1 {
+		t.Errorf("expect affectrows: %d but got %d", 1, affectedRows)
 	}
 }
