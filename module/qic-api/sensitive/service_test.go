@@ -8,6 +8,17 @@ import (
 
 type mockDAO struct{}
 
+var mockCategories []model.SensitiveWordCategory = []model.SensitiveWordCategory{
+	model.SensitiveWordCategory{
+		ID:   1234,
+		Name: "n1",
+	},
+	model.SensitiveWordCategory{
+		ID:   2345,
+		Name: "n2",
+	},
+}
+
 func (dao *mockDAO) GetSensitiveWords() ([]string, error) {
 	return []string{
 		"收益",
@@ -29,6 +40,10 @@ func (dao *mockDAO) GetBy(filter *model.SensitiveWordFilter, sqlLike model.SqlLi
 
 func (dao *mockDAO) CreateCateogry(category *model.SensitiveWordCategory, sqlLike model.SqlLike) (int64, error) {
 	return 5, nil
+}
+
+func (dao *mockDAO) GetCategories(filter *model.SensitiveWordCategoryFilter, sqlLike model.SqlLike) ([]model.SensitiveWordCategory, error) {
+	return mockCategories, nil
 }
 
 func (dao *mockDAO) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
@@ -135,12 +150,36 @@ func TestCreateSensitiveWordCategory(t *testing.T) {
 	enterprise := "1234"
 	id, err := CreateSensitiveWordCategory(name, enterprise)
 	if err != nil {
-		t.Errorf("wrror when create sensitive word category, err: %s", err.Error())
+		t.Errorf("error when create sensitive word category, err: %s", err.Error())
 		return
 	}
 
 	if id != 5 {
 		t.Errorf("expect 5 but got: %d", id)
 		return
+	}
+}
+
+func TestGetCategories(t *testing.T) {
+	originDBLike, originDao, originSDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+
+	categories, err := GetCategories("test")
+	if err != nil {
+		t.Errorf("error when test get categories, err: %s", err.Error())
+		return
+	}
+
+	for idx, cate := range categories {
+		targetCate := mockCategories[idx]
+		if targetCate.ID != cate.ID {
+			t.Errorf("expect %d but got: %d", targetCate.ID, cate.ID)
+			return
+		}
+
+		if targetCate.Name != cate.Name {
+			t.Errorf("expect %s but got %s", targetCate.Name, cate.Name)
+			return
+		}
 	}
 }

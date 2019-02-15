@@ -28,12 +28,18 @@ type SensitiveWordFilter struct {
 	Name       string
 }
 
+type SensitiveWordCategoryFilter struct {
+	ID         []int64
+	Enterprise *string
+}
+
 type SensitiveWordDao interface {
 	Create(*SensitiveWord, SqlLike) (int64, error)
 	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
 
 	CreateCateogry(*SensitiveWordCategory, SqlLike) (int64, error)
+	GetCategories(*SensitiveWordCategoryFilter, SqlLike) ([]SensitiveWordCategory, error)
 }
 
 type SensitiveWord struct {
@@ -48,9 +54,9 @@ type SensitiveWord struct {
 }
 
 type SensitiveWordCategory struct {
-	ID         string
-	Name       string
-	Enterprise string
+	ID         int64  `json:"category_id,string"`
+	Name       string `json:"name"`
+	Enterprise string `json:"-"`
 }
 
 type SensitiveWordSqlDao struct {
@@ -225,6 +231,52 @@ func (dao *SensitiveWordSqlDao) CreateCateogry(category *SensitiveWordCategory, 
 	rowID, err = result.LastInsertId()
 	if err != nil {
 		err = fmt.Errorf("failed in get row id in dao.CreateCategory, err: %s", err.Error())
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) GetCategories(filter *SensitiveWordCategoryFilter, sqlLike SqlLike) (categories []SensitiveWordCategory, err error) {
+	builder := NewWhereBuilder(andLogic, "")
+
+	if len(filter.ID) > 0 {
+		builder.In(fldID, int64ToWildCard(filter.ID...))
+	}
+
+	if filter.Enterprise != nil {
+		builder.Eq(fldEnterprise, *filter.Enterprise)
+	}
+
+	builder.Eq(fldType, swCategoryType)
+
+	fields := []string{
+		fldID,
+		fldName,
+		fldEnterprise,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	conditionStr, values := builder.ParseWithWhere()
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s %s",
+		fieldStr,
+		tblCategory,
+		conditionStr,
+	)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while query sensitive word categories, sql: %s", queryStr)
+		logger.Error.Printf("values: %+v\n", values)
+		err = fmt.Errorf("error while query sensitive word categories in dao.GetCategories, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	categories = []SensitiveWordCategory{}
+	for rows.Next() {
+		cate := SensitiveWordCategory{}
+		rows.Scan(&cate.ID, &cate.Name, &cate.Enterprise)
+		categories = append(categories, cate)
 	}
 	return
 }

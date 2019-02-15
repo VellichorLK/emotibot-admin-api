@@ -98,3 +98,14 @@ func CreateSensitiveWordCategory(name, enterprise string) (int64, error) {
 	}
 	return swDao.CreateCateogry(category, sqlConn)
 }
+
+func GetCategories(enterprise string) (categories []model.SensitiveWordCategory, err error) {
+	sqlConn := dbLike.Conn()
+
+	filter := &model.SensitiveWordCategoryFilter{
+		ID:         []int64{},
+		Enterprise: &enterprise,
+	}
+
+	return swDao.GetCategories(filter, sqlConn)
+}
