@@ -62,7 +62,7 @@ func (dao feedbackDao) AddReason(appid string, content string) (int64, error) {
 		return 0, ErrDBNotInit
 	}
 
-	sql := "INSERT INTO feedback_reason (appid, content, created_time) VALUES (?, ?, ?)"
+	sql := "INSERT INTO feedback_reason (appid, content, created_at) VALUES (?, ?, ?)"
 
 	result, err := dao.db.Exec(sql, appid, content, timestampHandler())
 	if err != nil {

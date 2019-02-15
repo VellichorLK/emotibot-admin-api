@@ -11,31 +11,43 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
+// ASRWorkFlow is the workflow of processing asr output.
+// the return error is the no ack signal for RabbitMQ consumer.
+// if error is nil, then the process is consider either done or unrecoverable error
+// TODO: Add a special error type that can distinguish unrecoverable error.
 func ASRWorkFlow(output []byte) error {
 	var resp ASRResponse
 	err := json.Unmarshal(output, &resp)
 	if err != nil {
-		return fmt.Errorf("unmarshal asr response failed, %v", err)
-	}
-	if resp.Status != 0 {
-		return fmt.Errorf("asr status is non-success %d", resp.Status)
+		logger.Error.Println("unrecoverable error: unmarshal asr response failed, ", err, " Body: ", string(output))
+		return nil
 	}
 	c, err := Call(resp.CallID, "")
 	if err == ErrNotFound {
-		return err
+		logger.Error.Printf("unrecoverable error: call '%d' no such call exist. \n", resp.CallID)
+		return nil
 	} else if err != nil {
-		return fmt.Errorf("fetching call failed, %v", err)
+		return fmt.Errorf("fetch call failed, %v", err)
 	}
+
+	if resp.Status != 0 {
+		logger.Error.Println("unrecoverable error: asr response status is not ok, CallID: ", resp.CallID, ", Status: ", resp.Status)
+		return nil
+	}
+
 	c.DurationMillSecond = int(resp.Length * 1000)
+
 	err = UpdateCall(&c)
 	if err != nil {
-		return fmt.Errorf("call update status failed, %v", err)
+		return fmt.Errorf("update call duration failed, %v", err)
 	}
 
 	tx, err := dbLike.Begin()
 	if err != nil {
 		return fmt.Errorf("can not begin a transaction")
 	}
+	// defer a clean up function.
+	// If any error happened, tx will be revert and status will be marked as failed.
 	defer func() {
 		if err != nil {
 			//We need to release tx before update call, or it may be locked.
@@ -70,7 +82,7 @@ func ASRWorkFlow(output []byte) error {
 		}
 		segWithSp = append(segWithSp, ws)
 	}
-	//TODO: calculate the 語速 & 靜音比
+	//TODO: 計算靜音比例跟規則
 	isEnabled := true
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
 		IsEnable: &isEnabled,
@@ -108,11 +120,13 @@ func ASRWorkFlow(output []byte) error {
 	c.RightSpeed = &resp.RightChannel.Speed
 	c.LeftSilenceTime = &resp.LeftChannel.Quiet
 	c.RightSilenceTime = &resp.RightChannel.Quiet
-	err = callDao.SetCall(nil, c)
-	if err != nil {
-		logger.Error.Println("ASR finished, but status update failed. It will cause an unsync status. error: ", err)
-	}
+	err = UpdateCall(&c)
 	logger.Info.Println("finish asr flow for ", resp.CallID)
+	if err != nil {
+		logger.Error.Printf("inconsistent status error: call '%d' ASR finished, but status update failed. %v", c.ID, err)
+		//Dont bother trigger clean up function
+		err = nil
+	}
 	return nil
 }
 

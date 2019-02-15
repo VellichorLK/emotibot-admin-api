@@ -25,6 +25,8 @@ type SentenceGroupInReq struct {
 	Position         string   `json:"position"`
 	PositionDistance int      `json:"position_distance"`
 	Sentences        []string `json:"sentences"`
+	Type             string   `json:"type"`
+	Optional         bool     `json:"optional"`
 }
 
 type SentenceGroupInResponse struct {
@@ -34,6 +36,8 @@ type SentenceGroupInResponse struct {
 	Position         string                 `json:"position"`
 	PositionDistance int                    `json:"position_distance"`
 	Sentences        []model.SimpleSentence `json:"sentences"`
+	Type             string                 `json:"type"`
+	Optional         bool                   `json:"optional"`
 }
 
 //Query parameter

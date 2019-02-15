@@ -490,6 +490,9 @@ func (dao *ConversationRuleSqlDaoImpl) Delete(id string, sqlLike SqlLike) (err e
 }
 
 func (dao *ConversationRuleSqlDaoImpl) DeleteMany(uuid []string, sqlLike SqlLike) (err error) {
+	if len(uuid) == 0 {
+		return
+	}
 	builder := whereBuilder{
 		ConcatLogic: andLogic,
 		conditions:  []string{},

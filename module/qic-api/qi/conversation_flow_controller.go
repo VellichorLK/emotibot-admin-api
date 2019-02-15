@@ -134,11 +134,13 @@ func handleGetConversationFlow(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	id := parseID(r)
 
+	var deleted int8
 	filter := &model.ConversationFlowFilter{
 		Enterprise: enterprise,
 		UUID: []string{
 			id,
 		},
+		IsDelete: &deleted,
 	}
 
 	_, flows, err := GetConversationFlowsBy(filter)

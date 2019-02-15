@@ -34,6 +34,22 @@ var positionCodeMap map[int]string = map[int]string{
 	2: "",
 }
 
+var typeMapping = map[string]int{
+	"normal":     0,
+	"call_in":    1,
+	"silence":    2,
+	"speed":      3,
+	"interposal": 4,
+}
+
+var typeCodeMap = map[int]string{
+	0: "normal",
+	1: "call_in",
+	2: "silence",
+	3: "speed",
+	4: "interposal",
+}
+
 type SetenceGroupsResponse struct {
 	Paging *general.Paging           `json:"paging"`
 	Data   []SentenceGroupInResponse `json:"data"`
@@ -65,11 +81,26 @@ func sentenceGroupInReqToSentenceGroup(sentenceGroupInReq *SentenceGroupInReq) (
 		group.Position = -1
 	}
 
+	if sentenceGroupInReq.Type != "" {
+		if typeCode, ok := typeMapping[sentenceGroupInReq.Type]; ok {
+			group.Type = typeCode
+		} else {
+			group.Type = -1
+		}
+	}
+
+	if sentenceGroupInReq.Optional {
+		group.Optional = 1
+	}
+
 	group.Distance = sentenceGroupInReq.PositionDistance
 	return
 }
 
 func sentenceGroupToSentenceGroupInResponse(sg *model.SentenceGroup) (sgInRes SentenceGroupInResponse) {
+	if sg == nil {
+		return SentenceGroupInResponse{}
+	}
 	sgInRes = SentenceGroupInResponse{
 		ID:               sg.UUID,
 		Name:             sg.Name,
@@ -77,6 +108,8 @@ func sentenceGroupToSentenceGroupInResponse(sg *model.SentenceGroup) (sgInRes Se
 		Position:         positionCodeMap[sg.Position],
 		PositionDistance: sg.Distance,
 		Sentences:        sg.Sentences,
+		Type:             typeCodeMap[sg.Type],
+		Optional:         sg.Optional == 1,
 	}
 	return
 }
@@ -93,6 +126,8 @@ func handleCreateSentenceGroup(w http.ResponseWriter, r *http.Request) {
 
 	group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 	group.Enterprise = enterprise
+	group.Type = typeMapping["normal"]
+	group.Optional = 0
 	if group.Position == -1 || group.Role == -1 {
 		http.Error(w, "bad sentence group", http.StatusBadRequest)
 		return

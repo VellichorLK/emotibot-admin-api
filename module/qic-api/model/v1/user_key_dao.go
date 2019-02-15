@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 
@@ -62,6 +63,7 @@ func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
 }
 
 // UserKey is the custom column representation in database
+//	UserValues is a virutal column , only created on KeyValues function.
 type UserKey struct {
 	ID         int64
 	Name       string
@@ -71,6 +73,7 @@ type UserKey struct {
 	IsDeleted  bool
 	CreateTime int64
 	UpdateTime int64
+	UserValues []UserValue // virtual column
 }
 
 // NewUserKeyDao create an UserKeySQLDao with the db.
@@ -201,4 +204,103 @@ func (u *UserKeySQLDao) DeleteUserKeys(delegatee SqlLike, query UserKeyQuery) (i
 	}
 	total, _ := result.RowsAffected()
 	return total, nil
+}
+
+// KeyValues fetch UserKeys with each key's associated Values.
+// It is a much costly function compare to UserKeys, since it need to do a sql join.
+// Returned slice will be sorted by the key's ID, value's order is not guaranteed.
+func (u *UserKeySQLDao) KeyValues(delegatee SqlLike, query UserKeyQuery, valueQuery UserValueQuery) ([]*UserKey, error) {
+	if delegatee == nil {
+		delegatee = u.db
+	}
+	var (
+		offsetPart string
+		keyCols    = []string{
+			fldUserKeyID, fldUserKeyName, fldUserKeyEnterprise,
+			fldUserKeyInputName, fldUserKeyType, fldUserKeyIsDelete,
+			fldUserKeyCreateTime, fldUserKeyUpdateTime,
+		}
+		valCols = []string{
+			fldUserValueID, fldUserValueLinkID,
+			fldUserValueType, fldUserValueVal, fldUserValueIsDelete,
+			fldUserValueCreateTime, fldUserValueUpdateTime,
+		}
+	)
+
+	innerWherePart, data := query.whereSQL("")
+	valueWhere, valData := valueQuery.whereSQL("")
+
+	if query.Paging != nil {
+		offsetPart = query.Paging.offsetSQL()
+	}
+	// each string row mapping to each argument row.
+	rawsql := fmt.Sprintf(
+		"SELECT k.`%s`, v.`%s` "+
+			"FROM (SELECT * FROM `%s` %s %s) AS k "+
+			"LEFT JOIN (SELECT * FROM `%s` %s) AS v "+
+			"ON k.`%s` = v.`%s`"+
+			"ORDER BY k.`%s` ASC",
+		strings.Join(keyCols, "`, k.`"), strings.Join(valCols, "`, v.`"),
+		tblUserKey, innerWherePart, offsetPart,
+		tblUserValue, valueWhere,
+		fldUserKeyID, fldUserValueUserKey,
+		fldUserKeyID,
+	)
+	data = append(data, valData...)
+	rows, err := delegatee.Query(rawsql, data...)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", err)
+		return nil, fmt.Errorf("query sql failed, %v", err)
+	}
+	defer rows.Close()
+	var scanned []*UserKey
+	var lastKey = &UserKey{}
+	for rows.Next() {
+		var v UserValue
+		var k UserKey
+		var isDelete int8
+		//Left joined value may be null
+		var (
+			valueID         sql.NullInt64
+			valueLinkID     sql.NullInt64
+			valueTyp        sql.NullInt64
+			valueVal        sql.NullString
+			valueIsDeleted  sql.NullInt64
+			valueCreateTime sql.NullInt64
+			valueUpdateTime sql.NullInt64
+		)
+		rows.Scan(
+			&k.ID, &k.Name, &k.Enterprise,
+			&k.InputName, &k.Type, &isDelete,
+			&k.CreateTime, &k.UpdateTime,
+			&valueID, &valueLinkID, &valueTyp,
+			&valueVal, &valueIsDeleted, &valueCreateTime,
+			&valueUpdateTime,
+		)
+		if valueID.Valid {
+			v.ID = valueID.Int64
+			v.UserKeyID = k.ID
+			v.LinkID = valueLinkID.Int64
+			v.Type = int8(valueTyp.Int64)
+			v.Value = valueVal.String
+			v.IsDeleted = (valueIsDeleted.Int64 != 0)
+			v.CreateTime = valueCreateTime.Int64
+			v.UpdateTime = valueUpdateTime.Int64
+			k.UserValues = append(k.UserValues, v)
+		}
+
+		if k.ID == lastKey.ID {
+			//old key dont need to assign it in again.
+			lastKey.UserValues = append(lastKey.UserValues, v)
+			continue
+		}
+		// scan to a new key
+		k.IsDeleted = (isDelete != 0)
+		scanned = append(scanned, &k)
+		lastKey = &k
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan failed, %v", err)
+	}
+	return scanned, nil
 }

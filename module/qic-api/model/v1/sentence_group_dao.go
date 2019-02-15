@@ -31,6 +31,8 @@ type SentenceGroup struct {
 	CreateTime int64
 	UpdateTime int64
 	Deleted    int8
+	Type       int
+	Optional   int
 }
 
 type SentenceGroupFilter struct {
@@ -58,6 +60,7 @@ type SentenceGroupsSqlDao interface {
 	Delete(id string, sqlLike SqlLike) error
 	CreateMany([]SentenceGroup, SqlLike) error
 	DeleteMany([]string, SqlLike) error
+	GetNewBy(id []int64, filter *SentenceGroupFilter, sqlLike SqlLike) ([]SentenceGroup, error)
 }
 
 type SentenceGroupsSqlDaoImpl struct{}
@@ -78,6 +81,8 @@ func getSentenceGroupInsertSQL(groups []SentenceGroup) (insertStr string, values
 		fldUUID,
 		fldCreateTime,
 		fldUpdateTime,
+		SGOptional,
+		fldType,
 	}
 	fieldStr := strings.Join(fields, "`, `")
 	fieldStr = fmt.Sprintf("`%s`", fieldStr)
@@ -102,6 +107,8 @@ func getSentenceGroupInsertSQL(groups []SentenceGroup) (insertStr string, values
 			group.UUID,
 			group.CreateTime,
 			group.UpdateTime,
+			group.Optional,
+			group.Type,
 		)
 		valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
 	}
@@ -144,10 +151,8 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 	}
 
 	insertStr, values := getSentenceGroupInsertSQL([]SentenceGroup{*group})
-	logger.Info.Printf("6\n")
 
 	result, err := sqlLike.Exec(insertStr, values...)
-	logger.Info.Printf("7\n")
 	if err != nil {
 		logger.Error.Printf("error while insert sentence group in dao.Create, sql: %s", insertStr)
 		logger.Error.Printf("error while insert sentence group in dao.Create, values: %s", values)
@@ -157,7 +162,6 @@ func (dao *SentenceGroupsSqlDaoImpl) Create(group *SentenceGroup, sqlLike SqlLik
 	}
 
 	groupID, err := result.LastInsertId()
-	logger.Info.Printf("8\n")
 	if err != nil {
 		err = fmt.Errorf("error while get group id in dao.Create, err: %s", err.Error())
 		return
@@ -260,7 +264,7 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 	}
 
 	queryStr = fmt.Sprintf(
-		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, s.%s as sID, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
+		`SELECT sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s, sg.%s,sg.%s,s.%s as sID, s.%s as sUUID, s.%s as sName, s.%s FROM (SELECT * FROM %s %s) as sg
 		LEFT JOIN %s as rsgs ON sg.%s = rsgs.%s
 		%s as s ON rsgs.%s = s.%s`,
 		fldID,
@@ -273,6 +277,8 @@ func querySentenceGroupsSQLBy(filter *SentenceGroupFilter) (queryStr string, val
 		fldUpdateTime,
 		fldEnterprise,
 		fldIsDelete,
+		SGOptional,
+		fldType,
 		fldID,
 		fldUUID,
 		fldName,
@@ -349,6 +355,8 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 			&group.UpdateTime,
 			&group.Enterprise,
 			&group.Deleted,
+			&group.Optional,
+			&group.Type,
 			&sentenceID,
 			&sentenceUUID,
 			&sentenceName,
@@ -529,4 +537,49 @@ func (dao *SentenceGroupsSqlDaoImpl) DeleteMany(groupUUID []string, sqlLike SqlL
 		err = fmt.Errorf("error while delete sentence groups in dao.DeleteMany, err: %s", err.Error())
 	}
 	return
+}
+
+func (dao *SentenceGroupsSqlDaoImpl) GetNewBy(id []int64, filter *SentenceGroupFilter, sqlLike SqlLike) ([]SentenceGroup, error) {
+	if sqlLike == nil {
+		return nil, ErrNilSqlLike
+	}
+	if len(id) == 0 {
+		return nil, nil
+	}
+
+	if filter == nil || len(filter.UUID) == 0 {
+
+		queryStr := fmt.Sprintf("SELECT `%s` FROM %s WHERE %s in (SELECT %s FROM %s WHERE %s in (%s%s)) and %s=0",
+			fldID, tblSetnenceGroup, fldUUID, fldUUID, tblSetnenceGroup, fldID, "?", strings.Repeat(",?", len(id)-1), fldIsDelete)
+
+		idInterface := make([]interface{}, 0, len(id))
+		for _, v := range id {
+			idInterface = append(idInterface, v)
+		}
+		rows, err := sqlLike.Query(queryStr, idInterface...)
+		if err != nil {
+			err = fmt.Errorf("error while get sentence groups in dao.GetBy, err: %s", err.Error())
+			return nil, err
+		}
+		defer rows.Close()
+
+		newIDs := make([]uint64, 0, len(id))
+		for rows.Next() {
+			var newID uint64
+			err = rows.Scan(&newID)
+			if err != nil {
+				return nil, err
+			}
+			newIDs = append(newIDs, newID)
+		}
+
+		if filter == nil {
+			filter = &SentenceGroupFilter{ID: newIDs}
+		} else {
+			filter.ID = newIDs
+		}
+	}
+
+	return dao.GetBy(filter, sqlLike)
+
 }

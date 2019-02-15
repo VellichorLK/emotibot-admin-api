@@ -87,6 +87,16 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
+
+			util.NewEntryPoint(http.MethodGet, "call-in/navigation/{id}", []string{}, handleGetFlowSetting),
+			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/name", []string{}, handleModifyFlow),
+			util.NewEntryPoint(http.MethodDelete, "call-in/navigation/{id}", []string{}, handleDeleteFlow),
+			util.NewEntryPoint(http.MethodPost, "call-in/navigation", []string{}, handleNewFlow),
+			util.NewEntryPoint(http.MethodGet, "call-in/navigation", []string{}, handleFlowList),
+			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/intent", []string{}, handleModifyIntent),
+			util.NewEntryPoint(http.MethodPost, "call-in/navigation/{id}/node", []string{}, handleNewNode),
+
+			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

@@ -40,5 +40,9 @@ func HandleSetRobotConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	util.Return(w, err, err == nil)
-	go util.ConsulUpdateBFOPSetting()
+	if module == moduleBFSource {
+		go util.ConsulUpdateBFSetting(appid)
+	} else {
+		go util.ConsulUpdateBFOPSetting()
+	}
 }

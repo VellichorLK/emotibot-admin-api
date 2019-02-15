@@ -976,6 +976,10 @@ func (m *mockSentenceGroupsDao) DeleteMany(id []string, sql model.SqlLike) error
 	return nil
 }
 
+func (m *mockSentenceGroupsDao) GetNewBy(ids []int64, filter *model.SentenceGroupFilter, sql model.SqlLike) ([]model.SentenceGroup, error) {
+	return nil, nil
+}
+
 type mockCfDao struct {
 }
 
