@@ -1,11 +1,14 @@
 package qi
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/module/qic-api/util/timecache"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -408,15 +411,7 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
-	/*
-		uuid := util.GetMuxVar(r, "id")
-		enterprise := requestheader.GetEnterpriseID(r)
-		resp, err := getCurrentQIFlowResult(w, enterprise, uuid)
-		if err != nil {
-			return
-		}
-		_ = resp
-	*/
+
 	//FIXME nil
 	err = finishFlowQI(&requestBody, id, nil)
 	if err != nil {
@@ -428,6 +423,174 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 		}
 
 		return
+	}
+
+}
+
+//the speaker in wording in navigation flow only
+const (
+	WordHost    = "host"
+	WordGuest   = "guest"
+	WordSilence = "silence"
+)
+
+//the speaker in int in navigation flow only
+const (
+	ChannelSilence = iota
+	ChannelHost
+	ChannelGuest
+)
+
+func asrContentToSegment(callID int64, a []model.AsrContent) ([]model.RealSegment, error) {
+	num := len(a)
+	resp := make([]model.RealSegment, 0, num)
+	now := time.Now().Unix()
+	for _, v := range a {
+		s := model.RealSegment{CallID: callID, StartTime: v.StartTime, EndTime: v.EndTime, Text: v.Text, CreateTime: now}
+		switch v.Speaker {
+		case WordHost:
+			s.Channel = ChannelHost
+		case WordGuest:
+			s.Channel = ChannelGuest
+		case WordSilence:
+			s.Channel = ChannelSilence
+		default:
+			return nil, errors.New("unknown speaker " + v.Speaker)
+		}
+		resp = append(resp, s)
+	}
+	return resp, nil
+}
+
+var navCache timecache.TimeCache
+
+func setUpNavCache() {
+	config := &timecache.TCacheConfig{}
+	config.SetCollectionDuration(30 * time.Second)
+	config.SetCollectionMethod(timecache.OnUpdate)
+	navCache.Activate(config)
+}
+
+func handleStreaming(w http.ResponseWriter, r *http.Request) {
+	idStr := general.ParseID(r)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	var requestBody []model.AsrContent
+	err := util.ReadJSON(r, &requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	if len(requestBody) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty sentence"), http.StatusBadRequest)
+		return
+	}
+
+	segs, err := asrContentToSegment(id, requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	_, err = segmentDao.NewSegments(dbLike.Conn(), segs)
+	if err != nil {
+		logger.Error.Printf("insert segments failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	/*
+		//insert the segment
+		err = insertSegmentByUUID(uuid, asrContents)
+		if err != nil {
+			if err == ErrSpeaker {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+			} else {
+				logger.Error.Printf("%s\n", err)
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			}
+			return
+		}
+		enterprise := requestheader.GetEnterpriseID(r)
+		resp, err := getCurrentQIFlowResult(w, enterprise, uuid)
+		if err != nil {
+			return
+		}
+
+		callID, err := getIDByUUID(uuid)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if callID == 0 {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id is found"), http.StatusBadRequest)
+			return
+		}
+
+		_, err = UpdateFlowResult(callID, resp)
+		if err != nil {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		resp.Sensitive = make([]string, 0)
+
+		for i := 0; i < len(requestBody); i++ {
+
+			words, err := sensitive.IsSensitive(requestBody[i].Text)
+			if err != nil {
+				logger.Error.Printf("get sensitive words failed. %s\n", err)
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+				return
+			}
+
+			resp.Sensitive = append(resp.Sensitive, words...)
+		}
+
+		err = util.WriteJSON(w, resp)
+		if err != nil {
+			logger.Error.Printf("%s\n", err)
+		}
+
+	*/
+}
+
+//WithFlowCallIDEnterpriseCheck checks the call id and its enterprise
+func WithFlowCallIDEnterpriseCheck(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		enterprise := requestheader.GetEnterpriseID(r)
+
+		idStr := general.ParseID(r)
+		val, ok := navCache.GetCache(idStr)
+		expect, ok2 := val.(string)
+		if !ok || !ok2 {
+			id, err := strconv.ParseInt(idStr, 10, 64)
+			if err != nil {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+				return
+			}
+
+			_, err = Call(id, enterprise)
+			if err != nil {
+				if err == ErrNotFound {
+					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+				} else {
+					logger.Error.Printf("get call failed. %s %d. %s\n", enterprise, id, err)
+					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+				}
+				return
+			}
+			navCache.SetCache(idStr, enterprise)
+		} else {
+			if expect != enterprise {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+				return
+			}
+		}
+
+		next.ServeHTTP(w, r)
 	}
 
 }

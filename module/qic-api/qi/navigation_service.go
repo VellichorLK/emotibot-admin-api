@@ -269,13 +269,6 @@ func CountNodes(navs []int64) (map[int64]int64, error) {
 	return resp, err
 }
 
-//the speaker
-const (
-	ChannelSilence = iota
-	ChannelHost
-	ChannelGuest
-)
-
 //the Conversation type
 const (
 	AudioFile = iota
@@ -309,7 +302,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	defer tx.Rollback()
 
 	reqCall := &NewCallReq{FileName: body.FileName, Enterprise: enterprise, Type: model.CallTypeRealTime, CallTime: body.CreateTime,
-		UploadUser: user, LeftChannel: "staff", RightChannel: "customer"}
+		UploadUser: user, LeftChannel: CallStaffRoleName, RightChannel: CallCustomerRoleName}
 	call, err := NewCall(reqCall)
 
 	empty := &model.QIFlowResult{FileName: body.FileName}
@@ -380,4 +373,8 @@ func finishFlowQI(req *apiFlowFinish, id int64, result *model.QIFlowResult) erro
 	tx.Commit()
 
 	return nil
+}
+
+func streamingMatch([]model.AsrContent) {
+	//	var s []string
 }

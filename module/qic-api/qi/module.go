@@ -97,7 +97,7 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "call-in/navigation/{id}/node", []string{}, handleNewNode),
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
-			util.NewEntryPoint(http.MethodPut, "call-in/conversation/{id}", []string{}, handleFlowFinish),
+			util.NewEntryPoint(http.MethodPut, "call-in/conversation/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -188,6 +188,7 @@ func init() {
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 
 			},
+			"init nav cache": setUpNavCache,
 		},
 	}
 }
