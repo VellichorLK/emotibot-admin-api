@@ -268,11 +268,12 @@ func worker(ctx context.Context, target <-chan uint64, errChan chan<- error,
 
 // TagMatch checks each segment for trained model.
 // return value: a slice of matchData gives the each sentences and its matched tag and matched data
-func TagMatch(modelID uint64, segments []string, timeout time.Duration) ([]*MatchedData, error) {
+func TagMatch(modelIDs []uint64, segments []string, timeout time.Duration) ([]*MatchedData, error) {
 
 	numOfCtx := len(segments)
+	numOfModels := len(modelIDs)
 
-	if numOfCtx == 0 {
+	if numOfCtx == 0 || len(modelIDs) == 0 {
 		return nil, ErrNoArgument
 	}
 	if timeout <= 0 {
@@ -283,7 +284,7 @@ func TagMatch(modelID uint64, segments []string, timeout time.Duration) ([]*Matc
 	var wg sync.WaitGroup
 	wg.Add(Concurrency)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	target := make(chan uint64, 1)
+	target := make(chan uint64, numOfModels)
 	defer cancel()
 
 	//init the response structure
@@ -294,7 +295,16 @@ func TagMatch(modelID uint64, segments []string, timeout time.Duration) ([]*Matc
 		matches[i].Index = i + 1
 	}
 
-	target <- modelID
+	sort.Slice(modelIDs, func(i, j int) bool { return modelIDs[i] < modelIDs[j] })
+	var lastTag uint64
+	//start to input the target tag id
+	for _, v := range modelIDs {
+		//avoid the duplicate tag
+		if lastTag != v {
+			target <- v
+			lastTag = v
+		}
+	}
 	close(target)
 
 	errChan := make(chan error, Concurrency)
@@ -624,7 +634,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 
 	//--------------------------------------------------------------------------
 	//do the checking, tag match
-	tagMatchDat, err := TagMatch(models[0].ID, lines, timeout)
+	tagMatchDat, err := TagMatch([]uint64{models[0].ID}, lines, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("tag match failed, %v", err)
 	}
