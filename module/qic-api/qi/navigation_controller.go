@@ -57,12 +57,11 @@ func detailFlowToSetting(d *DetailNavFlow) *respDetailFlow {
 
 	if d.IgnoreIntent == 1 {
 		resp.Type = callInIntentCodeMap[0]
-		resp.Sentences = []model.SimpleSentence{}
 	} else {
 		resp.Type = callInIntentCodeMap[1]
-		resp.IntentName = d.IntentName
-		resp.Role = roleCodeMap[d.SentenceGroup.Role]
 	}
+	resp.IntentName = d.IntentName
+	resp.Role = roleCodeMap[d.SentenceGroup.Role]
 
 	if d.Nodes == nil {
 		resp.Nodes = []SentenceGroupInResponse{}
@@ -319,20 +318,24 @@ func handleModifyIntent(w http.ResponseWriter, r *http.Request) {
 			group := sentenceGroupInReqToSentenceGroup(&groupInReq)
 			group.Enterprise = enterprise
 			group.Type = typeMapping["call_in"]
-			if group.Position == -1 || group.Role == -1 {
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
-				return
-			}
 
-			createdGroup, err := CreateSentenceGroup(group)
-			if err != nil {
-				logger.Error.Printf("error while create sentence in handleCreateSentenceGroup, reason: %s\n", err.Error())
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-				return
-			}
-			flow.IntentLinkID = &createdGroup.ID
 			if req.IntentName != "" {
-				flow.IntentName = &req.IntentName
+
+				if group.Position == -1 || group.Role == -1 {
+					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "bad sentence group"), http.StatusBadRequest)
+					return
+				}
+
+				createdGroup, err := CreateSentenceGroup(group)
+				if err != nil {
+					logger.Error.Printf("error while create sentence in handleCreateSentenceGroup, reason: %s\n", err.Error())
+					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+					return
+				}
+				flow.IntentLinkID = &createdGroup.ID
+				if req.IntentName != "" {
+					flow.IntentName = &req.IntentName
+				}
 			}
 
 		} else {
