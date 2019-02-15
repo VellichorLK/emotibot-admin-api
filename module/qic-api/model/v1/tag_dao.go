@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
-	"emotibot.com/emotigo/pkg/misc/mathutil"
 )
 
 type TagDao interface {
@@ -75,12 +74,6 @@ type TagQuery struct {
 	Paging           *Pagination
 }
 
-// Limit and Page is the conditions for querying paging.
-type Pagination struct {
-	Limit int
-	Page  int
-}
-
 func (t *TagQuery) whereSQL() (string, []interface{}) {
 	builder := NewWhereBuilder(andLogic, "")
 	builder.In(fldTagID, uint64ToWildCard(t.ID...))
@@ -103,13 +96,6 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 		rawsql = "WHERE " + rawsql
 	}
 	return rawsql, data
-}
-
-func (p *Pagination) offsetSQL() string {
-	limit := mathutil.MaxInt(p.Limit, 0)
-	page := mathutil.MaxInt(p.Page-1, 0)
-	offset := limit * page
-	return fmt.Sprintf(" LIMIT %d, %d", offset, limit)
 }
 
 type queryer interface {
