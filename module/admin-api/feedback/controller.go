@@ -37,6 +37,7 @@ func handleAddFeedbackReason(w http.ResponseWriter, r *http.Request) {
 	if jsonErr != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError,
 			fmt.Sprintf("Invalid json: %s", jsonErr.Error()))
+		return
 	}
 
 	reasons, err := addReasonService(appid, params.Content)
@@ -54,6 +55,7 @@ func handleDeleteFeedbackReason(w http.ResponseWriter, r *http.Request) {
 	if muxErr != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError,
 			fmt.Sprintf("Invalid json: %s", muxErr.Error()))
+		return
 	}
 
 	err := delReasonService(appid, id)

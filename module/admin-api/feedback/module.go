@@ -17,7 +17,7 @@ func init() {
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("GET", "feedback/reasons", []string{}, handleGetFeedbackReasons),
 			util.NewEntryPoint("POST", "feedback/reason", []string{"edit"}, handleAddFeedbackReason),
-			util.NewEntryPoint("DELTE", "feedback/reason/{id}", []string{"delete"}, handleDeleteFeedbackReason),
+			util.NewEntryPoint("DELETE", "feedback/reason/{id}", []string{"delete"}, handleDeleteFeedbackReason),
 		},
 	}
 }
