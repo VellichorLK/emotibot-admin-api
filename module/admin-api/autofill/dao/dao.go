@@ -415,8 +415,8 @@ func (dao AutofillDao) GetTECurrentIntentIDs(appID string) ([]int64, error) {
 		ON i.name = t.name
 		WHERE app_id = ? AND version = (
 			SELECT MAX(version)
-			FROM intents
-			WHERE appid = ?)`, IntentsTable, TaskEngineIntentsTable)
+			FROM %s
+			WHERE appid = ?)`, IntentsTable, TaskEngineIntentsTable, IntentsTable)
 
 	rows, err := dao.db.Query(queryStr, appID, appID)
 	if err != nil {
