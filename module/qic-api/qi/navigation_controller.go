@@ -275,8 +275,12 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 
 	err = NewNode(id, group)
 	if err != nil {
-		logger.Error.Printf("create the node failed. id:%d, err: %s\n", id, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		if err == ErrNilFlow {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "No such flow id"), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("create the node failed. id:%d, err: %s\n", id, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 		return
 	}
 

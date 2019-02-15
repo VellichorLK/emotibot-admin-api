@@ -57,6 +57,23 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 	if senGrp == nil {
 		return ErrNilSentenceGroup
 	}
+	isDelete := 0
+	q := &model.NavQuery{ID: []int64{nav}, IsDelete: &isDelete, Enterprise: &senGrp.Enterprise}
+	flows, err := navDao.GetFlows(dbLike.Conn(), q, nil)
+	if err != nil {
+		logger.Error.Printf("get flow failed. %s\n", err)
+		return err
+	}
+	if len(flows) == 0 {
+		return ErrNilFlow
+	}
+
+	var nodeOrder []string
+	err = json.Unmarshal([]byte(flows[0].NodeOrder), &nodeOrder)
+	if err != nil {
+		return fmt.Errorf("unmarshal node_order failed. %d. %s", flows[0].ID, err)
+	}
+
 	tx, err := dbLike.Begin()
 	if err != nil {
 		logger.Error.Printf("get transaction failed. %s\n", err)
@@ -96,9 +113,29 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 		return err
 	}
 
+	nodeOrder = append(nodeOrder, uuid)
+	err = updateNodeOrder(tx, nodeOrder, flows[0].ID)
+	if err != nil {
+		logger.Error.Printf("update node order failed. %d,%+v,  %s\n", flows[0].ID, nodeOrder, err)
+		return err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		logger.Error.Printf("commit data failed. %s\n", err)
+	}
+	return err
+}
+
+func updateNodeOrder(conn model.SqlLike, order []string, nav int64) error {
+	orderStr, err := json.Marshal(order)
+	if err != nil {
+		logger.Error.Printf("marshal node order failed. %+v, %s\n", order, err)
+	} else {
+		_, err := navDao.UpdateNodeOrders(conn, nav, string(orderStr))
+		if err != nil {
+			logger.Error.Printf("update node order failed. %+v, %s\n", order, err)
+		}
 	}
 	return err
 }
@@ -242,16 +279,7 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		}
 
 		if len(fixedOrder) != len(nodeOrder) {
-			orderStr, err := json.Marshal(fixedOrder)
-			if err != nil {
-				logger.Error.Printf("marshal node order failed. %+v, %s\n", fixedOrder, err)
-			} else {
-				_, err := navDao.UpdateNodeOrders(dbLike.Conn(), flow[0].ID, string(orderStr))
-				if err != nil {
-					logger.Error.Printf("update node order failed. %+v, %s\n", fixedOrder, err)
-				}
-			}
-
+			updateNodeOrder(dbLike.Conn(), fixedOrder, flow[0].ID)
 		}
 
 		resp.Nodes = nodes
