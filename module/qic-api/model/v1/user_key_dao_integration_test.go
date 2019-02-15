@@ -119,7 +119,8 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 
 }
 
-func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
+// TestITUserKeySQLDaoSuite test create, get, delete by followed order.
+func TestITUserKeySQLDaoSuite(t *testing.T) {
 	skipIntergartion(t)
 	dao := UserKeySQLDao{
 		db: newIntegrationTestDB(t),
@@ -165,5 +166,74 @@ func TestITUserKeySQLDaoNewUserKey(t *testing.T) {
 	}
 	if total != 1 {
 		t.Error("expect delete 1 row, but got ", total)
+	}
+}
+
+func TestITUserKeySqlDaoKeyValues(t *testing.T) {
+	skipIntergartion(t)
+	dao := UserKeySQLDao{db: newIntegrationTestDB(t)}
+	exKeys := newUserKeys(t)
+	for _, v := range readMockUserValues(t) {
+		k := exKeys[v.UserKeyID-1]
+		k.UserValues = append(k.UserValues, v)
+		exKeys[v.UserKeyID-1] = k
+	}
+	exKeysWithValGrp := []UserKey{}
+	for _, k := range exKeys {
+		for i := len(k.UserValues) - 1; i >= 0; i-- {
+			v := k.UserValues[i]
+			if v.Type != UserValueTypGroup {
+				k.UserValues = append(k.UserValues[:i], k.UserValues[i+1:]...)
+			}
+		}
+		exKeysWithValGrp = append(exKeysWithValGrp, k)
+	}
+
+	type args struct {
+		delegatee  SqlLike
+		userQuery  UserKeyQuery
+		valueQuery UserValueQuery
+	}
+	testTable := []struct {
+		name    string
+		args    args
+		want    []UserKey
+		wantErr bool
+	}{
+		{
+			name: "id = 1",
+			args: args{
+				userQuery: UserKeyQuery{
+					ID: []int64{1},
+				},
+			},
+			want:    exKeys[:1],
+			wantErr: false,
+		},
+		{
+			name: "key with value type Group",
+			args: args{
+				valueQuery: UserValueQuery{
+					Type: []int8{UserValueTypGroup},
+				},
+			},
+			want: exKeysWithValGrp,
+		},
+	}
+
+	for _, tt := range testTable {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dao.KeyValues(tt.args.delegatee, tt.args.userQuery, tt.args.valueQuery)
+			if (err == nil) == tt.wantErr {
+				t.Fatalf("KeyValues error %v, wantErr = %v", err, tt.wantErr)
+			}
+			for i, w := range tt.want {
+				k := got[i]
+				if !reflect.DeepEqual(w, *k) {
+					t.Errorf("KeyValues %d return %v, want = %v", i, *k, w)
+				}
+			}
+
+		})
 	}
 }
