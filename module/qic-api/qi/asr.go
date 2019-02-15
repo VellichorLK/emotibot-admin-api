@@ -171,7 +171,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 		}
 		segments = append(segments, s)
 	}
-	return nil
+	return segments
 }
 
 type SegmentWithSpeaker struct {
