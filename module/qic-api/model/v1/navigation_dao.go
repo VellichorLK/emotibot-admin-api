@@ -27,6 +27,7 @@ type NavigationDao interface {
 	CountNodes(conn SqlLike, navs []int64) (map[int64]int64, error)
 	GetNodeID(conn SqlLike, nav int64) ([]int64, error)
 	UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpdate) (int64, error)
+	UpdateNodeOrders(conn SqlLike, id int64, order string) (int64, error)
 }
 
 //NavigationSQLDao implements the function to access the navigation db
@@ -44,6 +45,7 @@ type NavFlow struct {
 	Enterprise   string
 	CreateTime   int64
 	UpdateTime   int64
+	NodeOrder    string
 }
 
 type NavFlowUpdate struct {
@@ -96,10 +98,11 @@ func (n *NavigationSQLDao) NewFlow(conn SqlLike, p *NavFlow) (int64, error) {
 		fldEnterprise,
 		fldCreateTime,
 		fldUpdateTime,
+		fldNodeOrder,
 	}
 
 	vals := make([]interface{}, 0, 8)
-	vals = append(vals, p.Name, p.UUID, p.IgnoreIntent, p.IntentName, p.IntentLinkID, p.Enterprise, p.CreateTime, p.CreateTime)
+	vals = append(vals, p.Name, p.UUID, p.IgnoreIntent, p.IntentName, p.IntentLinkID, p.Enterprise, p.CreateTime, p.CreateTime, "[]")
 	return insertRow(conn, tblNavigation, flds, vals)
 }
 
@@ -133,6 +136,7 @@ func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery, l *NavLimit) ([]*
 		fldEnterprise,
 		fldCreateTime,
 		fldUpdateTime,
+		fldNodeOrder,
 	}
 
 	querySQL := fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(flds, ","), tblNavigation, condition, limitStr)
@@ -143,10 +147,11 @@ func (n *NavigationSQLDao) GetFlows(conn SqlLike, q *NavQuery, l *NavLimit) ([]*
 	}
 	defer rows.Close()
 	flows := make([]*NavFlow, 0, 18)
+
 	for rows.Next() {
 		var n NavFlow
 		err = rows.Scan(&n.ID, &n.Name, &n.UUID, &n.IgnoreIntent, &n.IntentName,
-			&n.IntentLinkID, &n.Enterprise, &n.CreateTime, &n.UpdateTime)
+			&n.IntentLinkID, &n.Enterprise, &n.CreateTime, &n.UpdateTime, &n.NodeOrder)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
@@ -310,6 +315,15 @@ func (n *NavigationSQLDao) UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpda
 	setSQL := fmt.Sprintf("UPDATE %s %s %s", tblNavigation, setStr, condition)
 	params := append(sparams, cparams...)
 	return execSQL(conn, setSQL, params)
+}
+
+//UpdateNodeOrders updates the node_order field in the navigation table
+func (n *NavigationSQLDao) UpdateNodeOrders(conn SqlLike, id int64, order string) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
+	setSQL := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblNavigation, fldNodeOrder, fldID)
+	return execSQL(conn, setSQL, []interface{}{order, id})
 }
 
 //GetNodeID gets the id in sentenceGroup

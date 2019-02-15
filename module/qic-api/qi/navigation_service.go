@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -94,6 +95,7 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 		logger.Error.Printf("insert nav to sentence group relation failed. %s\n", err)
 		return err
 	}
+
 	err = tx.Commit()
 	if err != nil {
 		logger.Error.Printf("commit data failed. %s\n", err)
@@ -186,6 +188,12 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		return nil, nil
 	}
 
+	var nodeOrder []string
+	err = json.Unmarshal([]byte(flow[0].NodeOrder), &nodeOrder)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal node_order failed. %d. %s", flow[0].ID, err)
+	}
+
 	senGrpsID, err := navDao.GetNodeID(dbLike.Conn(), nav)
 	if err != nil {
 		logger.Error.Printf("get node id failed")
@@ -210,18 +218,43 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		}
 
 		var intent model.SentenceGroup
-		intentIdx := -1
-		for idx, senGrp := range senGrps {
+		senGrpsMap := make(map[string]model.SentenceGroup)
+		for _, senGrp := range senGrps {
 			if senGrp.ID == flow[0].IntentLinkID {
-				intentIdx = idx
 				intent = senGrp
-				break
+			} else {
+				senGrpsMap[senGrp.UUID] = senGrp
 			}
 		}
-		if intentIdx >= 0 {
-			senGrps = append(senGrps[:intentIdx], senGrps[intentIdx+1:]...)
+
+		nodes := make([]model.SentenceGroup, 0, len(senGrpsMap))
+		fixedOrder := make([]string, 0, len(nodeOrder))
+		for _, uuid := range nodeOrder {
+			if v, ok := senGrpsMap[uuid]; ok {
+				nodes = append(nodes, v)
+				delete(senGrpsMap, uuid)
+				fixedOrder = append(fixedOrder, uuid)
+			}
 		}
-		resp.Nodes = senGrps
+		//append the rest node in case node_order is mess up
+		for _, v := range senGrpsMap {
+			nodes = append(nodes, v)
+		}
+
+		if len(fixedOrder) != len(nodeOrder) {
+			orderStr, err := json.Marshal(fixedOrder)
+			if err != nil {
+				logger.Error.Printf("marshal node order failed. %+v, %s\n", fixedOrder, err)
+			} else {
+				_, err := navDao.UpdateNodeOrders(dbLike.Conn(), flow[0].ID, string(orderStr))
+				if err != nil {
+					logger.Error.Printf("update node order failed. %+v, %s\n", fixedOrder, err)
+				}
+			}
+
+		}
+
+		resp.Nodes = nodes
 		resp.SentenceGroup = intent
 	}
 	return resp, nil
