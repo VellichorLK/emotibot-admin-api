@@ -23,9 +23,11 @@ var (
 
 type SensitiveWordFilter struct {
 	UUID       []string
-	Category   *int8
+	Category   *int64
 	Enterprise *string
 	Name       string
+	Page       int
+	Limit      int
 }
 
 type SensitiveWordCategoryFilter struct {
@@ -186,11 +188,85 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 	return
 }
 
+func getSensitiveWordQuerySQL(filter *SensitiveWordFilter) (queryStr string, values []interface{}) {
+	builder := NewWhereBuilder(andLogic, "")
+
+	if filter.Enterprise != nil {
+		builder.Eq(fldEnterprise, *filter.Enterprise)
+	}
+
+	if filter.Category != nil {
+		builder.Eq(fldCategoryID, *filter.Category)
+	}
+
+	if len(filter.UUID) > 0 {
+		builder.In(fldUUID, stringToWildCard(filter.UUID...))
+	}
+
+	fields := []string{
+		fldID,
+		fldUUID,
+		fldName,
+		fldEnterprise,
+		fldScore,
+		fldCategoryID,
+	}
+	fieldStr := strings.Join(fields, ", ")
+
+	conditionStr, values := builder.ParseWithWhere()
+	queryStr = fmt.Sprintf(
+		"SELECT %s FROM %s %s",
+		fieldStr,
+		tblSensitiveWord,
+		conditionStr,
+	)
+	return
+}
+
 func (dao *SensitiveWordSqlDao) CountBy(filter *SensitiveWordFilter, sqlLike SqlLike) (total int64, err error) {
+	queryStr, values := getSensitiveWordQuerySQL(filter)
+	queryStr = fmt.Sprintf("SELECT COUNT(sw.%s) FROM (%s) as sw", fldID, queryStr)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error when count rows in dao.CountBy, sql: %s\n", queryStr)
+		logger.Error.Printf("values: %+v\n", values)
+		err = fmt.Errorf("count sensitive words failed, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		rows.Scan(&total)
+	}
 	return
 }
 
 func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLike) (sensitiveWords []SensitiveWord, err error) {
+	queryStr, values := getSensitiveWordQuerySQL(filter)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error when count rows in dao.GetBy, sql: %s\n", queryStr)
+		logger.Error.Printf("values: %+v\n", values)
+		err = fmt.Errorf("get sensitive words failed, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	sensitiveWords = []SensitiveWord{}
+	for rows.Next() {
+		word := SensitiveWord{}
+		rows.Scan(
+			&word.ID,
+			&word.UUID,
+			&word.Name,
+			&word.Enterprise,
+			&word.Score,
+			&word.CategoryID,
+		)
+		sensitiveWords = append(sensitiveWords, word)
+	}
 	return
 }
 

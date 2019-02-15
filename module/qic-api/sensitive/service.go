@@ -78,13 +78,13 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 	}
 	word.StaffException = model.ToSimpleSentences(staffExceptionSentences)
 
+	word.UUID = uid
 	rowID, err := swDao.Create(word, tx)
 	if err != nil {
 		return
 	}
 
 	word.ID = rowID
-	word.UUID = uid
 	err = dbLike.Commit(tx)
 	return
 }
@@ -108,4 +108,21 @@ func GetCategories(enterprise string) (categories []model.SensitiveWordCategory,
 	}
 
 	return swDao.GetCategories(filter, sqlConn)
+}
+
+func GetWordsUnderCategory(id int64, enterprise string) (total int64, words []model.SensitiveWord, err error) {
+	sqlConn := dbLike.Conn()
+
+	filter := &model.SensitiveWordFilter{
+		Category:   &id,
+		Enterprise: &enterprise,
+	}
+
+	total, err = swDao.CountBy(filter, sqlConn)
+	if err != nil {
+		return
+	}
+
+	words, err = swDao.GetBy(filter, sqlConn)
+	return
 }

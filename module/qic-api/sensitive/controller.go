@@ -5,8 +5,12 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/module/qic-api/util/request"
 	"emotibot.com/emotigo/pkg/logger"
+	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
 )
 
 type ExceptionInReq struct {
@@ -18,6 +22,12 @@ type SensitiveWordInReq struct {
 	Name      string         `json:"sw_name"`
 	Score     int            `json:"score"`
 	Exception ExceptionInReq `json:"exception"`
+}
+
+type SensitiveWordInRes struct {
+	UUID     string `json:"sw_id"`
+	Name     string `json:"sw_name"`
+	Category int64  `json:"category_id"`
 }
 
 func transformSensitiveWordInReqToSensitiveWord(inreq *SensitiveWordInReq) (word *model.SensitiveWord) {
@@ -127,4 +137,53 @@ func handleGetCategory(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+}
+
+func toSensitiveWordInRes(words []model.SensitiveWord) (inres []SensitiveWordInRes) {
+	inres = []SensitiveWordInRes{}
+	for _, w := range words {
+		inres = append(
+			inres,
+			SensitiveWordInRes{
+				UUID:     w.UUID,
+				Name:     w.Name,
+				Category: w.CategoryID,
+			},
+		)
+	}
+	return
+}
+
+func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	paging := request.Paging(r)
+
+	vars := mux.Vars(r)
+	categoryID, err := strconv.ParseInt(vars["id"], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	total, words, err := GetWordsUnderCategory(categoryID, enterprise)
+	if err != nil {
+		logger.Error.Printf("get words under categories failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	type Response struct {
+		Paging *general.Paging      `json:"paging"`
+		Data   []SensitiveWordInRes `json:"data"`
+	}
+
+	wordsInRes := toSensitiveWordInRes(words)
+	paging.Total = total
+	response := Response{
+		Paging: paging,
+		Data:   wordsInRes,
+	}
+
+	util.WriteJSON(w, response)
+	return
 }
