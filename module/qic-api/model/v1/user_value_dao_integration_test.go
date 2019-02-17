@@ -63,3 +63,32 @@ func TestITUserValueDaoUserValues(t *testing.T) {
 	}
 
 }
+
+func TestITUserValueDaoTestSuite(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := UserValueDao{conn: db}
+	example := UserValue{
+		UserKeyID: 1,
+	}
+	got, err := dao.NewUserValue(nil, example)
+	if err != nil {
+		t.Fatalf("NewUserValue error = %v", err)
+	}
+	query := UserValueQuery{ID: []int64{got.ID}}
+	written, err := dao.UserValues(nil, query)
+	if err != nil {
+		t.Fatalf("UserValues err = %v", err)
+	}
+	if !reflect.DeepEqual(got, written[0]) {
+		t.Errorf("written = %+v, got = %+v", written[0], got)
+	}
+	total, err := dao.DeleteUserValues(nil, query)
+	if err != nil {
+		t.Fatalf("DeleteUserValues err = %v", err)
+	}
+	if total != 1 {
+		t.Errorf("expect delete 1 row, but total = %d", total)
+	}
+
+}
