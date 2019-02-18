@@ -6,10 +6,14 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
+var (
+	callTask = taskDao.CallTask
+)
+
 // TaskByCall simply return the task that given call associated with.
 // **Be ware: the CallsOfStaffs in returned task will only contains the given call.**
 func TaskByCall(call model.Call) (*model.Task, error) {
-	task, err := taskDao.CallTask(sqlConn, call)
+	task, err := callTask(sqlConn, call)
 	if err != nil {
 		return nil, fmt.Errorf("get task by call '%d' failed, %v", call.ID, err)
 	}
@@ -38,10 +42,12 @@ func TasksByCalls(calls []model.Call) ([]*model.Task, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, idx := range IdxGrp {
+		for i := 1; i < len(IdxGrp); i++ {
+			idx := IdxGrp[i]
 			c := calls[idx]
 			t.CallsOfStaffs[c.StaffID] = append(t.CallsOfStaffs[c.StaffID], c)
 		}
+		tasks = append(tasks, t)
 	}
 	return tasks, nil
 }
