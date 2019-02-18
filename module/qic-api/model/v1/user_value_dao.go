@@ -125,6 +125,62 @@ func (u *UserValueDao) UserValues(delegatee SqlLike, query UserValueQuery) ([]Us
 	return userValues, nil
 }
 
-func (u *UserValueDao) ValuesWithKey() []UserValue {
-	return nil
+// NewUserValue insert a new user value.
+func (u *UserValueDao) NewUserValue(delegatee SqlLike, user UserValue) (UserValue, error) {
+	if delegatee == nil {
+		delegatee = u.conn
+	}
+
+	insertCols := []string{
+		fldUserValueUserKey, fldUserValueLinkID, fldUserValueType,
+		fldUserValueVal, fldUserValueIsDelete, fldUserValueCreateTime,
+		fldUserValueUpdateTime,
+	}
+
+	rawsql := fmt.Sprintf("INSERT INTO `%s`(`%s`) VALUES(?%s)",
+		tblUserValue,
+		strings.Join(insertCols, "`, `"),
+		strings.Repeat(",?", len(insertCols)-1),
+	)
+
+	result, err := delegatee.Exec(rawsql,
+		user.UserKeyID, user.LinkID, user.Type,
+		user.Value, user.IsDeleted, user.CreateTime,
+		user.UpdateTime,
+	)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", rawsql)
+		return UserValue{}, fmt.Errorf("execute insert failed, %v", err)
+	}
+	user.ID, err = result.LastInsertId()
+	if err != nil {
+		return UserValue{}, ErrAutoIDDisabled
+	}
+	return user, nil
+}
+
+// DeleteUserValues is a soft delete operation, which mark the query values as deleted.
+func (u *UserValueDao) DeleteUserValues(delegatee SqlLike, query UserValueQuery) (int64, error) {
+	if delegatee == nil {
+		delegatee = u.conn
+	}
+	wherePart, data := query.whereSQL("")
+	rawsql := fmt.Sprintf("UPDATE `%s` SET `%s` = 1 %s",
+		tblUserValue, fldUserValueIsDelete, wherePart,
+	)
+	result, err := delegatee.Exec(rawsql, data...)
+	if err != nil {
+		return 0, fmt.Errorf("execute delete failed, %v", err)
+	}
+	total, err := result.RowsAffected()
+	if err != nil {
+		return 0, ErrAutoIDDisabled
+	}
+	return total, nil
+}
+
+// ValuesKey get value and its key.
+// all UserValue's key returned should be populated
+func (u *UserValueDao) ValuesKey(delegatee SqlLike, query UserValueQuery) ([]UserValue, error) {
+	return nil, fmt.Errorf("NOT IMPLEMENTED YET")
 }

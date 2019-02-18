@@ -74,7 +74,7 @@ func ASRWorkFlow(output []byte) error {
 		1: int(c.LeftChanRole),
 		2: int(c.RightChanRole),
 	}
-	segWithSp := make([]*SegmentWithSpeaker, len(segments))
+	segWithSp := make([]*SegmentWithSpeaker, 0, len(segments))
 	for _, s := range segments {
 		ws := &SegmentWithSpeaker{
 			RealSegment: s,
@@ -171,7 +171,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 		}
 		segments = append(segments, s)
 	}
-	return nil
+	return segments
 }
 
 type SegmentWithSpeaker struct {

@@ -2,6 +2,8 @@ package qi
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -55,6 +57,25 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 	if senGrp == nil {
 		return ErrNilSentenceGroup
 	}
+	isDelete := 0
+	q := &model.NavQuery{ID: []int64{nav}, IsDelete: &isDelete, Enterprise: &senGrp.Enterprise}
+	flows, err := navDao.GetFlows(dbLike.Conn(), q, nil)
+	if err != nil {
+		logger.Error.Printf("get flow failed. %s\n", err)
+		return err
+	}
+	if len(flows) == 0 {
+		return ErrNilFlow
+	}
+
+	var nodeOrder []string
+	if flows[0].NodeOrder != "" {
+		err = json.Unmarshal([]byte(flows[0].NodeOrder), &nodeOrder)
+		if err != nil {
+			return fmt.Errorf("unmarshal node_order failed. %d. %s", flows[0].ID, err)
+		}
+	}
+
 	tx, err := dbLike.Begin()
 	if err != nil {
 		logger.Error.Printf("get transaction failed. %s\n", err)
@@ -93,9 +114,42 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 		logger.Error.Printf("insert nav to sentence group relation failed. %s\n", err)
 		return err
 	}
+
+	nodeOrder = append(nodeOrder, uuid)
+	err = updateNodeOrder(tx, nodeOrder, flows[0].ID)
+	if err != nil {
+		logger.Error.Printf("update node order failed. %d,%+v,  %s\n", flows[0].ID, nodeOrder, err)
+		return err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		logger.Error.Printf("commit data failed. %s\n", err)
+	}
+	return err
+}
+
+//UpdateNodeOrder adjusts the order of the nodes
+func UpdateNodeOrder(nav int64, order []string) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	if len(order) == 0 {
+		return nil
+	}
+	return updateNodeOrder(dbLike.Conn(), order, nav)
+
+}
+
+func updateNodeOrder(conn model.SqlLike, order []string, nav int64) error {
+	orderStr, err := json.Marshal(order)
+	if err != nil {
+		logger.Error.Printf("marshal node order failed. %+v, %s\n", order, err)
+	} else {
+		_, err := navDao.UpdateNodeOrders(conn, nav, string(orderStr))
+		if err != nil {
+			logger.Error.Printf("update node order failed. %+v, %s\n", order, err)
+		}
 	}
 	return err
 }
@@ -185,6 +239,13 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		return nil, nil
 	}
 
+	var nodeOrder []string
+	if flow[0].NodeOrder != "" {
+		err = json.Unmarshal([]byte(flow[0].NodeOrder), &nodeOrder)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal node_order failed. %d. %s", flow[0].ID, err)
+		}
+	}
 	senGrpsID, err := navDao.GetNodeID(dbLike.Conn(), nav)
 	if err != nil {
 		logger.Error.Printf("get node id failed")
@@ -209,18 +270,34 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		}
 
 		var intent model.SentenceGroup
-		intentIdx := -1
-		for idx, senGrp := range senGrps {
+		senGrpsMap := make(map[string]model.SentenceGroup)
+		for _, senGrp := range senGrps {
 			if senGrp.ID == flow[0].IntentLinkID {
-				intentIdx = idx
 				intent = senGrp
-				break
+			} else {
+				senGrpsMap[senGrp.UUID] = senGrp
 			}
 		}
-		if intentIdx >= 0 {
-			senGrps = append(senGrps[:intentIdx], senGrps[intentIdx+1:]...)
+
+		nodes := make([]model.SentenceGroup, 0, len(senGrpsMap))
+		fixedOrder := make([]string, 0, len(nodeOrder))
+		for _, uuid := range nodeOrder {
+			if v, ok := senGrpsMap[uuid]; ok {
+				nodes = append(nodes, v)
+				delete(senGrpsMap, uuid)
+				fixedOrder = append(fixedOrder, uuid)
+			}
 		}
-		resp.Nodes = senGrps
+		//append the rest node in case node_order is mess up
+		for _, v := range senGrpsMap {
+			nodes = append(nodes, v)
+		}
+
+		if len(fixedOrder) != len(nodeOrder) {
+			updateNodeOrder(dbLike.Conn(), fixedOrder, flow[0].ID)
+		}
+
+		resp.Nodes = nodes
 		resp.SentenceGroup = intent
 	}
 	return resp, nil
@@ -268,13 +345,6 @@ func CountNodes(navs []int64) (map[int64]int64, error) {
 	return resp, err
 }
 
-//the speaker
-const (
-	ChannelSilence = iota
-	ChannelHost
-	ChannelGuest
-)
-
 //the Conversation type
 const (
 	AudioFile = iota
@@ -308,7 +378,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	defer tx.Rollback()
 
 	reqCall := &NewCallReq{FileName: body.FileName, Enterprise: enterprise, Type: model.CallTypeRealTime, CallTime: body.CreateTime,
-		UploadUser: user, LeftChannel: "staff", RightChannel: "customer"}
+		UploadUser: user, LeftChannel: CallStaffRoleName, RightChannel: CallCustomerRoleName}
 	call, err := NewCall(reqCall)
 
 	empty := &model.QIFlowResult{FileName: body.FileName}
@@ -325,4 +395,62 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	tx.Commit()
 
 	return call.UUID, nil
+}
+
+//Error msg
+var (
+	ErrSpeaker        = errors.New("Wrong speaker")
+	ErrEndTimeSmaller = errors.New("end time < start time")
+)
+
+//finishFlowQI finishs the flow, update information
+func finishFlowQI(req *apiFlowFinish, id int64, result *model.QIFlowResult) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+
+	calls, err := Calls(dbLike.Conn(), model.CallQuery{ID: []int64{id}})
+	if err != nil || len(calls) == 0 {
+		logger.Error.Printf("Get conversation [%d] error. %s\n", id, err)
+		return err
+	}
+
+	dur := req.FinishTime - calls[0].CallUnixTime
+	if dur < 0 {
+		return ErrEndTimeSmaller
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	resultStr, err := json.Marshal(result)
+	if err != nil {
+		logger.Error.Printf("Marshal failed. %s\n", err)
+		return err
+	}
+	_, err = navOnTheFlyDao.UpdateFlowResult(tx, calls[0].ID, string(resultStr))
+	if err != nil {
+		logger.Error.Printf("lupdate flow result failed. %s\n", err)
+		return err
+	}
+
+	calls[0].Status = 1
+	calls[0].DurationMillSecond = int(dur * 1000)
+
+	err = callDao.SetCall(tx, calls[0])
+	if err != nil {
+		logger.Error.Printf("lupdate streaming conversation finished status failed. %s\n", err)
+		return err
+	}
+
+	tx.Commit()
+
+	return nil
+}
+
+func streamingMatch([]model.AsrContent) {
+	//	var s []string
 }

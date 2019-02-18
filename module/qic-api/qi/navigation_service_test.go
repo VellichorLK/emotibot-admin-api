@@ -16,9 +16,9 @@ var mockEnterprise = "myenterpirse"
 var mockNavID int64 = 1
 var mockFlowName = "mockflowname"
 var mockFlows = []*model.NavFlow{
-	&model.NavFlow{ID: 1, Name: "hello1", IntentName: "intent11"},
-	&model.NavFlow{ID: 2, Name: "hello2", IntentName: "intent22"},
-	&model.NavFlow{ID: 3, Name: "hello3", IntentName: "intent33"},
+	&model.NavFlow{ID: 1, Name: "hello1", IntentName: "intent11", NodeOrder: "[]"},
+	&model.NavFlow{ID: 2, Name: "hello2", IntentName: "intent22", NodeOrder: "[]"},
+	&model.NavFlow{ID: 3, Name: "hello3", IntentName: "intent33", NodeOrder: "[]"},
 }
 
 var mockCountNodes = map[int64]int64{
@@ -56,6 +56,10 @@ func (m *mockNavDao) GetNodeID(conn model.SqlLike, nav int64) ([]int64, error) {
 }
 func (m *mockNavDao) UpdateFlows(conn model.SqlLike, q *model.NavQuery, d *model.NavFlowUpdate) (int64, error) {
 	return mockAffectedRow, nil
+}
+
+func (m *mockNavDao) UpdateNodeOrders(conn model.SqlLike, id int64, order string) (int64, error) {
+	return 0, nil
 }
 
 func setUpMoackNavDao() {
