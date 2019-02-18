@@ -116,14 +116,24 @@ func TestTasksByCalls(t *testing.T) {
 				t.Errorf("TasksByCalls() error = %#v, wantErr %#v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("TasksByCalls() = %s\nwant %s", pretty(got), pretty(tt.want))
+			var found bool
+			for _, w := range tt.want {
+				for _, g := range got {
+					if reflect.DeepEqual(g, w) {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("want %v not in TasksByCalls", *w)
+				}
 			}
+			t.Logf("TasksByCalls() = %s", prettyTasks(got))
+
 		})
 	}
 }
 
-func pretty(tasks []*model.Task) string {
+func prettyTasks(tasks []*model.Task) string {
 	msg := "{"
 	for _, t := range tasks {
 		var c string
