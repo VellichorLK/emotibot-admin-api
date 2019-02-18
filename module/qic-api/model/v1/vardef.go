@@ -213,6 +213,7 @@ const (
 	fldType        = "type"
 	fldCategoryID  = "category_id"
 	fldMin         = "min"
+	fldNodeOrder   = "node_order"
 )
 
 //relation field name
