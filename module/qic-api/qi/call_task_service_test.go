@@ -116,8 +116,9 @@ func TestTasksByCalls(t *testing.T) {
 				t.Errorf("TasksByCalls() error = %#v, wantErr %#v", err, tt.wantErr)
 				return
 			}
-			var found bool
+			// Since TasksByCalls has no guarantee of order, we have to compare it by ourself.
 			for _, w := range tt.want {
+				var found bool
 				for _, g := range got {
 					if reflect.DeepEqual(g, w) {
 						found = true
