@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
 
 	"github.com/gorilla/mux"
 
@@ -39,10 +40,10 @@ func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	//TODO: Detail need the result dao implemented
 	resp := CallDetail{
-		CallID:      c.ID,
-		Status:      c.Status,
-		VoiceResult: results,
-		FileName:    *c.FileName,
+		CallID:   c.ID,
+		Status:   c.Status,
+		Segment:  results,
+		FileName: *c.FileName,
 	}
 	util.WriteJSON(w, resp)
 }
@@ -242,40 +243,82 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	return reqBody, nil
 }
 
+//  NewCallReq is the concrete request for creat a new call entity.
+//		custom columns need to be checked valid for call's group.
 type NewCallReq struct {
-	FileName     string `json:"file_name"`
-	CallTime     int64  `json:"call_time"`
-	CallComment  string `json:"call_comment"`
-	Transaction  int64  `json:"transaction"`
-	Series       string `json:"series"`
-	HostID       string `json:"host_id"`
-	HostName     string `json:"host_name"`
-	Extension    string `json:"extension"`
-	Department   string `json:"department"`
-	GuestID      string `json:"guest_id"`
-	GuestName    string `json:"guest_name"`
-	GuestPhone   string `json:"guest_phone"`
-	LeftChannel  string `json:"left_channel"`
-	RightChannel string `json:"right_channel"`
-	Enterprise   string `json:"-"`
-	UploadUser   string `json:"-"`
-	Type         int8   `json:"-"`
+	FileName      string            `json:"file_name"`
+	CallTime      int64             `json:"call_time"`
+	CallComment   string            `json:"call_comment"`
+	Transaction   int64             `json:"transaction"`
+	Series        string            `json:"series"`
+	HostID        string            `json:"host_id"`
+	HostName      string            `json:"host_name"`
+	Extension     string            `json:"extension"`
+	Department    string            `json:"department"`
+	GuestID       string            `json:"customer_id"`
+	GuestName     string            `json:"customer_name"`
+	GuestPhone    string            `json:"customer_phone"`
+	LeftChannel   string            `json:"left_channel"`
+	RightChannel  string            `json:"right_channel"`
+	Enterprise    string            `json:"-"`
+	UploadUser    string            `json:"-"`
+	Type          int8              `json:"-"`
+	CustomColumns map[string]string `json:"-"` //Custom columns of the call.
+}
+
+type segment struct {
+	ASRText    string       `json:"asr_text"`
+	Emotion    []asrEmotion `json:"emotion"`
+	Speaker    string       `json:"speaker"`
+	StartTime  float64      `json:"start_time"`
+	EndTime    float64      `json:"end_time"`
+	SentenceID int64        `json:"sent_id"`
+	SegmentID  int64        `json:"segment_id"`
+	Status     int64        `json:"status"`
+}
+
+type asrEmotion struct {
+	Type  string  `json:"type"`
+	Score float64 `json:"score"`
 }
 
 type CallDetail struct {
-	CallID      int64         `json:"call_id"`
-	Status      int8          `json:"status"`
-	VoiceResult []voiceResult `json:"voice_result"`
-	FileName    string        `json:"file_name"`
+	CallID   int64     `json:"call_id"`
+	Status   int8      `json:"status"`
+	Segment  []segment `json:"voice_result"`
+	FileName string    `json:"file_name"`
 }
 
-type voiceResult struct {
-	ASRText    string  `json:"asr_text"`
-	Emotion    float64 `json:"emotion"`
-	Speaker    string  `json:"speaker"`
-	StartTime  float64 `json:"start_time"`
-	EndTime    float64 `json:"end_time"`
-	SentenceID int64   `json:"sent_id"`
-	SegmentID  int64   `json:"segment_id"`
-	Sret       int64   `json:"sret"` //status
+type CallsResponse struct {
+	Paging general.Paging `json:"paging"`
+	Data   []CallResp     `json:"data"`
+}
+
+//CallResp is the UI struct of the call.
+type CallResp struct {
+	CallID           int64     `json:"call_id"`
+	CallTime         int64     `json:"call_time"`
+	Transaction      int8      `json:"deal"`
+	Status           int64     `json:"status"`
+	UploadTime       int64     `json:"upload_time"`
+	CallLength       float64   `json:"duration"`
+	LeftSilenceTime  float64   `json:"left_silence_time"`
+	RightSilenceTime float64   `json:"right_silence_time"`
+	LeftSpeed        *float64  `json:"left_speed"`
+	RightSpeed       *float64  `json:"right_speed"`
+	FileName         string    `json:"file_name,omitempty"`
+	CallComment      string    `json:"call_comment,omitempty"`
+	Series           string    `json:"series,omitempty"`
+	HostID           string    `json:"staff_id,omitempty"`
+	HostName         string    `json:"staff_name,omitempty"`
+	Extension        string    `json:"extension,omitempty"`
+	Department       string    `json:"department,omitempty"`
+	CustomerID       string    `json:"customer_id,omitempty"`
+	CustomerName     string    `json:"customer_name,omitempty"`
+	CustomerPhone    string    `json:"customer_phone,omitempty"`
+	LeftChannel      string    `json:"left_channel,omitempty"`
+	RightChannel     string    `json:"right_channel,omitempty"`
+	LeftSilenceRate  float64   `json:"left_silence_rate,omitempty"`
+	RightSilenceRate float64   `json:"right_silence_rate,omitempty"`
+	Segments         []segment `json:"segments"`
 }
