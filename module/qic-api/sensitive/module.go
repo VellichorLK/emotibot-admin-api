@@ -12,6 +12,7 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo  util.ModuleInfo
 	swDao       model.SensitiveWordDao
+	categoryDao model.CategoryDao
 	sentenceDao model.SentenceDao
 	sqlConn     *sql.DB
 	dbLike      model.DBLike
@@ -50,6 +51,7 @@ func init() {
 				}
 
 				swDao = &model.SensitiveWordSqlDao{}
+				categoryDao = &model.CategorySQLDao{}
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
 			},
 		},

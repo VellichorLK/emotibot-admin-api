@@ -3,10 +3,14 @@ package sensitive
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	"fmt"
 	"github.com/anknown/ahocorasick"
 )
 
 var dao sensitiveDao = &sensitiveDAOImpl{}
+var (
+	ErrZeroAffectedRows = fmt.Errorf("No rows are affected")
+)
 
 func IsSensitive(content string) ([]string, error) {
 	matched := []string{}
@@ -92,22 +96,25 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 func CreateSensitiveWordCategory(name, enterprise string) (int64, error) {
 	sqlConn := dbLike.Conn()
 
-	category := &model.SensitiveWordCategory{
+	category := &model.CategoryRequest{
 		Name:       name,
+		Type:       model.SwCategoryType,
 		Enterprise: enterprise,
 	}
-	return swDao.CreateCateogry(category, sqlConn)
+	return categoryDao.InsertCategory(sqlConn, category)
 }
 
-func GetCategories(enterprise string) (categories []model.SensitiveWordCategory, err error) {
+func GetCategories(enterprise string) (categories []*model.CategortInfo, err error) {
 	sqlConn := dbLike.Conn()
 
-	filter := &model.SensitiveWordCategoryFilter{
-		ID:         []int64{},
+	ctype := model.SwCategoryType
+	filter := &model.CategoryQuery{
+		ID:         []uint64{},
 		Enterprise: &enterprise,
+		Type:       &ctype,
 	}
 
-	return swDao.GetCategories(filter, sqlConn)
+	return categoryDao.GetCategories(sqlConn, filter)
 }
 
 func GetWordsUnderCategory(id int64, enterprise string) (total int64, words []model.SensitiveWord, err error) {
@@ -127,7 +134,25 @@ func GetWordsUnderCategory(id int64, enterprise string) (total int64, words []mo
 	return
 }
 
-func UpdateCategory(category *model.SensitiveWordCategory) (affectRows int64, err error) {
+func UpdateCategory(id int64, category *model.CategoryRequest) (err error) {
 	sqlConn := dbLike.Conn()
-	return swDao.UpdateCategory(category, sqlConn)
+	return categoryDao.UpdateCategory(sqlConn, uint64(id), category)
+}
+
+func DeleteCategory(id int64, enterprise string) (affectRows int64, err error) {
+	sqlConn := dbLike.Conn()
+	filter := &model.CategoryQuery{
+		ID:         []uint64{uint64(id)},
+		Enterprise: &enterprise,
+	}
+
+	affectRows, err = categoryDao.SoftDeleteCategory(sqlConn, filter)
+	if err != nil {
+		return
+	}
+
+	if affectRows == 0 {
+		err = ErrZeroAffectedRows
+	}
+	return
 }

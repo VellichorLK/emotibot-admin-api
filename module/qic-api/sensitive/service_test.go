@@ -8,12 +8,12 @@ import (
 
 type mockDAO struct{}
 
-var mockCategories []model.SensitiveWordCategory = []model.SensitiveWordCategory{
-	model.SensitiveWordCategory{
+var mockCategories []*model.CategortInfo = []*model.CategortInfo{
+	&model.CategortInfo{
 		ID:   1234,
 		Name: "n1",
 	},
-	model.SensitiveWordCategory{
+	&model.CategortInfo{
 		ID:   2345,
 		Name: "n2",
 	},
@@ -55,16 +55,21 @@ func (dao *mockDAO) GetBy(filter *model.SensitiveWordFilter, sqlLike model.SqlLi
 	return mockWords, nil
 }
 
-func (dao *mockDAO) CreateCateogry(category *model.SensitiveWordCategory, sqlLike model.SqlLike) (int64, error) {
-	return 5, nil
-}
-
-func (dao *mockDAO) GetCategories(filter *model.SensitiveWordCategoryFilter, sqlLike model.SqlLike) ([]model.SensitiveWordCategory, error) {
+func (dao *mockDAO) GetCategories(conn model.SqlLike, q *model.CategoryQuery) ([]*model.CategortInfo, error) {
 	return mockCategories, nil
 }
-
-func (dao *mockDAO) UpdateCategory(category *model.SensitiveWordCategory, sqlLike model.SqlLike) (int64, error) {
+func (dao *mockDAO) InsertCategory(conn model.SqlLike, s *model.CategoryRequest) (int64, error) {
+	return 5, nil
+}
+func (dao *mockDAO) SoftDeleteCategory(conn model.SqlLike, q *model.CategoryQuery) (int64, error) {
 	return 1, nil
+}
+func (dao *mockDAO) CountCategory(conn model.SqlLike, q *model.CategoryQuery) (uint64, error) {
+	return uint64(len(mockCategories)), nil
+}
+
+func (dao *mockDAO) UpdateCategory(conn model.SqlLike, id uint64, s *model.CategoryRequest) error {
+	return nil
 }
 
 func (dao *mockDAO) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
@@ -101,7 +106,7 @@ func (dao *mockDAO) InsertSentences(sqlLike model.SqlLike, sentences []model.Sen
 
 var mockdao sensitiveDao = &mockDAO{}
 
-func setupSensitiveWordMock() (model.DBLike, model.SensitiveWordDao, model.SentenceDao) {
+func setupSensitiveWordMock() (model.DBLike, model.SensitiveWordDao, model.SentenceDao, model.CategoryDao) {
 	originDBLike := dbLike
 	dbLike = &test.MockDBLike{}
 
@@ -109,15 +114,20 @@ func setupSensitiveWordMock() (model.DBLike, model.SensitiveWordDao, model.Sente
 	originDao := swDao
 	swDao = mockdao
 
+	originCateDao := categoryDao
+	categoryDao = mockdao
+
 	originSentenceDao := sentenceDao
 	sentenceDao = mockdao
-	return originDBLike, originDao, originSentenceDao
+
+	return originDBLike, originDao, originSentenceDao, originCateDao
 }
 
-func restoreSensitiveWordMock(originDBLike model.DBLike, originDao model.SensitiveWordDao, originSDao model.SentenceDao) {
+func restoreSensitiveWordMock(originDBLike model.DBLike, originDao model.SensitiveWordDao, originSDao model.SentenceDao, originCateDao model.CategoryDao) {
 	dbLike = originDBLike
 	swDao = originDao
 	sentenceDao = originSDao
+	categoryDao = originCateDao
 }
 
 func TestIsSensitive(t *testing.T) {
@@ -144,8 +154,8 @@ func TestStringsToRunes(t *testing.T) {
 }
 
 func TestCreateSensitiveWord(t *testing.T) {
-	originDBLike, originDao, originSDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
 
 	word := &model.SensitiveWord{
 		Score:      5,
@@ -164,8 +174,8 @@ func TestCreateSensitiveWord(t *testing.T) {
 }
 
 func TestCreateSensitiveWordCategory(t *testing.T) {
-	originDBLike, originDao, originSDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
 
 	name := "test again"
 	enterprise := "1234"
@@ -182,8 +192,8 @@ func TestCreateSensitiveWordCategory(t *testing.T) {
 }
 
 func TestGetCategories(t *testing.T) {
-	originDBLike, originDao, originSDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
 
 	categories, err := GetCategories("test")
 	if err != nil {
@@ -206,8 +216,8 @@ func TestGetCategories(t *testing.T) {
 }
 
 func TestGetWordsUnderCategory(t *testing.T) {
-	originDBLike, originDao, originSDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
 
 	total, words, err := GetWordsUnderCategory(1, "")
 	if err != nil {
@@ -246,16 +256,27 @@ func TestGetWordsUnderCategory(t *testing.T) {
 }
 
 func TestUpdateCategory(t *testing.T) {
-	originDBLike, originDao, originSDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao)
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
 
-	category := &model.SensitiveWordCategory{
+	category := &model.CategoryRequest{
 		Name: "55588",
 	}
 
-	affectedRows, err := UpdateCategory(category)
+	err := UpdateCategory(55, category)
 	if err != nil {
 		t.Errorf("error when test update category, err: %s", err.Error())
+		return
+	}
+}
+
+func TestDeleteCategory(t *testing.T) {
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
+
+	affectedRows, err := DeleteCategory(55688, "55688")
+	if err != nil {
+		t.Errorf("error when test delete category, err: %s", err.Error())
 		return
 	}
 

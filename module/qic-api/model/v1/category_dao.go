@@ -23,6 +23,7 @@ type CategorySQLDao struct {
 //CategoryRequest is the request of new category
 type CategoryRequest struct {
 	Name       string `json:"name"`
+	Type   int8
 	Enterprise string
 }
 
@@ -40,6 +41,7 @@ type CategoryQuery struct {
 	Page       int
 	Limit      int
 	IsDelete   *int8
+	Type *int8
 }
 
 func (q *CategoryQuery) whereSQL() (string, []interface{}) {
@@ -65,6 +67,12 @@ func (q *CategoryQuery) whereSQL() (string, []interface{}) {
 		condition := fldIsDelete + "=?"
 		conditions = append(conditions, condition)
 		params = append(params, *q.IsDelete)
+	}
+
+	if q.Type != nil {
+		condition := fldType + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *q.Type)
 	}
 
 	var whereSQL string
@@ -124,9 +132,9 @@ func (c *CategorySQLDao) InsertCategory(conn SqlLike, r *CategoryRequest) (int64
 		return 0, ErrNeedCondition
 	}
 
-	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s) VAlUES (?,?)", tblCategory,
-		fldName, fldEnterprise)
-	res, err := conn.Exec(insertSQL, r.Name, r.Enterprise)
+	insertSQL := fmt.Sprintf("INSERT INTO %s (%s,%s, %s) VAlUES (?,?,?)", tblCategory,
+		fldName, fldEnterprise, fldType)
+	res, err := conn.Exec(insertSQL, r.Name, r.Enterprise, r.Type)
 	if err != nil {
 		logger.Error.Printf("Exec sql failed. %s [%s %s]\n", insertSQL, r.Name, r.Enterprise)
 		return 0, err

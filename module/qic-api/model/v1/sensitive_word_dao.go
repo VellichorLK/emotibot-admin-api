@@ -13,7 +13,7 @@ const (
 	fldRelSWID             = "sw_id"
 	staffExceptionType     = 0
 	customerExceptionType  = 1
-	swCategoryType         = 1
+	SwCategoryType         = int8(1)
 )
 
 //error message
@@ -39,10 +39,6 @@ type SensitiveWordDao interface {
 	Create(*SensitiveWord, SqlLike) (int64, error)
 	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
-
-	CreateCateogry(*SensitiveWordCategory, SqlLike) (int64, error)
-	GetCategories(*SensitiveWordCategoryFilter, SqlLike) ([]SensitiveWordCategory, error)
-	UpdateCategory(*SensitiveWordCategory, SqlLike) (int64, error)
 }
 
 type SensitiveWord struct {
@@ -267,116 +263,6 @@ func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLi
 			&word.CategoryID,
 		)
 		sensitiveWords = append(sensitiveWords, word)
-	}
-	return
-}
-
-func (dao *SensitiveWordSqlDao) CreateCateogry(category *SensitiveWordCategory, sqlLike SqlLike) (rowID int64, err error) {
-	if category.Name == "" {
-		err = ErrEmptyCategoryName
-		return
-	}
-
-	fields := []string{
-		fldName,
-		fldEnterprise,
-		fldType,
-	}
-	fieldStr := strings.Join(fields, ", ")
-
-	insertStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (?%s)",
-		tblCategory,
-		fieldStr,
-		strings.Repeat(", ?", len(fields)-1),
-	)
-
-	values := []interface{}{
-		category.Name,
-		category.Enterprise,
-		swCategoryType,
-	}
-
-	result, err := sqlLike.Exec(insertStr, values...)
-	if err != nil {
-		logger.Error.Printf("insert sensitive word category, sql: %s\n", insertStr)
-		logger.Error.Printf("values: %+v\n", values)
-		err = fmt.Errorf("insert sensitive word category failed in dao.CreateCateogry, err: %s", err.Error())
-		return
-	}
-
-	rowID, err = result.LastInsertId()
-	if err != nil {
-		err = fmt.Errorf("failed in get row id in dao.CreateCategory, err: %s", err.Error())
-	}
-	return
-}
-
-func (dao *SensitiveWordSqlDao) GetCategories(filter *SensitiveWordCategoryFilter, sqlLike SqlLike) (categories []SensitiveWordCategory, err error) {
-	builder := NewWhereBuilder(andLogic, "")
-
-	if len(filter.ID) > 0 {
-		builder.In(fldID, int64ToWildCard(filter.ID...))
-	}
-
-	if filter.Enterprise != nil {
-		builder.Eq(fldEnterprise, *filter.Enterprise)
-	}
-
-	builder.Eq(fldType, swCategoryType)
-
-	fields := []string{
-		fldID,
-		fldName,
-		fldEnterprise,
-	}
-	fieldStr := strings.Join(fields, ", ")
-
-	conditionStr, values := builder.ParseWithWhere()
-	queryStr := fmt.Sprintf(
-		"SELECT %s FROM %s %s",
-		fieldStr,
-		tblCategory,
-		conditionStr,
-	)
-
-	rows, err := sqlLike.Query(queryStr, values...)
-	if err != nil {
-		logger.Error.Printf("error while query sensitive word categories, sql: %s", queryStr)
-		logger.Error.Printf("values: %+v\n", values)
-		err = fmt.Errorf("error while query sensitive word categories in dao.GetCategories, err: %s", err.Error())
-		return
-	}
-	defer rows.Close()
-
-	categories = []SensitiveWordCategory{}
-	for rows.Next() {
-		cate := SensitiveWordCategory{}
-		rows.Scan(&cate.ID, &cate.Name, &cate.Enterprise)
-		categories = append(categories, cate)
-	}
-	return
-}
-
-func (dao *SensitiveWordSqlDao) UpdateCategory(category *SensitiveWordCategory, sqlLike SqlLike) (affectedRows int64, err error) {
-	if category == nil {
-		return
-	}
-
-	updateStr := fmt.Sprintf("UPDATE %s SET %s=? WHERE %s=?", tblCategory, fldName, fldID)
-
-	result, err := sqlLike.Exec(updateStr, category.Name, category.ID)
-	if err != nil {
-		logger.Error.Printf("error while update category in dao.UpdateCategory, sql: %s\n", updateStr)
-		logger.Error.Printf("values: %s, %d\n", category.Name, category.ID)
-		err = fmt.Errorf("update categories failed, err: %s", err.Error())
-		return
-	}
-
-	affectedRows, err = result.RowsAffected()
-	if err != nil {
-		logger.Error.Printf("error while get affected rows in dao.UpdateCategory, sql: %s\n", updateStr)
-		err = fmt.Errorf("update categories failed, err: %s", err.Error())
 	}
 	return
 }

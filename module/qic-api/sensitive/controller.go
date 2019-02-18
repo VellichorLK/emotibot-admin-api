@@ -206,14 +206,30 @@ func handleUpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category := &model.SensitiveWordCategory{
+	category := &model.CategoryRequest{
 		Name: reqBody.Name,
-		ID:   id,
 	}
 
-	_, err = UpdateCategory(category)
+	err = UpdateCategory(id, category)
 	if err != nil {
 		logger.Error.Printf("update category failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	_, err = DeleteCategory(id, enterprise)
+	if err != nil {
+		logger.Error.Printf("delete category failed, err: %s", err.Error())
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
