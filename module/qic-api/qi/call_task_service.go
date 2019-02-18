@@ -42,6 +42,7 @@ func TasksByCalls(calls []model.Call) ([]*model.Task, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Skip first index, since TaskByCall already added it.
 		for i := 1; i < len(IdxGrp); i++ {
 			idx := IdxGrp[i]
 			c := calls[idx]
