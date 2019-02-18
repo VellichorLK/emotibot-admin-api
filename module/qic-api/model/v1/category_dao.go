@@ -23,7 +23,7 @@ type CategorySQLDao struct {
 //CategoryRequest is the request of new category
 type CategoryRequest struct {
 	Name       string `json:"name"`
-	Type   int8
+	Type       int8
 	Enterprise string
 }
 
@@ -41,7 +41,7 @@ type CategoryQuery struct {
 	Page       int
 	Limit      int
 	IsDelete   *int8
-	Type *int8
+	Type       *int8
 }
 
 func (q *CategoryQuery) whereSQL() (string, []interface{}) {
