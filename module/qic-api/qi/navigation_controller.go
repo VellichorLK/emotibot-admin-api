@@ -249,6 +249,29 @@ func handleModifyFlow(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleNodeOrder(w http.ResponseWriter, r *http.Request) {
+	idStr := general.ParseID(r)
+	id, _ := strconv.ParseInt(idStr, 10, 64)
+
+	var order []string
+	err := util.ReadJSON(r, &order)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+	if len(order) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty nodes"), http.StatusBadRequest)
+		return
+	}
+
+	err = UpdateNodeOrder(id, order)
+	if err != nil {
+		logger.Error.Printf("adjust the order of nodes failed. id:%d, err: %s\n", id, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+}
+
 func handleNewNode(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	idStr := general.ParseID(r)

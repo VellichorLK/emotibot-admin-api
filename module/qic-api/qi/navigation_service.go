@@ -69,9 +69,11 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 	}
 
 	var nodeOrder []string
-	err = json.Unmarshal([]byte(flows[0].NodeOrder), &nodeOrder)
-	if err != nil {
-		return fmt.Errorf("unmarshal node_order failed. %d. %s", flows[0].ID, err)
+	if flows[0].NodeOrder != "" {
+		err = json.Unmarshal([]byte(flows[0].NodeOrder), &nodeOrder)
+		if err != nil {
+			return fmt.Errorf("unmarshal node_order failed. %d. %s", flows[0].ID, err)
+		}
 	}
 
 	tx, err := dbLike.Begin()
@@ -125,6 +127,18 @@ func NewNode(nav int64, senGrp *model.SentenceGroup) error {
 		logger.Error.Printf("commit data failed. %s\n", err)
 	}
 	return err
+}
+
+//UpdateNodeOrder adjusts the order of the nodes
+func UpdateNodeOrder(nav int64, order []string) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	if len(order) == 0 {
+		return nil
+	}
+	return updateNodeOrder(dbLike.Conn(), order, nav)
+
 }
 
 func updateNodeOrder(conn model.SqlLike, order []string, nav int64) error {
@@ -226,11 +240,12 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 	}
 
 	var nodeOrder []string
-	err = json.Unmarshal([]byte(flow[0].NodeOrder), &nodeOrder)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal node_order failed. %d. %s", flow[0].ID, err)
+	if flow[0].NodeOrder != "" {
+		err = json.Unmarshal([]byte(flow[0].NodeOrder), &nodeOrder)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal node_order failed. %d. %s", flow[0].ID, err)
+		}
 	}
-
 	senGrpsID, err := navDao.GetNodeID(dbLike.Conn(), nav)
 	if err != nil {
 		logger.Error.Printf("get node id failed")
