@@ -455,8 +455,8 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 
 //the speaker in wording in navigation flow only
 const (
-	WordStaff    = "host"
-	WordCustomer = "guest"
+	WordStaff    = "staff"
+	WordCustomer = "customer"
 	WordSilence  = "silence"
 )
 

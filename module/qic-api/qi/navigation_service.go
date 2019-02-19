@@ -479,7 +479,7 @@ type NavResponse struct {
 }
 
 type NavResult struct {
-	Flows []StreamingFlow `json:"nav_result"`
+	Flows []StreamingFlow `json:"flows"`
 }
 type CreditLoc struct {
 	IsIntent  bool `json:"is_intent"`
