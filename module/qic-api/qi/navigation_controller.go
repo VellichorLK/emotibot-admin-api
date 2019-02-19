@@ -604,6 +604,47 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleGetCurCheck(w http.ResponseWriter, r *http.Request) {
+	uuid := general.ParseID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
+	if err != nil {
+		logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(calls) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+		return
+	}
+	call := calls[0]
+
+	predicts, err := getStreamingPredict(call.ID)
+	if err != nil {
+		logger.Error.Printf("get streaming predicts failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(predicts) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+		return
+	}
+
+	var settings NavFlowSetting
+	err = json.Unmarshal([]byte(predicts[0].Predict), &settings)
+	if err != nil {
+		logger.Error.Printf("unmarshal predicts failed. %d, %s\n", call.ID, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	err = util.WriteJSON(w, &settings.NavResult)
+	if err != nil {
+		logger.Error.Printf("write json failed. %s\n", err)
+	}
+}
+
 //WithFlowCallIDEnterpriseCheck checks the call id and its enterprise
 func WithFlowCallIDEnterpriseCheck(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
