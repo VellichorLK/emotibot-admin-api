@@ -438,7 +438,7 @@ func finishFlowQI(req *apiFlowFinish, uuid string) error {
 	}
 	defer tx.Rollback()
 
-	calls[0].Status = 1
+	calls[0].Status = model.CallStatusDone
 	calls[0].DurationMillSecond = int(dur * 1000)
 
 	err = callDao.SetCall(tx, calls[0])
