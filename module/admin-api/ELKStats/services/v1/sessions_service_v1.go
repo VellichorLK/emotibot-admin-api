@@ -161,7 +161,7 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		boolQuery.Filter(rateRangeQuery)
 	}
 
-	// Platforms & Genders
+	// Platforms & Sex
 	tags := make([]data.QueryTags, 0)
 
 	if len(query.Platforms) > 0 {
@@ -171,10 +171,10 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		})
 	}
 
-	if len(query.Genders) > 0 {
+	if len(query.Sex) > 0 {
 		tags = append(tags, data.QueryTags{
 			Type:  "sex",
-			Texts: query.Genders,
+			Texts: query.Sex,
 		})
 	}
 

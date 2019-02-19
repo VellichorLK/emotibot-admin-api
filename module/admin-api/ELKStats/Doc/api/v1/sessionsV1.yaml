@@ -24,12 +24,12 @@ components:
         end_time:
           description: 日志搜寻/导出时间段结束时间
           type: integer
-        platforms:
+        platform:
           description: 筛选项 - 维度 (平台 code)
           type: array
           items:
             type: string
-        genders:
+        sex:
           description: 筛选项 - 维度 (性别 code)
           type: array
           items:
