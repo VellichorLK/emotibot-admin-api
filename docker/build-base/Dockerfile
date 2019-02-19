@@ -33,4 +33,5 @@ RUN go get github.com/streadway/amqp
 RUN go get github.com/axw/gocov/...
 RUN go get github.com/AlekSi/gocov-xml
 RUN go get -u github.com/jstemmer/go-junit-report
+RUN go get github.com/stretchr/testify
 RUN go get github.com/mojocn/base64Captcha
