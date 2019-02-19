@@ -455,9 +455,9 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 
 //the speaker in wording in navigation flow only
 const (
-	WordHost    = "host"
-	WordGuest   = "guest"
-	WordSilence = "silence"
+	WordStaff    = "host"
+	WordCustomer = "guest"
+	WordSilence  = "silence"
 )
 
 //the speaker in int in navigation flow only
@@ -474,9 +474,9 @@ func asrContentToSegment(callID int64, a []model.AsrContent) ([]model.RealSegmen
 	for _, v := range a {
 		s := model.RealSegment{CallID: callID, StartTime: v.StartTime, EndTime: v.EndTime, Text: v.Text, CreateTime: now}
 		switch v.Speaker {
-		case WordHost:
+		case WordStaff:
 			s.Channel = ChannelHost
-		case WordGuest:
+		case WordCustomer:
 			s.Channel = ChannelGuest
 		case WordSilence:
 			s.Channel = ChannelSilence
