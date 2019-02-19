@@ -25,7 +25,7 @@ var (
 
 //error message
 var (
-	ErrWrongLevel = errors.New("Wrong error assigned")
+	ErrWrongLevel = errors.New("Wrong level assigned")
 	ErrOutOfLevel = errors.New("assigned level out of level")
 	ErrNoID       = errors.New("Must has id")
 )
