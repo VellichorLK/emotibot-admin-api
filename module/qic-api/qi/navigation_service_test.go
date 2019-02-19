@@ -51,7 +51,7 @@ func (m *mockNavDao) CountFlows(conn model.SqlLike, q *model.NavQuery) (int64, e
 func (m *mockNavDao) CountNodes(conn model.SqlLike, navs []int64) (map[int64]int64, error) {
 	return mockCountNodes, nil
 }
-func (m *mockNavDao) GetNodeID(conn model.SqlLike, nav int64) ([]int64, error) {
+func (m *mockNavDao) GetNodeID(conn model.SqlLike, navs []int64) (map[int64][]int64, error) {
 	return nil, nil
 }
 func (m *mockNavDao) UpdateFlows(conn model.SqlLike, q *model.NavQuery, d *model.NavFlowUpdate) (int64, error) {

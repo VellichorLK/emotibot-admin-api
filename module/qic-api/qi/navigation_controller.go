@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
@@ -428,22 +429,17 @@ type apiFlowFinish struct {
 }
 
 func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+	uuid := general.ParseID(r)
 
 	var requestBody apiFlowFinish
-	err = util.ReadJSON(r, &requestBody)
+	err := util.ReadJSON(r, &requestBody)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	//FIXME nil
-	err = finishFlowQI(&requestBody, id, nil)
+	err = finishFlowQI(&requestBody, uuid, nil)
 	if err != nil {
 		if err == ErrEndTimeSmaller {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -493,18 +489,19 @@ func asrContentToSegment(callID int64, a []model.AsrContent) ([]model.RealSegmen
 }
 
 var navCache timecache.TimeCache
+var navCallCache timecache.TimeCache
 
 func setUpNavCache() {
 	config := &timecache.TCacheConfig{}
 	config.SetCollectionDuration(30 * time.Second)
 	config.SetCollectionMethod(timecache.OnUpdate)
 	navCache.Activate(config)
+	navCallCache.Activate(config)
 }
 
 func handleStreaming(w http.ResponseWriter, r *http.Request) {
-	idStr := general.ParseID(r)
-	id, _ := strconv.ParseInt(idStr, 10, 64)
-
+	uuid := general.ParseID(r)
+	enterprise := requestheader.GetEnterpriseID(r)
 	var requestBody []model.AsrContent
 	err := util.ReadJSON(r, &requestBody)
 	if err != nil {
@@ -517,7 +514,36 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	segs, err := asrContentToSegment(id, requestBody)
+	cacheKey := uuid + enterprise
+	val, ok := navCallCache.GetCache(cacheKey)
+	call, ok2 := val.(*model.Call)
+	if !ok || !ok2 {
+		calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
+		if err != nil {
+			logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if len(calls) == 0 {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+			return
+		}
+		call = &calls[0]
+		navCallCache.SetCache(cacheKey, call)
+	}
+
+	predicts, err := getStreamingPredict(call.ID)
+	if err != nil {
+		logger.Error.Printf("get streaming predicts failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(predicts) == 0 {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+		return
+	}
+
+	segs, err := asrContentToSegment(call.ID, requestBody)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -530,61 +556,52 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	/*
-		//insert the segment
-		err = insertSegmentByUUID(uuid, asrContents)
-		if err != nil {
-			if err == ErrSpeaker {
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-			} else {
-				logger.Error.Printf("%s\n", err)
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-			}
-			return
+	var channelRoles = map[int8]int{
+		1: int(call.LeftChanRole),
+		2: int(call.RightChanRole),
+	}
+
+	segWithSp := make([]*SegmentWithSpeaker, 0, len(segs))
+	for _, s := range segs {
+		ws := &SegmentWithSpeaker{
+			RealSegment: s,
+			Speaker:     channelRoles[s.Channel],
 		}
-		enterprise := requestheader.GetEnterpriseID(r)
-		resp, err := getCurrentQIFlowResult(w, enterprise, uuid)
-		if err != nil {
-			return
-		}
+		segWithSp = append(segWithSp, ws)
+	}
 
-		callID, err := getIDByUUID(uuid)
-		if err != nil {
-			logger.Error.Printf("%s\n", err)
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-			return
-		}
-		if callID == 0 {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id is found"), http.StatusBadRequest)
-			return
-		}
+	var settings NavFlowSetting
+	err = json.Unmarshal([]byte(predicts[0].Predict), &settings)
+	if err != nil {
+		logger.Error.Printf("unmarshal predicts failed. %d, %s\n", call.ID, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
-		_, err = UpdateFlowResult(callID, resp)
-		if err != nil {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-			return
-		}
+	_, err = streamingMatch(segWithSp, &settings)
+	if err != nil {
+		logger.Error.Printf("streaming matched failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
-		resp.Sensitive = make([]string, 0)
+	predict, err := json.Marshal(settings)
+	if err != nil {
+		logger.Error.Printf("marshal setting failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
 
-		for i := 0; i < len(requestBody); i++ {
-
-			words, err := sensitive.IsSensitive(requestBody[i].Text)
-			if err != nil {
-				logger.Error.Printf("get sensitive words failed. %s\n", err)
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-				return
-			}
-
-			resp.Sensitive = append(resp.Sensitive, words...)
-		}
-
-		err = util.WriteJSON(w, resp)
-		if err != nil {
-			logger.Error.Printf("%s\n", err)
-		}
-
-	*/
+	_, err = updateStreamingPredict(call.ID, string(predict))
+	if err != nil {
+		logger.Error.Printf("update setting %d failed. %s\n", call.ID, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	err = util.WriteJSON(w, &settings.NavResult)
+	if err != nil {
+		logger.Error.Printf("write json failed. %s\n", err)
+	}
 }
 
 //WithFlowCallIDEnterpriseCheck checks the call id and its enterprise
@@ -592,27 +609,22 @@ func WithFlowCallIDEnterpriseCheck(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enterprise := requestheader.GetEnterpriseID(r)
 
-		idStr := general.ParseID(r)
-		val, ok := navCache.GetCache(idStr)
+		uuid := general.ParseID(r)
+		val, ok := navCache.GetCache(uuid)
 		expect, ok2 := val.(string)
 		if !ok || !ok2 {
-			id, err := strconv.ParseInt(idStr, 10, 64)
-			if err != nil {
-				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-				return
-			}
 
-			_, err = Call(id, enterprise)
+			calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
 			if err != nil {
-				if err == ErrNotFound {
-					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
-				} else {
-					logger.Error.Printf("get call failed. %s %d. %s\n", enterprise, id, err)
-					util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-				}
+				logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 				return
 			}
-			navCache.SetCache(idStr, enterprise)
+			if len(calls) == 0 {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+				return
+			}
+			navCache.SetCache(uuid, enterprise)
 		} else {
 			if expect != enterprise {
 				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)

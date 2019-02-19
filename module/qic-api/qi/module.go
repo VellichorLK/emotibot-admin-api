@@ -98,7 +98,8 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/node/order", []string{}, handleNodeOrder),
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
-			util.NewEntryPoint(http.MethodPut, "call-in/conversation/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
