@@ -153,6 +153,11 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		boolQuery.Filter(elastic.NewTermQuery("user_id", *query.UserID))
 	}
 
+	// Session ID
+	if query.SessionID != nil && *query.SessionID != "" {
+		boolQuery.Filter(elastic.NewTermQuery("session_id", *query.SessionID))
+	}
+
 	// Rating max & Rating min
 	if query.RatingMax != nil && query.RatingMin != nil {
 		rateRangeQuery := elastic.NewRangeQuery(data.SessionRatingFieldName).

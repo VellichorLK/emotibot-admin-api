@@ -20,6 +20,7 @@ type SessionsRequest struct {
 	Feedback          *string  `json:"feedback,omitempty"`
 	Page              *int64   `json:"page,omitempty"`
 	Limit             *int64   `json:"limit,omitempty"`
+	SessionID         *string  `json:"session_id,omitempty"`
 }
 
 type SessionsQuery struct {
@@ -34,6 +35,7 @@ type SessionsQuery struct {
 	Feedback          *string
 	From              int64
 	Limit             int64
+	SessionID         *string
 }
 
 type SessionsResponse struct {

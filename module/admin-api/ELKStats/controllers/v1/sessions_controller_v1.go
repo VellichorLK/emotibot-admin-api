@@ -233,6 +233,7 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 		Feedback:  request.Feedback,
 		From:      (page - 1) * int64(limit),
 		Limit:     limit,
+		SessionID: request.SessionID,
 	}
 
 	if request.FeedbackStartTime != nil {
