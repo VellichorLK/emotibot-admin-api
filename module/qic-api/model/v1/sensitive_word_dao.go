@@ -11,8 +11,8 @@ const (
 	tblSensitiveWord       = "SensitiveWord"
 	tblRelSensitiveWordSen = "Relation_SensitiveWord_Sentence"
 	fldRelSWID             = "sw_id"
-	staffExceptionType     = 0
-	customerExceptionType  = 1
+	StaffExceptionType     = int8(0)
+	CustomerExceptionType  = int8(1)
 	SwCategoryType         = int8(1)
 )
 
@@ -22,23 +22,21 @@ var (
 )
 
 type SensitiveWordFilter struct {
+	ID         []int64
 	UUID       []string
 	Category   *int64
 	Enterprise *string
-	Name       string
+	Keyword    string
 	Page       int
 	Limit      int
-}
-
-type SensitiveWordCategoryFilter struct {
-	ID         []int64
-	Enterprise *string
+	Deleted    *int8
 }
 
 type SensitiveWordDao interface {
 	Create(*SensitiveWord, SqlLike) (int64, error)
 	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
+	GetRel(int64, SqlLike) (map[int8][]uint64, error)
 }
 
 type SensitiveWord struct {
@@ -52,14 +50,7 @@ type SensitiveWord struct {
 	CategoryID        int64
 }
 
-type SensitiveWordCategory struct {
-	ID         int64  `json:"category_id,string"`
-	Name       string `json:"name"`
-	Enterprise string `json:"-"`
-}
-
-type SensitiveWordSqlDao struct {
-}
+type SensitiveWordSqlDao struct{}
 
 func getSensitiveWordInsertSQL(words []SensitiveWord) (insertStr string, values []interface{}) {
 	values = []interface{}{}
@@ -123,13 +114,13 @@ func getSensitiveWordRelationInsertSQL(words []SensitiveWord) (insertStr string,
 
 	for _, word := range words {
 		for _, customerException := range word.CustomerException {
-			values = append(values, word.ID, customerException.ID, customerExceptionType)
+			values = append(values, word.ID, customerException.ID, CustomerExceptionType)
 
 			valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
 		}
 
 		for _, staffException := range word.StaffException {
-			values = append(values, word.ID, staffException.ID, staffExceptionType)
+			values = append(values, word.ID, staffException.ID, StaffExceptionType)
 
 			valueStr = fmt.Sprintf("%s%s,", valueStr, variableStr)
 		}
@@ -200,6 +191,14 @@ func getSensitiveWordQuerySQL(filter *SensitiveWordFilter) (queryStr string, val
 		builder.In(fldUUID, stringToWildCard(filter.UUID...))
 	}
 
+	if len(filter.ID) > 0 {
+		builder.In(fldID, int64ToWildCard(filter.ID...))
+	}
+
+	if filter.Deleted != nil {
+		builder.Eq(fldIsDelete, *filter.Deleted)
+	}
+
 	fields := []string{
 		fldID,
 		fldUUID,
@@ -263,6 +262,43 @@ func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLi
 			&word.CategoryID,
 		)
 		sensitiveWords = append(sensitiveWords, word)
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) GetRel(id int64, sqlLike SqlLike) (rel map[int8][]uint64, err error) {
+	// get relations
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s from %s WHERE %s = ?",
+		fldRelSenID,
+		fldType,
+		tblRelSensitiveWordSen,
+		fldRelSWID,
+	)
+
+	rows, err := sqlLike.Query(queryStr, id)
+	if err != nil {
+		logger.Error.Printf("error while query sensitive words relations, sql: %s", queryStr)
+		logger.Error.Printf("values: %d", id)
+		err = fmt.Errorf("error while query sensitive words relations, err: %s", err.Error())
+		return
+	}
+
+	rel = map[int8][]uint64{}
+	for rows.Next() {
+		var sid uint64
+		var relType int8
+		err = rows.Scan(&sid, &relType)
+		if err != nil {
+			err = fmt.Errorf("error while parse sensitive words relations, err: %s", err.Error())
+			return
+		}
+
+		if _, ok := rel[relType]; !ok {
+			rel[relType] = []uint64{}
+		}
+
+		rel[relType] = append(rel[relType], sid)
 	}
 	return
 }

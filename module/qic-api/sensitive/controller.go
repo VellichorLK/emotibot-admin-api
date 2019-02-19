@@ -30,36 +30,21 @@ type SensitiveWordInRes struct {
 	Category int64  `json:"category_id"`
 }
 
-type Req struct {
-	Name string `json:"name"`
+type Exceptions struct {
+	Staff    []model.SimpleSentence `json:"staff"`
+	Customer []model.SimpleSentence `json:"customer"`
 }
 
-func transformSensitiveWordInReqToSensitiveWord(inreq *SensitiveWordInReq) (word *model.SensitiveWord) {
-	if inreq == nil {
-		return
-	}
+type SensitiveWordInDetail struct {
+	UUID       string     `json:"sw_id"`
+	Name       string     `json:"sw_name"`
+	Score      int        `json:"score"`
+	Exception  Exceptions `json:"execption"`
+	CategoryID int64
+}
 
-	word = &model.SensitiveWord{
-		Name:  inreq.Name,
-		Score: inreq.Score,
-	}
-
-	customerException := make([]model.SimpleSentence, len(inreq.Exception.Customer))
-	for idx, uid := range inreq.Exception.Customer {
-		customerException[idx] = model.SimpleSentence{
-			UUID: uid,
-		}
-	}
-
-	staffException := make([]model.SimpleSentence, len(inreq.Exception.Staff))
-	for idx, uid := range inreq.Exception.Staff {
-		staffException[idx] = model.SimpleSentence{
-			UUID: uid,
-		}
-	}
-	word.CustomerException = customerException
-	word.StaffException = staffException
-	return
+type Req struct {
+	Name string `json:"name"`
 }
 
 func handleCreateSensitiveWord(w http.ResponseWriter, r *http.Request) {
@@ -108,9 +93,9 @@ func handleCreateSensitiveWordCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	category := &model.SensitiveWordCategory{
+	category := &model.CategortInfo{
 		Name: reqBody.Name,
-		ID:   id,
+		ID:   uint64(id),
 	}
 
 	err = util.WriteJSON(w, category)
@@ -119,6 +104,75 @@ func handleCreateSensitiveWordCategory(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+}
+
+func handleGetSensitiveWords(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	paging := request.Paging(r)
+	vars := mux.Vars(r)
+
+	filter := &model.SensitiveWordFilter{
+		Enterprise: &enterprise,
+		Page:       paging.Page,
+		Limit:      paging.Limit,
+	}
+
+	if keyword, ok := vars["keyword"]; ok {
+		filter.Keyword = keyword
+	}
+
+	total, words, err := GetSensitiveWords(filter)
+	if err != nil {
+		logger.Error.Printf("get sensitive words failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	type Response struct {
+		Paging *general.Paging      `json:"paging"`
+		Data   []SensitiveWordInRes `json:"data"`
+	}
+
+	wordsInRes := toSensitiveWordInRes(words)
+
+	paging.Total = total
+	response := Response{
+		Paging: paging,
+		Data:   wordsInRes,
+	}
+
+	util.WriteJSON(w, response)
+	return
+}
+
+func handleGetSensitiveWord(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	wUUID := general.ParseID(r)
+
+	word, err := GetSensitiveWordInDetail(wUUID, enterprise)
+	if err != nil {
+		logger.Error.Printf("get sensitive word(%s) failed, err: %s", wUUID, err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	if word == nil {
+		http.NotFound(w, r)
+		return
+	}
+	wordInDetail := SensitiveWordInDetail{
+		UUID:  word.UUID,
+		Name:  word.Name,
+		Score: word.Score,
+		Exception: Exceptions{
+			Staff:    word.StaffException,
+			Customer: word.CustomerException,
+		},
+		CategoryID: word.CategoryID,
+	}
+
+	util.WriteJSON(w, wordInDetail)
+	return
 }
 
 func handleGetCategory(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +223,11 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	total, words, err := GetWordsUnderCategory(categoryID, enterprise)
+	filter := &model.SensitiveWordFilter{
+		Category:   &categoryID,
+		Enterprise: &enterprise,
+	}
+	total, words, err := GetSensitiveWords(filter)
 	if err != nil {
 		logger.Error.Printf("get words under categories failed, err: %s", err.Error())
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)

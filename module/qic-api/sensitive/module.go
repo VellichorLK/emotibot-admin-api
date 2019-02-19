@@ -23,6 +23,8 @@ func init() {
 		ModuleName: "sensitive",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "word", []string{}, handleCreateSensitiveWord),
+			util.NewEntryPoint("GET", "word", []string{}, handleGetSensitiveWords),
+			util.NewEntryPoint("GET", "word/{id}", []string{}, handleGetSensitiveWord),
 
 			// category apis
 			util.NewEntryPoint("POST", "category", []string{}, handleCreateSensitiveWordCategory),
