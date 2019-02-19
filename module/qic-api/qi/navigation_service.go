@@ -416,7 +416,7 @@ var (
 )
 
 //finishFlowQI finishs the flow, update information
-func finishFlowQI(req *apiFlowFinish, uuid string, result *model.QIFlowResult) error {
+func finishFlowQI(req *apiFlowFinish, uuid string) error {
 	if dbLike == nil {
 		return ErrNilCon
 	}
@@ -437,17 +437,6 @@ func finishFlowQI(req *apiFlowFinish, uuid string, result *model.QIFlowResult) e
 		return err
 	}
 	defer tx.Rollback()
-
-	resultStr, err := json.Marshal(result)
-	if err != nil {
-		logger.Error.Printf("Marshal failed. %s\n", err)
-		return err
-	}
-	_, err = navOnTheFlyDao.UpdateFlowResult(tx, calls[0].ID, string(resultStr))
-	if err != nil {
-		logger.Error.Printf("lupdate flow result failed. %s\n", err)
-		return err
-	}
 
 	calls[0].Status = 1
 	calls[0].DurationMillSecond = int(dur * 1000)

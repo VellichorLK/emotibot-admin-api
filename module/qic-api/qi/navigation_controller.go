@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -438,8 +439,7 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//FIXME nil
-	err = finishFlowQI(&requestBody, uuid, nil)
+	err = finishFlowQI(&requestBody, uuid)
 	if err != nil {
 		if err == ErrEndTimeSmaller {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -518,6 +518,7 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 	val, ok := navCallCache.GetCache(cacheKey)
 	call, ok2 := val.(*model.Call)
 	if !ok || !ok2 {
+		fmt.Printf("calling the db\n")
 		calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
 		if err != nil {
 			logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
