@@ -173,7 +173,7 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 	endTime := time.Unix(request.EndTime, 0).UTC()
 
 	var platforms []string
-	var genders []string
+	var sex []string
 
 	if request.Platforms != nil {
 		for _, platform := range request.Platforms {
@@ -188,16 +188,16 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 		}
 	}
 
-	if request.Genders != nil {
-		for _, gender := range request.Genders {
-			g, found := services.GetTagNameByID(appID, "sex", gender)
+	if request.Sex != nil {
+		for _, _sex := range request.Sex {
+			s, found := services.GetTagNameByID(appID, "sex", _sex)
 			if !found {
 				err = data.ErrInvalidRequestBody
 				errCode = data.ErrCodeInvalidParameterGender
 				return
 			}
 
-			genders = append(genders, g)
+			sex = append(sex, s)
 		}
 	}
 
@@ -226,7 +226,7 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 			EndTime:      endTime,
 		},
 		Platforms: platforms,
-		Genders:   genders,
+		Sex:       sex,
 		UserID:    request.UserID,
 		RatingMax: request.RatingMax,
 		RatingMin: request.RatingMin,
