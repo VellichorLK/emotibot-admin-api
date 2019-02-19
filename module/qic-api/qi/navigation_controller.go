@@ -463,8 +463,8 @@ const (
 //the speaker in int in navigation flow only
 const (
 	ChannelSilence = iota
-	ChannelHost
-	ChannelGuest
+	ChannelStaff
+	ChannelCustomer
 )
 
 func asrContentToSegment(callID int64, a []model.AsrContent) ([]model.RealSegment, error) {
@@ -475,9 +475,9 @@ func asrContentToSegment(callID int64, a []model.AsrContent) ([]model.RealSegmen
 		s := model.RealSegment{CallID: callID, StartTime: v.StartTime, EndTime: v.EndTime, Text: v.Text, CreateTime: now}
 		switch v.Speaker {
 		case WordStaff:
-			s.Channel = ChannelHost
+			s.Channel = ChannelStaff
 		case WordCustomer:
-			s.Channel = ChannelGuest
+			s.Channel = ChannelCustomer
 		case WordSilence:
 			s.Channel = ChannelSilence
 		default:

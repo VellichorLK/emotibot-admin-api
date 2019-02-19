@@ -473,9 +473,13 @@ type NavFlowSetting struct {
 }
 
 type NavResponse struct {
-	FileName string          `json:"file_name"`
-	Flows    []StreamingFlow `json:"nav_result"`
-	ID       string          `json:"id"`
+	FileName  string    `json:"file_name"`
+	NavResult NavResult `json:"nav_result"`
+	ID        string    `json:"id"`
+}
+
+type NavResult struct {
+	Flows []StreamingFlow `json:"nav_result"`
 }
 type CreditLoc struct {
 	IsIntent  bool `json:"is_intent"`
@@ -687,7 +691,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		flowsSetting = append(flowsSetting, sf)
 	}
 
-	resp.NavResult.Flows = flowsSetting
+	resp.NavResult.NavResult.Flows = flowsSetting
 	resp.Criteria = senGrpCriteria
 	resp.Levels = levels
 	return resp, nil
@@ -761,9 +765,9 @@ func streamingMatch(segs []*SegmentWithSpeaker, s *NavFlowSetting) (map[uint64][
 	for matched := range matchSgID {
 		for _, loc := range s.NodeLocal[int64(matched)] {
 			if loc.IsIntent {
-				s.NavResult.Flows[loc.FlowOrder].Valid = true
+				s.NavResult.NavResult.Flows[loc.FlowOrder].Valid = true
 			} else {
-				s.NavResult.Flows[loc.FlowOrder].Nodes[loc.NodeOrder].Valid = true
+				s.NavResult.NavResult.Flows[loc.FlowOrder].Nodes[loc.NodeOrder].Valid = true
 			}
 		}
 	}
