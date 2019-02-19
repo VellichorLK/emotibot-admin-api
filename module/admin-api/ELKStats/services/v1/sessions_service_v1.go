@@ -308,12 +308,16 @@ func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string) (x
 		session := sessionPtr.(*dataV1.SessionsExportData)
 
 		row := sheet.AddRow()
+		ratingStr := ""
+		if session.Rating > 0 {
+			ratingStr = strconv.FormatInt(session.Rating, 10)
+		}
 		xlsxData := []string{
 			session.SessionID,
 			session.StartTime,
 			session.EndTime,
 			session.UserID,
-			strconv.FormatInt(session.Rating, 10),
+			ratingStr,
 			session.CustomInfo,
 			session.Feedback,
 			session.CustomFeedback,
