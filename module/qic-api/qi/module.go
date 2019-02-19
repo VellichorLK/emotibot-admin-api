@@ -21,7 +21,7 @@ var (
 	ModuleInfo util.ModuleInfo
 	tagDao     model.TagDao
 	callDao    model.CallDao
-	taskDao    model.TaskDao
+	taskDao    *model.TaskSQLDao
 	segmentDao model.SegmentDao
 	producer   *rabbitmq.Producer
 	consumer   *rabbitmq.Consumer
