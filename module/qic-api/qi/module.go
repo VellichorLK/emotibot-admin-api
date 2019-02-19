@@ -151,11 +151,15 @@ func init() {
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
+				callCount = callDao.Count
+				calls = callDao.Calls
 				taskDao = model.NewTaskDao(sqlConn)
+				callTask = taskDao.CallTask
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
 				userValueDao = model.NewUserValueDao(dbLike.Conn())
+				valuesKey = userValueDao.ValuesKey
 
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
