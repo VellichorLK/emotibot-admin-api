@@ -53,6 +53,7 @@ type UserValueQuery struct {
 	ID               []int64
 	UserKeyID        []int64
 	Type             []int8
+	ParentID         []int64
 	IgnoreSoftDelete bool
 	Paging           *Pagination
 }
@@ -66,10 +67,16 @@ func (u *UserValueQuery) whereBuilder(alias string) *whereBuilder {
 	builder.In(fldUserValueID, int64ToWildCard(u.ID...))
 	builder.In(fldUserValueUserKey, int64ToWildCard(u.UserKeyID...))
 	builder.In(fldUserValueType, int8ToWildCard(u.Type...))
+	builder.In(fldUserValueLinkID, int64ToWildCard(u.ParentID...))
 	if !u.IgnoreSoftDelete {
 		builder.Eq(fldUserKeyIsDelete, false)
 	}
 	return builder
+}
+
+// NewUserValueDao create a new UserValueDao with the given db.
+func NewUserValueDao(db SqlLike) *UserValueDao {
+	return &UserValueDao{conn: db}
 }
 
 // UserValues search the user tables and find by it given query.

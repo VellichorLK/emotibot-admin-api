@@ -56,12 +56,19 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
 	}
-	resp, err := CallResps(*query)
+	calls, total, err := CallRespsWithTotal(*query)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get call failed, %v", err))
 		return
 	}
-
+	resp := CallsResponse{
+		Paging: general.Paging{
+			Page:  query.Paging.Page,
+			Limit: query.Paging.Limit,
+			Total: total,
+		},
+		Data: calls,
+	}
 	util.WriteJSON(w, resp)
 }
 
@@ -192,19 +199,19 @@ func callRequest(r *http.Request) (*model.Call, error) {
 			errNo: AdminErrors.ErrnoRequestError,
 		}
 	}
-	calls, err := Calls(nil, model.CallQuery{ID: []int64{id}, EnterpriseID: &enterprise})
+	c, err := Call(id, enterprise)
+	if err == ErrNotFound {
+		return nil, controllerError{
+			error: fmt.Errorf("call_id '%s' is not exist", callID),
+		}
+	}
 	if err != nil {
 		return nil, controllerError{
 			error: fmt.Errorf("failed to query call db, %v", err),
 			errNo: AdminErrors.ErrnoDBError,
 		}
 	}
-	if len(calls) < 1 {
-		return nil, controllerError{
-			error: fmt.Errorf("call_id '%s' is not exist", callID),
-		}
-	}
-	return &calls[0], nil
+	return &c, nil
 }
 
 func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
@@ -274,20 +281,22 @@ func parseJSONKeys(n interface{}) map[string]struct{} {
 	ta := reflect.TypeOf(n)
 	keys := map[string]struct{}{}
 	for i := 0; i < ta.NumField(); i++ {
-		var key string
-		f := ta.Field(i)
-		tag := f.Tag.Get("json")
-		if idx := strings.Index(tag, ","); idx != -1 {
-			key = tag[:idx]
-		} else {
-			key = tag
-			if key == "-" {
-				continue
-			}
+		tag := ta.Field(i).Tag.Get("json")
+		key, _ := getJSONName(tag)
+		if key == "-" {
+			continue
 		}
 		keys[key] = struct{}{}
 	}
 	return keys
+}
+
+func getJSONName(tag string) (string, string) {
+	if idx := strings.Index(tag, ","); idx != -1 {
+		return tag[:idx], tag[idx:]
+	} else {
+		return tag, ""
+	}
 }
 
 // UnmarshalJSON unmarshal request with optional custom columns
@@ -353,29 +362,73 @@ type CallsResponse struct {
 
 //CallResp is the UI struct of the call.
 type CallResp struct {
-	CallID           int64     `json:"call_id"`
-	CallTime         int64     `json:"call_time"`
-	Transaction      int8      `json:"deal"`
-	Status           int64     `json:"status"`
-	UploadTime       int64     `json:"upload_time"`
-	CallLength       float64   `json:"duration"`
-	LeftSilenceTime  float64   `json:"left_silence_time"`
-	RightSilenceTime float64   `json:"right_silence_time"`
-	LeftSpeed        *float64  `json:"left_speed"`
-	RightSpeed       *float64  `json:"right_speed"`
-	FileName         string    `json:"file_name,omitempty"`
-	CallComment      string    `json:"call_comment,omitempty"`
-	Series           string    `json:"series,omitempty"`
-	HostID           string    `json:"staff_id,omitempty"`
-	HostName         string    `json:"staff_name,omitempty"`
-	Extension        string    `json:"extension,omitempty"`
-	Department       string    `json:"department,omitempty"`
-	CustomerID       string    `json:"customer_id,omitempty"`
-	CustomerName     string    `json:"customer_name,omitempty"`
-	CustomerPhone    string    `json:"customer_phone,omitempty"`
-	LeftChannel      string    `json:"left_channel,omitempty"`
-	RightChannel     string    `json:"right_channel,omitempty"`
-	LeftSilenceRate  float64   `json:"left_silence_rate,omitempty"`
-	RightSilenceRate float64   `json:"right_silence_rate,omitempty"`
-	Segments         []segment `json:"segments"`
+	CallID           int64                  `json:"call_id"`
+	CallTime         int64                  `json:"call_time"`
+	Transaction      int8                   `json:"deal"`
+	Status           int64                  `json:"status"`
+	UploadTime       int64                  `json:"upload_time"`
+	CallLength       float64                `json:"duration"`
+	LeftSilenceTime  float64                `json:"left_silence_time"`
+	RightSilenceTime float64                `json:"right_silence_time"`
+	LeftSpeed        *float64               `json:"left_speed"`  // to compatible with old response
+	RightSpeed       *float64               `json:"right_speed"` // to compatible with old response
+	FileName         string                 `json:"file_name,omitempty"`
+	CallComment      string                 `json:"call_comment,omitempty"`
+	Series           string                 `json:"series,omitempty"`
+	HostID           string                 `json:"staff_id,omitempty"`
+	HostName         string                 `json:"staff_name,omitempty"`
+	Extension        string                 `json:"extension,omitempty"`
+	Department       string                 `json:"department,omitempty"`
+	CustomerID       string                 `json:"customer_id,omitempty"`
+	CustomerName     string                 `json:"customer_name,omitempty"`
+	CustomerPhone    string                 `json:"customer_phone,omitempty"`
+	LeftChannel      string                 `json:"left_channel,omitempty"`
+	RightChannel     string                 `json:"right_channel,omitempty"`
+	LeftSilenceRate  float64                `json:"left_silence_rate,omitempty"`
+	RightSilenceRate float64                `json:"right_silence_rate,omitempty"`
+	Segments         []segment              `json:"segments,omitempty"`
+	CustomColumns    map[string]interface{} `json:"-"`
+}
+
+func (c CallResp) MarshalJSON() ([]byte, error) {
+	resp := map[string]interface{}{}
+	v := reflect.ValueOf(c)
+	t := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		tag := t.Field(i).Tag.Get("json")
+		name, opt := getJSONName(tag)
+		if name == "-" {
+			continue
+		}
+		if strings.Contains(opt, "omitempty") {
+			f := v.Field(i)
+			switch f.Kind() {
+			case reflect.String:
+				if f.String() == "" {
+					continue
+				}
+			case reflect.Float64, reflect.Float32:
+				if f.Float() == 0 {
+					continue
+				}
+			case reflect.Int64, reflect.Int32, reflect.Int8:
+				if f.Int() == 0 {
+					continue
+				}
+			case reflect.Slice, reflect.Array, reflect.Map:
+				if f.IsNil() {
+					continue
+				}
+			}
+		}
+
+		resp[name] = v.Field(i).Interface()
+	}
+	for colName, val := range c.CustomColumns {
+		if _, exist := resp[colName]; exist {
+			return nil, fmt.Errorf("custom column %s is overlapped with require column", colName)
+		}
+		resp[colName] = val
+	}
+	return json.Marshal(resp)
 }

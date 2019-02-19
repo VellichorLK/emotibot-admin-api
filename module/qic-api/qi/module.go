@@ -18,16 +18,17 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
-	tagDao     model.TagDao
-	callDao    model.CallDao
-	taskDao    *model.TaskSQLDao
-	segmentDao model.SegmentDao
-	producer   *rabbitmq.Producer
-	consumer   *rabbitmq.Consumer
-	sqlConn    *sql.DB
-	dbLike     model.DBLike
-	volume     string
+	ModuleInfo   util.ModuleInfo
+	tagDao       model.TagDao
+	callDao      model.CallDao = &model.CallSQLDao{}
+	segmentDao   model.SegmentDao
+	taskDao      = &model.TaskSQLDao{}
+	userValueDao = &model.UserValueDao{}
+	producer     *rabbitmq.Producer
+	consumer     *rabbitmq.Consumer
+	sqlConn      *sql.DB
+	dbLike       model.DBLike
+	volume       string
 )
 
 func init() {
@@ -154,6 +155,7 @@ func init() {
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
+				userValueDao = model.NewUserValueDao(dbLike.Conn())
 
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {

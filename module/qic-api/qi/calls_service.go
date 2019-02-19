@@ -12,8 +12,6 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
-	"emotibot.com/emotigo/module/qic-api/util/general"
-
 	"encoding/hex"
 	"time"
 
@@ -24,6 +22,12 @@ import (
 var (
 	//ErrNotFound is indicated the resource is asked, but nowhere to found it.
 	ErrNotFound = errors.New("resource not found")
+)
+
+var (
+	callCount = callDao.Count
+	calls     = callDao.Calls
+	valuesKey = userValueDao.ValuesKey
 )
 
 func HasCall(id int64) (bool, error) {
@@ -63,29 +67,77 @@ func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
 	return callDao.Calls(delegatee, query)
 }
 
-//CallResps query the call and related information from different dao. and assemble it as a CallResp slice.
-func CallResps(query model.CallQuery) (*CallsResponse, error) {
-	if query.Paging == nil {
-		return nil, fmt.Errorf("expect to have paging param")
-	}
-	total, err := callDao.Count(nil, query)
+//CallRespsWithTotal query the call and related information from tasks and calls, and returned it
+func CallRespsWithTotal(query model.CallQuery) (responses []CallResp, total int64, err error) {
+	total, err = callCount(nil, query)
 	if err != nil {
-		return nil, fmt.Errorf("call dao count query failed, %v", err)
+		return nil, 0, fmt.Errorf("call dao count query failed, %v", err)
 	}
-	calls, err := Calls(nil, query)
+	calls, err := calls(nil, query)
 	if err != nil {
-		return nil, fmt.Errorf("call dao call query failed, %v", err)
+		return nil, 0, fmt.Errorf("call dao call query failed, %v", err)
+	}
+	values, err := userValueDao.ValuesKey(nil, model.UserValueQuery{
+		Type:     []int8{model.UserValueTypCall},
+		ParentID: query.ID,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("find user value failed, %v", err)
+	}
+
+	tasks, err := TasksByCalls(calls)
+	if err != nil {
+		return nil, 0, fmt.Errorf("find tasks by calls failed, %v", err)
 	}
 	var result = make([]CallResp, 0, len(calls))
 	for _, c := range calls {
-		t, err := taskDao.CallTask(nil, c)
-		if err != nil {
-			return nil, fmt.Errorf("fetch task failed, %v", err)
+		var t *model.Task
+		for _, t = range tasks {
+			if t.ID == c.TaskID {
+				break
+			}
 		}
-		var transaction int8 = 0
+		var transaction int8
 		if t.IsDeal {
 			transaction = 1
 		}
+		callCustomCols := map[string]interface{}{}
+		for _, v := range values {
+			if v.LinkID == c.ID {
+				switch v.Type {
+				case model.UserKeyTypArray:
+					if rawdata, exist := callCustomCols[v.UserKey.InputName]; !exist {
+						data := []string{v.Value}
+						callCustomCols[v.UserKey.InputName] = data
+					} else {
+						data, ok := rawdata.([]string)
+						if !ok {
+							return nil, 0, fmt.Errorf("call %d value %d said it is array, but %s is not valid", c.ID, v.ID, v.Value)
+						}
+						data = append(data, v.Value)
+					}
+
+				case model.UserKeyTypNumber:
+					intVal, err := strconv.Atoi(v.Value)
+					if err == nil {
+						callCustomCols[v.UserKey.InputName] = intVal
+					} else {
+						fltVal, err := strconv.ParseFloat(v.Value, 64)
+						if err != nil {
+							return nil, 0, fmt.Errorf("call %d value %d said it is number, but %s is not valid", c.ID, v.ID, v.Value)
+						}
+						callCustomCols[v.UserKey.InputName] = fltVal
+					}
+				case model.UserKeyTypTime:
+					fallthrough
+				case model.UserKeyTypString:
+					fallthrough
+				default:
+					callCustomCols[v.UserKey.InputName] = v.Value
+				}
+			}
+		}
+
 		r := CallResp{
 			CallID:        c.ID,
 			FileName:      *c.FileName,
@@ -107,6 +159,7 @@ func CallResps(query model.CallQuery) (*CallsResponse, error) {
 			CallLength:    float64(c.DurationMillSecond) / 1000,
 			LeftSpeed:     c.LeftSpeed,
 			RightSpeed:    c.RightSpeed,
+			CustomColumns: callCustomCols,
 		}
 		if c.LeftSilenceTime != nil {
 			r.LeftSilenceTime = *c.LeftSilenceTime
@@ -119,14 +172,7 @@ func CallResps(query model.CallQuery) (*CallsResponse, error) {
 		result = append(result, r)
 	}
 
-	return &CallsResponse{
-		Paging: general.Paging{
-			Total: total,
-			Limit: query.Paging.Limit,
-			Page:  query.Paging.Page,
-		},
-		Data: result,
-	}, nil
+	return result, total, nil
 }
 
 //NewCall create a call based on the input.
