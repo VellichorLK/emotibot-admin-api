@@ -327,11 +327,11 @@ func resetIntentAutofills(appID string) error {
 				}
 				body.RelatedSentences = string(relatedSentenceJSON)
 
-				body.Sentence = nluResult.Keyword.ToString()
+				body.Sentence = strings.ToLower(util.T2S(nluResult.Keyword.ToString()))
 				body.SentenceCU = "{}"
-				body.SentenceKeywords = nluResult.Keyword.ToString()
-				body.SentenceType = nluResult.SentenceType
-				body.SentencePos = nluResult.Segment.ToFullString()
+				body.SentenceKeywords = strings.ToLower(util.T2S(nluResult.Keyword.ToString()))
+				body.SentenceType = strings.ToLower(util.T2S(nluResult.SentenceType))
+				body.SentencePos = strings.ToLower(util.T2S(nluResult.Segment.ToFullString()))
 				body.Source = time.Now().Format("2006-01-02 15:04:05")
 
 				// Autofill enabled

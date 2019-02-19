@@ -10,8 +10,8 @@ import (
 type SessionsRequest struct {
 	StartTime         int64    `json:"start_time"`
 	EndTime           int64    `json:"end_time"`
-	Platforms         []string `json:"platforms,omitempty"`
-	Genders           []string `json:"genders,omitempty"`
+	Platforms         []string `json:"platform,omitempty"`
+	Sex               []string `json:"sex,omitempty"`
 	UserID            *string  `json:"uid,omitempty"`
 	RatingMax         *int64   `json:"rating_max,omitempty"`
 	RatingMin         *int64   `json:"rating_min,omitempty"`
@@ -20,12 +20,13 @@ type SessionsRequest struct {
 	Feedback          *string  `json:"feedback,omitempty"`
 	Page              *int64   `json:"page,omitempty"`
 	Limit             *int64   `json:"limit,omitempty"`
+	SessionID         *string  `json:"session_id,omitempty"`
 }
 
 type SessionsQuery struct {
 	data.CommonQuery
 	Platforms         []string
-	Genders           []string
+	Sex               []string
 	UserID            *string
 	RatingMax         *int64
 	RatingMin         *int64
@@ -34,6 +35,7 @@ type SessionsQuery struct {
 	Feedback          *string
 	From              int64
 	Limit             int64
+	SessionID         *string
 }
 
 type SessionsResponse struct {
