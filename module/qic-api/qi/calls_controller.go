@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -243,27 +244,83 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 	return reqBody, nil
 }
 
-//  NewCallReq is the concrete request for creat a new call entity.
-//		custom columns need to be checked valid for call's group.
+// NewCallReq is the concrete request for creat a new call entity.
+// 	all fields consider require columns for NewCallReq.
+//	custom columns need to be checked valid for call's group.
 type NewCallReq struct {
-	FileName      string            `json:"file_name"`
-	CallTime      int64             `json:"call_time"`
-	CallComment   string            `json:"call_comment"`
-	Transaction   int64             `json:"transaction"`
-	Series        string            `json:"series"`
-	HostID        string            `json:"host_id"`
-	HostName      string            `json:"host_name"`
-	Extension     string            `json:"extension"`
-	Department    string            `json:"department"`
-	GuestID       string            `json:"customer_id"`
-	GuestName     string            `json:"customer_name"`
-	GuestPhone    string            `json:"customer_phone"`
-	LeftChannel   string            `json:"left_channel"`
-	RightChannel  string            `json:"right_channel"`
-	Enterprise    string            `json:"-"`
-	UploadUser    string            `json:"-"`
-	Type          int8              `json:"-"`
-	CustomColumns map[string]string `json:"-"` //Custom columns of the call.
+	FileName      string                 `json:"file_name"`
+	CallTime      int64                  `json:"call_time"`
+	CallComment   string                 `json:"call_comment"`
+	Transaction   int64                  `json:"transaction"`
+	Series        string                 `json:"series"`
+	HostID        string                 `json:"host_id"`
+	HostName      string                 `json:"host_name"`
+	Extension     string                 `json:"extension"`
+	Department    string                 `json:"department"`
+	GuestID       string                 `json:"customer_id"`
+	GuestName     string                 `json:"customer_name"`
+	GuestPhone    string                 `json:"customer_phone"`
+	LeftChannel   string                 `json:"left_channel"`
+	RightChannel  string                 `json:"right_channel"`
+	Enterprise    string                 `json:"-"`
+	UploadUser    string                 `json:"-"`
+	Type          int8                   `json:"-"`
+	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
+}
+
+var callRequestJSONKeys = parseJSONKeys(NewCallReq{})
+
+func parseJSONKeys(n interface{}) map[string]struct{} {
+	ta := reflect.TypeOf(n)
+	keys := map[string]struct{}{}
+	for i := 0; i < ta.NumField(); i++ {
+		var key string
+		f := ta.Field(i)
+		tag := f.Tag.Get("json")
+		if idx := strings.Index(tag, ","); idx != -1 {
+			key = tag[:idx]
+		} else {
+			key = tag
+			if key == "-" {
+				continue
+			}
+		}
+		keys[key] = struct{}{}
+	}
+	return keys
+}
+
+// UnmarshalJSON unmarshal request with optional custom columns
+func (n *NewCallReq) UnmarshalJSON(data []byte) error {
+	// Because we already overwrite the NewCalReq UnmarshalJSON,
+	// use NewCallReq in json.Unmarshal here will cause looping.
+	// the solution is to create an alias of the type.
+	// check here: http://choly.ca/post/go-json-marshalling/
+	// TODO: since we have all required key maybe we should use reflect to solve this issue here?
+	type Alias NewCallReq
+	a := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(n),
+	}
+	if err := json.Unmarshal(data, &a); err != nil {
+		return err
+	}
+	columns := map[string]interface{}{}
+	if err := json.Unmarshal(data, &columns); err != nil {
+		return err
+	}
+
+	for col, val := range columns {
+		if _, exist := callRequestJSONKeys[col]; exist {
+			continue
+		}
+		if n.CustomColumns == nil {
+			n.CustomColumns = map[string]interface{}{}
+		}
+		n.CustomColumns[col] = val
+	}
+	return nil
 }
 
 type segment struct {
