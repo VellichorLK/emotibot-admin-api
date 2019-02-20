@@ -355,6 +355,7 @@ func (dao *ConversationFlowSqlDaoImpl) GetBySentenceGroupID(sgid []int64, sqlLik
 		err = fmt.Errorf("error while get flow id in dao.GetBySentenceGroupID, err: %s", err.Error())
 		return
 	}
+	defer rows.Close()
 
 	cfid := []uint64{}
 	for rows.Next() {

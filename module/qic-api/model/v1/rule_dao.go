@@ -636,6 +636,7 @@ func (s SQLDao) GetFlowResultFromTmp(tx *sql.Tx, callID uint64) (*QIFlowResult, 
 		logger.Error.Printf("raw bind-data: [%v]\n", callID)
 		return nil, fmt.Errorf("sql executed failed, %v", err)
 	}
+	defer rows.Close()
 
 	var val *sql.NullString
 	result := &QIFlowResult{Result: make([]*QIFlowGroupResult, 0), Sensitive: make([]string, 0)}
