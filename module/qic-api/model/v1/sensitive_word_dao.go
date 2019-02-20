@@ -288,6 +288,7 @@ func (dao *SensitiveWordSqlDao) GetRel(id int64, sqlLike SqlLike) (rel map[int8]
 		err = fmt.Errorf("error while query sensitive words relations, err: %s", err.Error())
 		return
 	}
+	defer rows.Close()
 
 	rel = map[int8][]uint64{}
 	for rows.Next() {
