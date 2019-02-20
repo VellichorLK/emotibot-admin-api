@@ -88,7 +88,7 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 		" WHERE " + fromLevelTbl.nickName + "." + fromLevelTbl.fields[0] + " IN (?" + strings.Repeat(",?", numOfIDs-1) + ")" +
 		" ORDER BY " + orderStr
 
-	//fmt.Printf("%s\n", querySQL)
+	//fmt.Printf("%s\n%+v\n", querySQL, id)
 
 	//transform id to interface type
 	idInterface := make([]interface{}, 0, numOfIDs)

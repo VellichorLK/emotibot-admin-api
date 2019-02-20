@@ -1,15 +1,25 @@
 package model
 
 import (
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+type StreamingPredict struct {
+	ID      int64
+	CallID  int64
+	AppID   int64
+	Predict string
+}
+
 //NavOnTheFlyDao is the interface of navigate on the fly
 type NavOnTheFlyDao interface {
-	InitConerationResult(conn SqlLike, callID int64, modelID int64, val string) (int64, error)
+	InitConversationResult(conn SqlLike, callID int64, modelID int64, val string) (int64, error)
 	UpdateFlowResult(conn SqlLike, callID int64, val string) (int64, error)
+	GetStreamingPredictResult(conn SqlLike, callID int64) ([]*StreamingPredict, error)
 	//	GetFlowResultFrom(conn SqlLike, callID int64) (*QIFlowResult, error)
 }
 
@@ -17,8 +27,8 @@ type NavOnTheFlyDao interface {
 type NavOnTheFlySQLDao struct {
 }
 
-//InitConerationResult inserts the initial conversation result, simply the name
-func (n *NavOnTheFlySQLDao) InitConerationResult(conn SqlLike, callID int64, modelID int64, val string) (int64, error) {
+//InitConversationResult inserts the initial conversation result, simply the name
+func (n *NavOnTheFlySQLDao) InitConversationResult(conn SqlLike, callID int64, modelID int64, val string) (int64, error) {
 	if conn == nil {
 		return 0, ErrNilSqlLike
 	}
@@ -45,4 +55,46 @@ func (n *NavOnTheFlySQLDao) UpdateFlowResult(conn SqlLike, callID int64, val str
 		return 0, fmt.Errorf("sql executed failed, %v", err)
 	}
 	return result.RowsAffected()
+}
+
+//GetStreamingPredictResult gets the streaming result from CUPredict table
+func (n *NavOnTheFlySQLDao) GetStreamingPredictResult(conn SqlLike, callID int64) ([]*StreamingPredict, error) {
+	if conn == nil {
+		return nil, ErrNilSqlLike
+	}
+	flds := []string{
+		fldID,
+		fldCallID,
+		fldAppID,
+		fldCUPredict,
+	}
+	selectedStr := strings.Join(flds, ",")
+
+	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=?", selectedStr, tblCUPredict, fldCallID)
+	rows, err := conn.Query(querySQL, callID)
+	if err != nil {
+		logger.Error.Printf("query failed. raw sql:%s. %s\n ", querySQL, err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	predicts := make([]*StreamingPredict, 0)
+
+	var id int64
+	var call, appID sql.NullInt64
+	var predict sql.NullString
+	for rows.Next() {
+
+		err = rows.Scan(&id, &call, &appID, &predict)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+
+		record := &StreamingPredict{ID: id, CallID: call.Int64, AppID: appID.Int64, Predict: predict.String}
+		predicts = append(predicts, record)
+	}
+
+	return predicts, nil
+
 }
