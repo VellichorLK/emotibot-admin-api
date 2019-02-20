@@ -220,6 +220,19 @@ func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func hanldeDeleteSensitiveWord(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	id := general.ParseID(r)
+
+	err := DeleteSensitiveWord(id, enterprise)
+	if err != nil {
+		logger.Error.Printf("update sensitive word failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
 func handleGetCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
