@@ -43,6 +43,7 @@ func stringsToRunes(ss []string) [][]rune {
 	return words
 }
 
+// CreateSensitiveWord create a uuid and create a new sensitive word
 func CreateSensitiveWord(name, enterprise string, score int, customerException, staffException []string) (uid string, err error) {
 	uid, err = general.UUID()
 	if err != nil {
@@ -61,26 +62,12 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 		Score:      score,
 	}
 
-	var deleted int8
-	sq := &model.SentenceQuery{
-		UUID:       customerException,
-		IsDelete:   &deleted,
-		Enterprise: &enterprise,
-		Limit:      100,
-	}
-
-	customerExceptionSentences, err := sentenceDao.GetSentences(tx, sq)
+	customerExceptionSentences, staffExceptionSentences, err := getWordExceptionSentences(customerException, staffException, enterprise, tx)
 	if err != nil {
 		return
 	}
-	word.CustomerException = model.ToSimpleSentences(customerExceptionSentences)
-
-	sq.UUID = staffException
-	staffExceptionSentences, err := sentenceDao.GetSentences(tx, sq)
-	if err != nil {
-		return
-	}
-	word.StaffException = model.ToSimpleSentences(staffExceptionSentences)
+	word.CustomerException = customerExceptionSentences
+	word.StaffException = staffExceptionSentences
 
 	word.UUID = uid
 	rowID, err := swDao.Create(word, tx)
@@ -91,6 +78,36 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 	word.ID = rowID
 	err = dbLike.Commit(tx)
 	return
+}
+
+// getWordExceptionSentences takes sentence uuid string slice as inputs
+// and output simple sentence slice of customer exception sentences and staff exception sentences
+func getWordExceptionSentences(customerSentences, staffSentences []string, enterprise string, sqlLike model.SqlLike) ([]model.SimpleSentence, []model.SimpleSentence, error) {
+	customerException := []model.SimpleSentence{}
+	staffException := []model.SimpleSentence{}
+
+	var deleted int8
+	sq := &model.SentenceQuery{
+		UUID:       customerSentences,
+		IsDelete:   &deleted,
+		Enterprise: &enterprise,
+		Limit:      100,
+	}
+
+	customerExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+	if err != nil {
+		return customerException, staffException, err
+	}
+	customerException = model.ToSimpleSentences(customerExceptionSentences)
+
+	sq.UUID = staffSentences
+	staffExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+	if err != nil {
+		return customerException, staffException, err
+	}
+	staffException = model.ToSimpleSentences(staffExceptionSentences)
+
+	return customerException, staffException, nil
 }
 
 func GetSensitiveWords(filter *model.SensitiveWordFilter) (total int64, words []model.SensitiveWord, err error) {
@@ -176,28 +193,60 @@ func UpdateSensitiveWord(word *model.SensitiveWord) (err error) {
 		return
 	}
 
-	var deleted int8
-	filter := &model.SensitiveWordFilter{
-		UUID:       []string{word.UUID},
-		Enterprise: &word.Enterprise,
-		Deleted:    &deleted,
-	}
-
-	affectedRows, err := swDao.Delete(filter, tx)
+	err = deleteSensitiveWord(word.UUID, word.Enterprise, tx)
 	if err != nil {
 		return
 	}
 
-	if affectedRows == 0 {
-		err = ErrZeroAffectedRows
+	customerException := toStringSlice(word.CustomerException)
+	staffException := toStringSlice(word.StaffException)
+
+	customerExceptionSentences, staffExceptionSentences, err := getWordExceptionSentences(customerException, staffException, word.Enterprise, tx)
+	if err != nil {
 		return
 	}
+
+	word.CustomerException = customerExceptionSentences
+	word.StaffException = staffExceptionSentences
 
 	_, err = swDao.Create(word, tx)
 	if err != nil {
 		return
 	}
 	err = dbLike.Commit(tx)
+	return
+}
+
+func toStringSlice(simpleSens []model.SimpleSentence) []string {
+	UUID := make([]string, len(simpleSens))
+	for idx, ss := range simpleSens {
+		UUID[idx] = ss.UUID
+	}
+	return UUID
+}
+
+func DeleteSensitiveWord(uid, enterprise string) error {
+	sqlConn := dbLike.Conn()
+
+	return deleteSensitiveWord(uid, enterprise, sqlConn)
+}
+
+func deleteSensitiveWord(uid, enterprise string, sqlLike model.SqlLike) (err error) {
+	var deleted int8
+	filter := &model.SensitiveWordFilter{
+		UUID:       []string{uid},
+		Enterprise: &enterprise,
+		Deleted:    &deleted,
+	}
+
+	affectedRows, err := swDao.Delete(filter, sqlLike)
+	if err != nil {
+		return
+	}
+
+	if affectedRows == 0 {
+		err = ErrZeroAffectedRows
+	}
 	return
 }
 
