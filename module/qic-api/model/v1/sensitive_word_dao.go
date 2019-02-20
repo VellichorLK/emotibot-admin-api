@@ -63,6 +63,7 @@ type SensitiveWordDao interface {
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
 	GetRel(int64, SqlLike) (map[int8][]uint64, error)
 	Delete(*SensitiveWordFilter, SqlLike) (int64, error)
+	Move(*SensitiveWordFilter, int64, SqlLike) (int64, error)
 }
 
 type SensitiveWord struct {
@@ -327,6 +328,36 @@ func (dao *SensitiveWordSqlDao) Delete(filter *SensitiveWordFilter, sqlLike SqlL
 	affectedRows, err = result.RowsAffected()
 	if err != nil {
 		err = fmt.Errorf("error while get rows affected, err: %s", err.Error())
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) Move(filter *SensitiveWordFilter, categoryID int64, sqlLike SqlLike) (affectedRows int64, err error) {
+	conditionStr, values := filter.Where()
+	if len(values) == 0 {
+		return
+	}
+
+	sqlStr := fmt.Sprintf(
+		"UPDATE %s SET %s = %d %s",
+		tblSensitiveWord,
+		fldCategoryID,
+		categoryID,
+		conditionStr,
+	)
+
+	result, err := sqlLike.Exec(sqlStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while move sensitive word to another category, sql: %s", sqlStr)
+		logger.Error.Printf("values: %+v", values)
+		err = fmt.Errorf("error while move sensitive word to another category, err: %s", err.Error())
+		return
+	}
+
+	affectedRows, err = result.RowsAffected()
+	if err != nil {
+		err = fmt.Errorf("error while get affcted rows when move sensitive word to another category, err: %s", err.Error())
+		return
 	}
 	return
 }

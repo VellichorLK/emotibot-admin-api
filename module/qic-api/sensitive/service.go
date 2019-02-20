@@ -250,6 +250,18 @@ func deleteSensitiveWord(uid, enterprise string, sqlLike model.SqlLike) (err err
 	return
 }
 
+func MoveSensitiveWord(UUID []string, enterprise string, categoryID int64) (err error) {
+	sqlConn := dbLike.Conn()
+
+	filter := &model.SensitiveWordFilter{
+		UUID:       UUID,
+		Enterprise: &enterprise,
+	}
+
+	_, err = swDao.Move(filter, categoryID, sqlConn)
+	return
+}
+
 func CreateSensitiveWordCategory(name, enterprise string) (int64, error) {
 	sqlConn := dbLike.Conn()
 

@@ -27,13 +27,14 @@ func init() {
 			util.NewEntryPoint("GET", "word/{id}", []string{}, handleGetSensitiveWord),
 			util.NewEntryPoint("PUT", "word/{id}", []string{}, handleUpdateSensitiveWord),
 			util.NewEntryPoint("DELETE", "word/{id}", []string{}, hanldeDeleteSensitiveWord),
+			util.NewEntryPoint("PUT", "word/move/{id}", []string{}, handleMoveSensitiveWords),
 
 			// category apis
 			util.NewEntryPoint("POST", "category", []string{}, handleCreateSensitiveWordCategory),
 			util.NewEntryPoint("GET", "category", []string{}, handleGetCategory),
 			util.NewEntryPoint("GET", "category/{id}", []string{}, handleGetWordsUnderCategory),
 			util.NewEntryPoint("PUT", "category/{id}", []string{}, handleUpdateCategory),
-			util.NewEntryPoint("DELETE", "category/{id}", []string{}, hanldeDeleteSensitiveWord),
+			util.NewEntryPoint("DELETE", "category/{id}", []string{}, handleDeleteCategory),
 		},
 		OneTimeFunc: map[string]func(){
 			"init db": func() {

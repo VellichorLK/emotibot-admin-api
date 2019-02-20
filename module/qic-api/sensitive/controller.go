@@ -233,6 +233,30 @@ func hanldeDeleteSensitiveWord(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func handleMoveSensitiveWords(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	categoryId, err := parseID(r)
+	if err != nil {
+		util.WriteJSONWithStatus(w, err, http.StatusBadRequest)
+		return
+	}
+
+	var UUID []string
+	err = util.ReadJSON(r, &UUID)
+	if err != nil {
+		util.WriteJSONWithStatus(w, err, http.StatusBadRequest)
+		return
+	}
+
+	err = MoveSensitiveWord(UUID, enterprise, categoryId)
+	if err != nil {
+		logger.Error.Printf("move sensitive words failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
 func handleGetCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
