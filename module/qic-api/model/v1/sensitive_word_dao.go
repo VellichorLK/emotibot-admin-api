@@ -32,11 +32,37 @@ type SensitiveWordFilter struct {
 	Deleted    *int8
 }
 
+func (filter *SensitiveWordFilter) Where() (string, []interface{}) {
+	builder := NewWhereBuilder(andLogic, "")
+
+	if filter.Enterprise != nil {
+		builder.Eq(fldEnterprise, *filter.Enterprise)
+	}
+
+	if filter.Category != nil {
+		builder.Eq(fldCategoryID, *filter.Category)
+	}
+
+	if len(filter.UUID) > 0 {
+		builder.In(fldUUID, stringToWildCard(filter.UUID...))
+	}
+
+	if len(filter.ID) > 0 {
+		builder.In(fldID, int64ToWildCard(filter.ID...))
+	}
+
+	if filter.Deleted != nil {
+		builder.Eq(fldIsDelete, *filter.Deleted)
+	}
+	return builder.ParseWithWhere()
+}
+
 type SensitiveWordDao interface {
 	Create(*SensitiveWord, SqlLike) (int64, error)
 	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
 	GetRel(int64, SqlLike) (map[int8][]uint64, error)
+	Delete(*SensitiveWordFilter, SqlLike) (int64, error)
 }
 
 type SensitiveWord struct {
@@ -177,28 +203,6 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 }
 
 func getSensitiveWordQuerySQL(filter *SensitiveWordFilter) (queryStr string, values []interface{}) {
-	builder := NewWhereBuilder(andLogic, "")
-
-	if filter.Enterprise != nil {
-		builder.Eq(fldEnterprise, *filter.Enterprise)
-	}
-
-	if filter.Category != nil {
-		builder.Eq(fldCategoryID, *filter.Category)
-	}
-
-	if len(filter.UUID) > 0 {
-		builder.In(fldUUID, stringToWildCard(filter.UUID...))
-	}
-
-	if len(filter.ID) > 0 {
-		builder.In(fldID, int64ToWildCard(filter.ID...))
-	}
-
-	if filter.Deleted != nil {
-		builder.Eq(fldIsDelete, *filter.Deleted)
-	}
-
 	fields := []string{
 		fldID,
 		fldUUID,
@@ -209,7 +213,7 @@ func getSensitiveWordQuerySQL(filter *SensitiveWordFilter) (queryStr string, val
 	}
 	fieldStr := strings.Join(fields, ", ")
 
-	conditionStr, values := builder.ParseWithWhere()
+	conditionStr, values := filter.Where()
 	queryStr = fmt.Sprintf(
 		"SELECT %s FROM %s %s",
 		fieldStr,
@@ -299,6 +303,30 @@ func (dao *SensitiveWordSqlDao) GetRel(id int64, sqlLike SqlLike) (rel map[int8]
 		}
 
 		rel[relType] = append(rel[relType], sid)
+	}
+	return
+}
+
+func (dao *SensitiveWordSqlDao) Delete(filter *SensitiveWordFilter, sqlLike SqlLike) (affectedRows int64, err error) {
+	conditionStr, values := filter.Where()
+	deleteStr := fmt.Sprintf(
+		"UPDATE %s SET %s = 1 %s",
+		tblSensitiveWord,
+		fldIsDelete,
+		conditionStr,
+	)
+
+	result, err := sqlLike.Exec(deleteStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while set words deleted, sql: %s", deleteStr)
+		logger.Error.Printf("values: %+v", values)
+		err = fmt.Errorf("error while set words deleted, err: %s", err.Error())
+		return
+	}
+
+	affectedRows, err = result.RowsAffected()
+	if err != nil {
+		err = fmt.Errorf("error while get rows affected, err: %s", err.Error())
 	}
 	return
 }

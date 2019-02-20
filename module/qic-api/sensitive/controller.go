@@ -175,6 +175,51 @@ func handleGetSensitiveWord(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	wUUID := general.ParseID(r)
+
+	swInReq := SensitiveWordInReq{}
+	err := util.ReadJSON(r, &swInReq)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	staffException := []model.SimpleSentence{}
+	for _, sUUID := range swInReq.Exception.Staff {
+		ss := model.SimpleSentence{
+			UUID: sUUID,
+		}
+		staffException = append(staffException, ss)
+	}
+
+	customerException := []model.SimpleSentence{}
+	for _, sUUID := range swInReq.Exception.Staff {
+		ss := model.SimpleSentence{
+			UUID: sUUID,
+		}
+		customerException = append(customerException, ss)
+	}
+
+	word := &model.SensitiveWord{
+		UUID:              wUUID,
+		Name:              swInReq.Name,
+		Enterprise:        enterprise,
+		Score:             swInReq.Score,
+		CustomerException: customerException,
+		StaffException:    staffException,
+	}
+
+	err = UpdateSensitiveWord(word)
+	if err != nil {
+		logger.Error.Printf("update sensitive word failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	return
+}
+
 func handleGetCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 

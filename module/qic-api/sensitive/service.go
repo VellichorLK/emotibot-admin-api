@@ -166,6 +166,41 @@ func GetSensitiveWordInDetail(wUUID string, enterprise string) (word *model.Sens
 	return
 }
 
+func UpdateSensitiveWord(word *model.SensitiveWord) (err error) {
+	if word == nil {
+		return
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return
+	}
+
+	var deleted int8
+	filter := &model.SensitiveWordFilter{
+		UUID:       []string{word.UUID},
+		Enterprise: &word.Enterprise,
+		Deleted:    &deleted,
+	}
+
+	affectedRows, err := swDao.Delete(filter, tx)
+	if err != nil {
+		return
+	}
+
+	if affectedRows == 0 {
+		err = ErrZeroAffectedRows
+		return
+	}
+
+	_, err = swDao.Create(word, tx)
+	if err != nil {
+		return
+	}
+	err = dbLike.Commit(tx)
+	return
+}
+
 func CreateSensitiveWordCategory(name, enterprise string) (int64, error) {
 	sqlConn := dbLike.Conn()
 
