@@ -183,6 +183,7 @@ func (d *SentenceSQLDao) GetSentences(tx SqlLike, sq *SentenceQuery) ([]*Sentenc
 		logger.Error.Printf("Query: %s, Params:%+v, failed. %s\n", queryStr, params, err)
 		return nil, err
 	}
+	defer rows.Close()
 
 	sentences := make([]*Sentence, 0, 10)
 	existMap := make(map[uint64]*Sentence)
