@@ -55,6 +55,18 @@ func (dao *mockDAO) GetBy(filter *model.SensitiveWordFilter, sqlLike model.SqlLi
 	return mockWords, nil
 }
 
+func (dao *mockDAO) GetRel(id int64, sqlLike model.SqlLike) (map[int8][]uint64, error) {
+	return map[int8][]uint64{}, nil
+}
+
+func (dao *mockDAO) Delete(filter *model.SensitiveWordFilter, sqlLike model.SqlLike) (int64, error) {
+	return 1, nil
+}
+
+func (dao *mockDAO) Move(filter *model.SensitiveWordFilter, categoryID int64, sqlLike model.SqlLike) (int64, error) {
+	return 1, nil
+}
+
 func (dao *mockDAO) GetCategories(conn model.SqlLike, q *model.CategoryQuery) ([]*model.CategortInfo, error) {
 	return mockCategories, nil
 }
@@ -210,46 +222,6 @@ func TestGetCategories(t *testing.T) {
 
 		if targetCate.Name != cate.Name {
 			t.Errorf("expect %s but got %s", targetCate.Name, cate.Name)
-			return
-		}
-	}
-}
-
-func TestGetWordsUnderCategory(t *testing.T) {
-	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
-	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
-
-	total, words, err := GetWordsUnderCategory(1, "")
-	if err != nil {
-		t.Errorf("error when test get senitive words under category, err: %s", err.Error())
-		return
-	}
-
-	if total != int64(len(mockWords)) {
-		t.Errorf("expect %d but got: %d", len(mockWords), total)
-		return
-	}
-
-	for idx, w := range words {
-		targetW := mockWords[idx]
-
-		if targetW.UUID != w.UUID {
-			t.Errorf("expect UUID %s but got %s", targetW.UUID, w.UUID)
-			return
-		}
-
-		if targetW.ID != w.ID {
-			t.Errorf("expect ID %d but got %d", targetW.ID, w.ID)
-			return
-		}
-
-		if targetW.Name != w.Name {
-			t.Errorf("expect name %s but got %s", targetW.Name, w.Name)
-			return
-		}
-
-		if targetW.CategoryID != w.CategoryID {
-			t.Errorf("expect category id %d but got %d", targetW.CategoryID, w.CategoryID)
 			return
 		}
 	}
