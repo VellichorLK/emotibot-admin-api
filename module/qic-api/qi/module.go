@@ -121,7 +121,7 @@ func init() {
 				logger.Info.Println("volume: ", volume, "is recognized.")
 
 			},
-			"init db": func() {
+			"init db & rabbitmq": func() {
 				envs := ModuleInfo.Environments
 
 				url := envs["MYSQL_URL"]
@@ -155,9 +155,6 @@ func init() {
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
 
-			},
-			"init RabbitMQ": func() {
-				envs := ModuleInfo.Environments
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")
@@ -168,7 +165,7 @@ func init() {
 					logger.Error.Println("RABBITMQ_PORT is required!")
 					return
 				}
-				_, err := strconv.Atoi(port)
+				_, err = strconv.Atoi(port)
 				if err != nil {
 					logger.Error.Println("RABBITMQ_PORT should be a valid int value, ", err)
 					return
@@ -187,6 +184,7 @@ func init() {
 					QueueName: "dst_queue",
 					MaxRetry:  10,
 				})
+				// require dao init first.
 				consumer.Subscribe(ASRWorkFlow)
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 
