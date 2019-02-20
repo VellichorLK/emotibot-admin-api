@@ -189,5 +189,61 @@ func (u *UserValueDao) DeleteUserValues(delegatee SqlLike, query UserValueQuery)
 // ValuesKey get value and its key.
 // all UserValue's key returned should be populated
 func (u *UserValueDao) ValuesKey(delegatee SqlLike, query UserValueQuery) ([]UserValue, error) {
-	return nil, fmt.Errorf("NOT IMPLEMENTED YET")
+	if delegatee == nil {
+		delegatee = u.conn
+	}
+	var (
+		offsetPart string
+		valCols    = []string{
+			fldUserValueID, fldUserValueLinkID, fldUserValueUserKey,
+			fldUserValueType, fldUserValueVal, fldUserValueIsDelete,
+			fldUserValueCreateTime, fldUserValueUpdateTime,
+		}
+		keyCols = []string{
+			fldUserKeyID, fldUserKeyName, fldUserKeyEnterprise,
+			fldUserKeyInputName, fldUserKeyType, fldUserKeyIsDelete,
+			fldUserKeyCreateTime, fldUserKeyUpdateTime,
+		}
+	)
+	wherePart, data := query.whereSQL("")
+	if query.Paging != nil {
+		offsetPart = query.Paging.offsetSQL()
+	}
+	rawsql := fmt.Sprintf("SELECT v.`%s`, k.`%s` "+
+		"FROM (SELECT * FROM `%s` %s) AS v "+
+		"LEFT JOIN `%s` as k ON v.`%s` = k.`%s` "+
+		"ORDER BY v.`%s` %s",
+		strings.Join(valCols, "`, v.`"), strings.Join(keyCols, "`, k.`"),
+		tblUserValue, wherePart,
+		tblUserKey, fldUserValueUserKey, fldUserKeyID,
+		fldUserValueID, offsetPart,
+	)
+	rows, err := delegatee.Query(rawsql, data...)
+	if err != nil {
+		logger.Error.Println("raw error sql: ", err)
+		return nil, fmt.Errorf("query sql failed, %v", err)
+	}
+	defer rows.Close()
+	var scanned []UserValue
+	for rows.Next() {
+		var (
+			v          UserValue
+			k          UserKey
+			isDeleted  int8
+			keyDeleted int8
+		)
+		rows.Scan(
+			&v.ID, &v.LinkID, &v.UserKeyID,
+			&v.Type, &v.Value, &isDeleted,
+			&v.CreateTime, &v.UpdateTime,
+			&k.ID, &k.Name, &k.Enterprise,
+			&k.InputName, &k.Type, &keyDeleted,
+			&k.CreateTime, &k.UpdateTime,
+		)
+		v.IsDeleted = (isDeleted != 0)
+		k.IsDeleted = (keyDeleted != 0)
+		v.UserKey = &k
+		scanned = append(scanned, v)
+	}
+	return scanned, nil
 }
