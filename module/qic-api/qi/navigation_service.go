@@ -465,6 +465,7 @@ type NavResponse struct {
 	FileName  string    `json:"file_name"`
 	NavResult NavResult `json:"nav_result"`
 	ID        string    `json:"id"`
+	Sensitive []string  `json:"sensitive"`
 }
 
 type NavResult struct {

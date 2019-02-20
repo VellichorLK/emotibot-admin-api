@@ -3,12 +3,12 @@ package qi
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/module/qic-api/util/timecache"
 
@@ -518,7 +518,6 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 	val, ok := navCallCache.GetCache(cacheKey)
 	call, ok2 := val.(*model.Call)
 	if !ok || !ok2 {
-		fmt.Printf("calling the db\n")
 		calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
 		if err != nil {
 			logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
@@ -599,6 +598,17 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+
+	for i := 0; i < len(requestBody); i++ {
+		words, err := sensitive.IsSensitive(requestBody[i].Text)
+		if err != nil {
+			logger.Error.Printf("get sensitive words failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		settings.NavResult.Sensitive = append(settings.NavResult.Sensitive, words...)
+	}
+
 	err = util.WriteJSON(w, &settings.NavResult)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
