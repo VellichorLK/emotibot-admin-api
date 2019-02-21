@@ -14,7 +14,7 @@ func handleTrainAllTags(w http.ResponseWriter, r *http.Request) {
 	_, err := TrainModelByEnterprise(enterprise)
 	if err != nil {
 		if err == ErrTrainingBusy {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusServiceUnavailable)
 		} else {
 			logger.Error.Printf("train failed. %s\n", err)
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
