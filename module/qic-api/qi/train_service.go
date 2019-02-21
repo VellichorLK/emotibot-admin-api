@@ -238,7 +238,7 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 		return 0, ErrNilCon
 	}
 
-	modelID, err := newModelWithConflictDetection(enterprise)
+	modelID, err := newModelWithCollisionDetection(enterprise)
 	if err != nil {
 		logger.Error.Printf("create a model failed. %s\n", err)
 		return 0, err
@@ -354,7 +354,7 @@ var (
 	ErrTrainingBusy = errors.New("training is going")
 )
 
-func newModelWithConflictDetection(enterprise string) (int64, error) {
+func newModelWithCollisionDetection(enterprise string) (int64, error) {
 
 	if dbLike == nil {
 		return 0, ErrNilCon
