@@ -3,6 +3,8 @@ package model
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestITCallDaoCalls(t *testing.T) {
@@ -11,64 +13,75 @@ func TestITCallDaoCalls(t *testing.T) {
 	dao := CallSQLDao{
 		db: db,
 	}
+	//testset is the reverted csv
 	testset := getCallsSeed(t)
-	t.Logf("testset: %+v", testset)
 	var (
 		timestart int64 = 1546598521
 		timeEnd   int64 = timestart + 60
 	)
-
-	testTable := map[string]struct {
-		Input  CallQuery
-		Output []Call
+	testTable := []struct {
+		name string
+		args CallQuery
+		want []Call
 	}{
-		"query all": {
-			CallQuery{}, testset,
+		{
+			"query all",
+			CallQuery{},
+			testset,
 		},
-		"query id": {
+		{
+			"query id",
 			CallQuery{ID: []int64{1}},
-			testset[1:],
+			[]Call{testset[2]},
 		},
-		"query uuid": {
+		{
+			"query uuid",
 			CallQuery{
 				UUID: []string{"ec94dfd6e3974671b8a3533c752e51a6"},
 			},
-			testset[:1],
+			[]Call{testset[1]},
 		},
-		"query status": {
+		{
+			"query status",
 			CallQuery{Status: []int8{CallStatusDone}},
-			testset[:1],
+			[]Call{testset[0], testset[1]},
 		},
-		"query call time start": {
+		{
+			"query call time start",
 			CallQuery{CallTimeStart: &timestart},
 			testset,
 		},
-		"query call time end": {
+		{
+			"query call time end",
 			CallQuery{CallTimeEnd: &timeEnd},
-			testset[1:],
+			[]Call{testset[2]},
 		},
-		"query call time range": {
+		{
+			"query call time range",
 			CallQuery{
 				CallTimeStart: &timestart,
 				CallTimeEnd:   &timeEnd,
 			},
-			testset[1:],
+			[]Call{testset[2]},
 		},
-		"query staff id": {
+		{
+			"query staff id",
 			CallQuery{StaffID: []string{"1"}},
 			testset,
 		},
+		{
+			"query call type",
+			CallQuery{Typ: []int8{CallTypeWholeFile}},
+			[]Call{testset[1], testset[2]},
+		},
 	}
-	for name, tc := range testTable {
-		t.Run(name, func(tt *testing.T) {
-			calls, err := dao.Calls(nil, tc.Input)
+	for _, tt := range testTable {
+		t.Run(tt.name, func(t *testing.T) {
+			calls, err := dao.Calls(nil, tt.args)
 			if err != nil {
-				tt.Fatal("query calls expect to be ok, but got ", err)
+				t.Fatal("query calls expect to be ok, but got ", err)
 			}
-			if !reflect.DeepEqual(calls, tc.Output) {
-				tt.Logf("calls:\n%+v\nexpect output:\n%+v", calls, tc.Output)
-				tt.Error("expect query result equal to the expect output, but not equal")
-			}
+			assert.Equal(t, tt.want, calls)
 		})
 	}
 
