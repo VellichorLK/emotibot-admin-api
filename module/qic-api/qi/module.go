@@ -85,8 +85,9 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
-			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
-			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
+			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
+			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
+			//util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation/{id}", []string{}, handleGetFlowSetting),
 			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/name", []string{}, handleModifyFlow),
