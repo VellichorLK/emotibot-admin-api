@@ -277,6 +277,7 @@ func SoftDeleteSentence(sentenceUUID string, enterprise string) (int64, error) {
 	if err != nil {
 		return 0, nil
 	}
+	defer dbLike.ClearTransition(tx)
 
 	var deleted int8
 	q := &model.SentenceQuery{UUID: []string{sentenceUUID}, Enterprise: &enterprise, IsDelete: &deleted}

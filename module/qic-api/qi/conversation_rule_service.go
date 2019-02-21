@@ -104,6 +104,7 @@ func GetConversationRulesBy(filter *model.ConversationRuleFilter) (total int64, 
 	if err != nil {
 		return
 	}
+	defer dbLike.ClearTransition(tx)
 
 	total, err = conversationRuleDao.CountBy(filter, tx)
 	if err != nil {
