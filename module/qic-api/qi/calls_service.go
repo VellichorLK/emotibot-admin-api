@@ -122,7 +122,7 @@ var (
 			callCustomCols := map[string]interface{}{}
 			for _, v := range values {
 				if v.LinkID == c.ID {
-					switch v.Type {
+					switch v.UserKey.Type {
 					case model.UserKeyTypArray:
 						if rawdata, exist := callCustomCols[v.UserKey.InputName]; !exist {
 							data := []string{v.Value}
