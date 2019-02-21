@@ -590,20 +590,21 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	/*
+		predict, err := json.Marshal(settings)
+		if err != nil {
+			logger.Error.Printf("marshal setting failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
 
-	predict, err := json.Marshal(settings)
-	if err != nil {
-		logger.Error.Printf("marshal setting failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = updateStreamingPredict(call.ID, string(predict))
-	if err != nil {
-		logger.Error.Printf("update setting %d failed. %s\n", call.ID, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
+		_, err = updateStreamingPredict(call.ID, string(predict))
+		if err != nil {
+			logger.Error.Printf("update setting %d failed. %s\n", call.ID, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+	*/
 
 	resp := &NavMatchedResponse{NavResult: matchedInfo, Sensitive: make([]string, 0)}
 
