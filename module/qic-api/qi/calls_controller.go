@@ -402,3 +402,84 @@ func (c CallResp) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(resp)
 }
+
+func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
+	var err error
+	query := model.CallQuery{}
+	paging := &model.Pagination{}
+	values := r.URL.Query()
+	// order := values.Get("order")
+	// if order == "" {
+	// 	return nil, fmt.Errorf("require order query string")
+	// }
+	// paging.Order = order
+	ent := requestheader.GetEnterpriseID(r)
+	if ent == "" {
+		return nil, fmt.Errorf("enterprise ID is required")
+	}
+	query.EnterpriseID = &ent
+	limit := values.Get("limit")
+	if limit == "" {
+		return nil, fmt.Errorf("require limit query string")
+	}
+	paging.Limit, err = strconv.Atoi(limit)
+	if err != nil {
+		return nil, fmt.Errorf("limit is not a valid int, %v", err)
+	}
+	page := values.Get("page")
+	if page == "" {
+		return nil, fmt.Errorf("require page query string")
+	}
+	paging.Page, err = strconv.Atoi(page)
+	if err != nil {
+		return nil, fmt.Errorf("page is not a valid int, %v", err)
+	}
+	query.Paging = paging
+
+	// if content := values.Get("content"); content != "" {
+	// 	query.Content = &content
+	// }
+	if start := values.Get("start"); start != "" {
+		startTime, err := strconv.ParseInt(start, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("start is not a valid int, %v", err)
+		}
+		query.CallTimeStart = &startTime
+	}
+	if end := values.Get("end"); end != "" {
+		endTime, err := strconv.ParseInt(end, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("end is not a valid int, %v", err)
+		}
+		query.CallTimeEnd = &endTime
+	}
+	if statusGrp := values["status"]; len(statusGrp) > 0 {
+		query.Status = make([]int8, 0, len(statusGrp))
+		for _, status := range statusGrp {
+			statusTyp, err := strconv.ParseInt(status, 10, 8)
+			statusInt8 := int8(statusTyp)
+			if err != nil || !model.ValidCallStatus(statusInt8) {
+				return nil, fmt.Errorf("status %s is not a valid status flag", status)
+			}
+			query.Status = append(query.Status, statusInt8)
+		}
+	}
+	if phone := values.Get("customer_phone"); phone != "" {
+		query.CustomerPhone = &phone
+	}
+	if isTx := values.Get("deal"); isTx != "" {
+		transaction, err := strconv.Atoi(isTx)
+		if err != nil || (transaction != 0 && transaction != 1) {
+			return nil, fmt.Errorf("deal is not a valid value")
+		}
+		txInt8 := int8(transaction)
+		query.DealStatus = &txInt8
+	}
+	if extension := values.Get("extension"); extension != "" {
+		query.Ext = &extension
+	}
+	if department := values.Get("department"); department != "" {
+		query.Department = &department
+	}
+	return &query, nil
+}

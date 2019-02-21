@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"path"
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/logger"
-
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
 	"encoding/hex"
 	"time"
@@ -24,11 +21,38 @@ var (
 	ErrNotFound = errors.New("resource not found")
 )
 
+// dao dependencies for call service.
 var (
 	callCount = callDao.Count
 	calls     = callDao.Calls
 	valuesKey = userValueDao.ValuesKey
 )
+
+var callTypeDict = map[string]int8{
+	CallStaffRoleName:    model.CallChanStaff,
+	CallCustomerRoleName: model.CallChanCustomer,
+}
+
+const (
+	CallStaffRoleName    = "staff"
+	CallCustomerRoleName = "customer"
+)
+
+func callRoleTyp(role string) int8 {
+	value, found := callTypeDict[role]
+	if !found {
+		return model.CallChanDefault
+	}
+	return value
+}
+func callRoleTypStr(typ int8) string {
+	for key, val := range callTypeDict {
+		if val == typ {
+			return key
+		}
+	}
+	return "default"
+}
 
 func HasCall(id int64) (bool, error) {
 	count, err := callDao.Count(nil, model.CallQuery{
@@ -272,6 +296,11 @@ func UpdateCall(call *model.Call) error {
 
 //ConfirmCall is the workflow to update call File Path and send the request into message queue.
 func ConfirmCall(call *model.Call) error {
+	type ASRInput struct {
+		Version float64 `json:"version"`
+		CallID  string  `json:"call_id"`
+		Path    string  `json:"path"`
+	}
 	//TODO: if call already Confirmed, it should not be able to
 	if call.FilePath == nil {
 		return fmt.Errorf("call FilePath should not be nil")
@@ -303,117 +332,4 @@ func ConfirmCall(call *model.Call) error {
 		return fmt.Errorf("publish failed, %v", err)
 	}
 	return nil
-}
-
-type ASRInput struct {
-	Version float64 `json:"version"`
-	CallID  string  `json:"call_id"`
-	Path    string  `json:"path"`
-}
-
-func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
-	var err error
-	query := model.CallQuery{}
-	paging := &model.Pagination{}
-	values := r.URL.Query()
-	// order := values.Get("order")
-	// if order == "" {
-	// 	return nil, fmt.Errorf("require order query string")
-	// }
-	// paging.Order = order
-	ent := requestheader.GetEnterpriseID(r)
-	if ent == "" {
-		return nil, fmt.Errorf("enterprise ID is required")
-	}
-	query.EnterpriseID = &ent
-	limit := values.Get("limit")
-	if limit == "" {
-		return nil, fmt.Errorf("require limit query string")
-	}
-	paging.Limit, err = strconv.Atoi(limit)
-	if err != nil {
-		return nil, fmt.Errorf("limit is not a valid int, %v", err)
-	}
-	page := values.Get("page")
-	if page == "" {
-		return nil, fmt.Errorf("require page query string")
-	}
-	paging.Page, err = strconv.Atoi(page)
-	if err != nil {
-		return nil, fmt.Errorf("page is not a valid int, %v", err)
-	}
-	query.Paging = paging
-
-	// if content := values.Get("content"); content != "" {
-	// 	query.Content = &content
-	// }
-	if start := values.Get("start"); start != "" {
-		startTime, err := strconv.ParseInt(start, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("start is not a valid int, %v", err)
-		}
-		query.CallTimeStart = &startTime
-	}
-	if end := values.Get("end"); end != "" {
-		endTime, err := strconv.ParseInt(end, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("end is not a valid int, %v", err)
-		}
-		query.CallTimeEnd = &endTime
-	}
-	if statusGrp := values["status"]; len(statusGrp) > 0 {
-		query.Status = make([]int8, 0, len(statusGrp))
-		for _, status := range statusGrp {
-			statusTyp, err := strconv.ParseInt(status, 10, 8)
-			statusInt8 := int8(statusTyp)
-			if err != nil || !model.ValidCallStatus(statusInt8) {
-				return nil, fmt.Errorf("status %s is not a valid status flag", status)
-			}
-			query.Status = append(query.Status, statusInt8)
-		}
-	}
-	if phone := values.Get("customer_phone"); phone != "" {
-		query.CustomerPhone = &phone
-	}
-	if isTx := values.Get("deal"); isTx != "" {
-		transaction, err := strconv.Atoi(isTx)
-		if err != nil || (transaction != 0 && transaction != 1) {
-			return nil, fmt.Errorf("deal is not a valid value")
-		}
-		txInt8 := int8(transaction)
-		query.DealStatus = &txInt8
-	}
-	if extension := values.Get("extension"); extension != "" {
-		query.Ext = &extension
-	}
-	if department := values.Get("department"); department != "" {
-		query.Department = &department
-	}
-	return &query, nil
-}
-
-var callTypeDict = map[string]int8{
-	CallStaffRoleName:    model.CallChanStaff,
-	CallCustomerRoleName: model.CallChanCustomer,
-}
-
-const (
-	CallStaffRoleName    = "staff"
-	CallCustomerRoleName = "customer"
-)
-
-func callRoleTyp(role string) int8 {
-	value, found := callTypeDict[role]
-	if !found {
-		return model.CallChanDefault
-	}
-	return value
-}
-func callRoleTypStr(typ int8) string {
-	for key, val := range callTypeDict {
-		if val == typ {
-			return key
-		}
-	}
-	return "default"
 }
