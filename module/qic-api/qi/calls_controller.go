@@ -24,28 +24,21 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
-func CallsDetailHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := callRequest(r)
-	if ae, ok := err.(adminError); ok {
-		util.ReturnError(w, ae.ErrorNo(), fmt.Sprintf("call request error: %v", ae))
-		return
-	} else if err != nil {
-		//Unknown error
-		util.ReturnError(w, 666, fmt.Sprintf("unknown error, %v", err))
-		return
+// CallsDetailHandler fetch a single call with its segments.
+func CallsDetailHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
+	responses, _, err := CallRespsWithTotal(model.CallQuery{
+		ID: []int64{c.ID},
+	})
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("fetch task failed, %v", err))
 	}
-	results, err := getSegments(*c)
+	resp := responses[0]
+	resp.Segments, err = getSegments(*c)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get segment failed, %v", err))
 		return
 	}
-	//TODO: Detail need the result dao implemented
-	resp := CallDetail{
-		CallID:   c.ID,
-		Status:   c.Status,
-		Segment:  results,
-		FileName: *c.FileName,
-	}
+
 	util.WriteJSON(w, resp)
 }
 
@@ -72,6 +65,7 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, resp)
 }
 
+// NewCallsHandler create a call but no upload file itself.
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		CallID int64 `json:"call_id"`
@@ -92,16 +86,7 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, resp)
 }
 
-func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := callRequest(r)
-	if ae, ok := err.(adminError); ok {
-		util.ReturnError(w, ae.ErrorNo(), ae.Error())
-		return
-	} else if err != nil {
-		util.ReturnError(w, 666, fmt.Sprintf("unknown error: %v", err))
-		return
-	}
-
+func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
 	f, header, err := r.FormFile("upfile")
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("retrive upfile failed, %v", err))
@@ -143,15 +128,7 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
-	c, err := callRequest(r)
-	if ae, ok := err.(adminError); ok {
-		util.ReturnError(w, ae.ErrorNo(), ae.Error())
-		return
-	} else if err != nil {
-		util.ReturnError(w, 666, fmt.Sprintf("unknown error: %v", err))
-		return
-	}
+func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
 	if c.FilePath == nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
 		return
@@ -173,45 +150,38 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// callRequest receive the request and get the call model from call_id.
-// an error will returned if failure happened.
-// the error return should be compatible to adminError interface.
-func callRequest(r *http.Request) (*model.Call, error) {
-	const IDKey = "call_id"
-	callID := mux.Vars(r)[IDKey]
-	if callID == "" {
-		return nil, controllerError{
-			error: fmt.Errorf("require %s in path", IDKey),
-			errNo: AdminErrors.ErrnoRequestError,
+// callRequest is a middleware for injecting call into next.
+// it extract the call model from call_id path and enterprise header.
+// any request error will terminate handler as BadRequest.
+func callRequest(next func(w http.ResponseWriter, r *http.Request, c *model.Call)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const IDKey = "call_id"
+		callID := mux.Vars(r)[IDKey]
+		if callID == "" {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require %s in path", IDKey))
+			return
 		}
-	}
-	id, err := strconv.ParseInt(callID, 10, 64)
-	if err != nil {
-		return nil, controllerError{
-			error: fmt.Errorf("invalid call_id '%s', need to be int", callID),
-			errNo: AdminErrors.ErrnoRequestError,
+		id, err := strconv.ParseInt(callID, 10, 64)
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int", callID))
+			return
 		}
-	}
-	enterprise := requestheader.GetEnterpriseID(r)
-	if enterprise == "" {
-		return nil, controllerError{
-			error: fmt.Errorf("empty enterprise ID"),
-			errNo: AdminErrors.ErrnoRequestError,
+		enterprise := requestheader.GetEnterpriseID(r)
+		if enterprise == "" {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("empty enterprise ID"))
+			return
 		}
-	}
-	c, err := Call(id, enterprise)
-	if err == ErrNotFound {
-		return nil, controllerError{
-			error: fmt.Errorf("call_id '%s' is not exist", callID),
+		c, err := Call(id, enterprise)
+		if err == ErrNotFound {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
+			return
 		}
-	}
-	if err != nil {
-		return nil, controllerError{
-			error: fmt.Errorf("failed to query call db, %v", err),
-			errNo: AdminErrors.ErrnoDBError,
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("failed to query db, %v", err))
+			return
 		}
+		next(w, r, &c)
 	}
-	return &c, nil
 }
 
 func extractNewCallReq(r *http.Request) (*NewCallReq, error) {

@@ -43,136 +43,150 @@ func HasCall(id int64) (bool, error) {
 	return false, nil
 }
 
+var (
+	call = func(callID int64, enterprise string) (c model.Call, err error) {
+		query := model.CallQuery{
+			ID: []int64{callID},
+		}
+		if enterprise != "" {
+			query.EnterpriseID = &enterprise
+		}
+		calls, err := callDao.Calls(nil, query)
+		if err != nil {
+			return c, fmt.Errorf("get calls failed, %v", err)
+		}
+		if len(calls) < 1 {
+			return c, ErrNotFound
+		}
+		return calls[0], nil
+	}
+	callRespsWithTotal = func(query model.CallQuery) (responses []CallResp, total int64, err error) {
+		total, err = callCount(nil, query)
+		if err != nil {
+			return nil, 0, fmt.Errorf("call dao count query failed, %v", err)
+		}
+		calls, err := calls(nil, query)
+		if err != nil {
+			return nil, 0, fmt.Errorf("call dao call query failed, %v", err)
+		}
+		values, err := userValueDao.ValuesKey(nil, model.UserValueQuery{
+			Type:     []int8{model.UserValueTypCall},
+			ParentID: query.ID,
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("find user value failed, %v", err)
+		}
+
+		tasks, err := TasksByCalls(calls)
+		if err != nil {
+			return nil, 0, fmt.Errorf("find tasks by calls failed, %v", err)
+		}
+		var result = make([]CallResp, 0, len(calls))
+		for _, c := range calls {
+			var t *model.Task
+			for _, t = range tasks {
+				if t.ID == c.TaskID {
+					break
+				}
+			}
+			var transaction int8
+			if t.IsDeal {
+				transaction = 1
+			}
+			callCustomCols := map[string]interface{}{}
+			for _, v := range values {
+				if v.LinkID == c.ID {
+					switch v.Type {
+					case model.UserKeyTypArray:
+						if rawdata, exist := callCustomCols[v.UserKey.InputName]; !exist {
+							data := []string{v.Value}
+							callCustomCols[v.UserKey.InputName] = data
+						} else {
+							data, ok := rawdata.([]string)
+							if !ok {
+								return nil, 0, fmt.Errorf("call %d value %d said it is array, but %s is not valid", c.ID, v.ID, v.Value)
+							}
+							data = append(data, v.Value)
+						}
+
+					case model.UserKeyTypNumber:
+						intVal, err := strconv.Atoi(v.Value)
+						if err == nil {
+							callCustomCols[v.UserKey.InputName] = intVal
+						} else {
+							fltVal, err := strconv.ParseFloat(v.Value, 64)
+							if err != nil {
+								return nil, 0, fmt.Errorf("call %d value %d said it is number, but %s is not valid", c.ID, v.ID, v.Value)
+							}
+							callCustomCols[v.UserKey.InputName] = fltVal
+						}
+					case model.UserKeyTypTime:
+						fallthrough
+					case model.UserKeyTypString:
+						fallthrough
+					default:
+						callCustomCols[v.UserKey.InputName] = v.Value
+					}
+				}
+			}
+
+			r := CallResp{
+				CallID:        c.ID,
+				FileName:      *c.FileName,
+				CallTime:      c.CallUnixTime,
+				CallComment:   *c.Description,
+				Transaction:   transaction,
+				Series:        t.Series,
+				HostID:        c.StaffID,
+				HostName:      c.StaffName,
+				Extension:     c.Ext,
+				Department:    c.Department,
+				CustomerID:    c.CustomerID,
+				CustomerName:  c.CustomerName,
+				CustomerPhone: c.CustomerPhone,
+				LeftChannel:   callRoleTypStr(c.LeftChanRole),
+				RightChannel:  callRoleTypStr(c.RightChanRole),
+				Status:        int64(c.Status),
+				UploadTime:    c.UploadUnixTime,
+				CallLength:    float64(c.DurationMillSecond) / 1000,
+				LeftSpeed:     c.LeftSpeed,
+				RightSpeed:    c.RightSpeed,
+				CustomColumns: callCustomCols,
+			}
+			if c.LeftSilenceTime != nil {
+				r.LeftSilenceTime = *c.LeftSilenceTime
+				r.LeftSilenceRate = (r.LeftSilenceTime * 1000.0) / float64(c.DurationMillSecond)
+			}
+			if c.RightSilenceTime != nil {
+				r.RightSilenceRate = *c.RightSilenceTime
+				r.RightSilenceRate = (r.RightSilenceTime * 1000.0) / float64(c.DurationMillSecond)
+			}
+			result = append(result, r)
+		}
+
+		return result, total, nil
+	}
+)
+
 // Call return a call by given callID and enterprise
 // If enterprise is empty, it will ignore it in conditions.
 // If callID can not found, a ErrNotFound will returned
 func Call(callID int64, enterprise string) (c model.Call, err error) {
-	query := model.CallQuery{
-		ID: []int64{callID},
-	}
-	if enterprise != "" {
-		query.EnterpriseID = &enterprise
-	}
-	calls, err := callDao.Calls(nil, query)
-	if err != nil {
-		return c, fmt.Errorf("get calls failed, %v", err)
-	}
-	if len(calls) < 1 {
-		return c, ErrNotFound
-	}
-	return calls[0], nil
+	return call(callID, enterprise)
 }
 
+// Calls is just a wrapper for callDao's calls.
+// any usage need a more convenient service that retrive one element or with its task and user values.
+// Should try Call or CallRespsWithTotal.
+// It is consider to be deprecate or refractor.
 func Calls(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error) {
-	return callDao.Calls(delegatee, query)
+	return calls(delegatee, query)
 }
 
-//CallRespsWithTotal query the call and related information from tasks and calls, and returned it
+// CallRespsWithTotal query the call and  tasks and user values to assemble the call responses.
+// It also returned the total count for call if query pagination is not nil.
 func CallRespsWithTotal(query model.CallQuery) (responses []CallResp, total int64, err error) {
-	total, err = callCount(nil, query)
-	if err != nil {
-		return nil, 0, fmt.Errorf("call dao count query failed, %v", err)
-	}
-	calls, err := calls(nil, query)
-	if err != nil {
-		return nil, 0, fmt.Errorf("call dao call query failed, %v", err)
-	}
-	values, err := userValueDao.ValuesKey(nil, model.UserValueQuery{
-		Type:     []int8{model.UserValueTypCall},
-		ParentID: query.ID,
-	})
-	if err != nil {
-		return nil, 0, fmt.Errorf("find user value failed, %v", err)
-	}
-
-	tasks, err := TasksByCalls(calls)
-	if err != nil {
-		return nil, 0, fmt.Errorf("find tasks by calls failed, %v", err)
-	}
-	var result = make([]CallResp, 0, len(calls))
-	for _, c := range calls {
-		var t *model.Task
-		for _, t = range tasks {
-			if t.ID == c.TaskID {
-				break
-			}
-		}
-		var transaction int8
-		if t.IsDeal {
-			transaction = 1
-		}
-		callCustomCols := map[string]interface{}{}
-		for _, v := range values {
-			if v.LinkID == c.ID {
-				switch v.Type {
-				case model.UserKeyTypArray:
-					if rawdata, exist := callCustomCols[v.UserKey.InputName]; !exist {
-						data := []string{v.Value}
-						callCustomCols[v.UserKey.InputName] = data
-					} else {
-						data, ok := rawdata.([]string)
-						if !ok {
-							return nil, 0, fmt.Errorf("call %d value %d said it is array, but %s is not valid", c.ID, v.ID, v.Value)
-						}
-						data = append(data, v.Value)
-					}
-
-				case model.UserKeyTypNumber:
-					intVal, err := strconv.Atoi(v.Value)
-					if err == nil {
-						callCustomCols[v.UserKey.InputName] = intVal
-					} else {
-						fltVal, err := strconv.ParseFloat(v.Value, 64)
-						if err != nil {
-							return nil, 0, fmt.Errorf("call %d value %d said it is number, but %s is not valid", c.ID, v.ID, v.Value)
-						}
-						callCustomCols[v.UserKey.InputName] = fltVal
-					}
-				case model.UserKeyTypTime:
-					fallthrough
-				case model.UserKeyTypString:
-					fallthrough
-				default:
-					callCustomCols[v.UserKey.InputName] = v.Value
-				}
-			}
-		}
-
-		r := CallResp{
-			CallID:        c.ID,
-			FileName:      *c.FileName,
-			CallTime:      c.CallUnixTime,
-			CallComment:   *c.Description,
-			Transaction:   transaction,
-			Series:        t.Series,
-			HostID:        c.StaffID,
-			HostName:      c.StaffName,
-			Extension:     c.Ext,
-			Department:    c.Department,
-			CustomerID:    c.CustomerID,
-			CustomerName:  c.CustomerName,
-			CustomerPhone: c.CustomerPhone,
-			LeftChannel:   callRoleTypStr(c.LeftChanRole),
-			RightChannel:  callRoleTypStr(c.RightChanRole),
-			Status:        int64(c.Status),
-			UploadTime:    c.UploadUnixTime,
-			CallLength:    float64(c.DurationMillSecond) / 1000,
-			LeftSpeed:     c.LeftSpeed,
-			RightSpeed:    c.RightSpeed,
-			CustomColumns: callCustomCols,
-		}
-		if c.LeftSilenceTime != nil {
-			r.LeftSilenceTime = *c.LeftSilenceTime
-			r.LeftSilenceRate = (r.LeftSilenceTime * 1000.0) / float64(c.DurationMillSecond)
-		}
-		if c.RightSilenceTime != nil {
-			r.RightSilenceRate = *c.RightSilenceTime
-			r.RightSilenceRate = (r.RightSilenceTime * 1000.0) / float64(c.DurationMillSecond)
-		}
-		result = append(result, r)
-	}
-
-	return result, total, nil
+	return callRespsWithTotal(query)
 }
 
 //NewCall create a call based on the input.
@@ -256,7 +270,7 @@ func UpdateCall(call *model.Call) error {
 	return callDao.SetCall(nil, *call)
 }
 
-//ConfirmCall is the workflow to update call fp and
+//ConfirmCall is the workflow to update call File Path and send the request into message queue.
 func ConfirmCall(call *model.Call) error {
 	//TODO: if call already Confirmed, it should not be able to
 	if call.FilePath == nil {
