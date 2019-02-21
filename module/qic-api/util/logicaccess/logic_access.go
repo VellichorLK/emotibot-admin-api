@@ -223,7 +223,7 @@ func (a *Client) Status(d *TrainAPPID) (string, error) {
 		logger.Error.Printf("Unmarshal failed. %s. %s\n", err, resp)
 		return "", err
 	}
-	return statusMsg.Status, errors.New(statusMsg.Err)
+	return statusMsg.Status, err
 }
 
 //PredictAndUnMarshal calls the cu module to predict the result and unmarshal

@@ -177,22 +177,57 @@ func TrainOneModelByEnterprise(tags []model.Tag, modelID int64, enterprise strin
 
 		switch tag.Typ {
 		case 1: //keyword
-			data := &logicaccess.TrainKeywordData{Tag: tag.ID, Words: pos}
-			unit.Keyword.Data = append(unit.Keyword.Data, data)
+			if len(pos) == 0 {
+				logger.Warn.Printf("tag %d has no keywords\n", tag.ID)
+			} else {
+				data := &logicaccess.TrainKeywordData{Tag: tag.ID, Words: pos}
+				unit.Keyword.Data = append(unit.Keyword.Data, data)
+			}
 		case 2: //dialog_act
-			data := &logicaccess.TrainTagData{Tag: tag.ID, PosSentence: pos, NegSentence: neg}
-			unit.Dialog.Data = append(unit.Dialog.Data, data)
+			if len(pos) == 0 && len(neg) == 0 {
+				logger.Warn.Printf("tag %d has no pos and neg\n", tag.ID)
+			} else {
+				data := &logicaccess.TrainTagData{Tag: tag.ID, PosSentence: pos, NegSentence: neg}
+				unit.Dialog.Data = append(unit.Dialog.Data, data)
+			}
 		case 3: //user_response
-			data := &logicaccess.TrainTagData{Tag: tag.ID, PosSentence: pos, NegSentence: neg}
-			unit.UsrResponse.Data = append(unit.UsrResponse.Data, data)
+			if len(pos) == 0 && len(neg) == 0 {
+				logger.Warn.Printf("tag %d has no pos and neg\n", tag.ID)
+			} else {
+				data := &logicaccess.TrainTagData{Tag: tag.ID, PosSentence: pos, NegSentence: neg}
+				unit.UsrResponse.Data = append(unit.UsrResponse.Data, data)
+			}
 		default:
 			logger.Warn.Printf("tag %d has unknown type %d, ignore it\n", tag.ID, tag.Typ)
 			continue
 		}
 	}
+
 	err := trainer.Train(unit)
 	if err != nil {
 		return err
+	}
+
+	err = waitTrainingModel(modelID)
+
+	return err
+}
+
+func waitTrainingModel(modelID int64) error {
+	//get the status of training model to make sure it is finished
+	for {
+		status, err := trainer.Status(&logicaccess.TrainAPPID{ID: uint64(modelID)})
+		if err != nil {
+			logger.Error.Printf("get status of training failed. %s,%s\n", status, err)
+			return err
+		}
+		if status == "ready" {
+			break
+		} else if status == "error" {
+			logger.Error.Printf("training model error\n")
+			return errors.New("model training error")
+		}
+		time.Sleep(1 * time.Second)
 	}
 	return nil
 }
@@ -283,6 +318,9 @@ func setUnloadModelTimer(id int64, d time.Duration) error {
 
 //GetUsingModelByEnterprise gets the using model id
 func GetUsingModelByEnterprise(enterprise string) ([]*model.TModel, error) {
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 	models, err := GetModelByEnterprise(enterprise, MStatUsing)
 	if err != nil {
 		logger.Error.Printf("get trained models failed.%s\n", err)
@@ -292,7 +330,19 @@ func GetUsingModelByEnterprise(enterprise string) ([]*model.TModel, error) {
 
 //GetModelByEnterprise gets the model
 func GetModelByEnterprise(enterprise string, status int) ([]*model.TModel, error) {
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 	q := &model.TModelQuery{Enterprise: &enterprise, Status: &status}
+	return modelDao.TrainedModelInfo(dbLike.Conn(), q)
+}
+
+//GetAllModelByEnterprise gets the all model
+func GetAllModelByEnterprise(enterprise string) ([]*model.TModel, error) {
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
+	q := &model.TModelQuery{Enterprise: &enterprise}
 	return modelDao.TrainedModelInfo(dbLike.Conn(), q)
 }
 
