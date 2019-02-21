@@ -24,6 +24,7 @@ var (
 	segmentDao   model.SegmentDao
 	taskDao      = &model.TaskSQLDao{}
 	userValueDao = &model.UserValueDao{}
+	userKeyDao   = &model.UserKeySQLDao{}
 	producer     *rabbitmq.Producer
 	consumer     *rabbitmq.Consumer
 	sqlConn      *sql.DB
@@ -160,7 +161,9 @@ func init() {
 				segmentDao = model.NewSegmentDao(dbLike)
 				userValueDao = model.NewUserValueDao(dbLike.Conn())
 				valuesKey = userValueDao.ValuesKey
-
+				userKeyDao = model.NewUserKeyDao(dbLike.Conn())
+				userKeys = userKeyDao.UserKeys
+				keyvalues = userKeyDao.KeyValues
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")

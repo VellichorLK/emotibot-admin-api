@@ -77,7 +77,10 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	call, err := NewCall(req)
-	if err != nil || call == nil {
+	if err == ErrCCTypeMismatch {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, err.Error())
+		return
+	} else if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("creating call failed, %v", err))
 		return
 	}

@@ -16,16 +16,18 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-var (
-	//ErrNotFound is indicated the resource is asked, but nowhere to found it.
-	ErrNotFound = errors.New("resource not found")
-)
+//ErrNotFound is indicated the resource is asked, but nowhere to found it.
+var ErrNotFound = errors.New("resource not found")
 
 // dao dependencies for call service.
 var (
-	callCount = callDao.Count
-	calls     = callDao.Calls
-	valuesKey = userValueDao.ValuesKey
+	callCount    = callDao.Count
+	calls        = callDao.Calls
+	valuesKey    = userValueDao.ValuesKey
+	newUserValue = userValueDao.NewUserValue
+	userValues   = userValueDao.UserValues
+	userKeys     = userKeyDao.UserKeys
+	keyvalues    = userKeyDao.KeyValues
 )
 
 var callTypeDict = map[string]int8{
@@ -213,6 +215,9 @@ func CallRespsWithTotal(query model.CallQuery) (responses []CallResp, total int6
 	return callRespsWithTotal(query)
 }
 
+//ErrCCTypeMismatch indicate the income call request has wrong data type of custom column.
+var ErrCCTypeMismatch = errors.New("column type mismatch")
+
 //NewCall create a call based on the input.
 func NewCall(c *NewCallReq) (*model.Call, error) {
 	var err error
@@ -264,9 +269,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	}
 
 	calls, err := callDao.NewCalls(tx, []model.Call{*call})
-	if err == model.ErrAutoIDDisabled {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 	call = &calls[0]
@@ -278,11 +281,107 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query group failed, %v", err)
 	}
-
+	//TODO: add matching for custom columns and conditions.
+	// valueQuery := model.UserValueQuery{
+	// 	Type: []int8{model.UserValueTypGroup},
+	// }
+	// for _, g := range groups {
+	// 	valueQuery.ParentID = append(valueQuery.ParentID, g.ID)
+	// }
+	// keys, err := keyvalues(tx, model.UserKeyQuery{Enterprise: c.Enterprise}, valueQuery)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("fetch keyValules failed, %v", err)
+	// }
 	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
 	if err != nil {
 		return nil, fmt.Errorf("set rule group failed, %v", err)
 	}
+
+	keys, err := userKeys(tx, model.UserKeyQuery{Enterprise: c.Enterprise})
+	if err != nil {
+		return nil, fmt.Errorf("fetch key values failed, %v", err)
+	}
+	for name, value := range c.CustomColumns {
+		var (
+			k       model.UserKey
+			isValid bool
+		)
+		for _, k = range keys {
+			if name == k.InputName {
+				isValid = true
+				break
+			}
+		}
+		if !isValid {
+			continue
+		}
+		switch k.Type {
+		case model.UserKeyTypArray:
+			values, ok := value.([]interface{})
+			if !ok {
+				return nil, ErrCCTypeMismatch
+			}
+			for _, val := range values {
+				v := model.UserValue{
+					LinkID:     call.ID,
+					UserKeyID:  k.ID,
+					Type:       model.UserValueTypCall,
+					Value:      fmt.Sprintf("%s", val),
+					CreateTime: timestamp,
+					UpdateTime: timestamp,
+				}
+				v, err = newUserValue(tx, v)
+				if err != nil {
+					break
+				}
+			}
+		case model.UserKeyTypNumber:
+			_, ok := value.(float64)
+			if !ok {
+				_, isInt := value.(int)
+				if !isInt {
+					return nil, ErrCCTypeMismatch
+				}
+			}
+			v := model.UserValue{
+				LinkID:     call.ID,
+				UserKeyID:  k.ID,
+				Type:       model.UserValueTypCall,
+				Value:      fmt.Sprintf("%s", value),
+				CreateTime: timestamp,
+				UpdateTime: timestamp,
+			}
+			_, err = newUserValue(tx, v)
+		case model.UserKeyTypTime:
+			_, ok := value.(int)
+			if !ok {
+				return nil, ErrCCTypeMismatch
+			}
+			v := model.UserValue{
+				LinkID:     call.ID,
+				UserKeyID:  k.ID,
+				Type:       model.UserValueTypCall,
+				Value:      fmt.Sprintf("%s", value),
+				CreateTime: timestamp,
+				UpdateTime: timestamp,
+			}
+			_, err = newUserValue(tx, v)
+		case model.UserKeyTypString:
+			v := model.UserValue{
+				LinkID:     call.ID,
+				UserKeyID:  k.ID,
+				Type:       model.UserValueTypCall,
+				Value:      fmt.Sprintf("%s", value),
+				CreateTime: timestamp,
+				UpdateTime: timestamp,
+			}
+			_, err = newUserValue(tx, v)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("new user values failed, %v", err)
+		}
+	}
+
 	if err = tx.Commit(); err != nil {
 		return nil, fmt.Errorf("commit new call transaction failed, %v", err)
 	}
