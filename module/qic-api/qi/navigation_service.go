@@ -478,6 +478,7 @@ type CreditLoc struct {
 }
 
 type StreamingFlow struct {
+	ID         string          `json:"nav_id"`
 	Type       string          `json:"type"`
 	Name       string          `json:"name"`
 	IntentName string          `json:"intent_name"`
@@ -486,6 +487,7 @@ type StreamingFlow struct {
 	Nodes      []StreamingNode `json:"nodes"`
 }
 type StreamingNode struct {
+	ID       string `json:"sg_id"`
 	Optional bool   `json:"optional"`
 	Role     string `json:"role"`
 	Name     string `json:"name"`
@@ -633,7 +635,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 
 	flowsSetting := make([]StreamingFlow, 0, len(flows))
 	for flowIdx, flow := range flows {
-		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName}
+		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.UUID}
 		if flow.IgnoreIntent == 0 {
 			sf.Type = callInIntentCodeMap[1]
 			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
@@ -670,7 +672,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		}
 		for uuid := range navIDToSenGrpsUUIDMap[flow.ID] {
 			if node, ok := senGrpUUIDMap[uuid]; ok {
-				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role]}
+				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role], ID: uuid}
 				sf.Nodes = append(sf.Nodes, sn)
 				loc := CreditLoc{FlowOrder: flowIdx, NodeOrder: nodeCounter}
 				resp.NodeLocal[node.ID] = append(resp.NodeLocal[node.ID], loc)
