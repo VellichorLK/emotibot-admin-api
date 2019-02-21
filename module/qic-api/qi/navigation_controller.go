@@ -499,6 +499,12 @@ func setUpNavCache() {
 	navCallCache.Activate(config)
 }
 
+//NavMatchedResponse is the returned structure of handleStreaming
+type NavMatchedResponse struct {
+	NavResult []MatchedFlowNode `json:"nav_result"`
+	Sensitive []string          `json:"sensitive"`
+}
+
 func handleStreaming(w http.ResponseWriter, r *http.Request) {
 	uuid := general.ParseID(r)
 	enterprise := requestheader.GetEnterpriseID(r)
@@ -578,7 +584,7 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = streamingMatch(segWithSp, &settings)
+	matchedInfo, err := streamingMatch(segWithSp, &settings)
 	if err != nil {
 		logger.Error.Printf("streaming matched failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -599,6 +605,8 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	resp := &NavMatchedResponse{NavResult: matchedInfo, Sensitive: make([]string, 0)}
+
 	for i := 0; i < len(requestBody); i++ {
 		words, err := sensitive.IsSensitive(requestBody[i].Text)
 		if err != nil {
@@ -606,10 +614,10 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		settings.NavResult.Sensitive = append(settings.NavResult.Sensitive, words...)
+		resp.Sensitive = append(resp.Sensitive, words...)
 	}
 
-	err = util.WriteJSON(w, &settings.NavResult)
+	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
 	}
