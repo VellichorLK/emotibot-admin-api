@@ -29,6 +29,7 @@ func skipIntergartion(t *testing.T) {
 
 func newIntegrationTestDB(t *testing.T) *sql.DB {
 	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1)/QISYS?parseTime=true&loc=Asia%2FTaipei")
+	db.SetMaxIdleConns(0)
 	if err != nil {
 		t.Fatal("expect db open success but got error: ", err)
 	}
