@@ -267,12 +267,15 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 		return 0, err
 	}
 	defer tx.Rollback()
+
+	//get the using models
 	status := MStatUsing
 	models, err := modelDao.TrainedModelInfo(tx, &model.TModelQuery{Enterprise: &enterprise, Status: &status})
 	if err != nil {
 		logger.Error.Printf("get using model failed. %s\n", err)
 		return 0, err
 	}
+	//seet the current using model to deprecate status
 	if len(models) > 0 {
 		_, err = modelDao.UpdateModel(tx, &model.TModel{ID: models[0].ID, Status: MStatDeprecate})
 		if err != nil {
@@ -280,6 +283,7 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 			return 0, err
 		}
 	}
+	//set the new model to using status
 	_, err = modelDao.UpdateModel(tx, &model.TModel{ID: uint64(modelID), Status: MStatUsing})
 	if err != nil {
 		logger.Error.Printf("update model %d status failed. %s\n", models[0].ID, err)
