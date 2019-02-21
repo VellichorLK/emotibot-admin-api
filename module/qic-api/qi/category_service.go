@@ -25,7 +25,7 @@ func GetCategorySentences(query *model.SentenceQuery) (total uint64, sentences [
 	if err != nil {
 		return
 	}
-
+	defer dbLike.ClearTransition(tx)
 	total, err = sentenceDao.CountSentences(tx, query)
 	if err != nil {
 		return
