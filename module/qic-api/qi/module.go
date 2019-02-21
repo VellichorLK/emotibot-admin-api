@@ -87,6 +87,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
+			util.NewEntryPoint(http.MethodGet, "train/model/training", []string{}, handleTrainingStatus),
 			//util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation/{id}", []string{}, handleGetFlowSetting),

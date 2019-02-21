@@ -49,6 +49,27 @@ var MStatWordings = map[int]string{
 	MStatDeletion:  "deleted",
 }
 
+func handleTrainingStatus(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	models, err := GetModelByEnterprise(enterprise, MStatTraining)
+	if err != nil {
+		logger.Error.Printf("get models failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	resp := make([]modelResp, 0, len(models))
+	for _, v := range models {
+		m := modelResp{ID: int64(v.ID), CreateTime: v.CreateTime, UpdateTime: v.UpdateTime}
+		resp = append(resp, m)
+	}
+	err = util.WriteJSON(w, resp)
+	if err != nil {
+		logger.Error.Printf("write json failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
+	}
+}
+
 func handleTrainStatus(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
