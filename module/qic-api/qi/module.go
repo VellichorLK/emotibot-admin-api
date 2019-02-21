@@ -102,7 +102,7 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
-			util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
+			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
