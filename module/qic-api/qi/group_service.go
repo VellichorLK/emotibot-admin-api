@@ -215,6 +215,7 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	if err != nil {
 		return
 	}
+	defer dbLike.ClearTransition(tx)
 	total, err = serviceDAO.CountGroupsBy(filter, tx)
 	if err != nil {
 		return
