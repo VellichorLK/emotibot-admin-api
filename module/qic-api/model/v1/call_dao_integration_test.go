@@ -1,8 +1,9 @@
 package model
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -87,13 +88,15 @@ func TestITCallDaoCalls(t *testing.T) {
 
 }
 
-func TestITCallDaoNewCall(t *testing.T) {
+// TestITCallDao_Suite test from insert & select result.
+// TODO: implement DELETE for clean up to be repeatable testsuite.
+func TestITCallDao_Suite(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
 	dao := CallSQLDao{
 		db: db,
 	}
-	exampleCall := Call{
+	input := []Call{Call{
 		UUID:               "d95c7d0eff8c49169c64a2225696423f",
 		DurationMillSecond: 120,
 		UploadUnixTime:     1546827856,
@@ -111,38 +114,13 @@ func TestITCallDaoNewCall(t *testing.T) {
 		LeftChanRole:       CallChanStaff,
 		RightChanRole:      CallChanCustomer,
 		Status:             CallStatusWaiting,
-	}
-	expectExampleCall := exampleCall
-	expectExampleCall.ID = 3
-	testtable := []struct {
-		Name   string
-		Input  []Call
-		Query  CallQuery
-		Output []Call
-	}{
-		{"", []Call{exampleCall}, CallQuery{UUID: []string{"d95c7d0eff8c49169c64a2225696423f"}}, []Call{expectExampleCall}},
-	}
-
-	for _, tc := range testtable {
-		t.Run(tc.Name, func(tt *testing.T) {
-			result, err := dao.NewCalls(nil, tc.Input)
-			if err != nil {
-				tt.Fatal("expect new calls to be ok, but got ", err)
-			}
-			if !reflect.DeepEqual(result, tc.Output) {
-				tt.Logf("compare with expect output failed:\n%+v\n%+v", result, tc.Output)
-				tt.Error("expect result to be same with output")
-			}
-			queryResult, err := dao.Calls(nil, tc.Query)
-			if err != nil {
-				tt.Fatal("expect call query to be ok, but got ", err)
-			}
-			if !reflect.DeepEqual(result, queryResult) {
-				tt.Logf("compare with query failed:\n%+v\n%+v\n", result, queryResult)
-				tt.Error("expect query back to be same ")
-			}
-		})
-	}
+	}}
+	result, err := dao.NewCalls(nil, input)
+	require.NoError(t, err, "expect insert to be ok")
+	query := CallQuery{UUID: []string{input[0].UUID}}
+	queryResult, err := dao.Calls(nil, query)
+	require.NoError(t, err, "expect call query to be ok")
+	assert.Equal(t, result, queryResult)
 }
 
 func TestITCallDaoSetRuleGroupRelations(t *testing.T) {
