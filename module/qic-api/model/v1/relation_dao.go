@@ -134,9 +134,11 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 				continue
 			}
 			varUint64 := uint64(val.Int64)
-			if lastID == 0 {
+			if k == 0 {
 				lastID = varUint64
 				continue
+			} else if lastID == 0 {
+				break
 			}
 			ithTbl := k - 1
 
