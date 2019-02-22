@@ -36,7 +36,7 @@ func TestITTaskDao_CallTask(t *testing.T) {
 		t.Fatal("expect call task query ok, but got ", err)
 	}
 	assert.Equal(t, tasks[0], task)
-
+	checkDBStat(t)
 }
 
 func TestITTaskDao_NewTask(t *testing.T) {
@@ -63,4 +63,5 @@ func TestITTaskDao_NewTask(t *testing.T) {
 		t.Fatal("expect query tasks to be ok, but got ", err)
 	}
 	assert.Equal(t, *task, fetchedTasks[0], "expect fetch task should be same as inserted task.")
+	checkDBStat(t)
 }

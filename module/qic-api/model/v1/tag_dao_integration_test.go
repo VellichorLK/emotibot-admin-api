@@ -51,10 +51,8 @@ func TestITTagDaoTags(t *testing.T) {
 			// 	t.Logf("tags: %+v\n expected tags: %+v\n", tags, expectedTags)
 			// 	t.Error("expect got tags but not the same")
 			// }
+			checkDBStat(t)
 		})
-	}
-	if db.Stats().OpenConnections != 0 {
-		t.Errorf("possible connection leak to %d", db.Stats().OpenConnections)
 	}
 }
 
@@ -81,9 +79,7 @@ func TestITTagDaoNewTags(t *testing.T) {
 	if results[1].ID != 4 {
 		t.Error("expect new tag id incremental to 4, but no.")
 	}
-	if db.Stats().OpenConnections != 0 {
-		t.Error("possible connection leak")
-	}
+	checkDBStat(t)
 }
 
 func TestITTagDaoDeleteTags(t *testing.T) {
@@ -107,9 +103,7 @@ func TestITTagDaoDeleteTags(t *testing.T) {
 	if len(tags) != 0 {
 		t.Error("expect get empty tags, but got ", len(tags))
 	}
-	if db.Stats().OpenConnections != 0 {
-		t.Errorf("possible connection leak to %d", db.Stats().OpenConnections)
-	}
+	checkDBStat(t)
 }
 
 func TestITTagDaoCountTags(t *testing.T) {
@@ -165,8 +159,6 @@ func TestITTagDaoCountTags(t *testing.T) {
 				t.Error("expect count to be ", tt.output, ", but got ", count)
 			}
 		})
-	}
-	if db.Stats().OpenConnections != 0 {
-		t.Error("possible connection leak")
+		checkDBStat(t)
 	}
 }

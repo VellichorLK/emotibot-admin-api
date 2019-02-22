@@ -85,7 +85,7 @@ func TestITCallDaoCalls(t *testing.T) {
 			assert.Equal(t, tt.want, calls)
 		})
 	}
-
+	checkDBStat(t)
 }
 
 // TestITCallDao_Suite test from insert & select result.
@@ -121,6 +121,7 @@ func TestITCallDao_Suite(t *testing.T) {
 	queryResult, err := dao.Calls(nil, query)
 	require.NoError(t, err, "expect call query to be ok")
 	assert.Equal(t, result, queryResult)
+	checkDBStat(t)
 }
 
 func TestITCallDaoSetRuleGroupRelations(t *testing.T) {
@@ -139,4 +140,5 @@ func TestITCallDaoSetRuleGroupRelations(t *testing.T) {
 	if len(idGroup) != 2 {
 		t.Error("expect get two id in result, but got ", len(idGroup))
 	}
+	checkDBStat(t)
 }
