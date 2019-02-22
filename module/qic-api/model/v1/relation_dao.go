@@ -103,14 +103,15 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 	}
 	defer rows.Close()
 
-	numOfScan := use + 1
+	numOfScan1 := use + 1
+	numOfRelation := use
 
-	resp := make([]map[uint64][]uint64, numOfScan, numOfScan)
-	order := make([][]uint64, numOfScan)
+	resp := make([]map[uint64][]uint64, numOfRelation, numOfRelation)
+	order := make([][]uint64, numOfRelation)
 	//records the duplicate id
-	recordDup := make([]map[uint64]map[uint64]bool, numOfScan, numOfScan)
-	relIDs := make([]interface{}, 0, numOfScan)
-	for i := 0; i < numOfScan; i++ {
+	recordDup := make([]map[uint64]map[uint64]bool, numOfRelation, numOfRelation)
+	relIDs := make([]interface{}, 0, numOfScan1)
+	for i := 0; i < numOfScan1; i++ {
 		relIDs = append(relIDs, new(sql.NullInt64))
 	}
 
