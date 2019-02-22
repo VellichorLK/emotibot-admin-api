@@ -1210,13 +1210,11 @@ func deleteIntentTests(tx db, appid string, intentIDs []interface{}) error {
 		testIntentIDs := []interface{}{}
 
 		queryStr := fmt.Sprintf(`
-			SELECT id
-			FROM intent_test_intents
-			WHERE intent_name IN (
-				SELECT name
-				FROM intents
-				WHERE id IN (?%s)
-			)`, strings.Repeat(", ?", len(intentIDs)-1))
+			SELECT ti.id
+			FROM intent_test_intents AS ti
+			INNER JOIN intents AS i
+			ON i.name = ti.intent_name
+			WHERE i.id IN (?%s)`, strings.Repeat(", ?", len(intentIDs)-1))
 		rows, err := tx.Query(queryStr, intentIDs...)
 		if err != nil {
 			return err
@@ -1268,12 +1266,11 @@ func syncIntentTests(tx db, appid string, updatedTime int64) error {
 	queryStr := `
 		INSERT INTO intent_test_intents (app_id, intent_name, version, updated_time)
 		SELECT ?, name, NULL, ?
-		FROM intents
-		WHERE appid = ? AND version IS NULL AND name NOT IN (
-			SELECT intent_name
-			FROM intent_test_intents
-			WHERE app_id = ? AND version IS NULL AND intent_name IS NOT NULL
-		)`
+		FROM intents AS i
+		LEFT JOIN intent_test_intents AS ti
+		ON ti.intent_name = i.name AND ti.app_id = ? AND ti.version IS NULL
+			AND ti.intent_name IS NOT NULL
+		WHERE i.appid = ? AND i.version IS NULL AND ti.intent_name IS NULL`
 	_, err := tx.Exec(queryStr, appid, updatedTime, appid, appid)
 	if err != nil {
 		return err
@@ -1288,13 +1285,12 @@ func syncIntentTests(tx db, appid string, updatedTime int64) error {
 			WHERE app_id = ? AND intent_name IS NULL AND version IS NULL
 		)
 		WHERE test_intent IN (
-			SELECT id
-			FROM intent_test_intents
-			WHERE app_id = ? AND version IS NULL AND intent_name NOT IN (
-				SELECT name
-				FROM intents
-				WHERE appid = ? AND version IS NULL
-			)
+			SELECT ti.id
+			FROM intent_test_intents AS ti
+			LEFT JOIN intents AS i
+			ON i.name = ti.intent_name AND i.appid = ? AND i.version IS NULL
+			WHERE ti.app_id = ? AND ti.version IS NULL
+				AND ti.intent_name IS NOT NULL AND i.name IS NULL
 		)`
 	_, err = tx.Exec(queryStr, appid, appid, appid)
 	if err != nil {
@@ -1304,13 +1300,12 @@ func syncIntentTests(tx db, appid string, updatedTime int64) error {
 	// Delete test intents which intent name does not exists in 'intents' table
 	// but does exist in 'intent_test_intents' table
 	queryStr = `
-		DELETE
-		FROM intent_test_intents
-		WHERE app_id = ? AND version IS NULL AND intent_name NOT IN (
-			SELECT name
-			FROM intents
-			WHERE appid = ? AND version IS NULL
-		)`
+		DELETE ti
+		FROM intent_test_intents AS ti
+		LEFT JOIN intents AS i
+		ON i.name = ti.intent_name AND i.appid = ? AND i.version IS NULL
+		WHERE ti.app_id = ? AND ti.version IS NULL
+			AND ti.intent_name IS NOT NULL AND i.name IS NULL`
 	_, err = tx.Exec(queryStr, appid, appid)
 	if err != nil {
 		return err
