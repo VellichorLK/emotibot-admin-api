@@ -14,7 +14,8 @@ var (
 
 func IsSensitive(content string) ([]string, error) {
 	matched := []string{}
-	words, err := dao.GetSensitiveWords()
+	sqlConn := dbLike.Conn()
+	words, err := swDao.Names(sqlConn, false)
 	if err != nil {
 		return matched, err
 	}

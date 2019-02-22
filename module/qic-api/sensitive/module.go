@@ -6,6 +6,9 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
+	"github.com/mediocregopher/radix"
+	"strings"
+	"time"
 )
 
 var (
@@ -56,9 +59,36 @@ func init() {
 					DB: sqlConn,
 				}
 
-				swDao = &model.SensitiveWordSqlDao{}
 				categoryDao = &model.CategorySQLDao{}
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
+
+				// init redis client
+				redisAddresses := envs["REDIS_URLS"]
+				address := strings.Split(redisAddresses, ",")
+				logger.Info.Printf("address: %+v\n", address)
+
+				redisPassword := envs["REDIS_PASSWORD"]
+				logger.Info.Printf("password: %s\n", redisPassword)
+
+				// connection factory
+				connFunc := func(network, addr string) (radix.Conn, error) {
+					return radix.Dial(network, addr,
+						radix.DialTimeout(1*time.Minute),
+						radix.DialAuthPass(redisPassword),
+					)
+				}
+
+				// connection pool factroy which use connection factory to create connection
+				poolFunc := func(network, addr string) (radix.Client, error) {
+					return radix.NewPool(network, addr, 5, radix.PoolConnFunc(connFunc))
+				}
+
+				// create redis cluster client
+				cluster, err := radix.NewCluster(address, radix.ClusterPoolFunc(poolFunc))
+				if err != nil {
+					logger.Error.Printf("error while create redis cluster instance in sensitive.module, err: %s", err.Error())
+				}
+				swDao = model.NewDefaultSensitiveWordDao(cluster)
 			},
 		},
 	}
