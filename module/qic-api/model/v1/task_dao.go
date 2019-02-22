@@ -100,6 +100,7 @@ func (t *TaskSQLDao) CallTask(delegatee SqlLike, call Call) (Task, error) {
 }
 
 // Task query the task by the given query.
+// returned []Task are ordered by id(create time) ascending.
 func (t *TaskSQLDao) Task(delegatee SqlLike, query TaskQuery) ([]Task, error) {
 	if delegatee == nil {
 		delegatee = t.db
@@ -107,7 +108,9 @@ func (t *TaskSQLDao) Task(delegatee SqlLike, query TaskQuery) ([]Task, error) {
 	selectCols := []string{fldTaskID, fldTaskStatus, fldTaskDeal,
 		fldTaskSeries, fldTaskCreateTime, fldTaskUpdateTime}
 	wherePart, data := query.whereSQL()
-	rawquery := "SELECT `" + strings.Join(selectCols, "`, `") + "` FROM `" + tblTask + "` " + wherePart
+
+	rawquery := fmt.Sprintf("SELECT `%s` FROM `%s` %s ORDER BY `%s` ASC",
+		strings.Join(selectCols, "`, `"), tblTask, wherePart, fldTaskID)
 	rows, err := delegatee.Query(rawquery, data...)
 	if err != nil {
 		logger.Error.Println("raw error sql: ", rawquery)
