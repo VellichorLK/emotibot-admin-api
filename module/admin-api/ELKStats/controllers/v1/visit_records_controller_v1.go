@@ -249,7 +249,7 @@ func NewRecordsMarkUpdateHandler(client *dal.Client) func(w http.ResponseWriter,
 				return
 			}
 
-			if isSQ {
+			if isSQ && record.UserQ != request.Content {
 				skipRecordsID = append(skipRecordsID, record.UniqueID)
 				continue
 			}
