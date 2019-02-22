@@ -3,8 +3,9 @@ package qi
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
@@ -13,20 +14,21 @@ func TestTasksByCalls(t *testing.T) {
 	/**
 	*	setup mock
 	**/
-	tmp := callTask
+	tmp := tasks
 	defer func() {
-		callTask = tmp
+		tasks = tmp
 	}()
-	//dump dao only return a task with the call TaskID
-	callTask = func(delegatee model.SqlLike, call model.Call) (model.Task, error) {
-		t := model.Task{
-			ID: call.TaskID,
+	tasks = func(delegatee model.SqlLike, query model.TaskQuery) ([]model.Task, error) {
+		var taskGrp = make([]model.Task, 0)
+		for _, id := range query.ID {
+			taskGrp = append(taskGrp, model.Task{
+				ID: id,
+			})
+			if id > 5 {
+				return nil, errors.New("NOT FOUND")
+			}
 		}
-		// simulate some error cases
-		if call.ID > 5 {
-			return model.Task{}, errors.New("NOT FOUND")
-		}
-		return t, nil
+		return taskGrp, nil
 	}
 	/**
 	*	test table
@@ -99,7 +101,7 @@ func TestTasksByCalls(t *testing.T) {
 			name: "non exist call",
 			args: args{
 				calls: []model.Call{
-					{ID: 6},
+					{ID: 1, TaskID: 6},
 				},
 			},
 			wantErr: true,
@@ -116,20 +118,7 @@ func TestTasksByCalls(t *testing.T) {
 				t.Errorf("TasksByCalls() error = %#v, wantErr %#v", err, tt.wantErr)
 				return
 			}
-			// Since TasksByCalls has no guarantee of order, we have to compare it by ourself.
-			for _, w := range tt.want {
-				var found bool
-				for _, g := range got {
-					if reflect.DeepEqual(g, w) {
-						found = true
-					}
-				}
-				if !found {
-					t.Errorf("want %v not in TasksByCalls", *w)
-				}
-			}
-			t.Logf("TasksByCalls() = %s", prettyTasks(got))
-
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
