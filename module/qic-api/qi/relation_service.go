@@ -34,6 +34,7 @@ var (
 // from and to indicate which level resource(ex: from LevRuleGroup, to LevTag. then it will check )
 // from must be lower than to, or a ErrWrongLevel will returned.
 // id is the from resource's primary key id. which will be the first level of map key
+// if ignoreNULL is true, only the completness level would return. Otherwise, incomplete id would only contain element with 0 value
 // return values:
 //	- relationTable is a slice of map in each relation table. key is the from level's primary key id,
 //	  value is the to level's primary key id.
