@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -188,15 +189,18 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 	paths := strings.Split(r.URL.Path, "/")
 	module := paths[3]
 	cmd := paths[4]
-
 	if len(ep.Command) == 0 {
 		logger.Trace.Printf("Path: %s need no auth check\n", ep.EntryPath)
 		return true
 	}
 
+	fillUserAppIDFromHeader(r)
+
+	token := requestheader.GetAuthToken(r)
 	appid := requestheader.GetAppID(r)
 	userid := requestheader.GetUserID(r)
-	token := requestheader.GetAuthToken(r)
+
+	logger.Trace.Printf("requester: [%s]@[%s]\n", userid, appid)
 
 	if len(userid) == 0 {
 		logger.Trace.Printf("Unauthorized path[%s]: empty user", ep.EntryPath)
@@ -214,6 +218,50 @@ func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
 		return checkAuthHeader(appid, token) && checkPrivilegeWithAPI(module, cmd, token)
 	}
 	return true
+}
+
+func fillUserAppIDFromHeader(r *http.Request) error {
+	token := requestheader.GetAuthToken(r)
+	// Hardcode for debug
+	if token == "Bearer EMOTIBOTDEBUGGER" {
+		requestheader.SetUserID(r, "DEBUGGER")
+		return nil
+	}
+	params := strings.Split(token, " ")
+	if len(params) != 2 {
+		return fmt.Errorf("Token format error: %s", token)
+	}
+
+	switch params[0] {
+	case "Bearer":
+		jwt := params[1]
+		userInfo, err := emotijwt.ResolveJWTToken(jwt)
+		if err != nil {
+			logger.Error.Println("Resolve jwt fail:", err.Error())
+			return err
+		}
+		b, err := json.Marshal(userInfo)
+		if err != nil {
+			logger.Error.Println("Resolve jwt custom to json fail:", err.Error())
+			return err
+		}
+		userObj := JWTUser{}
+		err = json.Unmarshal(b, &userObj)
+		if err != nil {
+			logger.Error.Println("Resolve jwt custom from json fail:", err.Error())
+			return err
+		}
+		requestheader.SetUserID(r, userObj.ID)
+	case "Api":
+		requestheader.SetUserID(r, "API")
+		apiKeyAppid, err := auth.GetAppViaApiKey(params[1])
+		if err != nil {
+			logger.Error.Println("Get appid from apikey fail:", err.Error())
+			return err
+		}
+		requestheader.SetAppID(r, apiKeyAppid)
+	}
+	return nil
 }
 
 func checkAuthHeader(appid, token string) bool {
@@ -578,4 +626,10 @@ func healthCheck() *healthResult {
 
 	ret.DBHealth = util.GetDBStatus()
 	return &ret
+}
+
+type JWTUser struct {
+	ID       string `json:"id"`
+	UserName string `json:"user_name"`
+	Type     int    `json:"type"`
 }
