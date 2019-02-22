@@ -34,6 +34,7 @@ type CallQuery struct {
 	Status        []int8
 	CallTimeStart *int64
 	CallTimeEnd   *int64
+	Typ           []int8
 	StaffID       []string
 	EnterpriseID  *string
 	CustomerPhone *string
@@ -51,6 +52,7 @@ func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 	builder.In(fldCallID, int64ToWildCard(c.ID...))
 	builder.In(fldCallUUID, stringToWildCard(c.UUID...))
 	builder.In(fldCallStatus, int8ToWildCard(c.Status...))
+	builder.In(fldCallType, int8ToWildCard(c.Typ...))
 	if c.CallTimeStart != nil {
 		builder.Gte(fldCallCallTime, *c.CallTimeStart)
 	}

@@ -9,10 +9,7 @@ type GroupsResponse struct {
 	Paging *general.Paging    `json:"paging"`
 	Data   []model.GroupWCond `json:"data"`
 }
-type CallsResponse struct {
-	Paging general.Paging `json:"paging"`
-	Data   []CallResp     `json:"data"`
-}
+
 type SimpleGroupsResponse struct {
 	Paging *general.Paging     `json:"paging"`
 	Data   []model.SimpleGroup `json:"data"`

@@ -18,16 +18,18 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
-	tagDao     model.TagDao
-	callDao    model.CallDao
-	taskDao    *model.TaskSQLDao
-	segmentDao model.SegmentDao
-	producer   *rabbitmq.Producer
-	consumer   *rabbitmq.Consumer
-	sqlConn    *sql.DB
-	dbLike     model.DBLike
-	volume     string
+	ModuleInfo   util.ModuleInfo
+	tagDao       model.TagDao
+	callDao      model.CallDao = &model.CallSQLDao{}
+	segmentDao   model.SegmentDao
+	taskDao      = &model.TaskSQLDao{}
+	userValueDao = &model.UserValueDao{}
+	userKeyDao   = &model.UserKeySQLDao{}
+	producer     *rabbitmq.Producer
+	consumer     *rabbitmq.Consumer
+	sqlConn      *sql.DB
+	dbLike       model.DBLike
+	volume       string
 )
 
 func init() {
@@ -80,9 +82,9 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),
-			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, callRequest(CallsDetailHandler)),
+			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, callRequest(CallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
@@ -152,11 +154,18 @@ func init() {
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
+				callCount = callDao.Count
+				calls = callDao.Calls
 				taskDao = model.NewTaskDao(sqlConn)
+				callTask = taskDao.CallTask
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
-
+				userValueDao = model.NewUserValueDao(dbLike.Conn())
+				valuesKey = userValueDao.ValuesKey
+				userKeyDao = model.NewUserKeyDao(dbLike.Conn())
+				userKeys = userKeyDao.UserKeys
+				keyvalues = userKeyDao.KeyValues
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")
