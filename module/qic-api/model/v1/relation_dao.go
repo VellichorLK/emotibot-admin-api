@@ -10,7 +10,7 @@ import (
 
 //RelationDao access the relational table
 type RelationDao interface {
-	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error)
+	GetLevelRelationID(sql SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error)
 }
 
 type relSelectFld struct {
@@ -44,7 +44,7 @@ var (
 //the arguments of id means the parent id condition
 //return value is slice of map which means in each relation table, the parent id contains childs's
 //[][]uint64 means the order of each parent id in each relation table
-func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error) {
 
 	if delegatee == nil {
 		return nil, nil, ErroNoConn
@@ -129,7 +129,7 @@ func (d *RelationSQLDao) GetLevelRelationID(delegatee SqlLike, from int, to int,
 				logger.Error.Printf("transform to *uint64 failed\n")
 				continue
 			}
-			if !val.Valid {
+			if ignoreNULL && !val.Valid {
 				lastID = 0
 				continue
 			}

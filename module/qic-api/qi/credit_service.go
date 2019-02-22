@@ -425,7 +425,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			tagToSegMap[matched.TagID][matched.SegID] = matched
 		}
 
-		relation, _, err := GetLevelsRel(LevSentence, LevTag, senIDs)
+		relation, _, err := GetLevelsRel(LevSentence, LevTag, senIDs, true)
 		if err != nil {
 			logger.Error.Printf("get relation failed\n")
 			return nil, err

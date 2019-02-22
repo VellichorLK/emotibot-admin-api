@@ -53,7 +53,7 @@ var (
 //  - order is the the order of each parent id in each relation table.
 //  - err will be nil if success. if to or from level is a invalid number, a ErrOutOfLevel is returned.
 //	  If id is empty, ErrNoID is returned.
-func GetLevelsRel(from Levels, to Levels, id []uint64) (relationTable []map[uint64][]uint64, order [][]uint64, err error) {
+func GetLevelsRel(from Levels, to Levels, id []uint64, ignoreNULL bool) (relationTable []map[uint64][]uint64, order [][]uint64, err error) {
 	if to <= from {
 		return nil, nil, ErrWrongLevel
 	}
@@ -63,5 +63,5 @@ func GetLevelsRel(from Levels, to Levels, id []uint64) (relationTable []map[uint
 	if len(id) == 0 {
 		return nil, nil, ErrNoID
 	}
-	return relationDao.GetLevelRelationID(dbLike.Conn(), int(from), int(to), id)
+	return relationDao.GetLevelRelationID(dbLike.Conn(), int(from), int(to), id, true)
 }

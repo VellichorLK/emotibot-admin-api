@@ -603,7 +603,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 	}
 
 	//get the relation from sentence group to tag
-	levels, _, err := GetLevelsRel(LevSenGroup, LevTag, allNewSenGrpsIDUint64)
+	levels, _, err := GetLevelsRel(LevSenGroup, LevTag, allNewSenGrpsIDUint64, true)
 	if err != nil {
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
