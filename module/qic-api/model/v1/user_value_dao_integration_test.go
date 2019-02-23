@@ -5,6 +5,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func readMockUserValues(t *testing.T) []UserValue {
@@ -91,4 +93,60 @@ func TestITUserValueDaoTestSuite(t *testing.T) {
 		t.Errorf("expect delete 1 row, but total = %d", total)
 	}
 
+}
+
+func TestITUserValueDao_ValuesKey(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := UserValueDao{conn: db}
+	type args struct {
+		delegatee SqlLike
+		query     UserValueQuery
+	}
+	uservalues := readMockUserValues(t)
+	userkeys := newUserKeys(t)
+	for i, v := range uservalues {
+		for _, k := range userkeys {
+			if k.ID == v.UserKeyID {
+				v.UserKey = &k
+				uservalues[i] = v
+				break
+			}
+		}
+	}
+	var tests = []struct {
+		name    string
+		args    args
+		want    []UserValue
+		wantErr bool
+	}{
+		{
+			name: "query id",
+			args: args{
+				query: UserValueQuery{
+					ID: []int64{1, 2, 3},
+				},
+			},
+			want: uservalues[:3],
+		},
+		{
+			name: "query type",
+			args: args{
+				query: UserValueQuery{
+					ParentID: []int64{1},
+					Type:     []int8{UserValueTypCall},
+				},
+			},
+			want: uservalues[1:4],
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dao.ValuesKey(tt.args.delegatee, tt.args.query)
+			if tt.wantErr == (err == nil) {
+				t.Fatalf("wantErr = %v, err = %v", tt.wantErr, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

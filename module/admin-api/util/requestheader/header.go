@@ -77,3 +77,13 @@ func GetLocale(r *http.Request) string {
 	}
 	return locale
 }
+
+// SetAppID will set AppID to http header
+func SetAppID(r *http.Request, appid string) {
+	r.Header.Set(ConstAppIDHeaderKey, appid)
+}
+
+// SetUserID will get UserID from http header
+func SetUserID(r *http.Request, user string) {
+	r.Header.Set(ConstUserIDHeaderKey, user)
+}

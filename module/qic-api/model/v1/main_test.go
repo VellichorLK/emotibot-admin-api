@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var isIntegration bool
@@ -27,12 +29,23 @@ func skipIntergartion(t *testing.T) {
 	return
 }
 
+var testDB *sql.DB
+
 func newIntegrationTestDB(t *testing.T) *sql.DB {
-	db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1)/QISYS?parseTime=true&loc=Asia%2FTaipei")
-	if err != nil {
-		t.Fatal("expect db open success but got error: ", err)
+	if testDB == nil {
+		db, err := sql.Open("mysql", "root:password@tcp(127.0.0.1)/QISYS?parseTime=true&loc=Asia%2FTaipei")
+		db.SetMaxIdleConns(0)
+		if err != nil {
+			t.Fatal("expect db open success but got error: ", err)
+		}
+		testDB = db
 	}
-	return db
+	return testDB
+}
+
+// checkDBStat is a helper to make sure integration test DB does not have the leaked connection.
+func checkDBStat(t *testing.T) {
+	assert.Equal(t, 0, testDB.Stats().OpenConnections, "possible connection leak")
 }
 
 // Binding take g as the binding subject, and bind the slice the data string into it.

@@ -30,6 +30,7 @@ var (
 type MYSQLController struct {
 	connectDB *sql.DB
 	auditDB   *sql.DB
+	bfDB      *sql.DB
 }
 
 func (controller *MYSQLController) InitDB(host string, port int, dbName string, account string, password string) bool {
@@ -60,6 +61,15 @@ func (controller MYSQLController) checkDB() (bool, error) {
 	return true, nil
 }
 
+func (controller MYSQLController) checkBFDB() (bool, error) {
+	if controller.bfDB == nil {
+		util.LogError.Fatalln("bfDB is nil, db is !initialized properly")
+		return false, fmt.Errorf("DB hasn't init")
+	}
+	controller.bfDB.Ping()
+	return true, nil
+}
+
 func (controller *MYSQLController) InitAuditDB(host string, port int, dbName string, account string, password string) bool {
 	var dbString string
 	if port == 0 {
@@ -76,6 +86,25 @@ func (controller *MYSQLController) InitAuditDB(host string, port int, dbName str
 	}
 
 	controller.auditDB = db
+	return true
+}
+
+func (controller *MYSQLController) InitBFDB(host string, port int, dbName string, account string, password string) bool {
+	var dbString string
+	if port == 0 {
+		dbString = fmt.Sprintf("%s:%s@%s/%s", account, password, host, dbName)
+	} else {
+		dbString = fmt.Sprintf("%s:%s@(%s:%d)/%s", account, password, host, port, dbName)
+	}
+	util.LogTrace.Printf("Connect to BF db [%s]\n", dbString)
+	db, err := sql.Open("mysql", dbString)
+
+	if err != nil {
+		util.LogError.Printf("Connect to BF db[%s] fail: [%s]\n", dbString, err.Error())
+		return false
+	}
+
+	controller.bfDB = db
 	return true
 }
 

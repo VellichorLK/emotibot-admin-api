@@ -465,7 +465,6 @@ type NavResponse struct {
 	FileName  string    `json:"file_name"`
 	NavResult NavResult `json:"nav_result"`
 	ID        string    `json:"id"`
-	Sensitive []string  `json:"sensitive"`
 }
 
 type NavResult struct {
@@ -478,6 +477,7 @@ type CreditLoc struct {
 }
 
 type StreamingFlow struct {
+	ID         string          `json:"nav_id"`
 	Type       string          `json:"type"`
 	Name       string          `json:"name"`
 	IntentName string          `json:"intent_name"`
@@ -486,10 +486,17 @@ type StreamingFlow struct {
 	Nodes      []StreamingNode `json:"nodes"`
 }
 type StreamingNode struct {
+	ID       string `json:"sg_id"`
 	Optional bool   `json:"optional"`
 	Role     string `json:"role"`
 	Name     string `json:"name"`
 	Valid    bool   `json:"valid"`
+}
+
+type MatchedFlowNode struct {
+	NavID    string `json:"nav_id"`
+	Type     string `json:"type"`
+	SenGrpID string `json:"sg_id"`
 }
 
 //this function would get the current flows and its nodes
@@ -633,7 +640,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 
 	flowsSetting := make([]StreamingFlow, 0, len(flows))
 	for flowIdx, flow := range flows {
-		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName}
+		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.UUID}
 		if flow.IgnoreIntent == 0 {
 			sf.Type = callInIntentCodeMap[1]
 			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
@@ -659,7 +666,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		nodeCounter := 0
 		for _, uuid := range nodeOrder {
 			if node, ok := senGrpUUIDMap[uuid]; ok {
-				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role]}
+				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role], ID: uuid}
 				sf.Nodes = append(sf.Nodes, sn)
 				loc := CreditLoc{FlowOrder: flowIdx, NodeOrder: nodeCounter}
 				resp.NodeLocal[node.ID] = append(resp.NodeLocal[node.ID], loc)
@@ -670,7 +677,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		}
 		for uuid := range navIDToSenGrpsUUIDMap[flow.ID] {
 			if node, ok := senGrpUUIDMap[uuid]; ok {
-				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role]}
+				sn := StreamingNode{Name: node.Name, Optional: node.Optional == 1, Role: roleCodeMap[node.Role], ID: uuid}
 				sf.Nodes = append(sf.Nodes, sn)
 				loc := CreditLoc{FlowOrder: flowIdx, NodeOrder: nodeCounter}
 				resp.NodeLocal[node.ID] = append(resp.NodeLocal[node.ID], loc)
@@ -702,7 +709,7 @@ func getStreamingPredict(callID int64) ([]*model.StreamingPredict, error) {
 	return navOnTheFlyDao.GetStreamingPredictResult(dbLike.Conn(), callID)
 }
 
-func streamingMatch(segs []*SegmentWithSpeaker, s *NavFlowSetting) (map[uint64][]int, error) {
+func streamingMatch(segs []*SegmentWithSpeaker, s *NavFlowSetting) ([]MatchedFlowNode, error) {
 
 	numOfLines := len(segs)
 	if numOfLines == 0 {
@@ -751,16 +758,22 @@ func streamingMatch(segs []*SegmentWithSpeaker, s *NavFlowSetting) (map[uint64][
 		return nil, err
 	}
 
+	resp := make([]MatchedFlowNode, 0)
 	//fill up the matched sentence group
 	for matched := range matchSgID {
 		for _, loc := range s.NodeLocal[int64(matched)] {
+			navID := s.NavResult.NavResult.Flows[loc.FlowOrder].ID
+			v := MatchedFlowNode{NavID: navID}
 			if loc.IsIntent {
 				s.NavResult.NavResult.Flows[loc.FlowOrder].Valid = true
+				v.Type = "intent"
 			} else {
 				s.NavResult.NavResult.Flows[loc.FlowOrder].Nodes[loc.NodeOrder].Valid = true
+				v.Type = "node"
+				v.SenGrpID = s.NavResult.NavResult.Flows[loc.FlowOrder].Nodes[loc.NodeOrder].ID
 			}
+			resp = append(resp, v)
 		}
 	}
-
-	return matchSgID, nil
+	return resp, nil
 }

@@ -322,13 +322,13 @@ const (
 	USERDisplayName = "display_name"
 )
 const (
-	fldTaskID     = "task_id"
-	fldTaskStatus = "status"
-	// fldTaskDescription = "description"
-	fldTaskDeal       = "deal"
-	fldTaskSeries     = "series"
-	fldTaskCreateTime = "create_time"
-	fldTaskUpdateTime = "update_time"
+	fldTaskID          = "task_id"
+	fldTaskStatus      = "status"
+	fldTaskDescription = "description"
+	fldTaskDeal        = "deal"
+	fldTaskSeries      = "series"
+	fldTaskCreateTime  = "create_time"
+	fldTaskUpdateTime  = "update_time"
 )
 
 // fields for Relation_InspectorTask_Staff

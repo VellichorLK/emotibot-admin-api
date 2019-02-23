@@ -116,6 +116,7 @@ type DBV4 interface {
 	// UpdateEnterprise(enterprsieID string, newEnterprise *data.EnterpriseDetailV3, modules []string) error
 	// DeleteEnterprise(enterprsieID string) error
 	UpdateEnterpriseStatusV4(enterpriseID string, status bool) error
+	ActivateEnterpriseV4(enterpriseID string, username string, password string) error
 
 	// EnterpriseExists(enterpriseID string) (bool, error)
 	// EnterpriseInfoExists(enterpriseName string) (bool, error)

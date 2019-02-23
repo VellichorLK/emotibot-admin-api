@@ -150,10 +150,14 @@ func setUpDB() {
 	service.SetDBV3(&db)
 	service.SetDBV4(&db)
 
-	url, port, user, passwd, dbName = util.GetMySQLAuditConfig()
+	url, port, user, passwd, dbName = util.GetAuditMySQLConfig()
 	util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitAuditDB(url, port, dbName, user, passwd)
 	audit.SetDB(&db)
+
+	url, port, user, passwd, dbName = util.GetBFMySQLConfig()
+	util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	db.InitBFDB(url, port, dbName, user, passwd)
 }
 
 func checkAuth(r *http.Request, route Route) bool {

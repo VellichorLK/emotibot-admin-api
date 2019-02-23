@@ -198,6 +198,7 @@ func handleFlowList(w http.ResponseWriter, r *http.Request) {
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
@@ -313,6 +314,7 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
@@ -422,6 +424,7 @@ func handleFlowCreate(w http.ResponseWriter, r *http.Request) {
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
@@ -497,6 +500,12 @@ func setUpNavCache() {
 	config.SetCollectionMethod(timecache.OnUpdate)
 	navCache.Activate(config)
 	navCallCache.Activate(config)
+}
+
+//NavMatchedResponse is the returned structure of handleStreaming
+type NavMatchedResponse struct {
+	NavResult []MatchedFlowNode `json:"nav_result"`
+	Sensitive []string          `json:"sensitive"`
 }
 
 func handleStreaming(w http.ResponseWriter, r *http.Request) {
@@ -578,26 +587,29 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = streamingMatch(segWithSp, &settings)
+	matchedInfo, err := streamingMatch(segWithSp, &settings)
 	if err != nil {
 		logger.Error.Printf("streaming matched failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	/*
+		predict, err := json.Marshal(settings)
+		if err != nil {
+			logger.Error.Printf("marshal setting failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
 
-	predict, err := json.Marshal(settings)
-	if err != nil {
-		logger.Error.Printf("marshal setting failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
+		_, err = updateStreamingPredict(call.ID, string(predict))
+		if err != nil {
+			logger.Error.Printf("update setting %d failed. %s\n", call.ID, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+	*/
 
-	_, err = updateStreamingPredict(call.ID, string(predict))
-	if err != nil {
-		logger.Error.Printf("update setting %d failed. %s\n", call.ID, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
+	resp := &NavMatchedResponse{NavResult: matchedInfo, Sensitive: make([]string, 0)}
 
 	for i := 0; i < len(requestBody); i++ {
 		words, err := sensitive.IsSensitive(requestBody[i].Text)
@@ -606,12 +618,13 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		settings.NavResult.Sensitive = append(settings.NavResult.Sensitive, words...)
+		resp.Sensitive = append(resp.Sensitive, words...)
 	}
 
-	err = util.WriteJSON(w, &settings.NavResult)
+	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
@@ -653,6 +666,7 @@ func handleGetCurCheck(w http.ResponseWriter, r *http.Request) {
 	err = util.WriteJSON(w, &settings.NavResult)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
