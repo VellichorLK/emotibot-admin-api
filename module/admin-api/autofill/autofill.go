@@ -300,7 +300,7 @@ func resetIntentAutofills(appID string) error {
 			autofillBodies[sentence] = append(autofillBodies[sentence], &data.AutofillBody{
 				ModuleID:         intentSentence.ModuleID,
 				SentenceID:       intentSentence.SentenceID,
-				SentenceOriginal: sentence,
+				SentenceOriginal: strings.ToLower(zhconverter.T2S(sentence)),
 			})
 
 			// Sentences
