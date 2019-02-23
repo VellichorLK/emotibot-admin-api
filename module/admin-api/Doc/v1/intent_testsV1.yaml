@@ -46,7 +46,7 @@ components:
       type: object
       properties:
         id:
-          description: 意圖模型 ID
+          description: 意圖訓練版本
           type: integer
         updated_time:
           description: 意圖模型訓練時間
