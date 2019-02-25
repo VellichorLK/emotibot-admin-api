@@ -111,10 +111,12 @@ func handleGetSensitiveWords(w http.ResponseWriter, r *http.Request) {
 	paging := request.Paging(r)
 	vars := mux.Vars(r)
 
+	var deleted int8
 	filter := &model.SensitiveWordFilter{
 		Enterprise: &enterprise,
 		Page:       paging.Page,
 		Limit:      paging.Limit,
+		Deleted: &deleted,
 	}
 
 	if keyword, ok := vars["keyword"]; ok {
