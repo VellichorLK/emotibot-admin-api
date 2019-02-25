@@ -68,7 +68,7 @@ func DeleteReason(appid string, id int64) AdminErrors.AdminError {
 
 	err := serviceDao.DeleteReason(appid, id)
 	if err != nil {
-		if err == ErrReasonNotExists {
+		if err == ErrIDNotExisted {
 			return AdminErrors.New(AdminErrors.ErrnoNotFound, err.Error())
 		}
 		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())

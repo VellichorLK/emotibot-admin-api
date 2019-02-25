@@ -23,6 +23,8 @@ var (
 	ErrDBNotInit = errors.New("DB is not init")
 	// ErrIDNotExisted is used when id is not existed in update
 	ErrIDNotExisted = errors.New("ID is not found")
+	// ErrDuplicateContent is used when trying to insert duplicate reason
+	ErrDuplicateContent = errors.New("Duplicate content")
 
 	// it is used for mock
 	timestampHandler = func() int64 {
@@ -107,7 +109,7 @@ func (dao feedbackDao) DeleteReason(appid string, id int64) error {
 	if err != nil {
 		return err
 	} else if affected == 0 {
-		return ErrReasonNotExists
+		return ErrIDNotExisted
 	}
 
 	if err != nil {
