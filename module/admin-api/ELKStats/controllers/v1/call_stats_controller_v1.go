@@ -54,6 +54,12 @@ func CallStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if startTime.After(endTime) {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime, "t1/t2")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	var aggInterval string
 
 	if t1 == t2 {

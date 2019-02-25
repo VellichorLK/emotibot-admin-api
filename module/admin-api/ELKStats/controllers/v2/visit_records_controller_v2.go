@@ -34,6 +34,13 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	result, err := servicesV2.VisitRecordsQuery(query)
 	if err != nil {
 		var errResponse data.ErrorResponse
@@ -66,6 +73,13 @@ func VisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
 	query, err, errCode := newRecordQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(errCode, err.Error())
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
 		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}

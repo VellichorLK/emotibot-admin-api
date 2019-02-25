@@ -87,6 +87,13 @@ func TEVisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Unix(int64(startTimeUnix), 0).UTC()
 	endTime := time.Unix(int64(endTimeUnix), 0).UTC()
 
+	if startTime.After(endTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"startTime cannot greater than endTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	var aggInterval string
 
 	if endTime.Sub(startTime) < data.DurationDay {

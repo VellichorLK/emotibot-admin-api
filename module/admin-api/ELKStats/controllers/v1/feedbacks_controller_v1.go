@@ -52,6 +52,13 @@ func FeedbacksGetHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Unix(int64(startTimeUnix), 0).UTC()
 	endTime := time.Unix(int64(endTimeUnix), 0).UTC()
 
+	if startTime.After(endTime) {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime,
+			"startTime greater than endTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	query := dataV1.FeedbacksQuery{
 		CommonQuery: data.CommonQuery{
 			AppID:     appID,
