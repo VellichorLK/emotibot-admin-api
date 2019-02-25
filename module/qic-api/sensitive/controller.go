@@ -116,7 +116,7 @@ func handleGetSensitiveWords(w http.ResponseWriter, r *http.Request) {
 		Enterprise: &enterprise,
 		Page:       paging.Page,
 		Limit:      paging.Limit,
-		Deleted: &deleted,
+		Deleted:    &deleted,
 	}
 
 	if keyword, ok := vars["keyword"]; ok {
@@ -307,9 +307,11 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var deleted int8
 	filter := &model.SensitiveWordFilter{
 		Category:   &categoryID,
 		Enterprise: &enterprise,
+		Deleted:    &deleted,
 	}
 	total, words, err := GetSensitiveWords(filter)
 	if err != nil {
