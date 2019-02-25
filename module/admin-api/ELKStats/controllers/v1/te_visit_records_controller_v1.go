@@ -27,6 +27,13 @@ func TEVisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	result, totalSize, err := servicesV1.TEVisitRecordsQuery(query)
 	if err != nil {
 		var errResponse data.ErrorResponse
@@ -57,6 +64,13 @@ func TEVisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
 	query, err, errCode := newTERecordQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(errCode, err.Error())
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
 		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}

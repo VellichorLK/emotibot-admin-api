@@ -63,6 +63,12 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if startTime.After(endTime) {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime, "t1/t2")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	var aggInterval string
 
 	if t1 == t2 {
@@ -237,6 +243,12 @@ func QuestionStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	startTime, endTime, err := elasticsearch.CreateTimeRangeFromString(t1, t2, "20060102")
 	if err != nil {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterEndTime, "t1/t2")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	if startTime.After(endTime) {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime, "t1/t2")
 		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}
