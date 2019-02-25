@@ -215,7 +215,7 @@ func (dao IntentTestDao) GetIntentTest(appID string, version int64,
 	queryParams := []interface{}{data.TestResultCorrect, version}
 
 	if keyword != "" {
-		queryStr = fmt.Sprintf("%s AND i.name LIKE ?", queryStr)
+		queryStr = fmt.Sprintf("%s AND ti.intent_name LIKE ?", queryStr)
 		queryParams = append(queryParams, getLikeValue(keyword))
 	}
 
@@ -288,7 +288,7 @@ func (dao IntentTestDao) GetLatestIntents(appID string,
 	queryParams := []interface{}{appID}
 
 	if keyword != "" {
-		queryStr = fmt.Sprintf("%s AND i.name LIKE ?", queryStr)
+		queryStr = fmt.Sprintf("%s AND ti.intent_name LIKE ?", queryStr)
 		queryParams = append(queryParams, getLikeValue(keyword))
 	}
 
