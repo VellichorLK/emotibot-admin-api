@@ -44,7 +44,7 @@ var mockMatched = []*model.SegmentMatch{
 type mockRelationCreditDao struct {
 }
 
-func (m *mockRelationCreditDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+func (m *mockRelationCreditDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error) {
 	resp := make([]map[uint64][]uint64, 0, 1)
 
 	senTag := make(map[uint64][]uint64)
