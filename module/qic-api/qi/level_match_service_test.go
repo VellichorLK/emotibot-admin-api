@@ -858,7 +858,7 @@ var segToTags = map[int][]uint64{
 type mockRelationDao struct {
 }
 
-func (m *mockRelationDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+func (m *mockRelationDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error) {
 	resp := make([]map[uint64][]uint64, 0)
 	resp = append(resp, groupsToRules)
 	resp = append(resp, rulesToCFs)

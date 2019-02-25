@@ -596,7 +596,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	}
 
 	//get the relation table from RuleGroup to Tag
-	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)})
+	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)}, true)
 	if err != nil {
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
