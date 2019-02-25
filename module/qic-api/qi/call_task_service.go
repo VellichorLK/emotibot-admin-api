@@ -23,6 +23,9 @@ var (
 		return tasks[0], nil
 	}
 	tasksByCalls = func(calls []model.Call) ([]*model.Task, error) {
+		if len(calls) == 0 {
+			return []*model.Task{}, nil
+		}
 		// indexes is a join of given calls' unique task.
 		indexes := map[int64][]int{}
 		for idx, call := range calls {
