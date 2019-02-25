@@ -58,10 +58,11 @@ type NavFlowUpdate struct {
 
 //NavQuery is query condition used in navigation api
 type NavQuery struct {
-	ID         []int64
-	UUID       []string
-	Enterprise *string
-	IsDelete   *int
+	ID           []int64
+	UUID         []string
+	Enterprise   *string
+	IsDelete     *int
+	IgnoreIntent *int
 }
 
 //NavLimit is the limitation of the returned rows
@@ -76,6 +77,7 @@ func (n *NavQuery) whereSQL() (condition string, bindData []interface{}, err err
 		fldUUID,
 		fldEnterprise,
 		fldIsDelete,
+		fldIgoreIntent,
 	}
 	return makeAndCondition(n, flds)
 }

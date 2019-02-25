@@ -144,6 +144,10 @@ type FlowSummary struct {
 	NumOfNodes int64  `json:"num_nodes"`
 }
 
+var navTypeMap = map[string]int{
+	"fixed": 1,
+}
+
 func handleFlowList(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
@@ -152,8 +156,16 @@ func handleFlowList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	typ := r.URL.Query().Get("type")
+
 	isDelete := 0
 	q := &model.NavQuery{Enterprise: &enterprise, IsDelete: &isDelete}
+	if typCode, ok := navTypeMap[typ]; ok {
+		q.IgnoreIntent = &typCode
+	} else if typ != "" {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "unsupported type"), http.StatusBadRequest)
+		return
+	}
 
 	flows, err := GetFlows(q, page, limit)
 	if err != nil {
