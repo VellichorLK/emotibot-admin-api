@@ -72,7 +72,9 @@ func TestDaoAddReason(t *testing.T) {
 	})
 
 	t.Run("Test add correctly", func(t *testing.T) {
-		mock.ExpectExec("INSERT INTO feedback_reason").WithArgs(appid, newReason, getFixTimestamp()).WillReturnResult(sqlmock.NewResult(10, 1))
+		mock.ExpectExec("INSERT INTO feedback_reason").
+			WithArgs(appid, newReason, getFixTimestamp(), appid, newReason).
+			WillReturnResult(sqlmock.NewResult(10, 1))
 
 		dao.db = db
 		timestampHandler = getFixTimestamp

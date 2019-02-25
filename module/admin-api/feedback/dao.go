@@ -23,6 +23,8 @@ var (
 	ErrDBNotInit = errors.New("DB is not init")
 	// ErrIDNotExisted is used when id is not existed in update
 	ErrIDNotExisted = errors.New("ID is not found")
+	// ErrDuplicateContent is used when trying to insert duplicate reason
+	ErrDuplicateContent = errors.New("Duplicate content")
 
 	// it is used for mock
 	timestampHandler = func() int64 {
@@ -62,11 +64,28 @@ func (dao feedbackDao) AddReason(appid string, content string) (int64, error) {
 		return 0, ErrDBNotInit
 	}
 
-	sql := "INSERT INTO feedback_reason (appid, content, created_at) VALUES (?, ?, ?)"
+	sql := `
+		INSERT INTO feedback_reason (appid, content, created_at)
+		SELECT ?, ?, ?
+		FROM feedback_reason
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM feedback_reason
+			WHERE appid = ? AND content = ?
+		)
+		LIMIT 1`
 
-	result, err := dao.db.Exec(sql, appid, content, timestampHandler())
+	result, err := dao.db.Exec(sql, appid, content, timestampHandler(),
+		appid, content)
 	if err != nil {
 		return 0, err
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	} else if affected == 0 {
+		return 0, ErrDuplicateContent
 	}
 
 	id, err := result.LastInsertId()
@@ -84,7 +103,15 @@ func (dao feedbackDao) DeleteReason(appid string, id int64) error {
 
 	sql := "DELETE FROM feedback_reason WHERE appid = ? AND id = ?"
 
-	_, err := dao.db.Exec(sql, appid, id)
+	result, err := dao.db.Exec(sql, appid, id)
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	} else if affected == 0 {
+		return ErrIDNotExisted
+	}
+
 	if err != nil {
 		return err
 	}
