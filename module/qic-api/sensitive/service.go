@@ -3,6 +3,7 @@ package sensitive
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"github.com/anknown/ahocorasick"
 )
@@ -36,8 +37,13 @@ func IsSensitive(content string) ([]string, error) {
 }
 
 func stringsToRunes(ss []string) [][]rune {
-	words := make([][]rune, len(ss), len(ss))
+	words := make([][]rune, len(ss))
 	for idx, s := range ss {
+		// ignore empty string
+		// ignroe empty string will cause Index out of error in goahocorasick.Machine Build
+		if s == "" {
+			continue
+		}
 		word := []rune(s)
 		words[idx] = word
 	}
