@@ -78,7 +78,7 @@ var CContainsSGNULL = map[uint64][]uint64{
 var SGContainsSNULL = map[uint64][]uint64{
 	31: []uint64{0},
 	32: []uint64{41, 42},
-	33: []uint64{43},
+	33: []uint64{0},
 	34: []uint64{44, 45},
 	35: []uint64{45},
 }
@@ -101,6 +101,7 @@ var expectIntegrity = map[uint64]LevelVaild{
 	2: LevelVaild{Valid: true},
 	3: LevelVaild{Valid: false, InValidInfo: []*InvalidUnit{
 		&InvalidUnit{InValidLevel: LevSenGroup, InValidID: 31},
+		&InvalidUnit{InValidLevel: LevSenGroup, InValidID: 33},
 		&InvalidUnit{InValidLevel: LevSentence, InValidID: 41},
 	}},
 }
