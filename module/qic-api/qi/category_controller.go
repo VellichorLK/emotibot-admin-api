@@ -52,9 +52,11 @@ func handleGetCategoryies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isDelete := int8(0)
+	var ctype int8
 	query := &model.CategoryQuery{
 		Enterprise: &enterprise,
 		IsDelete:   &isDelete,
+		Type:       &ctype,
 	}
 
 	categories, err := GetCategories(query)
