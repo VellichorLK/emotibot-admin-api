@@ -401,10 +401,10 @@ func (dao *SensitiveWordSqlDao) Names(sqlLike SqlLike, forceReload bool) (names 
 	names = []string{}
 	if dao.Redis != nil && !forceReload {
 		err = dao.Redis.Do(radix.Cmd(&names, "LRANGE", redisKey, "0", "-1"))
-		if err != nil {
-			logger.Error.Printf("get sensitive word names in redis failed, err: %s", err.Error())
+		if err == nil {
+			return
 		}
-		return
+		logger.Error.Printf("get sensitive word names in redis failed, err: %s", err.Error())
 	}
 
 	// get names through mysql
