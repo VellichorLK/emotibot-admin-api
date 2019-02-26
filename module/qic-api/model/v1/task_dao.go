@@ -72,26 +72,16 @@ func (t *TaskSQLDao) NewTask(delegatee SqlLike, task Task) (*Task, error) {
 //TaskQuery is the query conditions of task table.
 type TaskQuery struct {
 	ID []int64
+	SN []string // Serial Number
 }
 
 func (q TaskQuery) whereSQL() (string, []interface{}) {
 	var (
-		conditions []string
-		bindData   = make([]interface{}, 0)
-		rawCond    string
+		whereBuilder = NewWhereBuilder(andLogic, "")
 	)
-	if len(q.ID) > 0 {
-		cond := fldTaskID + " IN (?" + strings.Repeat(",? ", len(q.ID)-1) + ")"
-		conditions = append(conditions, cond)
-		for _, id := range q.ID {
-			bindData = append(bindData, id)
-		}
-	}
-	if len(conditions) == 0 {
-		return "", bindData
-	}
-	rawCond = " WHERE " + strings.Join(conditions, " AND ")
-	return rawCond, bindData
+	whereBuilder.In(fldTaskID, int64ToWildCard(q.ID...))
+	whereBuilder.In(fldTaskSeries, stringToWildCard(q.SN...))
+	return whereBuilder.ParseWithWhere()
 }
 
 // CallTask query task by the given call.

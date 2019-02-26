@@ -44,6 +44,7 @@ func (w *whereBuilder) ParseWithWhere() (string, []interface{}) {
 }
 
 // In will create a condition that field should include inputs.
+// be care if you send in a nil or zero input, it will become an non-condition
 func (w *whereBuilder) In(fieldName string, inputs []interface{}) {
 	if len(inputs) > 0 {
 		in := fmt.Sprintf("%s`%s` IN (? %s)", w.alias, fieldName, strings.Repeat(",?", len(inputs)-1))

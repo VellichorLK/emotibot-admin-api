@@ -228,17 +228,29 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	}
 	defer tx.Rollback()
 	timestamp := time.Now().Unix()
-	newTask := &model.Task{
-		Status:      int8(0),
-		Series:      c.Series,
-		IsDeal:      c.Transaction == 1,
-		CreatedTime: timestamp,
-		UpdatedTime: timestamp,
-	}
-
-	createdTask, err := taskDao.NewTask(tx, *newTask)
+	var cTask *model.Task
+	// call's task is determine by its serial number, if the same then use the old one.
+	tasks, err := taskDao.Task(tx, model.TaskQuery{
+		SN: []string{c.Series},
+	})
 	if err != nil {
-		return nil, fmt.Errorf("new task failed, %v", err)
+		return nil, fmt.Errorf("fetch task failed, %v", err)
+	}
+	if len(tasks) >= 1 {
+		cTask = &tasks[0]
+		// TODO: Update time
+		// cTask.UpdatedTime = timestamp
+	} else {
+		cTask, err = taskDao.NewTask(tx, model.Task{
+			Status:      int8(0),
+			Series:      c.Series,
+			IsDeal:      c.Transaction == 1,
+			CreatedTime: timestamp,
+			UpdatedTime: timestamp,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create new task failed, %v", err)
+		}
 	}
 
 	// create uuid for call
@@ -264,7 +276,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		UploadUser:     c.UploadUser,
 		LeftChanRole:   callRoleTyp(c.LeftChannel),
 		RightChanRole:  callRoleTyp(c.RightChannel),
-		TaskID:         createdTask.ID,
+		TaskID:         cTask.ID,
 		Type:           c.Type,
 	}
 
