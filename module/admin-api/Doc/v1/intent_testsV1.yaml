@@ -45,7 +45,7 @@ components:
     intentModel:
       type: object
       properties:
-        id:
+        version:
           description: 意圖訓練版本
           type: integer
         updated_time:
@@ -81,7 +81,7 @@ components:
         version:
           description: 意圖訓練版本
           type: integer
-        model_id:
+        ie_model_id:
           description: 意圖模型 ID
           type: string
         train_time:
@@ -424,9 +424,9 @@ paths:
             schema:
               type: object
               properties:
-                intent_version:
-                  description: 所欲測試的意圖版本
-                  type: integer
+                ie_model_id:
+                  description: 意圖模型 ID
+                  type: string
       responses:
         200:
           description: 意圖測試工作成功建立
@@ -532,6 +532,9 @@ paths:
                               name:
                                 description: 意圖測試集名稱，預設為空字串
                                 type: string
+                              ie_model_version:
+                                description: 意圖訓練版本
+                                type: integer
                               ie_model_updated_time:
                                 description: 測試時所使用的意圖模型的訓練時間 (用來作為意圖模型的版本資訊顯示給使用者)
                                 type: integer
