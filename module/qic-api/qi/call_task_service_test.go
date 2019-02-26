@@ -3,6 +3,7 @@ package qi
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,13 @@ func TestTasksByCalls(t *testing.T) {
 	}()
 	tasks = func(delegatee model.SqlLike, query model.TaskQuery) ([]model.Task, error) {
 		var taskGrp = make([]model.Task, 0)
+		sort.Slice(query.ID, func(i, j int) bool {
+			if query.ID[i] > query.ID[j] {
+				return false
+			} else {
+				return true
+			}
+		})
 		for _, id := range query.ID {
 			taskGrp = append(taskGrp, model.Task{
 				ID: id,
