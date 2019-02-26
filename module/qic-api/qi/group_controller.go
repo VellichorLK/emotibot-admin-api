@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -140,6 +141,44 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if len(groupInReq.Rules) > 0 {
+		filter := &model.ConversationRuleFilter{
+			Enterprise: enterprise,
+			Severity:   -1,
+			UUID:       groupInReq.Rules,
+		}
+
+		total, rules, err := GetConversationRulesBy(filter)
+		if err != nil {
+			logger.Error.Printf("error while get rules in handleGetConversationRules, reason: %s\n", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if len(rules) != len(groupInReq.Rules) {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "contains invalid rule"), http.StatusBadRequest)
+			return
+		}
+
+		ruleIDs := make([]uint64, 0, total)
+		for _, v := range rules {
+			ruleIDs = append(ruleIDs, uint64(v.ID))
+		}
+
+		levValid, err := CheckIntegrity(LevRuleGroup, ruleIDs)
+		if err != nil {
+			logger.Error.Printf("call check integrity failed. %s\n", err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for idx, lev := range levValid {
+			if !lev.Valid {
+				util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, rules[idx].Name+"("+rules[idx].UUID+") is not complete"), http.StatusBadRequest)
+				return
+			}
+		}
+	}
+
 	group := groupInReqToGroupWCond(&groupInReq)
 	group.Enterprise = enterprise
 
