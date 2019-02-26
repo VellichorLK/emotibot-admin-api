@@ -193,30 +193,18 @@ func (dao IntentTestDao) GetIntentTest(appID string, version int64,
 	}
 	result.IntentsCount = &_intentCounts
 
-	// Note:
-	// 	's.sentences_count' and 'p.positives_count' may be NULL
-	//  after left outer join
+	// Note: 's.sentence' may be NULL after left outer join
 	queryStr = fmt.Sprintf(`
-		SELECT ti.id, ti.intent_name, s.sentences_count, p.positives_count
+		SELECT ti.id, ti.intent_name, ts.sentence, ts.result
 		FROM %s AS ti
-		LEFT JOIN (
-			SELECT COUNT(1) AS sentences_count, test_intent
-			FROM %s
-			GROUP BY test_intent) AS s
-		ON s.test_intent = ti.id
-		LEFT JOIN (
-			SELECT COUNT(1) AS positives_count, test_intent
-			FROM %s
-			WHERE result = ?
-			GROUP BY test_intent) AS p
-		ON p.test_intent = ti.id
-		WHERE ti.version = ?`, IntentTestIntentsTable, IntentTestSentencesTable,
-		IntentTestSentencesTable)
-	queryParams := []interface{}{data.TestResultCorrect, version}
+		LEFT JOIN %s AS ts
+		ON ts.test_intent = ti.id
+		WHERE ti.version = ?`, IntentTestIntentsTable, IntentTestSentencesTable)
+	queryParams := []interface{}{version}
 
 	if keyword != "" {
-		queryStr = fmt.Sprintf("%s AND ti.intent_name LIKE ?", queryStr)
-		queryParams = append(queryParams, getLikeValue(keyword))
+		queryStr = fmt.Sprintf("%s AND (ti.intent_name LIKE ? OR ts.sentence LIKE ?)", queryStr)
+		queryParams = append(queryParams, getLikeValue(keyword), getLikeValue(keyword))
 	}
 
 	rows, err := dao.db.Query(queryStr, queryParams...)
@@ -225,39 +213,58 @@ func (dao IntentTestDao) GetIntentTest(appID string, version int64,
 	}
 
 	testIntents := make([]*data.IntentTestIntent, 0)
+	testIntentsMap := make(map[int64]*data.IntentTestIntent)
 
 	for rows.Next() {
-		var intentName sql.NullString
-		var sentencesCount, positivesCount sql.NullInt64
-		intent := data.IntentTestIntent{}
-		err = rows.Scan(&intent.ID, &intentName, &sentencesCount, &positivesCount)
+		var id int64
+		var intentName string
+		var sentenceResult sql.NullInt64
+		var resultType bool
+		var _intentName, _sentence sql.NullString
+
+		err = rows.Scan(&id, &_intentName, &_sentence, &sentenceResult)
 		if err != nil {
 			return nil, err
 		}
 
-		var intentType bool
-		if !intentName.Valid {
+		if !_intentName.Valid {
 			// Negative test intent
-			negativeTestIntentName := localemsg.Get(locale, "NegativeTestIntentName")
-			intent.IntentName = &negativeTestIntentName
-			intentType = false
+			intentName = localemsg.Get(locale, "NegativeTestIntentName")
+			resultType = false
 		} else {
-			intent.IntentName = &intentName.String
-			intentType = true
-		}
-		intent.Type = &intentType
-
-		if sentencesCount.Valid {
-			intent.SentencesCount = sentencesCount.Int64
+			intentName = _intentName.String
+			resultType = true
 		}
 
-		var p int64
-		if positivesCount.Valid {
-			p = positivesCount.Int64
+		testIntent, ok := testIntentsMap[id]
+		if !ok {
+			var positivesCount int64 = 0
+			testIntent = &data.IntentTestIntent{
+				ID:             id,
+				IntentName:     &intentName,
+				PositivesCount: &positivesCount,
+				SentencesCount: 0,
+				Type:           &resultType,
+			}
+			testIntentsMap[id] = testIntent
+			testIntents = append(testIntents, testIntent)
 		}
-		intent.PositivesCount = &p
 
-		testIntents = append(testIntents, &intent)
+		if _sentence.Valid {
+			if keyword != "" {
+				if strings.Contains(_sentence.String, keyword) {
+					testIntent.SentencesCount++
+					if sentenceResult.Valid && sentenceResult.Int64 == data.TestResultCorrect {
+						*testIntent.PositivesCount = *testIntent.PositivesCount + 1
+					}
+				}
+			} else {
+				testIntent.SentencesCount++
+				if sentenceResult.Valid && sentenceResult.Int64 == data.TestResultCorrect {
+					*testIntent.PositivesCount = *testIntent.PositivesCount + 1
+				}
+			}
+		}
 	}
 
 	result.TestIntents = testIntents
@@ -271,25 +278,19 @@ func (dao IntentTestDao) GetLatestIntents(appID string,
 		return nil, ErrDBNotInit
 	}
 
-	results = make([]*data.IntentTestIntent, 0)
-
-	// Note:
-	// 	's.sentences_count' may be NULL after left outer join
+	// Note: 'ts.sentence' may be NULL after left outer join
 	queryStr := fmt.Sprintf(`
-		SELECT ti.id, ti.intent_name, s.sentences_count
+		SELECT ti.id, ti.intent_name, ts.sentence
 		FROM %s AS ti
-		LEFT JOIN (
-			SELECT COUNT(1) AS sentences_count, test_intent
-			FROM %s
-			GROUP BY test_intent) AS s
-		ON s.test_intent = ti.id
+		LEFT JOIN %s AS ts
+		ON ts.test_intent = ti.id
 		WHERE ti.app_id = ? AND ti.version IS NULL`, IntentTestIntentsTable,
 		IntentTestSentencesTable)
 	queryParams := []interface{}{appID}
 
 	if keyword != "" {
-		queryStr = fmt.Sprintf("%s AND ti.intent_name LIKE ?", queryStr)
-		queryParams = append(queryParams, getLikeValue(keyword))
+		queryStr = fmt.Sprintf("%s AND (ti.intent_name LIKE ? OR ts.sentence LIKE ?)", queryStr)
+		queryParams = append(queryParams, getLikeValue(keyword), getLikeValue(keyword))
 	}
 
 	rows, err := dao.db.Query(queryStr, queryParams...)
@@ -297,33 +298,50 @@ func (dao IntentTestDao) GetLatestIntents(appID string,
 		return nil, err
 	}
 
-	for rows.Next() {
-		var intentName sql.NullString
-		var sentencesCount sql.NullInt64
-		result := data.IntentTestIntent{}
+	results = make([]*data.IntentTestIntent, 0)
+	testIntentsMap := make(map[int64]*data.IntentTestIntent)
 
-		err = rows.Scan(&result.ID, &intentName, &sentencesCount)
+	for rows.Next() {
+		var id int64
+		var intentName string
+		var resultType bool
+		var _intentName, _sentence sql.NullString
+
+		err = rows.Scan(&id, &_intentName, &_sentence)
 		if err != nil {
 			return nil, err
 		}
 
-		var resultType bool
-		if !intentName.Valid {
+		if !_intentName.Valid {
 			// Negative test intent
-			negativeTestIntentName := localemsg.Get(locale, "NegativeTestIntentName")
-			result.IntentName = &negativeTestIntentName
+			intentName = localemsg.Get(locale, "NegativeTestIntentName")
 			resultType = false
 		} else {
-			result.IntentName = &intentName.String
+			intentName = _intentName.String
 			resultType = true
 		}
-		result.Type = &resultType
 
-		if sentencesCount.Valid {
-			result.SentencesCount = sentencesCount.Int64
+		result, ok := testIntentsMap[id]
+		if !ok {
+			result = &data.IntentTestIntent{
+				ID:             id,
+				IntentName:     &intentName,
+				SentencesCount: 0,
+				Type:           &resultType,
+			}
+			testIntentsMap[id] = result
+			results = append(results, result)
 		}
 
-		results = append(results, &result)
+		if _sentence.Valid {
+			if keyword != "" {
+				if strings.Contains(_sentence.String, keyword) {
+					result.SentencesCount++
+				}
+			} else {
+				result.SentencesCount++
+			}
+		}
 	}
 
 	return
