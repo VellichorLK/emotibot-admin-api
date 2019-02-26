@@ -62,7 +62,7 @@ func (dao IntentTestDao) GetIntentTests(appID string) (results *data.IntentTestR
 			&latest.IntentTest.TestSentencesCount, &tester,
 			&latest.IntentTest.TruePositives, &latest.IntentTest.FalsePositives,
 			&latest.IntentTest.TrueNegatives, &latest.IntentTest.FalseNegatives,
-			&latest.IntentModel.ID, &latest.IntentModel.UpdatedTime,
+			&latest.IntentModel.Version, &latest.IntentModel.UpdatedTime,
 			&latest.IntentModel.IntentsCount, &latest.IntentModel.SentencesCount,
 			&latest.IntentTest.Saved)
 		if err != nil {
@@ -110,7 +110,7 @@ func (dao IntentTestDao) GetIntentTests(appID string) (results *data.IntentTestR
 			&saved.IntentTest.TestSentencesCount, &tester,
 			&saved.IntentTest.TruePositives, &saved.IntentTest.FalsePositives,
 			&saved.IntentTest.TrueNegatives, &saved.IntentTest.FalseNegatives,
-			&saved.IntentModel.ID, &saved.IntentModel.UpdatedTime,
+			&saved.IntentModel.Version, &saved.IntentModel.UpdatedTime,
 			&saved.IntentModel.IntentsCount, &saved.IntentModel.SentencesCount,
 			&saved.IntentTest.Saved)
 		if err != nil {
@@ -150,7 +150,7 @@ func (dao IntentTestDao) GetIntentTest(appID string, version int64,
 		SELECT tv.id, tv.app_id, tv.name, tv.start_time, tv.intents_count, 
 			tv.sentences_count, tv.true_positives, tv.false_positives, 
 			tv.true_negatives, tv.false_negatives, tv.tester, tv.saved, 
-			i.intent_count, iv.sentence_count, iv.commit_time
+			i.intent_count, iv.version, iv.sentence_count, iv.commit_time
 		FROM %s AS tv
 		INNER JOIN %s AS iv
 		ON tv.ie_model_id = iv.ie_model_id
@@ -167,7 +167,7 @@ func (dao IntentTestDao) GetIntentTest(appID string, version int64,
 		&testAppID, &result.Name, &result.UpdatedTime, &result.TestIntentsCount,
 		&result.TestSentencesCount, &result.TruePositives, &result.FalsePositives,
 		&result.TrueNegatives, &result.FalseNegatives, &tester,
-		&result.Saved, &intentsCount, &result.SentencesCount,
+		&result.Saved, &intentsCount, &result.IEModelVersion, &result.SentencesCount,
 		&result.IEModelUpdateTime)
 	if err != nil {
 		if err == sql.ErrNoRows {

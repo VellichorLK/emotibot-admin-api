@@ -14,6 +14,7 @@ type IntentTest struct {
 	ID                 int64               `json:"id"`
 	Name               string              `json:"name,omitempty"`
 	UpdatedTime        int64               `json:"updated_time"`
+	IEModelVersion     int64               `json:"ie_model_version,omitempty"`
 	IEModelUpdateTime  int64               `json:"ie_model_updated_time,omitempty"`
 	TestIntentsCount   int64               `json:"test_intents_count"`
 	TestSentencesCount int64               `json:"test_sentences_count"`
@@ -29,7 +30,7 @@ type IntentTest struct {
 }
 
 type IntentModel struct {
-	ID             int64 `json:"id"`
+	Version        int64 `json:"version"`
 	UpdatedTime    int64 `json:"updated_time"`
 	IntentsCount   int64 `json:"intents_count"`
 	SentencesCount int64 `json:"sentences_count"`
