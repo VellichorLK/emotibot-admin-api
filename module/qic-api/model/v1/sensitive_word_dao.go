@@ -215,7 +215,7 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 	// update redis
 	names, ierr := dao.Names(sqlLike, true)
 	if ierr != nil {
-		logger.Error.Printf("get sensitive names failed, err: %s", err.Error())
+		logger.Error.Printf("get sensitive names failed, err: %s", ierr.Error())
 		return
 	}
 
