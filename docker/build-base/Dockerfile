@@ -27,6 +27,7 @@ RUN go get github.com/tidwall/sjson
 RUN go get github.com/sahilm/fuzzy
 RUN go get github.com/anknown/ahocorasick
 RUN go get github.com/robfig/cron
+RUN go get github.com/mediocregopher/radix
 # rabbitmq client
 RUN go get github.com/streadway/amqp
 # Unit-test binary
@@ -35,3 +36,4 @@ RUN go get github.com/AlekSi/gocov-xml
 RUN go get -u github.com/jstemmer/go-junit-report
 RUN go get github.com/stretchr/testify
 RUN go get github.com/mojocn/base64Captcha
+
