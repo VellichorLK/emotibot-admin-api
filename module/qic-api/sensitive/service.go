@@ -3,7 +3,6 @@ package sensitive
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
-	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"github.com/anknown/ahocorasick"
 )

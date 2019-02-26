@@ -31,6 +31,7 @@ func init() {
 			util.NewEntryPoint("PUT", "word/{id}", []string{}, handleUpdateSensitiveWord),
 			util.NewEntryPoint("DELETE", "word/{id}", []string{}, hanldeDeleteSensitiveWord),
 			util.NewEntryPoint("PUT", "word/move/{id}", []string{}, handleMoveSensitiveWords),
+			util.NewEntryPoint("GET", "word/test/{sw}", []string{}, handleIsSensitiveWord),
 
 			// category apis
 			util.NewEntryPoint("POST", "category", []string{}, handleCreateSensitiveWordCategory),
