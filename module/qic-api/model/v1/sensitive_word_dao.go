@@ -419,6 +419,7 @@ func (dao *SensitiveWordSqlDao) Names(sqlLike SqlLike, forceReload bool) (names 
 		err = fmt.Errorf("get sensitive word names in mysql failed, err: %s", err.Error())
 		return
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var name string
