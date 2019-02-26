@@ -2,6 +2,7 @@ package qi
 
 import (
 	"errors"
+	"sort"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
@@ -138,10 +139,16 @@ func CheckIntegrity(level Levels, id []uint64) ([]LevelVaild, error) {
 						}
 						parentIDs = invalidParents
 					}
-					//make the root parent to be not integrity
+					sort.SliceStable(parentIDs, func(i, j int) bool { return parentIDs[i] < parentIDs[j] })
+					//set the root parent to be not integrity
+					var lastParentID uint64
 					for _, parentID := range parentIDs {
-						levelVaildMap[parentID].InValidInfo = append(levelVaildMap[parentID].InValidInfo, &invalidInfo)
-						levelVaildMap[parentID].Valid = false
+						//remove the duplicate
+						if lastParentID != parentID {
+							levelVaildMap[parentID].InValidInfo = append(levelVaildMap[parentID].InValidInfo, &invalidInfo)
+							levelVaildMap[parentID].Valid = false
+							lastParentID = parentID
+						}
 					}
 				}
 			}
