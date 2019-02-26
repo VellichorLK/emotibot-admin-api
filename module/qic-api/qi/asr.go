@@ -22,24 +22,13 @@ func ASRWorkFlow(output []byte) error {
 		logger.Error.Println("unrecoverable error: unmarshal asr response failed, ", err, " Body: ", string(output))
 		return nil
 	}
+
 	c, err := Call(resp.CallID, "")
 	if err == ErrNotFound {
 		logger.Error.Printf("unrecoverable error: call '%d' no such call exist. \n", resp.CallID)
 		return nil
 	} else if err != nil {
 		return fmt.Errorf("fetch call failed, %v", err)
-	}
-
-	if resp.Status != 0 {
-		logger.Error.Println("unrecoverable error: asr response status is not ok, CallID: ", resp.CallID, ", Status: ", resp.Status)
-		return nil
-	}
-
-	c.DurationMillSecond = int(resp.Length * 1000)
-
-	err = UpdateCall(&c)
-	if err != nil {
-		return fmt.Errorf("update call duration failed, %v", err)
 	}
 
 	tx, err := dbLike.Begin()
@@ -59,6 +48,18 @@ func ASRWorkFlow(output []byte) error {
 			}
 		}
 	}()
+
+	if resp.Status != 0 {
+		logger.Error.Println("unrecoverable error: asr response status is not ok, CallID: ", resp.CallID, ", Status: ", resp.Status)
+		return nil
+	}
+
+	c.DurationMillSecond = int(resp.Length * 1000)
+
+	err = UpdateCall(&c)
+	if err != nil {
+		return fmt.Errorf("update call duration failed, %v", err)
+	}
 
 	segments := resp.Segments()
 	segments, err = segmentDao.NewSegments(tx, segments)
