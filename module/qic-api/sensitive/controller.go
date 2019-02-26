@@ -10,6 +10,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/gorilla/mux"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -111,10 +112,12 @@ func handleGetSensitiveWords(w http.ResponseWriter, r *http.Request) {
 	paging := request.Paging(r)
 	vars := mux.Vars(r)
 
+	var deleted int8
 	filter := &model.SensitiveWordFilter{
 		Enterprise: &enterprise,
 		Page:       paging.Page,
 		Limit:      paging.Limit,
+		Deleted:    &deleted,
 	}
 
 	if keyword, ok := vars["keyword"]; ok {
@@ -305,9 +308,11 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var deleted int8
 	filter := &model.SensitiveWordFilter{
 		Category:   &categoryID,
 		Enterprise: &enterprise,
+		Deleted:    &deleted,
 	}
 	total, words, err := GetSensitiveWords(filter)
 	if err != nil {
@@ -372,5 +377,26 @@ func handleDeleteCategory(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Printf("delete category failed, err: %s", err.Error())
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
+	}
+}
+
+func handleIsSensitiveWord(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	name, err := url.QueryUnescape(vars["sw"])
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	matched, err := IsSensitive(name)
+	if err != nil {
+		logger.Error.Printf("test sensitive word failed, err: %s", err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	err = util.WriteJSON(w, matched)
+	if err != nil {
+		logger.Error.Printf("response failed, err: %s", err.Error())
 	}
 }

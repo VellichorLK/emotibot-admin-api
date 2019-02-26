@@ -67,6 +67,12 @@ func (dao *mockDAO) Move(filter *model.SensitiveWordFilter, categoryID int64, sq
 	return 1, nil
 }
 
+func (dao *mockDAO) Names(sqlLike model.SqlLike, forced bool) ([]string, error) {
+	return []string{
+		"收益",
+	}, nil
+}
+
 func (dao *mockDAO) GetCategories(conn model.SqlLike, q *model.CategoryQuery) ([]*model.CategortInfo, error) {
 	return mockCategories, nil
 }
@@ -143,6 +149,9 @@ func restoreSensitiveWordMock(originDBLike model.DBLike, originDao model.Sensiti
 }
 
 func TestIsSensitive(t *testing.T) {
+	originDBLike, originDao, originSDao, originCateDao := setupSensitiveWordMock()
+	defer restoreSensitiveWordMock(originDBLike, originDao, originSDao, originCateDao)
+
 	sen1 := "收益"
 	sen2 := "一個安全的句子"
 	sen3 := "要不要理财型保险"

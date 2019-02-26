@@ -4,6 +4,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
+	"github.com/mediocregopher/radix"
 	"strings"
 )
 
@@ -11,6 +12,7 @@ const (
 	tblSensitiveWord       = "SensitiveWord"
 	tblRelSensitiveWordSen = "Relation_SensitiveWord_Sentence"
 	fldRelSWID             = "sw_id"
+	redisKey               = "sensitive-words"
 	StaffExceptionType     = int8(0)
 	CustomerExceptionType  = int8(1)
 	SwCategoryType         = int8(1)
@@ -64,6 +66,7 @@ type SensitiveWordDao interface {
 	GetRel(int64, SqlLike) (map[int8][]uint64, error)
 	Delete(*SensitiveWordFilter, SqlLike) (int64, error)
 	Move(*SensitiveWordFilter, int64, SqlLike) (int64, error)
+	Names(SqlLike, bool) ([]string, error)
 }
 
 type SensitiveWord struct {
@@ -77,7 +80,15 @@ type SensitiveWord struct {
 	CategoryID        int64
 }
 
-type SensitiveWordSqlDao struct{}
+type SensitiveWordSqlDao struct {
+	Redis *radix.Cluster
+}
+
+func NewDefaultSensitiveWordDao(cluster *radix.Cluster) SensitiveWordDao {
+	return &SensitiveWordSqlDao{
+		Redis: cluster,
+	}
+}
 
 func getSensitiveWordInsertSQL(words []SensitiveWord) (insertStr string, values []interface{}) {
 	values = []interface{}{}
@@ -198,6 +209,28 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 			logger.Error.Printf("insert sensitive word relation, sql: %s\n", insertStr)
 			logger.Error.Printf("values: %+v\n", values)
 			err = fmt.Errorf("insert sensitive word sentence relation in dao.Create, err: %s", err.Error())
+		}
+	}
+
+	// update redis
+	names, ierr := dao.Names(sqlLike, true)
+	if ierr != nil {
+		logger.Error.Printf("get sensitive names failed, err: %s", ierr.Error())
+		return
+	}
+
+	if dao.Redis != nil {
+		ierr = dao.Redis.Do(radix.Cmd(nil, "DEL", redisKey))
+		if ierr != nil {
+			logger.Error.Print(ierr)
+			return
+		}
+
+		cmds := append([]string{redisKey}, names...)
+		ierr = dao.Redis.Do(radix.Cmd(nil, "LPUSH", cmds...))
+		if ierr != nil {
+			logger.Error.Print(ierr)
+			return
 		}
 	}
 	return
@@ -359,6 +392,39 @@ func (dao *SensitiveWordSqlDao) Move(filter *SensitiveWordFilter, categoryID int
 	if err != nil {
 		err = fmt.Errorf("error while get affcted rows when move sensitive word to another category, err: %s", err.Error())
 		return
+	}
+	return
+}
+
+// Names is a sugar function for getting all sensitive word names
+func (dao *SensitiveWordSqlDao) Names(sqlLike SqlLike, forceReload bool) (names []string, err error) {
+	names = []string{}
+	if dao.Redis != nil && !forceReload {
+		err = dao.Redis.Do(radix.Cmd(&names, "LRANGE", redisKey, "0", "-1"))
+		if err != nil {
+			logger.Error.Printf("get sensitive word names in redis failed, err: %s", err.Error())
+		}
+		return
+	}
+
+	// get names through mysql
+	queryStr := fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s=0",
+		fldName,
+		tblSensitiveWord,
+		fldIsDelete,
+	)
+	rows, err := sqlLike.Query(queryStr)
+	if err != nil {
+		err = fmt.Errorf("get sensitive word names in mysql failed, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		names = append(names, name)
 	}
 	return
 }

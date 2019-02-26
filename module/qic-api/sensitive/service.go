@@ -14,7 +14,8 @@ var (
 
 func IsSensitive(content string) ([]string, error) {
 	matched := []string{}
-	words, err := dao.GetSensitiveWords()
+	sqlConn := dbLike.Conn()
+	words, err := swDao.Names(sqlConn, false)
 	if err != nil {
 		return matched, err
 	}
@@ -35,8 +36,13 @@ func IsSensitive(content string) ([]string, error) {
 }
 
 func stringsToRunes(ss []string) [][]rune {
-	words := make([][]rune, len(ss), len(ss))
+	words := make([][]rune, len(ss))
 	for idx, s := range ss {
+		// ignore empty string
+		// ignroe empty string will cause Index out of error in goahocorasick.Machine Build
+		if s == "" {
+			continue
+		}
 		word := []rune(s)
 		words[idx] = word
 	}
