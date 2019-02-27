@@ -165,7 +165,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 			ruleIDs = append(ruleIDs, uint64(v.ID))
 		}
 
-		levValid, err := CheckIntegrity(LevRuleGroup, ruleIDs)
+		levValid, err := CheckIntegrity(LevRule, ruleIDs)
 		if err != nil {
 			logger.Error.Printf("call check integrity failed. %s\n", err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
