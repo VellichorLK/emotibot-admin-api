@@ -39,18 +39,18 @@ type SimpleGroup struct {
 // GroupWCond is Group with Condition struct
 type GroupWCond struct {
 	ID              int64                     `json:"-"`
-	UUID            string                    `json:"group_id,omitempty"`
+	Deleted         int8                      `json:"-"`
 	Name            *string                   `json:"group_name,omitempty"`
 	Enterprise      string                    `json:",omitempty"`
+	Description     *string                   `json:"description"`
+	CreateTime      int64                     `json:"create_time,omitempty"`
 	Enabled         *int8                     `json:"is_enable,omitempty"`
 	Speed           *float64                  `json:"limit_speed,omitempty"`
 	SlienceDuration *float64                  `json:"limit_silence,omitempty"`
+	UUID            string                    `json:"group_id,omitempty"`
 	Rules           *[]SimpleConversationRule `json:"rules"`
 	Condition       *GroupCondition           `json:"other,omitempty"`
-	CreateTime      int64                     `json:"create_time,omitempty"`
-	Description     *string                   `json:"description"`
 	RuleCount       int                       `json:"rule_count"`
-	Deleted         int8                      `json:"-"`
 }
 
 type GroupFilter struct {
