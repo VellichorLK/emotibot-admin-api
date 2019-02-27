@@ -153,62 +153,62 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	conditions := []string{}
 	conditionStr := "WHERE"
 	if filter.FileName != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCFileName))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondFileName))
 		values = append(values, filter.FileName)
 	}
 
 	if filter.CallEnd != 0 {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCallEnd))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondCallEnd))
 		values = append(values, filter.CallEnd)
 	}
 
 	if filter.CallStart != 0 {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCallStart))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondCallStart))
 		values = append(values, filter.CallStart)
 	}
 
 	if filter.CustomerID != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerID))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondCustomerID))
 		values = append(values, filter.CustomerID)
 	}
 
 	if filter.CustomerName != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerName))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondCustomerName))
 		values = append(values, filter.CustomerName)
 	}
 
 	if filter.CustomerPhone != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCCustomerPhone))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondCustomerPhone))
 		values = append(values, filter.CustomerPhone)
 	}
 
 	if filter.Deal != nil {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCDeal))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondDeal))
 		values = append(values, *filter.Deal)
 	}
 
 	if filter.Department != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCDepartment))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondDepartment))
 		values = append(values, filter.Department)
 	}
 
 	if filter.Extension != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCExtension))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondExtension))
 		values = append(values, filter.Extension)
 	}
 
 	if filter.Series != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCSeries))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondSeries))
 		values = append(values, filter.Series)
 	}
 
 	if filter.StaffID != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffID))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondStaffID))
 		values = append(values, filter.StaffID)
 	}
 
 	if filter.StaffName != "" {
-		conditions = append(conditions, fmt.Sprintf("%s = ?", RGCStaffName))
+		conditions = append(conditions, fmt.Sprintf("%s = ?", fldCondStaffName))
 		values = append(values, filter.StaffName)
 	}
 
@@ -230,58 +230,34 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 			values = append(values, ruleID)
 		}
 	}
-
-	queryStr = `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	r.%s as rID, r.%s as rUUID, r.%s as rName
-	FROM (SELECT * FROM %s %s) as rg
-	LEFT JOIN (SELECT * FROM %s %s) as gc on rg.%s = gc.%s
-	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
-	%s as r on rrr.%s = r.%s
-	`
-
-	queryStr = fmt.Sprintf(
-		queryStr,
-		fldRuleGrpID,
-		fldRuleGrpUUID,
-		fldRuleGrpName,
-		fldDescription,
-		fldRuleGrpLimitSpeed,
-		fldRuleGrpLimitSilence,
-		fldCreateTime,
-		fldRuleGrpIsEnable,
-		fldEnterprise,
+	grpCols := []string{
+		fldRuleGrpID, fldRuleGrpUUID, fldRuleGrpName,
+		fldDescription, fldRuleGrpLimitSpeed, fldRuleGrpLimitSilence,
+		fldCreateTime, fldRuleGrpIsEnable, fldEnterprise,
 		fldIsDelete,
-		RGCFileName,
-		RGCDeal,
-		RGCSeries,
-		RGCStaffID,
-		RGCStaffName,
-		RGCExtension,
-		RGCDepartment,
-		RGCCustomerID,
-		RGCCustomerName,
-		RGCCustomerPhone,
-		RGCCallStart,
-		RGCCallEnd,
-		RGCLeftChannel,
-		RGCRightChannel,
-		fldID,
-		fldUUID,
-		fldName,
-		tblRuleGroup,
-		groupStr,
-		tblRGC,
-		conditionStr,
-		fldID,
-		RGCGroupID,
-		tblRelGrpRule,
-		fldID,
-		RRRGroupID,
-		ruleCondition,
-		RRRRuleID,
-		fldID,
+	}
+	condCols := []string{
+		fldCondFileName, fldCondDeal, fldCondSeries,
+		fldCondStaffID, fldCondStaffName, fldCondExtension,
+		fldCondDepartment, fldCondCustomerID, fldCondCustomerName,
+		fldCondCustomerPhone, fldCondCallStart, fldCondCallEnd,
+		fldCondLeftChan, fldCondRightChan,
+	}
+	ruleCols := []string{
+		fldID, fldUUID, fldName,
+	}
+	queryStr = "SELECT rg.`%s`, gc.`%s`, r.`%s`" +
+		" FROM (SELECT * FROM `%s` %s) as rg" +
+		" LEFT JOIN (SELECT * FROM `%s` %s) as gc on rg.`%s` = gc.`%s`" + // gc group condition table
+		" LEFT JOIN  `%s` as rrr ON rg.`%s` = rrr.`%s`" + // rrr Group_Rule relation table
+		" %s as rule on rrr.`%s` = rule.`%s`"
+
+	queryStr = fmt.Sprintf(queryStr,
+		strings.Join(grpCols, "`, rg.`"), strings.Join(condCols, "`, gc.`"), strings.Join(ruleCols, "`, r.`"),
+		tblRuleGroup, groupStr,
+		tblRGC, conditionStr, fldID, fldCondGroupID,
+		tblRelGrpRule, fldID, RRRGroupID,
+		ruleCondition, RRRRuleID, fldID,
 	)
 	return
 }
@@ -528,21 +504,21 @@ func genInsertConditionSQL(groups []GroupWCond) (insertStr string, values []inte
 	}
 
 	fields := []string{
-		RGCGroupID,
-		RGCFileName,
-		RGCDeal,
-		RGCSeries,
-		RGCStaffID,
-		RGCStaffName,
-		RGCExtension,
-		RGCDepartment,
-		RGCCustomerID,
-		RGCCustomerName,
-		RGCCustomerPhone,
-		RGCCallStart,
-		RGCCallEnd,
-		RGCLeftChannel,
-		RGCRightChannel,
+		fldCondGroupID,
+		fldCondFileName,
+		fldCondDeal,
+		fldCondSeries,
+		fldCondStaffID,
+		fldCondStaffName,
+		fldCondExtension,
+		fldCondDepartment,
+		fldCondCustomerID,
+		fldCondCustomerName,
+		fldCondCustomerPhone,
+		fldCondCallStart,
+		fldCondCallEnd,
+		fldCondLeftChan,
+		fldCondRightChan,
 	}
 
 	insertStr = fmt.Sprintf(

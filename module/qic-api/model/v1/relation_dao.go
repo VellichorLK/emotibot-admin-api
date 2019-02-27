@@ -20,7 +20,7 @@ type relSelectFld struct {
 }
 
 var leveltblMap = map[int]relSelectFld{
-	0: relSelectFld{tblName: tblRelGrpRule, fields: [2]string{RGCGroupID, RRRRuleID}, nickName: "a"},
+	0: relSelectFld{tblName: tblRelGrpRule, fields: [2]string{fldCondGroupID, RRRRuleID}, nickName: "a"},
 	1: relSelectFld{tblName: tblRelCRCF, fields: [2]string{RRRRuleID, RCFSGCFID}, nickName: "b"},
 	2: relSelectFld{tblName: tblRelCFSG, fields: [2]string{RCFSGCFID, RSGSSGID}, nickName: "c"},
 	3: relSelectFld{tblName: tblRelSGS, fields: [2]string{RSGSSGID, fldRelSenID}, nickName: "d"},

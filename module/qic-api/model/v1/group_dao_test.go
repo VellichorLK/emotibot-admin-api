@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
@@ -13,57 +14,7 @@ func TestGetGroupsSQL(t *testing.T) {
 		FileName:  "test.wav",
 		Extension: "abcdefg",
 	}
-
-	targetStr := `SELECT rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s, rg.%s,
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, 
-	gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s, gc.%s,
-	r.%s as rID, r.%s as rUUID, r.%s as rName
-	FROM (SELECT * FROM %s ) as rg
-	LEFT JOIN (SELECT * FROM %s WHERE file_name = ? and extension = ?) as gc on rg.%s = gc.%s
-	LEFT JOIN %s as rrr ON rg.%s = rrr.%s
-	LEFT JOIN %s as r on rrr.%s = r.%s
-	`
-	targetStr = fmt.Sprintf(
-		targetStr,
-		fldRuleGrpID,
-		fldRuleGrpUUID,
-		fldRuleGrpName,
-		fldDescription,
-		fldRuleGrpLimitSpeed,
-		fldRuleGrpLimitSilence,
-		fldCreateTime,
-		fldRuleGrpIsEnable,
-		fldEnterprise,
-		fldIsDelete,
-		RGCFileName,
-		RGCDeal,
-		RGCSeries,
-		RGCStaffID,
-		RGCStaffName,
-		RGCExtension,
-		RGCDepartment,
-		RGCCustomerID,
-		RGCCustomerName,
-		RGCCustomerPhone,
-		RGCCallStart,
-		RGCCallEnd,
-		RGCLeftChannel,
-		RGCRightChannel,
-		fldID,
-		fldUUID,
-		fldName,
-		tblRuleGroup,
-		tblRGC,
-		fldID,
-		RGCGroupID,
-		tblRelGrpRule,
-		fldID,
-		RRRGroupID,
-		tblConversationRule,
-		RRRRuleID,
-		fldID,
-	)
-
+	matcher := regexp.MustCompile("SELECT .* FROM .*RuleGroup.* LEFT JOIN .*Relation_RuleGroup_Rule.* LEFT JOIN .*Rule.*")
 	queryStr, values := getGroupsSQL(&filter)
 
 	if len(values) != 2 {
@@ -71,8 +22,8 @@ func TestGetGroupsSQL(t *testing.T) {
 		return
 	}
 
-	if targetStr != queryStr {
-		t.Errorf("exptect %s but got %s", targetStr, queryStr)
+	if len(matcher.FindAllString(queryStr, -1)) < 1 {
+		t.Error("expect a valid querystring, but got ", queryStr)
 		return
 	}
 }
