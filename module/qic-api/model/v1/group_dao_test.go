@@ -1,7 +1,6 @@
 package model
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 	"testing"
@@ -28,76 +27,35 @@ func TestGetGroupsSQL(t *testing.T) {
 	}
 }
 
-var goldenGroups = []Group{
-	Group{
-		ID:             1,
-		Name:           "testing",
-		EnterpriseID:   "123456789",
-		Description:    "this is an integration test data",
-		CreatedTime:    0,
-		UpdatedTime:    0,
-		IsEnable:       false,
-		IsDelete:       false,
-		LimitedSpeed:   0,
-		LimitedSilence: 0,
-		Typ:            0,
-	},
-	Group{
-		ID:             2,
-		Name:           "testing2",
-		EnterpriseID:   "123456789",
-		Description:    "this is another integration test data",
-		CreatedTime:    0,
-		UpdatedTime:    0,
-		IsEnable:       true,
-		IsDelete:       false,
-		LimitedSpeed:   0,
-		LimitedSilence: 0,
-		Typ:            1,
-	},
-}
-
-func TestIntegrationGroupSQLDaoGroup(t *testing.T) {
-	t.Skip("need to have the csv data to re-implement this test.")
-	if !isIntegration {
-		t.Skip("skip intergration test, please specify -intergation flag.")
-	}
-	db := newIntegrationTestDB(t)
-	dao := GroupSQLDao{conn: db}
-	groups, err := dao.Group(nil, GroupQuery{})
-	if err != nil {
-		t.Fatal("dao group executed failed, ", err)
-	}
-	if len(groups) != 2 {
-		t.Error("expect groups should be 2, but got", len(groups))
-	}
-	groups, err = dao.Group(nil, GroupQuery{
-		Type: []int8{0},
-	})
-	if err != nil {
-		t.Fatal("dao group with type [1] query failed, ", err)
-	}
-	if !reflect.DeepEqual(groups, goldenGroups[:1]) {
-		t.Error("expect group 0 be equal to goldenGroups 0")
-	}
-	tx, _ := db.Begin()
-	var exampleEnterprise = "123456789"
-	groups, err = dao.Group(tx, GroupQuery{
-		EnterpriseID: &exampleEnterprise,
-	})
-	if err != nil {
-		t.Fatal("dao group with enterpriseID '12345' query failed, ", err)
-	}
-	if len(groups) != 2 {
-		t.Error("expect groups should be 2, but got ", len(groups))
-	}
-	if !reflect.DeepEqual(groups, goldenGroups) {
-		fmt.Printf("%+v\n%+v\n", groups, goldenGroups)
-		t.Error("expect group to be identical with golden group")
-	}
-}
-
 func TestGroupSQLDaoGroup(t *testing.T) {
+	var goldenGroups = []Group{
+		Group{
+			ID:             1,
+			Name:           "testing",
+			EnterpriseID:   "123456789",
+			Description:    "this is an integration test data",
+			CreatedTime:    0,
+			UpdatedTime:    0,
+			IsEnable:       false,
+			IsDelete:       false,
+			LimitedSpeed:   0,
+			LimitedSilence: 0,
+			Typ:            0,
+		},
+		Group{
+			ID:             2,
+			Name:           "testing2",
+			EnterpriseID:   "123456789",
+			Description:    "this is another integration test data",
+			CreatedTime:    0,
+			UpdatedTime:    0,
+			IsEnable:       true,
+			IsDelete:       false,
+			LimitedSpeed:   0,
+			LimitedSilence: 0,
+			Typ:            1,
+		},
+	}
 	db, mocker, _ := sqlmock.New()
 	serviceDao := &GroupSQLDao{
 		conn: db,

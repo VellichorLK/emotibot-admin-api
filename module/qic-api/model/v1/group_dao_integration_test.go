@@ -4,6 +4,9 @@ import (
 	"encoding/csv"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // seedGroups create a slice of
@@ -28,4 +31,45 @@ func seedGroups(t *testing.T) []Group {
 	}
 
 	return groups
+}
+
+func TestITGroupSQLDao_Group(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := GroupSQLDao{conn: db}
+	seeds := seedGroups(t)
+	type args struct {
+		wantTx bool
+		query  GroupQuery
+	}
+	queryEnt := "csbot"
+	tests := []struct {
+		name string
+		args args
+		want []Group
+	}{
+		{
+			name: "get all",
+			want: seeds[:2],
+		},
+		{
+			name: "query enterprise",
+			args: args{
+				query: GroupQuery{EnterpriseID: &queryEnt, IgnoreSoftDelete: true},
+			},
+			want: []Group{seeds[2]},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var tx SqlLike
+			if tt.args.wantTx {
+				tx, _ = db.Begin()
+			}
+			groups, err := dao.Group(tx, tt.args.query)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, groups)
+		})
+	}
+
 }

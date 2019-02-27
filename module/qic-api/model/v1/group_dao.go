@@ -246,14 +246,14 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	ruleCols := []string{
 		fldID, fldUUID, fldName,
 	}
-	queryStr = "SELECT rg.`%s`, gc.`%s`, r.`%s`" +
+	queryStr = "SELECT rg.`%s`, gc.`%s`, rule.`%s`" +
 		" FROM (SELECT * FROM `%s` %s) as rg" +
 		" LEFT JOIN (SELECT * FROM `%s` %s) as gc on rg.`%s` = gc.`%s`" + // gc group condition table
 		" LEFT JOIN  `%s` as rrr ON rg.`%s` = rrr.`%s`" + // rrr Group_Rule relation table
 		" %s as rule on rrr.`%s` = rule.`%s`"
 
 	queryStr = fmt.Sprintf(queryStr,
-		strings.Join(grpCols, "`, rg.`"), strings.Join(condCols, "`, gc.`"), strings.Join(ruleCols, "`, r.`"),
+		strings.Join(grpCols, "`, rg.`"), strings.Join(condCols, "`, gc.`"), strings.Join(ruleCols, "`, rule.`"),
 		tblRuleGroup, groupStr,
 		tblRGC, conditionStr, fldID, fldCondGroupID,
 		tblRelGrpRule, fldID, RRRGroupID,
@@ -639,7 +639,7 @@ func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error
 		fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
 		fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
 		fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
-		fldRuleGrpLimitSilence, fldRuleGrpType,
+		fldRuleGrpLimitSilence, fldRuleGrpType, fldRuleGrpUUID,
 	}
 
 	sqlQuery := fmt.Sprintf("SELECT `%s` FROM `%s`", strings.Join(groupCols, "`, `"), tblRuleGroup)
@@ -659,7 +659,12 @@ func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error
 
 		var g Group
 		var isDeleted, isEnabled int
-		rows.Scan(&g.ID, &isDeleted, &g.Name, &g.EnterpriseID, &g.Description, &g.CreatedTime, &g.UpdatedTime, &isEnabled, &g.LimitedSpeed, &g.LimitedSilence, &g.Typ)
+		rows.Scan(
+			&g.ID, &isDeleted, &g.Name,
+			&g.EnterpriseID, &g.Description, &g.CreatedTime,
+			&g.UpdatedTime, &isEnabled, &g.LimitedSpeed,
+			&g.LimitedSilence, &g.Typ, &g.UUID,
+		)
 		if isDeleted == 1 {
 			g.IsDelete = true
 		}

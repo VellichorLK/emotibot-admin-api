@@ -1,4 +1,4 @@
 "id","is_delete","name","enterprise","description","create_time","update_time","is_enable","limit_speed","limit_silence","type","uuid"
 1,0,"保单号8808116353002088","bb3e3925f0ad11e7bd860242ac120003","",1548311595,1548311595,1,0,0,0,"996f0503af3d4beebf65334746895b83"
 2,0,"回访","bb3e3925f0ad11e7bd860242ac120003","1/24 DEMO测试",1548322559,1548322559,0,0,0,0,"8fbeee5848fb4ff5a9598cd6c8b0fb6c"
-3,1,"taylortest","bb3e3925f0ad11e7bd860242ac120003","helloworld",1548733025,1548733025,0,0,0,0,"c216794e8bb743c9bff68aa027239b86"
+3,1,"taylortest","csbot","helloworld",1548733025,1548733025,0,0,0,0,"c216794e8bb743c9bff68aa027239b86"
