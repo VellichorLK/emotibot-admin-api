@@ -177,3 +177,10 @@ type DBV4 interface {
 	// OAuth part
 	GetOAuthClient(clientID string) (*data.OAuthClient, error)
 }
+
+type DBHX interface {
+	GetRolesHX(enterpriseID string) ([]*data.RoleHX, error)
+	GetModulesHX()(map[string]interface{}, error)
+	GetRolePrivileges(enterpriseID string,roleId int)(map[string]interface{}, error)
+	UpdateRolePrivileges(enterpriseID string,roleId int,privileges map[string]map[string]map[string][]string)(error)
+}

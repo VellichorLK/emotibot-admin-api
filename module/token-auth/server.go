@@ -1,6 +1,7 @@
 package main
 
 import (
+	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
-	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -137,6 +137,13 @@ func setUpRoutes() {
 		Route{"TrAddEnterprise", "POST", 4, "enterprise/try-create", nil, controller.EnterpriseTryAddHandlerV4, []interface{}{0}},
 		Route{"ActivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/active", nil, controller.EnterpriseActivateHandlerV4, []interface{}{0}},
 		Route{"DeactivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/deactive", nil, controller.EnterpriseDeactivateHandlerV4, []interface{}{0}},
+
+		//华夏 API
+		Route{"GetRolesHX", "GET", 4, "enterprise/{enterpriseID}/roles", nil, controller.RolesGetHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetModulesHX", "GET", 4, "modules", nil, controller.ModulesGetHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetRolePrivileges", "GET", 4, "enterprise/{enterpriseID}/{roleId}/privileges", nil, controller.PrivilegesGetHandlerHX, []interface{}{0, 1, 2}},
+		Route{"UpdateRolePrivileges", "POST", 4, "enterprise/{enterpriseID}/{roleId}/privileges", nil, controller.PrivilegesUpdateHandlerHX, []interface{}{0, 1, 2}},
+
 	}
 }
 
@@ -149,6 +156,7 @@ func setUpDB() {
 	service.SetDB(&db)
 	service.SetDBV3(&db)
 	service.SetDBV4(&db)
+	service.SetDBHX(&db)
 
 	url, port, user, passwd, dbName = util.GetMySQLAuditConfig()
 	util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
