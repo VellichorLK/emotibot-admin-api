@@ -42,6 +42,9 @@ func init() {
 			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
 			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
 			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
+			util.NewEntryPoint(http.MethodGet, "groups_export", []string{}, handleExportGroups),
+			util.NewEntryPoint(http.MethodPost, "groups_upload", []string{}, handleImportGroups),
+			util.NewEntryPoint(http.MethodGet, "groups_upload_status", []string{}, handleImportGroupsStatus),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),

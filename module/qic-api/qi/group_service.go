@@ -6,6 +6,10 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	uuid "github.com/satori/go.uuid"
+	"bytes"
+	"emotibot.com/emotigo/module/admin-api/util"
+	"time"
+	"errors"
 )
 
 var (
@@ -385,4 +389,88 @@ func DeleteGroup(id string) (err error) {
 
 	err = dbLike.Commit(tx)
 	return
+}
+
+func ExportGroups() (*bytes.Buffer, error) {
+	sqlConn := dbLike.Conn()
+	return serviceDAO.ExportGroups(sqlConn)
+}
+
+func ImportGroups(fileName string) (error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return err
+	}
+	defer dbLike.ClearTransition(tx)
+
+	err = serviceDAO.ImportGroups(tx, fileName)
+	if err != nil {
+		return err
+	}
+
+	err = dbLike.Commit(tx)
+	return err
+}
+
+func RuleGroupImportProcess(appID string, fileName string, status bool) error {
+
+	// TODO  should put dao level
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return fmt.Errorf("db not init")
+	}
+
+	statusStr := "success"
+	if !status {
+		statusStr = "fail"
+	}
+	// TODO transition
+	insertSql := `INSERT INTO process_status
+		(app_id, module, status, message, entity_file_name)
+		VALUES (?, "qi", ?, ?, ?)`
+	_, err := mySQL.Exec(insertSql, appID, statusStr, "", fileName)
+	return err
+}
+
+func CheckImportStatus(appID string) (*StatusInfo, error) {
+
+	// TODO should put dao level
+
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return nil, errors.New("db not init")
+	}
+	queryStr := "SELECT status, UNIX_TIMESTAMP(start_at), message " +
+		"FROM process_status " +
+		"WHERE app_id = ? AND module = ? ORDER BY id DESC LIMIT 1"
+	rows, err := mySQL.Query(queryStr, appID, "qi")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	status := StatusInfo{}
+	ret := rows.Next()
+	if !ret {
+		return nil, nil
+	}
+
+	var timestamp int64
+	if err := rows.Scan(&status.Status, &timestamp, &status.Message); err != nil {
+		return nil, err
+	}
+	status.StartTime = time.Unix(timestamp, 0)
+
+	emptyMsg := ""
+	if status.Message == nil {
+		status.Message = &emptyMsg
+	}
+	return &status, nil
+}
+
+type StatusInfo struct {
+	Status    string    `json:"status"`
+	StartTime time.Time `json:"start_time"`
+	Message   *string   `json:"message"`
 }
