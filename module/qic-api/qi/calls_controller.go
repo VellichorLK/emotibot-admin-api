@@ -22,6 +22,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"time"
 )
 
 // CallsDetailHandler fetch a single call with its segments.
@@ -485,4 +486,16 @@ func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 		query.Department = &department
 	}
 	return &query, nil
+}
+
+func handleExportCalls(w http.ResponseWriter, r *http.Request) {
+	// TODO appID or enterprise
+	buf, err := ExportCalls()
+
+	if err != nil {
+		logger.Error.Printf("error while export calls in handleExportCalls, reason: %s", err.Error())
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=export_calls_%s.xlsx", time.Now().Format("20060102150405")))
+	w.Header().Set("Content-Type", "application/vnd.ms-excel")
+	w.Write(buf.Bytes())
 }

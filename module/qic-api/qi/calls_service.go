@@ -14,6 +14,7 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	uuid "github.com/satori/go.uuid"
+	"bytes"
 )
 
 //ErrNotFound is indicated the resource is asked, but nowhere to found it.
@@ -443,4 +444,9 @@ func ConfirmCall(call *model.Call) error {
 		return fmt.Errorf("publish failed, %v", err)
 	}
 	return nil
+}
+
+func ExportCalls() (*bytes.Buffer, error) {
+	sqlConn := dbLike.Conn()
+	return callDao.ExportCalls(sqlConn)
 }

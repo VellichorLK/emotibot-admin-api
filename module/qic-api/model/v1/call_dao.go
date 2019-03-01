@@ -6,6 +6,11 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/pkg/logger"
+	"bytes"
+	"github.com/tealeg/xlsx"
+	"reflect"
+	"bufio"
+	"os"
 )
 
 type CallDao interface {
@@ -14,6 +19,7 @@ type CallDao interface {
 	SetRuleGroupRelations(delegatee SqlLike, call Call, rulegroups []Group) ([]int64, error)
 	SetCall(delegatee SqlLike, call Call) error
 	Count(delegatee SqlLike, query CallQuery) (int64, error)
+	ExportCalls(delegatee SqlLike) (*bytes.Buffer, error)
 }
 
 //CallSQLDao is the sql implements of the call table
@@ -132,9 +138,9 @@ const (
 //	- 1: customer(客戶)
 // 	- 9: default
 const (
-	CallChanStaff int8 = iota
+	CallChanStaff    int8 = iota
 	CallChanCustomer
-	CallChanDefault = 9
+	CallChanDefault  = 9
 )
 
 // asr status types of the call
@@ -146,7 +152,7 @@ const (
 	CallStatusWaiting int8 = iota
 	CallStatusRunning
 	CallStatusDone
-	CallStatusFailed = 9
+	CallStatusFailed  = 9
 )
 
 func ValidCallStatus(status int8) bool {
@@ -405,4 +411,71 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 	rawsql := strings.Join(parts, " , ")
 	return rawsql, data
 
+}
+
+func (c *CallSQLDao) ExportCalls(delegatee SqlLike) (*bytes.Buffer, error) {
+
+	xlFile := xlsx.NewFile()
+	fmt.Println(xlFile)
+
+	var queryStr string
+	var err error
+
+	logger.Trace.Println("export calls ... ")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportCall{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"call_id", "task_id", "status", "call_uuid", "file_name", "file_path", "demo_file_path", "description", "duration", "upload_time", "call_time", "staff_id", "staff_name", "extension", "department", "customer_id", "customer_name", "customer_phone", "enterprise", "uploader", "left_silence_time", "right_silence_time", "left_speed", "right_speed", "`type`", "left_channel", "right_channel",
+		"`call`",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "call", delegatee, ExportCall{}); err != nil {
+		return nil, err
+	}
+
+	tempFileName := fmt.Sprintf("export_call.xlsx")
+	err = xlFile.Save(tempFileName)
+
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	xlFile.Write(writer)
+
+	defer func() {
+		if _, err := os.Stat(tempFileName); err == nil {
+			os.Remove(tempFileName)
+		}
+	}()
+
+	return &buf, err
+}
+
+type ExportCall struct {
+	CallID           uint64
+	TaskId           uint64
+	Status           int
+	CallUUID         string
+	FileName         string
+	FilePath         string
+	DemoFilePath     string
+	Description      string
+	Duration         int
+	UploadTime       uint64
+	CallTime         uint64
+	StaffID          string
+	StaffName        string
+	Extension        string
+	Department       string
+	CustomerID       string
+	CustomerName     string
+	CustomerPhone    string
+	Enterprise       string
+	Uploader         string
+	LeftSilenceTime  float32
+	RightSilenceTime float32
+	LeftSpeed        float32
+	RightSpeed       float32
+	Type             int
+	LeftChannel      int
+	RightChannel     int
 }

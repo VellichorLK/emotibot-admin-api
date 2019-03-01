@@ -42,9 +42,6 @@ func init() {
 			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
 			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
 			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
-			util.NewEntryPoint(http.MethodGet, "groups_export", []string{}, handleExportGroups),
-			util.NewEntryPoint(http.MethodPost, "groups_upload", []string{}, handleImportGroups),
-			util.NewEntryPoint(http.MethodGet, "groups_upload_status", []string{}, handleImportGroupsStatus),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
@@ -108,6 +105,11 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
+
+			util.NewEntryPoint(http.MethodGet, "export/groups", []string{}, handleExportGroups),
+			util.NewEntryPoint(http.MethodPost, "import/groups", []string{}, handleImportGroups),
+			util.NewEntryPoint(http.MethodGet, "import/groups/status", []string{}, handleImportGroupsStatus),
+			util.NewEntryPoint(http.MethodGet, "export/calls", []string{}, handleExportCalls),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
