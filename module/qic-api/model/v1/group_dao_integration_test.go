@@ -98,6 +98,7 @@ func TestITGroupSQLDao_Group(t *testing.T) {
 			groups, err := dao.Group(tx, tt.args.query)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, groups)
+			checkDBStat(t)
 		})
 	}
 
@@ -129,6 +130,7 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 			got, err := dao.GetGroupsBy(tt.args.filter, db)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got)
+			checkDBStat(t)
 		})
 	}
 }
