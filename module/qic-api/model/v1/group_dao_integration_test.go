@@ -104,6 +104,27 @@ func TestITGroupSQLDao_Group(t *testing.T) {
 
 }
 
+func ToGroupCondition(cond Condition) *GroupCondition {
+	lChan := int(cond.LeftChannel)
+	rChan := int(cond.RightChannel)
+	deal := int(cond.Deal)
+	return &GroupCondition{
+		FileName:         &cond.FileName,
+		Deal:             &deal,
+		Series:           &cond.Series,
+		StaffID:          &cond.StaffID,
+		StaffName:        &cond.StaffName,
+		Extension:        &cond.Extension,
+		Department:       &cond.Department,
+		ClientID:         &cond.CustomerID,
+		ClientName:       &cond.CustomerName,
+		ClientPhone:      &cond.CustomerPhone,
+		LeftChannelCode:  &lChan,
+		RightChannelCode: &rChan,
+		CallStart:        &cond.CallStart,
+		CallEnd:          &cond.CallEnd,
+	}
+}
 func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
@@ -112,6 +133,9 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 	type args struct {
 		filter *GroupFilter
 	}
+	mc := readMockConditions(t)
+	groups[0].Condition = ToGroupCondition(mc[0])
+	groups[1].Condition = ToGroupCondition(mc[1])
 	tests := []struct {
 		name string
 		args args
