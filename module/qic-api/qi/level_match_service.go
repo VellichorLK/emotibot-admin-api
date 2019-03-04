@@ -380,7 +380,8 @@ func SentenceGroupMatch(matchedSen map[uint64][]int,
 
 						s := segments[segIdx-1]
 						//check the role
-						if criteria.Role < 0 {
+						//if the role is any. < 0 for older version
+						if criteria.Role == roleMapping["any"] || criteria.Role < 0 {
 							resp[criteria.ID] = append(resp[criteria.ID], segIdx)
 						} else if s.Speaker == criteria.Role {
 							resp[criteria.ID] = append(resp[criteria.ID], segIdx)
