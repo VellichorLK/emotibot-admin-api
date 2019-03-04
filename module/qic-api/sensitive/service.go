@@ -20,6 +20,10 @@ func IsSensitive(content string) ([]string, error) {
 		return matched, err
 	}
 
+	if len(words) == 0 {
+		return matched, err
+	}
+
 	rwords := stringsToRunes(words)
 
 	m := new(goahocorasick.Machine)
