@@ -574,6 +574,10 @@ func (dao *SentenceGroupsSqlDaoImpl) GetNewBy(id []int64, filter *SentenceGroupF
 			newIDs = append(newIDs, newID)
 		}
 
+		if len(newIDs) == 0 {
+			return []SentenceGroup{}, nil
+		}
+
 		if filter == nil {
 			filter = &SentenceGroupFilter{ID: newIDs}
 		} else {
