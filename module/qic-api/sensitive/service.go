@@ -287,10 +287,12 @@ func GetCategories(enterprise string) (categories []*model.CategortInfo, err err
 	sqlConn := dbLike.Conn()
 
 	ctype := model.SwCategoryType
+	var deleted int8
 	filter := &model.CategoryQuery{
 		ID:         []uint64{},
 		Enterprise: &enterprise,
 		Type:       &ctype,
+		IsDelete:   &deleted,
 	}
 
 	return categoryDao.GetCategories(sqlConn, filter)
