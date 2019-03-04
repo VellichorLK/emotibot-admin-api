@@ -96,7 +96,9 @@ func HandlePostTags(w http.ResponseWriter, r *http.Request) {
 	}
 	modelTag.UUID = hex.EncodeToString(uuid[:])
 	_, err = NewTag(*modelTag)
-	if err != nil {
+	if ce, ok := err.(adminError); ok {
+		util.ReturnError(w, ce.ErrorNo(), fmt.Sprintf("new tag failed, %v", ce.Error()))
+	} else if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("new tag failed, %v", err))
 		return
 	}
