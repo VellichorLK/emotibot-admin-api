@@ -6,6 +6,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -34,6 +35,10 @@ func handleUnload(w http.ResponseWriter, r *http.Request) {
 type modelHash struct {
 	Models map[string][]modelResp `json:"models"`
 }
+type modelStatusResp struct {
+	Models    []modelResp `json:"training"`
+	OutOfDate bool        `json:"out_of_date"`
+}
 type modelResp struct {
 	ID         int64 `json:"id,string"`
 	CreateTime int64 `json:"create_time"`
@@ -58,11 +63,37 @@ func handleTrainingStatus(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	resp := make([]modelResp, 0, len(models))
+	var resp modelStatusResp
+	resp.Models = make([]modelResp, 0, len(models))
 	for _, v := range models {
 		m := modelResp{ID: int64(v.ID), CreateTime: v.CreateTime, UpdateTime: v.UpdateTime}
-		resp = append(resp, m)
+		resp.Models = append(resp.Models, m)
 	}
+
+	usingModels, err := GetModelByEnterprise(enterprise, MStatUsing)
+	if err != nil {
+		logger.Error.Printf("get models failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if len(usingModels) == 0 {
+		resp.OutOfDate = true
+	} else {
+		//assume only one using model
+		lastTime := usingModels[0].UpdateTime
+		//because tagQuery uses >=
+		tagQuery := model.TagQuery{UpdateTimeStart: lastTime + 1}
+		tags, err := TagsByQuery(tagQuery)
+		if err != nil {
+			logger.Error.Printf("get tags failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if len(tags) != 0 {
+			resp.OutOfDate = true
+		}
+	}
+
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
