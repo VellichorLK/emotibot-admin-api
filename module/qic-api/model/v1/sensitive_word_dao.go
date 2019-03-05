@@ -1,6 +1,7 @@
 package model
 
 import (
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
@@ -81,12 +82,12 @@ type SensitiveWord struct {
 }
 
 type SensitiveWordSqlDao struct {
-	Redis *radix.Cluster
+	Redis radix.Client
 }
 
-func NewDefaultSensitiveWordDao(cluster *radix.Cluster) SensitiveWordDao {
+func NewDefaultSensitiveWordDao(client radix.Client) SensitiveWordDao {
 	return &SensitiveWordSqlDao{
-		Redis: cluster,
+		Redis: client,
 	}
 }
 
@@ -399,7 +400,7 @@ func (dao *SensitiveWordSqlDao) Move(filter *SensitiveWordFilter, categoryID int
 // Names is a sugar function for getting all sensitive word names
 func (dao *SensitiveWordSqlDao) Names(sqlLike SqlLike, forceReload bool) (names []string, err error) {
 	names = []string{}
-	if dao.Redis != nil && !forceReload {
+	if !general.IsNil(dao.Redis) && !forceReload {
 		err = dao.Redis.Do(radix.Cmd(&names, "LRANGE", redisKey, "0", "-1"))
 		if err == nil {
 			return
