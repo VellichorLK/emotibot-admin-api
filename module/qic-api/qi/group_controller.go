@@ -312,16 +312,12 @@ func handleExportGroups(w http.ResponseWriter, r *http.Request) {
 func handleImportGroups(w http.ResponseWriter, r *http.Request) {
 
 	var err error
-	appID := requestheader.GetAppID(r)
+	//appID := requestheader.GetAppID(r)
 	fileName := fmt.Sprintf("rule_group_%s.xlsx", time.Now().Format("20060102150405"))
 
 	defer func() {
 		if r := recover(); r != nil {
 			logger.Error.Printf("recoverd in %v \n", r)
-		}
-
-		if err := RuleGroupImportProcess(appID, fileName, err == nil); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		if _, err := os.Stat(fileName); err == nil {
@@ -363,18 +359,5 @@ func handleImportGroups(w http.ResponseWriter, r *http.Request) {
 		logger.Error.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-}
-
-func handleImportGroupsStatus(w http.ResponseWriter, r *http.Request) {
-
-	appID := requestheader.GetAppID(r)
-	logger.Trace.Printf("check import status, appID is: %s", appID)
-
-	ret, err := CheckImportStatus(appID)
-	if err != nil {
-		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()))
-	} else {
-		util.WriteJSON(w, util.GenRetObj(ApiError.SUCCESS, ret))
 	}
 }

@@ -48,6 +48,7 @@ type SentenceQuery struct {
 	Limit      int
 	IsDelete   *int8
 	CategoryID *uint64
+	Name       *string
 }
 
 //SentenceNewRecord is used to create a new sentence
@@ -144,6 +145,12 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 		condition := fldCategoryID + "=?"
 		conditions = append(conditions, condition)
 		params = append(params, *q.CategoryID)
+	}
+
+	if q.Name != nil {
+		condition := fldName + "=?"
+		conditions = append(conditions, condition)
+		params = append(params, *q.Name)
 	}
 
 	var whereSQL string

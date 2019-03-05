@@ -16,7 +16,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
+	"emotibot.com/emotigo/pkg/logger"
+	"os"
+	"io"
 )
 
 //HandleGetTags handle the get request for tag.
@@ -227,4 +230,127 @@ type NewTagReq struct {
 	TagType      string   `json:"tag_type"`
 	PosSentences []string `json:"pos_sentences"`
 	NegSentences []string `json:"neg_sentences"`
+}
+
+func handleImportTags(w http.ResponseWriter, r *http.Request) {
+	var err error
+	//appID := requestheader.GetAppID(r)
+	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+
+	fileName := fmt.Sprintf("tags_%s.xlsx", time.Now().Format("20060102150405"))
+
+	if err = getUploadedFile(r, fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if err = BatchAddTags(fileName, enterpriseID); err != nil {
+		logger.Error.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = removeUploadedFile(fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleImportSentences(w http.ResponseWriter, r *http.Request) {
+	var err error
+	//appID := requestheader.GetAppID(r)
+	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+
+	fileName := fmt.Sprintf("sentences_%s.xlsx", time.Now().Format("20060102150405"))
+
+	if err = getUploadedFile(r, fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if err = BatchAddSentences(fileName, enterpriseID); err != nil {
+		logger.Error.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = removeUploadedFile(fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleImportRules(w http.ResponseWriter, r *http.Request) {
+
+	// TODO use general.UUID() to simply code
+
+	var err error
+	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+	//appID := requestheader.GetAppID(r)
+
+	fileName := fmt.Sprintf("rules_%s.xlsx", time.Now().Format("20060102150405"))
+
+	if err = getUploadedFile(r, fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	if err = BatchAddRules(fileName, enterpriseID); err != nil {
+		logger.Error.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = removeUploadedFile(fileName); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func handleImportCallIn(w http.ResponseWriter, r *http.Request) {
+	var err error
+	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+
+	// need to check unique flow name
+
+	if err = BatchAddFlows("temp_flow.xlsx", enterpriseID); err != nil {
+		logger.Error.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func getUploadedFile(r *http.Request, fileName string) error {
+	r.ParseMultipartForm(32 << 20)
+	file, info, err := r.FormFile("file")
+	if err != nil {
+		logger.Error.Println("fail to receive file")
+		return fmt.Errorf("fail to receive file \n")
+	}
+	defer file.Close()
+	logger.Trace.Printf("receive uploaded file: %s \n", info.Filename)
+
+	// parse file
+	size := info.Size
+	if size == 0 {
+		logger.Error.Println("file size is 0")
+		return fmt.Errorf("file size is 0 \n")
+	}
+
+	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err = io.Copy(f, file); err != nil {
+		return err
+	}
+
+	logger.Trace.Printf("save uploaded file %s \n", fileName)
+	return nil
+}
+
+func removeUploadedFile(fileName string) error {
+	if _, err := os.Stat(fileName); err == nil {
+		os.Remove(fileName)
+	} else {
+		return err
+	}
+	logger.Trace.Printf("delete uploaded file %s \n", fileName)
+	return nil
 }

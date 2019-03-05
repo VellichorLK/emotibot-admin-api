@@ -108,8 +108,12 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "export/groups", []string{}, handleExportGroups),
 			util.NewEntryPoint(http.MethodPost, "import/groups", []string{}, handleImportGroups),
-			util.NewEntryPoint(http.MethodGet, "import/groups/status", []string{}, handleImportGroupsStatus),
 			util.NewEntryPoint(http.MethodGet, "export/calls", []string{}, handleExportCalls),
+			// TODO switch to post method
+			util.NewEntryPoint(http.MethodPost, "import/tags", []string{}, handleImportTags),
+			util.NewEntryPoint(http.MethodPost, "import/sentences", []string{}, handleImportSentences),
+			util.NewEntryPoint(http.MethodPost, "import/rules", []string{}, handleImportRules),
+			util.NewEntryPoint(http.MethodGet, "import/call-in", []string{}, handleImportCallIn),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
