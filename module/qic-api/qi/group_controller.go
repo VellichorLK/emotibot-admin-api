@@ -13,10 +13,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"os"
-	"io"
-	"fmt"
-	"time"
 )
 
 type GroupInReq struct {
@@ -291,73 +287,4 @@ func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error)
 		filter.Limit = 0
 	}
 	return
-}
-
-func handleExportGroups(w http.ResponseWriter, r *http.Request) {
-
-	// TODO appID ?
-	buf, err := ExportGroups()
-
-	if err != nil {
-		logger.Error.Printf("error while export groups in handleExportGroups, reason: %s \n", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=export_rules_%s.xlsx", time.Now().Format("20060102150405")))
-	w.Header().Set("Content-Type", "application/vnd.ms-excel")
-	w.Write(buf.Bytes())
-}
-
-func handleImportGroups(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-	//appID := requestheader.GetAppID(r)
-	fileName := fmt.Sprintf("rule_group_%s.xlsx", time.Now().Format("20060102150405"))
-
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Error.Printf("recoverd in %v \n", r)
-		}
-
-		if _, err := os.Stat(fileName); err == nil {
-			os.Remove(fileName)
-		}
-
-	}()
-
-	r.ParseMultipartForm(32 << 20)
-	file, info, err := r.FormFile("file")
-	if err != nil {
-		logger.Error.Println("fail to receive file")
-		http.Error(w, "fail to receive file", http.StatusInternalServerError)
-		return
-	}
-	defer file.Close()
-	logger.Trace.Printf("receive uploaded file: %s \n", info.Filename)
-
-	// parse file
-	size := info.Size
-	if size == 0 {
-		logger.Error.Println("file size is 0")
-		http.Error(w, "file size is 0", http.StatusInternalServerError)
-		return
-	}
-
-	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE, 0666)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	defer f.Close()
-
-	io.Copy(f, file)
-
-	logger.Trace.Printf("copy file %s to local \n", fileName)
-
-	if err = ImportGroups(fileName); err != nil {
-		logger.Error.Println(err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }

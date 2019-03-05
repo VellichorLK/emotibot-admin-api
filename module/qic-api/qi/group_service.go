@@ -6,7 +6,6 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"github.com/satori/go.uuid"
-	"bytes"
 )
 
 var (
@@ -386,25 +385,4 @@ func DeleteGroup(id string) (err error) {
 
 	err = dbLike.Commit(tx)
 	return
-}
-
-func ExportGroups() (*bytes.Buffer, error) {
-	sqlConn := dbLike.Conn()
-	return serviceDAO.ExportGroups(sqlConn)
-}
-
-func ImportGroups(fileName string) (error) {
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return err
-	}
-	defer dbLike.ClearTransition(tx)
-
-	err = serviceDAO.ImportGroups(tx, fileName)
-	if err != nil {
-		return err
-	}
-
-	err = dbLike.Commit(tx)
-	return err
 }
