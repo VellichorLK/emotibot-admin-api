@@ -302,18 +302,32 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 			//return 0, err
 			return
 		}
+		//if exist deprecated models which somehow doesn't be cleaned
+		cleanModel(enterprise)
 		//unload the model after two hour
 		setUnloadModelTimer(int64(models[0].ID), time.Duration(2*time.Hour))
 	}()
 	return modelID, nil
 }
 
-func setUnloadModelTimer(id int64, d time.Duration) error {
-	if dbLike == nil {
-		return ErrNilCon
+func cleanModel(enterprise string) error {
+	models, err := GetModelByEnterprise(enterprise, MStatDeprecate)
+	if err != nil {
+		logger.Error.Printf("get deprecate models failed. %s\n", err)
+		return err
 	}
-	timer := time.NewTimer(d)
-	<-timer.C
+	now := time.Now().Unix()
+	for _, m := range models {
+		if now > m.UpdateTime+60*60*2 {
+			unloadModel(int64(m.ID))
+		}
+
+	}
+	return nil
+}
+
+func unloadModel(id int64) error {
+
 	err := UnloadModel(id)
 	if err != nil {
 		logger.Error.Printf("unload model %d failed. %s\n", id, err)
@@ -324,6 +338,18 @@ func setUnloadModelTimer(id int64, d time.Duration) error {
 			logger.Error.Printf("update model %d status to %d failed. %s\n", id, status, err)
 		}
 	}
+
+	return err
+}
+
+func setUnloadModelTimer(id int64, d time.Duration) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	timer := time.NewTimer(d)
+	<-timer.C
+
+	err := unloadModel(id)
 	return err
 }
 
