@@ -63,8 +63,9 @@ func handleTrainingStatus(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	numOfTrainingModels := len(models)
 	var resp modelStatusResp
-	resp.Models = make([]modelResp, 0, len(models))
+	resp.Models = make([]modelResp, 0, numOfTrainingModels)
 	for _, v := range models {
 		m := modelResp{ID: int64(v.ID), CreateTime: v.CreateTime, UpdateTime: v.UpdateTime}
 		resp.Models = append(resp.Models, m)
@@ -76,24 +77,25 @@ func handleTrainingStatus(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-	if len(usingModels) == 0 {
-		resp.OutOfDate = true
-	} else {
-		//assume only one using model
-		lastTime := usingModels[0].UpdateTime
-		//because tagQuery uses >=
-		tagQuery := model.TagQuery{UpdateTimeStart: lastTime + 1}
-		tags, err := TagsByQuery(tagQuery)
-		if err != nil {
-			logger.Error.Printf("get tags failed. %s\n", err)
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-			return
-		}
-		if len(tags) != 0 {
-			resp.OutOfDate = true
-		}
-	}
+	numOfUsingModels := len(usingModels)
 
+	var lastTime int64
+	if numOfTrainingModels != 0 {
+		lastTime = models[0].UpdateTime
+	}
+	if numOfUsingModels != 0 && usingModels[0].UpdateTime > lastTime {
+		lastTime = usingModels[0].UpdateTime
+	}
+	tagQuery := model.TagQuery{UpdateTimeStart: lastTime + 1, Enterprise: &enterprise, Paging: &model.Pagination{}}
+	tagResp, err := Tags(tagQuery)
+	if err != nil {
+		logger.Error.Printf("get tags failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+	if tagResp.Paging.Total > 0 {
+		resp.OutOfDate = true
+	}
 	err = util.WriteJSON(w, resp)
 	if err != nil {
 		logger.Error.Printf("write json failed. %s\n", err)
