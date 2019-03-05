@@ -39,6 +39,7 @@ func NewConditionDao(db DBLike) *GroupConditionDao {
 }
 
 type ConditionQuery struct {
+	ID         []int64
 	GroupID    []int64
 	Type       []int8
 	Pagination *Pagination
@@ -46,6 +47,7 @@ type ConditionQuery struct {
 
 func (c *ConditionQuery) whereSQL() (string, []interface{}) {
 	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldCondID, int64ToWildCard(c.ID...))
 	builder.In(fldCondGroupID, int64ToWildCard(c.GroupID...))
 	builder.In(fldCondType, int8ToWildCard(c.Type...))
 
@@ -126,4 +128,36 @@ func (g *GroupConditionDao) Conditions(delegatee SqlLike, query ConditionQuery) 
 		return nil, fmt.Errorf("sql scan error, %v", err)
 	}
 	return scanned, nil
+}
+
+func (g *GroupConditionDao) NewCondition(delegatee SqlLike, cond Condition) (Condition, error) {
+	if delegatee == nil {
+		delegatee = g.db.Conn()
+	}
+	condCols := []string{
+		fldCondGroupID, fldCondType, fldCondFileName,
+		fldCondDeal, fldCondSeries, fldCondUploadTime,
+		fldCondStaffID, fldCondStaffName, fldCondExtension,
+		fldCondDepartment, fldCondCustomerID, fldCondCustomerName,
+		fldCondCustomerPhone, fldCondCallStart, fldCondCallEnd,
+		fldCondLeftChan, fldCondRightChan,
+	}
+	rawsql := fmt.Sprintf("INSERT INTO `%s` (`%s`) VALUE(?%s)",
+		tblRGC, strings.Join(condCols, "`,`"), strings.Repeat(", ?", len(condCols)-1))
+	result, err := delegatee.Exec(rawsql,
+		cond.GroupID, cond.Type, cond.FileName,
+		cond.Deal, cond.Series, cond.UploadTime,
+		cond.StaffID, cond.StaffName, cond.Extension,
+		cond.Department, cond.CustomerID, cond.CustomerName,
+		cond.CustomerPhone, cond.CallStart, cond.CallEnd,
+		cond.LeftChannel, cond.RightChannel,
+	)
+	if err != nil {
+		return Condition{}, fmt.Errorf("sql execute failed, %v", err)
+	}
+	cond.ID, err = result.LastInsertId()
+	if err != nil {
+		return cond, ErrAutoIDDisabled
+	}
+	return cond, nil
 }

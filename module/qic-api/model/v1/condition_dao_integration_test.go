@@ -5,6 +5,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,4 +76,18 @@ func TestConditionDao_Conditions(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestConditionDao_TestSuite(t *testing.T) {
+	db := newIntegrationTestDB(t)
+	dao := GroupConditionDao{db: &DefaultDBLike{DB: db}}
+	cond := Condition{
+		GroupID: 666,
+		Type:    GroupCondTypOn,
+	}
+	insertedCond, err := dao.NewCondition(nil, cond)
+	require.NoError(t, err)
+	fetchedCond, err := dao.Conditions(nil, ConditionQuery{ID: []int64{insertedCond.ID}})
+	require.NoError(t, err)
+	assert.Equal(t, fetchedCond[0], insertedCond)
 }
