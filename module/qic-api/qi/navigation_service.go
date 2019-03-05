@@ -477,7 +477,7 @@ type CreditLoc struct {
 }
 
 type StreamingFlow struct {
-	ID         string          `json:"nav_id"`
+	ID         int64           `json:"nav_id"`
 	Type       string          `json:"type"`
 	Name       string          `json:"name"`
 	IntentName string          `json:"intent_name"`
@@ -494,7 +494,7 @@ type StreamingNode struct {
 }
 
 type MatchedFlowNode struct {
-	NavID    string `json:"nav_id"`
+	NavID    int64  `json:"nav_id,string"`
 	Type     string `json:"type"`
 	SenGrpID string `json:"sg_id"`
 }
@@ -640,7 +640,7 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 
 	flowsSetting := make([]StreamingFlow, 0, len(flows))
 	for flowIdx, flow := range flows {
-		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.UUID}
+		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.ID}
 		if flow.IgnoreIntent == 0 {
 			sf.Type = callInIntentCodeMap[1]
 			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
