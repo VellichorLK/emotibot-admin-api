@@ -228,9 +228,9 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	now := time.Now().Unix()
 	switch ret.Status {
 	case statusIETrainError:
-		dao.UpdateVersionStatus(version, now, trainResultFail)
+		dao.UpdateVersionStatus(appid, version, now, trainResultFail)
 	case statusIETrainReady:
-		dao.UpdateVersionStatus(version, now, trainResultSuccess)
+		dao.UpdateVersionStatus(appid, version, now, trainResultSuccess)
 		util.ConsulUpdateIntent(appid)
 
 		// Update autofills
