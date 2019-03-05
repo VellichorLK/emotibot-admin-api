@@ -17,6 +17,17 @@ const (
 	GroupCondTypOff
 )
 
+// GroupCondRole is the matching rule for condition
+// IT IS NOT IMPLEMENT YET.
+// * 0: staff only
+// * 1: Customer Only
+// * 2: Both Staff And Customer
+const (
+	GroupCondRoleStaff int8 = iota
+	GroupCondRoleCustomer
+	GroupCondRoleAny
+)
+
 //GroupConditionDao is the db operation to Group Condition Table
 type GroupConditionDao struct {
 	db DBLike

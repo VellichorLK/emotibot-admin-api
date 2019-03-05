@@ -31,32 +31,6 @@ var (
 	keyvalues    = userKeyDao.KeyValues
 )
 
-var callTypeDict = map[string]int8{
-	CallStaffRoleName:    model.CallChanStaff,
-	CallCustomerRoleName: model.CallChanCustomer,
-}
-
-const (
-	CallStaffRoleName    = "staff"
-	CallCustomerRoleName = "customer"
-)
-
-func callRoleTyp(role string) int8 {
-	value, found := callTypeDict[role]
-	if !found {
-		return model.CallChanDefault
-	}
-	return value
-}
-func callRoleTypStr(typ int8) string {
-	for key, val := range callTypeDict {
-		if val == typ {
-			return key
-		}
-	}
-	return "default"
-}
-
 func HasCall(id int64) (bool, error) {
 	count, err := callDao.Count(nil, model.CallQuery{
 		ID: []int64{id},
