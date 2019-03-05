@@ -5,6 +5,7 @@ import (
 	"github.com/satori/go.uuid"
 	"math/rand"
 	"net/http"
+	"reflect"
 	"strings"
 )
 
@@ -32,4 +33,9 @@ func UUID() (uuidStr string, err error) {
 func ParseID(r *http.Request) (id string) {
 	vars := mux.Vars(r)
 	return vars["id"]
+}
+
+func IsNil(t interface{}) bool {
+	defer func() { recover() }()
+	return t == nil || reflect.ValueOf(t).IsNil()
 }
