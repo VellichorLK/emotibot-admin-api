@@ -177,7 +177,7 @@ type HistoryCredit struct {
 func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	//!!MUST make sure the return credits in order from parent to child level
 	//parent must be in the front of the child
-	credits, err := creditDao.GetCallCredit(dbLike.Conn(), call)
+	credits, err := creditDao.GetCallCredit(dbLike.Conn(), &model.CreditQuery{Calls: []uint64{call}})
 	if err != nil {
 		logger.Error.Printf("get credits failed\n")
 		return nil, err
@@ -415,7 +415,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the matched segments
 	if len(segIDs) > 0 {
-		segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), segIDs)
+		segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), &model.SegmentPredictQuery{Segs: segIDs})
 		if err != nil {
 			logger.Error.Printf("get matched segments  %+v failed. %s\n", segIDs, err)
 			return nil, err
