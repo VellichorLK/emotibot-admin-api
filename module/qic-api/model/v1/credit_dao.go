@@ -45,6 +45,7 @@ type SimpleCredit struct {
 	Score      int
 	CreateTime int64
 	UpdateTime int64
+	Whos       int
 }
 
 //SegmentMatch is the structure used to insert the matched segment
@@ -79,13 +80,14 @@ func (c *CreditSQLDao) InsertCredit(conn SqlLike, credit *SimpleCredit) (int64, 
 		fldScore,
 		fldCreateTime,
 		fldUpdateTime,
+		fldWhos,
 	}
 
 	var params []interface{}
 
 	params = append(params, credit.CallID, credit.Type, credit.ParentID,
 		credit.OrgID, credit.Valid, credit.Revise, credit.Score, credit.CreateTime,
-		credit.CreateTime)
+		credit.CreateTime, credit.Whos)
 
 	return insertRecord(conn, table, insertFlds, params)
 }
@@ -150,6 +152,10 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCre
 		fldScore,
 		fldCreateTime,
 		fldUpdateTime,
+		fldWhos,
+	}
+	for i, v := range flds {
+		flds[i] = "`" + v + "`"
 	}
 
 	table := tblPredictResult
@@ -171,7 +177,7 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCre
 	resp := make([]*SimpleCredit, 0, 10)
 	for rows.Next() {
 		var s SimpleCredit
-		err = rows.Scan(&s.ID, &s.CallID, &s.Type, &s.ParentID, &s.OrgID, &s.Valid, &s.Revise, &s.Score, &s.CreateTime, &s.UpdateTime)
+		err = rows.Scan(&s.ID, &s.CallID, &s.Type, &s.ParentID, &s.OrgID, &s.Valid, &s.Revise, &s.Score, &s.CreateTime, &s.UpdateTime, &s.Whos)
 		if err != nil {
 			logger.Error.Printf("Scan failed. %s\n", err)
 			return nil, err
