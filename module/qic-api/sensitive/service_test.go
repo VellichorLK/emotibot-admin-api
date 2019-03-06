@@ -183,7 +183,7 @@ func TestCreateSensitiveWord(t *testing.T) {
 		Enterprise: "abcd",
 	}
 
-	uid, err := CreateSensitiveWord(word.Name, word.Enterprise, word.Score, []string{}, []string{})
+	uid, err := CreateSensitiveWord(word.Name, word.Enterprise, word.Score, 55, []string{}, []string{})
 	if err != nil {
 		t.Errorf("error when create sensitive word, err: %s", err.Error())
 		return

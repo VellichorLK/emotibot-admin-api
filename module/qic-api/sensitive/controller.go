@@ -20,9 +20,10 @@ type ExceptionInReq struct {
 }
 
 type SensitiveWordInReq struct {
-	Name      string         `json:"sw_name"`
-	Score     int            `json:"score"`
-	Exception ExceptionInReq `json:"exception"`
+	Name       string         `json:"sw_name"`
+	Score      int            `json:"score"`
+	Exception  ExceptionInReq `json:"exception"`
+	CategoryID int64          `json:"category_id,string"`
 }
 
 type SensitiveWordInRes struct {
@@ -41,7 +42,7 @@ type SensitiveWordInDetail struct {
 	Name       string     `json:"sw_name"`
 	Score      int        `json:"score"`
 	Exception  Exceptions `json:"execption"`
-	CategoryID int64
+	CategoryID int64      `json:"category_id"`
 }
 
 type Req struct {
@@ -58,7 +59,7 @@ func handleCreateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uid, err := CreateSensitiveWord(swInReq.Name, enterprise, swInReq.Score, swInReq.Exception.Customer, swInReq.Exception.Staff)
+	uid, err := CreateSensitiveWord(swInReq.Name, enterprise, swInReq.Score, swInReq.CategoryID, swInReq.Exception.Customer, swInReq.Exception.Staff)
 	if err != nil {
 		logger.Error.Printf("create sensitive word failed after CreateSensitiveWord, reason: %s", err.Error())
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)

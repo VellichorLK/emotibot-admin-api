@@ -54,7 +54,7 @@ func stringsToRunes(ss []string) [][]rune {
 }
 
 // CreateSensitiveWord create a uuid and create a new sensitive word
-func CreateSensitiveWord(name, enterprise string, score int, customerException, staffException []string) (uid string, err error) {
+func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, customerException, staffException []string) (uid string, err error) {
 	uid, err = general.UUID()
 	if err != nil {
 		return
@@ -70,6 +70,7 @@ func CreateSensitiveWord(name, enterprise string, score int, customerException, 
 		Name:       name,
 		Enterprise: enterprise,
 		Score:      score,
+		CategoryID: categoryID,
 	}
 
 	customerExceptionSentences, staffExceptionSentences, err := getWordExceptionSentences(customerException, staffException, enterprise, tx)
