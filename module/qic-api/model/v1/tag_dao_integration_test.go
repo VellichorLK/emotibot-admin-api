@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestITTagDaoTags(t *testing.T) {
+func TestITTagDao_Tags(t *testing.T) {
 	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
 	dao, _ := NewTagSQLDao(db)
@@ -38,6 +38,24 @@ func TestITTagDaoTags(t *testing.T) {
 				},
 			},
 			Output: testTags[1:2],
+		},
+		{
+			Name: "query update time start gte",
+			Args: args{
+				query: TagQuery{
+					UpdateTimeStart: 1545901927,
+				},
+			},
+			Output: testTags,
+		},
+		{
+			Name: "query update time end",
+			Args: args{
+				query: TagQuery{
+					UpdateTimeEnd: 1548915066,
+				},
+			},
+			Output: testTags[:1],
 		},
 	}
 	for _, tt := range testcases {

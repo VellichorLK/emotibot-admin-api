@@ -237,11 +237,12 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					credit.Setting = set
 				}
 				parentCredit.Rules = append(parentCredit.Rules, credit)
+				ruleIDs = append(ruleIDs, v.OrgID)
 				//rgCreditMap[v.ParentID] = parentCredit
 			} else {
-				return nil, errCannotFindParent(v.ID, v.ParentID)
+				//return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
-			ruleIDs = append(ruleIDs, v.OrgID)
+
 		case levCFTyp:
 			if parentCredit, ok := rCreditsMap[v.ParentID]; ok {
 				credit := &ConversationFlowCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
@@ -254,11 +255,12 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					credit.Setting = set
 				}
 				parentCredit.CFs = append(parentCredit.CFs, credit)
+				cfIDs = append(cfIDs, v.OrgID)
 				//rCreditsMap[v.ParentID] = parentCredit
 			} else {
-				return nil, errCannotFindParent(v.ID, v.ParentID)
+				//return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
-			cfIDs = append(cfIDs, v.OrgID)
+
 		case levSenGrpTyp:
 			if parentCredit, ok := cfCreditsMap[v.ParentID]; ok {
 				credit := &SentenceGrpCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
@@ -271,11 +273,12 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					credit.Setting = set
 				}
 				parentCredit.SentenceGrps = append(parentCredit.SentenceGrps, credit)
+				senGrpIDs = append(senGrpIDs, v.OrgID)
 				//cfCreditsMap[v.ParentID] = parentCredit
 			} else {
-				return nil, errCannotFindParent(v.ID, v.ParentID)
+				//return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
-			senGrpIDs = append(senGrpIDs, v.OrgID)
+
 		case levSenTyp:
 			if parentCredit, ok := senGrpCreditsMap[v.ParentID]; ok {
 				credit := &SentenceCredit{ID: v.OrgID, Valid: validMap[v.Valid]}
@@ -289,11 +292,12 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					credit.Setting = set
 				}
 				parentCredit.Sentences = append(parentCredit.Sentences, credit)
+				senIDs = append(senIDs, v.OrgID)
 				//senGrpCreditsMap[v.ParentID] = parentCredit
 			} else {
-				return nil, errCannotFindParent(v.ID, v.ParentID)
+				//return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
-			senIDs = append(senIDs, v.OrgID)
+
 		case levSegTyp:
 			if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
 				sID := parentCredit.ID
@@ -308,10 +312,10 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 				senSegMap[sID] = append(senSegMap[sID], v.OrgID)
 				segIDs = append(segIDs, v.OrgID)
 			} else {
-				return nil, errCannotFindParent(v.ID, v.ParentID)
+				//return nil, errCannotFindParent(v.ID, v.ParentID)
 			}
 		default:
-			logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
+			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
 			continue
 		}
 	}

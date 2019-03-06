@@ -34,6 +34,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/feedback"
 	"emotibot.com/emotigo/module/admin-api/integration"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
+	"emotibot.com/emotigo/module/admin-api/intentengineTest"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
@@ -71,6 +72,7 @@ var modules = []*util.ModuleInfo{
 	&System.ModuleInfo,
 	&BF.ModuleInfo,
 	&intentengine.ModuleInfo,
+	&intentengineTest.ModuleInfo,
 	&ELKStats.ModuleInfo,
 	&Service.ModuleInfo,
 	&integration.ModuleInfo,

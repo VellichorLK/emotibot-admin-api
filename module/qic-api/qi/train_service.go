@@ -243,70 +243,91 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 		logger.Error.Printf("create a model failed. %s\n", err)
 		return 0, err
 	}
+	go func() {
+		query := model.TagQuery{Enterprise: &enterprise}
+		tags, err := tagDao.Tags(nil, query)
+		if err != nil {
+			logger.Error.Printf("get tag failed\n")
+			//return 0, err
+			return
+		}
+		err = TrainOneModelByEnterprise(tags, modelID, enterprise)
+		if err != nil {
+			logger.Error.Printf("train model failed. %s\n", err)
+			affected, _ := modelDao.UpdateModel(dbLike.Conn(), &model.TModel{ID: uint64(modelID), Status: MStatErr})
+			if affected == 0 {
+				logger.Warn.Printf("model %d may have wrong status\n", modelID)
+			}
 
-	query := model.TagQuery{Enterprise: &enterprise}
-	tags, err := tagDao.Tags(nil, query)
-	if err != nil {
-		logger.Error.Printf("get tag failed\n")
-		return 0, err
-	}
-	err = TrainOneModelByEnterprise(tags, modelID, enterprise)
-	if err != nil {
-		logger.Error.Printf("train model failed. %s\n", err)
-		affected, _ := modelDao.UpdateModel(dbLike.Conn(), &model.TModel{ID: uint64(modelID), Status: MStatErr})
-		if affected == 0 {
-			logger.Warn.Printf("model %d may have wrong status\n", modelID)
+			//return 0, err
+			return
 		}
 
-		return 0, err
-	}
+		//switch the using model, set the last using model to deprecate and new one to using
+		tx, err := dbLike.Begin()
+		if err != nil {
+			//return 0, err
+			return
+		}
+		defer tx.Rollback()
 
-	//switch the using model, set the last using model to deprecate and new one to using
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback()
-
-	//get the using models
-	status := MStatUsing
-	models, err := modelDao.TrainedModelInfo(tx, &model.TModelQuery{Enterprise: &enterprise, Status: &status})
-	if err != nil {
-		logger.Error.Printf("get using model failed. %s\n", err)
-		return 0, err
-	}
-	//seet the current using model to deprecate status
-	if len(models) > 0 {
-		_, err = modelDao.UpdateModel(tx, &model.TModel{ID: models[0].ID, Status: MStatDeprecate})
+		//get the using models
+		status := MStatUsing
+		models, err := modelDao.TrainedModelInfo(tx, &model.TModelQuery{Enterprise: &enterprise, Status: &status})
+		if err != nil {
+			logger.Error.Printf("get using model failed. %s\n", err)
+			//return 0, err
+			return
+		}
+		//seet the current using model to deprecate status
+		if len(models) > 0 {
+			_, err = modelDao.UpdateModel(tx, &model.TModel{ID: models[0].ID, Status: MStatDeprecate})
+			if err != nil {
+				logger.Error.Printf("update model %d status failed. %s\n", models[0].ID, err)
+				//return 0, err
+				return
+			}
+		}
+		//set the new model to using status
+		_, err = modelDao.UpdateModel(tx, &model.TModel{ID: uint64(modelID), Status: MStatUsing})
 		if err != nil {
 			logger.Error.Printf("update model %d status failed. %s\n", models[0].ID, err)
-			return 0, err
+			//return 0, err
+			return
 		}
-	}
-	//set the new model to using status
-	_, err = modelDao.UpdateModel(tx, &model.TModel{ID: uint64(modelID), Status: MStatUsing})
-	if err != nil {
-		logger.Error.Printf("update model %d status failed. %s\n", models[0].ID, err)
-		return 0, err
-	}
 
-	err = tx.Commit()
-	if err != nil {
-		logger.Error.Printf("commit failed. %s\n", err)
-		return 0, err
-	}
-	//unload the model after two hour
-	go setUnloadModelTimer(int64(models[0].ID), time.Duration(2*time.Hour))
-
+		err = tx.Commit()
+		if err != nil {
+			logger.Error.Printf("commit failed. %s\n", err)
+			//return 0, err
+			return
+		}
+		//if exist deprecated models which somehow doesn't be cleaned
+		cleanModel(enterprise)
+		//unload the model after two hour
+		setUnloadModelTimer(int64(models[0].ID), time.Duration(2*time.Hour))
+	}()
 	return modelID, nil
 }
 
-func setUnloadModelTimer(id int64, d time.Duration) error {
-	if dbLike == nil {
-		return ErrNilCon
+func cleanModel(enterprise string) error {
+	models, err := GetModelByEnterprise(enterprise, MStatDeprecate)
+	if err != nil {
+		logger.Error.Printf("get deprecate models failed. %s\n", err)
+		return err
 	}
-	timer := time.NewTimer(d)
-	<-timer.C
+	now := time.Now().Unix()
+	for _, m := range models {
+		if now > m.UpdateTime+60*60*2 {
+			unloadModel(int64(m.ID))
+		}
+
+	}
+	return nil
+}
+
+func unloadModel(id int64) error {
+
 	err := UnloadModel(id)
 	if err != nil {
 		logger.Error.Printf("unload model %d failed. %s\n", id, err)
@@ -317,6 +338,18 @@ func setUnloadModelTimer(id int64, d time.Duration) error {
 			logger.Error.Printf("update model %d status to %d failed. %s\n", id, status, err)
 		}
 	}
+
+	return err
+}
+
+func setUnloadModelTimer(id int64, d time.Duration) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	timer := time.NewTimer(d)
+	<-timer.C
+
+	err := unloadModel(id)
 	return err
 }
 
