@@ -78,6 +78,8 @@ func setUpRoutes() {
 		Route{"AddEnterprise", "POST", 3, "enterprise", nil, controller.EnterpriseAddHandlerV3, []interface{}{0}},
 		Route{"UpdateEnterprise", "PUT", 3, "enterprise/{enterpriseID}", nil, controller.EnterpriseUpdateHandlerV3, []interface{}{0, 1}},
 		Route{"DeleteEnterprise", "DELETE", 3, "enterprise/{enterpriseID}", nil, controller.EnterpriseDeleteHandlerV3, []interface{}{0}},
+		Route{"GetEnterpriseSecretKey", "GET", 3, "enterprise/{enterpriseID}/secret", nil, controller.EnterpriseGetSecretHandlerV3, []interface{}{0, 1, 2}},
+		Route{"GetEnterpriseSecretKey", "POST", 3, "enterprise/{enterpriseID}/secret", nil, controller.EnterpriseRenewSecretHandlerV3, []interface{}{0, 1, 2}},
 
 		Route{"GetUsers", "GET", 3, "enterprise/{enterpriseID}/users", nil, controller.UsersGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetUser", "GET", 3, "enterprise/{enterpriseID}/user/{userID}", nil, controller.UserGetHandlerV3, []interface{}{0, 1, 2}},
