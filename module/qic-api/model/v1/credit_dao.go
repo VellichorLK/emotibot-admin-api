@@ -12,7 +12,21 @@ type CreditDao interface {
 	InsertCredit(conn SqlLike, c *SimpleCredit) (int64, error)
 	InsertSegmentMatch(conn SqlLike, s *SegmentMatch) (int64, error)
 	GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCredit, error)
-	GetSegmentMatch(conn SqlLike, segments []uint64) ([]*SegmentMatch, error)
+	GetSegmentMatch(conn SqlLike, q *SegmentPredictQuery) ([]*SegmentMatch, error)
+}
+
+//SegmentPredictQuery is the condition used to query the SegmentPredict
+type SegmentPredictQuery struct {
+	Segs []uint64
+	Whos int
+}
+
+func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface{}, err error) {
+	flds := []string{
+		fldSegmentID,
+		fldWhos,
+	}
+	return makeAndCondition(s, flds)
 }
 
 //CreditQuery is the condition used to query the CUPredictReuslt
@@ -58,6 +72,7 @@ type SegmentMatch struct {
 	MatchedText string `json:"match_text"`
 	CreateTime  int64  `json:"-"`
 	UpdateTime  int64  `json:"-"`
+	Whos        int    `json:"-"`
 }
 
 //InsertCredit inserts the muliple credit
@@ -110,10 +125,11 @@ func (c *CreditSQLDao) InsertSegmentMatch(conn SqlLike, s *SegmentMatch) (int64,
 		fldMatchText,
 		fldCreateTime,
 		fldUpdateTime,
+		fldWhos,
 	}
 
 	var params []interface{}
-	params = append(params, s.SegID, s.TagID, s.Score, s.Match, s.MatchedText, s.CreateTime, s.CreateTime)
+	params = append(params, s.SegID, s.TagID, s.Score, s.Match, s.MatchedText, s.CreateTime, s.CreateTime, s.Whos)
 
 	return insertRecord(conn, table, insertFlds, params)
 }
@@ -191,13 +207,17 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCre
 //GetSegmentMatch gets the matched words in segment
 //not allowed retreive the whole matched words
 //must give the segments id
-func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, segments []uint64) ([]*SegmentMatch, error) {
+func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, q *SegmentPredictQuery) ([]*SegmentMatch, error) {
 	if conn == nil {
 		return nil, ErroNoConn
 	}
-	numOfSegs := len(segments)
-	if numOfSegs == 0 {
+	if q == nil {
 		return nil, ErrNeedCondition
+	}
+
+	condition, params, err := q.whereSQL()
+	if err != nil {
+		return nil, ErrGenCondition
 	}
 
 	table := tblSegmentPredict
@@ -210,25 +230,20 @@ func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, segments []uint64) ([]*Segm
 		fldMatchText,
 		fldCreateTime,
 		fldUpdateTime,
+		fldWhos,
 	}
-
-	for i := 0; i < len(flds); i++ {
+	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
 	}
 
 	fldStr := strings.Join(flds, ",")
 
-	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s in (?%s)",
-		fldStr, table, fldSegID, strings.Repeat(",?", numOfSegs-1))
-
-	params := make([]interface{}, 0, numOfSegs)
-	for _, id := range segments {
-		params = append(params, id)
-	}
+	querySQL := fmt.Sprintf("SELECT %s FROM %s %s",
+		fldStr, table, condition)
 
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
-		logger.Error.Printf("query failed. %s %+v\n %s\n", querySQL, segments, err)
+		logger.Error.Printf("query failed. %s %+v\n %s\n", querySQL, params, err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -237,7 +252,7 @@ func (c *CreditSQLDao) GetSegmentMatch(conn SqlLike, segments []uint64) ([]*Segm
 	for rows.Next() {
 		var seg SegmentMatch
 		err = rows.Scan(&seg.ID, &seg.SegID, &seg.TagID, &seg.Score, &seg.Match,
-			&seg.MatchedText, &seg.CreateTime, &seg.UpdateTime)
+			&seg.MatchedText, &seg.CreateTime, &seg.UpdateTime, &seg.Whos)
 		if err != nil {
 			logger.Error.Printf("scan error. %s\n", err)
 			return nil, err

@@ -415,7 +415,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 	//get the matched segments
 	if len(segIDs) > 0 {
-		segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), segIDs)
+		segsMatch, err := creditDao.GetSegmentMatch(dbLike.Conn(), &model.SegmentPredictQuery{Segs: segIDs})
 		if err != nil {
 			logger.Error.Printf("get matched segments  %+v failed. %s\n", segIDs, err)
 			return nil, err

@@ -71,7 +71,7 @@ func (m *mockCreditDao) GetCallCredit(conn model.SqlLike, q *model.CreditQuery) 
 	}
 	return mockCredits, nil
 }
-func (m *mockCreditDao) GetSegmentMatch(conn model.SqlLike, segments []uint64) ([]*model.SegmentMatch, error) {
+func (m *mockCreditDao) GetSegmentMatch(conn model.SqlLike, q *model.SegmentPredictQuery) ([]*model.SegmentMatch, error) {
 
 	return mockMatched, nil
 }
