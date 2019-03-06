@@ -493,7 +493,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		return fmt.Errorf("can not get sheet %s \n", flowSheetName)
 	}
 
-	var name, logicList string
+	var flowName, logicList string
 
 	for i, row := range sheet.Rows {
 		if i == 0 {
@@ -501,18 +501,18 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		}
 
 		// TODO check value
-		name = row.Cells[3].String()
+		flowName = row.Cells[3].String()
 		logicList = row.Cells[5].String()
 
 		// default flow type
 		flow := reqNewFlow{
-			Name:       name,
-			IntentName: name,
+			Name:       flowName,
+			IntentName: flowName,
 			Type:       "intent",
 		}
 
 		flowID, err := NewFlow(&flow, enterpriseID)
-		logger.Trace.Printf("create flow: %s \n", name)
+		logger.Trace.Printf("create flow: %s \n", flowName)
 
 		if err != nil {
 			logger.Error.Printf("fail to create flow: %s\n", err)
@@ -520,31 +520,31 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		}
 
 		// ------------------
-		// add node
+		// add intent or node
 		// ------------------
 
-		// TODO only one logic in logicList ?
-		sentenceGroup := &model.SentenceGroup{
-			Name:       name + "-node1",
-			Enterprise: enterpriseID,
-		}
-
-		var dataSentences []*DataSentence
+		//var dataSentences []*DataSentence
 		flag := int8(0)
 		// get sentence according to logic_list, a node may contain more than one sentence
 		splits := strings.Split(logicList, "|")
-		for _, item := range splits {
+		for i, item := range splits {
+
+			sentenceGroup := &model.SentenceGroup{
+				Name:       item,
+				Enterprise: enterpriseID,
+			}
+
+			// TODO check sentenceGroup ?
+
 			query := &model.SentenceQuery{
 				Enterprise: &enterpriseID,
 				IsDelete:   &flag,
 				Name:       &item,
 			}
-
 			count, err := sentenceDao.CountSentences(nil, query)
 			if err != nil {
 				return err
 			}
-
 			if count == 0 {
 				logger.Trace.Printf("invalid sentence: %s \n", item)
 				continue
@@ -560,55 +560,71 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			// default get the first one
 			sentence := data[0]
 
-			dataSentences = append(dataSentences, sentence)
-		}
-
-		sentences := make([]model.SimpleSentence, 0)
-		for _, item := range dataSentences {
+			// add sentence to sentenceGroup
+			sentences := make([]model.SimpleSentence, 0)
 			sentences = append(sentences, model.SimpleSentence{
-				ID:   item.ID,
-				UUID: item.UUID,
-				Name: item.Name,
+				ID:   sentence.ID,
+				UUID: sentence.UUID,
+				Name: sentence.Name,
 			})
+			sentenceGroup.Sentences = sentences
+
+			// default role: any
+			sentenceGroup.Role = 2
+			if roleCode, ok := roleMapping["any"]; ok {
+				sentenceGroup.Role = roleCode
+			} else {
+				sentenceGroup.Position = -1
+			}
+			// default position: 2
+			if positionCode, ok := positionMap[""]; ok {
+				sentenceGroup.Position = positionCode
+			} else {
+				sentenceGroup.Position = -1
+			}
+			// default type: call-in
+			if typeCode, ok := typeMapping["call_in"]; ok {
+				sentenceGroup.Type = typeCode
+			} else {
+				sentenceGroup.Type = -1
+			}
+			// default optional: 0
+			sentenceGroup.Optional = 0
+			// default range: 0
+			sentenceGroup.Distance = 0
+
+			// the first sentence is intent, the rest is node
+			// add intent SentenceGroup
+			if i == 0 {
+				flow := &model.NavFlowUpdate{}
+				ignore := 0
+				flow.IgnoreIntent = &ignore
+
+				createdSentenceGroup, err := CreateSentenceGroup(sentenceGroup)
+				if err != nil {
+					logger.Error.Printf("error while create sentence in handleCreateSentenceGroup, reason: %s\n", err.Error())
+					return err
+				}
+				flow.IntentLinkID = &createdSentenceGroup.ID
+				flow.IntentName = &flowName
+
+				if _, err = UpdateFlow(flowID, enterpriseID, flow); err != nil {
+					logger.Error.Println("fail to update flow")
+					return err
+				}
+				logger.Trace.Printf("create intent node %s \n", item)
+				continue
+			}
+
+			// add node SentenceGroup
+			err = NewNode(flowID, sentenceGroup)
+
+			if err != nil {
+				logger.Error.Println("fail to create node")
+				return err
+			}
+			logger.Trace.Printf("create node: %s \n", item)
 		}
-
-		sentenceGroup.Sentences = sentences
-
-		// default role: any
-		sentenceGroup.Role = 2
-		if roleCode, ok := roleMapping["any"]; ok {
-			sentenceGroup.Role = roleCode
-		} else {
-			sentenceGroup.Position = -1
-		}
-
-		// default position: 2
-		if positionCode, ok := positionMap[""]; ok {
-			sentenceGroup.Position = positionCode
-		} else {
-			sentenceGroup.Position = -1
-		}
-
-		// default type: call-in
-		if typeCode, ok := typeMapping["call_in"]; ok {
-			sentenceGroup.Type = typeCode
-		} else {
-			sentenceGroup.Type = -1
-		}
-
-		// default optional: 0
-		sentenceGroup.Optional = 0
-
-		// default range: 0
-		sentenceGroup.Distance = 0
-
-		err = NewNode(flowID, sentenceGroup)
-
-		if err != nil {
-			logger.Error.Println("fail to create node")
-			return err
-		}
-		logger.Trace.Printf("create node: %s \n", name+"-node1")
 	}
 	return nil
 }
