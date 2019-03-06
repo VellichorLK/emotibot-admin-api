@@ -11,8 +11,22 @@ import (
 type CreditDao interface {
 	InsertCredit(conn SqlLike, c *SimpleCredit) (int64, error)
 	InsertSegmentMatch(conn SqlLike, s *SegmentMatch) (int64, error)
-	GetCallCredit(conn SqlLike, call uint64) ([]*SimpleCredit, error)
+	GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCredit, error)
 	GetSegmentMatch(conn SqlLike, segments []uint64) ([]*SegmentMatch, error)
+}
+
+//CreditQuery is the condition used to query the CUPredictReuslt
+type CreditQuery struct {
+	Calls []uint64
+	Whos  int
+}
+
+func (c *CreditQuery) whereSQL() (condition string, bindData []interface{}, err error) {
+	flds := []string{
+		fldCallID,
+		fldWhos,
+	}
+	return makeAndCondition(c, flds)
 }
 
 //CreditSQLDao implements the credit dao
@@ -120,7 +134,7 @@ func insertRecord(conn SqlLike, table string, fields []string, params []interfac
 }
 
 //GetCallCredit gets the credit for given call
-func (c *CreditSQLDao) GetCallCredit(conn SqlLike, call uint64) ([]*SimpleCredit, error) {
+func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCredit, error) {
 	if conn == nil {
 		return nil, ErroNoConn
 	}
@@ -141,10 +155,15 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, call uint64) ([]*SimpleCredit
 	table := tblPredictResult
 	selectFldsStr := strings.Join(flds, ",")
 
-	querySQL := fmt.Sprintf("SELECT %s FROM %s WHERE %s=? ORDER BY %s ASC", selectFldsStr, table, fldCallID, fldType)
-	rows, err := conn.Query(querySQL, call)
+	condition, params, err := q.whereSQL()
 	if err != nil {
-		logger.Error.Printf("get rows failed. %s. sql:%s %d\n", err, querySQL, call)
+		return nil, ErrGenCondition
+	}
+
+	querySQL := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s ASC", selectFldsStr, table, condition, fldType)
+	rows, err := conn.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("get rows failed. %s. sql:%s %+v\n", err, querySQL, params)
 		return nil, err
 	}
 	defer rows.Close()

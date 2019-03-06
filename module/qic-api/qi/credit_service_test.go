@@ -65,9 +65,9 @@ func (m *mockCreditDao) InsertCredit(conn model.SqlLike, c *model.SimpleCredit) 
 func (m *mockCreditDao) InsertSegmentMatch(conn model.SqlLike, s *model.SegmentMatch) (int64, error) {
 	return 0, nil
 }
-func (m *mockCreditDao) GetCallCredit(conn model.SqlLike, call uint64) ([]*model.SimpleCredit, error) {
+func (m *mockCreditDao) GetCallCredit(conn model.SqlLike, q *model.CreditQuery) ([]*model.SimpleCredit, error) {
 	for _, v := range mockCredits {
-		v.CallID = call
+		v.CallID = q.Calls[0]
 	}
 	return mockCredits, nil
 }
