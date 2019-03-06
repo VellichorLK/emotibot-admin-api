@@ -39,3 +39,17 @@ func IsNil(t interface{}) bool {
 	defer func() { recover() }()
 	return t == nil || reflect.ValueOf(t).IsNil()
 }
+
+func StringsToRunes(ss []string) [][]rune {
+	words := make([][]rune, len(ss))
+	for idx, s := range ss {
+		// ignore empty string
+		// ignroe empty string will cause Index out of error in goahocorasick.Machine Build
+		if s == "" {
+			continue
+		}
+		word := []rune(s)
+		words[idx] = word
+	}
+	return words
+}
