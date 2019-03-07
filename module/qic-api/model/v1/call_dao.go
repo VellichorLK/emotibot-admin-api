@@ -10,7 +10,6 @@ import (
 	"github.com/tealeg/xlsx"
 	"reflect"
 	"bufio"
-	"os"
 )
 
 type CallDao interface {
@@ -434,18 +433,9 @@ func (c *CallSQLDao) ExportCalls(delegatee SqlLike) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	tempFileName := fmt.Sprintf("export_call.xlsx")
-	err = xlFile.Save(tempFileName)
-
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
 	xlFile.Write(writer)
-
-	defer func() {
-		if _, err := os.Stat(tempFileName); err == nil {
-			os.Remove(tempFileName)
-		}
-	}()
 
 	return &buf, err
 }

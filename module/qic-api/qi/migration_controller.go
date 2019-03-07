@@ -7,12 +7,13 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 	"os"
 	"io"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 func handleImportTags(w http.ResponseWriter, r *http.Request) {
 	var err error
 	//appID := requestheader.GetAppID(r)
-	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
 	fileName := fmt.Sprintf("tags_%s.xlsx", time.Now().Format("20060102150405"))
 
@@ -34,7 +35,7 @@ func handleImportTags(w http.ResponseWriter, r *http.Request) {
 func handleImportSentences(w http.ResponseWriter, r *http.Request) {
 	var err error
 	//appID := requestheader.GetAppID(r)
-	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
 	fileName := fmt.Sprintf("sentences_%s.xlsx", time.Now().Format("20060102150405"))
 
@@ -58,8 +59,8 @@ func handleImportRules(w http.ResponseWriter, r *http.Request) {
 	// TODO use general.UUID() to simply code
 
 	var err error
-	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
 	//appID := requestheader.GetAppID(r)
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
 	fileName := fmt.Sprintf("rules_%s.xlsx", time.Now().Format("20060102150405"))
 
@@ -80,7 +81,7 @@ func handleImportRules(w http.ResponseWriter, r *http.Request) {
 
 func handleImportCallIn(w http.ResponseWriter, r *http.Request) {
 	var err error
-	enterpriseID := "bb3e3925f0ad11e7bd860242ac120003"
+	enterpriseID := requestheader.GetEnterpriseID(r)
 
 	// need to check unique flow name
 
@@ -103,7 +104,6 @@ func handleImportCallIn(w http.ResponseWriter, r *http.Request) {
 
 func handleExportGroups(w http.ResponseWriter, r *http.Request) {
 
-	// TODO appID ?
 	buf, err := ExportGroups()
 
 	if err != nil {
@@ -118,7 +118,6 @@ func handleExportGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportGroups(w http.ResponseWriter, r *http.Request) {
-
 	var err error
 	//appID := requestheader.GetAppID(r)
 	fileName := fmt.Sprintf("rule_group_%s.xlsx", time.Now().Format("20060102150405"))
@@ -139,7 +138,7 @@ func handleImportGroups(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleExportCalls(w http.ResponseWriter, r *http.Request) {
-	// TODO appID or enterprise
+
 	buf, err := ExportCalls()
 
 	if err != nil {

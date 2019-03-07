@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"strconv"
 	"github.com/kataras/iris/core/errors"
-	"os"
 )
 
 type GroupDAO interface {
@@ -1038,262 +1037,254 @@ func (s *GroupSQLDao) ExportGroups(delegatee SqlLike) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	tempFileName := fmt.Sprintf("export_rules.xlsx")
-	err = xlFile.Save(tempFileName)
-
 	var buf bytes.Buffer
 	writer := bufio.NewWriter(&buf)
 	xlFile.Write(writer)
-
-	defer func() {
-		if _, err := os.Stat(tempFileName); err == nil {
-			os.Remove(tempFileName)
-		}
-	}()
 
 	return &buf, err
 }
 
 func (s *GroupSQLDao) ImportGroups(sqlLike SqlLike, fileName string) error {
 
-	xlFile, err := xlsx.OpenFile(fileName)
+	return fmt.Errorf("sorry, rd is developing ... \n")
 
-	if err != nil {
-		logger.Error.Printf("fail to open %s \n", fileName)
-		return err
-	}
-
-	sqlStr := ""
-
-	for _, sheet := range xlFile.Sheets {
-		switch sheet.Name {
-		case "Tag":
-			tableName := "Tag"
-			num := reflect.TypeOf(ExportTag{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				fldTagID, fldTagIsDeleted, fldTagName, fldTagType, fldTagPosSen,
-				fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise, fldTagUUID)
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportTag{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-		case "Sentence":
-			tableName := "Sentence"
-			num := reflect.TypeOf(ExportSentence{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "is_delete", "name", "enterprise", "uuid", "create_time", "update_time", "category_id")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentence{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "SentenceGroup":
-			tableName := "SentenceGroup"
-			num := reflect.TypeOf(ExportSentenceGroup{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "is_delete", "name", "enterprise", "role", "position", "`range`", "uuid", "create_time", "update_time", "optional", "type")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroup{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "Rule":
-			tableName := "Rule"
-			num := reflect.TypeOf(ExportRule{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "is_delete", "name", "method", "score", "description", "enterprise", "min", "max", "severity", "uuid", "create_time", "update_time")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRule{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "RuleGroup":
-			tableName := "RuleGroup"
-			num := reflect.TypeOf(ExportRuleGroup{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "is_delete", "name", "enterprise", "description", "create_time", "update_time", "is_enable", "limit_speed", "limit_silence", "type", "uuid")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroup{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "SensitiveWord":
-			tableName := "SensitiveWord"
-			num := reflect.TypeOf(ExportSensitiveWord{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "uuid", "name", "enterprise", "score", "category_id", "is_delete")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWord{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "ConversationFlow":
-			tableName := "ConversationFlow"
-			num := reflect.TypeOf(ExportConversationFlow{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "is_delete", "name", "enterprise", "expression", "uuid", "create_time", "update_time", "min")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportConversationFlow{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "R_Sen_Tag":
-			tableName := "Relation_Sentence_Tag"
-			num := reflect.TypeOf(ExportSentenceTag{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "s_id", "tag_id")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceTag{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "R_SenGrp_Sen":
-			tableName := "Relation_SentenceGroup_Sentence"
-			num := reflect.TypeOf(ExportSentenceGroupSentence{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "sg_id", "s_id")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroupSentence{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "R_SensitiveWord_Sen":
-			tableName := "Relation_SensitiveWord_Sentence"
-			num := reflect.TypeOf(ExportSensitiveWordSentence{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "sw_id", "s_id", "type")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWordSentence{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "RuleGroupCondition":
-			tableName := "RuleGroupCondition"
-			num := reflect.TypeOf(ExportRuleGroupCondition{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "rg_id", "type", "file_name", "deal", "series", "upload_time", "staff_id", "staff_name", "extension", "department", "customer_id", "customer_name", "customer_phone", "category", "call_start", "call_end", "left_channel", "right_channel")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupCondition{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "R_Rule_CF":
-			tableName := "Relation_Rule_ConversationFlow"
-			num := reflect.TypeOf(ExportRuleConversationFlow{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "rule_id", "cf_id")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleConversationFlow{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		case "Rel_RuleGroup_Rule":
-			tableName := "Relation_RuleGroup_Rule"
-			num := reflect.TypeOf(ExportRuleGroupRule{}).NumField() - 1
-			sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
-				"id", "rg_id", "rule_id")
-
-			if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
-				if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupRule{}); err != nil {
-					logger.Error.Printf("fail to insert into table %s \n", tableName)
-					logger.Error.Println(err)
-					return err
-				}
-			} else {
-				logger.Error.Printf("can not find sheet %s \n", sheet.Name)
-				return fmt.Errorf("can not find sheet %s \n", sheet.Name)
-			}
-
-		}
-
-	}
-
-	return nil
+	//xlFile, err := xlsx.OpenFile(fileName)
+	//
+	//if err != nil {
+	//	logger.Error.Printf("fail to open %s \n", fileName)
+	//	return err
+	//}
+	//
+	//sqlStr := ""
+	//
+	//for _, sheet := range xlFile.Sheets {
+	//	switch sheet.Name {
+	//	case "Tag":
+	//		tableName := "Tag"
+	//		num := reflect.TypeOf(ExportTag{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			fldTagID, fldTagIsDeleted, fldTagName, fldTagType, fldTagPosSen,
+	//			fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise, fldTagUUID)
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportTag{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//	case "Sentence":
+	//		tableName := "Sentence"
+	//		num := reflect.TypeOf(ExportSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "uuid", "create_time", "update_time", "category_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "SentenceGroup":
+	//		tableName := "SentenceGroup"
+	//		num := reflect.TypeOf(ExportSentenceGroup{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "role", "position", "`range`", "uuid", "create_time", "update_time", "optional", "type")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroup{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "Rule":
+	//		tableName := "Rule"
+	//		num := reflect.TypeOf(ExportRule{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "method", "score", "description", "enterprise", "min", "max", "severity", "uuid", "create_time", "update_time")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRule{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "RuleGroup":
+	//		tableName := "RuleGroup"
+	//		num := reflect.TypeOf(ExportRuleGroup{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "description", "create_time", "update_time", "is_enable", "limit_speed", "limit_silence", "type", "uuid")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroup{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "SensitiveWord":
+	//		tableName := "SensitiveWord"
+	//		num := reflect.TypeOf(ExportSensitiveWord{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "uuid", "name", "enterprise", "score", "category_id", "is_delete")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWord{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "ConversationFlow":
+	//		tableName := "ConversationFlow"
+	//		num := reflect.TypeOf(ExportConversationFlow{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "expression", "uuid", "create_time", "update_time", "min")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportConversationFlow{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_Sen_Tag":
+	//		tableName := "Relation_Sentence_Tag"
+	//		num := reflect.TypeOf(ExportSentenceTag{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "s_id", "tag_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceTag{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_SenGrp_Sen":
+	//		tableName := "Relation_SentenceGroup_Sentence"
+	//		num := reflect.TypeOf(ExportSentenceGroupSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "sg_id", "s_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroupSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_SensitiveWord_Sen":
+	//		tableName := "Relation_SensitiveWord_Sentence"
+	//		num := reflect.TypeOf(ExportSensitiveWordSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "sw_id", "s_id", "type")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWordSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "RuleGroupCondition":
+	//		tableName := "RuleGroupCondition"
+	//		num := reflect.TypeOf(ExportRuleGroupCondition{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rg_id", "type", "file_name", "deal", "series", "upload_time", "staff_id", "staff_name", "extension", "department", "customer_id", "customer_name", "customer_phone", "category", "call_start", "call_end", "left_channel", "right_channel")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupCondition{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_Rule_CF":
+	//		tableName := "Relation_Rule_ConversationFlow"
+	//		num := reflect.TypeOf(ExportRuleConversationFlow{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rule_id", "cf_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleConversationFlow{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "Rel_RuleGroup_Rule":
+	//		tableName := "Relation_RuleGroup_Rule"
+	//		num := reflect.TypeOf(ExportRuleGroupRule{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rg_id", "rule_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupRule{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	}
+	//
+	//}
+	//return nil
 }
 
 func LoadFromExcel(sheet *xlsx.Sheet, sqlLike SqlLike, sqlStr string, tableName string, bean interface{}) error {
