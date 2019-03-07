@@ -61,7 +61,11 @@ func getTagQuery(r *http.Request) (*model.TagQuery, error) {
 			query.TagType = append(query.TagType, typno)
 		}
 	}
-
+	name := r.Form.Get("keyword")
+	if name != "" {
+		name = fmt.Sprintf("%%%s%%", name)
+		query.Name = &name
+	}
 	return query, nil
 }
 
