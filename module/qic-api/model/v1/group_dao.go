@@ -13,7 +13,6 @@ import (
 	"reflect"
 	"strconv"
 	"github.com/kataras/iris/core/errors"
-	"github.com/go-xorm/core"
 	"os"
 )
 
@@ -1490,6 +1489,8 @@ func value2Bytes(rawValue *reflect.Value) (string, error) {
 func value2String(rawValue *reflect.Value) (str string, err error) {
 	aa := reflect.TypeOf((*rawValue).Interface())
 	vv := reflect.ValueOf((*rawValue).Interface())
+	var cTIME time.Time
+	timeType := reflect.TypeOf(cTIME)
 	switch aa.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		str = strconv.FormatInt(vv.Int(), 10)
@@ -1512,8 +1513,8 @@ func value2String(rawValue *reflect.Value) (str string, err error) {
 		}
 		// time type
 	case reflect.Struct:
-		if aa.ConvertibleTo(core.TimeType) {
-			str = vv.Convert(core.TimeType).Interface().(time.Time).Format(time.RFC3339Nano)
+		if aa.ConvertibleTo(timeType) {
+			str = vv.Convert(timeType).Interface().(time.Time).Format(time.RFC3339Nano)
 		} else {
 			err = fmt.Errorf("Unsupported struct type %v", vv.Type().Name())
 		}
