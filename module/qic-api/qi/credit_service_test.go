@@ -6,6 +6,7 @@ import (
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	test "emotibot.com/emotigo/module/qic-api/util/test"
+	"bytes"
 )
 
 var mockCredits = []*model.SimpleCredit{
@@ -123,6 +124,13 @@ func (m *mockGroupDaoCredit) DeleteMany(ruleUUID []string, sql model.SqlLike) er
 
 func (m *mockGroupDaoCredit) GetGroupsByRuleID(id []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
+}
+
+func (m *mockGroupDaoCredit) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error) {
+	return nil, nil
+}
+func (m *mockGroupDaoCredit) ImportGroups(sqlLike model.SqlLike, fileName string) error {
+	return nil
 }
 
 type mockRuleDaoCredit struct {
