@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 )
 
 //ErrNotFound is indicated the resource is asked, but nowhere to found it.

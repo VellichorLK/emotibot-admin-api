@@ -16,7 +16,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 )
 
 //HandleGetTags handle the get request for tag.

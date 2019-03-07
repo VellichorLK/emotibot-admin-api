@@ -7,6 +7,12 @@ import (
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
+	"bytes"
+	"github.com/tealeg/xlsx"
+	"bufio"
+	"reflect"
+	"strconv"
+	"github.com/kataras/iris/core/errors"
 )
 
 type GroupDAO interface {
@@ -19,6 +25,8 @@ type GroupDAO interface {
 	GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error)
 	CreateMany([]GroupWCond, SqlLike) error
 	DeleteMany([]string, SqlLike) error
+	ExportGroups(sqlLike SqlLike) (*bytes.Buffer, error)
+	ImportGroups(sqlLike SqlLike, fileName string) error
 }
 
 type GroupSQLDao struct {
@@ -851,4 +859,814 @@ func (s *GroupSQLDao) DeleteMany(groupUUID []string, sqlLike SqlLike) (err error
 		err = fmt.Errorf("error while delete groups in dao.DeleteMany, err: %s", err.Error())
 	}
 	return
+}
+
+func (s *GroupSQLDao) ExportGroups(delegatee SqlLike) (*bytes.Buffer, error) {
+
+	xlFile := xlsx.NewFile()
+
+	var queryStr string
+	var err error
+
+	logger.Trace.Println("export Tag ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportTag{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		fldTagID, fldTagIsDeleted, fldTagName, fldTagType, fldTagPosSen, fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise, fldTagUUID,
+		tblTags,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblTags, delegatee, ExportTag{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Sentence ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSentence{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "is_delete", "name", "enterprise", "uuid", "create_time", "update_time", "category_id",
+		tblSentence,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblSentence, delegatee, ExportSentence{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export SentenceGroup ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSentenceGroup{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "is_delete", "name", "enterprise", "role", "position", "`range`", "uuid", "create_time", "update_time", "optional", "type",
+		"SentenceGroup",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "SentenceGroup", delegatee, ExportSentenceGroup{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Rule ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportRule{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "is_delete", "name", "method", "score", "description", "enterprise", "min", "max", "severity", "uuid", "create_time", "update_time",
+		tblRule,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblRule, delegatee, ExportRule{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export RuleGroup ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportRuleGroup{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "is_delete", "name", "enterprise", "description", "create_time", "update_time", "is_enable", "limit_speed", "limit_silence", "type", "uuid",
+		tblRuleGroup,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblRuleGroup, delegatee, ExportRuleGroup{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export SensitiveWord ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSensitiveWord{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "uuid", "name", "enterprise", "score", "category_id", "is_delete",
+		tblSensitiveWord,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblSensitiveWord, delegatee, ExportSensitiveWord{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export ConversationFlow ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportConversationFlow{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "is_delete", "name", "enterprise", "expression", "uuid", "create_time", "update_time", "min",
+		tblConversationflow,
+	)
+	if err = SaveToExcel(xlFile, queryStr, tblConversationflow, delegatee, ExportConversationFlow{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Relation_Sentence_Tag ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSentenceTag{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "s_id", "tag_id",
+		tbleRelSentenceTag,
+	)
+	if err = SaveToExcel(xlFile, queryStr, "R_Sen_Tag", delegatee, ExportSentenceTag{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Relation_SentenceGroup_Sentence ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSentenceGroupSentence{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "sg_id", "s_id",
+		"Relation_SentenceGroup_Sentence",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "R_SenGrp_Sen", delegatee, ExportSentenceGroupSentence{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Relation_SensitiveWord_Sentence ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportSensitiveWordSentence{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "sw_id", "s_id", "type",
+		tblRelSensitiveWordSen,
+	)
+	if err = SaveToExcel(xlFile, queryStr, "R_SensitiveWord_Sen", delegatee, ExportSensitiveWordSentence{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export RuleGroupCondition ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportRuleGroupCondition{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "rg_id", "type", "file_name", "deal", "series", "upload_time", "staff_id", "staff_name", "extension", "department", "customer_id", "customer_name", "customer_phone", "category", "call_start", "call_end", "left_channel", "right_channel",
+		"RuleGroupCondition",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "RuleGroupCondition", delegatee, ExportRuleGroupCondition{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Relation_Rule_ConversationFlow ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportRuleConversationFlow{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "rule_id", "cf_id",
+		"Relation_Rule_ConversationFlow",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "R_Rule_CF", delegatee, ExportRuleConversationFlow{}); err != nil {
+		return nil, err
+	}
+
+	logger.Trace.Println("export Relation_RuleGroup_Rule ...")
+	queryStr = "SELECT %s" +
+		strings.Repeat(", %s", reflect.TypeOf(ExportRuleGroupRule{}).NumField()-1) +
+		" FROM %s"
+	queryStr = fmt.Sprintf(
+		queryStr,
+		"id", "rg_id", "rule_id",
+		"Relation_RuleGroup_Rule",
+	)
+	if err = SaveToExcel(xlFile, queryStr, "Rel_RuleGroup_Rule", delegatee, ExportRuleGroupRule{}); err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	writer := bufio.NewWriter(&buf)
+	xlFile.Write(writer)
+
+	return &buf, err
+}
+
+func (s *GroupSQLDao) ImportGroups(sqlLike SqlLike, fileName string) error {
+
+	return fmt.Errorf("sorry, rd is developing ... \n")
+
+	//xlFile, err := xlsx.OpenFile(fileName)
+	//
+	//if err != nil {
+	//	logger.Error.Printf("fail to open %s \n", fileName)
+	//	return err
+	//}
+	//
+	//sqlStr := ""
+	//
+	//for _, sheet := range xlFile.Sheets {
+	//	switch sheet.Name {
+	//	case "Tag":
+	//		tableName := "Tag"
+	//		num := reflect.TypeOf(ExportTag{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			fldTagID, fldTagIsDeleted, fldTagName, fldTagType, fldTagPosSen,
+	//			fldTagNegSen, fldTagCreateTime, fldTagUpdateTime, fldTagEnterprise, fldTagUUID)
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportTag{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//	case "Sentence":
+	//		tableName := "Sentence"
+	//		num := reflect.TypeOf(ExportSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "uuid", "create_time", "update_time", "category_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "SentenceGroup":
+	//		tableName := "SentenceGroup"
+	//		num := reflect.TypeOf(ExportSentenceGroup{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "role", "position", "`range`", "uuid", "create_time", "update_time", "optional", "type")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroup{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "Rule":
+	//		tableName := "Rule"
+	//		num := reflect.TypeOf(ExportRule{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "method", "score", "description", "enterprise", "min", "max", "severity", "uuid", "create_time", "update_time")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRule{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "RuleGroup":
+	//		tableName := "RuleGroup"
+	//		num := reflect.TypeOf(ExportRuleGroup{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "description", "create_time", "update_time", "is_enable", "limit_speed", "limit_silence", "type", "uuid")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroup{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "SensitiveWord":
+	//		tableName := "SensitiveWord"
+	//		num := reflect.TypeOf(ExportSensitiveWord{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "uuid", "name", "enterprise", "score", "category_id", "is_delete")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWord{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "ConversationFlow":
+	//		tableName := "ConversationFlow"
+	//		num := reflect.TypeOf(ExportConversationFlow{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "is_delete", "name", "enterprise", "expression", "uuid", "create_time", "update_time", "min")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportConversationFlow{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_Sen_Tag":
+	//		tableName := "Relation_Sentence_Tag"
+	//		num := reflect.TypeOf(ExportSentenceTag{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "s_id", "tag_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceTag{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_SenGrp_Sen":
+	//		tableName := "Relation_SentenceGroup_Sentence"
+	//		num := reflect.TypeOf(ExportSentenceGroupSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "sg_id", "s_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSentenceGroupSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_SensitiveWord_Sen":
+	//		tableName := "Relation_SensitiveWord_Sentence"
+	//		num := reflect.TypeOf(ExportSensitiveWordSentence{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "sw_id", "s_id", "type")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportSensitiveWordSentence{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "RuleGroupCondition":
+	//		tableName := "RuleGroupCondition"
+	//		num := reflect.TypeOf(ExportRuleGroupCondition{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rg_id", "type", "file_name", "deal", "series", "upload_time", "staff_id", "staff_name", "extension", "department", "customer_id", "customer_name", "customer_phone", "category", "call_start", "call_end", "left_channel", "right_channel")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupCondition{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "R_Rule_CF":
+	//		tableName := "Relation_Rule_ConversationFlow"
+	//		num := reflect.TypeOf(ExportRuleConversationFlow{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rule_id", "cf_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleConversationFlow{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	case "Rel_RuleGroup_Rule":
+	//		tableName := "Relation_RuleGroup_Rule"
+	//		num := reflect.TypeOf(ExportRuleGroupRule{}).NumField() - 1
+	//		sqlStr = fmt.Sprintf("INSERT INTO "+tableName+" ( %s"+strings.Repeat(", %s", num)+" ) VALUES ( ?"+strings.Repeat(", ?", num)+" )",
+	//			"id", "rg_id", "rule_id")
+	//
+	//		if sheet, ok := xlFile.Sheet[sheet.Name]; ok {
+	//			if err := LoadFromExcel(sheet, sqlLike, sqlStr, tableName, ExportRuleGroupRule{}); err != nil {
+	//				logger.Error.Printf("fail to insert into table %s \n", tableName)
+	//				logger.Error.Println(err)
+	//				return err
+	//			}
+	//		} else {
+	//			logger.Error.Printf("can not find sheet %s \n", sheet.Name)
+	//			return fmt.Errorf("can not find sheet %s \n", sheet.Name)
+	//		}
+	//
+	//	}
+	//
+	//}
+	//return nil
+}
+
+func LoadFromExcel(sheet *xlsx.Sheet, sqlLike SqlLike, sqlStr string, tableName string, bean interface{}) error {
+
+	logger.Trace.Printf("truncate table %s \n", tableName)
+
+	trunStr := fmt.Sprintf("TRUNCATE TABLE %s", tableName)
+	_, err := sqlLike.Exec(trunStr)
+	if err != nil {
+		logger.Error.Printf("failt to truncate table %s \n", tableName)
+		return err
+	}
+
+	logger.Trace.Printf("import data to table %s \n", tableName)
+	for i, row := range sheet.Rows {
+		if i == 0 {
+			continue
+		}
+		var sqlParams = make([]interface{}, 0)
+		t := reflect.TypeOf(bean)
+		for j, cell := range row.Cells {
+			fieldType := t.Field(j).Type.Kind()
+
+			switch fieldType {
+			case reflect.Int:
+				columnValue, err := cell.Int()
+				if err != nil {
+					if cell.String() == "" {
+						sqlParams = append(sqlParams, nil)
+						continue
+					}
+					return err
+				}
+				sqlParams = append(sqlParams, columnValue)
+			case reflect.Int64:
+				columnValue, err := cell.Int64()
+				if err != nil {
+					if cell.String() == "" {
+						sqlParams = append(sqlParams, nil)
+						continue
+					}
+					return err
+				}
+				sqlParams = append(sqlParams, columnValue)
+			case reflect.Uint64:
+				columnValue, err := cell.Int64()
+				if err != nil {
+					if cell.String() == "" {
+						sqlParams = append(sqlParams, nil)
+						continue
+					}
+					return err
+				}
+				sqlParams = append(sqlParams, columnValue)
+			case reflect.Float32:
+				columnValue, err := cell.Float()
+				if err != nil {
+					if cell.String() == "" {
+						sqlParams = append(sqlParams, nil)
+						continue
+					}
+					return err
+				}
+				sqlParams = append(sqlParams, columnValue)
+			default:
+				sqlParams = append(sqlParams, cell.String())
+			}
+		}
+		_, err := sqlLike.Exec(sqlStr, sqlParams...)
+		if err != nil {
+			logger.Error.Printf("fail to insert into %s \n", tableName)
+			logger.Error.Print("params: ")
+			for _, para := range sqlParams {
+				logger.Error.Print(para, " ")
+			}
+			logger.Error.Println()
+			return err
+		}
+	}
+	return nil
+}
+
+func SaveToExcel(xlFile *xlsx.File, queryStr string, sheetName string, delegatee SqlLike, bean interface{}) error {
+
+	rows, err := delegatee.Query(queryStr)
+	if err != nil {
+		logger.Error.Println("raw sql: ", queryStr)
+		logger.Error.Println("raw bind-data: ", "")
+		return fmt.Errorf("sql executed failed, %v", err)
+	}
+	defer rows.Close()
+
+	sheet, err := xlFile.AddSheet(sheetName)
+	row := sheet.AddRow()
+
+	t := reflect.TypeOf(bean)
+	if t.Kind() != reflect.Struct {
+		return errors.New("kind error")
+	}
+
+	// Add title
+	for i := 0; i < t.NumField(); i++ {
+		cell := row.AddCell()
+		cell.Value = t.Field(i).Name
+	}
+
+	scanResults := make([]interface{}, t.NumField())
+	for i := 0; i < t.NumField(); i++ {
+		var column interface{}
+		scanResults[i] = &column
+	}
+
+	for rows.Next() {
+		row = sheet.AddRow()
+
+		if err = rows.Scan(scanResults...); err != nil {
+			return err
+		}
+
+		for j := 0; j < t.NumField(); j++ {
+			cell := row.AddCell()
+
+			rawValue := reflect.Indirect(reflect.ValueOf(scanResults[j]))
+			// if rwo is null then ignore
+			if rawValue.Interface() == nil {
+				continue
+			}
+
+			rawValueType := reflect.TypeOf(rawValue.Interface())
+			vv := reflect.ValueOf(rawValue.Interface())
+
+			hasAssigned := false
+
+			switch t.Field(j).Type.Kind() {
+			case reflect.String:
+				if rawValueType.Kind() == reflect.String {
+					hasAssigned = true
+					cell.Value = vv.String()
+					continue
+				}
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				switch rawValueType.Kind() {
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					hasAssigned = true
+					cell.Value = strconv.FormatInt(vv.Int(), 10)
+					continue
+				}
+
+			case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
+				switch rawValueType.Kind() {
+				case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint:
+					hasAssigned = true
+					cell.Value = strconv.FormatInt(vv.Int(), 10)
+					continue
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					hasAssigned = true
+					cell.Value = strconv.FormatInt(vv.Int(), 10)
+					continue
+				}
+
+			case reflect.Float32, reflect.Float64:
+				switch rawValueType.Kind() {
+				case reflect.Float32, reflect.Float64:
+					hasAssigned = true
+					cell.Value = strconv.FormatFloat(vv.Float(), 'e', 5, 32)
+					continue
+				}
+			}
+
+			if !hasAssigned {
+				data, err := value2Bytes(&rawValue)
+				if err != nil {
+					return err
+				}
+				cell.Value = data
+
+			}
+
+		}
+
+	}
+	return nil
+}
+
+func value2Bytes(rawValue *reflect.Value) (string, error) {
+	str, err := value2String(rawValue)
+	if err != nil {
+		return "", err
+	}
+	return str, nil
+}
+
+func value2String(rawValue *reflect.Value) (str string, err error) {
+	aa := reflect.TypeOf((*rawValue).Interface())
+	vv := reflect.ValueOf((*rawValue).Interface())
+	var cTIME time.Time
+	timeType := reflect.TypeOf(cTIME)
+	switch aa.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		str = strconv.FormatInt(vv.Int(), 10)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		str = strconv.FormatUint(vv.Uint(), 10)
+	case reflect.Float32, reflect.Float64:
+		str = strconv.FormatFloat(vv.Float(), 'f', -1, 64)
+	case reflect.String:
+		str = vv.String()
+	case reflect.Array, reflect.Slice:
+		switch aa.Elem().Kind() {
+		case reflect.Uint8:
+			data := rawValue.Interface().([]byte)
+			str = string(data)
+			if str == "\x00" {
+				str = "0"
+			}
+		default:
+			err = fmt.Errorf("Unsupported struct type %v", vv.Type().Name())
+		}
+		// time type
+	case reflect.Struct:
+		if aa.ConvertibleTo(timeType) {
+			str = vv.Convert(timeType).Interface().(time.Time).Format(time.RFC3339Nano)
+		} else {
+			err = fmt.Errorf("Unsupported struct type %v", vv.Type().Name())
+		}
+	case reflect.Bool:
+		str = strconv.FormatBool(vv.Bool())
+	case reflect.Complex128, reflect.Complex64:
+		str = fmt.Sprintf("%v", vv.Complex())
+		/* TODO: unsupported types below
+		   case reflect.Map:
+		   case reflect.Ptr:
+		   case reflect.Uintptr:
+		   case reflect.UnsafePointer:
+		   case reflect.Chan, reflect.Func, reflect.Interface:
+		*/
+	default:
+		err = fmt.Errorf("Unsupported struct type %v", vv.Type().Name())
+	}
+	return
+}
+
+type ExportTag struct {
+	ID           uint64
+	IsDelete     int
+	Name         string
+	Type         int
+	PosSentences string
+	NegSentences string
+	CreateTime   int64
+	UpdateTime   int64
+	Enterprise   string
+	UUID         string
+}
+
+type ExportSentence struct {
+	ID         uint64
+	IsDelete   int
+	Name       string
+	Enterprise string
+	UUID       string
+	CreateTime int64
+	UpdateTime int64
+	CategoryID uint64
+}
+
+type ExportSentenceGroup struct {
+	ID         uint64
+	IsDelete   int
+	Name       string
+	Enterprise string
+	Role       int
+	Position   int
+	Range      int
+	UUID       string
+	CreateTime uint64
+	UpdateTime uint64
+	Optional   int
+	Type       int
+}
+
+type ExportRule struct {
+	ID          uint64
+	IsDelete    int
+	Name        string
+	Method      int
+	Score       int
+	Description string
+	Enterprise  string
+	Min         int
+	Max         int
+	Severity    int
+	UUID        string
+	CreateTime  int64
+	UpdateTime  int64
+}
+
+type ExportRuleGroup struct {
+	ID           uint64
+	IsDelete     bool
+	Name         string
+	Enterprise   string
+	Description  string
+	CreateTime   uint64
+	UpdateTime   uint64
+	IsEnable     int
+	LimitSpeed   int
+	LimitSilence float32
+	Type         int
+	UUID         string
+}
+
+type ExportSensitiveWord struct {
+	ID         uint64
+	UUID       string
+	Name       string
+	Enterprise string
+	Score      int
+	CategoryId uint64
+	IsDelete   int
+}
+
+type ExportConversationFlow struct {
+	ID         uint64
+	IsDelete   int
+	Name       string
+	Enterprise string
+	Expression string
+	UUID       string
+	CreateTime int64
+	UpdateTime int64
+	Min        int
+}
+
+type ExportSentenceTag struct {
+	ID    uint64
+	SID   uint64
+	TagID uint64
+}
+
+type ExportSentenceGroupSentence struct {
+	ID   uint64
+	SgID uint64
+	SID  uint64
+}
+
+type ExportSensitiveWordSentence struct {
+	ID   uint64
+	SwID uint64
+	SID  uint64
+	Type int
+}
+
+type ExportRuleGroupCondition struct {
+	ID            uint64
+	RgID          uint64
+	Type          int
+	FileName      string
+	Deal          int
+	Series        string
+	UploadTime    uint64
+	StaffID       string
+	StaffName     string
+	Extension     string
+	Department    string
+	CustomerID    string
+	CustomerName  string
+	CustomerPhone string
+	Category      string
+	CallStart     uint64
+	CallEnd       uint64
+	LeftChannel   string
+	RightChannel  string
+}
+
+type ExportRuleConversationFlow struct {
+	ID     uint64
+	RuleID uint64
+	CfID   uint64
+}
+
+type ExportRuleGroupRule struct {
+	ID     uint64
+	RgID   uint64
+	RuleID uint64
 }

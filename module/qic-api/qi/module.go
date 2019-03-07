@@ -105,6 +105,14 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
+
+			util.NewEntryPoint(http.MethodGet, "backup/groups", []string{}, handleExportGroups),
+			util.NewEntryPoint(http.MethodPost, "restore/groups", []string{}, handleImportGroups),
+			util.NewEntryPoint(http.MethodGet, "export/calls", []string{}, handleExportCalls),
+			util.NewEntryPoint(http.MethodPost, "import/tags", []string{}, handleImportTags),
+			util.NewEntryPoint(http.MethodPost, "import/sentences", []string{}, handleImportSentences),
+			util.NewEntryPoint(http.MethodPost, "import/rules", []string{}, handleImportRules),
+			util.NewEntryPoint(http.MethodPost, "import/call-in", []string{}, handleImportCallIn),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
