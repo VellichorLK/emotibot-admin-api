@@ -152,6 +152,45 @@ func HandleDeleteTag(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
+
+// HandleIncreUpdateTagSentences is a special handler for labeling system api
+// It add/delete sentences from specify tags.
+func HandleIncreUpdateTagSentences(w http.ResponseWriter, r *http.Request) {
+	type IncreUpdateRequest struct {
+		TagID     string   `json:"tag_id"`
+		Op        string   `json:"op"`
+		Sentences []string `json:"sentences"`
+	}
+	var requests []IncreUpdateRequest
+	err := json.NewDecoder(r.Body).Decode(&requests)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("Bad request body, %v", err))
+		return
+	}
+	r.Body.Close()
+	var uuid []string
+	for _, req := range requests {
+		uuid = append(uuid, req.TagID)
+	}
+	cmd, err := NewTagUpdateCmd(requestheader.GetEnterpriseID(r), uuid)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("prepare update failed, %v", err))
+		return
+	}
+	for _, req := range requests {
+		err := cmd.AddSentenceUpdate(req.TagID, UpdateOp(req.Op), req.Sentences)
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("prepare request failed, %v", err))
+			return
+		}
+	}
+	if err = cmd.Update(); err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("execute update failed, %v", err))
+		return
+	}
+
+}
+
 func TagType(typ string) (int8, error) {
 	var typNo int8
 	for no, ttyp := range tagTypeDict {

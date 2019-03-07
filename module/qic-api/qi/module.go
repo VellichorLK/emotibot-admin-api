@@ -34,6 +34,9 @@ var (
 	volume       string
 	creditDao model.CreditDao = &model.CreditSQLDao{}
 )
+var (
+	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
+)
 
 func init() {
 	ModuleInfo = util.ModuleInfo{
@@ -184,6 +187,7 @@ func init() {
 					logger.Error.Printf("init tag dao failed, %v", err)
 					return
 				}
+				tags = tagDao.Tags
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
