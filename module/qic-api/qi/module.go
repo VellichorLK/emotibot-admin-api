@@ -37,9 +37,6 @@ var (
 	volume               string
 	creditDao            model.CreditDao = &model.CreditSQLDao{}
 )
-var (
-	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
-)
 
 var (
 	newCondition    = condDao.NewCondition
@@ -49,6 +46,7 @@ var (
 	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
 	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
 	setGroupBasic   func(delegatee model.SqlLike, group *model.Group) error
+	tags            func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
 )
 
 func init() {
