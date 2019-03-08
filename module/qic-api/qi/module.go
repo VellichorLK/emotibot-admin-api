@@ -105,6 +105,15 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
+
+			util.NewEntryPoint(http.MethodPost, "rule/silence", []string{}, handleNewRuleSilence),
+			util.NewEntryPoint(http.MethodGet, "rule/silence", []string{}, handleGetRuleSilenceList),
+			util.NewEntryPoint(http.MethodGet, "rule/silence/{id}", []string{}, handleGetRuleSilence),
+			util.NewEntryPoint(http.MethodDelete, "rule/silence/{id}", []string{}, handleDeleteRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/name", []string{}, handleModifyRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, handleModifyRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, handleExceptionRuleSilenceBefore),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, handleExceptionRuleSilenceAfter),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

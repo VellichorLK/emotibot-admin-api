@@ -11,26 +11,26 @@ import (
 )
 
 type SilenceRule struct {
-	ID              int64
-	Name            string
-	Score           int
-	Seconds         int
-	Times           int
-	ExceptionBefore string
-	ExceptionAfter  string
-	Enterprise      string
-	IsDelete        int
-	CreateTime      int64
-	UpdateTime      int64
+	ID              int64  `json:"id,string"`
+	Name            string `json:"name"`
+	Score           int    `json:"score"`
+	Seconds         int    `json:"seconds"`
+	Times           int    `json:"times"`
+	ExceptionBefore string `json:"-"`
+	ExceptionAfter  string `json:"-"`
+	Enterprise      string `json:"-"`
+	IsDelete        int    `json:"-"`
+	CreateTime      int64  `json:"-"`
+	UpdateTime      int64  `json:"-"`
 }
 
 type SilenceUpdateSet struct {
-	Name            *string
-	Score           *int
-	Seconds         *int
-	Times           *int
-	ExceptionBefore *string
-	ExceptionAfter  *string
+	Name            *string `json:"name"`
+	Score           *int    `json:"score"`
+	Seconds         *int    `json:"seconds"`
+	Times           *int    `json:"times"`
+	ExceptionBefore *string `json:"-"`
+	ExceptionAfter  *string `json:"-"`
 }
 
 type GeneralQuery struct {
