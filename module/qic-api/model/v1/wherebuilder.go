@@ -125,3 +125,12 @@ func stringToWildCard(inputs ...string) []interface{} {
 	}
 	return outputs
 }
+
+// EscapeLike escape the like query with possible dirty input.
+// If query contains '%', then it must be escaped
+func EscapeLike(query string) string {
+	query = strings.Replace(query, "\\", "\\\\", -1)
+	query = strings.Replace(query, "%", "\\%", -1)
+	query = strings.Replace(query, "_", "\\_", -1)
+	return query
+}

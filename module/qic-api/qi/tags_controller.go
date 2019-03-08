@@ -63,7 +63,7 @@ func getTagQuery(r *http.Request) (*model.TagQuery, error) {
 	}
 	name := r.Form.Get("keyword")
 	if name != "" {
-		name = fmt.Sprintf("%%%s%%", name)
+		name = fmt.Sprintf("%%%s%%", model.EscapeLike(name))
 		query.Name = &name
 	}
 	return query, nil
