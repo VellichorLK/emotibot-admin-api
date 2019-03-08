@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/module/qic-api/util/redis"
 	"emotibot.com/emotigo/pkg/api/rabbitmq/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -25,6 +26,7 @@ var (
 	taskDao      = &model.TaskSQLDao{}
 	userValueDao = &model.UserValueDao{}
 	userKeyDao   = &model.UserKeySQLDao{}
+	swDao        model.SensitiveWordDao
 	producer     *rabbitmq.Producer
 	consumer     *rabbitmq.Consumer
 	sqlConn      *sql.DB
@@ -199,6 +201,13 @@ func init() {
 				// require dao init first.
 				consumer.Subscribe(ASRWorkFlow)
 				logger.Info.Println("init & subscribe to RabbitMQ success")
+
+				// init swDao
+				cluster, err := redis.NewClusterFromEnvs(envs)
+				if err != nil {
+					logger.Error.Printf("init redis cluster failed, err: %s", err.Error())
+				}
+				swDao = model.NewDefaultSensitiveWordDao(cluster)
 
 			},
 			"init nav cache": setUpNavCache,

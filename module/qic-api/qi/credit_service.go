@@ -23,6 +23,7 @@ var (
 	levSenGrpTyp  levelType = 30
 	levSenTyp     levelType = 40
 	levSegTyp     levelType = 50
+	levSWTyp      levelType = 60
 )
 
 var unactivate = -1
