@@ -82,6 +82,7 @@ func GetCustomColsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
+	//TODO: check reserved keywords in conditions
 	type requestBody struct {
 		Name  string `json:"name"`
 		Type  int8   `json:"type"`

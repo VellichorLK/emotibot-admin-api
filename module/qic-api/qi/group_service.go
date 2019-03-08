@@ -3,13 +3,10 @@ package qi
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	uuid "github.com/satori/go.uuid"
-)
-
-var (
-	serviceDAO model.GroupDAO = &model.GroupSQLDao{}
 )
 
 func simpleConversationRulesOf(group *model.GroupWCond, sql model.SqlLike) (simpleRules []model.SimpleConversationRule, err error) {
@@ -40,6 +37,8 @@ func simpleConversationRulesOf(group *model.GroupWCond, sql model.SqlLike) (simp
 	return
 }
 
+// CreateGroup create a group with condition
+// ** DEPRECATED API, Using this will not create custom columns, and no data safety is guaranteed**
 func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err error) {
 	if group == nil || group.Condition == nil {
 		return
@@ -183,6 +182,7 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	return
 }
 
+// GetGroupBy Get old group struct by id.
 func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 	filter := &model.GroupFilter{
 		UUID: []string{
@@ -210,6 +210,8 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 	return
 }
 
+// GetGroupsByFilter get old group struct by given filter.
+// TODO: Change to the new group struct and query function.
 func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.GroupWCond, err error) {
 	tx, err := dbLike.Begin()
 	if err != nil {
@@ -235,142 +237,44 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	return
 }
 
-func UpdateGroup(id string, group *model.GroupWCond) (err error) {
+// UpdateGroup soft delete the group and create new group & conditions & custom conditions
+func UpdateGroup(group model.Group, customcols map[string][]interface{}) (err error) {
+	if group.Condition == nil {
+		return fmt.Errorf("group require a condition")
+	}
 	tx, err := dbLike.Begin()
 	if err != nil {
 		return
 	}
-	defer dbLike.ClearTransition(tx)
+	defer tx.Rollback()
 
-	// get original group to compare which fileds are need to be updated
-	filter := &model.GroupFilter{
-		UUID: []string{
-			id,
-		},
-		EnterpriseID: group.Enterprise,
+	err = serviceDAO.DeleteGroup(group.UUID, tx)
+	if err != nil {
+		return fmt.Errorf("delete group failed, %v", err)
 	}
-
-	groups, err := serviceDAO.GetGroupsBy(filter, tx)
+	group.UpdatedTime = time.Now().Unix()
+	group, err = newGroup(tx, group)
 	if err != nil {
 		return
 	}
-
-	if len(groups) == 0 {
-		return
-	}
-	originGroup := &groups[0]
-
-	err = serviceDAO.DeleteGroup(id, tx)
+	group.Condition.GroupID = group.ID
+	_, err = newCondition(tx, *group.Condition)
 	if err != nil {
 		return
 	}
-
-	if group.Name == nil {
-		group.Name = originGroup.Name
-	}
-
-	if group.Enabled == nil {
-		group.Enabled = originGroup.Enabled
-	}
-
-	if group.Speed == nil {
-		group.Speed = originGroup.Speed
-	}
-
-	if group.SlienceDuration == nil {
-		group.SlienceDuration = originGroup.SlienceDuration
-	}
-
-	if group.Description == nil {
-		group.Description = originGroup.Description
-	}
-
-	if group.Condition != nil {
-		if group.Condition.FileName == nil {
-			group.Condition.FileName = originGroup.Condition.FileName
-		}
-
-		if group.Condition.CallDuration == nil {
-			group.Condition.CallDuration = originGroup.Condition.CallDuration
-		}
-
-		if group.Condition.CallComment == nil {
-			group.Condition.CallComment = originGroup.Condition.CallComment
-		}
-
-		if group.Condition.Deal == nil {
-			group.Condition.Deal = originGroup.Condition.Deal
-		}
-
-		if group.Condition.Series == nil {
-			group.Condition.Series = originGroup.Condition.Series
-		}
-
-		if group.Condition.StaffID == nil {
-			group.Condition.StaffID = originGroup.Condition.StaffID
-		}
-
-		if group.Condition.StaffName == nil {
-			group.Condition.StaffName = originGroup.Condition.StaffName
-		}
-
-		if group.Condition.Extension == nil {
-			group.Condition.Extension = originGroup.Condition.Extension
-		}
-
-		if group.Condition.Department == nil {
-			group.Condition.Department = originGroup.Condition.Department
-		}
-
-		if group.Condition.ClientID == nil {
-			group.Condition.ClientID = originGroup.Condition.ClientID
-		}
-
-		if group.Condition.ClientName == nil {
-			group.Condition.ClientName = originGroup.Condition.ClientName
-		}
-
-		if group.Condition.ClientPhone == nil {
-			group.Condition.ClientPhone = originGroup.Condition.ClientPhone
-		}
-
-		if group.Condition.LeftChannelCode == nil {
-			group.Condition.LeftChannelCode = originGroup.Condition.LeftChannelCode
-		}
-
-		if group.Condition.RightChannelCode == nil {
-			group.Condition.RightChannelCode = originGroup.Condition.RightChannelCode
-		}
-
-		if group.Condition.CallStart == nil {
-			group.Condition.CallStart = originGroup.Condition.CallStart
-		}
-
-		if group.Condition.CallEnd == nil {
-			group.Condition.CallEnd = originGroup.Condition.CallEnd
-		}
-	} else {
-		group.Condition = originGroup.Condition
-	}
-
-	simpleRules, err := simpleConversationRulesOf(group, tx)
+	_, err = newCustomConditions(tx, group, customcols)
 	if err != nil {
 		return
 	}
-
-	group.Rules = &simpleRules
-	group.CreateTime = originGroup.CreateTime
-	group.UUID = id
-	group.Enterprise = group.Enterprise
-	_, err = serviceDAO.CreateGroup(group, tx)
-	if err != nil {
-		return
-	}
-
-	err = dbLike.Commit(tx)
+	// Set Rules
+	// simpleRules
+	tx.Commit()
 	return
 }
 
+// DeleteGroup soft delete the specify group by UUID,
+// It is caller decision to delete group's Conditions or uservalues or not.
+// Since these will become nonreachable by group.
 func DeleteGroup(id string) (err error) {
 	tx, err := dbLike.Begin()
 	if err != nil {
@@ -385,4 +289,83 @@ func DeleteGroup(id string) (err error) {
 
 	err = dbLike.Commit(tx)
 	return
+}
+
+// NewGroupWithAllConditions create a group with condition and all sort of custom columns by UserValue
+func NewGroupWithAllConditions(group model.Group, condition model.Condition, customCols map[string][]interface{}) (model.Group, error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return model.Group{}, fmt.Errorf("begin transaction failed, %v", err)
+	}
+	defer tx.Rollback()
+	group, err = newGroup(tx, group)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new group failed, %v", err)
+	}
+
+	condition.GroupID = group.ID
+	_, err = newCondition(tx, condition)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new condition failed, %v", err)
+	}
+	_, err = newCustomConditions(tx, group, customCols)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new custom column condition failed, %v", err)
+	}
+	tx.Commit()
+	return group, nil
+}
+
+// GroupResp is the response schema of get group
+type GroupResp struct {
+	GroupID      string  `json:"group_id"`
+	GroupName    string  `json:"group_name"`
+	IsEnable     int8    `json:"is_enable"`
+	LimitSpeed   float64 `json:"limit_speed,omitempty"`
+	LimitSilence float64 `json:"limit_silence,omitempty"`
+	Other        Other   `json:"other"`
+	CreateTime   int64   `json:"create_time"`
+	RuleCount    int     `json:"rule_count"`
+}
+
+func GroupResps(filter *model.GroupFilter) (total int64, responses []GroupResp, err error) {
+	total, groups, err := GetGroupsByFilter(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+	valueQuery := model.UserValueQuery{
+		Type: []int8{model.UserValueTypGroup},
+	}
+	responses = make([]GroupResp, 0, len(groups))
+	grpIndexes := make(map[int64]int, len(groups))
+	for i, grp := range groups {
+		g := GroupResp{
+			GroupID:      grp.UUID,
+			GroupName:    *grp.Name,
+			IsEnable:     *grp.Enabled,
+			LimitSpeed:   *grp.Speed,
+			LimitSilence: *grp.SlienceDuration,
+			CreateTime:   grp.CreateTime,
+			RuleCount:    grp.RuleCount,
+		}
+		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
+		responses = append(responses, g)
+		grpIndexes[grp.ID] = i
+	}
+	grpValues, err := valuesKey(nil, valueQuery)
+	if err != nil {
+		return
+	}
+	for _, val := range grpValues {
+		index, found := grpIndexes[val.LinkID]
+		if !found {
+			continue
+		}
+		resp := responses[index]
+		inputName := val.UserKey.InputName
+		resp.Other.CustomColumns[inputName] = append(resp.Other.CustomColumns[inputName], val.Value)
+		responses[index] = resp
+
+	}
+	return total, responses, nil
 }

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -22,12 +21,12 @@ type GroupDAO interface {
 }
 
 type GroupSQLDao struct {
-	conn *sql.DB
+	conn SqlLike
 }
 
-func NewGroupSQLDao(conn *sql.DB) *GroupSQLDao {
+func NewGroupSQLDao(db DBLike) *GroupSQLDao {
 	return &GroupSQLDao{
-		conn: conn,
+		conn: db.Conn(),
 	}
 }
 
@@ -76,19 +75,23 @@ type GroupFilter struct {
 }
 
 // Group is the one to one represent of rule group table schema
+// Rules & Condition & CustomConditions is the virtual column that indicate relations.
 type Group struct {
-	ID             int64
-	IsDelete       bool
-	Name           string
-	EnterpriseID   string
-	Description    string
-	CreatedTime    int64
-	UpdatedTime    int64
-	IsEnable       bool
-	LimitedSpeed   int
-	LimitedSilence float32
-	Typ            int8
-	UUID           string
+	ID               int64
+	IsDelete         bool
+	Name             string
+	EnterpriseID     string
+	Description      string
+	CreatedTime      int64
+	UpdatedTime      int64
+	IsEnable         bool
+	LimitedSpeed     int
+	LimitedSilence   float32
+	Typ              int8
+	UUID             string
+	Rules            []ConversationRule
+	Condition        *Condition
+	CustomConditions []UserValue
 }
 
 type GroupCondition struct {
@@ -679,6 +682,69 @@ func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error
 	}
 
 	return groups, nil
+}
+
+// NewGroup create a plain group without condition or rules.
+func (s *GroupSQLDao) NewGroup(delegatee SqlLike, group Group) (Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	groupCols := []string{
+		fldRuleGrpIsDelete, fldRuleGrpName, fldRuleGrpEnterpriseID,
+		fldRuleGrpDescription, fldRuleGrpCreateTime, fldRuleGrpUpdateTime,
+		fldRuleGrpIsEnable, fldRuleGrpLimitSpeed, fldRuleGrpLimitSilence,
+		fldRuleGrpType, fldRuleGrpUUID,
+	}
+	rawsql := fmt.Sprintf("INSERT INTO `%s` (`%s`) VALUES(?%s)",
+		tblRuleGroup, strings.Join(groupCols, "`, `"), strings.Repeat(", ?", len(groupCols)-1),
+	)
+	var isDelete int8
+	if group.IsDelete {
+		isDelete = 1
+	}
+	result, err := delegatee.Exec(rawsql,
+		isDelete, group.Name, group.EnterpriseID,
+		group.Description, group.CreatedTime, group.UpdatedTime,
+		group.IsEnable, group.LimitedSpeed, group.LimitedSilence,
+		group.Typ, group.UUID,
+	)
+	if err != nil {
+		return Group{}, fmt.Errorf("sql execute failed, %v", err)
+	}
+	group.ID, err = result.LastInsertId()
+	if err != nil {
+		return group, ErrAutoIDDisabled
+	}
+	return group, nil
+}
+
+// SetGroupRules set the group rule relation table with given groupID and rules.
+func (s *GroupSQLDao) SetGroupRules(delegatee SqlLike, groupID int64, rules []ConversationRule) ([]int64, error) {
+
+	rawsql := fmt.Sprintf(
+		"INSERT INTO `%s` (`%s`, `%s`) VALUES(?, ?)",
+		tblRelGrpRule,
+		RRRGroupID,
+		RRRRuleID,
+	)
+	stmt, err := delegatee.Prepare(rawsql)
+	if err != nil {
+		return nil, fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer stmt.Close()
+	relationIDs := make([]int64, 0)
+	for _, r := range rules {
+		result, err := stmt.Exec(groupID, r.ID)
+		if err != nil {
+			return nil, fmt.Errorf("insert group %d with rule %d", groupID, r.ID)
+		}
+		id, err := result.LastInsertId()
+		if err != nil {
+			return nil, ErrAutoIDDisabled
+		}
+		relationIDs = append(relationIDs, id)
+	}
+	return relationIDs, nil
 }
 
 // GroupsByCalls find the groups that asssociated with the call given by the query.

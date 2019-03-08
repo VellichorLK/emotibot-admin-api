@@ -25,11 +25,18 @@ var (
 	taskDao      = &model.TaskSQLDao{}
 	userValueDao = &model.UserValueDao{}
 	userKeyDao   = &model.UserKeySQLDao{}
+	condDao      = &model.GroupConditionDao{}
+	serviceDAO   model.GroupDAO
 	producer     *rabbitmq.Producer
 	consumer     *rabbitmq.Consumer
 	sqlConn      *sql.DB
 	dbLike       model.DBLike
 	volume       string
+)
+
+var (
+	newCondition = condDao.NewCondition
+	newGroup     func(delegatee model.SqlLike, group model.Group) (model.Group, error)
 )
 
 func init() {
@@ -40,7 +47,7 @@ func init() {
 			util.NewEntryPoint("GET", "groups", []string{}, handleGetGroups),
 			util.NewEntryPoint("GET", "groups/filters", []string{}, handleGetGroupsByFilter),
 			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
-			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
+			util.NewEntryPoint("PUT", "groups/{id}", []string{}, groupRequest(handleUpdateGroup)),
 			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
@@ -143,30 +150,44 @@ func init() {
 				dbLike = &model.DefaultDBLike{
 					DB: sqlConn,
 				}
-				serviceDAO = model.NewGroupSQLDao(sqlConn)
+				// init group dao
+				groupSqlDao := model.NewGroupSQLDao(dbLike)
+				serviceDAO = groupSqlDao
+				newGroup = groupSqlDao.NewGroup
+				// init tag dao
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {
 					logger.Error.Printf("init tag dao failed, %v", err)
 					return
 				}
+				// init sentence dao
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
-
-				cuURL := envs["LOGIC_PREDICT_URL"]
-				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init call dao
 				callDao = model.NewCallSQLDao(sqlConn)
 				callCount = callDao.Count
 				calls = callDao.Calls
+				// init task dao
 				taskDao = model.NewTaskDao(sqlConn)
 				callTask = taskDao.CallTask
 				tasks = taskDao.Task
+				// init relation dao
 				relationDao = &model.RelationSQLDao{}
-				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init segment dao
 				segmentDao = model.NewSegmentDao(dbLike)
+				// init user value & keys dao
 				userValueDao = model.NewUserValueDao(dbLike.Conn())
 				valuesKey = userValueDao.ValuesKey
 				userKeyDao = model.NewUserKeyDao(dbLike.Conn())
 				userKeys = userKeyDao.UserKeys
 				keyvalues = userKeyDao.KeyValues
+				// init condition dao
+				condDao = model.NewConditionDao(dbLike)
+				newCondition = condDao.NewCondition
+				// init cu trainer & predictor
+				cuURL := envs["LOGIC_PREDICT_URL"]
+				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init RABBITMQ client
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")
