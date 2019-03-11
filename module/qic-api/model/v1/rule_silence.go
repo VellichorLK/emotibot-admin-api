@@ -11,7 +11,7 @@ import (
 )
 
 type SilenceRule struct {
-	ID              int64  `json:"id,string"`
+	ID              int64  `json:"-"`
 	Name            string `json:"name"`
 	Score           int    `json:"score"`
 	Seconds         int    `json:"seconds"`
@@ -22,7 +22,7 @@ type SilenceRule struct {
 	IsDelete        int    `json:"-"`
 	CreateTime      int64  `json:"-"`
 	UpdateTime      int64  `json:"-"`
-	UUID            string `json:"uuid"`
+	UUID            string `json:"id"`
 }
 
 type SilenceUpdateSet struct {
@@ -146,7 +146,7 @@ func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([
 	for rows.Next() {
 		var d SilenceRule
 		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Seconds, &d.Times,
-			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime)
+			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err

@@ -72,7 +72,7 @@ func handleNewRuleSilence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id, err := NewRuleSilence(&requestBody, enterprise)
+	uuid, err := NewRuleSilence(&requestBody, enterprise)
 	if err != nil {
 		logger.Error.Printf("create rule silence failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -80,8 +80,8 @@ func handleNewRuleSilence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = util.WriteJSON(w, struct {
-		ID int64 `json:"silence_id,string"`
-	}{ID: id})
+		UUID string `json:"silence_id"`
+	}{UUID: uuid})
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
@@ -130,11 +130,10 @@ func handleGetRuleSilenceList(w http.ResponseWriter, r *http.Request) {
 func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
-	idInterface := r.Context().Value(IDKey)
-	id := idInterface.(int64)
+	uuid := general.ParseID(r)
 
 	isDelete := 0
-	q := &model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}
+	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
 
 	settings, err := GetRuleSilences(q, nil)
 	if err != nil {
@@ -173,14 +172,13 @@ func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
 
 func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idInterface := r.Context().Value(IDKey)
-	id := idInterface.(int64)
+	uuid := general.ParseID(r)
 
 	isDelete := 0
-	q := &model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}
+	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
 	_, err := DeleteRuleSilence(q)
 	if err != nil {
-		logger.Error.Printf("delete %d failed. %s\n", id, err)
+		logger.Error.Printf("delete %s failed. %s\n", uuid, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -206,8 +204,7 @@ func checkUpdateSet(r model.SilenceUpdateSet) error {
 
 func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idInterface := r.Context().Value(IDKey)
-	id := idInterface.(int64)
+	uuid := general.ParseID(r)
 
 	var req model.SilenceUpdateSet
 
@@ -228,18 +225,20 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	req.ExceptionAfter = nil
 
 	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
+	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
 	if err != nil {
-		logger.Error.Printf("update %d failed. %s\n", id, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
+		if err == ErrNoSuchID {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("update %s failed. %s\n", uuid, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 	}
 }
 
 func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idInterface := r.Context().Value(IDKey)
-	id := idInterface.(int64)
+	uuid := general.ParseID(r)
 	var req RuleExceptionInteral
 
 	err := util.ReadJSON(r, &req)
@@ -261,19 +260,21 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 	updateSet.ExceptionBefore = &exceptStr
 
 	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
+	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
 	if err != nil {
-		logger.Error.Printf("update %d failed. %s\n", id, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
+		if err == ErrNoSuchID {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("update %s failed. %s\n", uuid, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 	}
 
 }
 
 func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idInterface := r.Context().Value(IDKey)
-	id := idInterface.(int64)
+	uuid := general.ParseID(r)
 
 	var req RuleExceptionInteral
 
@@ -297,11 +298,14 @@ func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 	updateSet.ExceptionAfter = &exceptStr
 
 	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
+	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
 	if err != nil {
-		logger.Error.Printf("update %d failed. %s\n", id, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
+		if err == ErrNoSuchID {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		} else {
+			logger.Error.Printf("update %s failed. %s\n", uuid, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 	}
 }
 

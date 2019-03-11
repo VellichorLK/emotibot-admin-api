@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"emotibot.com/emotigo/module/qic-api/util/general"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -13,17 +15,23 @@ var (
 )
 
 //NewRuleSilence creates the new rule
-func NewRuleSilence(r *model.SilenceRule, enterprise string) (int64, error) {
+func NewRuleSilence(r *model.SilenceRule, enterprise string) (string, error) {
 	if r == nil {
-		return 0, ErrNoArgument
+		return "", ErrNoArgument
 	}
 	if dbLike == nil {
-		return 0, ErrNilCon
+		return "", ErrNilCon
+	}
+	uuid, err := general.UUID()
+	if err != nil {
+		return "", err
 	}
 	r.Enterprise = enterprise
 	r.CreateTime = time.Now().Unix()
 	r.UpdateTime = r.CreateTime
-	return ruleSilenceDao.Add(dbLike.Conn(), r)
+	r.UUID = uuid
+	_, err = ruleSilenceDao.Add(dbLike.Conn(), r)
+	return r.UUID, err
 }
 
 //GetRuleSilences gets the list of rule
@@ -160,7 +168,7 @@ func DeleteRuleSilence(q *model.GeneralQuery) (int64, error) {
 	if dbLike == nil {
 		return 0, ErrNilCon
 	}
-	if q == nil || len(q.ID) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNoID
 	}
 	return ruleSilenceDao.SoftDelete(dbLike.Conn(), q)
@@ -171,7 +179,7 @@ func UpdateRuleSilence(q *model.GeneralQuery, d *model.SilenceUpdateSet) (int64,
 	if dbLike == nil {
 		return 0, ErrNilCon
 	}
-	if q == nil || len(q.ID) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNoID
 	}
 	tx, err := dbLike.Begin()
@@ -181,6 +189,15 @@ func UpdateRuleSilence(q *model.GeneralQuery, d *model.SilenceUpdateSet) (int64,
 	}
 	defer tx.Rollback()
 
+	current, err := ruleSilenceDao.Get(tx, q, &model.Pagination{Limit: 10})
+	if err != nil {
+		return 0, err
+	}
+	if len(current) == 0 {
+		return 0, ErrNoSuchID
+	}
+
+	q.ID = append(q.ID, current[0].ID)
 	newID, err := ruleSilenceDao.Copy(tx, q)
 	if err != nil {
 		logger.Error.Printf("copy new record %v failed. %s\n", *q, err)
