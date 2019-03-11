@@ -3,7 +3,6 @@ package dao
 import (
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
-	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -71,11 +70,6 @@ func (controller MYSQLController) GetModulesHX() (map[string]interface{}, error)
 
 	}
 
-
-	//模块组map:{"1"："knowledge_map"}
-	//moduleGroupMap:= make(map[int]interface{}, 0)
-	//returnModuleGroupMap:=make(map[string]interface{}, 0)
-	//moduleGroup:= make(map[string]interface{}, 0)
 	moduleGroupMapArray:= make(map[int][]map[string]map[string][]string, 0)
 	for moduleGrouprows.Next()  {
 		moduleGroup:= make(map[string]map[string][]string, 0)
@@ -119,16 +113,7 @@ func (controller MYSQLController) GetModulesHX() (map[string]interface{}, error)
 				moduleGroup:= make(map[string]map[string][]string, 0)
 				for _, groupValue := range modulePri {
 					for key, value := range groupValue {
-						println(key)
-						b, err := json.Marshal(value)
-
-						if err != nil {
-							fmt.Println("json.Marshal failed:", err)
-							return nil, err
-
-						}
-						println(string(b))
-					moduleGroup[key]=value
+						moduleGroup[key]=value
 					}
 				}
 				resultMap[productCode]=moduleGroup
@@ -140,9 +125,9 @@ func (controller MYSQLController) GetModulesHX() (map[string]interface{}, error)
 }
 
 
-func (controller MYSQLController) GetRolePrivileges(enterpriseID string,roleId int) (map[string]interface{}, error) {
+func (controller MYSQLController) GetRolePrivileges(enterpriseID string,roleId int) (map[string]map[string]map[string][]string, error) {
 	//查询产品信息
-	queryProductStr := fmt.Sprintf(`SELECT p.cmd_list,m.code,mg.code,m.product,pro.code from %s p
+	queryProductStr := fmt.Sprintf(`SELECT p.cmd_list,m.code,mg.code,m.product,pro.code,m.group from %s p
 	LEFT JOIN %s m on p.module=m.id
 	LEFT JOIN %s mg on m.group=mg.id
 	LEFT JOIN %s pro on m.product=pro.id
@@ -153,26 +138,82 @@ func (controller MYSQLController) GetRolePrivileges(enterpriseID string,roleId i
 		return nil, productErr
 	}
 	defer rows.Close()
-	//产品map:{"1"："knowledge"}
-	resultMap:= make(map[string]interface{}, 0)
-	var resultModuleGroupMap map[string]interface{}
-	var pidTemp string
+	//产品map
+	resultMap:= make(map[string]map[string]map[string][]string, 0)
 	for rows.Next()  {
-		var cmdList,mcode,mgcode,pid,procode string
-		err := rows.Scan(&cmdList,&mcode,&mgcode,&pid,&procode)
+		var cmdList,mcode,mgcode,procode string
+		var pid,group int
+		err := rows.Scan(&cmdList,&mcode,&mgcode,&pid,&procode,&group)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
 		}
-		resultModuleMap:= make(map[string]interface{}, 0)
+		resultModuleMap:= make(map[string][]string, 0)
 		cmdListMap:=strings.Split(cmdList, ",")
 		resultModuleMap[mcode]=cmdListMap
-		if pidTemp!=pid {
-			resultModuleGroupMap=make(map[string]interface{}, 0)
-			pidTemp=pid
+		if resultMap[procode]==nil {//新产品
+			resultMap[procode]=make(map[string]map[string][]string, 0)
+			if resultMap[procode][mgcode]==nil {
+				resultMap[procode][mgcode]=make(map[string][]string, 0)
+				resultMap[procode][mgcode]=resultModuleMap
+			}else{
+				resultMap[procode][mgcode][mcode]=cmdListMap
+			}
+		}else{//已存在产品
+			if resultMap[procode][mgcode]==nil {
+				resultMap[procode][mgcode]=make(map[string][]string, 0)
+				resultMap[procode][mgcode]=resultModuleMap
+			}else{
+				resultMap[procode][mgcode][mcode]=cmdListMap
+			}
 		}
-		resultModuleGroupMap[mgcode]=resultModuleMap
-		resultMap[procode]=resultModuleGroupMap
+	}
+	return resultMap, nil
+}
+
+func (controller MYSQLController) GetUserPrivileges(enterpriseID string,userCode string) (map[string]map[string]map[string][]string, error) {
+	//查询产品信息
+	queryProductStr :=`SELECT p.cmd_list,m.code,mg.code,m.product,pro.code,m.group from privileges p
+	LEFT JOIN  modules m on p.module=m.id
+	LEFT JOIN  module_group mg on m.group=mg.id
+	LEFT JOIN  product pro on m.product=pro.id
+	where p.role in (select id from roles where uuid in(select role from user_privileges where human=?) )
+	and m.enterprise=?
+	`
+	rows, productErr := controller.connectDB.Query(queryProductStr,userCode,enterpriseID)
+	if productErr != nil {
+		return nil, productErr
+	}
+	defer rows.Close()
+	//产品map
+	resultMap:= make(map[string]map[string]map[string][]string, 0)
+	for rows.Next()  {
+		var cmdList,mcode,mgcode,procode string
+		var pid,group int
+		err := rows.Scan(&cmdList,&mcode,&mgcode,&pid,&procode,&group)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		resultModuleMap:= make(map[string][]string, 0)
+		cmdListMap:=strings.Split(cmdList, ",")
+		resultModuleMap[mcode]=cmdListMap
+		if resultMap[procode]==nil {//新产品
+			resultMap[procode]=make(map[string]map[string][]string, 0)
+			if resultMap[procode][mgcode]==nil {
+				resultMap[procode][mgcode]=make(map[string][]string, 0)
+				resultMap[procode][mgcode]=resultModuleMap
+			}else{
+				resultMap[procode][mgcode][mcode]=cmdListMap
+			}
+		}else{//已存在产品
+			if resultMap[procode][mgcode]==nil {
+				resultMap[procode][mgcode]=make(map[string][]string, 0)
+				resultMap[procode][mgcode]=resultModuleMap
+			}else{
+				resultMap[procode][mgcode][mcode]=cmdListMap
+			}
+		}
 	}
 	return resultMap, nil
 }
@@ -219,15 +260,20 @@ func (controller MYSQLController) UpdateRolePrivileges(enterpriseID string,roleI
 		moduleMap[module.Code] = &module
 	}
 
-
 	for _, product := range privileges {
 		for _, moduleGroup := range product {
 			for moduleCode, modulePri := range moduleGroup {
-				if moduleMap[moduleCode]==nil{
+				if moduleCode==""|| moduleMap[moduleCode]==nil{
 					continue
 				}
 				queryInsertStr := fmt.Sprintf(`INSERT INTO %s (role, module, cmd_list) VALUES (?, ?, ?)`, rolePrivilegeTable)
-				_, err = t.Exec(queryInsertStr, roleId, moduleMap[moduleCode].ID, strings.Join(modulePri, ","))
+				var cmdList string
+				var module int
+				if modulePri[0]!=""{
+					cmdList = strings.Join(modulePri, ",")
+				}
+				module = moduleMap[moduleCode].ID
+				_, err = t.Exec(queryInsertStr, roleId,module , cmdList)
 				if err != nil {
 					util.LogDBError(err)
 					return err
@@ -245,3 +291,55 @@ func (controller MYSQLController) UpdateRolePrivileges(enterpriseID string,roleI
 	return nil
 }
 
+func (controller MYSQLController) GetLabelUsers(enterpriseID string ,role int)([]*data.UserHX, error) {
+	//IN ('my_mission_marked ',' my_auditing_tasks ',' my_split_tasks ')
+	queryStr := fmt.Sprintf(`SELECT id,user_name FROM users WHERE uuid IN (
+SELECT human FROM user_privileges WHERE role IN (
+SELECT uuid FROM roles WHERE enterprise=? AND id IN (
+SELECT role FROM privileges WHERE module IN (
+SELECT id FROM modules WHERE CODE = ?))))`)
+	code := ""
+	if role ==1 {//标注
+		code="my_mission_marked"
+	}else if role ==2{//审核
+		code="my_auditing_tasks"
+	}else if role ==3{//切分
+		code="my_split_tasks"
+	}
+	userRows, err := controller.connectDB.Query(queryStr,enterpriseID,code)
+	users := make([]*data.UserHX, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer userRows.Close()
+
+	for userRows.Next() {
+		user := data.UserHX{}
+		err := userRows.Scan(&user.ID,&user.UserName)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		users = append(users, &user)
+	}
+	return users, nil
+}
+
+func (controller MYSQLController) GetUserAccessInfo(
+	userCode string) (*data.UserHX, error) {
+	user := data.UserHX{}
+	queryStr := fmt.Sprintf(`
+		SELECT id, user_name, password
+		FROM %s
+		WHERE uuid = ?`, userTableV3)
+
+	userRows, err := controller.connectDB.Query(queryStr,userCode)
+	for userRows.Next() {
+		err = userRows.Scan(&user.ID, &user.UserName, &user.Password)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, nil
+		}
+	}
+	return &user, nil
+}

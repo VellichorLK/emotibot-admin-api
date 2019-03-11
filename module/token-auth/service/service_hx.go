@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"errors"
@@ -38,7 +39,16 @@ func GetAllModules()(map[string]interface{}, error) {
 
 }
 
-func GetRolePrivileges(enterpriseID string,roleId int)(map[string]interface{}, error) {
+func GetUserPrivileges(enterpriseID string,userCode string)(map[string]map[string]map[string][]string, error) {
+	err := checkDBHX()
+	if err != nil {
+		return nil, err
+	}
+	return useDBHX.GetUserPrivileges(enterpriseID,userCode)
+
+}
+
+func GetRolePrivileges(enterpriseID string,roleId int)(map[string]map[string]map[string][]string, error) {
 	err := checkDBHX()
 	if err != nil {
 		return nil, err
@@ -54,4 +64,27 @@ func UpdateRolePrivileges(enterpriseID string,roleId int,privileges map[string]m
 	}
 	return useDBHX.UpdateRolePrivileges(enterpriseID,roleId,privileges)
 
+}
+func GetLabelUsers(enterpriseID string,role int)([]*data.UserHX,error) {
+	err := checkDBHX()
+	if err != nil {
+		return nil,err
+	}
+	return useDBHX.GetLabelUsers(enterpriseID,role)
+
+}
+
+func GetUserAccessInfo(userCode string) (*data.UserHX, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+	info, err := useDBHX.GetUserAccessInfo(userCode)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+
+	return info, nil
 }

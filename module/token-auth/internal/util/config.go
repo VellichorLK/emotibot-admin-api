@@ -58,7 +58,7 @@ func GetSSOConfig() *SSOConfig {
 
 // GetMySQLConfig will get db init config from env
 func GetMySQLConfig() (url string, port int, user string, password string, database string) {
-	envURL := GetStrEnv(mysqlSQLURLKey, "127.0.0.1:3306")
+	envURL := GetStrEnv(mysqlSQLURLKey, "localhost:3306")
 	params := strings.Split(envURL, ":")
 	if len(params) <= 1 {
 		url = params[0]
@@ -68,8 +68,21 @@ func GetMySQLConfig() (url string, port int, user string, password string, datab
 		port, _ = strconv.Atoi(params[1])
 	}
 	user = GetStrEnv(mysqlSQLUserKey, "root")
-	password = GetStrEnv(mysqlSQLPasswordKey, "password")
-	database = GetStrEnv(mysqlSQLDatabaseKey, "authentication")
+	password = GetStrEnv(mysqlSQLPasswordKey, "123456")
+	database = GetStrEnv(mysqlSQLDatabaseKey, "auth")
+
+	//envURL := GetStrEnv(mysqlSQLURLKey, "10.10.10.86:3306")
+	//params := strings.Split(envURL, ":")
+	//if len(params) <= 1 {
+	//	url = params[0]
+	//	port = 3306
+	//} else {
+	//	url = params[0]
+	//	port, _ = strconv.Atoi(params[1])
+	//}
+	//user = GetStrEnv(mysqlSQLUserKey, "root")
+	//password = GetStrEnv(mysqlSQLPasswordKey, "emotibot")
+	//database = GetStrEnv(mysqlSQLDatabaseKey, "auth_hx")
 	return
 }
 
