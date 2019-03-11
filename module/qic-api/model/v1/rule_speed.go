@@ -19,6 +19,7 @@ type SpeedRule struct {
 	IsDelete       int
 	CreateTime     int64
 	UpdateTime     int64
+	UUID           string
 }
 
 type SpeedUpdateSet struct {
@@ -36,6 +37,7 @@ type SpeedRuleDao interface {
 	Count(conn SqlLike, q *GeneralQuery) (int64, error)
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSet) (int64, error)
+	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
 }
 
 type SpeedRuleSQLDao struct {
@@ -62,6 +64,7 @@ func (s *SpeedRuleSQLDao) Add(conn SqlLike, r *SpeedRule) (int64, error) {
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -93,6 +96,7 @@ func (s *SpeedRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -122,7 +126,7 @@ func (s *SpeedRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*
 	for rows.Next() {
 		var d SpeedRule
 		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Min, &d.Max,
-			&d.ExceptionUnder, &d.ExceptionOver, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime)
+			&d.ExceptionUnder, &d.ExceptionOver, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
@@ -152,7 +156,7 @@ func (s *SpeedRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, error) {
 
 //SoftDelete simply set the is_delete to 1
 func (s *SpeedRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	table := tblSpeedRule
@@ -161,7 +165,7 @@ func (s *SpeedRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, erro
 
 //Update updates the records
 func (s *SpeedRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSet) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	flds := []string{
@@ -174,4 +178,40 @@ func (s *SpeedRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSe
 	}
 	table := tblSpeedRule
 	return updateSQL(conn, q, d, table, flds)
+}
+
+//Copy copys only one record, only use the first ID in q
+func (s *SpeedRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if q == nil || (len(q.ID) == 0) {
+		return 0, ErrNeedCondition
+	}
+
+	flds := []string{
+		fldName,
+		fldScore,
+		fldMin,
+		fldMax,
+		fldExcptUnder,
+		fldExcptOver,
+		fldEnterprise,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+
+	for i := range flds {
+		flds[i] = "`" + flds[i] + "`"
+	}
+
+	fieldsSQL := strings.Join(flds, ",")
+	table := tblSpeedRule
+	copySQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s=?", table,
+		fieldsSQL, fieldsSQL, table, fldID)
+
+	res, err := conn.Exec(copySQL, q.ID[0])
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }

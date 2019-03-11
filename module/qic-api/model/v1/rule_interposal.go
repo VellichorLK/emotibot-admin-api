@@ -17,6 +17,7 @@ type InterposalRule struct {
 	IsDelete   int
 	CreateTime int64
 	UpdateTime int64
+	UUID       string
 }
 
 type InterposalUpdateSet struct {
@@ -32,6 +33,7 @@ type InterposalRuleDao interface {
 	Count(conn SqlLike, q *GeneralQuery) (int64, error)
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *InterposalUpdateSet) (int64, error)
+	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
 }
 
 type InterposalRuleSQLDao struct {
@@ -56,6 +58,7 @@ func (s *InterposalRuleSQLDao) Add(conn SqlLike, r *InterposalRule) (int64, erro
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -85,6 +88,7 @@ func (s *InterposalRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination)
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -115,7 +119,8 @@ func (s *InterposalRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination)
 		var d InterposalRule
 		err = rows.Scan(&d.ID, &d.Name, &d.Enterprise,
 			&d.Score, &d.Seconds, &d.Times,
-			&d.IsDelete, &d.CreateTime, &d.UpdateTime)
+			&d.IsDelete, &d.CreateTime, &d.UpdateTime,
+			&d.UUID)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
@@ -145,7 +150,7 @@ func (s *InterposalRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, erro
 
 //SoftDelete simply set the is_delete to 1
 func (s *InterposalRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	table := tblInterposalRule
@@ -154,7 +159,7 @@ func (s *InterposalRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64,
 
 //Update updates the records
 func (s *InterposalRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *InterposalUpdateSet) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	flds := []string{
@@ -165,4 +170,37 @@ func (s *InterposalRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *Interpos
 	}
 	table := tblInterposalRule
 	return updateSQL(conn, q, d, table, flds)
+}
+
+//Copy copys only one record, only use the first ID in q
+func (s *InterposalRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if q == nil || (len(q.ID) == 0) {
+		return 0, ErrNeedCondition
+	}
+	flds := []string{
+		fldName,
+		fldEnterprise,
+		fldScore,
+		fldOverLappedSec,
+		fldOverLappedTimes,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+
+	for i := range flds {
+		flds[i] = "`" + flds[i] + "`"
+	}
+
+	fieldsSQL := strings.Join(flds, ",")
+	table := tblInterposalRule
+	copySQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s=?", table,
+		fieldsSQL, fieldsSQL, table, fldID)
+
+	res, err := conn.Exec(copySQL, q.ID[0])
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
