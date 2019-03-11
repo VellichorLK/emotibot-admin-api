@@ -185,6 +185,24 @@ func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func checkUpdateSet(r model.SilenceUpdateSet) error {
+	sr := model.SilenceRule{Name: "valid name", Score: 99, Seconds: 99, Times: 99}
+	if r.Name != nil {
+		sr.Name = *r.Name
+	}
+	if r.Score != nil {
+		sr.Score = *r.Score
+	}
+	if r.Seconds != nil {
+		sr.Seconds = *r.Seconds
+	}
+	if r.Times != nil {
+		sr.Times = *r.Times
+	}
+	return checkSilenceRule(&sr)
+
+}
+
 func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	idInterface := r.Context().Value(IDKey)
@@ -197,6 +215,13 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
+
+	err = checkUpdateSet(req)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
 	//just in case
 	req.ExceptionBefore = nil
 	req.ExceptionAfter = nil
@@ -282,8 +307,11 @@ func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 //ReqUsrData is the user request
 type ReqUsrData string
 
-const IDKey = ReqUsrData("id")
-const EnterpriseKey = ReqUsrData("enterprise")
+//Key to put into context in the middleware
+const (
+	IDKey         = ReqUsrData("id")
+	EnterpriseKey = ReqUsrData("enterprise")
+)
 
 //WithIntIDCheck checks the id with int64 type
 func WithIntIDCheck(next http.HandlerFunc) http.HandlerFunc {
