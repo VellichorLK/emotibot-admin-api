@@ -128,12 +128,9 @@ func handleGetRuleSilenceList(w http.ResponseWriter, r *http.Request) {
 
 func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+
+	idInterface := r.Context().Value(IDKey)
+	id := idInterface.(int64)
 
 	isDelete := 0
 	q := &model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}
@@ -175,15 +172,12 @@ func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
 
 func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+	idInterface := r.Context().Value(IDKey)
+	id := idInterface.(int64)
+
 	isDelete := 0
 	q := &model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}
-	_, err = DeleteRuleSilence(q)
+	_, err := DeleteRuleSilence(q)
 	if err != nil {
 		logger.Error.Printf("delete %d failed. %s\n", id, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -193,15 +187,12 @@ func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
 
 func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+	idInterface := r.Context().Value(IDKey)
+	id := idInterface.(int64)
+
 	var req model.SilenceUpdateSet
 
-	err = util.ReadJSON(r, &req)
+	err := util.ReadJSON(r, &req)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -220,16 +211,11 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 
 func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-
+	idInterface := r.Context().Value(IDKey)
+	id := idInterface.(int64)
 	var req RuleExceptionInteral
 
-	err = util.ReadJSON(r, &req)
+	err := util.ReadJSON(r, &req)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -258,16 +244,12 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 
 func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-	idStr := general.ParseID(r)
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+	idInterface := r.Context().Value(IDKey)
+	id := idInterface.(int64)
 
 	var req RuleExceptionInteral
 
-	err = util.ReadJSON(r, &req)
+	err := util.ReadJSON(r, &req)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -294,11 +276,11 @@ func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//IntID is int64 id's name
-type IntID string
+//ReqUsrData is the user request
+type ReqUsrData string
 
-//EnterpriseID is enterpreise name
-type EnterpriseID string
+const IDKey = ReqUsrData("id")
+const EnterpriseKey = ReqUsrData("enterprise")
 
 //WithIntIDCheck checks the id with int64 type
 func WithIntIDCheck(next http.HandlerFunc) http.HandlerFunc {
@@ -309,9 +291,7 @@ func WithIntIDCheck(next http.HandlerFunc) http.HandlerFunc {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 			return
 		}
-
-		k := IntID("id")
-		c := context.WithValue(r.Context(), k, id)
+		c := context.WithValue(r.Context(), IDKey, id)
 		r = r.WithContext(c)
 		next.ServeHTTP(w, r)
 	}
