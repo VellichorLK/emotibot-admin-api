@@ -432,7 +432,7 @@ func handleDeleteMultiIntentV2(w http.ResponseWriter, r *http.Request) {
 		} else {
 			ret = auditMsg
 		}
-		audit.AddAuditFromRequestAuto(r, auditMsg, result)
+		audit.AddAuditFromRequestAutoWithOP(r, auditMsg, result, audit.AuditOperationDelete)
 		util.Return(w, err, ret)
 	}()
 

@@ -1,6 +1,8 @@
 package feedback
 
 import (
+	"fmt"
+
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 )
 
@@ -39,6 +41,10 @@ func AddReason(appid string, content string) (*Reason, AdminErrors.AdminError) {
 
 	id, err := serviceDao.AddReason(appid, content)
 	if err != nil {
+		if err == ErrDuplicateContent {
+			return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+				fmt.Sprintf("%s: %s", err.Error(), content))
+		}
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 	ret := Reason{
@@ -62,6 +68,9 @@ func DeleteReason(appid string, id int64) AdminErrors.AdminError {
 
 	err := serviceDao.DeleteReason(appid, id)
 	if err != nil {
+		if err == ErrIDNotExisted {
+			return AdminErrors.New(AdminErrors.ErrnoNotFound, err.Error())
+		}
 		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 	return nil

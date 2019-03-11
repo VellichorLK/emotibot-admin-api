@@ -70,6 +70,8 @@ type TagQuery struct {
 	Enterprise       *string
 	Name             *string
 	TagType          []int8
+	UpdateTimeStart  int64
+	UpdateTimeEnd    int64
 	IgnoreSoftDelete bool
 	Paging           *Pagination
 }
@@ -83,6 +85,12 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 	}
 	if t.Name != nil {
 		builder.Eq(fldTagName, *t.Name)
+	}
+	if t.UpdateTimeStart > 0 {
+		builder.Gte(fldTagUpdateTime, t.UpdateTimeStart)
+	}
+	if t.UpdateTimeEnd > 0 {
+		builder.Lt(fldTagUpdateTime, t.UpdateTimeEnd)
 	}
 	if len(t.TagType) > 0 {
 		builder.In(fldTagType, int8ToWildCard(t.TagType...))

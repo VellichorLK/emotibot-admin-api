@@ -6,6 +6,7 @@ import (
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	test "emotibot.com/emotigo/module/qic-api/util/test"
+	"bytes"
 )
 
 var mockCredits = []*model.SimpleCredit{
@@ -44,7 +45,7 @@ var mockMatched = []*model.SegmentMatch{
 type mockRelationCreditDao struct {
 }
 
-func (m *mockRelationCreditDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
+func (m *mockRelationCreditDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error) {
 	resp := make([]map[uint64][]uint64, 0, 1)
 
 	senTag := make(map[uint64][]uint64)
@@ -65,13 +66,13 @@ func (m *mockCreditDao) InsertCredit(conn model.SqlLike, c *model.SimpleCredit) 
 func (m *mockCreditDao) InsertSegmentMatch(conn model.SqlLike, s *model.SegmentMatch) (int64, error) {
 	return 0, nil
 }
-func (m *mockCreditDao) GetCallCredit(conn model.SqlLike, call uint64) ([]*model.SimpleCredit, error) {
+func (m *mockCreditDao) GetCallCredit(conn model.SqlLike, q *model.CreditQuery) ([]*model.SimpleCredit, error) {
 	for _, v := range mockCredits {
-		v.CallID = call
+		v.CallID = q.Calls[0]
 	}
 	return mockCredits, nil
 }
-func (m *mockCreditDao) GetSegmentMatch(conn model.SqlLike, segments []uint64) ([]*model.SegmentMatch, error) {
+func (m *mockCreditDao) GetSegmentMatch(conn model.SqlLike, q *model.SegmentPredictQuery) ([]*model.SegmentMatch, error) {
 
 	return mockMatched, nil
 }
@@ -123,6 +124,13 @@ func (m *mockGroupDaoCredit) DeleteMany(ruleUUID []string, sql model.SqlLike) er
 
 func (m *mockGroupDaoCredit) GetGroupsByRuleID(id []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
+}
+
+func (m *mockGroupDaoCredit) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error) {
+	return nil, nil
+}
+func (m *mockGroupDaoCredit) ImportGroups(sqlLike model.SqlLike, fileName string) error {
+	return nil
 }
 
 type mockRuleDaoCredit struct {

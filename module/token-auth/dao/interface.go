@@ -97,9 +97,12 @@ type DBV3 interface {
 	GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)
 
 	GetAppSecretV3(appid string) (string, error)
+	GetEnterpriseSecretV3(enterprise string) (string, error)
 	RenewAppSecretV3(appid string) (string, error)
-	GenerateAppApiKeyV3(appid string, expired int) (string, error)
+	RenewEnterpriseSecretV3(enterprise string) (string, error)
+	GenerateAppApiKeyV3(enterprise, appid string, expired int) (string, error)
 	GetAppViaApiKey(apiKey string) (string, error)
+	GetEnterpriseViaApiKey(apiKey string) (string, error)
 	RemoveAppApiKeyV3(appid, token string) error
 	RemoveAppAllApiKeyV3(appid string) error
 	ClearExpireToken()
@@ -116,6 +119,7 @@ type DBV4 interface {
 	// UpdateEnterprise(enterprsieID string, newEnterprise *data.EnterpriseDetailV3, modules []string) error
 	// DeleteEnterprise(enterprsieID string) error
 	UpdateEnterpriseStatusV4(enterpriseID string, status bool) error
+	ActivateEnterpriseV4(enterpriseID string, username string, password string) error
 
 	// EnterpriseExists(enterpriseID string) (bool, error)
 	// EnterpriseInfoExists(enterpriseName string) (bool, error)

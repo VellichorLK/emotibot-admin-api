@@ -87,3 +87,7 @@ func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
 func UpdateEnterpriseStatusV4(enterpriseID string, status bool) error {
 	return useDBV4.UpdateEnterpriseStatusV4(enterpriseID, status)
 }
+
+func ActivateEnterpriseV4(enterpriseID string, username string, password string) error {
+	return useDBV4.ActivateEnterpriseV4(enterpriseID, username, password)
+}

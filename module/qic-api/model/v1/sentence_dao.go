@@ -48,6 +48,7 @@ type SentenceQuery struct {
 	Limit      int
 	IsDelete   *int8
 	CategoryID *uint64
+	Name       *string
 }
 
 //SentenceNewRecord is used to create a new sentence
@@ -72,6 +73,19 @@ type Sentence struct {
 	CreateTime int64
 	UpdateTime int64
 	TagIDs     []uint64
+}
+
+func ToSimpleSentences(ss []*Sentence) []SimpleSentence {
+	simpleSentences := make([]SimpleSentence, len(ss))
+	for idx, s := range ss {
+		simpleSentences[idx] = SimpleSentence{
+			Name:       s.Name,
+			ID:         s.ID,
+			UUID:       s.UUID,
+			CategoryID: s.CategoryID,
+		}
+	}
+	return simpleSentences
 }
 
 //NewSentenceSQLDao generates the structure of SentenceSQLDao
@@ -133,6 +147,12 @@ func (q *SentenceQuery) whereSQL() (string, []interface{}) {
 		params = append(params, *q.CategoryID)
 	}
 
+	if q.Name != nil {
+		condition := fldName + "=?"
+		conditions = append(conditions, condition)
+		params = append(params, *q.Name)
+	}
+
 	var whereSQL string
 	if len(conditions) > 0 {
 		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
@@ -170,6 +190,7 @@ func (d *SentenceSQLDao) GetSentences(tx SqlLike, sq *SentenceQuery) ([]*Sentenc
 		logger.Error.Printf("Query: %s, Params:%+v, failed. %s\n", queryStr, params, err)
 		return nil, err
 	}
+	defer rows.Close()
 
 	sentences := make([]*Sentence, 0, 10)
 	existMap := make(map[uint64]*Sentence)

@@ -124,6 +124,11 @@ func (controller MYSQLController) AddEnterpriseV4(enterprise *data.EnterpriseV3,
 		return
 	}
 
+	err = controller.addBFEnterprise(enterpriseID, enterprise.Name, adminUserID, adminUser.UserName, *adminUser.Password)
+	if err != nil {
+		return
+	}
+
 	err = t.Commit()
 	if err != nil {
 		util.LogDBError(err)
@@ -155,16 +160,132 @@ func (controller MYSQLController) UpdateEnterpriseStatusV4(enterpriseID string, 
 		statusInt = 1
 	}
 	queryStr := "UPDATE enterprises SET status = ? WHERE uuid = ?"
-	_, err = controller.connectDB.Exec(queryStr, statusInt, enterpriseID)
+	_, err = t.Exec(queryStr, statusInt, enterpriseID)
 	if err != nil {
 		return
 	}
 
 	queryStr = "UPDATE users SET status = ? WHERE enterprise = ?"
-	_, err = controller.connectDB.Exec(queryStr, statusInt, enterpriseID)
+	_, err = t.Exec(queryStr, statusInt, enterpriseID)
 	if err != nil {
 		return
 	}
 	err = t.Commit()
 	return
+}
+
+func (controller MYSQLController) ActivateEnterpriseV4(enterpriseID string, username string, password string) (err error) {
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+	ok, err := controller.checkDB()
+	if !ok {
+		return
+	}
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	statusInt := 1
+	queryStr := "UPDATE enterprises SET status = ? WHERE uuid = ?"
+	_, err = t.Exec(queryStr, statusInt, enterpriseID)
+	if err != nil {
+		return
+	}
+
+	queryStr = "UPDATE users SET status = ? WHERE enterprise = ?"
+	_, err = t.Exec(queryStr, statusInt, enterpriseID)
+	if err != nil {
+		return
+	}
+
+	if password != "" {
+		targetUser := username
+		if username == "" {
+			queryStr = "SELECT user_name FROM users WHERE enterprise = ?"
+			row := t.QueryRow(queryStr, enterpriseID)
+			err = row.Scan(&targetUser)
+			if err != nil {
+				return err
+			}
+		}
+		queryStr = "UPDATE users SET password = ? WHERE user_name = ? AND enterprise = ?"
+		_, err = t.Exec(queryStr, password, targetUser, enterpriseID)
+		if err != nil {
+			return err
+		}
+		err = controller.setBFUserPassword(targetUser, password)
+	}
+
+	err = t.Commit()
+	return
+}
+
+// Belongings will be functions which will set data in origin BF2 database
+
+func (controller MYSQLController) addBFEnterprise(id, name, userid, account, password string) error {
+	ok, err := controller.checkBFDB()
+	if !ok {
+		util.LogDBError(err)
+		return err
+	}
+
+	tx, err := controller.bfDB.Begin()
+
+	queryStr := `
+		INSERT INTO api_enterprise
+		(id, enterprise_name, account_type, account_status, create_time, modify_time, enterprise_type)
+		VALUES
+		(?, ?, 2, 0, CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), 1)`
+	_, err = tx.Exec(queryStr, id, name)
+	if err != nil {
+		return err
+	}
+
+	err = addBFUserWithTx(tx, userid, account, password, id)
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+	return err
+}
+
+func addBFUserWithTx(tx *sql.Tx, userid, account, password, enterprise string) error {
+	var err error
+	queryStr := ""
+	if enterprise == "" {
+		queryStr = `
+			INSERT INTO api_user
+			(UserId, Email, CreatedTime, Password, NickName, Type, Status, UpdatedTime, enterprise_id)
+			VALUES
+			(?, ?, CURRENT_TIMESTAMP(), ?, ?, 0, 1, CURRENT_TIMESTAMP(), NULL)`
+		_, err = tx.Exec(queryStr, userid, account, password, account)
+	} else {
+		queryStr = `
+			INSERT INTO api_user
+			(UserId, Email, CreatedTime, Password, NickName, Type, Status, UpdatedTime, enterprise_id)
+			VALUES
+			(?, ?, CURRENT_TIMESTAMP(), ?, ?, 0, 1, CURRENT_TIMESTAMP(), ?)`
+		_, err = tx.Exec(queryStr, userid, account, password, account, enterprise)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (controller MYSQLController) setBFUserPassword(username, password string) error {
+	ok, err := controller.checkBFDB()
+	if !ok {
+		util.LogDBError(err)
+		return err
+	}
+	queryStr := "UPDATE api_user SET Password = ? WHERE Email = ?"
+	_, err = controller.bfDB.Exec(queryStr, password, username)
+	return err
 }

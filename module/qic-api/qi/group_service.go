@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 )
 
 var (
@@ -215,6 +215,7 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 	if err != nil {
 		return
 	}
+	defer dbLike.ClearTransition(tx)
 	total, err = serviceDAO.CountGroupsBy(filter, tx)
 	if err != nil {
 		return

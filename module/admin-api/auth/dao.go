@@ -107,6 +107,22 @@ func GetUserID(username string) (id string, err error) {
 	return
 }
 
+func GetUserName(id string) (name string, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	queryStr := fmt.Sprintf("SELECT user_name FROM users WHERE uuid = ?")
+	err = db.QueryRow(queryStr, id).Scan(&name)
+	return
+}
+
 var currentTimeGetter = getCurrentTimestamp
 
 func GetAppViaApiKey(apiKey string) (string, error) {

@@ -79,3 +79,8 @@ var FeedbacksTableHeader = []data.TableHeaderItem{
 		ID:   common.FeedbacksMetricFeedbacks,
 	},
 }
+
+type RatingAverageInfo struct {
+	Average float64         `json:"average"`
+	Count   map[int64]int64 `json:"count"`
+}

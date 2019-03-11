@@ -75,6 +75,7 @@ func Init() error {
 			util.NewEntryPoint("GET", "teRecords/export/{export_id}/status",
 				[]string{"view", "export"}, controllersV1.TEVisitRecordsExportStatusHandler),
 			util.NewEntryPoint("GET", "feedbacks", []string{"view"}, controllersV1.FeedbacksGetHandler),
+			util.NewEntryPoint("GET", "feedback/avg", []string{"view"}, controllersV1.FeedbackRatingAvgGetHandler),
 			util.NewEntryPoint("GET", "call", []string{"view"}, controllersV1.CallStatsGetHandler),
 			// v2 APIs
 			util.NewEntryPointWithVer("POST", "records/query", []string{"view"}, controllersV2.VisitRecordsGetHandler, 2),

@@ -52,6 +52,13 @@ func FeedbacksGetHandler(w http.ResponseWriter, r *http.Request) {
 	startTime := time.Unix(int64(startTimeUnix), 0).UTC()
 	endTime := time.Unix(int64(endTimeUnix), 0).UTC()
 
+	if startTime.After(endTime) {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime,
+			"startTime greater than endTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	query := dataV1.FeedbacksQuery{
 		CommonQuery: data.CommonQuery{
 			AppID:     appID,
@@ -228,4 +235,84 @@ func createFeedbacksResponse(query dataV1.FeedbacksQuery,
 	}
 
 	return &response, nil
+}
+
+func FeedbackRatingAvgGetHandler(w http.ResponseWriter, r *http.Request) {
+	appID := requestheader.GetAppID(r)
+	startTimeString := r.URL.Query().Get("startTime")
+	endTimeString := r.URL.Query().Get("endTime")
+	platform := r.URL.Query().Get("platform")
+	gender := r.URL.Query().Get("gender")
+
+	if startTimeString == "" {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime, "startTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	} else if endTimeString == "" {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterEndTime, "endTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	startTimeUnix, err := strconv.Atoi(startTimeString)
+	if err != nil {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterStartTime, "startTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	endTimeUnix, err := strconv.Atoi(endTimeString)
+	if err != nil {
+		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterEndTime, "endTime")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	startTime := time.Unix(int64(startTimeUnix), 0).UTC()
+	endTime := time.Unix(int64(endTimeUnix), 0).UTC()
+
+	query := dataV1.FeedbacksQuery{
+		CommonQuery: data.CommonQuery{
+			AppID:     appID,
+			StartTime: startTime,
+			EndTime:   endTime,
+		},
+		Type: dataCommon.FeedbacksStatsTypeSessions,
+	}
+
+	if platform != "" {
+		platformName, found := services.GetTagNameByID(query.AppID, "platform", platform)
+		if !found {
+			errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterPlatform, "platform")
+			controllers.ReturnBadRequest(w, errResponse)
+			return
+		}
+
+		query.Platform = platformName
+	}
+
+	if gender != "" {
+		genderName, found := services.GetTagNameByID(query.AppID, "sex", gender)
+		if !found {
+			errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterGender, "gender")
+			controllers.ReturnBadRequest(w, errResponse)
+			return
+		}
+
+		query.Gender = genderName
+	}
+
+	avgRatingInfo, err := servicesV1.DailyAvgRating(query)
+	if err != nil {
+		var errResponse data.ErrorResponse
+		if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
+			errResponse = data.NewErrorResponse(strings.Join(rootCauseErrors, "; "))
+		} else {
+			errResponse = data.NewErrorResponse(err.Error())
+		}
+		controllers.ReturnInternalServerError(w, errResponse)
+		return
+	}
+
+	controllers.ReturnOK(w, avgRatingInfo)
 }

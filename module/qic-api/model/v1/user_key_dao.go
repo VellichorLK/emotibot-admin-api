@@ -23,10 +23,10 @@ const (
 //UserKeyTyp is the constant value of the User Key type
 const (
 	UserKeyTypDefault int8 = iota
-	UserKeyTypString
+	UserKeyTypArray
 	UserKeyTypTime
 	UserKeyTypNumber
-	UserKeyTypArray
+	UserKeyTypString
 )
 
 // UserKeySQLDao is the implementation of SQL operation to User Key Table.

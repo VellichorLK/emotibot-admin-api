@@ -25,7 +25,7 @@ type NavigationDao interface {
 	DeleteFlows(conn SqlLike, q *NavQuery) (int64, error)
 	CountFlows(conn SqlLike, q *NavQuery) (int64, error)
 	CountNodes(conn SqlLike, navs []int64) (map[int64]int64, error)
-	GetNodeID(conn SqlLike, nav int64) ([]int64, error)
+	GetNodeID(conn SqlLike, navs []int64) (map[int64][]int64, error)
 	UpdateFlows(conn SqlLike, q *NavQuery, d *NavFlowUpdate) (int64, error)
 	UpdateNodeOrders(conn SqlLike, id int64, order string) (int64, error)
 }
@@ -58,10 +58,11 @@ type NavFlowUpdate struct {
 
 //NavQuery is query condition used in navigation api
 type NavQuery struct {
-	ID         []int64
-	UUID       []string
-	Enterprise *string
-	IsDelete   *int
+	ID           []int64
+	UUID         []string
+	Enterprise   *string
+	IsDelete     *int
+	IgnoreIntent *int
 }
 
 //NavLimit is the limitation of the returned rows
@@ -76,6 +77,7 @@ func (n *NavQuery) whereSQL() (condition string, bindData []interface{}, err err
 		fldUUID,
 		fldEnterprise,
 		fldIsDelete,
+		fldIgoreIntent,
 	}
 	return makeAndCondition(n, flds)
 }
@@ -327,27 +329,38 @@ func (n *NavigationSQLDao) UpdateNodeOrders(conn SqlLike, id int64, order string
 }
 
 //GetNodeID gets the id in sentenceGroup
-func (n *NavigationSQLDao) GetNodeID(conn SqlLike, nav int64) ([]int64, error) {
+func (n *NavigationSQLDao) GetNodeID(conn SqlLike, navs []int64) (map[int64][]int64, error) {
 	if conn == nil {
 		return nil, ErroNoConn
 	}
-	querySQL := fmt.Sprintf("SELECT `%s` FROM %s WHERE `%s`=?", fldSenGrpID, tblRelNavSenGrp, fldNavID)
-	rows, err := conn.Query(querySQL, nav)
+	querySQL := fmt.Sprintf("SELECT `%s`, `%s` FROM %s", fldNavID, fldSenGrpID, tblRelNavSenGrp)
+	numOfNavs := len(navs)
+	params := make([]interface{}, 0, numOfNavs)
+
+	if numOfNavs != 0 {
+		querySQL = fmt.Sprintf("%s WHERE `%s` IN (?%s)", querySQL, fldNavID, strings.Repeat(",?", numOfNavs-1))
+		for _, v := range navs {
+			params = append(params, v)
+		}
+
+	}
+
+	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
-		logger.Error.Printf("query failed. %s,%d. %s\n", querySQL, nav, err)
+		logger.Error.Printf("query failed. %s,%+v. %s\n", querySQL, navs, err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	senGrps := make([]int64, 0, 4)
-	var senGrp int64
+	senGrps := make(map[int64][]int64)
+	var navID, senGrp int64
 	for rows.Next() {
-		err = rows.Scan(&senGrp)
+		err = rows.Scan(&navID, &senGrp)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
 		}
-		senGrps = append(senGrps, senGrp)
+		senGrps[navID] = append(senGrps[navID], senGrp)
 	}
 	return senGrps, nil
 

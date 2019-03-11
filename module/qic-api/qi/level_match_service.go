@@ -380,7 +380,8 @@ func SentenceGroupMatch(matchedSen map[uint64][]int,
 
 						s := segments[segIdx-1]
 						//check the role
-						if criteria.Role < 0 {
+						//if the role is any. < 0 for older version
+						if criteria.Role == roleMapping["any"] || criteria.Role < 0 {
 							resp[criteria.ID] = append(resp[criteria.ID], segIdx)
 						} else if s.Speaker == criteria.Role {
 							resp[criteria.ID] = append(resp[criteria.ID], segIdx)
@@ -587,6 +588,10 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	logger.Info.Printf("doing %d rule group credit with enterprise %s\n", ruleGroup.ID, ruleGroup.EnterpriseID)
 	enterprise := ruleGroup.EnterpriseID
 	models, err := GetUsingModelByEnterprise(enterprise)
+	if err != nil {
+		logger.Error.Printf("get the model failed. %s\n", err.Error())
+		return nil, err
+	}
 	numOfModels := len(models)
 	if numOfModels == 0 {
 		return nil, ErrNoModels
@@ -596,7 +601,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	}
 
 	//get the relation table from RuleGroup to Tag
-	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)})
+	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)}, true)
 	if err != nil {
 		logger.Error.Printf("get level relations failed. %s\n", err)
 		return nil, err
@@ -873,4 +878,67 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	}
 
 	return &resp, nil
+}
+
+//SimpleSentenceMatch gives the matched sentence id as key and index of segments that matched the sentence
+//segs the string that wants to do check
+//ids is the sentence id that wants to do the check
+func SimpleSentenceMatch(segs []string, ids []uint64, enterprise string) (map[uint64][]int, error) {
+	if len(segs) == 0 {
+		return nil, ErrNeedSentence
+	}
+	if len(ids) == 0 {
+		return nil, ErrNoArgument
+	}
+
+	//get the current model id by enterprise
+	models, err := GetUsingModelByEnterprise(enterprise)
+	if err != nil {
+		logger.Error.Printf("get the model failed. %s\n", err.Error())
+		return nil, err
+	}
+	numOfModels := len(models)
+	if numOfModels == 0 {
+		return nil, ErrNoModels
+	} else if numOfModels > 1 {
+		logger.Warn.Printf("More than 1 models is marked as using status with enterprise %s\n", enterprise)
+		logger.Warn.Printf("Using the first one %d as prediction model", models[0].ID)
+	}
+
+	//get the relation table from Sentence to Tag
+	levels, _, err := GetLevelsRel(LevSentence, LevTag, ids, true)
+	if err != nil {
+		logger.Error.Printf("get level relations failed. %s\n", err)
+		return nil, err
+	}
+
+	if len(levels) != 1 {
+		return nil, ErrLessRelation
+	}
+
+	//--------------------------------------------------------------------------
+	numOfLines := len(segs)
+	timeout := time.Duration(30 * time.Second)
+	//do the checking, tag match
+	tagMatchDat, err := TagMatch([]uint64{models[0].ID}, segs, timeout)
+	if err != nil {
+		return nil, fmt.Errorf("tag match failed, %v", err)
+	}
+	if len(tagMatchDat) != numOfLines {
+		return nil, fmt.Errorf("get less tag match sentence %d with %d", len(tagMatchDat), numOfLines)
+	}
+
+	//--------------------------------------------------------------------------
+	//do the sentence check
+	// segMatchedTag struct []map[uint64]bool,
+	// every slice index is a segment, which has a bunch of uint64(tag id),
+	// use map for quick search later
+	segMatchedTag := extractTagMatchedData(tagMatchDat)
+	//do the checking, sentence match
+	senMatchDat, err := SentencesMatch(segMatchedTag, levels[0])
+	if err != nil {
+		logger.Warn.Printf("doing sentence  match failed.%s\n", err)
+	}
+
+	return senMatchDat, err
 }

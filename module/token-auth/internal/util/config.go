@@ -16,6 +16,11 @@ const (
 	mysqlAuditPasswordKey = "ADMIN_AUTH_AUDIT_MYSQL_PASS"
 	mysqlAuditDatabaseKey = "ADMIN_AUTH_AUDIT_MYSQL_DB"
 
+	mysqlBFURLKey      = "ADMIN_AUTH_BF_MYSQL_URL"
+	mysqlBFUserKey     = "ADMIN_AUTH_BF_MYSQL_USER"
+	mysqlBFPasswordKey = "ADMIN_AUTH_BF_MYSQL_PASS"
+	mysqlBFDatabaseKey = "ADMIN_AUTH_BF_MYSQL_DB"
+
 	ssoTypeKey        = "ADMIN_AUTH_SSO_TYPE"
 	ssoValidateURLKey = "ADMIN_AUTH_SSO_VALIDATE"
 	ssoLoginURLKey    = "ADMIN_UI_SSO_LOGIN_URL"
@@ -86,8 +91,8 @@ func GetMySQLConfig() (url string, port int, user string, password string, datab
 	return
 }
 
-// GetMySQLAuditConfig will get audit db init config from env
-func GetMySQLAuditConfig() (url string, port int, user string, password string, database string) {
+// GetAuditMySQLConfig will get audit db init config from env
+func GetAuditMySQLConfig() (url string, port int, user string, password string, database string) {
 	envURL := GetStrEnv(mysqlAuditURLKey, "127.0.0.1:3306")
 	params := strings.Split(envURL, ":")
 	if len(params) <= 1 {
@@ -100,6 +105,23 @@ func GetMySQLAuditConfig() (url string, port int, user string, password string, 
 	user = GetStrEnv(mysqlAuditUserKey, "root")
 	password = GetStrEnv(mysqlAuditPasswordKey, "password")
 	database = GetStrEnv(mysqlAuditDatabaseKey, "emotibot")
+	return
+}
+
+// GetBFMySQLConfig will get BF db init config from env
+func GetBFMySQLConfig() (url string, port int, user string, password string, database string) {
+	envURL := GetStrEnv(mysqlBFURLKey, "172.17.0.1:3306")
+	params := strings.Split(envURL, ":")
+	if len(params) <= 1 {
+		url = params[0]
+		port = 3306
+	} else {
+		url = params[0]
+		port, _ = strconv.Atoi(params[1])
+	}
+	user = GetStrEnv(mysqlBFUserKey, "root")
+	password = GetStrEnv(mysqlBFPasswordKey, "password")
+	database = GetStrEnv(mysqlBFDatabaseKey, "emotibot")
 	return
 }
 

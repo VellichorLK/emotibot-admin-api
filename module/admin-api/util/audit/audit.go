@@ -130,13 +130,17 @@ func AddAuditFromRequest(r *http.Request, module string, operation string, msg s
 	AddAuditLog(enterpriseID, appid, userID, userIP, module, operation, msg, result)
 }
 
-func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
+func AddAuditFromRequestAutoWithOP(r *http.Request, msg string, result int, operation string) {
 	userID := requestheader.GetUserID(r)
 	userIP := requestheader.GetUserIP(r)
 	appid := requestheader.GetAppID(r)
 	enterpriseID := requestheader.GetEnterpriseID(r)
 	module := r.Header.Get(AuditCustomHeader)
+	moduleCode := moduleMap[module]
+	AddAuditLog(enterpriseID, appid, userID, userIP, moduleCode, operation, msg, result)
+}
 
+func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
 	operation := ""
 	switch r.Method {
 	case http.MethodPost:
@@ -150,9 +154,7 @@ func AddAuditFromRequestAuto(r *http.Request, msg string, result int) {
 	default:
 		operation = ""
 	}
-
-	moduleCode := moduleMap[module]
-	AddAuditLog(enterpriseID, appid, userID, userIP, moduleCode, operation, msg, result)
+	AddAuditFromRequestAutoWithOP(r, msg, result, operation)
 }
 
 // AddAuditLog will add audit log to mysql-audit

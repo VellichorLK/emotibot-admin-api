@@ -684,6 +684,15 @@ func GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error) {
 	return useDBV3.GetUserV3ByKeyValue(key, value)
 }
 
+func CheckEnterpriseSecretValid(enterprise, secret string) (bool, error) {
+	key, err := useDBV3.GetEnterpriseSecretV3(enterprise)
+	if err != sql.ErrNoRows && err != nil {
+		return false, err
+	}
+	util.LogTrace.Printf("Get secret: %s, input secret: %s\n", key, secret)
+	return key == secret, nil
+}
+
 func CheckAppSecretValid(appid, secret string) (bool, error) {
 	key, err := useDBV3.GetAppSecretV3(appid)
 	if err != sql.ErrNoRows && err != nil {
@@ -693,8 +702,8 @@ func CheckAppSecretValid(appid, secret string) (bool, error) {
 	return key == secret, nil
 }
 
-func IssueNewApiKey(appid string, expired int) (string, error) {
-	return useDBV3.GenerateAppApiKeyV3(appid, expired)
+func IssueNewApiKey(enterprise, appid string, expired int) (string, error) {
+	return useDBV3.GenerateAppApiKeyV3(enterprise, appid, expired)
 }
 
 func GetAppSecret(appid string) (string, error) {
@@ -705,14 +714,26 @@ func RenewAppSecret(appid string) (string, error) {
 	return useDBV3.RenewAppSecretV3(appid)
 }
 
-func GetAppViaApiKey(apiKey string) (string, error) {
-	appid, err := useDBV3.GetAppViaApiKey(apiKey)
-	if err == sql.ErrNoRows {
-		return "", nil
-	} else if err != nil {
-		return "", err
+func GetEnterpriseSecret(enterprise string) (string, error) {
+	return useDBV3.GetEnterpriseSecretV3(enterprise)
+}
+
+func RenewEnterpriseSecret(enterprise string) (string, error) {
+	return useDBV3.RenewEnterpriseSecretV3(enterprise)
+}
+
+func GetApiKeyOwner(apiKey string) (appid string, enterprise string, err error) {
+	appid, err = useDBV3.GetAppViaApiKey(apiKey)
+	if err != nil && err != sql.ErrNoRows {
+		return "", "", err
 	}
-	return appid, nil
+	enterprise, err = useDBV3.GetEnterpriseViaApiKey(apiKey)
+	if err == sql.ErrNoRows {
+		return "", "", nil
+	} else if err != nil {
+		return "", "", err
+	}
+	return appid, enterprise, nil
 }
 
 func ClearExpireToken() {

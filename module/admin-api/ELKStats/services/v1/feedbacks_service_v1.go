@@ -3,6 +3,8 @@ package v1
 import (
 	"fmt"
 
+	"emotibot.com/emotigo/pkg/logger"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
@@ -10,6 +12,94 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"github.com/olivere/elastic"
 )
+
+func DailyAvgRating(query dataV1.FeedbacksQuery) (map[int64]*dataV1.RatingAverageInfo, error) {
+	ctx, client := elasticsearch.GetClient()
+	aggName := "avg_rating"
+	countAggName := "count"
+	boolQuery := services.CreateBoolQuery(query.CommonQuery)
+	rangeQuery := services.CreateRangeQueryUnixTime(query.CommonQuery,
+		data.SessionStartTimeFieldName)
+	boolQuery.Filter(rangeQuery)
+
+	tagTermQueries := createTagTermQueries(query)
+	for _, tagTermQuery := range tagTermQueries {
+		boolQuery.Filter(tagTermQuery)
+	}
+
+	avgAgg := elastic.NewDateHistogramAggregation().
+		Field(data.SessionStartTimeFieldName).
+		Interval("1d").
+		SubAggregation(
+			aggName,
+			elastic.
+				NewAvgAggregation().
+				Field(data.SessionRatingFieldName)).
+		SubAggregation(
+			countAggName,
+			elastic.
+				NewTermsAggregation().
+				Field(data.SessionRatingFieldName))
+
+	index, indexType, err := getIndexAndType(query)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := services.CreateSearchService(ctx, client, boolQuery, index, indexType,
+		aggName, avgAgg)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := map[int64]*dataV1.RatingAverageInfo{}
+	if agg, found := result.Aggregations.Terms(aggName); found {
+		for _, aggBucket := range agg.Buckets {
+			// key is UTC time in ms
+			key, err := aggBucket.KeyNumber.Int64()
+			if err != nil {
+				return nil, err
+			}
+			key = key / 1000
+
+			value := float64(0)
+			if avgAgg, avgFound := aggBucket.Avg(aggName); avgFound {
+				if avgAgg.Value != nil {
+					value = *avgAgg.Value
+				} else {
+					logger.Trace.Println("value is nil")
+				}
+			}
+			ratingCount, err := getRatingCount(aggBucket)
+			if err != nil {
+				return nil, err
+			}
+			ret[key] = &dataV1.RatingAverageInfo{
+				Average: value,
+				Count:   ratingCount,
+			}
+		}
+	} else {
+		logger.Trace.Println("agg not found")
+	}
+	return ret, nil
+}
+
+func getRatingCount(bucket *elastic.AggregationBucketKeyItem) (map[int64]int64, error) {
+	ret := map[int64]int64{}
+	if agg, found := bucket.Aggregations.Terms("count"); found {
+		for _, aggBucket := range agg.Buckets {
+			key, err := aggBucket.KeyNumber.Int64()
+			if err != nil {
+				return nil, err
+			}
+			ret[key] = aggBucket.DocCount
+		}
+	} else {
+		logger.Trace.Println("count bucket not found")
+	}
+	return ret, nil
+}
 
 func AvgRating(query dataV1.FeedbacksQuery) (float64, error) {
 	ctx, client := elasticsearch.GetClient()

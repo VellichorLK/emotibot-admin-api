@@ -334,6 +334,7 @@ func (dao *SentenceGroupsSqlDaoImpl) GetBy(filter *SentenceGroupFilter, sqlLike 
 		err = fmt.Errorf("error while get sentence groups in dao.GetBy, err: %s", err.Error())
 		return
 	}
+	defer rows.Close()
 
 	groups = []SentenceGroup{}
 	var cGroup *SentenceGroup // current group pointer
@@ -571,6 +572,10 @@ func (dao *SentenceGroupsSqlDaoImpl) GetNewBy(id []int64, filter *SentenceGroupF
 				return nil, err
 			}
 			newIDs = append(newIDs, newID)
+		}
+
+		if len(newIDs) == 0 {
+			return []SentenceGroup{}, nil
 		}
 
 		if filter == nil {

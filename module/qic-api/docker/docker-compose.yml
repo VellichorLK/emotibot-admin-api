@@ -29,8 +29,8 @@ services:
       - ADMIN_SERVER_AUDIT_MYSQL_DB=emotibot
       # - CONSUL setting, all module setting will in PREFIX(idc) folder
       # - but deploy version information is in root
-      - ADMIN_SERVER_CONSUL_URL=http://${CONSUL_HOST}:${CONSUL_PORT}
-      - ADMIN_SERVER_CONSUL_PREFIX=idc
+      # - ADMIN_SERVER_CONSUL_URL=http://${CONSUL_HOST}:${CONSUL_PORT}
+      # - ADMIN_SERVER_CONSUL_PREFIX=idc
       # - Log level of qic-api
       - ADMIN_SERVER_LOG_LEVEL=TRACE
       # - Used for qa-test in UI. TEST_TYPE can be following type
@@ -40,21 +40,21 @@ services:
       #    - "BFOP":       Use ADMIN_QA_CONTROLLER_URL
       # - different type will has different input format
       - ADMIN_QA_TEST_TYPE=BFOP
-      - ADMIN_QA_TEST_URL=http://172.17.0.1:10901/robot
-      - ADMIN_QA_CONTROLLER_URL=http://${EC_HOST}:${EC_PORT}/v1/QAtest
+      # - ADMIN_QA_TEST_URL=http://172.17.0.1:10901/robot
+      # - ADMIN_QA_CONTROLLER_URL=http://${EC_HOST}:${EC_PORT}/v1/QAtest
       # - Statistic DB for qic-api
-      - ADMIN_STATISTIC_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
-      - ADMIN_STATISTIC_MYSQL_USER=root
-      - ADMIN_STATISTIC_MYSQL_PASS=password
-      - ADMIN_STATISTIC_MYSQL_DB=backend_log
+      # - ADMIN_STATISTIC_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
+      # - ADMIN_STATISTIC_MYSQL_USER=root
+      # - ADMIN_STATISTIC_MYSQL_PASS=password
+      # - ADMIN_STATISTIC_MYSQL_DB=backend_log
       # - bot-factory-backend-service position for task-engine API
-      - ADMIN_TASK_SERVER_URL=http://${BFB_HOST}:15501
+      # - ADMIN_TASK_SERVER_URL=http://${BFB_HOST}:15501
       # - bot-factory-backend-service position for statistic, which is used in nginx.conf
-      - ADMIN_STAT_SERVER_URL=${BFB_HOST}:15501
+      # - ADMIN_STAT_SERVER_URL=${BFB_HOST}:15501
       # - new elk statistic env, used in nginx.conf
       - ADMIN_ELK_STAT_SERVER_URL=127.0.0.1:8200
       # - BF2.0 position, used in nginx.conf
-      - ADMIN_BF_SERVER_URL=${BF2_HOST}:3000
+      # - ADMIN_BF_SERVER_URL=${BF2_HOST}:3000
       # - Main DB for token-auth
       - ADMIN_AUTH_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
       - ADMIN_AUTH_MYSQL_USER=root
@@ -72,19 +72,19 @@ services:
       - ADMIN_AUTH_TIMEOUT=86400
       # - the url which will used in consul value idc/cnlu/<appid>
       # - which can let NLU get words via this URL
-      - ADMIN_DICTIONARY_INTERNAL_SERVER=http://172.17.0.1:${ADMIN_PORT}
+      # - ADMIN_DICTIONARY_INTERNAL_SERVER=http://172.17.0.1:${ADMIN_PORT}
       # - service URL for qic-api for following work
       # - import robot profile into solr
-      - ADMIN_SERVICE_NLU=http://${SNLU_HOST}:13901/
-      - ADMIN_SERVICE_SOLRETL=http://${SOLRETL_HOST}:14401
+      # - ADMIN_SERVICE_NLU=http://${SNLU_HOST}:13901/
+      # - ADMIN_SERVICE_SOLRETL=http://${SOLRETL_HOST}:14401
       # - traning service for intent-engine and rule-engine
       - ADMIN_INTENTS_INTENT_ENGINE_URL=http://${IE_HOST}:15001
       - ADMIN_INTENTS_RULE_ENGINE_URL=http://172.17.0.1:15002
       # - env for setting elasticsearch entrypoint
-      - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
-      - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
-      - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_USERNAME=${ES_BASIC_AUTH_USERNAME}
-      - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_PASSWORD=${ES_BASIC_AUTH_PASSWORD}
+      # - ADMIN_SERVER_ELASTICSEARCH_HOST=${ES_HOST}
+      # - ADMIN_SERVER_ELASTICSEARCH_PORT=${ES_PORT}
+      # - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_USERNAME=${ES_BASIC_AUTH_USERNAME}
+      # - ADMIN_SERVER_ELASTICSEARCH_BASIC_AUTH_PASSWORD=${ES_BASIC_AUTH_PASSWORD}
       # - env for DAL module host
       - ADMIN_SERVER_DAL_URL=http://${DAL_HOST}:8885/
       # - env for Clustering tool host
@@ -96,4 +96,28 @@ services:
       - ADMIN_CU_MYSQL_PASS=${MYSQL_PASS}
       - ADMIN_CU_MYSQL_DB=QISYS
       - ADMIN_CU_LOGIC_PREDICT_URL=http://172.17.0.1:30000
+      # - env for qi module
+      - ADMIN_QI_FILE_VOLUME=/data/voices
+      - ADMIN_QI_ASR_HARDCODE_VOLUME=/tmp/test/mount
+      - ADMIN_QI_RABBITMQ_HOST=${RABBITMQ_HOST}
+      - ADMIN_QI_RABBITMQ_PORT=${RABBITMQ_PORT}
+      - ADMIN_QI_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
+      - ADMIN_QI_MYSQL_USER=${MYSQL_USER}
+      - ADMIN_QI_MYSQL_PASS=${MYSQL_PASS}
+      - ADMIN_QI_MYSQL_DB=QISYS
+      - ADMIN_QI_LOGIC_PREDICT_URL=http://${CCQA_HOST}:80
+      # env for setting module
+      - ADMIN_SETTING_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
+      - ADMIN_SETTING_MYSQL_USER=${MYSQL_USER}
+      - ADMIN_SETTING_MYSQL_PASS=${MYSQL_PASS}
+      - ADMIN_SETTING_MYSQL_DB=QISYS
+      # env for manual module
+      - ADMIN_MANUAL_MYSQL_URL=${MYSQL_HOST}
+      - ADMIN_MANUAL_MYSQL_USER=${MYSQL_USER}
+      - ADMIN_MANUAL_MYSQL_PASS=${MYSQL_PASS}
+      - ADMIN_MANUAL_MYSQL_DB=QISYS
+      - ADMIN_MANUAL_AUTH_MYSQL_URL=${MYSQL_HOST}
+      - ADMIN_MANUAL_AUTH_MYSQL_USER=${MYSQL_USER}
+      - ADMIN_MANUAL_AUTH_MYSQL_PASS=${MYSQL_PASS}
+      - ADMIN_MANUAL_AUTH_MYSQL_DB=auth
     restart: always

@@ -153,6 +153,11 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		boolQuery.Filter(elastic.NewTermQuery("user_id", *query.UserID))
 	}
 
+	// Session ID
+	if query.SessionID != nil && *query.SessionID != "" {
+		boolQuery.Filter(elastic.NewTermQuery("session_id", *query.SessionID))
+	}
+
 	// Rating max & Rating min
 	if query.RatingMax != nil && query.RatingMin != nil {
 		rateRangeQuery := elastic.NewRangeQuery(data.SessionRatingFieldName).
@@ -161,7 +166,7 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		boolQuery.Filter(rateRangeQuery)
 	}
 
-	// Platforms & Genders
+	// Platforms & Sex
 	tags := make([]data.QueryTags, 0)
 
 	if len(query.Platforms) > 0 {
@@ -171,10 +176,10 @@ func newSessionBoolQuery(query *dataV1.SessionsQuery) *elastic.BoolQuery {
 		})
 	}
 
-	if len(query.Genders) > 0 {
+	if len(query.Sex) > 0 {
 		tags = append(tags, data.QueryTags{
 			Type:  "sex",
-			Texts: query.Genders,
+			Texts: query.Sex,
 		})
 	}
 
@@ -303,12 +308,16 @@ func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string) (x
 		session := sessionPtr.(*dataV1.SessionsExportData)
 
 		row := sheet.AddRow()
+		ratingStr := ""
+		if session.Rating > 0 {
+			ratingStr = strconv.FormatInt(session.Rating, 10)
+		}
 		xlsxData := []string{
 			session.SessionID,
 			session.StartTime,
 			session.EndTime,
 			session.UserID,
-			strconv.FormatInt(session.Rating, 10),
+			ratingStr,
 			session.CustomInfo,
 			session.Feedback,
 			session.CustomFeedback,

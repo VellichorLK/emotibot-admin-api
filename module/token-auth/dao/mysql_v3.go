@@ -2229,6 +2229,24 @@ func (controller MYSQLController) GetAppSecretV3(appid string) (string, error) {
 	return secret, nil
 }
 
+func (controller MYSQLController) GetEnterpriseSecretV3(appid string) (string, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	// controller.connectDB
+	queryStr := "SELECT secret FROM enterprises WHERE uuid = ?"
+	row := controller.connectDB.QueryRow(queryStr, appid)
+	secret := ""
+	err = row.Scan(&secret)
+	if err != nil {
+		return "", err
+	}
+	return secret, nil
+}
+
 func (controller MYSQLController) RenewAppSecretV3(appid string) (string, error) {
 	var err error
 	defer func() {
@@ -2277,7 +2295,55 @@ func (controller MYSQLController) RenewAppSecretV3(appid string) (string, error)
 	return secret, err
 }
 
-func (controller MYSQLController) GenerateAppApiKeyV3(appid string, expired int) (string, error) {
+func (controller MYSQLController) RenewEnterpriseSecretV3(enterprise string) (string, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return "", err
+	}
+
+	tx, err := controller.connectDB.Begin()
+	if err != nil {
+		return "", err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := "UPDATE enterprises SET secret = concat(md5(concat(now(), `uuid`)), sha1(rand())) WHERE uuid = ?"
+	result, err := tx.Exec(queryStr, enterprise)
+	if err != nil {
+		return "", err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return "", err
+	}
+	if n == 0 {
+		return "", sql.ErrNoRows
+	}
+
+	queryStr = "SELECT secret FROM enterprises WHERE uuid = ?"
+	row := tx.QueryRow(queryStr, enterprise)
+	secret := ""
+	if err = row.Scan(&secret); err != nil {
+		return "", err
+	}
+
+	queryStr = "DELETE FROM api_key WHERE enterprise = ?"
+	if _, err = tx.Exec(queryStr, enterprise); err != nil {
+		return "", err
+	}
+
+	err = tx.Commit()
+	return secret, err
+}
+
+func (controller MYSQLController) GenerateAppApiKeyV3(enterprise, appid string, expired int) (string, error) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -2295,19 +2361,32 @@ func (controller MYSQLController) GenerateAppApiKeyV3(appid string, expired int)
 	}
 	defer util.ClearTransition(tx)
 
-	queryStr := "SELECT secret FROM apps WHERE uuid = ?"
-	row := tx.QueryRow(queryStr, appid)
+	var row *sql.Row
+	if appid != "" {
+		enterprise = ""
+		queryStr := "SELECT secret FROM apps WHERE uuid = ?"
+		row = tx.QueryRow(queryStr, appid)
+	} else {
+		appid = ""
+		queryStr := "SELECT secret FROM enterprises WHERE uuid = ?"
+		row = tx.QueryRow(queryStr, enterprise)
+	}
 	secret := ""
 	if err = row.Scan(&secret); err != nil {
-		return "", err
+		if err == sql.ErrNoRows {
+			err = nil
+			secret = "EMOTIBOTDEBUGGER"
+		} else {
+			return "", err
+		}
 	}
 
 	now := time.Now()
 	token := fmt.Sprintf("%x%x",
 		md5.Sum([]byte(now.String()+appid)),
 		md5.Sum([]byte(now.String()+secret)))
-	queryStr = "INSERT INTO api_key (appid, api_key, expire_time, create_time) VALUES (?, ?, ?, ?)"
-	if _, err := tx.Exec(queryStr, appid, token, now.Unix()+int64(expired), now.Unix()); err != nil {
+	queryStr := "INSERT INTO api_key (enterprise, appid, api_key, expire_time, create_time) VALUES (?, ?, ?, ?, ?)"
+	if _, err := tx.Exec(queryStr, enterprise, appid, token, now.Unix()+int64(expired), now.Unix()); err != nil {
 		return "", err
 	}
 	err = tx.Commit()
@@ -2382,6 +2461,31 @@ func (controller MYSQLController) GetAppViaApiKey(apiKey string) (string, error)
 	}
 
 	return appid, nil
+}
+
+func (controller MYSQLController) GetEnterpriseViaApiKey(apiKey string) (string, error) {
+	var err error
+	defer func() {
+		if err != nil {
+			util.LogDBError(err)
+		}
+	}()
+
+	ok, err := controller.checkDB()
+	if !ok {
+		return "", err
+	}
+
+	now := time.Now()
+
+	queryStr := "SELECT enterprise FROM api_key WHERE api_key = ? AND expire_time > ?"
+	row := controller.connectDB.QueryRow(queryStr, apiKey, now.Unix())
+	enterprise := ""
+	if err = row.Scan(&enterprise); err != nil {
+		return "", err
+	}
+
+	return enterprise, nil
 }
 
 func (controller MYSQLController) ClearExpireToken() {

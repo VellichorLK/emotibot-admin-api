@@ -18,16 +18,18 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
-	tagDao     model.TagDao
-	callDao    model.CallDao
-	taskDao    model.TaskDao
-	segmentDao model.SegmentDao
-	producer   *rabbitmq.Producer
-	consumer   *rabbitmq.Consumer
-	sqlConn    *sql.DB
-	dbLike     model.DBLike
-	volume     string
+	ModuleInfo   util.ModuleInfo
+	tagDao       model.TagDao
+	callDao      model.CallDao = &model.CallSQLDao{}
+	segmentDao   model.SegmentDao
+	taskDao      = &model.TaskSQLDao{}
+	userValueDao = &model.UserValueDao{}
+	userKeyDao   = &model.UserKeySQLDao{}
+	producer     *rabbitmq.Producer
+	consumer     *rabbitmq.Consumer
+	sqlConn      *sql.DB
+	dbLike       model.DBLike
+	volume       string
 )
 
 func init() {
@@ -80,13 +82,15 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, CallsDetailHandler),
-			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, UpdateCallsFileHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, CallsFileHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, callRequest(CallsDetailHandler)),
+			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, callRequest(CallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
-			util.NewEntryPoint(http.MethodPost, "manual/use/all/tags", []string{}, handleTrainAllTags),
-			util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
+			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
+			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
+			util.NewEntryPoint(http.MethodGet, "train/model/training", []string{}, handleTrainingStatus),
+			//util.NewEntryPoint(http.MethodDelete, "manual/use/all/tags", []string{}, handleUnload),
 
 			util.NewEntryPoint(http.MethodGet, "call-in/navigation/{id}", []string{}, handleGetFlowSetting),
 			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/name", []string{}, handleModifyFlow),
@@ -98,7 +102,26 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "call-in/navigation/{id}/node/order", []string{}, handleNodeOrder),
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
-			util.NewEntryPoint(http.MethodPut, "call-in/conversation/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
+			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
+
+			util.NewEntryPoint(http.MethodGet, "backup/groups", []string{}, handleExportGroups),
+			util.NewEntryPoint(http.MethodPost, "restore/groups", []string{}, handleImportGroups),
+			util.NewEntryPoint(http.MethodGet, "export/calls", []string{}, handleExportCalls),
+			util.NewEntryPoint(http.MethodPost, "import/tags", []string{}, handleImportTags),
+			util.NewEntryPoint(http.MethodPost, "import/sentences", []string{}, handleImportSentences),
+			util.NewEntryPoint(http.MethodPost, "import/rules", []string{}, handleImportRules),
+			util.NewEntryPoint(http.MethodPost, "import/call-in", []string{}, handleImportCallIn),
+
+			util.NewEntryPoint(http.MethodPost, "rule/silence", []string{}, handleNewRuleSilence),
+			util.NewEntryPoint(http.MethodGet, "rule/silence", []string{}, handleGetRuleSilenceList),
+			util.NewEntryPoint(http.MethodGet, "rule/silence/{id}", []string{}, WithIntIDCheck(handleGetRuleSilence)),
+			util.NewEntryPoint(http.MethodDelete, "rule/silence/{id}", []string{}, WithIntIDCheck(handleDeleteRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/name", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, WithIntIDCheck(handleExceptionRuleSilenceBefore)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, WithIntIDCheck(handleExceptionRuleSilenceAfter)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -119,7 +142,7 @@ func init() {
 				logger.Info.Println("volume: ", volume, "is recognized.")
 
 			},
-			"init db": func() {
+			"init db & rabbitmq": func() {
 				envs := ModuleInfo.Environments
 
 				url := envs["MYSQL_URL"]
@@ -148,14 +171,19 @@ func init() {
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				callDao = model.NewCallSQLDao(sqlConn)
+				callCount = callDao.Count
+				calls = callDao.Calls
 				taskDao = model.NewTaskDao(sqlConn)
+				callTask = taskDao.CallTask
+				tasks = taskDao.Task
 				relationDao = &model.RelationSQLDao{}
 				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
 				segmentDao = model.NewSegmentDao(dbLike)
-
-			},
-			"init RabbitMQ": func() {
-				envs := ModuleInfo.Environments
+				userValueDao = model.NewUserValueDao(dbLike.Conn())
+				valuesKey = userValueDao.ValuesKey
+				userKeyDao = model.NewUserKeyDao(dbLike.Conn())
+				userKeys = userKeyDao.UserKeys
+				keyvalues = userKeyDao.KeyValues
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")
@@ -166,7 +194,7 @@ func init() {
 					logger.Error.Println("RABBITMQ_PORT is required!")
 					return
 				}
-				_, err := strconv.Atoi(port)
+				_, err = strconv.Atoi(port)
 				if err != nil {
 					logger.Error.Println("RABBITMQ_PORT should be a valid int value, ", err)
 					return
@@ -185,6 +213,7 @@ func init() {
 					QueueName: "dst_queue",
 					MaxRetry:  10,
 				})
+				// require dao init first.
 				consumer.Subscribe(ASRWorkFlow)
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 

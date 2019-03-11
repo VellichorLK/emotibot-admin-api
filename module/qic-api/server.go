@@ -20,6 +20,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/cu"
 	"emotibot.com/emotigo/module/qic-api/manual"
 	"emotibot.com/emotigo/module/qic-api/qi"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 	"emotibot.com/emotigo/module/qic-api/setting/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -37,6 +38,7 @@ var modules = []*util.ModuleInfo{
 	&qi.ModuleInfo,
 	&UI.ModuleInfo,
 	&manual.ModuleInfo,
+	&sensitive.ModuleInfo,
 	&setting.ModuleInfo,
 }
 
@@ -206,7 +208,7 @@ func setRoute() *mux.Router {
 						if err := recover(); err != nil {
 							errMsg := fmt.Sprintf("%#v", err)
 							util.WriteWithStatus(w, errMsg, http.StatusInternalServerError)
-							util.PrintRuntimeStack(10)
+							util.PrintRuntimeStack(30)
 							logger.Error.Println("Panic error:", errMsg)
 						}
 					}()

@@ -27,6 +27,13 @@ func SessionsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
 	result, totalSize, err := servicesV1.SessionsQuery(query)
 	if err != nil {
 		var errResponse data.ErrorResponse
@@ -57,6 +64,13 @@ func SessionsExportHandler(w http.ResponseWriter, r *http.Request) {
 	query, err, errCode := newSessionQuery(r)
 	if err != nil {
 		errResponse := data.NewErrorResponseWithCode(errCode, err.Error())
+		controllers.ReturnBadRequest(w, errResponse)
+		return
+	}
+
+	if query.StartTime.After(query.EndTime) {
+		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
+			"start_time cannot greater than end_time")
 		controllers.ReturnBadRequest(w, errResponse)
 		return
 	}
@@ -173,7 +187,7 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 	endTime := time.Unix(request.EndTime, 0).UTC()
 
 	var platforms []string
-	var genders []string
+	var sex []string
 
 	if request.Platforms != nil {
 		for _, platform := range request.Platforms {
@@ -188,16 +202,16 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 		}
 	}
 
-	if request.Genders != nil {
-		for _, gender := range request.Genders {
-			g, found := services.GetTagNameByID(appID, "sex", gender)
+	if request.Sex != nil {
+		for _, _sex := range request.Sex {
+			s, found := services.GetTagNameByID(appID, "sex", _sex)
 			if !found {
 				err = data.ErrInvalidRequestBody
 				errCode = data.ErrCodeInvalidParameterGender
 				return
 			}
 
-			genders = append(genders, g)
+			sex = append(sex, s)
 		}
 	}
 
@@ -226,13 +240,14 @@ func newSessionQuery(r *http.Request) (query *dataV1.SessionsQuery, err error, e
 			EndTime:      endTime,
 		},
 		Platforms: platforms,
-		Genders:   genders,
+		Sex:       sex,
 		UserID:    request.UserID,
 		RatingMax: request.RatingMax,
 		RatingMin: request.RatingMin,
 		Feedback:  request.Feedback,
 		From:      (page - 1) * int64(limit),
 		Limit:     limit,
+		SessionID: request.SessionID,
 	}
 
 	if request.FeedbackStartTime != nil {

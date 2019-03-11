@@ -456,6 +456,9 @@ func updateEnterpriseStatus(w http.ResponseWriter, r *http.Request, status bool)
 		return
 	}
 
+	username := r.FormValue("username")
+	password := r.FormValue("password")
+
 	origEnterprise, err = service.GetEnterpriseV3(enterpriseID)
 	if err != nil {
 		util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
@@ -465,7 +468,11 @@ func updateEnterpriseStatus(w http.ResponseWriter, r *http.Request, status bool)
 		return
 	}
 
-	err = service.UpdateEnterpriseStatusV4(enterpriseID, status)
+	if status {
+		err = service.ActivateEnterpriseV4(enterpriseID, username, password)
+	} else {
+		err = service.UpdateEnterpriseStatusV4(enterpriseID, false)
+	}
 	if err != nil {
 		util.ReturnError(w, adminerrors.ErrnoDBError, err.Error())
 		return

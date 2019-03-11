@@ -7,6 +7,7 @@ import (
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 	"emotibot.com/emotigo/module/qic-api/util/test"
+	"bytes"
 )
 
 var mockCtxSentences = []string{
@@ -832,6 +833,13 @@ var expectSensCredit = map[uint64]bool{
 	46: true,
 }
 
+var expectSenMatched = map[uint64][]int{
+	41: []int{1, 7},
+	43: []int{3, 9},
+	45: []int{5},
+	46: []int{6},
+}
+
 var expectTagSeg = map[uint64][]int{
 	51: []int{1, 7},
 	52: []int{2, 8},
@@ -855,17 +863,19 @@ var segToTags = map[int][]uint64{
 	10: []uint64{54},
 }
 
+var mockLevRel = []map[uint64][]uint64{
+	groupsToRules,
+	rulesToCFs,
+	cfsToSenGrps,
+	senGrpsToSens,
+	sensToTags,
+}
+
 type mockRelationDao struct {
 }
 
-func (m *mockRelationDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64) ([]map[uint64][]uint64, [][]uint64, error) {
-	resp := make([]map[uint64][]uint64, 0)
-	resp = append(resp, groupsToRules)
-	resp = append(resp, rulesToCFs)
-	resp = append(resp, cfsToSenGrps)
-	resp = append(resp, senGrpsToSens)
-	resp = append(resp, sensToTags)
-	return resp, nil, nil
+func (m *mockRelationDao) GetLevelRelationID(sql model.SqlLike, from int, to int, id []uint64, ignoreNULL bool) ([]map[uint64][]uint64, [][]uint64, error) {
+	return mockLevRel[from:to], nil, nil
 
 }
 
@@ -1111,6 +1121,13 @@ func (m *mockGroupDaoMatch) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlL
 	return nil, nil
 }
 
+func (m *mockGroupDaoMatch) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error) {
+	return nil, nil
+}
+func (m *mockGroupDaoMatch) ImportGroups(sqlLike model.SqlLike, fileName string) error {
+	return nil
+}
+
 type mockTrainedModelDao struct {
 }
 
@@ -1289,6 +1306,46 @@ func TestRuleGroupCriteria(t *testing.T) {
 			break
 		}
 
+	}
+
+}
+
+func TestSimpleSentenceMatch(t *testing.T) {
+
+	mockRelation := &mockRelationDao{}
+	relationDao = mockRelation
+	predictor = &mockPredictClient2{}
+
+	modelDao = &mockTrainedModelDao{}
+	dbLike = &test.MockDBLike{}
+
+	segs := make([]string, len(segToTags), len(segToTags))
+	ids := make([]uint64, 0, len(sensToTags))
+	for k := range sensToTags {
+		ids = append(ids, k)
+	}
+	matchedSentence, err := SimpleSentenceMatch(segs, ids, "")
+	if err != nil {
+		t.Fatalf("expecting no error, but get %s\n", err.Error())
+	}
+
+	if len(expectSenMatched) != len(matchedSentence) {
+		t.Fatalf("expect num of %d matched, but get %d\n", len(expectSenMatched), len(matchedSentence))
+	}
+	for expID, expList := range expectSenMatched {
+		if getList, ok := matchedSentence[expID]; ok {
+			if len(expList) != len(getList) {
+				t.Errorf("expect sentence id %d has %d matched seg, but get %d\n", expID, len(expList), len(getList))
+			} else {
+				for i := 0; i < len(expList); i++ {
+					if expList[i] != getList[i] {
+						t.Errorf("expect sentence id %d, %d'th segment is %d, but get %d\n", expID, i, expList[i], getList[i])
+					}
+				}
+			}
+		} else {
+			t.Errorf("expect get sentence id %d matched, but get no matched\n", expID)
+		}
 	}
 
 }
