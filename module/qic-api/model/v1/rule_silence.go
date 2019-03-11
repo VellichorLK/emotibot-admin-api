@@ -229,9 +229,11 @@ func (s *SilenceRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
 	copySQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s=?", table,
 		fieldsSQL, fieldsSQL, table, fldID)
 
-	params := make([]interface{}, 1)
-	params[0] = q.ID[0]
-	return execSQL(conn, copySQL, params)
+	res, err := conn.Exec(copySQL, q.ID[0])
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 type condition interface {
