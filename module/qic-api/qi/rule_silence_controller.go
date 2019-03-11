@@ -29,6 +29,7 @@ var (
 	ErrWrongSecond  = errors.New("invalid seconds")
 	ErrorWrongTimes = errors.New("invalid times")
 	ErrorWrongScore = errors.New("invalid score")
+	ErrNoSuchID     = errors.New("no such id")
 )
 
 type exceptionList struct {

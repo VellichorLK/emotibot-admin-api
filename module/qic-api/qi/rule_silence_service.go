@@ -174,5 +174,35 @@ func UpdateRuleSilence(q *model.GeneralQuery, d *model.SilenceUpdateSet) (int64,
 	if q == nil || len(q.ID) == 0 {
 		return 0, ErrNoID
 	}
-	return ruleSilenceDao.Update(dbLike.Conn(), q, d)
+	tx, err := dbLike.Begin()
+	if err != nil {
+		logger.Error.Printf("create session failed. %s\n", err)
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	newID, err := ruleSilenceDao.Copy(tx, q)
+	if err != nil {
+		logger.Error.Printf("copy new record %v failed. %s\n", *q, err)
+		return 0, err
+	}
+
+	affected, err := ruleSilenceDao.SoftDelete(tx, q)
+	if err != nil {
+		logger.Error.Printf("delete failed. %s\n", err)
+		return 0, err
+	}
+	if affected == 0 {
+		return 0, ErrNoSuchID
+	}
+
+	newQuery := &model.GeneralQuery{ID: []int64{newID}}
+	affected, err = ruleSilenceDao.Update(tx, newQuery, d)
+	if err != nil {
+		logger.Error.Printf("update failed. %s\n", err)
+		return 0, err
+	}
+	tx.Commit()
+	return affected, err
+
 }

@@ -22,6 +22,7 @@ type SilenceRule struct {
 	IsDelete        int    `json:"-"`
 	CreateTime      int64  `json:"-"`
 	UpdateTime      int64  `json:"-"`
+	UUID            string `json:"uuid"`
 }
 
 type SilenceUpdateSet struct {
@@ -35,6 +36,7 @@ type SilenceUpdateSet struct {
 
 type GeneralQuery struct {
 	ID         []int64
+	UUID       []string
 	Enterprise *string
 	IsDelete   *int
 }
@@ -42,6 +44,7 @@ type GeneralQuery struct {
 func (g *GeneralQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	flds := []string{
 		fldID,
+		fldUUID,
 		fldEnterprise,
 		fldIsDelete,
 	}
@@ -54,6 +57,7 @@ type SilenceRuleDao interface {
 	Count(conn SqlLike, q *GeneralQuery) (int64, error)
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error)
+	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
 }
 
 type SilenceRuleSQLDao struct {
@@ -80,6 +84,7 @@ func (s *SilenceRuleSQLDao) Add(conn SqlLike, r *SilenceRule) (int64, error) {
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -111,6 +116,7 @@ func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -170,7 +176,7 @@ func (s *SilenceRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, error) 
 
 //SoftDelete simply set the is_delete to 1
 func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	table := tblSilenceRule
@@ -179,7 +185,7 @@ func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, er
 
 //Update updates the records
 func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	flds := []string{
@@ -192,6 +198,40 @@ func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpda
 	}
 	table := tblSilenceRule
 	return updateSQL(conn, q, d, table, flds)
+}
+
+//Copy copys only one record, only use the first ID in q
+func (s *SilenceRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if q == nil || (len(q.ID) == 0) {
+		return 0, ErrNeedCondition
+	}
+
+	flds := []string{
+		fldName,
+		fldScore,
+		fldSilSecond,
+		fldSilTime,
+		fldExcptBefore,
+		fldExcptAfter,
+		fldEnterprise,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+
+	for i := range flds {
+		flds[i] = "`" + flds[i] + "`"
+	}
+
+	fieldsSQL := strings.Join(flds, ",")
+	table := tblSilenceRule
+	copySQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s=?", table,
+		fieldsSQL, fieldsSQL, table, fldID)
+
+	params := make([]interface{}, 1)
+	params[0] = q.ID[0]
+	return execSQL(conn, copySQL, params)
 }
 
 type condition interface {
