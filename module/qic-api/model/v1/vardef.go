@@ -297,6 +297,7 @@ const (
 	fldCallStatus           = "status"
 	fldCallDemoFilePath     = "demo_file_path"
 	fldCallTaskID           = "task_id"
+	fldWhos                 = "whos"
 )
 
 // fields for Relation_Call_RuleGroup table

@@ -2069,15 +2069,30 @@ func TraceValidateTokenHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 	appid := r.FormValue("appid")
+	enterprise := r.FormValue("enterprise")
 	secret := r.FormValue("secret")
 	expiredStr := r.FormValue("expired")
 	expired, err := strconv.Atoi(expiredStr)
 	if err != nil {
 		expired = defaultExpiredTime
 	}
+	requester := getRequesterV3(r)
+	if requester == nil {
+		ReturnUnauthorized(w)
+		return
+	}
 
-	util.LogTrace.Printf("Check secret with %s, %s\n", appid, secret)
-	valid, err := service.CheckAppSecretValid(appid, secret)
+	valid := false
+	if enterprise != "" && requester.Type <= enum.AdminUser {
+		util.LogTrace.Printf("Check secret with enterprise %s, %s\n", enterprise, secret)
+		valid, err = service.CheckEnterpriseSecretValid(enterprise, secret)
+	} else if appid != "" && requester.Type <= enum.NormalUser {
+		util.LogTrace.Printf("Check secret with appid %s, %s\n", appid, secret)
+		valid, err = service.CheckAppSecretValid(appid, secret)
+	} else if requester.Type == enum.SuperAdminUser {
+		valid = true
+	}
+
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -2088,7 +2103,7 @@ func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, err := service.IssueNewApiKey(appid, expired)
+	apiKey, err := service.IssueNewApiKey(enterprise, appid, expired)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -2096,7 +2111,14 @@ func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 
 	returnSuccess(w, apiKey)
 }
+
 func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
+	requester := getRequesterV3(r)
+	if requester != nil {
+		returnSuccess(w, requester)
+		return
+	}
+
 	authorization := r.Header.Get("Authorization")
 	apiKey := ""
 	if authorization == "" {
@@ -2116,16 +2138,28 @@ func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appid, err := service.GetAppViaApiKey(apiKey)
+	appid, enterprise, err := service.GetApiKeyOwner(apiKey)
 	if err != nil {
-		returnInternalError(w, err.Error())
-		return
-	}
-
-	if appid == "" {
 		ReturnUnauthorized(w)
 		return
 	}
+
+	userInfo := data.UserDetailV3{}
+	if appid != "" {
+		userInfo.ID = fmt.Sprintf("%s API", appid)
+		userInfo.Type = enum.NormalUser
+	} else if enterprise != "" {
+		userInfo.ID = fmt.Sprintf("%s API", enterprise)
+		userInfo.Type = enum.AdminUser
+	} else {
+		userInfo.ID = "System API"
+		userInfo.Type = enum.SuperAdminUser
+	}
+	userInfo.UserName = userInfo.ID
+	userInfo.Status = 1
+
+	returnSuccess(w, &userInfo)
+
 }
 
 func AppGetSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
@@ -2155,6 +2189,23 @@ func AppRenewSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	returnSuccess(w, secret)
+}
+func EnterpriseGetSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	enterprise := vars["enterpriseID"]
+	if enterprise == "" {
+		returnBadRequest(w, enterprise)
+		return
+	}
+	secret, err := service.GetEnterpriseSecret(enterprise)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+	returnSuccess(w, secret)
+}
+func EnterpriseRenewSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func isSSOValid() bool {

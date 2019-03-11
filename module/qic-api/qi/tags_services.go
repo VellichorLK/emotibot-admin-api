@@ -301,7 +301,10 @@ func propagateUpdateFromSentence(sentences []*model.Sentence, newTag, oldTag uin
 		sUUID = append(sUUID, s.UUID)
 		activeSentences = append(activeSentences, *s)
 	}
-
+	// If no sentences need to update. We stop propagate.
+	if len(sUUID) == 0 {
+		return
+	}
 	// delete old sentences
 	var deleted int8
 	sentenceQuery := &model.SentenceQuery{

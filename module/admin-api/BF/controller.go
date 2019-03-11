@@ -104,6 +104,7 @@ func init() {
 			util.NewEntryPoint("POST", "tag/", []string{}, handleRedirect),
 			util.NewEntryPoint("GET", "sq_category/", []string{}, handleRedirect),
 			util.NewEntryPoint("POST", "sq_category/", []string{}, handleRedirect),
+			util.NewEntryPoint("POST", "solution_stage_status/", []string{}, handleRedirect),
 		},
 	}
 }

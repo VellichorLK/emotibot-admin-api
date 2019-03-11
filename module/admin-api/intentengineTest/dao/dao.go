@@ -687,6 +687,9 @@ func (dao IntentTestDao) GetUsableModels(appID string) (models *data.UseableMode
 		return intentNames, nil
 	}
 
+	var ieModel *data.IEModel
+	var modelID sql.NullString
+
 	// In used Intent Engine model
 	queryStr := fmt.Sprintf(`
 		SELECT iv.version, iv.ie_model_id, iv.start_train, i.intent_count, iv.sentence_count
@@ -701,14 +704,16 @@ func (dao IntentTestDao) GetUsableModels(appID string) (models *data.UseableMode
 		WHERE appid = ? AND in_used = 1 AND result = 1
 		ORDER BY iv.version DESC
 		LIMIT 1`, IntentVersionsTable, IntentsTable)
-	ieModel := data.NewIEModel()
-	err = tx.QueryRow(queryStr, appID, appID).Scan(&ieModel.IntentVersion, &ieModel.ModelID,
+
+	ieModel = data.NewIEModel()
+	err = tx.QueryRow(queryStr, appID, appID).Scan(&ieModel.IntentVersion, &modelID,
 		&ieModel.TrainTime, &ieModel.IntentsCount, &ieModel.SentencesCount)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 
-	if err != sql.ErrNoRows {
+	if err != sql.ErrNoRows && modelID.Valid {
+		ieModel.ModelID = modelID.String
 		models.InUsed = ieModel
 
 		// Get intent names of in used Intent Enginge model
@@ -745,12 +750,16 @@ func (dao IntentTestDao) GetUsableModels(appID string) (models *data.UseableMode
 
 	for rows.Next() {
 		ieModel := data.NewIEModel()
-		err = rows.Scan(&ieModel.IntentVersion, &ieModel.ModelID, &ieModel.TrainTime,
+		err = rows.Scan(&ieModel.IntentVersion, &modelID, &ieModel.TrainTime,
 			&ieModel.IntentsCount, &ieModel.SentencesCount)
 		if err != nil {
 			return nil, err
 		}
-		models.RecentTrained = append(models.RecentTrained, ieModel)
+
+		if modelID.Valid {
+			ieModel.ModelID = modelID.String
+			models.RecentTrained = append(models.RecentTrained, ieModel)
+		}
 	}
 
 	// Get intent names of in recent trained Intent Enginge models
