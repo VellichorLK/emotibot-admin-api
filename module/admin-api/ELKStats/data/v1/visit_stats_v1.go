@@ -169,7 +169,7 @@ type TopUnmatchedQuestionData struct {
 	LastTimeText  string `json:"last_time_txt"`
 }
 
-func GetRequest(locale string) []data.TableHeaderItem {
+func GetVisitStatsTableHeader(locale string) []data.TableHeaderItem {
 	var VisitStatsTableHeader = []data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: localemsg.Get(locale, "StatsItem"),
@@ -227,7 +227,7 @@ func GetRequest(locale string) []data.TableHeaderItem {
 	return VisitStatsTableHeader
 }
 
-func GetRequestTag(locale string) []data.TableHeaderItem {
+func GetVisitStatsTagTableHeader(locale string) []data.TableHeaderItem {
 	var VisitStatsTagTableHeader = []data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: localemsg.Get(locale, "TotalChatCount"),
@@ -281,7 +281,7 @@ func GetRequestTag(locale string) []data.TableHeaderItem {
 	return VisitStatsTagTableHeader
 }
 
-func GetRequestAnswerCategory(locale string) []data.TableHeaderItem {
+func GetAnswerCategoryTableHeader(locale string) []data.TableHeaderItem {
 	var AnswerCategoryTableHeader = []data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: localemsg.Get(locale, "BizCate"),
