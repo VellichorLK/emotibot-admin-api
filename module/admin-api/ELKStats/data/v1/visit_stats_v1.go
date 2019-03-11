@@ -6,6 +6,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 type Record struct {
@@ -168,125 +169,134 @@ type TopUnmatchedQuestionData struct {
 	LastTimeText  string `json:"last_time_txt"`
 }
 
-var VisitStatsTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "统计项",
-		ID:   "time_txt",
-	},
-	data.TableHeaderItem{
-		Text: "总会话数",
-		ID:   common.VisitStatsMetricConversations,
-	},
-	data.TableHeaderItem{
-		Text: "独立用户数",
-		ID:   common.VisitStatsMetricUniqueUsers,
-	},
-	data.TableHeaderItem{
-		Text: "新增用户数",
-		ID:   common.VisitStatsMetricNewUsers,
-	},
-	data.TableHeaderItem{
-		Text: "总提问数",
-		ID:   common.VisitStatsMetricTotalAsks,
-	},
-	data.TableHeaderItem{
-		Text: "标准回复",
-		ID:   common.VisitStatsMetricNormalResponses,
-	},
-	data.TableHeaderItem{
-		Text: "聊天",
-		ID:   common.VisitStatsMetricChats,
-	},
-	data.TableHeaderItem{
-		Text: "其他",
-		ID:   common.VisitStatsMetricOthers,
-	},
-	data.TableHeaderItem{
-		Text: "未知问题回复",
-		ID:   common.VisitStatsMetricUnknownQnA,
-	},
-	data.TableHeaderItem{
-		Text: "未解决",
-		ID:   "unsolved",
-	},
-	data.TableHeaderItem{
-		Text: "成功率",
-		ID:   common.VisitStatsMetricSuccessRate,
-	},
-	data.TableHeaderItem{
-		Text: "解决率",
-		ID:   "solved_rate",
-	},
-	data.TableHeaderItem{
-		Text: "平均会话对话数",
-		ID:   common.VisitStatsMetricConversationsPerSession,
-	},
+func GetRequest(locale string) []data.TableHeaderItem {
+	var VisitStatsTableHeader = []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "StatsItem"),
+			ID:   "time_txt",
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "TotalChatCount"),
+			ID:   common.VisitStatsMetricConversations,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "IndependentUserCount"),
+			ID:   common.VisitStatsMetricUniqueUsers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "AddedUserCount"),
+			ID:   common.VisitStatsMetricNewUsers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "TotalQCount"),
+			ID:   common.VisitStatsMetricTotalAsks,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "StandardResponse"),
+			ID:   common.VisitStatsMetricNormalResponses,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Chat"),
+			ID:   common.VisitStatsMetricChats,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Other"),
+			ID:   common.VisitStatsMetricOthers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "BackfillResponse"),
+			ID:   common.VisitStatsMetricUnknownQnA,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Unresolved"),
+			ID:   "unsolved",
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "SuccessRate"),
+			ID:   common.VisitStatsMetricSuccessRate,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "ResolveRate"),
+			ID:   "solved_rate",
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "AverageChatCount"),
+			ID:   common.VisitStatsMetricConversationsPerSession,
+		},
+	}
+	return VisitStatsTableHeader
 }
 
-var VisitStatsTagTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "总会话数",
-		ID:   common.VisitStatsMetricConversations,
-	},
-	data.TableHeaderItem{
-		Text: "独立用户数",
-		ID:   common.VisitStatsMetricUniqueUsers,
-	},
-	data.TableHeaderItem{
-		Text: "新增用户数",
-		ID:   common.VisitStatsMetricNewUsers,
-	},
-	data.TableHeaderItem{
-		Text: "总提问数",
-		ID:   common.VisitStatsMetricTotalAsks,
-	},
-	data.TableHeaderItem{
-		Text: "标准回复",
-		ID:   common.VisitStatsMetricNormalResponses,
-	},
-	data.TableHeaderItem{
-		Text: "聊天",
-		ID:   common.VisitStatsMetricChats,
-	},
-	data.TableHeaderItem{
-		Text: "其他",
-		ID:   common.VisitStatsMetricOthers,
-	},
-	data.TableHeaderItem{
-		Text: "未知问题回复",
-		ID:   common.VisitStatsMetricUnknownQnA,
-	},
-	data.TableHeaderItem{
-		Text: "未解决",
-		ID:   "unsolved",
-	},
-	data.TableHeaderItem{
-		Text: "成功率",
-		ID:   common.VisitStatsMetricSuccessRate,
-	},
-	data.TableHeaderItem{
-		Text: "解决率",
-		ID:   "solved_rate",
-	},
-	data.TableHeaderItem{
-		Text: "平均会话对话数",
-		ID:   common.VisitStatsMetricConversationsPerSession,
-	},
+func GetRequestTag(locale string) []data.TableHeaderItem {
+	var VisitStatsTagTableHeader = []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "TotalChatCount"),
+			ID:   common.VisitStatsMetricConversations,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "IndependentUserCount"),
+			ID:   common.VisitStatsMetricUniqueUsers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "AddedUserCount"),
+			ID:   common.VisitStatsMetricNewUsers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "TotalQCount"),
+			ID:   common.VisitStatsMetricTotalAsks,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "StandardResponse"),
+			ID:   common.VisitStatsMetricNormalResponses,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Chat"),
+			ID:   common.VisitStatsMetricChats,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Other"),
+			ID:   common.VisitStatsMetricOthers,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "BackfillResponse"),
+			ID:   common.VisitStatsMetricUnknownQnA,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "Unresolved"),
+			ID:   "unsolved",
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "SuccessRate"),
+			ID:   common.VisitStatsMetricSuccessRate,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "ResolveRate"),
+			ID:   "solved_rate",
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "AverageChatCount"),
+			ID:   common.VisitStatsMetricConversationsPerSession,
+		},
+	}
+	return VisitStatsTagTableHeader
 }
 
-var AnswerCategoryTableHeader = []data.TableHeaderItem{
-	data.TableHeaderItem{
-		Text: "业务类",
-		ID:   common.CategoryBusiness,
-	},
-	data.TableHeaderItem{
-		Text: "聊天类",
-		ID:   common.CategoryChat,
-	},
-	data.TableHeaderItem{
-		Text: "其他",
-		ID:   common.CategoryOther,
-	},
+func GetRequestAnswerCategory(locale string) []data.TableHeaderItem {
+	var AnswerCategoryTableHeader = []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "BizCate"),
+			ID:   common.CategoryBusiness,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "ChatCate"),
+			ID:   common.CategoryChat,
+		},
+		data.TableHeaderItem{
+			Text: localemsg.Get(locale, "OtherCate"),
+			ID:   common.CategoryOther,
+		},
+	}
+	return AnswerCategoryTableHeader
 }
 
 type VisitStatsQ struct {

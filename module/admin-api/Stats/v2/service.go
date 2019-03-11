@@ -1,6 +1,8 @@
 package v2
 
 import (
+	"fmt"
+
 	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
@@ -58,6 +60,7 @@ func GetEnterpriseAuditRecord(filter *AuditInput, locale string) (*AuditResult, 
 	}
 	transformLogsWording(logs)
 
+	fmt.Printf(locale)
 	ret := AuditResult{
 		Total:  count,
 		Header: robotAuditHeaders[locale],
@@ -87,6 +90,7 @@ func GetSystemAuditRecord(filter *AuditInput, locale string) (*AuditResult, Admi
 	}
 	transformLogsWording(logs)
 
+	fmt.Printf(locale)
 	ret := AuditResult{
 		Total:  count,
 		Header: robotAuditHeaders[locale],
