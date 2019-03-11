@@ -23,7 +23,7 @@ type SegmentPredictQuery struct {
 
 func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	flds := []string{
-		fldSegmentID,
+		fldSegID,
 		fldWhos,
 	}
 	return makeAndCondition(s, flds)
