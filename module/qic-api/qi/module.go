@@ -113,6 +113,15 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "import/sentences", []string{}, handleImportSentences),
 			util.NewEntryPoint(http.MethodPost, "import/rules", []string{}, handleImportRules),
 			util.NewEntryPoint(http.MethodPost, "import/call-in", []string{}, handleImportCallIn),
+
+			util.NewEntryPoint(http.MethodPost, "rule/silence", []string{}, handleNewRuleSilence),
+			util.NewEntryPoint(http.MethodGet, "rule/silence", []string{}, handleGetRuleSilenceList),
+			util.NewEntryPoint(http.MethodGet, "rule/silence/{id}", []string{}, WithIntIDCheck(handleGetRuleSilence)),
+			util.NewEntryPoint(http.MethodDelete, "rule/silence/{id}", []string{}, WithIntIDCheck(handleDeleteRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/name", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, WithIntIDCheck(handleExceptionRuleSilenceBefore)),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, WithIntIDCheck(handleExceptionRuleSilenceAfter)),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
