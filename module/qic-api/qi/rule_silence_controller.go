@@ -201,7 +201,8 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	req.ExceptionBefore = nil
 	req.ExceptionAfter = nil
 
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise}, &req)
+	isDelete := 0
+	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
 	if err != nil {
 		logger.Error.Printf("update %d failed. %s\n", id, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -233,7 +234,8 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 
 	updateSet.ExceptionBefore = &exceptStr
 
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise}, &updateSet)
+	isDelete := 0
+	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
 	if err != nil {
 		logger.Error.Printf("update %d failed. %s\n", id, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -268,7 +270,8 @@ func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
 
 	updateSet.ExceptionAfter = &exceptStr
 
-	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise}, &updateSet)
+	isDelete := 0
+	_, err = UpdateRuleSilence(&model.GeneralQuery{ID: []int64{id}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
 	if err != nil {
 		logger.Error.Printf("update %d failed. %s\n", id, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
