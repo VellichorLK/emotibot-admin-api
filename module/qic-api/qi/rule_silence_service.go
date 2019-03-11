@@ -89,6 +89,9 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 			logger.Error.Printf("unmarshal %d exception before failed\n", r.ID)
 			return nil, err
 		}
+	} else {
+		lowerExcpt.Customer = make([]string, 0)
+		lowerExcpt.Staff = make([]string, 0)
 	}
 	if r.ExceptionAfter != "" {
 		err := json.Unmarshal([]byte(r.ExceptionAfter), &upperExcpt)
@@ -96,6 +99,8 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 			logger.Error.Printf("unmarshal %d exception after failed\n", r.ID)
 			return nil, err
 		}
+	} else {
+		upperExcpt.Staff = make([]string, 0)
 	}
 
 	exception = append(exception, lowerExcpt.Customer...)
@@ -115,7 +120,10 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 		uuidSentenceMap[v.UUID] = v
 	}
 
-	var resp RuleSilenceException
+	resp := RuleSilenceException{Before: RuleException{Staff: make([]model.SimpleSentence, 0), Customer: make([]model.SimpleSentence, 0)},
+		After: struct {
+			Staff []model.SimpleSentence `json:"staff"`
+		}{Staff: make([]model.SimpleSentence, 0)}}
 	for _, v := range lowerExcpt.Staff {
 		if s, ok := uuidSentenceMap[v]; ok {
 			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID}
