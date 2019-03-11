@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"emotibot.com/emotigo/module/admin-api/util"
-	"gopkg.in/DATA-DOG/go-sqlmock.v1"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 var writer sqlmock.Sqlmock
@@ -61,20 +61,21 @@ func TestGetUUID(t *testing.T) {
 func TestGetAppidViaApiKey(t *testing.T) {
 	currentTimeGetter = getCurrentTimestampMock
 	now := currentTimeGetter()
-	var mockedRows = sqlmock.NewRows([]string{"appid", "expire_time"}).AddRow("csbot", now+3000)
-	writer.ExpectQuery("SELECT appid, expire_time FROM api_key*").WithArgs("abcde", now).WillReturnRows(mockedRows)
-	appid, err := GetAppViaApiKey("abcde")
+	var mockedRows = sqlmock.NewRows(
+		[]string{"enterprise", "appid", "expire_time"}).AddRow("", "csbot", now+3000)
+	writer.ExpectQuery("SELECT enterprise, appid, expire_time FROM api_key*").WithArgs("abcde", now).WillReturnRows(mockedRows)
+	_, appid, err := GetAppOwner("abcde")
 	if err != nil {
-		t.Fatal("GetAppViaApiKey fail", err.Error())
+		t.Fatal("GetAppOwner fail", err.Error())
 	}
 	if appid != "csbot" {
-		t.Errorf("GetAppViaApiKey expect csbot, get %s", appid)
+		t.Errorf("GetAppOwner expect csbot, get %s", appid)
 	}
 	if appid != apiKeyApp["abcde"] {
-		t.Errorf("GetAppViaApiKey get invalid value in appid, expect csbot, get %s", apiKeyApp["abcde"])
+		t.Errorf("GetAppOwner get invalid value in appid, expect csbot, get %s", apiKeyApp["abcde"])
 	}
 	if now+3000 != apiKeyCache["abcde"] {
-		t.Errorf("GetAppViaApiKey get invalid value in expire, expect %d, get %d", now+3000, apiKeyCache["abcde"])
+		t.Errorf("GetAppOwner get invalid value in expire, expect %d, get %d", now+3000, apiKeyCache["abcde"])
 	}
 	if err = writer.ExpectationsWereMet(); err != nil {
 		t.Fatal(err)
