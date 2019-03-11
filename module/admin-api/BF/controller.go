@@ -1,6 +1,7 @@
 package BF
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -356,9 +357,12 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 			accessToken, err = GetBFAccessToken(requestheader.GetUserID(r))
 		case "Api":
 			// Api type will gen new access token of enterprise admin
-			appid, err := auth.GetAppViaApiKey(params[1])
+			_, appid, err := auth.GetAppOwner(params[1])
 			if err == nil {
 				accessToken, err = GetNewAccessTokenOfAppid(appid)
+			}
+			if appid == "" {
+				err = errors.New("Redirect only support apiKey of robot")
 			}
 		}
 	}
