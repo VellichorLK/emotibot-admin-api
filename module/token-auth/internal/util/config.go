@@ -32,6 +32,8 @@ const (
 	authUseCaptchaKey = "ADMIN_UI_USE_CAPTCHA"
 
 	jwtTimeoutKey = "ADMIN_AUTH_TIMEOUT"
+
+	systemSecret = "ADMIN_AUTH_SYSTEM_SECRET"
 )
 
 // SSOConfig is used to store config about sso
@@ -130,4 +132,8 @@ func GetCaptchaStatus() bool {
 	status := GetStrEnv(authUseCaptchaKey, "0")
 	status = strings.ToLower(status)
 	return status == "1" || status == "true"
+}
+
+func GetSystemSecret() string {
+	return GetStrEnv(systemSecret, "")
 }

@@ -2076,20 +2076,15 @@ func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		expired = defaultExpiredTime
 	}
-	requester := getRequesterV3(r)
-	if requester == nil {
-		ReturnUnauthorized(w)
-		return
-	}
 
 	valid := false
-	if enterprise != "" && requester.Type <= enum.AdminUser {
+	if enterprise != "" {
 		util.LogTrace.Printf("Check secret with enterprise %s, %s\n", enterprise, secret)
 		valid, err = service.CheckEnterpriseSecretValid(enterprise, secret)
-	} else if appid != "" && requester.Type <= enum.NormalUser {
+	} else if appid != "" {
 		util.LogTrace.Printf("Check secret with appid %s, %s\n", appid, secret)
 		valid, err = service.CheckAppSecretValid(appid, secret)
-	} else if requester.Type == enum.SuperAdminUser {
+	} else if secret == util.GetSystemSecret() {
 		valid = true
 	}
 
