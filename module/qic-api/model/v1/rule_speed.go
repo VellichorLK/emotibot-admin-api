@@ -8,27 +8,27 @@ import (
 )
 
 type SpeedRule struct {
-	ID             int64
-	Name           string
-	Score          int
-	Min            int
-	Max            int
-	ExceptionUnder string
-	ExceptionOver  string
-	Enterprise     string
-	IsDelete       int
-	CreateTime     int64
-	UpdateTime     int64
-	UUID           string
+	ID             int64  `json:"-"`
+	Name           string `json:"name"`
+	Score          int    `json:"score"`
+	Min            int    `json:"min"`
+	Max            int    `json:"max"`
+	ExceptionUnder string `json:"-"`
+	ExceptionOver  string `json:"-"`
+	Enterprise     string `json:"-"`
+	IsDelete       int    `json:"-"`
+	CreateTime     int64  `json:"-"`
+	UpdateTime     int64  `json:"-"`
+	UUID           string `json:"speed_id"`
 }
 
 type SpeedUpdateSet struct {
-	Name           *string
-	Score          *int
-	Min            *int
-	Max            *int
-	ExceptionUnder *string
-	ExceptionOver  *string
+	Name           *string `json:"name"`
+	Score          *int    `json:"score"`
+	Min            *int    `json:"min"`
+	Max            *int    `json:"max"`
+	ExceptionUnder *string `json:"_"`
+	ExceptionOver  *string `json:"_"`
 }
 
 type SpeedRuleDao interface {

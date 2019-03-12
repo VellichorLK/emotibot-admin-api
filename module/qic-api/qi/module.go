@@ -122,6 +122,15 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, handleModifyRuleSilence),
 			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, handleExceptionRuleSilenceBefore),
 			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, handleExceptionRuleSilenceAfter),
+
+			util.NewEntryPoint(http.MethodPost, "rule/speed", []string{}, handleNewRuleSpeed),
+			util.NewEntryPoint(http.MethodGet, "rule/speed", []string{}, handleGetRuleSpeedList),
+			util.NewEntryPoint(http.MethodGet, "rule/speed/{id}", []string{}, handleGetRuleSpeed),
+			util.NewEntryPoint(http.MethodDelete, "rule/speed/{id}", []string{}, handleDeleteRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/name", []string{}, handleModifyRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/condition", []string{}, handleModifyRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/under", []string{}, handleExceptionRuleSpeedUnder),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/over", []string{}, handleExceptionRuleSpeedOver),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
