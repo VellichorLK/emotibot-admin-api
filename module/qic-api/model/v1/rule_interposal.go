@@ -8,23 +8,23 @@ import (
 )
 
 type InterposalRule struct {
-	ID         int64
-	Name       string
-	Enterprise string
-	Score      int
-	Seconds    int
-	Times      int
-	IsDelete   int
-	CreateTime int64
-	UpdateTime int64
-	UUID       string
+	ID         int64  `json:"_"`
+	Name       string `json:"name"`
+	Enterprise string `json:"_"`
+	Score      int    `json:"score"`
+	Seconds    int    `json:"seconds"`
+	Times      int    `json:"times"`
+	IsDelete   int    `json:"_"`
+	CreateTime int64  `json:"_"`
+	UpdateTime int64  `json:"_"`
+	UUID       string `json:"interposal_id"`
 }
 
 type InterposalUpdateSet struct {
-	Name    *string
-	Score   *int
-	Seconds *int
-	Times   *int
+	Name    *string `json:"name"`
+	Score   *int    `json:"score"`
+	Seconds *int    `json:"seconds"`
+	Times   *int    `json:"times"`
 }
 
 type InterposalRuleDao interface {

@@ -131,6 +131,12 @@ func init() {
 			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/condition", []string{}, handleModifyRuleSpeed),
 			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/under", []string{}, handleExceptionRuleSpeedUnder),
 			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/over", []string{}, handleExceptionRuleSpeedOver),
+
+			util.NewEntryPoint(http.MethodPost, "rule/interposal", []string{}, handleNewRuleInterposal),
+			util.NewEntryPoint(http.MethodGet, "rule/interposal", []string{}, handleGetRuleInterposalList),
+			util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
+			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
+			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

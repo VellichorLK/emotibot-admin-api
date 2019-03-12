@@ -1,8 +1,6 @@
 package qi
 
 import (
-	"encoding/json"
-	"errors"
 	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
@@ -13,37 +11,31 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-//Error msg
-var (
-	ErrorWrongMin = errors.New("invalid speed min")
-	ErrorWrongMax = errors.New("invalid speed max")
-)
-
-func handleNewRuleSpeed(w http.ResponseWriter, r *http.Request) {
+func handleNewRuleInterposal(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
-	var requestBody model.SpeedRule
+	var requestBody model.InterposalRule
 	err := util.ReadJSON(r, &requestBody)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	err = checkSpeedRule(&requestBody)
+	err = checkInterposalRule(&requestBody)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	uuid, err := NewRuleSpeed(&requestBody, enterprise)
+	uuid, err := NewRuleInterposal(&requestBody, enterprise)
 	if err != nil {
-		logger.Error.Printf("create rule speed failed. %s\n", err)
+		logger.Error.Printf("create interposal speed failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	err = util.WriteJSON(w, struct {
-		UUID string `json:"speed_id"`
+		UUID string `json:"interposal_id"`
 	}{UUID: uuid})
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
@@ -51,7 +43,7 @@ func handleNewRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func checkSpeedRule(r *model.SpeedRule) error {
+func checkInterposalRule(r *model.InterposalRule) error {
 	if r == nil {
 		return ErrEmptyRequest
 	}
@@ -61,16 +53,21 @@ func checkSpeedRule(r *model.SpeedRule) error {
 	if r.Score < 0 {
 		return ErrorWrongScore
 	}
-	if r.Min <= 0 {
-		return ErrorWrongMin
+	if r.Seconds <= 0 {
+		return ErrWrongSecond
 	}
-	if r.Max <= 0 {
-		return ErrorWrongMax
+	if r.Times <= 0 {
+		return ErrorWrongTimes
 	}
 	return nil
 }
 
-func handleGetRuleSpeedList(w http.ResponseWriter, r *http.Request) {
+// util.NewEntryPoint(http.MethodPost, "rule/interposal", []string{}, handleNewRuleInterposal),
+// util.NewEntryPoint(http.MethodGet, "rule/interposal", []string{}, handleGetRuleInterposalList),
+// util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
+// util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
+// util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
+func handleGetRuleInterposalList(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
 	if err != nil {
@@ -82,23 +79,23 @@ func handleGetRuleSpeedList(w http.ResponseWriter, r *http.Request) {
 	q := &model.GeneralQuery{Enterprise: &enterprise, IsDelete: &isDelete}
 	p := &model.Pagination{Limit: limit, Page: page}
 
-	resp, err := GetRuleSpeeds(q, p)
+	resp, err := GetRuleInterposals(q, p)
 	if err != nil {
-		logger.Error.Printf("get the speed rule failed. %s\n", err)
+		logger.Error.Printf("get the interposal rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	total, err := CountRuleSpeed(q)
+	total, err := CountRuleInterposal(q)
 	if err != nil {
-		logger.Error.Printf("count the speed rule failed. q: %+v, err: %s\n", *q, err)
+		logger.Error.Printf("count the interposal rule failed. q: %+v, err: %s\n", *q, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	err = util.WriteJSON(w, struct {
-		Page pageResp           `json:"paging"`
-		Data []*model.SpeedRule `json:"data"`
+		Page pageResp                `json:"paging"`
+		Data []*model.InterposalRule `json:"data"`
 	}{
 		Page: pageResp{Current: page, Limit: limit, Total: uint64(total)},
 		Data: resp,
@@ -109,15 +106,15 @@ func handleGetRuleSpeedList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGetRuleSpeed(w http.ResponseWriter, r *http.Request) {
+func handleGetRuleInterposal(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 	isDelete := 0
 	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
 
-	settings, err := GetRuleSpeeds(q, nil)
+	settings, err := GetRuleInterposals(q, nil)
 	if err != nil {
-		logger.Error.Printf("get the speed rule failed. %s\n", err)
+		logger.Error.Printf("get the interposal rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
@@ -126,19 +123,10 @@ func handleGetRuleSpeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	except, err := GetRuleSpeedException(settings[0])
-	if err != nil {
-		logger.Error.Printf("get the exception of speed rule failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
 	err = util.WriteJSON(w, struct {
-		Setting   model.SpeedRule    `json:"setting"`
-		Exception RuleSpeedException `json:"exception"`
+		Setting model.InterposalRule `json:"setting"`
 	}{
-		Setting:   *settings[0],
-		Exception: *except,
+		Setting: *settings[0],
 	})
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
@@ -146,13 +134,13 @@ func handleGetRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleDeleteRuleSpeed(w http.ResponseWriter, r *http.Request) {
+func handleDeleteRuleInterposal(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 
 	isDelete := 0
 	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
-	_, err := DeleteRuleSpeed(q)
+	_, err := DeleteRuleInterposal(q)
 	if err != nil {
 		logger.Error.Printf("delete %s failed. %s\n", uuid, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -160,28 +148,28 @@ func handleDeleteRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func checkSpeedRuleUpdateSet(r model.SpeedUpdateSet) error {
-	sr := model.SpeedRule{Name: "valid name", Score: 99, Min: 99, Max: 99}
+func checkInterposalRuleUpdateSet(r model.InterposalUpdateSet) error {
+	sr := model.InterposalRule{Name: "valid name", Score: 99, Seconds: 99, Times: 99}
 	if r.Name != nil {
 		sr.Name = *r.Name
 	}
 	if r.Score != nil {
 		sr.Score = *r.Score
 	}
-	if r.Min != nil {
-		sr.Min = *r.Min
+	if r.Seconds != nil {
+		sr.Seconds = *r.Seconds
 	}
-	if r.Max != nil {
-		sr.Max = *r.Max
+	if r.Times != nil {
+		sr.Times = *r.Times
 	}
-	return checkSpeedRule(&sr)
+	return checkInterposalRule(&sr)
 }
 
-func handleModifyRuleSpeed(w http.ResponseWriter, r *http.Request) {
+func handleModifyRuleInterposal(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 
-	var req model.SpeedUpdateSet
+	var req model.InterposalUpdateSet
 
 	err := util.ReadJSON(r, &req)
 	if err != nil {
@@ -189,64 +177,14 @@ func handleModifyRuleSpeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = checkSpeedRuleUpdateSet(req)
+	err = checkInterposalRuleUpdateSet(req)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 
-	//just in case
-	req.ExceptionOver = nil
-	req.ExceptionUnder = nil
-
 	isDelete := 0
-	_, err = UpdateRuleSpeed(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
-	if err != nil {
-		if err == ErrNoSuchID {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		} else {
-			logger.Error.Printf("update %s failed. %s\n", uuid, err)
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		}
-	}
-}
-
-func handleExceptionRuleSpeedUnder(w http.ResponseWriter, r *http.Request) {
-	handleExceptionRuleSpeed(w, r, "under")
-}
-
-func handleExceptionRuleSpeedOver(w http.ResponseWriter, r *http.Request) {
-	handleExceptionRuleSpeed(w, r, "over")
-}
-
-func handleExceptionRuleSpeed(w http.ResponseWriter, r *http.Request, exceptType string) {
-	enterprise := requestheader.GetEnterpriseID(r)
-	uuid := general.ParseID(r)
-	var req RuleExceptionInteral
-
-	err := util.ReadJSON(r, &req)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	var updateSet model.SpeedUpdateSet
-
-	except, err := json.Marshal(req)
-	if err != nil {
-		logger.Error.Printf("marshal %+v failed. %s\n", req.Customer, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	exceptStr := string(except)
-	if exceptType == "under" {
-		updateSet.ExceptionUnder = &exceptStr
-	} else if exceptType == "over" {
-		updateSet.ExceptionOver = &exceptStr
-	}
-
-	isDelete := 0
-	_, err = UpdateRuleSpeed(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
+	_, err = UpdateRuleInterposal(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
 	if err != nil {
 		if err == ErrNoSuchID {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)

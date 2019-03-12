@@ -22,7 +22,7 @@ type SilenceRule struct {
 	IsDelete        int    `json:"-"`
 	CreateTime      int64  `json:"-"`
 	UpdateTime      int64  `json:"-"`
-	UUID            string `json:"id"`
+	UUID            string `json:"silence_id"`
 }
 
 type SilenceUpdateSet struct {

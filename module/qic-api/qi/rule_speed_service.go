@@ -58,12 +58,6 @@ type RuleSpeedExceptionContent struct {
 type RuleSpeedException struct {
 	Under RuleSpeedExceptionContent `json:"under"`
 	Over  RuleSpeedExceptionContent `json:"over"`
-	// Under  struct {
-	// 	Customer []model.SimpleSentence `json:"customer"`
-	// } `json:"under"`
-	// Over  struct {
-	// 	Customer []model.SimpleSentence `json:"customer"`
-	// } `json:"over"`
 }
 
 //GetRuleSpeedException gets the speed rule exception
