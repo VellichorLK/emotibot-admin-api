@@ -10,6 +10,7 @@ import (
 //CreditDao is the interface used to access the prediction result
 type CreditDao interface {
 	InsertCredit(conn SqlLike, c *SimpleCredit) (int64, error)
+	InsertCredits(SqlLike, []SimpleCredit) error
 	InsertSegmentMatch(conn SqlLike, s *SegmentMatch) (int64, error)
 	GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCredit, error)
 	GetSegmentMatch(conn SqlLike, q *SegmentPredictQuery) ([]*SegmentMatch, error)
@@ -105,6 +106,55 @@ func (c *CreditSQLDao) InsertCredit(conn SqlLike, credit *SimpleCredit) (int64, 
 		credit.CreateTime, credit.Whos)
 
 	return insertRecord(conn, table, insertFlds, params)
+}
+
+// InsertCredits inserts batch of credits
+func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err error) {
+	if conn == nil {
+		return ErroNoConn
+	}
+
+	if len(credits) == 0 {
+		return
+	}
+
+	table := tblPredictResult
+	insertFlds := []string{
+		fldCallID,
+		fldType,
+		fldParentID,
+		fldOrgID,
+		fldValid,
+		fldRevise,
+		fldScore,
+		fldCreateTime,
+		fldUpdateTime,
+		fldWhos,
+	}
+
+	var params []interface{}
+	paramStrTemplate := "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?),"
+	paramStr := ""
+	for _, credit := range credits {
+		params = append(params, credit.CallID, credit.Type, credit.ParentID,
+			credit.OrgID, credit.Valid, credit.Revise, credit.Score, credit.CreateTime,
+			credit.CreateTime, credit.Whos)
+		paramStr = fmt.Sprintf("%s %s", paramStr, paramStrTemplate)
+	}
+	paramStr = paramStr[:len(paramStr)-1]
+
+	insertStr := fmt.Sprintf(
+		"INSERT INTO %s (%s) %s",
+		table,
+		strings.Join(insertFlds, ","),
+		paramStr,
+	)
+
+	_, err = conn.Exec(insertStr, params...)
+	if err != nil {
+		logger.Error.Printf("insert credits failed. %s.\n %s, %+v\n", err, insertStr, params)
+	}
+	return err
 }
 
 //InsertSegmentMatch inserts the matched context data

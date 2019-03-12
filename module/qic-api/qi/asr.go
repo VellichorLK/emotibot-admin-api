@@ -112,6 +112,13 @@ func ASRWorkFlow(output []byte) error {
 			return fmt.Errorf("store credit failed, %v", err)
 		}
 	}
+
+	swCredits, err := SensitiveWordsVerification(resp.CallID, segWithSp, c.EnterpriseID)
+	if err != nil {
+		return err
+	}
+	err = creditDao.InsertCredits(tx, swCredits)
+
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
