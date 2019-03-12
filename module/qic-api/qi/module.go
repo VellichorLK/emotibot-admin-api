@@ -32,6 +32,7 @@ var (
 	sqlConn      *sql.DB
 	dbLike       model.DBLike
 	volume       string
+	creditDao model.CreditDao = &model.CreditSQLDao{}
 )
 
 func init() {

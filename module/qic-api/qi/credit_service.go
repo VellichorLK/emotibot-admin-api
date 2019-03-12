@@ -12,8 +12,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 )
 
-var creditDao model.CreditDao = &model.CreditSQLDao{}
-
 type levelType int
 
 var (
