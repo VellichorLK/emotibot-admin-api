@@ -163,11 +163,11 @@ func TestSensitiveWordsVerification(t *testing.T) {
 	}
 	setupSensitiveWordVerificationTest(sws)
 
-	segments := []SegmentWithSpeaker{
-		violatedSegment,
-		staffExceptionSegment,
-		CustomerExceptionSegment,
-		okSegment,
+	segments := []*SegmentWithSpeaker{
+		&violatedSegment,
+		&staffExceptionSegment,
+		&CustomerExceptionSegment,
+		&okSegment,
 	}
 
 	callID := int64(5)
@@ -196,14 +196,14 @@ func TestSensitiveWordsCustomValues(t *testing.T) {
 	}
 	setupSensitiveWordVerificationTest(sws)
 
-	segments := []SegmentWithSpeaker{
-		SegmentWithSpeaker{
+	segments := []*SegmentWithSpeaker{
+		&SegmentWithSpeaker{
 			RealSegment: model.RealSegment{
 				Text: "301",
 			},
 			Speaker: int(model.CallChanStaff),
 		},
-		SegmentWithSpeaker{
+		&SegmentWithSpeaker{
 			RealSegment: model.RealSegment{
 				Text: "302",
 			},

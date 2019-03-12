@@ -12,7 +12,7 @@ var sentenceMatchFunc func([]string, []uint64, string) (map[uint64][]int, error)
 
 // DoSensitiveWordsVerification　takes callID and segments as input and do sensitive word verification
 // it return slice of credits and err if err is happened
-func SensitiveWordsVerification(callID int64, segments []SegmentWithSpeaker, enterprise string) (credits []model.SimpleCredit, err error) {
+func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, enterprise string) (credits []model.SimpleCredit, err error) {
 	// get sensitive words and its settings
 	sqlConn := dbLike.Conn()
 	var deleted int8
