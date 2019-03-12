@@ -61,6 +61,11 @@ func SensitiveWordsVerification(callID int64, segments []SegmentWithSpeaker, ent
 		return
 	}
 
+	passedMap, err := callToSWUserKeyValues(callID, swID, sqlConn)
+	if err != nil {
+		return
+	}
+
 	// for each segment check if violate sensitive word
 	for idx, seg := range segments {
 		if violates := m.MultiPatternSearch([]rune(seg.Text), false); len(violates) > 0 {
@@ -79,9 +84,6 @@ func SensitiveWordsVerification(callID int64, segments []SegmentWithSpeaker, ent
 					if segIndxes, ok := senToSegments[sid]; ok {
 						for _, segIdx := range segIndxes {
 							if seg.Speaker == int(model.CallChanStaff) && segIdx < idx {
-								logger.Info.Printf("segIdx: %d", segIdx)
-								logger.Info.Printf("idx: %d", idx)
-								logger.Info.Printf("seg: %s", seg.Text)
 								violated = false
 								break
 							}
@@ -114,6 +116,14 @@ func SensitiveWordsVerification(callID int64, segments []SegmentWithSpeaker, ent
 					}
 				}
 
+				if passed, ok := passedMap[sw.ID]; ok && passed {
+					violated = false
+				}
+
+				if !violated {
+					break
+				}
+
 				// the segment violates this sensitive word
 				if violated {
 					now := time.Now().Unix()
@@ -134,6 +144,48 @@ func SensitiveWordsVerification(callID int64, segments []SegmentWithSpeaker, ent
 
 	return
 
+}
+
+// callToSWUserKeyValues takes callID, slice of sensitive word id, and sqlLike as input
+// and returns a map which indicates if the call passes a sensitive word or not
+// if some error happened, it will returns the error
+func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (passedMap map[int64]bool, err error) {
+	// init map
+	passedMap = map[int64]bool{}
+	for _, swid := range sws {
+		passedMap[swid] = false
+	}
+
+	// get custom values of the call
+	query := model.UserValueQuery{
+		Type:             []int8{model.UserValueTypCall},
+		ParentID:         []int64{callID},
+		IgnoreSoftDelete: true,
+	}
+	callValues, err := userValues(sqlLike, query)
+	if err != nil {
+		return
+	}
+
+	if len(callValues) == 0 {
+		return
+	}
+
+	// get custom values of all sensitive words
+	query = model.UserValueQuery{
+		Type:             []int8{model.UserValueTypSensitiveWord},
+		IgnoreSoftDelete: true,
+	}
+	swValues, err := userValues(sqlLike, query)
+	if err != nil {
+		return
+	}
+
+	// set true to the sensitive word if custom values of the call exist in custom values of a sensitive word
+	for _, cv := range swValues {
+		passedMap[cv.LinkID] = true
+	}
+	return
 }
 
 func appendSentenceID(ids *[]uint64, sentences map[int64][]uint64) {
