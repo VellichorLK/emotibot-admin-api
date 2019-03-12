@@ -16,6 +16,9 @@ var (
 
 var conversationRuleDao model.ConversationRuleDao = &model.ConversationRuleSqlDaoImpl{}
 
+// getConversationRulesBy is the private function for other public functions mocking.
+var getConversationRulesBy = GetConversationRulesBy
+
 func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) (simpleFlows []model.SimpleConversationFlow, err error) {
 	simpleFlows = []model.SimpleConversationFlow{}
 	if len(rule.Flows) == 0 {

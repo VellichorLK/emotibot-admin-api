@@ -45,7 +45,6 @@ type Other struct {
 	Type          int8                     `json:"type"` // it is the ConditionType
 	FileName      string                   `json:"file_name"`
 	CallTime      int64                    `json:"call_time"`
-	CallComment   string                   `json:"call_comment"`
 	Deal          int8                     `json:"deal"`
 	Series        string                   `json:"series"`
 	StaffID       string                   `json:"staff_id"`
@@ -206,7 +205,7 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 
 	group := reqBody.Group()
 	group.EnterpriseID = requestheader.GetEnterpriseID(r)
-	ruleTotal, group.Rules, err = GetConversationRulesBy(&model.ConversationRuleFilter{
+	ruleTotal, group.Rules, err = getConversationRulesBy(&model.ConversationRuleFilter{
 		UUID: reqBody.Rules,
 	})
 	if err != nil {
@@ -304,7 +303,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 	newGroup.ID = group.ID
 	newGroup.Condition = reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
-	total, rules, err := GetConversationRulesBy(&model.ConversationRuleFilter{
+	total, rules, err := getConversationRulesBy(&model.ConversationRuleFilter{
 		UUID: reqBody.Rules,
 	})
 	if int(total) != len(rules) {

@@ -9,6 +9,69 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
+var groupResps = func(filter *model.GroupFilter) (total int64, responses []GroupResp, err error) {
+	total, groups, err := GetGroupsByFilter(filter)
+	if err != nil {
+		return 0, nil, err
+	}
+	valueQuery := model.UserValueQuery{
+		Type: []int8{model.UserValueTypGroup},
+	}
+	responses = make([]GroupResp, 0, len(groups))
+	grpIndexes := make(map[int64]int, len(groups))
+	for i, grp := range groups {
+		g := GroupResp{
+			GroupID:    grp.UUID,
+			GroupName:  *grp.Name,
+			IsEnable:   *grp.Enabled,
+			CreateTime: grp.CreateTime,
+			RuleCount:  grp.RuleCount,
+		}
+		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
+		responses = append(responses, g)
+		grpIndexes[grp.ID] = i
+	}
+	grpValues, err := valuesKey(nil, valueQuery)
+	if err != nil {
+		return
+	}
+	for _, val := range grpValues {
+		index, found := grpIndexes[val.LinkID]
+		if !found {
+			continue
+		}
+		resp := responses[index]
+		inputName := val.UserKey.InputName
+		resp.Other.CustomColumns[inputName] = append(resp.Other.CustomColumns[inputName], val.Value)
+		responses[index] = resp
+
+	}
+	return total, responses, nil
+}
+var newGroupWithAllConditions = func(group model.Group, condition model.Condition, customCols map[string][]interface{}) (model.Group, error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return model.Group{}, fmt.Errorf("begin transaction failed, %v", err)
+	}
+	defer tx.Rollback()
+	group, err = newGroup(tx, group)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new group failed, %v", err)
+	}
+
+	condition.GroupID = group.ID
+	_, err = newCondition(tx, condition)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new condition failed, %v", err)
+	}
+	_, err = newCustomConditions(tx, group, customCols)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("new custom column condition failed, %v", err)
+	}
+	tx.Commit()
+	return group, nil
+}
+
 func simpleConversationRulesOf(group *model.GroupWCond, sql model.SqlLike) (simpleRules []model.SimpleConversationRule, err error) {
 	simpleRules = []model.SimpleConversationRule{}
 	if group.Rules == nil || len(*group.Rules) == 0 {
@@ -293,79 +356,19 @@ func DeleteGroup(id string) (err error) {
 
 // NewGroupWithAllConditions create a group with condition and all sort of custom columns by UserValue
 func NewGroupWithAllConditions(group model.Group, condition model.Condition, customCols map[string][]interface{}) (model.Group, error) {
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return model.Group{}, fmt.Errorf("begin transaction failed, %v", err)
-	}
-	defer tx.Rollback()
-	group, err = newGroup(tx, group)
-	if err != nil {
-		return model.Group{}, fmt.Errorf("new group failed, %v", err)
-	}
-
-	condition.GroupID = group.ID
-	_, err = newCondition(tx, condition)
-	if err != nil {
-		return model.Group{}, fmt.Errorf("new condition failed, %v", err)
-	}
-	_, err = newCustomConditions(tx, group, customCols)
-	if err != nil {
-		return model.Group{}, fmt.Errorf("new custom column condition failed, %v", err)
-	}
-	tx.Commit()
-	return group, nil
+	return newGroupWithAllConditions(group, condition, customCols)
 }
 
 // GroupResp is the response schema of get group
 type GroupResp struct {
-	GroupID      string  `json:"group_id"`
-	GroupName    string  `json:"group_name"`
-	IsEnable     int8    `json:"is_enable"`
-	LimitSpeed   float64 `json:"limit_speed,omitempty"`
-	LimitSilence float64 `json:"limit_silence,omitempty"`
-	Other        Other   `json:"other"`
-	CreateTime   int64   `json:"create_time"`
-	RuleCount    int     `json:"rule_count"`
+	GroupID    string `json:"group_id"`
+	GroupName  string `json:"group_name"`
+	IsEnable   int8   `json:"is_enable"`
+	Other      Other  `json:"other"`
+	CreateTime int64  `json:"create_time"`
+	RuleCount  int    `json:"rule_count"`
 }
 
 func GroupResps(filter *model.GroupFilter) (total int64, responses []GroupResp, err error) {
-	total, groups, err := GetGroupsByFilter(filter)
-	if err != nil {
-		return 0, nil, err
-	}
-	valueQuery := model.UserValueQuery{
-		Type: []int8{model.UserValueTypGroup},
-	}
-	responses = make([]GroupResp, 0, len(groups))
-	grpIndexes := make(map[int64]int, len(groups))
-	for i, grp := range groups {
-		g := GroupResp{
-			GroupID:      grp.UUID,
-			GroupName:    *grp.Name,
-			IsEnable:     *grp.Enabled,
-			LimitSpeed:   *grp.Speed,
-			LimitSilence: *grp.SlienceDuration,
-			CreateTime:   grp.CreateTime,
-			RuleCount:    grp.RuleCount,
-		}
-		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
-		responses = append(responses, g)
-		grpIndexes[grp.ID] = i
-	}
-	grpValues, err := valuesKey(nil, valueQuery)
-	if err != nil {
-		return
-	}
-	for _, val := range grpValues {
-		index, found := grpIndexes[val.LinkID]
-		if !found {
-			continue
-		}
-		resp := responses[index]
-		inputName := val.UserKey.InputName
-		resp.Other.CustomColumns[inputName] = append(resp.Other.CustomColumns[inputName], val.Value)
-		responses[index] = resp
-
-	}
-	return total, responses, nil
+	return groupResps(filter)
 }

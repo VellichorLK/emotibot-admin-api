@@ -31,6 +31,7 @@ func readMockConditions(t *testing.T) []Condition {
 	return conditions
 }
 func TestConditionDao_Conditions(t *testing.T) {
+	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
 	mc := readMockConditions(t)
 	type args struct {
@@ -79,6 +80,7 @@ func TestConditionDao_Conditions(t *testing.T) {
 }
 
 func TestConditionDao_TestSuite(t *testing.T) {
+	skipIntergartion(t)
 	db := newIntegrationTestDB(t)
 	dao := GroupConditionDao{db: &DefaultDBLike{DB: db}}
 	cond := Condition{
