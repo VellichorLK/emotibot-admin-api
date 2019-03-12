@@ -1,7 +1,7 @@
 package localemsg
 
 var intentMsg = map[string]map[string]string{
-	"zh-cn": map[string]string{
+	ZhCn: map[string]string{
 		"Fail":                            "失败",
 		"IntentID":                        "意图编号",
 		"DeleteIntent":                    "删除意图",
@@ -28,7 +28,7 @@ var intentMsg = map[string]map[string]string{
 		"IntentUploadBF2RowNoSentenceTpl": "资料表 %s 中第 %d 行语句为空",
 		"IntentExport":                    "导出意图",
 	},
-	"zh-tw": map[string]string{
+	ZhTw: map[string]string{
 		"Fail":                            "失敗",
 		"IntentID":                        "意圖編號",
 		"DeleteIntent":                    "刪除意圖",

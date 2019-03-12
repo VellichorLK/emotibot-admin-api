@@ -125,7 +125,7 @@ func GetUserName(id string) (name string, err error) {
 
 var currentTimeGetter = getCurrentTimestamp
 
-func GetAppViaApiKey(apiKey string) (string, error) {
+func GetAppOwner(apiKey string) (string, string, error) {
 	var err error
 	defer func() {
 		util.ShowError(err)
@@ -135,32 +135,33 @@ func GetAppViaApiKey(apiKey string) (string, error) {
 	if expire, ok := apiKeyCache[apiKey]; ok {
 		if currentTime <= expire {
 			if appid, ok := apiKeyApp[apiKey]; ok {
-				return appid, nil
+				return "", appid, nil
 			}
 		} else {
-			return "", sql.ErrNoRows
+			return "", "", sql.ErrNoRows
 		}
 	}
 
 	db := util.GetDB(ModuleInfo.ModuleName)
 	if db == nil {
 		err = util.ErrDBNotInit
-		return "", err
+		return "", "", err
 	}
 
-	queryStr := "SELECT appid, expire_time FROM api_key WHERE api_key = ? AND expire_time > ?"
+	queryStr := "SELECT enterprise, appid, expire_time FROM api_key WHERE api_key = ? AND expire_time > ?"
 	row := db.QueryRow(queryStr, apiKey, currentTime)
 	appid := ""
+	enterprise := ""
 	expire := int64(0)
-	err = row.Scan(&appid, &expire)
+	err = row.Scan(&enterprise, &appid, &expire)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	apiKeyCache[apiKey] = expire
 	apiKeyApp[apiKey] = appid
 
-	return appid, nil
+	return enterprise, appid, nil
 }
 
 func getCurrentTimestamp() int64 {

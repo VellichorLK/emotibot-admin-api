@@ -193,6 +193,15 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 	}
 
 	queryStr = fmt.Sprintf(`
+		UPDATE enterprises
+		SET secret = concat(md5(concat(now(), uuid)), sha1(rand()));`)
+	_, err = t.Exec(queryStr)
+	if err != nil {
+		util.LogTrace.Println("Update secret of enterprise fail, it may need migration")
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
 		INSERT INTO %s
 		(uuid, display_name, user_name, email, enterprise, type, password)
 		VALUES (?, ?, ?, ?, ?, ?, ?)`, userTableV3)

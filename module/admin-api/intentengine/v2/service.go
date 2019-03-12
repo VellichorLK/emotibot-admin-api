@@ -348,7 +348,12 @@ func ParseImportIntentFile(buf []byte, locale string) (intents []*IntentV2, err 
 			format = typeBF2
 			break
 		}
-		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2NewSheetName") {
+		if locale != localemsg.ZhCn && sheets[idx].Name == localemsg.Get(localemsg.ZhCn, "IntentBF2Sheet1Name") ||
+			sheets[idx].Name == localemsg.Get(localemsg.ZhCn, "IntentBF2Sheet2Name") {
+			format = typeBF2
+			break
+		}
+		if sheets[idx].Name == localemsg.Get(localemsg.ZhCn, "IntentBF2NewSheetName") {
 			format = typeBF2New
 		}
 	}
@@ -444,9 +449,11 @@ func getBF2ColumnIdx(row *xlsx.Row, locale string) (nameIdx, sentenceIdx int) {
 	nameIdx, sentenceIdx = -1, -1
 	for idx := range row.Cells {
 		cellStr := row.Cells[idx].String()
-		if cellStr == localemsg.Get(locale, "IntentName") {
+		if cellStr == localemsg.Get(locale, "IntentName") ||
+			cellStr == localemsg.Get(localemsg.ZhCn, "IntentName") {
 			nameIdx = idx
-		} else if cellStr == localemsg.Get(locale, "IntentSentence") {
+		} else if cellStr == localemsg.Get(locale, "IntentSentence") ||
+			cellStr == localemsg.Get(localemsg.ZhCn, "IntentSentence") {
 			sentenceIdx = idx
 		}
 	}
@@ -458,9 +465,11 @@ func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, e
 	intentMap := map[string]*IntentV2{}
 	for idx := range sheets {
 		var sentenceType int
-		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") {
+		if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet1Name") ||
+			sheets[idx].Name == localemsg.Get(localemsg.ZhCn, "IntentBF2Sheet1Name") {
 			sentenceType = typePositive
-		} else if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") {
+		} else if sheets[idx].Name == localemsg.Get(locale, "IntentBF2Sheet2Name") ||
+			sheets[idx].Name == localemsg.Get(localemsg.ZhCn, "IntentBF2Sheet2Name") {
 			sentenceType = typeNegative
 		} else {
 			continue

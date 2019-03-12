@@ -41,6 +41,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 	statsFilter := r.URL.Query().Get("filter")
 	t1 := r.URL.Query().Get("t1")
 	t2 := r.URL.Query().Get("t2")
+	locale := requestheader.GetLocale(r)
 
 	if statsType == "" {
 		errResponse := data.NewBadRequestResponse(data.ErrCodeInvalidParameterType, "type")
@@ -157,7 +158,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch statsType {
 		case dataCommon.VisitStatsTypeTime:
-			response, err := createVisitStatsResponse(query, statsCounts)
+			response, err := createVisitStatsResponse(query, statsCounts, locale)
 			if err != nil {
 				var errResponse data.ErrorResponse
 				if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
@@ -170,7 +171,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			controllers.ReturnOK(w, response)
 		case dataCommon.VisitStatsTypeBarchart:
-			response, err := createVisitStatsTagResponse(query, statsCounts)
+			response, err := createVisitStatsTagResponse(query, statsCounts, locale)
 			if err != nil {
 				var errResponse data.ErrorResponse
 				if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
@@ -201,7 +202,7 @@ func VisitStatsGetHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		response, err := createAnswerCategoryStatsResponse(statCounts)
+		response, err := createAnswerCategoryStatsResponse(statCounts, locale)
 		if err != nil {
 			var errResponse data.ErrorResponse
 			if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {
@@ -390,7 +391,7 @@ func fetchVisitStats(query dataV1.VisitStatsQuery) (map[string]map[string]interf
 }
 
 func createVisitStatsResponse(query dataV1.VisitStatsQuery,
-	statsCounts map[string]map[string]interface{}) (*dataV1.VisitStatsResponse, error) {
+	statsCounts map[string]map[string]interface{}, locale string) (*dataV1.VisitStatsResponse, error) {
 	visitStatsQ, totalVisitStatsQ, err := createVisitStatsQ(statsCounts)
 	if err != nil {
 		return nil, err
@@ -448,7 +449,7 @@ func createVisitStatsResponse(query dataV1.VisitStatsQuery,
 	}
 
 	response := dataV1.VisitStatsResponse{
-		TableHeader: dataV1.VisitStatsTableHeader,
+		TableHeader: dataV1.GetVisitStatsTableHeader(locale),
 		Data: dataV1.VisitStatsData{
 			VisitStatsQuantities: visitStatsQuantities,
 			Type:                 query.AggInterval,
@@ -465,7 +466,7 @@ func createVisitStatsResponse(query dataV1.VisitStatsQuery,
 }
 
 func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
-	statsCounts map[string]map[string]interface{}) (*dataV1.VisitStatsTagResponse, error) {
+	statsCounts map[string]map[string]interface{}, locale string) (*dataV1.VisitStatsTagResponse, error) {
 	visitStatsQ, totalVisitStatsQ, err := createVisitStatsQ(statsCounts)
 	if err != nil {
 		return nil, err
@@ -489,7 +490,7 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 	}
 
 	response := dataV1.VisitStatsTagResponse{
-		TableHeader: dataV1.VisitStatsTagTableHeader,
+		TableHeader: dataV1.GetVisitStatsTagTableHeader(locale),
 		Data:        tagData,
 		Total:       *totalVisitStatsQ,
 	}
@@ -498,7 +499,7 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 }
 
 func createAnswerCategoryStatsResponse(
-	statCounts map[string]interface{}) (*dataV1.AnswerCategoryStatsResponse, error) {
+	statCounts map[string]interface{}, locale string) (*dataV1.AnswerCategoryStatsResponse, error) {
 	businessStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryBusiness, "业务类")
 	businessStatData.Q.TotalAsks = statCounts[dataCommon.CategoryBusiness].(int64)
 
@@ -515,7 +516,7 @@ func createAnswerCategoryStatsResponse(
 	}
 
 	response := dataV1.AnswerCategoryStatsResponse{
-		TableHeader: dataV1.AnswerCategoryTableHeader,
+		TableHeader: dataV1.GetAnswerCategoryTableHeader(locale),
 		Data:        answerCategoryStatsData,
 		Total:       *dataV1.NewVisitStatsQ(),
 	}

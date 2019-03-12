@@ -108,6 +108,15 @@ func (controller MYSQLController) AddEnterpriseV4(enterprise *data.EnterpriseV3,
 	}
 
 	queryStr = fmt.Sprintf(`
+		UPDATE enterprises
+		SET secret = concat(md5(concat(now(), uuid)), sha1(rand()));`)
+	_, err = t.Exec(queryStr)
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
 		INSERT INTO %s
 		(uuid, display_name, user_name, email, enterprise, type, password, status)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, userTableV3)

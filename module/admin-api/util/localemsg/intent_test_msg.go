@@ -1,7 +1,7 @@
 package localemsg
 
 var intentTestMsg = map[string]map[string]string{
-	"zh-cn": map[string]string{
+	ZhCn: map[string]string{
 		"IntentTestSentences":            "意图测试集测试语句",
 		"IntentName":                     "意图名称",
 		"TestSentence":                   "测试语句",
@@ -15,7 +15,7 @@ var intentTestMsg = map[string]map[string]string{
 		"IntestTestSentenceEmptyErr":     "测试语句不得为空字串",
 		"NegativeTestIntentName":         "负类测试意图",
 	},
-	"zh-tw": map[string]string{
+	ZhTw: map[string]string{
 		"IntentTestSentences":            "意圖測試集測試語句",
 		"IntentName":                     "意圖名稱",
 		"TestSentence":                   "測試語句",
