@@ -24,7 +24,7 @@ func IsSensitive(content string) ([]string, error) {
 		return matched, err
 	}
 
-	rwords := stringsToRunes(words)
+	rwords := general.StringsToRunes(words)
 
 	m := new(goahocorasick.Machine)
 	if err = m.Build(rwords); err != nil {
@@ -37,20 +37,6 @@ func IsSensitive(content string) ([]string, error) {
 	}
 
 	return matched, nil
-}
-
-func stringsToRunes(ss []string) [][]rune {
-	words := make([][]rune, len(ss))
-	for idx, s := range ss {
-		// ignore empty string
-		// ignroe empty string will cause Index out of error in goahocorasick.Machine Build
-		if s == "" {
-			continue
-		}
-		word := []rune(s)
-		words[idx] = word
-	}
-	return words
 }
 
 // CreateSensitiveWord create a uuid and create a new sensitive word
