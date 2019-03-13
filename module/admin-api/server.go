@@ -255,13 +255,21 @@ func fillUserAppIDFromHeader(r *http.Request) error {
 		}
 		requestheader.SetUserID(r, userObj.ID)
 	case "Api":
-		requestheader.SetUserID(r, "API")
-		apiKeyAppid, err := auth.GetAppViaApiKey(params[1])
+		apiKeyEnterprise, apiKeyAppid, err := auth.GetAppOwner(params[1])
 		if err != nil {
 			logger.Error.Println("Get appid from apikey fail:", err.Error())
 			return err
 		}
+		requestheader.SetEnterprise(r, apiKeyEnterprise)
 		requestheader.SetAppID(r, apiKeyAppid)
+		if apiKeyAppid != "" {
+			requestheader.SetUserID(r, fmt.Sprintf("%s API", apiKeyAppid))
+		} else if apiKeyEnterprise != "" {
+			requestheader.SetUserID(r, fmt.Sprintf("%s API", apiKeyEnterprise))
+		} else {
+			requestheader.SetUserID(r, "System API")
+
+		}
 	}
 	return nil
 }
@@ -286,10 +294,14 @@ func checkAuthHeader(appid, token string) bool {
 		}
 		return true
 	case "Api":
-		apiKeyAppid, err := auth.GetAppViaApiKey(params[1])
+		_, apiKeyAppid, err := auth.GetAppOwner(params[1])
 		if err != nil {
 			logger.Error.Println("Get appid of apikey err:", err.Error())
 			return false
+		}
+		// TODO: check if appid is in apiKeyEnterprise
+		if apiKeyAppid == "" {
+			return true
 		}
 		return apiKeyAppid == appid
 	}

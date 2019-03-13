@@ -1,10 +1,10 @@
 package localemsg
 
 var dictionaryMsg = map[string]map[string]string{
-	"zh-cn": map[string]string{
+	ZhCn: map[string]string{
 		"DictionaryNoClass": "未分类",
 	},
-	"zh-tw": map[string]string{
+	ZhTw: map[string]string{
 		"DictionaryNoClass": "未分類",
 	},
 }

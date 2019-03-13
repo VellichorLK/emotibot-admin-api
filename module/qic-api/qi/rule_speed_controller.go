@@ -1,43 +1,57 @@
 package qi
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-	"emotibot.com/emotigo/module/qic-api/model/v1"
+	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-type silenceRq struct {
-	Name    string `json:"name"`
-	Score   int    `json:"score"`
-	Seconds int    `json:"seconds"`
-	Times   int    `json:"times"`
-}
-
 //Error msg
 var (
-	ErrEmptyName    = errors.New("empty name")
-	ErrEmptyRequest = errors.New("empty request")
-	ErrWrongSecond  = errors.New("invalid seconds")
-	ErrorWrongTimes = errors.New("invalid times")
-	ErrorWrongScore = errors.New("invalid score")
-	ErrNoSuchID     = errors.New("no such id")
+	ErrorWrongMin = errors.New("invalid speed min")
+	ErrorWrongMax = errors.New("invalid speed max")
 )
 
-type exceptionList struct {
-	Staff    []string `json:"staff"`
-	Customer []string `json:"customer"`
+func handleNewRuleSpeed(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+
+	var requestBody model.SpeedRule
+	err := util.ReadJSON(r, &requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	err = checkSpeedRule(&requestBody)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	uuid, err := NewRuleSpeed(&requestBody, enterprise)
+	if err != nil {
+		logger.Error.Printf("create rule speed failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	err = util.WriteJSON(w, struct {
+		UUID string `json:"speed_id"`
+	}{UUID: uuid})
+	if err != nil {
+		logger.Error.Printf("%s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
+	}
 }
 
-func checkSilenceRule(r *model.SilenceRule) error {
+func checkSpeedRule(r *model.SpeedRule) error {
 	if r == nil {
 		return ErrEmptyRequest
 	}
@@ -47,48 +61,16 @@ func checkSilenceRule(r *model.SilenceRule) error {
 	if r.Score < 0 {
 		return ErrorWrongScore
 	}
-	if r.Seconds <= 0 {
-		return ErrWrongSecond
+	if r.Min <= 0 {
+		return ErrorWrongMin
 	}
-	if r.Times <= 0 {
-		return ErrorWrongTimes
+	if r.Max <= 0 {
+		return ErrorWrongMax
 	}
 	return nil
 }
 
-func handleNewRuleSilence(w http.ResponseWriter, r *http.Request) {
-	enterprise := requestheader.GetEnterpriseID(r)
-
-	var requestBody model.SilenceRule
-	err := util.ReadJSON(r, &requestBody)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	err = checkSilenceRule(&requestBody)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	uuid, err := NewRuleSilence(&requestBody, enterprise)
-	if err != nil {
-		logger.Error.Printf("create rule silence failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-
-	err = util.WriteJSON(w, struct {
-		UUID string `json:"silence_id"`
-	}{UUID: uuid})
-	if err != nil {
-		logger.Error.Printf("%s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
-	}
-}
-
-func handleGetRuleSilenceList(w http.ResponseWriter, r *http.Request) {
+func handleGetRuleSpeedList(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
 	if err != nil {
@@ -100,23 +82,23 @@ func handleGetRuleSilenceList(w http.ResponseWriter, r *http.Request) {
 	q := &model.GeneralQuery{Enterprise: &enterprise, IsDelete: &isDelete}
 	p := &model.Pagination{Limit: limit, Page: page}
 
-	resp, err := GetRuleSilences(q, p)
+	resp, err := GetRuleSpeeds(q, p)
 	if err != nil {
-		logger.Error.Printf("get the silence rule failed. %s\n", err)
+		logger.Error.Printf("get the speed rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	total, err := CountRuleSilence(q)
+	total, err := CountRuleSpeed(q)
 	if err != nil {
-		logger.Error.Printf("count the flows failed. q: %+v, err: %s\n", *q, err)
+		logger.Error.Printf("count the speed rule failed. q: %+v, err: %s\n", *q, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	err = util.WriteJSON(w, struct {
-		Page pageResp             `json:"paging"`
-		Data []*model.SilenceRule `json:"data"`
+		Page pageResp           `json:"paging"`
+		Data []*model.SpeedRule `json:"data"`
 	}{
 		Page: pageResp{Current: page, Limit: limit, Total: uint64(total)},
 		Data: resp,
@@ -127,56 +109,50 @@ func handleGetRuleSilenceList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
+func handleGetRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
-
 	uuid := general.ParseID(r)
-
 	isDelete := 0
 	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
 
-	settings, err := GetRuleSilences(q, nil)
+	settings, err := GetRuleSpeeds(q, nil)
 	if err != nil {
-		logger.Error.Printf("get the silence rule failed. %s\n", err)
+		logger.Error.Printf("get the speed rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
-
 	if len(settings) == 0 {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
 		return
 	}
 
-	except, err := GetRuleSilenceException(settings[0])
+	except, err := GetRuleSpeedException(settings[0])
 	if err != nil {
-		logger.Error.Printf("get the exception rule failed. %s\n", err)
+		logger.Error.Printf("get the exception of speed rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
 	err = util.WriteJSON(w, struct {
-		Setting   model.SilenceRule    `json:"setting"`
-		Exception RuleSilenceException `json:"exception"`
+		Setting   model.SpeedRule    `json:"setting"`
+		Exception RuleSpeedException `json:"exception"`
 	}{
-		Setting: *settings[0],
-
+		Setting:   *settings[0],
 		Exception: *except,
 	})
-
 	if err != nil {
 		logger.Error.Printf("%s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
-
 }
 
-func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
+func handleDeleteRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 
 	isDelete := 0
 	q := &model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}
-	_, err := DeleteRuleSilence(q)
+	_, err := DeleteRuleSpeed(q)
 	if err != nil {
 		logger.Error.Printf("delete %s failed. %s\n", uuid, err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -184,29 +160,28 @@ func handleDeleteRuleSilence(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func checkUpdateSet(r model.SilenceUpdateSet) error {
-	sr := model.SilenceRule{Name: "valid name", Score: 99, Seconds: 99, Times: 99}
+func checkSpeedRuleUpdateSet(r model.SpeedUpdateSet) error {
+	sr := model.SpeedRule{Name: "valid name", Score: 99, Min: 99, Max: 99}
 	if r.Name != nil {
 		sr.Name = *r.Name
 	}
 	if r.Score != nil {
 		sr.Score = *r.Score
 	}
-	if r.Seconds != nil {
-		sr.Seconds = *r.Seconds
+	if r.Min != nil {
+		sr.Min = *r.Min
 	}
-	if r.Times != nil {
-		sr.Times = *r.Times
+	if r.Max != nil {
+		sr.Max = *r.Max
 	}
-	return checkSilenceRule(&sr)
-
+	return checkSpeedRule(&sr)
 }
 
-func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
+func handleModifyRuleSpeed(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 
-	var req model.SilenceUpdateSet
+	var req model.SpeedUpdateSet
 
 	err := util.ReadJSON(r, &req)
 	if err != nil {
@@ -214,18 +189,18 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = checkUpdateSet(req)
+	err = checkSpeedRuleUpdateSet(req)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
 	}
 
 	//just in case
-	req.ExceptionBefore = nil
-	req.ExceptionAfter = nil
+	req.ExceptionOver = nil
+	req.ExceptionUnder = nil
 
 	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
+	_, err = UpdateRuleSpeed(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &req)
 	if err != nil {
 		if err == ErrNoSuchID {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -236,7 +211,15 @@ func handleModifyRuleSilence(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
+func handleExceptionRuleSpeedUnder(w http.ResponseWriter, r *http.Request) {
+	handleExceptionRuleSpeed(w, r, "under")
+}
+
+func handleExceptionRuleSpeedOver(w http.ResponseWriter, r *http.Request) {
+	handleExceptionRuleSpeed(w, r, "over")
+}
+
+func handleExceptionRuleSpeed(w http.ResponseWriter, r *http.Request, exceptType string) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	uuid := general.ParseID(r)
 	var req RuleExceptionInteral
@@ -247,7 +230,7 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var updateSet model.SilenceUpdateSet
+	var updateSet model.SpeedUpdateSet
 
 	except, err := json.Marshal(req)
 	if err != nil {
@@ -256,11 +239,14 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	exceptStr := string(except)
-
-	updateSet.ExceptionBefore = &exceptStr
+	if exceptType == "under" {
+		updateSet.ExceptionUnder = &exceptStr
+	} else if exceptType == "over" {
+		updateSet.ExceptionOver = &exceptStr
+	}
 
 	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
+	_, err = UpdateRuleSpeed(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
 	if err != nil {
 		if err == ErrNoSuchID {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
@@ -268,67 +254,5 @@ func handleExceptionRuleSilenceBefore(w http.ResponseWriter, r *http.Request) {
 			logger.Error.Printf("update %s failed. %s\n", uuid, err)
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		}
-	}
-
-}
-
-func handleExceptionRuleSilenceAfter(w http.ResponseWriter, r *http.Request) {
-	enterprise := requestheader.GetEnterpriseID(r)
-	uuid := general.ParseID(r)
-
-	var req RuleExceptionInteral
-
-	err := util.ReadJSON(r, &req)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
-
-	var updateSet model.SilenceUpdateSet
-	req.Customer = nil
-
-	except, err := json.Marshal(req)
-	if err != nil {
-		logger.Error.Printf("marshal %+v failed. %s\n", req.Customer, err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
-		return
-	}
-	exceptStr := string(except)
-
-	updateSet.ExceptionAfter = &exceptStr
-
-	isDelete := 0
-	_, err = UpdateRuleSilence(&model.GeneralQuery{UUID: []string{uuid}, Enterprise: &enterprise, IsDelete: &isDelete}, &updateSet)
-	if err != nil {
-		if err == ErrNoSuchID {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		} else {
-			logger.Error.Printf("update %s failed. %s\n", uuid, err)
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-		}
-	}
-}
-
-//ReqUsrData is the user request
-type ReqUsrData string
-
-//Key to put into context in the middleware
-const (
-	IDKey         = ReqUsrData("id")
-	EnterpriseKey = ReqUsrData("enterprise")
-)
-
-//WithIntIDCheck checks the id with int64 type
-func WithIntIDCheck(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := general.ParseID(r)
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-			return
-		}
-		c := context.WithValue(r.Context(), IDKey, id)
-		r = r.WithContext(c)
-		next.ServeHTTP(w, r)
 	}
 }

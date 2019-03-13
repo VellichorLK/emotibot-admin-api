@@ -78,6 +78,11 @@ func GetLocale(r *http.Request) string {
 	return locale
 }
 
+// SetEnterprise will set EnterpriseID to http header
+func SetEnterprise(r *http.Request, enterprise string) {
+	r.Header.Set(ConstEnterpriseIDHeaderKey, enterprise)
+}
+
 // SetAppID will set AppID to http header
 func SetAppID(r *http.Request, appid string) {
 	r.Header.Set(ConstAppIDHeaderKey, appid)

@@ -54,6 +54,8 @@ type UserValueQuery struct {
 	UserKeyID        []int64
 	Type             []int8
 	ParentID         []int64
+	Value            string   // support one target, fuzzy search
+	Values           []string // support mutiple targets, exaxtly match
 	IgnoreSoftDelete bool
 	Paging           *Pagination
 }
@@ -71,6 +73,8 @@ func (u *UserValueQuery) whereBuilder(alias string) *whereBuilder {
 	if !u.IgnoreSoftDelete {
 		builder.Eq(fldUserKeyIsDelete, false)
 	}
+	builder.Like(fldUserValueVal, u.Value)
+	builder.In(fldUserValueVal, stringToWildCard(u.Values...))
 	return builder
 }
 

@@ -2,12 +2,17 @@ package localemsg
 
 import "emotibot.com/emotigo/pkg/logger"
 
+const (
+	ZhCn = "zh-cn"
+	ZhTw = "zh-tw"
+)
+
 var localeMsg = map[string]map[string]string{
-	"zh-cn": map[string]string{
+	ZhCn: map[string]string{
 		"Success": "成功",
 		"Fail":    "失败",
 	},
-	"zh-tw": map[string]string{
+	ZhTw: map[string]string{
 		"Success": "成功",
 		"Fail":    "失敗",
 	},
@@ -15,7 +20,7 @@ var localeMsg = map[string]map[string]string{
 
 func init() {
 	allMsg := []map[string]map[string]string{
-		intentMsg, intentTestMsg, auditMsg, dictionaryMsg,
+		intentMsg, intentTestMsg, auditMsg, dictionaryMsg, statsMsg,
 	}
 
 	// merge all module lang map
@@ -33,7 +38,7 @@ func init() {
 
 func Get(locale string, key string) string {
 	if _, ok := localeMsg[locale]; !ok {
-		return localeMsg["zh-cn"][key]
+		return localeMsg[ZhCn][key]
 	}
 
 	if _, ok := localeMsg[locale][key]; !ok {

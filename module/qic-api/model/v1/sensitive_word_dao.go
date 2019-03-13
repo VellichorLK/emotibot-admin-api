@@ -1,6 +1,7 @@
 package model
 
 import (
+	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
@@ -64,6 +65,7 @@ type SensitiveWordDao interface {
 	CountBy(*SensitiveWordFilter, SqlLike) (int64, error)
 	GetBy(*SensitiveWordFilter, SqlLike) ([]SensitiveWord, error)
 	GetRel(int64, SqlLike) (map[int8][]uint64, error)
+	GetRels([]int64, SqlLike) (map[int64][]uint64, map[int64][]uint64, error)
 	Delete(*SensitiveWordFilter, SqlLike) (int64, error)
 	Move(*SensitiveWordFilter, int64, SqlLike) (int64, error)
 	Names(SqlLike, bool) ([]string, error)
@@ -81,12 +83,12 @@ type SensitiveWord struct {
 }
 
 type SensitiveWordSqlDao struct {
-	Redis *radix.Cluster
+	Redis radix.Client
 }
 
-func NewDefaultSensitiveWordDao(cluster *radix.Cluster) SensitiveWordDao {
+func NewDefaultSensitiveWordDao(client radix.Client) SensitiveWordDao {
 	return &SensitiveWordSqlDao{
-		Redis: cluster,
+		Redis: client,
 	}
 }
 
@@ -342,6 +344,62 @@ func (dao *SensitiveWordSqlDao) GetRel(id int64, sqlLike SqlLike) (rel map[int8]
 	return
 }
 
+func (dao *SensitiveWordSqlDao) GetRels(swID []int64, sqlLike SqlLike) (staffExceptions map[int64][]uint64, customerExceptions map[int64][]uint64, err error) {
+	staffExceptions = map[int64][]uint64{}
+	customerExceptions = map[int64][]uint64{}
+
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldRelSWID, int64ToWildCard(swID...))
+	conditions, values := builder.ParseWithWhere()
+
+	if len(values) == 0 {
+		return
+	}
+
+	queryStr := fmt.Sprintf(
+		"SELECT %s, %s, %s FROM %s %s",
+		fldRelSWID,
+		fldRelSenID,
+		fldType,
+		tblRelSensitiveWordSen,
+		conditions,
+	)
+
+	rows, err := sqlLike.Query(queryStr, values...)
+	if err != nil {
+		logger.Error.Printf("error while query relations of sws, sqls: %s", queryStr)
+		logger.Error.Printf("values: %+v\n", values)
+		err = fmt.Errorf("error while query relations of sws, err: %s", err.Error())
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var exceptionType int8
+		var swid int64
+		var senid uint64
+		err = rows.Scan(&swid, &senid, &exceptionType)
+		if err != nil {
+			err = fmt.Errorf("error while scan relations of sws, err: %s", err.Error())
+			return
+		}
+
+		var cMap map[int64][]uint64
+		if exceptionType == StaffExceptionType {
+			cMap = staffExceptions
+		} else {
+			cMap = customerExceptions
+		}
+
+		if _, ok := cMap[swid]; !ok {
+			cMap[swid] = []uint64{}
+		}
+
+		cMap[swid] = append(cMap[swid], senid)
+	}
+	return
+}
+
 func (dao *SensitiveWordSqlDao) Delete(filter *SensitiveWordFilter, sqlLike SqlLike) (affectedRows int64, err error) {
 	conditionStr, values := filter.Where()
 	deleteStr := fmt.Sprintf(
@@ -399,7 +457,7 @@ func (dao *SensitiveWordSqlDao) Move(filter *SensitiveWordFilter, categoryID int
 // Names is a sugar function for getting all sensitive word names
 func (dao *SensitiveWordSqlDao) Names(sqlLike SqlLike, forceReload bool) (names []string, err error) {
 	names = []string{}
-	if dao.Redis != nil && !forceReload {
+	if !general.IsNil(dao.Redis) && !forceReload {
 		err = dao.Redis.Do(radix.Cmd(&names, "LRANGE", redisKey, "0", "-1"))
 		if err == nil {
 			return

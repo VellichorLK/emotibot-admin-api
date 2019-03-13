@@ -11,7 +11,7 @@ import (
 )
 
 type SilenceRule struct {
-	ID              int64  `json:"id,string"`
+	ID              int64  `json:"-"`
 	Name            string `json:"name"`
 	Score           int    `json:"score"`
 	Seconds         int    `json:"seconds"`
@@ -22,6 +22,7 @@ type SilenceRule struct {
 	IsDelete        int    `json:"-"`
 	CreateTime      int64  `json:"-"`
 	UpdateTime      int64  `json:"-"`
+	UUID            string `json:"silence_id"`
 }
 
 type SilenceUpdateSet struct {
@@ -35,6 +36,7 @@ type SilenceUpdateSet struct {
 
 type GeneralQuery struct {
 	ID         []int64
+	UUID       []string
 	Enterprise *string
 	IsDelete   *int
 }
@@ -42,6 +44,7 @@ type GeneralQuery struct {
 func (g *GeneralQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	flds := []string{
 		fldID,
+		fldUUID,
 		fldEnterprise,
 		fldIsDelete,
 	}
@@ -54,6 +57,7 @@ type SilenceRuleDao interface {
 	Count(conn SqlLike, q *GeneralQuery) (int64, error)
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error)
+	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
 }
 
 type SilenceRuleSQLDao struct {
@@ -80,6 +84,7 @@ func (s *SilenceRuleSQLDao) Add(conn SqlLike, r *SilenceRule) (int64, error) {
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -111,6 +116,7 @@ func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([
 		fldIsDelete,
 		fldCreateTime,
 		fldUpdateTime,
+		fldUUID,
 	}
 	for i := range flds {
 		flds[i] = "`" + flds[i] + "`"
@@ -140,7 +146,7 @@ func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([
 	for rows.Next() {
 		var d SilenceRule
 		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Seconds, &d.Times,
-			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime)
+			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
@@ -170,7 +176,7 @@ func (s *SilenceRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, error) 
 
 //SoftDelete simply set the is_delete to 1
 func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	table := tblSilenceRule
@@ -179,7 +185,7 @@ func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, er
 
 //Update updates the records
 func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error) {
-	if q == nil || (len(q.ID)) == 0 {
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
 	flds := []string{
@@ -192,6 +198,42 @@ func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpda
 	}
 	table := tblSilenceRule
 	return updateSQL(conn, q, d, table, flds)
+}
+
+//Copy copys only one record, only use the first ID in q
+func (s *SilenceRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if q == nil || (len(q.ID) == 0) {
+		return 0, ErrNeedCondition
+	}
+
+	flds := []string{
+		fldName,
+		fldScore,
+		fldSilSecond,
+		fldSilTime,
+		fldExcptBefore,
+		fldExcptAfter,
+		fldEnterprise,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+
+	for i := range flds {
+		flds[i] = "`" + flds[i] + "`"
+	}
+
+	fieldsSQL := strings.Join(flds, ",")
+	table := tblSilenceRule
+	copySQL := fmt.Sprintf("INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s=?", table,
+		fieldsSQL, fieldsSQL, table, fldID)
+
+	res, err := conn.Exec(copySQL, q.ID[0])
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 type condition interface {
@@ -229,7 +271,7 @@ func updateSQL(conn SqlLike, c condition, d interface{}, table string, flds []st
 	setStr += "," + fldUpdateTime + "=?"
 	sparams = append(sparams, time.Now().Unix())
 
-	setSQL := fmt.Sprintf("UPDATE %s %s %s", tblSilenceRule, setStr, condition)
+	setSQL := fmt.Sprintf("UPDATE %s %s %s", table, setStr, condition)
 	params := append(sparams, cparams...)
 	return execSQL(conn, setSQL, params)
 }

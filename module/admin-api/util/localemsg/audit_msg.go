@@ -1,7 +1,7 @@
 package localemsg
 
 var auditMsg = map[string]map[string]string{
-	"zh-cn": map[string]string{
+	ZhCn: map[string]string{
 		// Modules
 		"AuditModuleSSM":               "问答管理",
 		"AuditModuleFAQ":               "问答管理",
@@ -32,7 +32,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditOperationActive":   "启动",
 		"AuditOperationDeactive": "关闭",
 	},
-	"zh-tw": map[string]string{
+	ZhTw: map[string]string{
 		// Modules
 		"AuditModuleSSM":               "問答管理",
 		"AuditModuleFAQ":               "問答管理",

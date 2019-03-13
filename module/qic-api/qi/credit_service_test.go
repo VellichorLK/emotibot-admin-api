@@ -63,6 +63,11 @@ type mockCreditDao struct {
 func (m *mockCreditDao) InsertCredit(conn model.SqlLike, c *model.SimpleCredit) (int64, error) {
 	return 0, nil
 }
+
+func (m *mockCreditDao) InsertCredits(conn model.SqlLike, cs []model.SimpleCredit) error {
+	return nil
+}
+
 func (m *mockCreditDao) InsertSegmentMatch(conn model.SqlLike, s *model.SegmentMatch) (int64, error) {
 	return 0, nil
 }

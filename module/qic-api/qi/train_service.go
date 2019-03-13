@@ -304,8 +304,10 @@ func TrainModelByEnterprise(enterprise string) (int64, error) {
 		}
 		//if exist deprecated models which somehow doesn't be cleaned
 		cleanModel(enterprise)
-		//unload the model after two hour
-		setUnloadModelTimer(int64(models[0].ID), time.Duration(2*time.Hour))
+		if len(models) > 0 {
+			//unload the model after two hour
+			setUnloadModelTimer(int64(models[0].ID), time.Duration(2*time.Hour))
+		}
 	}()
 	return modelID, nil
 }

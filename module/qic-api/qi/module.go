@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
+	"emotibot.com/emotigo/module/qic-api/util/redis"
 	"emotibot.com/emotigo/pkg/api/rabbitmq/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -25,11 +26,13 @@ var (
 	taskDao      = &model.TaskSQLDao{}
 	userValueDao = &model.UserValueDao{}
 	userKeyDao   = &model.UserKeySQLDao{}
+	swDao        model.SensitiveWordDao
 	producer     *rabbitmq.Producer
 	consumer     *rabbitmq.Consumer
 	sqlConn      *sql.DB
 	dbLike       model.DBLike
 	volume       string
+	creditDao model.CreditDao = &model.CreditSQLDao{}
 )
 
 func init() {
@@ -116,12 +119,27 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "rule/silence", []string{}, handleNewRuleSilence),
 			util.NewEntryPoint(http.MethodGet, "rule/silence", []string{}, handleGetRuleSilenceList),
-			util.NewEntryPoint(http.MethodGet, "rule/silence/{id}", []string{}, WithIntIDCheck(handleGetRuleSilence)),
-			util.NewEntryPoint(http.MethodDelete, "rule/silence/{id}", []string{}, WithIntIDCheck(handleDeleteRuleSilence)),
-			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/name", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
-			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, WithIntIDCheck(handleModifyRuleSilence)),
-			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, WithIntIDCheck(handleExceptionRuleSilenceBefore)),
-			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, WithIntIDCheck(handleExceptionRuleSilenceAfter)),
+			util.NewEntryPoint(http.MethodGet, "rule/silence/{id}", []string{}, handleGetRuleSilence),
+			util.NewEntryPoint(http.MethodDelete, "rule/silence/{id}", []string{}, handleDeleteRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/name", []string{}, handleModifyRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/condition", []string{}, handleModifyRuleSilence),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/before", []string{}, handleExceptionRuleSilenceBefore),
+			util.NewEntryPoint(http.MethodPut, "rule/silence/{id}/exception/after", []string{}, handleExceptionRuleSilenceAfter),
+
+			util.NewEntryPoint(http.MethodPost, "rule/speed", []string{}, handleNewRuleSpeed),
+			util.NewEntryPoint(http.MethodGet, "rule/speed", []string{}, handleGetRuleSpeedList),
+			util.NewEntryPoint(http.MethodGet, "rule/speed/{id}", []string{}, handleGetRuleSpeed),
+			util.NewEntryPoint(http.MethodDelete, "rule/speed/{id}", []string{}, handleDeleteRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/name", []string{}, handleModifyRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/condition", []string{}, handleModifyRuleSpeed),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/under", []string{}, handleExceptionRuleSpeedUnder),
+			util.NewEntryPoint(http.MethodPut, "rule/speed/{id}/exception/over", []string{}, handleExceptionRuleSpeedOver),
+
+			util.NewEntryPoint(http.MethodPost, "rule/interposal", []string{}, handleNewRuleInterposal),
+			util.NewEntryPoint(http.MethodGet, "rule/interposal", []string{}, handleGetRuleInterposalList),
+			util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
+			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
+			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -216,6 +234,13 @@ func init() {
 				// require dao init first.
 				consumer.Subscribe(ASRWorkFlow)
 				logger.Info.Println("init & subscribe to RabbitMQ success")
+
+				// init swDao
+				cluster, err := redis.NewClusterFromEnvs(envs)
+				if err != nil {
+					logger.Error.Printf("init redis cluster failed, err: %s", err.Error())
+				}
+				swDao = model.NewDefaultSensitiveWordDao(cluster)
 
 			},
 			"init nav cache": setUpNavCache,

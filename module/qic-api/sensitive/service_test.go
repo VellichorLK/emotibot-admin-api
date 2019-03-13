@@ -59,6 +59,10 @@ func (dao *mockDAO) GetRel(id int64, sqlLike model.SqlLike) (map[int8][]uint64, 
 	return map[int8][]uint64{}, nil
 }
 
+func (dao *mockDAO) GetRels(ids []int64, sqlLike model.SqlLike) (map[int64][]uint64, map[int64][]uint64, error) {
+	return map[int64][]uint64{}, map[int64][]uint64{}, nil
+}
+
 func (dao *mockDAO) Delete(filter *model.SensitiveWordFilter, sqlLike model.SqlLike) (int64, error) {
 	return 1, nil
 }
@@ -162,15 +166,6 @@ func TestIsSensitive(t *testing.T) {
 
 	if len(sen1Result) == 0 || len(sen2Result) > 0 || len(sen3Result) > 0 {
 		t.Error("check sensitive words fail")
-	}
-}
-
-func TestStringsToRunes(t *testing.T) {
-	ss, _ := mockdao.GetSensitiveWords()
-	words := stringsToRunes(ss)
-
-	if len(words) != len(ss) {
-		t.Error("tranforms strings to runes failed")
 	}
 }
 
