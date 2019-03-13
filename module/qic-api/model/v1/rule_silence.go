@@ -22,7 +22,7 @@ type SilenceRule struct {
 	IsDelete        int    `json:"-"`
 	CreateTime      int64  `json:"-"`
 	UpdateTime      int64  `json:"-"`
-	UUID            string `json:"id"`
+	UUID            string `json:"silence_id"`
 }
 
 type SilenceUpdateSet struct {
@@ -271,7 +271,7 @@ func updateSQL(conn SqlLike, c condition, d interface{}, table string, flds []st
 	setStr += "," + fldUpdateTime + "=?"
 	sparams = append(sparams, time.Now().Unix())
 
-	setSQL := fmt.Sprintf("UPDATE %s %s %s", tblSilenceRule, setStr, condition)
+	setSQL := fmt.Sprintf("UPDATE %s %s %s", table, setStr, condition)
 	params := append(sparams, cparams...)
 	return execSQL(conn, setSQL, params)
 }
