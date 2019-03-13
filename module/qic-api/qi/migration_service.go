@@ -469,10 +469,6 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		return err
 	}
 
-	// TODO intent_name is not unique
-	//flag := 0
-	//query := &model.NavQuery{Enterprise: &enterpriseID, IsDelete: &flag}
-
 	// add tag
 	if err = BatchAddTags(fileName, enterpriseID); err != nil {
 		logger.Error.Println("fail to add tag when execute BatchAddFlows")
@@ -500,9 +496,22 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			continue
 		}
 
-		// TODO check value
+		// TODO check value or use constant variable
 		flowName = row.Cells[3].String()
 		logicList = row.Cells[5].String()
+
+		flag := 0
+		query := &model.NavQuery{Enterprise: &enterpriseID, IsDelete: &flag, Name: &flowName}
+		flows, err := GetFlows(query, 1, 1)
+		if len(flows) > 0 {
+			logger.Trace.Printf("found exist flow: %s \n", flowName)
+			// should use first
+			_, err := DeleteFlow(flows[0].ID, enterpriseID)
+			if err != nil {
+				logger.Error.Printf("fail to delete flow %s \n", flowName)
+			}
+			logger.Trace.Printf("delete exist flow: %s \n", flowName)
+		}
 
 		// default flow type
 		flow := reqNewFlow{
@@ -519,12 +528,11 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			return err
 		}
 
-		// ------------------
-		// add intent or node
-		// ------------------
+		// ------------------------------------
+		// add intent or node (SentenceGroup)
+		// ------------------------------------
 
-		//var dataSentences []*DataSentence
-		flag := int8(0)
+		senFlag := int8(0)
 		// get sentence according to logic_list, a node may contain more than one sentence
 		splits := strings.Split(logicList, "|")
 		for i, item := range splits {
@@ -534,11 +542,11 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 				Enterprise: enterpriseID,
 			}
 
-			// TODO check sentenceGroup ?
+			// TODO check if exist sentenceGroup, and sentenceName == sentenceGroupName (need tuning)
 
 			query := &model.SentenceQuery{
 				Enterprise: &enterpriseID,
-				IsDelete:   &flag,
+				IsDelete:   &senFlag,
 				Name:       &item,
 			}
 			count, err := sentenceDao.CountSentences(nil, query)

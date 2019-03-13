@@ -63,6 +63,7 @@ type NavQuery struct {
 	Enterprise   *string
 	IsDelete     *int
 	IgnoreIntent *int
+	Name         *string
 }
 
 //NavLimit is the limitation of the returned rows
@@ -78,6 +79,7 @@ func (n *NavQuery) whereSQL() (condition string, bindData []interface{}, err err
 		fldEnterprise,
 		fldIsDelete,
 		fldIgoreIntent,
+		fldName,
 	}
 	return makeAndCondition(n, flds)
 }
