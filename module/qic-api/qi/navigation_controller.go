@@ -325,7 +325,7 @@ func handleNewNode(w http.ResponseWriter, r *http.Request) {
 	resp := sentenceGroupToSentenceGroupInResponse(group)
 	err = util.WriteJSON(w, resp)
 	if err != nil {
-		logger.Error.Printf("%s\n", err)
+		logger.Error.Printf("%s \n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.JSON_PARSE_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }

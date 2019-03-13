@@ -44,6 +44,9 @@ const (
 	tblTrainedModel     = "TrainedModel"
 	tblNavigation       = "Navigation"
 	tblRelNavSenGrp     = "Relation_Nav_SenGrp"
+	tblSilenceRule      = "SilenceRule"
+	tblSpeedRule        = "SpeedRule"
+	tblInterposalRule   = "InterposalRule"
 )
 
 //field name in Conversation table
@@ -213,7 +216,19 @@ const (
 	fldType        = "type"
 	fldCategoryID  = "category_id"
 	fldMin         = "min"
+	fldMax         = "max"
 	fldNodeOrder   = "node_order"
+
+	fldSilSecond   = "silence_sec"
+	fldSilTime     = "silence_time"
+	fldExcptBefore = "exception_before"
+	fldExcptAfter  = "exception_after"
+
+	fldExcptUnder = "exception_under"
+	fldExcptOver  = "exception_over"
+
+	fldOverLappedSec   = "overlapped_sec"
+	fldOverLappedTimes = "overlapped_time"
 )
 
 //relation field name

@@ -7,6 +7,7 @@ import (
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 	"emotibot.com/emotigo/module/qic-api/util/test"
+	"bytes"
 )
 
 var mockCtxSentences = []string{
@@ -1118,6 +1119,13 @@ func (m *mockGroupDaoMatch) DeleteMany(groupUUID []string, sqlLike model.SqlLike
 
 func (m *mockGroupDaoMatch) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return nil, nil
+}
+
+func (m *mockGroupDaoMatch) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error) {
+	return nil, nil
+}
+func (m *mockGroupDaoMatch) ImportGroups(sqlLike model.SqlLike, fileName string) error {
+	return nil
 }
 
 type mockTrainedModelDao struct {

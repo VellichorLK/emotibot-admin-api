@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/test"
+	"bytes"
 )
 
 type mockDAO struct{}
@@ -81,6 +82,13 @@ func (m *mockDAO) DeleteMany(groupUUID []string, sqlLike model.SqlLike) error {
 
 func (m *mockDAO) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]model.GroupWCond, error) {
 	return mockGroups, nil
+}
+
+func (m *mockDAO) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error){
+	return nil, nil
+}
+func (m *mockDAO)ImportGroups(sqlLike model.SqlLike, fileName string) error{
+	return nil
 }
 
 var fileName string = "FileName"

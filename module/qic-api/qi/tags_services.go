@@ -8,7 +8,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/pkg/logger"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
