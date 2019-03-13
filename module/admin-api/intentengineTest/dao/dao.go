@@ -1803,9 +1803,6 @@ func restoreIntentsWithTx(tx *sql.Tx, appID string, intentVersion int64) (err er
 		intents[intentName].id = id
 	}
 
-	queryStr = fmt.Sprintf(`
-		INSERT INTO %s (sentence, intent)
-		VALUES (?, ?)`, IntentTrainSetsTable)
 	sentencesPerOp := 2000
 
 	if len(trainSets) > 0 {
@@ -1813,6 +1810,9 @@ func restoreIntentsWithTx(tx *sql.Tx, appID string, intentVersion int64) (err er
 		ops := 0
 
 		for sentence, intentName := range trainSets {
+			queryStr = fmt.Sprintf(`
+				INSERT INTO %s (sentence, intent)
+				VALUES (?, ?)`, IntentTrainSetsTable)
 			intentID := intents[intentName].id
 			params = append(params, sentence, intentID)
 			ops++
