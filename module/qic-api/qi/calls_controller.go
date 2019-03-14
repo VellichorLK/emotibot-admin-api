@@ -132,11 +132,18 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Cal
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
-	if c.FilePath == nil {
+	if c.DemoFilePath == nil && c.FilePath == nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
 		return
 	}
-	fp := path.Join(volume, *c.FilePath)
+
+	var fp string
+	if c.DemoFilePath != nil {
+		fp = path.Join(volume, *c.DemoFilePath)
+	} else {
+		fp = path.Join(volume, *c.FilePath)
+	}
+
 	f, err := os.Open(fp)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))

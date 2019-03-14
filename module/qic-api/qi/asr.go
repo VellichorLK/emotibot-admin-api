@@ -3,7 +3,9 @@ package qi
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -16,6 +18,8 @@ import (
 // if error is nil, then the process is consider either done or unrecoverable error
 // TODO: Add a special error type that can distinguish unrecoverable error.
 func ASRWorkFlow(output []byte) error {
+	logger.Trace.Println("ASR workflow started")
+
 	var resp ASRResponse
 	err := json.Unmarshal(output, &resp)
 	if err != nil {
@@ -56,15 +60,48 @@ func ASRWorkFlow(output []byte) error {
 
 	c.DurationMillSecond = int(resp.Length * 1000)
 
+	if volume == "" {
+		return fmt.Errorf("volume is not exist, please contact ops and check init log for volume init error.")
+	}
+
+	if resp.Mp3 != nil {
+		match, _ := regexp.MatchString("\\S+.mp3", *resp.Mp3)
+		if match {
+			s := strings.Split(*resp.Mp3, "/")
+			if len(s) > 0 {
+				fp := fmt.Sprint(s[len(s)-1])
+				c.DemoFilePath = &fp
+			}
+		}
+	}
+
 	err = UpdateCall(&c)
 	if err != nil {
 		return fmt.Errorf("update call duration failed, %v", err)
 	}
 
 	segments := resp.Segments()
-	segments, err = segmentDao.NewSegments(tx, segments)
-	if err != nil {
-		return fmt.Errorf("new segment failed, %v", err)
+
+	switch c.Type {
+	case model.CallTypeWholeFile:
+		logger.Trace.Println("Create segments returned from ASR.")
+		segments, err = segmentDao.NewSegments(tx, segments)
+		if err != nil {
+			return fmt.Errorf("new segment failed, %v", err)
+		}
+	case model.CallTypeRealTime:
+		logger.Trace.Println("Create segment emotions returned from ASR.")
+		emotions := make([]model.RealSegmentEmotion, 0)
+		for _, segment := range segments {
+			for _, emotion := range segment.Emotions {
+				emotions = append(emotions, emotion)
+			}
+		}
+
+		err = segmentDao.NewEmotions(tx, emotions)
+		if err != nil {
+			return fmt.Errorf("new emotions failed, %v", err)
+		}
 	}
 
 	sort.SliceStable(segments, func(i, j int) bool {
@@ -154,8 +191,9 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 			Text:       sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
-					Typ:   model.ETypAngry,
-					Score: sen.Emotion,
+					SegmentID: sen.SegmentID,
+					Typ:       model.ETypAngry,
+					Score:     sen.Emotion,
 				},
 			},
 		}
@@ -172,8 +210,9 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 			Text:       sen.ASR,
 			Emotions: []model.RealSegmentEmotion{
 				model.RealSegmentEmotion{
-					Typ:   model.ETypAngry,
-					Score: sen.Emotion,
+					SegmentID: sen.SegmentID,
+					Typ:       model.ETypAngry,
+					Score:     sen.Emotion,
 				},
 			},
 		}
@@ -193,6 +232,7 @@ type ASRResponse struct {
 	Status       int64    `json:"ret"`
 	CallID       int64    `json:"call_id,string"`
 	Length       float64  `json:"length"`
+	Mp3          *string  `json:"mp3"`
 	LeftChannel  vChannel `json:"left_channel"`
 	RightChannel vChannel `json:"right_channel"`
 }
@@ -206,9 +246,10 @@ type vChannel struct {
 }
 
 type voiceSentence struct {
-	Status  int64   `json:"sret"`
-	Start   float64 `json:"start"`
-	End     float64 `json:"end"`
-	ASR     string  `json:"asr"`
-	Emotion float64 `json:"emotion"`
+	Status    int64   `json:"sret"`
+	Start     float64 `json:"start"`
+	End       float64 `json:"end"`
+	ASR       string  `json:"asr"`
+	Emotion   float64 `json:"emotion"`
+	SegmentID int64   `json:"segment_id"`
 }
