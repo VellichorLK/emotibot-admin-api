@@ -80,6 +80,8 @@ type RuleGrpCredit struct {
 	Score   int               `json:"score"`
 	Rules   []*RuleCredit     `json:"rules"`
 	Setting *model.GroupWCond `json:"setting"`
+
+	Matched []*MatchedData `json:"-"`
 }
 
 //RuleCredit stores the rule level result
@@ -876,6 +878,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 		}
 		resp.Rules = append(resp.Rules, credit)
 	}
+	resp.Matched = tagMatchDat
 
 	return &resp, nil
 }

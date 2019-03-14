@@ -22,6 +22,17 @@ var (
 	levSenTyp     levelType = 40
 	levSegTyp     levelType = 50
 	levSWTyp      levelType = 60
+
+	levSilenceTyp    levelType = 11
+	levSpeedTyp      levelType = 12
+	levInterposalTyp levelType = 13
+
+	levLStaffSenTyp    levelType = 41
+	levLCustomerSenTyp levelType = 42
+	levUStaffSenTyp    levelType = 43
+	levUCustomerSenTyp levelType = 44
+
+	levSegSilenceTyp levelType = 51
 )
 
 var unactivate = -1
@@ -459,4 +470,109 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	})
 
 	return resp, nil
+}
+
+type WhosType int
+
+const (
+	Conversation WhosType = iota
+	Silence
+	Speed
+	Interposal
+)
+
+type ExceptionMatched struct {
+	SentenceID int64
+	Typ        levelType
+	Valid      bool
+	Tags       []*TagCredit
+}
+type RulesException struct {
+	RuleID     int64     //rule ids
+	Typ        levelType //type
+	Whos       WhosType
+	CallID     int64
+	Valid      bool
+	Score      int
+	Exception  []*ExceptionMatched
+	SilenceSeg []int64 //the segment id that break the silence rule
+}
+
+//StoreRulesException stores the rule exception
+func StoreRulesException(credits []RulesException) error {
+	if len(credits) == 0 {
+		return ErrNoArgument
+	}
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	now := time.Now().Unix()
+
+	for _, r := range credits {
+		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(0),
+			OrgID: uint64(r.RuleID), Score: r.Score, CreateTime: now, Revise: unactivate, Whos: int(r.Whos)}
+		if r.Valid {
+			s.Valid = matched
+		}
+		rParent, err := creditDao.InsertCredit(tx, s)
+		if err != nil {
+			return err
+		}
+		for _, v := range r.Exception {
+			s = &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(v.Typ), ParentID: uint64(rParent),
+				OrgID: uint64(v.SentenceID), Score: 0, CreateTime: now, Revise: unactivate, Whos: int(r.Whos)}
+			if v.Valid {
+				s.Valid = matched
+			}
+			sParent, err := creditDao.InsertCredit(tx, s)
+			if err != nil {
+				return err
+			}
+
+			duplicateSegIDMap := make(map[uint64]bool)
+
+			for _, tag := range v.Tags {
+				s := &model.SegmentMatch{SegID: uint64(tag.SegmentID), TagID: tag.ID, Score: tag.Score,
+					Match: tag.Match, MatchedText: tag.MatchTxt, CreateTime: now, Whos: int(r.Whos)}
+				_, err = creditDao.InsertSegmentMatch(tx, s)
+				if err != nil {
+					logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+					return err
+				}
+				duplicateSegIDMap[uint64(tag.SegmentID)] = true
+			}
+
+			if v.Valid {
+				for segID := range duplicateSegIDMap {
+					s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(levSegTyp), ParentID: uint64(sParent),
+						OrgID: segID, Score: 0, CreateTime: now, Revise: unactivate, Valid: matched, Whos: int(r.Whos)}
+
+					_, err = creditDao.InsertCredit(tx, s)
+					if err != nil {
+						logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+						return err
+					}
+				}
+			}
+		}
+
+		//silence
+		for _, segID := range r.SilenceSeg {
+			s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(levSegSilenceTyp), ParentID: uint64(rParent),
+				OrgID: uint64(segID), Score: 0, CreateTime: now, Revise: unactivate, Valid: notMatched, Whos: int(r.Whos)}
+
+			_, err = creditDao.InsertCredit(tx, s)
+			if err != nil {
+				logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
 }
