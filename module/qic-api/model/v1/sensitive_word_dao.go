@@ -221,7 +221,7 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 		return
 	}
 
-	if dao.Redis != nil {
+	if !general.IsNil(dao.Redis) {
 		ierr = dao.Redis.Do(radix.Cmd(nil, "DEL", redisKey))
 		if ierr != nil {
 			logger.Error.Print(ierr)
