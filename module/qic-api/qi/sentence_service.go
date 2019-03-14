@@ -245,7 +245,7 @@ func UpdateSentence(sentenceUUID string, name string, enterprise string, tagUUID
 	now := time.Now().Unix()
 	s := &model.Sentence{Name: name, Enterprise: enterprise,
 		UUID: sentenceUUID, CreateTime: now, UpdateTime: now,
-		TagIDs: tagIDs}
+		TagIDs: tagIDs, CategoryID: sentence.CategoryID}
 	newID, err := sentenceDao.InsertSentence(tx, s)
 	if err != nil {
 		logger.Error.Printf("insert sentence failed. %s\n", err)
