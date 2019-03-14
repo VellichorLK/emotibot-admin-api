@@ -514,16 +514,22 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 									if staffMatchIdx == matchedIdx {
 										matched.Valid = true
 										result.Valid = true
+									} else {
+										continue
 									}
 								case levLCustomerSenTyp:
 									if customerMatchIdx == matchedIdx {
 										matched.Valid = true
 										result.Valid = true
+									} else {
+										continue
 									}
 								case levUStaffSenTyp:
 									if aStaffMatchIdx == matchedIdx {
 										matched.Valid = true
 										result.Valid = true
+									} else {
+										continue
 									}
 								default:
 									continue
@@ -554,6 +560,9 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 
 			if (numOfBreak - exceptionTimes) <= rule.Times {
 				result.Valid = true
+			}
+			if !result.Valid {
+				result.Score = rule.Score
 			}
 		}
 		resp = append(resp, result)
