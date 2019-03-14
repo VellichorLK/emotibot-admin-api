@@ -21,9 +21,7 @@ var (
 	levSenGrpTyp  levelType = 30
 	levSenTyp     levelType = 40
 	levSegTyp     levelType = 50
-<<<<<<< HEAD
 	levSWTyp      levelType = 60
-=======
 
 	levSilenceTyp    levelType = 11
 	levSpeedTyp      levelType = 12
@@ -33,7 +31,6 @@ var (
 	levLCustomerSenTyp levelType = 42
 	levUStaffSenTyp    levelType = 43
 	levUCustomerSenTyp levelType = 44
->>>>>>> add the silence rule check function
 )
 
 var unactivate = -1
