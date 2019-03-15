@@ -1,0 +1,19 @@
+FROM harbor.emotibot.com/library/go-build:3409410d-1.10-standard AS build-env
+
+ENV GOPREFIX /go/src/emotibot.com/emotigo
+ARG PROJECT
+
+COPY ./module/${PROJECT} /go/src/emotibot.com/emotigo/module/${PROJECT}
+COPY ./pkg /go/src/emotibot.com/emotigo/pkg
+WORKDIR /go/src/emotibot.com/emotigo/module/${PROJECT}
+RUN go get -v && go install -v
+RUN cd tool && for tool in `find . -type d -maxdepth 1 -mindepth 1`; do cd $tool && go install -v && cd ../; done;
+
+## 复制上一个 stage 所编译出的 binary 至 scratch image
+FROM scratch
+
+ARG PROJECT
+
+WORKDIR /usr/bin/app
+COPY --from=build-env /go/bin/${PROJECT} .
+COPY ./module/${PROJECT}/template .
