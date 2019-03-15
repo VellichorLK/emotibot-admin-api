@@ -45,8 +45,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 	}
 
 	sids := []uint64{} // sentence ids
-	appendSentenceID(&sids, staffExceptions)
-	appendSentenceID(&sids, customerExceptions)
+	sids = appendSentenceID(sids, staffExceptions)
+	sids = appendSentenceID(sids, customerExceptions)
 
 	// get sentence to segment match
 	senToSegments := map[uint64][]int{}
@@ -193,10 +193,9 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 	return
 }
 
-func appendSentenceID(ids *[]uint64, sentences map[int64][]uint64) {
-	newids := *ids
+func appendSentenceID(ids []uint64, sentences map[int64][]uint64) []uint64 {
 	for sid := range sentences {
-		newids = append(newids, uint64(sid))
+		ids = append(ids, uint64(sid))
 	}
-	ids = &newids
+	return ids
 }
