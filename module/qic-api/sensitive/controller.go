@@ -121,6 +121,11 @@ func handleGetSensitiveWords(w http.ResponseWriter, r *http.Request) {
 		Deleted:    &deleted,
 	}
 
+	// 1-based to 0-based
+	if filter.Page > 0 {
+		filter.Page--
+	}
+
 	if keyword, ok := vars["keyword"]; ok {
 		filter.Keyword = keyword
 	}
@@ -303,6 +308,10 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	paging := request.Paging(r)
 
+	if paging.Page > 0 {
+		paging.Page--
+	}
+
 	categoryID, err := parseID(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -314,6 +323,8 @@ func handleGetWordsUnderCategory(w http.ResponseWriter, r *http.Request) {
 		Category:   &categoryID,
 		Enterprise: &enterprise,
 		Deleted:    &deleted,
+		Page:       paging.Page,
+		Limit:      paging.Limit,
 	}
 	total, words, err := GetSensitiveWords(filter)
 	if err != nil {

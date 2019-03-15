@@ -281,6 +281,12 @@ func (dao *SensitiveWordSqlDao) CountBy(filter *SensitiveWordFilter, sqlLike Sql
 func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLike) (sensitiveWords []SensitiveWord, err error) {
 	queryStr, values := getSensitiveWordQuerySQL(filter)
 
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
+		logger.Info.Printf("queryStr: %s", queryStr)
+	}
+
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		logger.Error.Printf("error when count rows in dao.GetBy, sql: %s\n", queryStr)
