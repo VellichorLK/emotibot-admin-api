@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -19,25 +20,42 @@ var groupResps = func(filter *model.GroupFilter) (total int64, responses []Group
 	}
 	responses = make([]GroupResp, 0, len(groups))
 	grpIndexes := make(map[int64]int, len(groups))
+
 	for i, grp := range groups {
 		g := GroupResp{
-			GroupID:    grp.UUID,
-			GroupName:  *grp.Name,
-			IsEnable:   *grp.Enabled,
-			CreateTime: grp.CreateTime,
-			RuleCount:  grp.RuleCount,
+			GroupID:     grp.UUID,
+			GroupName:   *grp.Name,
+			IsEnable:    *grp.Enabled,
+			CreateTime:  grp.CreateTime,
+			Description: *grp.Description,
+			RuleCount:   grp.RuleCount,
+			// Other:       toOther(cond, make(map[string][]interface{})),
 		}
 		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
 		responses = append(responses, g)
 		grpIndexes[grp.ID] = i
 	}
+	conditions, err := condDao.Conditions(nil, model.ConditionQuery{
+		GroupID: valueQuery.ParentID,
+	})
+	if err != nil {
+		return 0, nil, fmt.Errorf("get conds failed, %v", err)
+	}
+	for _, cond := range conditions {
+		idx := grpIndexes[cond.GroupID]
+		resp := responses[idx]
+		resp.Other = toOther(&cond, make(map[string][]interface{}))
+		responses[idx] = resp
+	}
+	//query all groups custom values by one time
 	grpValues, err := valuesKey(nil, valueQuery)
 	if err != nil {
-		return
+		return 0, nil, fmt.Errorf("get user values failed, %v", err)
 	}
+
 	for _, val := range grpValues {
 		index, found := grpIndexes[val.LinkID]
-		if !found {
+		if !found { //ignore corrupt ones.
 			continue
 		}
 		resp := responses[index]
@@ -54,6 +72,13 @@ var newGroupWithAllConditions = func(group model.Group, condition model.Conditio
 		return model.Group{}, fmt.Errorf("begin transaction failed, %v", err)
 	}
 	defer tx.Rollback()
+	if group.UUID == "" {
+		newUUID, err := uuid.NewV1()
+		if err != nil {
+			return model.Group{}, fmt.Errorf("generate uuid failed, %v", err)
+		}
+		group.UUID = hex.EncodeToString(newUUID[:])
+	}
 	group, err = newGroup(tx, group)
 	if err != nil {
 		return model.Group{}, fmt.Errorf("new group failed, %v", err)
@@ -241,10 +266,12 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 
 // GetGroupBy Get old group struct by id.
 func GetGroupBy(id string) (group *model.GroupWCond, err error) {
+	var isDeleted int8 = 0
 	filter := &model.GroupFilter{
 		UUID: []string{
 			id,
 		},
+		Delete: &isDeleted,
 	}
 
 	sqlConn := dbLike.Conn()
@@ -254,7 +281,7 @@ func GetGroupBy(id string) (group *model.GroupWCond, err error) {
 	}
 
 	if len(groups) == 0 {
-		return
+		return nil, ErrNotFound
 	}
 
 	group = &groups[0]
@@ -314,6 +341,11 @@ func UpdateGroup(group model.Group, customcols map[string][]interface{}) (err er
 	if err != nil {
 		return
 	}
+
+	_, err = setGroupRule(tx, group.ID, group.Rules)
+	if err != nil {
+		return fmt.Errorf("update group rule failed, %v", err)
+	}
 	group.Condition.GroupID = group.ID
 	_, err = newCondition(tx, *group.Condition)
 	if err != nil {
@@ -355,12 +387,13 @@ func NewGroupWithAllConditions(group model.Group, condition model.Condition, cus
 
 // GroupResp is the response schema of get group
 type GroupResp struct {
-	GroupID    string `json:"group_id"`
-	GroupName  string `json:"group_name"`
-	IsEnable   int8   `json:"is_enable"`
-	Other      Other  `json:"other"`
-	CreateTime int64  `json:"create_time"`
-	RuleCount  int    `json:"rule_count"`
+	GroupID     string `json:"group_id"`
+	GroupName   string `json:"group_name"`
+	IsEnable    int8   `json:"is_enable"`
+	Other       Other  `json:"other"`
+	CreateTime  int64  `json:"create_time"`
+	Description string `json:"description"`
+	RuleCount   int    `json:"rule_count"`
 }
 
 func GroupResps(filter *model.GroupFilter) (total int64, responses []GroupResp, err error) {

@@ -22,21 +22,21 @@ import (
 
 // NewGroupReq is the request body schema of the POST or PUT group api
 type NewGroupReq struct {
-	GroupName    string   `json:"group_name"`
-	IsEnable     int8     `json:"is_enable"`
-	LimitSpeed   int      `json:"limit_speed"`
-	LimitSilence float32  `json:"limit_silence"`
-	Other        Other    `json:"other"`
-	Rules        []string `json:"rules"`
+	GroupName   string   `json:"group_name"`
+	GroupID     string   `json:"group_id"`
+	Description string   `json:"description"`
+	IsEnable    int8     `json:"is_enable"`
+	Other       Other    `json:"other"`
+	Rules       []string `json:"rules"`
 }
 
-//Group transfer NewGroupReq as a model.Group struct, any virtual fields should be handled by the caller.
+//Group transfer NewGroupReq as a model.Group struct, any virtual fields(etc: Other, Rules...) should be handled by the caller.
 func (n *NewGroupReq) Group() model.Group {
 	return model.Group{
-		Name:           n.GroupName,
-		IsEnable:       n.IsEnable != 0,
-		LimitedSpeed:   n.LimitSpeed,
-		LimitedSilence: n.LimitSilence,
+		UUID:        n.GroupID,
+		Name:        n.GroupName,
+		Description: n.Description,
+		IsEnable:    n.IsEnable != 0,
 	}
 }
 
@@ -61,6 +61,8 @@ type Other struct {
 	CustomColumns map[string][]interface{} `json:"-"`
 }
 
+var ReservedConditionKeywords = parseJSONKeys(Other{})
+
 // UnmarshalJSON unmarshal Other with additional custom columns
 func (o *Other) UnmarshalJSON(data []byte) error {
 	// Check NewCallReq UnmarshalJSON
@@ -80,7 +82,7 @@ func (o *Other) UnmarshalJSON(data []byte) error {
 	}
 	o.CustomColumns = map[string][]interface{}{}
 	for col, val := range columns {
-		if _, exist := ReservedCustomKeywords[col]; exist {
+		if _, exist := ReservedConditionKeywords[col]; exist {
 			continue
 		}
 		o.CustomColumns[col] = append(o.CustomColumns[col], val)
@@ -133,7 +135,8 @@ func (o Other) MarshalJSON() ([]byte, error) {
 }
 
 var conditionTypDict = map[int8]struct{}{
-	model.GroupCondTypOn: struct{}{},
+	model.GroupCondTypOn:  {},
+	model.GroupCondTypOff: {},
 }
 
 // ValidcondType Return Condition type code(int8) by given input name.
@@ -144,7 +147,6 @@ func IsValidcondType(typ int8) bool {
 }
 
 func (o *Other) ToCondition() *model.Condition {
-
 	return &model.Condition{
 		Type:          o.Type,
 		FileName:      o.FileName,
@@ -161,6 +163,27 @@ func (o *Other) ToCondition() *model.Condition {
 		RightChannel:  int8(RoleMatcherTyp(o.RightChannel)),
 		CallStart:     o.CallFrom,
 		CallEnd:       o.CallEnd,
+	}
+}
+
+func toOther(cond *model.Condition, customCond map[string][]interface{}) Other {
+	return Other{
+		Type:          cond.Type,
+		FileName:      cond.FileName,
+		Deal:          cond.Deal,
+		Series:        cond.Series,
+		StaffID:       cond.StaffID,
+		StaffName:     cond.StaffName,
+		Extension:     cond.Extension,
+		Department:    cond.Department,
+		CustomerID:    cond.CustomerID,
+		CustomerName:  cond.CustomerName,
+		CustomerPhone: cond.CustomerPhone,
+		LeftChannel:   RoleMatcherString(int(cond.LeftChannel)),
+		RightChannel:  RoleMatcherString(int(cond.RightChannel)),
+		CallFrom:      cond.CallStart,
+		CallEnd:       cond.CallEnd,
+		CustomColumns: customCond,
 	}
 }
 
@@ -190,8 +213,7 @@ func (o *Other) ToCondition() *model.Condition {
 
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	var (
-		reqBody   NewGroupReq
-		ruleTotal int64
+		reqBody NewGroupReq
 	)
 	err := util.ReadJSON(r, &reqBody)
 	if err != nil {
@@ -205,23 +227,26 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 
 	group := reqBody.Group()
 	group.EnterpriseID = requestheader.GetEnterpriseID(r)
-	ruleTotal, group.Rules, err = getConversationRulesBy(&model.ConversationRuleFilter{
-		UUID: reqBody.Rules,
-	})
-	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("get rules failed, %v", err))
-		return
-	}
-	if int(ruleTotal) != len(reqBody.Rules) {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("some input rules invalid"))
-		return
+	if reqBody.Rules != nil {
+		var ruleTotal int64
+		ruleTotal, group.Rules, err = getConversationRulesBy(&model.ConversationRuleFilter{
+			UUID: reqBody.Rules,
+		})
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("get rules failed, %v", err))
+			return
+		}
+		if int(ruleTotal) != len(reqBody.Rules) {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request rules %v, but system only have %d", reqBody.Rules, ruleTotal))
+			return
+		}
 	}
 
 	condition := reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
 	group, err = NewGroupWithAllConditions(group, *condition, customConditions)
 	if err != nil {
-		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("internal server error, %v", err))
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("new group with conditions failed, %v", err))
 		return
 	}
 	response := struct {
@@ -268,26 +293,56 @@ func parseID(r *http.Request) (id string) {
 	return vars["id"]
 }
 
-func handleGetGroup(w http.ResponseWriter, r *http.Request) {
-	id := parseID(r)
+var methodDict = map[int8]string{
+	model.RuleMethodPositive: "positive",
+	model.RuleMethodNegative: "negative",
+}
 
-	group, err := GetGroupBy(id)
+func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
+	type RuleResp struct {
+		UUID   string `json:"rule_id"`
+		Name   string `json:"rule_name"`
+		Method string `json:"method"`
+	}
+	type GroupDetailResp struct {
+		GroupResp
+		Rules []RuleResp `json:"rules"`
+	}
+	customData, err := CustomConditionsOfGroup(group.ID)
 	if err != nil {
-		logger.Error.Printf("error while get group in handleGetGroup, reason: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("Get conditions of group failed, %v", err))
 		return
 	}
-
-	if group == nil {
-		http.Error(w, "Not Found", http.StatusNotFound)
+	cond, err := GetConditionOfGroup(group.ID)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get con"))
 		return
 	}
+	var resp = GroupDetailResp{
+		GroupResp: GroupResp{
+			GroupID:     group.UUID,
+			GroupName:   *group.Name,
+			IsEnable:    *group.Enabled,
+			Other:       toOther(cond, customData),
+			CreateTime:  group.CreateTime,
+			Description: *group.Description,
+			RuleCount:   len(*group.Rules),
+		},
+		Rules: make([]RuleResp, 0, len(*group.Rules)),
+	}
 
-	util.WriteJSON(w, group)
+	for _, r := range *group.Rules {
+		resp.Rules = append(resp.Rules, RuleResp{
+			UUID:   r.UUID,
+			Name:   r.Name,
+			Method: methodDict[r.Method],
+		})
+	}
+	util.WriteJSON(w, resp)
 
 }
 
-func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Group) {
+func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
 	var reqBody NewGroupReq
 	err := util.ReadJSON(r, &reqBody)
 	if err != nil {
@@ -299,17 +354,25 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 		return
 	}
 	newGroup := reqBody.Group()
-	newGroup.EnterpriseID = group.EnterpriseID
-	newGroup.ID = group.ID
+	newGroup.EnterpriseID = group.Enterprise
+	newGroup.UUID = group.UUID
 	newGroup.Condition = reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
-	total, rules, err := getConversationRulesBy(&model.ConversationRuleFilter{
-		UUID: reqBody.Rules,
-	})
-	if int(total) != len(rules) {
-		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("some rules does not exist."))
-		return
+	if len(reqBody.Rules) > 0 {
+		var (
+			total int64
+			rules []model.ConversationRule
+		)
+		total, rules, err = getConversationRulesBy(&model.ConversationRuleFilter{
+			UUID: reqBody.Rules,
+		})
+		if int(total) != len(reqBody.Rules) {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("some rules does not exist."))
+			return
+		}
+		newGroup.Rules = rules
 	}
+
 	err = UpdateGroup(newGroup, customConditions)
 	if err != nil {
 		logger.Error.Printf("error while update group in handleUpdateGroup, reason: %s", err.Error())
@@ -420,7 +483,7 @@ func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error)
 	return
 }
 
-func groupRequest(next func(w http.ResponseWriter, r *http.Request, group *model.Group)) func(w http.ResponseWriter, r *http.Request) {
+func groupRequest(next func(w http.ResponseWriter, r *http.Request, group *model.GroupWCond)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const GroupIDKey = "group_id"
 		groupUUID := mux.Vars(r)[GroupIDKey]
@@ -433,14 +496,17 @@ func groupRequest(next func(w http.ResponseWriter, r *http.Request, group *model
 			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("empty enterprise ID"))
 			return
 		}
-		groups, err := serviceDAO.Group(nil, model.GroupQuery{UUID: []string{groupUUID}})
-		if err != nil {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("get group failed, %v", err))
-		}
-		if len(groups) == 0 {
+		g, err := GetGroupBy(groupUUID)
+		if err == ErrNotFound {
 			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("id '%s' is not exist", groupUUID))
 			return
 		}
-		next(w, r, &groups[0])
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get group failed, %v", err))
+			return
+		}
+		g.UUID = groupUUID
+
+		next(w, r, g)
 	}
 }

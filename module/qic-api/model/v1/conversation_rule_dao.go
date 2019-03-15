@@ -7,6 +7,12 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+// RuleMethod 正面與反面規則 flag
+const (
+	RuleMethodNegative int8 = 1
+	RuleMethodPositive int8 = -1
+)
+
 type RuleCompleteness struct {
 	RuleCompleted       int8
 	HasDescription      bool

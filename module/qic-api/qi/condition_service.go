@@ -63,3 +63,32 @@ func newCustomConditions(tx model.SQLTx, group model.Group, customcolumns map[st
 	}
 	return uvs, nil
 }
+
+func GetConditionOfGroup(groupID int64) (*model.Condition, error) {
+	conds, err := condDao.Conditions(nil, model.ConditionQuery{
+		GroupID: []int64{groupID},
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(conds) == 0 {
+		return nil, ErrNotFound
+	}
+	return &conds[0], nil
+}
+
+func CustomConditionsOfGroup(groupID int64) (map[string][]interface{}, error) {
+	values, err := valuesKey(nil, model.UserValueQuery{
+		Type:     []int8{model.UserValueTypGroup},
+		ParentID: []int64{groupID},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query values with keys failed, %v", err)
+	}
+	var customDict = make(map[string][]interface{})
+	for _, val := range values {
+		in := val.UserKey.InputName
+		customDict[in] = append(customDict[in], val.Value)
+	}
+	return customDict, nil
+}
