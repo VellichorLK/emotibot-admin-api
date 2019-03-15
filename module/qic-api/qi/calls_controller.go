@@ -248,7 +248,8 @@ type NewCallReq struct {
 	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
 }
 
-var callRequestJSONKeys = parseJSONKeys(NewCallReq{})
+// ReservedCustomKeywords is a list of keywords reserved at NewCallReq.
+var ReservedCustomKeywords = parseJSONKeys(NewCallReq{})
 
 func parseJSONKeys(n interface{}) map[string]struct{} {
 	ta := reflect.TypeOf(n)
@@ -294,7 +295,7 @@ func (n *NewCallReq) UnmarshalJSON(data []byte) error {
 	}
 
 	for col, val := range columns {
-		if _, exist := callRequestJSONKeys[col]; exist {
+		if _, exist := ReservedCustomKeywords[col]; exist {
 			continue
 		}
 		if n.CustomColumns == nil {

@@ -5,11 +5,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/util/general"
 )
 
-type GroupsResponse struct {
-	Paging *general.Paging    `json:"paging"`
-	Data   []model.GroupWCond `json:"data"`
-}
-
 type SimpleGroupsResponse struct {
 	Paging *general.Paging     `json:"paging"`
 	Data   []model.SimpleGroup `json:"data"`

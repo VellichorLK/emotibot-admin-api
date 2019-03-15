@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -29,32 +30,6 @@ var (
 	userKeys     = userKeyDao.UserKeys
 	keyvalues    = userKeyDao.KeyValues
 )
-
-var callTypeDict = map[string]int8{
-	CallStaffRoleName:    model.CallChanStaff,
-	CallCustomerRoleName: model.CallChanCustomer,
-}
-
-const (
-	CallStaffRoleName    = "staff"
-	CallCustomerRoleName = "customer"
-)
-
-func callRoleTyp(role string) int8 {
-	value, found := callTypeDict[role]
-	if !found {
-		return model.CallChanDefault
-	}
-	return value
-}
-func callRoleTypStr(typ int8) string {
-	for key, val := range callTypeDict {
-		if val == typ {
-			return key
-		}
-	}
-	return "default"
-}
 
 func HasCall(id int64) (bool, error) {
 	count, err := callDao.Count(nil, model.CallQuery{
@@ -293,26 +268,13 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query group failed, %v", err)
 	}
-	//TODO: add matching for custom columns and conditions.
-	// valueQuery := model.UserValueQuery{
-	// 	Type: []int8{model.UserValueTypGroup},
-	// }
-	// for _, g := range groups {
-	// 	valueQuery.ParentID = append(valueQuery.ParentID, g.ID)
-	// }
-	// keys, err := keyvalues(tx, model.UserKeyQuery{Enterprise: c.Enterprise}, valueQuery)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("fetch keyValules failed, %v", err)
-	// }
-	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
-	if err != nil {
-		return nil, fmt.Errorf("set rule group failed, %v", err)
-	}
 
 	keys, err := userKeys(tx, model.UserKeyQuery{Enterprise: c.Enterprise})
 	if err != nil {
 		return nil, fmt.Errorf("fetch key values failed, %v", err)
 	}
+	// filtered customcolumns from user
+	var userInputs = make(map[string][]string)
 	for name, value := range c.CustomColumns {
 		var (
 			k       model.UserKey
@@ -327,6 +289,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		if !isValid {
 			continue
 		}
+		uv := make([]model.UserValue, 0)
 		switch k.Type {
 		case model.UserKeyTypArray:
 			values, ok := value.([]interface{})
@@ -342,10 +305,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 					CreateTime: timestamp,
 					UpdateTime: timestamp,
 				}
-				v, err = newUserValue(tx, v)
-				if err != nil {
-					break
-				}
+				uv = append(uv, v)
 			}
 		case model.UserKeyTypNumber:
 			_, ok := value.(float64)
@@ -363,7 +323,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		case model.UserKeyTypTime:
 			_, ok := value.(int)
 			if !ok {
@@ -377,7 +337,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		case model.UserKeyTypString:
 			v := model.UserValue{
 				LinkID:     call.ID,
@@ -387,11 +347,53 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("new user values failed, %v", err)
+		for _, v := range uv {
+			v, err = newUserValue(tx, v)
+			if err != nil {
+				return nil, fmt.Errorf("new user values failed, %v", err)
+			}
+			userInputs[name] = insertAndOrderStrings(userInputs[name], v.Value)
 		}
+
+	}
+
+	//TODO: add matching for custom columns and conditions.
+	valueQuery := model.UserValueQuery{
+		Type: []int8{model.UserValueTypGroup},
+	}
+	for _, grp := range groups {
+		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
+	}
+	keyQuery := model.UserKeyQuery{
+		Enterprise: c.Enterprise,
+	}
+	conditions, err := keyvalues(tx, keyQuery, valueQuery)
+	if err != nil {
+		return nil, fmt.Errorf("fetch conditions failed, %v", err)
+	}
+	groupConditions := make(map[int64][]model.UserKey, len(groups))
+	for _, cond := range conditions {
+		for _, val := range cond.UserValues {
+			c := *cond
+			c.UserValues = []model.UserValue{val}
+			hasKey := false
+			keys := groupConditions[val.LinkID]
+			for _, k := range keys {
+				if k.ID == c.ID {
+					k.UserValues = append(k.UserValues, val)
+				}
+			}
+			if !hasKey {
+				keys = append(keys, c)
+			}
+		}
+	}
+	var matchedGroups = MatchGroup(groups, groupConditions, userInputs)
+	_, err = callDao.SetRuleGroupRelations(tx, *call, matchedGroups)
+	if err != nil {
+		return nil, fmt.Errorf("set rule group failed, %v", err)
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -443,4 +445,61 @@ func ConfirmCall(call *model.Call) error {
 		return fmt.Errorf("publish failed, %v", err)
 	}
 	return nil
+}
+
+// MatchGroup filter the given groups by the groupConditions and userInputs.
+// groupConditions
+func MatchGroup(groups []model.Group, groupConditions map[int64][]model.UserKey, userInputs map[string][]string) []model.Group {
+	var matchedGroups = make([]model.Group, 0)
+	for _, grp := range groups {
+		isValid := true
+		conds := groupConditions[grp.ID]
+		// group's conditions need to be all matched.
+		if len(userInputs) < len(conds) {
+			continue
+		}
+		for _, cond := range conds {
+			uv, exist := userInputs[cond.InputName]
+			if !exist {
+				isValid = false
+				break
+			}
+			//simple intersect n^2
+			//TODO: change to sorted or hash
+			var intersect = make([]string, 0)
+			for _, kv := range cond.UserValues {
+				for _, v := range uv {
+					if kv.Value == v {
+						intersect = append(intersect, v)
+					}
+				}
+			}
+			// need at least one value matched
+			if len(intersect) == 0 {
+				isValid = false
+			}
+
+		}
+		if isValid {
+			matchedGroups = append(matchedGroups, grp)
+		}
+	}
+	return matchedGroups
+}
+
+// insertAndOrderStrings insert v into orderedValues by ascending order.
+func insertAndOrderStrings(orderedValues []string, v string) []string {
+	values := make([]string, len(orderedValues)+1)
+	index := sort.Search(len(orderedValues), func(i int) bool {
+		return orderedValues[i] > v
+	})
+	// tail only need append
+	if index == len(orderedValues) {
+		values = append(orderedValues, v)
+		return values
+	}
+	copy(values, orderedValues[:index])
+	values[index] = v
+	copy(values[index+1:], orderedValues[index:])
+	return values
 }

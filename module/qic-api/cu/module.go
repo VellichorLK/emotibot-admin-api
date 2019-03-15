@@ -49,9 +49,10 @@ func init() {
 					logger.Error.Printf("Cannot init qi db, [%s:%s@%s:%s]: %s\n", user, pass, url, db, err.Error())
 					return
 				}
+				sqlDB := &model.DefaultDBLike{DB: conn}
 				util.SetDB(ModuleInfo.ModuleName, conn)
 				serviceDao = model.NewSQLDao(conn)
-				groupDao = model.NewGroupSQLDao(conn)
+				groupDao = model.NewGroupSQLDao(sqlDB)
 			},
 			"init timecache": setUpTimeCache,
 			keyInitEmotionEngine: func() {

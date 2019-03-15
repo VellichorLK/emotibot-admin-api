@@ -20,7 +20,7 @@ var mockGroups = []model.GroupWCond{
 		UUID:      "CDEFG",
 		Name:      &mockName2,
 		Condition: mockCondition,
-		Rules:     &[]model.SimpleConversationRule{},
+		Rules:     &[]model.ConversationRule{},
 	},
 }
 
@@ -129,14 +129,14 @@ var groupName string = "group_name"
 var groupEnabled int8 = int8(1)
 var groupSpeed float64 = 300
 var groupDuration float64 = 0.33
-var groupRules []model.SimpleConversationRule = []model.SimpleConversationRule{
-	model.SimpleConversationRule{
+var groupRules []model.ConversationRule = []model.ConversationRule{
+	model.ConversationRule{
 		ID: 1,
 	},
-	model.SimpleConversationRule{
+	model.ConversationRule{
 		ID: 2,
 	},
-	model.SimpleConversationRule{
+	model.ConversationRule{
 		ID: 3,
 	},
 }
