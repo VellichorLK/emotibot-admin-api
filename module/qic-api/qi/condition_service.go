@@ -64,6 +64,8 @@ func newCustomConditions(tx model.SQLTx, group model.Group, customcolumns map[st
 	return uvs, nil
 }
 
+var getConditionOfGroup = GetConditionOfGroup
+
 func GetConditionOfGroup(groupID int64) (*model.Condition, error) {
 	conds, err := condDao.Conditions(nil, model.ConditionQuery{
 		GroupID: []int64{groupID},
@@ -76,6 +78,8 @@ func GetConditionOfGroup(groupID int64) (*model.Condition, error) {
 	}
 	return &conds[0], nil
 }
+
+var customConditionsOfGroup = CustomConditionsOfGroup
 
 func CustomConditionsOfGroup(groupID int64) (map[string][]interface{}, error) {
 	values, err := valuesKey(nil, model.UserValueQuery{

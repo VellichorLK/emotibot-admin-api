@@ -308,15 +308,19 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWC
 		GroupResp
 		Rules []RuleResp `json:"rules"`
 	}
-	customData, err := CustomConditionsOfGroup(group.ID)
+	customData, err := customConditionsOfGroup(group.ID)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("Get conditions of group failed, %v", err))
 		return
 	}
-	cond, err := GetConditionOfGroup(group.ID)
+	cond, err := getConditionOfGroup(group.ID)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get con"))
 		return
+	}
+	var ruleCount int
+	if group.Rules != nil {
+		ruleCount = len(*group.Rules)
 	}
 	var resp = GroupDetailResp{
 		GroupResp: GroupResp{
@@ -326,9 +330,9 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWC
 			Other:       toOther(cond, customData),
 			CreateTime:  group.CreateTime,
 			Description: *group.Description,
-			RuleCount:   len(*group.Rules),
+			RuleCount:   ruleCount,
 		},
-		Rules: make([]RuleResp, 0, len(*group.Rules)),
+		Rules: make([]RuleResp, 0, ruleCount),
 	}
 
 	for _, r := range *group.Rules {

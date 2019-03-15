@@ -3,9 +3,10 @@ package qi
 import (
 	"testing"
 
+	"bytes"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/test"
-	"bytes"
 )
 
 type mockDAO struct{}
@@ -84,10 +85,10 @@ func (m *mockDAO) GetGroupsByRuleID(ruleID []int64, sqlLike model.SqlLike) ([]mo
 	return mockGroups, nil
 }
 
-func (m *mockDAO) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error){
+func (m *mockDAO) ExportGroups(sqlLike model.SqlLike) (*bytes.Buffer, error) {
 	return nil, nil
 }
-func (m *mockDAO)ImportGroups(sqlLike model.SqlLike, fileName string) error{
+func (m *mockDAO) ImportGroups(sqlLike model.SqlLike, fileName string) error {
 	return nil
 }
 
@@ -129,6 +130,7 @@ var groupName string = "group_name"
 var groupEnabled int8 = int8(1)
 var groupSpeed float64 = 300
 var groupDuration float64 = 0.33
+var groupDescription = "group_description"
 var groupRules []model.ConversationRule = []model.ConversationRule{
 	model.ConversationRule{
 		ID: 1,
@@ -148,6 +150,7 @@ var mockGroup = &model.GroupWCond{
 	Enabled:         &groupEnabled,
 	Speed:           &groupSpeed,
 	SlienceDuration: &groupDuration,
+	Description:     &groupDescription,
 	Condition:       mockCondition,
 	Rules:           &groupRules,
 	RuleCount:       3,

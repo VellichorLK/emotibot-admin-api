@@ -1,14 +1,16 @@
 package qi
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
@@ -138,37 +140,28 @@ func TestHandleCreateGroup(t *testing.T) {
 
 func TestHandleGetGroup(t *testing.T) {
 	// mockDAO is defined in service_test.go
-	originDBLike, originDao, originRuleDao := setupGroupMockTest()
-	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
-
+	tmp := getConditionOfGroup
+	tmp1 := customConditionsOfGroup
+	defer func() {
+		getConditionOfGroup = tmp
+		customConditionsOfGroup = tmp1
+	}()
+	getConditionOfGroup = func(groupID int64) (*model.Condition, error) {
+		return &model.Condition{}, nil
+	}
+	customConditionsOfGroup = func(groupID int64) (map[string][]interface{}, error) {
+		return make(map[string][]interface{}, 0), nil
+	}
+	mg := mockGroup
+	mg.Rules = &[]model.ConversationRule{}
+	mg.RuleCount = 0
 	w := httptest.NewRecorder()
-	r, err := http.NewRequest(http.MethodGet, "/groups/ABCDE", nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	router := getTestRouter()
-
-	router.ServeHTTP(w, r)
-
-	body, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	group := model.GroupWCond{}
-	err = json.Unmarshal(body, &group)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if !sameGroup(&group, mockGroup) {
-		t.Errorf("expect group: %+v,\n but got %+v", mockGroup, group)
-		return
-	}
+	r := httptest.NewRequest(http.MethodGet, "http://testing/groups/ABCDE", nil)
+	r.Header.Set(requestheader.ConstEnterpriseIDHeaderKey, "csbot")
+	handleGetGroup(w, r, mockGroup)
+	require.Equal(t, http.StatusOK, w.Code, "Body: %s", w.Body.String())
+	expect := `{"group_id":"123456","group_name":"group_name","is_enable":1,"other":{"call_end":0,"call_from":0,"call_time":0,"customer_id":"","customer_name":"","customer_phone":"","deal":0,"department":"","extension":"","file_name":"","left_channel":"staff","right_channel":"staff","series":"","staff_id":"","staff_name":"","type":0},"create_time":0,"description":"group_description","rule_count":0,"rules":[]}`
+	assert.JSONEq(t, expect, w.Body.String())
 }
 
 func TestParseGroupFilter(t *testing.T) {
