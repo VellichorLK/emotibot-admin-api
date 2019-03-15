@@ -32,7 +32,8 @@ var (
 	levUStaffSenTyp    levelType = 43
 	levUCustomerSenTyp levelType = 44
 
-	levSegSilenceTyp levelType = 51
+	levSegSilenceTyp    levelType = 51
+	levSegInterposalTyp levelType = 53
 )
 
 var unactivate = -1
@@ -183,6 +184,35 @@ type HistoryCredit struct {
 	Credit     []*RuleGrpCredit `json:"credit"`
 }
 
+func checkAndSetSenID(senSetIDMap map[uint64]*DataSentence,
+	s *SentenceWithPrediction, v *model.SimpleCredit) {
+	if set, ok := senSetIDMap[v.OrgID]; ok {
+		s.credit.Setting = set
+	} else {
+		set := &DataSentence{ID: v.OrgID}
+		senSetIDMap[v.OrgID] = set
+		s.credit = &SentenceCredit{}
+		s.credit.Setting = set
+
+	}
+}
+
+func setSentenceWithPredictionInfo(sp []*SentenceWithPrediction) {
+	for _, s := range sp {
+		if s != nil && s.credit != nil {
+			//s.credit.
+			setting := s.credit.Setting
+			if setting != nil {
+				s.CategoryID = setting.CategoryID
+				s.ID = setting.ID
+				s.Name = setting.Name
+				s.UUID = setting.UUID
+			}
+			s.MatchedSegments = s.credit.MatchedSegments
+		}
+	}
+}
+
 //RetrieveCredit gets the credit by call id
 func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	//!!MUST make sure the return credits in order from parent to child level
@@ -196,10 +226,24 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 		return []*HistoryCredit{}, nil
 	}
 	var rgIDs, ruleIDs, cfIDs, senGrpIDs, senIDs, segIDs []uint64
+	var silenceIDs, speedIDs, interposalIDs []int64
+	var silenceSegs, interposalSegs []int64
 
 	rgCreditsMap := make(map[uint64]*RuleGrpCredit)
 	rgSetIDMap := make(map[uint64]*model.GroupWCond)
 	rCreditsMap := make(map[uint64]*RuleCredit)
+
+	rSilenceCreditMap := make(map[uint64]*SilenceRuleCredit)       //silence of rule, use the id in the CUPredictReuslt as key
+	rSpeedCreditMap := make(map[uint64]*SpeedRuleCredit)           //speed of rule
+	rInterposalCreditMap := make(map[uint64]*InterposalRuleCredit) //interposal of rule
+
+	rSilenceIDMap := make(map[int64][]*SilenceRuleCredit)       //silence of rule. use the id in the SilenceRule as the key
+	rSpeedIDMap := make(map[int64][]*SpeedRuleCredit)           //silence of rule
+	rInterposalIDMap := make(map[int64][]*InterposalRuleCredit) //silence of rule
+
+	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
+	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
+
 	rSetIDMap := make(map[uint64]*ConversationRuleInRes)
 	cfCreditsMap := make(map[uint64]*ConversationFlowCredit)
 	cfSetIDMap := make(map[uint64]*ConversationFlowInRes)
@@ -309,21 +353,110 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			}
 
 		case levSegTyp:
-			if parentCredit, ok := senCreditsMap[v.ParentID]; ok {
-				sID := parentCredit.ID
-				if _, ok := senSegDup[sID]; ok {
-					if _, ok := senSegDup[sID][v.OrgID]; ok {
-						continue
-					}
-				} else {
-					senSegDup[sID] = make(map[uint64]bool)
-				}
-				senSegDup[sID][v.OrgID] = true
-				senSegMap[sID] = append(senSegMap[sID], v.OrgID)
-				segIDs = append(segIDs, v.OrgID)
+			var pCredit *SentenceCredit
+			var ok bool
+
+			if pCredit, ok = senCreditsMap[v.ParentID]; ok {
+			} else if credit, ok := silenceSenCreditMap[v.ParentID]; ok {
+				pCredit = credit.credit
+			} else if credit, ok := speedSenCreditMap[v.ParentID]; ok {
+				pCredit = credit.credit
 			} else {
-				//return nil, errCannotFindParent(v.ID, v.ParentID)
+				continue
 			}
+
+			sID := pCredit.ID
+			if _, ok := senSegDup[sID]; ok {
+				if _, ok := senSegDup[sID][v.OrgID]; ok {
+					continue
+				}
+			} else {
+				senSegDup[sID] = make(map[uint64]bool)
+			}
+			senSegDup[sID][v.OrgID] = true
+			senSegMap[sID] = append(senSegMap[sID], v.OrgID)
+			segIDs = append(segIDs, v.OrgID)
+
+		case levSilenceTyp:
+			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
+				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				parentCredit.SilenceRule = append(parentCredit.SilenceRule, credit)
+				silenceIDs = append(silenceIDs, int64(v.OrgID))
+				rSilenceCreditMap[v.ID] = credit
+				rSilenceIDMap[int64(v.OrgID)] = append(rSilenceIDMap[int64(v.OrgID)], credit)
+			}
+		case levSpeedTyp:
+			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
+				credit := &SpeedRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				parentCredit.SpeedRule = append(parentCredit.SpeedRule, credit)
+				speedIDs = append(speedIDs, int64(v.OrgID))
+				rSpeedCreditMap[v.ID] = credit
+				rSpeedIDMap[int64(v.OrgID)] = append(rSpeedIDMap[int64(v.OrgID)], credit)
+			}
+		case levInterposalTyp:
+			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
+				credit := &InterposalRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				parentCredit.InterposalRule = append(parentCredit.InterposalRule, credit)
+				interposalIDs = append(interposalIDs, int64(v.OrgID))
+				rInterposalCreditMap[v.ID] = credit
+				rInterposalIDMap[int64(v.OrgID)] = append(rInterposalIDMap[int64(v.OrgID)], credit)
+			}
+		case levLStaffSenTyp:
+
+			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{Valid: validMap[v.Valid], credit: &SentenceCredit{}}
+
+				pCredit.Exception.Before.Staff = append(pCredit.Exception.Before.Staff, s)
+
+				checkAndSetSenID(senSetIDMap, s, v)
+
+				senIDs = append(senIDs, v.OrgID)
+				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
+				silenceSenCreditMap[v.ID] = s
+			}
+
+		case levLCustomerSenTyp:
+			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{Valid: validMap[v.Valid], credit: &SentenceCredit{}}
+				pCredit.Exception.Before.Customer = append(pCredit.Exception.Before.Customer, s)
+				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
+				silenceSenCreditMap[v.ID] = s
+				checkAndSetSenID(senSetIDMap, s, v)
+				senIDs = append(senIDs, v.OrgID)
+			} else if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{Valid: validMap[v.Valid], credit: &SentenceCredit{}}
+				pCredit.Exception.Under.Customer = append(pCredit.Exception.Under.Customer, s)
+				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
+				speedSenCreditMap[v.ID] = s
+
+				checkAndSetSenID(senSetIDMap, s, v)
+				senIDs = append(senIDs, v.OrgID)
+			}
+		case levUStaffSenTyp:
+			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{Valid: validMap[v.Valid], credit: &SentenceCredit{}}
+				pCredit.Exception.After.Staff = append(pCredit.Exception.After.Staff, s)
+				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
+				silenceSenCreditMap[v.ID] = s
+
+				checkAndSetSenID(senSetIDMap, s, v)
+				senIDs = append(senIDs, v.OrgID)
+			}
+		case levUCustomerSenTyp:
+			if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{Valid: validMap[v.Valid], credit: &SentenceCredit{}}
+				pCredit.Exception.Over.Customer = append(pCredit.Exception.Over.Customer, s)
+				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
+				speedSenCreditMap[v.ID] = s
+
+				checkAndSetSenID(senSetIDMap, s, v)
+				senIDs = append(senIDs, v.OrgID)
+			}
+
+		case levSegSilenceTyp:
+			silenceSegs = append(silenceSegs, int64(v.OrgID))
+		case levSegInterposalTyp:
+			interposalSegs = append(interposalSegs, int64(v.OrgID))
 		default:
 			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
 			continue
@@ -464,6 +597,63 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			}
 		}
 	}
+
+	if len(silenceIDs) > 0 {
+
+		silenceRules, err := GetRuleSilences(&model.GeneralQuery{ID: silenceIDs}, nil)
+		if err != nil {
+			logger.Error.Printf("get silence rule failed. %s\n", err)
+			return nil, err
+		}
+		for _, sr := range silenceRules {
+			if credits, ok := rSilenceIDMap[sr.ID]; ok {
+				for _, c := range credits {
+					c.Name = sr.Name
+
+					setSentenceWithPredictionInfo(c.Exception.Before.Customer)
+					setSentenceWithPredictionInfo(c.Exception.Before.Staff)
+					setSentenceWithPredictionInfo(c.Exception.After.Staff)
+
+					//TODO: add silence segment
+					//silenceSegs
+
+				}
+			}
+		}
+	}
+	if len(speedIDs) > 0 {
+		speedRules, err := GetRuleSpeeds(&model.GeneralQuery{ID: speedIDs}, nil)
+		if err != nil {
+			logger.Error.Printf("get silence rule failed. %s\n", err)
+			return nil, err
+		}
+		for _, sr := range speedRules {
+			if credits, ok := rSpeedIDMap[sr.ID]; ok {
+				for _, c := range credits {
+					c.Name = sr.Name
+					setSentenceWithPredictionInfo(c.Exception.Under.Customer)
+					setSentenceWithPredictionInfo(c.Exception.Over.Customer)
+				}
+			}
+		}
+	}
+	if len(interposalIDs) > 0 {
+		interposalRules, err := GetRuleInterposals(&model.GeneralQuery{ID: speedIDs}, nil)
+		if err != nil {
+			logger.Error.Printf("get silence rule failed. %s\n", err)
+			return nil, err
+		}
+		for _, ir := range interposalRules {
+			if credits, ok := rSpeedIDMap[ir.ID]; ok {
+				for _, c := range credits {
+					c.Name = ir.Name
+					//TODO: fix add interposal segment
+					//interposalSegs
+				}
+			}
+		}
+	}
+
 	//desc order
 	sort.SliceStable(resp, func(i, j int) bool {
 		return resp[i].CreateTime > resp[j].CreateTime
@@ -488,14 +678,15 @@ type ExceptionMatched struct {
 	Tags       []*TagCredit
 }
 type RulesException struct {
-	RuleID     int64     //rule ids
-	Typ        levelType //type
-	Whos       WhosType
-	CallID     int64
-	Valid      bool
-	Score      int
-	Exception  []*ExceptionMatched
-	SilenceSeg []int64 //the segment id that break the silence rule
+	RuleID          int64     //rule ids
+	Typ             levelType //type
+	Whos            WhosType
+	CallID          int64
+	Valid           bool
+	Score           int
+	SentenceGroupID int64
+	Exception       []*ExceptionMatched
+	SilenceSeg      []int64 //the segment id that break the silence rule
 }
 
 //StoreRulesException stores the rule exception
@@ -514,7 +705,7 @@ func StoreRulesException(credits []RulesException) error {
 	now := time.Now().Unix()
 
 	for _, r := range credits {
-		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(0),
+		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(r.SentenceGroupID),
 			OrgID: uint64(r.RuleID), Score: r.Score, CreateTime: now, Revise: unactivate, Whos: int(r.Whos)}
 		if r.Valid {
 			s.Valid = matched
