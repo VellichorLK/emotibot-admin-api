@@ -1527,9 +1527,6 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 	}
 
 	// Insert into 'intent_test_sentences' table
-	queryStr := fmt.Sprintf(`
-		INSERT INTO %s (sentence, test_intent, result, score, answer)
-		VALUES (?, ?, ?, ?, ?)`, IntentTestSentencesTable)
 	sentencesPerOp := 2000
 	start := 0
 
@@ -1541,7 +1538,10 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 			}
 
 			params := sentenceValues[start:end]
-			queryStr = fmt.Sprintf("%s%s", queryStr,
+
+			queryStr := fmt.Sprintf(`
+				INSERT INTO %s (sentence, test_intent, result, score, answer)
+				VALUES (?, ?, ?, ?, ?)%s`, IntentTestSentencesTable,
 				strings.Repeat(", (?, ?, ?, ?, ?)", len(params)/5-1))
 			_, err := tx.Exec(queryStr, params...)
 			if err != nil {
