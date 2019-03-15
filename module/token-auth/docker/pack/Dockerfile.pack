@@ -1,0 +1,15 @@
+## BUILD_IMAGE_NAME 为 build stage 所编译出来包含 binary 的 docker image 
+ARG BUILD_IMAGE_NAME=${BUILD_IMAGE_NAME}
+FROM ${BUILD_IMAGE_NAME} AS build
+
+FROM centos:centos7.4.1708
+
+ARG PROJECT
+ENV GOPREFIX /go/src/emotibot.com
+RUN yum install --disableplugin=fastestmirror -y tzdata
+COPY --from=build /usr/bin/app /usr/local/bin
+ARG PROJECT
+COPY ./module/${PROJECT}/template /usr/local/bin/template
+
+WORKDIR /usr/local/bin
+CMD ["./token-auth"]
