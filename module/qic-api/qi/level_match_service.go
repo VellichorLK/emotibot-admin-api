@@ -74,10 +74,11 @@ type RuleMatchedResult struct {
 }
 
 type SentenceWithPrediction struct {
-	Valid bool `json:"valid"`
+	ID    uint64 `json:"id"`
+	Valid bool   `json:"valid"`
 	model.SimpleSentence
 	MatchedSegments []*model.SegmentMatch `json:"segment_predictions"`
-	credit          *SentenceCredit       `json:"-"`
+	Credit          *SentenceCredit       `json:"-"`
 }
 
 type BothExceptionCredit struct {
