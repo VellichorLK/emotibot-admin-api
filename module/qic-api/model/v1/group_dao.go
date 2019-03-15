@@ -8,6 +8,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+// TODO: Refractor Group & GroupWCond; Condition & GroupCondition
 type GroupDAO interface {
 	CountGroupsBy(filter *GroupFilter, sqlLike SqlLike) (int64, error)
 	CreateGroup(group *GroupWCond, sqlLike SqlLike) (*GroupWCond, error)
@@ -37,19 +38,19 @@ type SimpleGroup struct {
 
 // GroupWCond is Group with Condition struct
 type GroupWCond struct {
-	ID              int64                     `json:"-"`
-	Deleted         int8                      `json:"-"`
-	Name            *string                   `json:"group_name,omitempty"`
-	Enterprise      string                    `json:",omitempty"`
-	Description     *string                   `json:"description"`
-	CreateTime      int64                     `json:"create_time,omitempty"`
-	Enabled         *int8                     `json:"is_enable,omitempty"`
-	Speed           *float64                  `json:"limit_speed,omitempty"`
-	SlienceDuration *float64                  `json:"limit_silence,omitempty"`
-	UUID            string                    `json:"group_id,omitempty"`
-	Rules           *[]SimpleConversationRule `json:"rules"`
-	Condition       *GroupCondition           `json:"other,omitempty"`
-	RuleCount       int                       `json:"rule_count"`
+	ID              int64               `json:"-"`
+	Deleted         int8                `json:"-"`
+	Name            *string             `json:"group_name,omitempty"`
+	Enterprise      string              `json:",omitempty"`
+	Description     *string             `json:"description"`
+	CreateTime      int64               `json:"create_time,omitempty"`
+	Enabled         *int8               `json:"is_enable,omitempty"`
+	Speed           *float64            `json:"limit_speed,omitempty"`
+	SlienceDuration *float64            `json:"limit_silence,omitempty"`
+	UUID            string              `json:"group_id,omitempty"`
+	Rules           *[]ConversationRule `json:"rules"`
+	Condition       *GroupCondition     `json:"other,omitempty"`
+	RuleCount       int                 `json:"rule_count"`
 }
 
 type GroupFilter struct {
@@ -115,6 +116,9 @@ type GroupCondition struct {
 	CallEnd          *int64  `json:"call_end"`
 }
 
+// getGroupsSQL generate a complex sql join for each rows contain the group with its condition and rules table.
+//
+// **Users should create their own select part.**
 func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	values = []interface{}{}
 	groupStr := ""
@@ -233,6 +237,36 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 			values = append(values, ruleID)
 		}
 	}
+	queryStr = " FROM (SELECT * FROM `%s` %s) as rg" +
+		" LEFT JOIN (SELECT * FROM `%s` %s) as gc on rg.`%s` = gc.`%s`" + // gc group condition table
+		" LEFT JOIN  `%s` as rrr ON rg.`%s` = rrr.`%s`" + // rrr Group_Rule relation table
+		" %s as rule on rrr.`%s` = rule.`%s`"
+
+	queryStr = fmt.Sprintf(queryStr,
+		tblRuleGroup, groupStr,
+		tblRGC, conditionStr, fldID, fldCondGroupID,
+		tblRelGrpRule, fldID, RRRGroupID,
+		ruleCondition, RRRRuleID, fldID,
+	)
+	return
+}
+
+func (s *GroupSQLDao) CountGroupsBy(filter *GroupFilter, sqlLike SqlLike) (total int64, err error) {
+	queryStr, values := getGroupsSQL(filter)
+	queryStr = fmt.Sprintf("SELECT count(DISTINCT rg.`%s`) %s", fldRuleGrpID, queryStr)
+	err = sqlLike.QueryRow(queryStr, values...).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("query row failed, %s", err.Error())
+	}
+	return total, nil
+}
+
+func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups []GroupWCond, err error) {
+	queryStr, values := getGroupsSQL(filter)
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
+	}
 	grpCols := []string{
 		fldRuleGrpID, fldRuleGrpUUID, fldRuleGrpName,
 		fldDescription, fldRuleGrpLimitSpeed, fldRuleGrpLimitSilence,
@@ -248,47 +282,13 @@ func getGroupsSQL(filter *GroupFilter) (queryStr string, values []interface{}) {
 	}
 	ruleCols := []string{
 		fldID, fldUUID, fldName,
+		fldRuleMethod, fldRuleScore, fldEnterprise,
+		fldRuleDescription, fldRuleMin, fldRuleMax,
+		fldRuleSeverity, fldRuleCreateTime, fldRuleUpdateTime,
+		fldIsDelete,
 	}
-	queryStr = "SELECT rg.`%s`, gc.`%s`, rule.`%s`" +
-		" FROM (SELECT * FROM `%s` %s) as rg" +
-		" LEFT JOIN (SELECT * FROM `%s` %s) as gc on rg.`%s` = gc.`%s`" + // gc group condition table
-		" LEFT JOIN  `%s` as rrr ON rg.`%s` = rrr.`%s`" + // rrr Group_Rule relation table
-		" %s as rule on rrr.`%s` = rule.`%s`"
-
-	queryStr = fmt.Sprintf(queryStr,
-		strings.Join(grpCols, "`, rg.`"), strings.Join(condCols, "`, gc.`"), strings.Join(ruleCols, "`, rule.`"),
-		tblRuleGroup, groupStr,
-		tblRGC, conditionStr, fldID, fldCondGroupID,
-		tblRelGrpRule, fldID, RRRGroupID,
-		ruleCondition, RRRRuleID, fldID,
-	)
-	return
-}
-
-func (s *GroupSQLDao) CountGroupsBy(filter *GroupFilter, sqlLike SqlLike) (total int64, err error) {
-	queryStr, values := getGroupsSQL(filter)
-	queryStr = fmt.Sprintf("SELECT count(rg.%s) FROM (%s) as rg", fldRuleGrpID, queryStr)
-
-	rows, err := sqlLike.Query(queryStr, values...)
-	if err != nil {
-		err = fmt.Errorf("error while count groups in dao.CountGroupsBy, err: %s", err.Error())
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		rows.Scan(&total)
-	}
-	return
-}
-
-func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups []GroupWCond, err error) {
-	queryStr, values := getGroupsSQL(filter)
-	if filter.Limit > 0 {
-		start := filter.Page * filter.Limit
-		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
-	}
-
+	queryStr = fmt.Sprintf("SELECT rg.`%s`, gc.`%s`, rule.`%s` %s",
+		strings.Join(grpCols, "`, rg.`"), strings.Join(condCols, "`, gc.`"), strings.Join(ruleCols, "`, rule.`"), queryStr)
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while get groups in dao.GetGroupsBy, err: %s", err.Error())
@@ -301,10 +301,12 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 	for rows.Next() {
 		group := GroupWCond{}
 		condition := GroupCondition{}
-		var rUUID *string // rule uuid
-		var rName *string // rule name
-		var rID *int64
-
+		var (
+			rUUID, rName, enterprise, description *string // rule uuid
+			rID, rCreatedTime, rUpdatedTime       *int64
+			rMethod, severity, deleted            *int8
+			score, min, max                       *int
+		)
 		err = rows.Scan(
 			&group.ID,
 			&group.UUID,
@@ -330,15 +332,12 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 			&condition.CallEnd,
 			&condition.LeftChannelCode,
 			&condition.RightChannelCode,
-			&rID,
-			&rUUID,
-			&rName,
+			&rID, &rUUID, &rName,
+			&rMethod, &score, &enterprise,
+			&description, &min, &max,
+			&severity, &rCreatedTime, &rUpdatedTime,
+			&deleted,
 		)
-
-		if err != nil {
-			err = fmt.Errorf("error whiel scan rule group in dao.GetBy, err: %s", err.Error())
-			return
-		}
 
 		if currentGroup == nil || group.ID != currentGroup.ID {
 			if currentGroup != nil {
@@ -348,21 +347,33 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 			group.Condition = &condition
 
 			currentGroup = &group
-			rules := []SimpleConversationRule{}
+			rules := []ConversationRule{}
 			currentGroup.Rules = &rules
 		}
 
 		if rUUID != nil && rName != nil {
-			rule := SimpleConversationRule{
-				ID:   *rID,
-				UUID: *rUUID,
-				Name: *rName,
+			rule := ConversationRule{
+				ID:          *rID,
+				UUID:        *rUUID,
+				Name:        *rName,
+				Method:      *rMethod,
+				Score:       *score,
+				Enterprise:  *enterprise,
+				Description: *description,
+				Min:         *min,
+				Max:         *max,
+				Severity:    *severity,
+				CreateTime:  *rCreatedTime,
+				UpdateTime:  *rUpdatedTime,
+				Deleted:     *deleted,
 			}
 			rules := append(*currentGroup.Rules, rule)
 			currentGroup.Rules = &rules
 		}
 	}
-
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("")
+	}
 	if currentGroup != nil {
 		groups = append(groups, *currentGroup)
 	}

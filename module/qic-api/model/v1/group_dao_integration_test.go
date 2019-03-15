@@ -30,7 +30,7 @@ func seedGrpWConds(t *testing.T) []GroupWCond {
 		modifiedRecord = append(modifiedRecord, records[i][11:]...)
 		g := &GroupWCond{}
 		Binding(g, modifiedRecord)
-		g.Rules = &[]SimpleConversationRule{}
+		g.Rules = &[]ConversationRule{}
 		g.Condition = &GroupCondition{}
 		groups = append(groups, *g)
 	}
@@ -136,6 +136,9 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 	mc := readMockConditions(t)
 	groups[0].Condition = ToGroupCondition(mc[0])
 	groups[1].Condition = ToGroupCondition(mc[1])
+	mr := readMockRules(t)
+	rules := []ConversationRule{mr[0], mr[1]}
+	groups[0].Rules = &rules
 	tests := []struct {
 		name string
 		args args
@@ -147,6 +150,15 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 				filter: &GroupFilter{},
 			},
 			want: groups,
+		},
+		{
+			name: "BY UUID",
+			args: args{
+				filter: &GroupFilter{
+					UUID: []string{"8fbeee5848fb4ff5a9598cd6c8b0fb6c"},
+				},
+			},
+			want: []GroupWCond{groups[1]},
 		},
 	}
 	for _, tt := range tests {

@@ -1,9 +1,10 @@
 package model
 
 import (
-	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"strings"
+
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 type RuleCompleteness struct {
@@ -21,20 +22,20 @@ type SimpleConversationRule struct {
 
 type ConversationRule struct {
 	ID           int64
-	UUID         string
+	Deleted      int8
 	Name         string
 	Method       int8
 	Score        int
-	Enterprise   string
 	Description  string
+	Enterprise   string
 	Min          int
 	Max          int
 	Severity     int8
-	Flows        []SimpleConversationFlow
+	UUID         string
 	CreateTime   int64
 	UpdateTime   int64
+	Flows        []SimpleConversationFlow
 	Completeness *RuleCompleteness
-	Deleted      int8
 }
 
 type ConversationRuleFilter struct {

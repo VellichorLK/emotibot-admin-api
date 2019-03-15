@@ -124,6 +124,11 @@ const (
 	fldRuleMethod      = "method"
 	fldRuleScore       = "score"
 	fldRuleDescription = "description"
+	fldRuleMin         = "min"
+	fldRuleMax         = "max"
+	fldRuleSeverity    = "severity"
+	fldRuleCreateTime  = "create_time"
+	fldRuleUpdateTime  = "update_time"
 	fldRuleEnterprise  = "enterprise"
 )
 

@@ -230,12 +230,6 @@ func CreateGroup(group *model.GroupWCond) (createdGroup *model.GroupWCond, err e
 	group.UUID = uuid.String()
 	group.UUID = strings.Replace(group.UUID, "-", "", -1)
 
-	simpleRules, err := simpleConversationRulesOf(group, tx)
-	if err != nil {
-		return
-	}
-	group.Rules = &simpleRules
-
 	createdGroup, err = serviceDAO.CreateGroup(group, tx)
 	if err != nil {
 		return
