@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -219,6 +221,8 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 		return
 	}
 
+	tagInfos = convertTagInfoWithZhCn(tagInfos)
+
 	validInfos := []*ManualTagging{}
 	for idx := range tagInfos {
 		if tagInfos[idx].Answers != nil && len(tagInfos[idx].Answers) > 0 {
@@ -285,6 +289,25 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 	}
 
 	return
+}
+
+func convertTagInfoWithZhCn(tagInfos []*ManualTagging) []*ManualTagging {
+	if tagInfos == nil {
+		return tagInfos
+	}
+	for _, tagInfo := range tagInfos {
+		if tagInfo == nil {
+			continue
+		}
+		tagInfo.Question = zhconverter.T2S(tagInfo.Question)
+		if tagInfo.Answers == nil {
+			continue
+		}
+		for _, answer := range tagInfo.Answers {
+			answer.Answer = zhconverter.T2S(answer.Answer)
+		}
+	}
+	return tagInfos
 }
 
 func fillNLUInfoInTaggingInfos(tagInfos []*ManualTagging) error {
