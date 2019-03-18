@@ -244,7 +244,7 @@ func RuleSilenceCheck(allSegs []*SegmentWithSpeaker, matched []*MatchedData, ent
 		return nil, nil
 	}
 
-	//TODO: fix it, get rules by rule group id
+	//TODO: fix it, get rules by rule group id and sets the rulegroup id to the attribute RuleGroup in RulesException
 	isDelete := 0
 	q := &model.GeneralQuery{Enterprise: &enterprise, IsDelete: &isDelete}
 	sRules, err := GetRuleSilences(q, nil)

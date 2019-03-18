@@ -237,9 +237,11 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	rSpeedCreditMap := make(map[uint64]*SpeedRuleCredit)           //speed of rule
 	rInterposalCreditMap := make(map[uint64]*InterposalRuleCredit) //interposal of rule
 
-	rSilenceIDMap := make(map[int64][]*SilenceRuleCredit)       //silence of rule. use the id in the SilenceRule as the key
-	rSpeedIDMap := make(map[int64][]*SpeedRuleCredit)           //silence of rule
-	rInterposalIDMap := make(map[int64][]*InterposalRuleCredit) //silence of rule
+	rSilenceIDMap := make(map[int64][]*SilenceRuleCredit)        //silence of rule. use the id in the SilenceRule as the key
+	rSpeedIDMap := make(map[int64][]*SpeedRuleCredit)            //silence of rule
+	rInterposalIDMap := make(map[int64][]*InterposalRuleCredit)  //silence of rule
+	silenceSegIDMap := make(map[uint64]*SilenceRuleCredit)       //silence segment id to silence rule credit
+	interposalSegIDMap := make(map[uint64]*InterposalRuleCredit) //interposal segment id to interposal rule credit
 
 	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
@@ -457,9 +459,16 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			}
 
 		case levSegSilenceTyp:
-			silenceSegs = append(silenceSegs, int64(v.OrgID))
+			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
+				silenceSegs = append(silenceSegs, int64(v.OrgID))
+				silenceSegIDMap[v.OrgID] = pCredit
+			}
+
 		case levSegInterposalTyp:
-			interposalSegs = append(interposalSegs, int64(v.OrgID))
+			if pCredit, ok := rInterposalCreditMap[v.ParentID]; ok {
+				interposalSegs = append(interposalSegs, int64(v.OrgID))
+				interposalSegIDMap[v.OrgID] = pCredit
+			}
 		default:
 			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
 			continue
@@ -602,7 +611,6 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	}
 
 	if len(silenceIDs) > 0 {
-
 		silenceRules, err := GetRuleSilences(&model.GeneralQuery{ID: silenceIDs}, nil)
 		if err != nil {
 			logger.Error.Printf("get silence rule failed. %s\n", err)
@@ -612,14 +620,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if credits, ok := rSilenceIDMap[sr.ID]; ok {
 				for _, c := range credits {
 					c.Name = sr.Name
-
 					setSentenceWithPredictionInfo(c.Exception.Before.Customer)
 					setSentenceWithPredictionInfo(c.Exception.Before.Staff)
 					setSentenceWithPredictionInfo(c.Exception.After.Staff)
-
-					//TODO: add silence segment
-					//silenceSegs
-
 				}
 			}
 		}
@@ -650,12 +653,19 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if credits, ok := rSpeedIDMap[ir.ID]; ok {
 				for _, c := range credits {
 					c.Name = ir.Name
-					//TODO: fix add interposal segment
-					//interposalSegs
 				}
 			}
 		}
 	}
+
+	//TODO: fill up the silence segment and interposal segment
+	//silenceSegIDMap
+	//interposalSegIDMap
+	/*
+		if pCredit, ok := silenceSegIDMap[ID]; ok {
+			pCredit.InvalidSegs
+		}
+	*/
 
 	//desc order
 	sort.SliceStable(resp, func(i, j int) bool {
@@ -681,15 +691,15 @@ type ExceptionMatched struct {
 	Tags       []*TagCredit
 }
 type RulesException struct {
-	RuleID          int64     //rule ids
-	Typ             levelType //type
-	Whos            WhosType
-	CallID          int64
-	Valid           bool
-	Score           int
-	SentenceGroupID int64
-	Exception       []*ExceptionMatched
-	SilenceSeg      []int64 //the segment id that break the silence rule
+	RuleID      int64     //rule ids
+	Typ         levelType //type
+	Whos        WhosType
+	CallID      int64
+	Valid       bool
+	Score       int
+	RuleGroupID int64
+	Exception   []*ExceptionMatched
+	SilenceSeg  []int64 //the segment id that break the silence rule
 }
 
 //StoreRulesException stores the rule exception
@@ -708,7 +718,7 @@ func StoreRulesException(credits []RulesException) error {
 	now := time.Now().Unix()
 
 	for _, r := range credits {
-		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(r.SentenceGroupID),
+		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(r.RuleGroupID),
 			OrgID: uint64(r.RuleID), Score: r.Score, CreateTime: now, Revise: unactivate, Whos: int(r.Whos)}
 		if r.Valid {
 			s.Valid = matched
