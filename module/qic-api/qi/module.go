@@ -172,6 +172,12 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences", []string{}, handleGetSentenceTestOverview),
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_info", []string{}, handleGetSentenceTestResult),
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_detail/{id}", []string{}, handleGetSentenceTestDetail),
+
+			util.NewEntryPoint(http.MethodPost, "call-groups/{id}", []string{}, handleCreateCallGroup),
+			// util.NewEntryPoint(http.MethodGet, "call-groups", []string{}, handleGetCallGroupList),
+			// util.NewEntryPoint(http.MethodGet, "call-groups/{id}", []string{}, handleGetCallGroup),
+			// util.NewEntryPoint(http.MethodPut, "call-groups/{id}", []string{}, handleUpdateCallGroup),
+			// util.NewEntryPoint(http.MethodDelete, "call-groups/{id}", []string{}, handleDeleteCallGroup),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
