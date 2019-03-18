@@ -244,6 +244,7 @@ func RuleSilenceCheck(allSegs []*SegmentWithSpeaker, matched []*MatchedData, ent
 		return nil, nil
 	}
 
+	//TODO: fix it, get rules by rule group id and sets the rulegroup id to the attribute RuleGroup in RulesException
 	isDelete := 0
 	q := &model.GeneralQuery{Enterprise: &enterprise, IsDelete: &isDelete}
 	sRules, err := GetRuleSilences(q, nil)
@@ -455,11 +456,13 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 	for _, rule := range sRules {
 		var numOfBreak int
 
+		var violateSegs []int64
 		//find which segments break the silence rule
 		for _, seg := range silenceSegs {
 			if seg.duration < float64(rule.Seconds) {
 				break
 			}
+			violateSegs = append(violateSegs, allSegs[seg.index].RealSegment.ID)
 			numOfBreak++
 		}
 		var defaultVaild bool
@@ -467,7 +470,7 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 			defaultVaild = true
 		}
 
-		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp, Whos: Silence, CallID: callID, Valid: defaultVaild}
+		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp, Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs}
 
 		//generates the all exception sentences result structure
 		exceptionMap := make(map[senTypeKey]*ExceptionMatched) //the map with key sentence id and value ExceptionMatch structure
@@ -561,9 +564,16 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 			if (numOfBreak - exceptionTimes) <= rule.Times {
 				result.Valid = true
 			}
-			if !result.Valid {
-				result.Score = rule.Score
+			if result.Valid {
+				if rule.Score > 0 {
+					result.Score = rule.Score
+				}
+			} else {
+				if rule.Score < 0 {
+					result.Score = rule.Score
+				}
 			}
+
 		}
 		resp = append(resp, result)
 	}
