@@ -41,10 +41,11 @@ func TestHandleGetGroups(t *testing.T) {
   "data": [
     {
       "group_id": "45f8577451d0478095197ega3d054133",
-      "group_name": "a group",
+			"group_name": "a group",
+			"description": "",
       "is_enable": 1,
       "other": {
-		"type": 0,
+				"type": 0,
         "file_name": "example.wav",
         "call_time": 78923981273,
         "deal": 1,
@@ -52,7 +53,7 @@ func TestHandleGetGroups(t *testing.T) {
         "staff_id": "host-abcd",
         "staff_name": "Melvina",
         "extension": "",
-        "department": "",
+				"department": "",
         "customer_id": "guest-123",
         "customer_name": "Nina",
         "customer_phone": "886-1234-5678",
