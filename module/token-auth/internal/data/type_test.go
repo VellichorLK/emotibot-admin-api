@@ -18,7 +18,7 @@ func TestUserCopy(t *testing.T) {
 		DisplayName: &displayName,
 		Email:       &email,
 		Enterprise:  &enterprise,
-		Type:        &userType,
+		Type:        userType,
 		Password:    &password,
 		Status:      &status,
 	}
@@ -60,7 +60,7 @@ func TestUserJWTToken(t *testing.T) {
 		DisplayName: &displayName,
 		Email:       &email,
 		Enterprise:  &enterprise,
-		Type:        &userType,
+		Type:        userType,
 		Password:    &password,
 		Status:      &status,
 	}
@@ -77,6 +77,7 @@ func TestUserJWTToken(t *testing.T) {
 
 func TestUserValid(t *testing.T) {
 	displayName := "testDisplay"
+	userName := "testUsername"
 	email := "testEmail"
 	enterprise := "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
 	userType := 1
@@ -84,27 +85,17 @@ func TestUserValid(t *testing.T) {
 	status := 1
 	user := User{
 		ID:          "testID",
+		UserName:    &userName,
 		DisplayName: &displayName,
 		Email:       &email,
 		Enterprise:  &enterprise,
-		Type:        &userType,
+		Type:        userType,
 		Password:    &password,
 		Status:      &status,
 	}
 
 	if !user.IsValid() {
 		t.Errorf("User should be valid in orig case")
-	}
-
-	email = ""
-	if user.IsValid() {
-		t.Errorf("User should be invalid when email is empty")
-	}
-
-	email = "testEmail"
-	enterprise = "abc"
-	if user.IsValid() {
-		t.Errorf("User should be invalid when enterprise is not uuid")
 	}
 
 	enterprise = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
