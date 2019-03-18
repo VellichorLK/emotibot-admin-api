@@ -32,7 +32,7 @@ var (
 	sqlConn      *sql.DB
 	dbLike       model.DBLike
 	volume       string
-	creditDao model.CreditDao = &model.CreditSQLDao{}
+	creditDao    model.CreditDao = &model.CreditSQLDao{}
 )
 
 func init() {
@@ -140,6 +140,14 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
 			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
 			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
+
+			util.NewEntryPoint(http.MethodGet, "predict/sentences", []string{}, handlePredictSentences),
+			util.NewEntryPoint(http.MethodGet, "testing/sentences/{id}", []string{}, handleGetTestSentences),
+			util.NewEntryPoint(http.MethodPost, "testing/sentences", []string{}, handleNewTestSentence),
+			util.NewEntryPoint(http.MethodDelete, "testing/sentences/{id}", []string{}, handleDeleteTestSentence),
+			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentences", []string{}, handleGetSentenceTestOverview),
+			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentence_category/{id}", []string{}, handleGetSentenceTestByCategory),
+			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentence_detail/{id}", []string{}, handleGetSentenceTestDetail),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -185,6 +193,7 @@ func init() {
 					return
 				}
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
+				sentenceTestDao = model.NewSentenceTestSQLDao(sqlConn)
 
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
