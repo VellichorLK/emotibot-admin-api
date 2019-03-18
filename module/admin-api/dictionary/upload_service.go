@@ -15,6 +15,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
@@ -364,7 +367,7 @@ func TriggerUpdateWordbankV3(appid string) (err error) {
 	}
 	now := time.Now()
 
-	err, wordLines, synonymLines := GetWordDataV3(appid)
+	err, wordLines, synonymLines := GetWordDataV3(appid, "")
 	wordContent := strings.Join(wordLines, "\n") + "\n"
 	synonymContent := strings.Join(synonymLines, "\n") + "\n"
 	md5Words := md5.Sum([]byte(wordContent))
@@ -704,15 +707,15 @@ func SaveWordbankV3Rows(appid string, root *WordBankClassV3) error {
 	return saveWordbankV3Rows(appid, root)
 }
 
-func GetWordDataV3(appid string) (error, []string, []string) {
+func GetWordDataV3(appid string, locale string) (error, []string, []string) {
 	root, err := getWordbanksV3(appid)
 	if err != nil {
 		return err, nil, nil
 	}
-	return GetWordDataFromWordbanksV3(root)
+	return GetWordDataFromWordbanksV3(root, locale)
 }
 
-func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []string) {
+func GetWordDataFromWordbanksV3(root *WordBankClassV3, locale string) (error, []string, []string) {
 	var getClassData func(class *WordBankClassV3, path []string) (words []string, synonyms []string)
 	getClassData = func(class *WordBankClassV3, path []string) (words []string, synonyms []string) {
 		words = []string{}
@@ -783,7 +786,21 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 
 	words, syonyms := getClassData(root, []string{})
 
-	return nil, words, syonyms
+	converter := zhconverter.T2S
+	if locale == localemsg.ZhTw {
+		converter = zhconverter.S2T
+	}
+
+	retWords := make([]string, len(words))
+	for idx := range words {
+		retWords[idx] = converter(words[idx])
+	}
+	retSyonyms := make([]string, len(syonyms))
+	for idx := range syonyms {
+		retSyonyms[idx] = converter(syonyms[idx])
+	}
+
+	return nil, retWords, retSyonyms
 }
 
 func ExportWordbankV3(appid string) (*bytes.Buffer, error) {

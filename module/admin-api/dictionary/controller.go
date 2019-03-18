@@ -782,8 +782,9 @@ func handleGetWordV3(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
 		return
 	}
+	locale := requestheader.GetLocale(r)
 
-	err, wordLines, _ := GetWordDataV3(appid)
+	err, wordLines, _ := GetWordDataV3(appid, locale)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -800,7 +801,9 @@ func handleGetSynonymsV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err, _, synonymLines := GetWordDataV3(appid)
+	locale := requestheader.GetLocale(r)
+
+	err, _, synonymLines := GetWordDataV3(appid, locale)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
