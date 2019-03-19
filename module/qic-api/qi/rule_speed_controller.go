@@ -126,7 +126,7 @@ func handleGetRuleSpeed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	except, err := GetRuleSpeedException(settings[0])
+	except, _, err := GetRuleSpeedException(settings[0])
 	if err != nil {
 		logger.Error.Printf("get the exception of speed rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)

@@ -74,6 +74,7 @@ type RuleSilenceException struct {
 }
 
 type SilenceRuleWithException struct {
+	RuleGroupID int64
 	model.SilenceRule
 	RuleSilenceException
 	sentences map[uint64][]uint64
@@ -276,6 +277,7 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 			logger.Error.Printf("get silence exception failed. %s\n", err)
 			return nil, err
 		}
+		exceptionRule.RuleGroupID = ruleGroup.ID
 		exceptionRule.RuleSilenceException = *exception
 		exceptionRule.sentences = senCriteria
 		rules = append(rules, exceptionRule)
@@ -473,7 +475,9 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 			defaultVaild = true
 		}
 
-		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp, Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs}
+		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp,
+			Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs,
+			RuleGroupID: rule.RuleGroupID}
 
 		//generates the all exception sentences result structure
 		exceptionMap := make(map[senTypeKey]*ExceptionMatched) //the map with key sentence id and value ExceptionMatch structure
