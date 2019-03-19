@@ -79,7 +79,7 @@ func TestSilenceRuleCheck(t *testing.T) {
 		&SegmentWithSpeaker{RealSegment: model.RealSegment{ID: 9, CallID: 1234, StartTime: 61.3, EndTime: 78.4}, Speaker: SilenceSpeaker},
 		&SegmentWithSpeaker{RealSegment: model.RealSegment{ID: 10, CallID: 1234, StartTime: 78.5, EndTime: 89}, Speaker: staffSpeaker},
 	}
-	silenceSegs, segs := extractSilenceSegment(allSegs)
+	silenceSegs, segs := extractSegmentSpeaker(allSegs, SilenceSpeaker)
 
 	credits, err := silenceRuleCheck(rules, tagMatchDat, allSegs, segs, silenceSegs)
 	if err != nil {
