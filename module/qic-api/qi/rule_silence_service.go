@@ -74,6 +74,7 @@ type RuleSilenceException struct {
 }
 
 type SilenceRuleWithException struct {
+	RuleGroupID int64
 	model.SilenceRule
 	RuleSilenceException
 	sentences map[uint64][]uint64
@@ -238,7 +239,7 @@ type silenceDuration struct {
 }
 
 //RuleSilenceCheck checks the silence rules
-func RuleSilenceCheck(allSegs []*SegmentWithSpeaker, matched []*MatchedData, enterprise string) ([]RulesException, error) {
+func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matched []*MatchedData) ([]RulesException, error) {
 
 	if len(allSegs) == 0 {
 		return nil, nil
@@ -246,7 +247,7 @@ func RuleSilenceCheck(allSegs []*SegmentWithSpeaker, matched []*MatchedData, ent
 
 	//TODO: fix it, get rules by rule group id and sets the rulegroup id to the attribute RuleGroup in RulesException
 	isDelete := 0
-	q := &model.GeneralQuery{Enterprise: &enterprise, IsDelete: &isDelete}
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete}
 	sRules, err := GetRuleSilences(q, nil)
 	if err != nil {
 		logger.Error.Printf("get rule silence failed. %s\n", err)
@@ -276,6 +277,7 @@ func RuleSilenceCheck(allSegs []*SegmentWithSpeaker, matched []*MatchedData, ent
 			logger.Error.Printf("get silence exception failed. %s\n", err)
 			return nil, err
 		}
+		exceptionRule.RuleGroupID = ruleGroup.ID
 		exceptionRule.RuleSilenceException = *exception
 		exceptionRule.sentences = senCriteria
 		rules = append(rules, exceptionRule)
@@ -381,20 +383,22 @@ func findFirstSegAfterIndex(idx int, allSegs []*SegmentWithSpeaker) (int, int) {
 	return staffIdx, customerIdx
 }
 
-func countNumOfSilenceBeforeIdx(idx int, allSegs []*SegmentWithSpeaker) int {
-	var numOfSilence int
+//counts number of other segments, not from staff and customer
+func countNumOfOtherSegsBeforeIdx(idx int, allSegs []*SegmentWithSpeaker) int {
+	var numOfOtherSegs int
 	for k, v := range allSegs {
 		if k >= idx {
 			break
 		}
 		if v.Speaker == SilenceSpeaker {
-			numOfSilence++
+			numOfOtherSegs++
 		}
 	}
 
-	return numOfSilence
+	return numOfOtherSegs
 }
 
+/*
 func countNumOfSilenceBeforeIdxs(idxs []int, allSegs []*SegmentWithSpeaker) []int {
 	numOfIdx := len(idxs)
 	if numOfIdx == 0 {
@@ -435,6 +439,7 @@ func countNumOfSilenceBeforeIdxs(idxs []int, allSegs []*SegmentWithSpeaker) []in
 	}
 	return resp
 }
+*/
 
 type senTypeKey struct {
 	typ        levelType
@@ -470,7 +475,9 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 			defaultVaild = true
 		}
 
-		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp, Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs}
+		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp,
+			Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs,
+			RuleGroupID: rule.RuleGroupID}
 
 		//generates the all exception sentences result structure
 		exceptionMap := make(map[senTypeKey]*ExceptionMatched) //the map with key sentence id and value ExceptionMatch structure
@@ -490,14 +497,14 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 
 				//find the first sentence index before the silence index
 				staffIdx, customerIdx := findFirstSegBeforeIndex(silenceIdx, allSegs)
-				numOfSilence := countNumOfSilenceBeforeIdx(staffIdx, allSegs)
+				numOfSilence := countNumOfOtherSegsBeforeIdx(staffIdx, allSegs)
 				staffMatchIdx := staffIdx - numOfSilence
-				numOfSilence = countNumOfSilenceBeforeIdx(customerIdx, allSegs)
+				numOfSilence = countNumOfOtherSegsBeforeIdx(customerIdx, allSegs)
 				customerMatchIdx := customerIdx - numOfSilence
 
 				//find the first sentence index after the silence index
 				aStaffIdx, _ := findFirstSegAfterIndex(silenceIdx, allSegs)
-				numOfSilence = countNumOfSilenceBeforeIdx(aStaffIdx, allSegs)
+				numOfSilence = countNumOfOtherSegsBeforeIdx(aStaffIdx, allSegs)
 				aStaffMatchIdx := aStaffIdx - numOfSilence
 
 				//do the checking, sentence match
