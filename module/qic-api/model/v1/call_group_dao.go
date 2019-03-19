@@ -39,6 +39,7 @@ type CallGroupCondition struct {
 type CallGroupConditionUpdateSet struct {
 	Name        *string `json:name`
 	Description *string `json:"description"`
+	IsEnable    *int    `json:"is_enable"`
 }
 
 // CallGroupConditionListResponseItem defines the item in the response data list of handleGetCallGroupList
@@ -86,9 +87,6 @@ func (*CallGroupSQLDao) CreateCondition(conn SqlLike, model *CallGroupCondition)
 		return 0, ErrNeedRequest
 	}
 	flds := callGroupConditionFlds
-	for i := range flds {
-		flds[i] = "`" + flds[i] + "`"
-	}
 	vals := make([]interface{}, 0, len(flds))
 	err := extractSimpleStructureValue(&vals, model)
 	if err != nil {
@@ -103,10 +101,6 @@ func (*CallGroupSQLDao) CreateCondition(conn SqlLike, model *CallGroupCondition)
 //GetConditionList return the requested CallGroupCondition list
 func (*CallGroupSQLDao) GetConditionList(conn SqlLike, query *GeneralQuery, pagination *Pagination) ([]*CallGroupCondition, error) {
 	flds := callGroupConditionFlds
-	for i := range flds {
-		flds[i] = "`" + flds[i] + "`"
-	}
-
 	var condition string
 	var params []interface{}
 	var err error
@@ -121,7 +115,6 @@ func (*CallGroupSQLDao) GetConditionList(conn SqlLike, query *GeneralQuery, pagi
 		offset = pagination.offsetSQL()
 	}
 	querySQL := fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(flds, ","), tblCallGroupCondition, condition, offset)
-
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
 		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
@@ -132,7 +125,7 @@ func (*CallGroupSQLDao) GetConditionList(conn SqlLike, query *GeneralQuery, pagi
 	condList := make([]*CallGroupCondition, 0)
 	for rows.Next() {
 		var data CallGroupCondition
-		err = rows.Scan(&data.ID, &data.Name, &data.Description, &data.IsEnable, &data.IsDelete,
+		err = rows.Scan(&data.ID, &data.Name, &data.Description, &data.Enterprise, &data.IsEnable, &data.IsDelete,
 			&data.DayRange, &data.DurationMin, &data.DurationMax, &data.CreateTime, &data.UpdateTime)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
@@ -168,6 +161,7 @@ func (*CallGroupSQLDao) UpdateCondition(conn SqlLike, query *GeneralQuery, data 
 	flds := []string{
 		fldName,
 		fldDescription,
+		fldIsEnable,
 	}
 	return updateSQL(conn, query, data, tblCallGroupCondition, flds)
 }
