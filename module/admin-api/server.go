@@ -431,6 +431,11 @@ func setRoute() *mux.Router {
 			*newRequest.URL = *r.URL
 			newRequest.URL.Path = fmt.Sprintf("%s/%s", locale, newPath)
 			logger.Trace.Printf("Get file from %s\n", newRequest.URL.Path)
+
+			if strings.HasSuffix(newPath, ".xlsx") {
+				w.Header().Set("Content-Type", "application/octet-stream")
+			}
+
 			handler.ServeHTTP(w, newRequest)
 		} else {
 			http.NotFound(w, r)
