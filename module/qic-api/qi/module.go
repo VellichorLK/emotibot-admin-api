@@ -141,13 +141,13 @@ func init() {
 			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
 			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
 
-			util.NewEntryPoint(http.MethodGet, "predict/sentences", []string{}, handlePredictSentences),
+			util.NewEntryPoint(http.MethodGet, "testing/predict/sentences", []string{}, handlePredictSentences),
 			util.NewEntryPoint(http.MethodGet, "testing/sentences/{id}", []string{}, handleGetTestSentences),
 			util.NewEntryPoint(http.MethodPost, "testing/sentences", []string{}, handleNewTestSentence),
 			util.NewEntryPoint(http.MethodDelete, "testing/sentences/{id}", []string{}, handleDeleteTestSentence),
-			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentences", []string{}, handleGetSentenceTestOverview),
-			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentence_category/{id}", []string{}, handleGetSentenceTestByCategory),
-			util.NewEntryPoint(http.MethodGet, "testing/test_overview/sentence_detail/{id}", []string{}, handleGetSentenceTestDetail),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences", []string{}, handleGetSentenceTestOverview),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_info", []string{}, handleGetSentenceTestResult),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_detail/{id}", []string{}, handleGetSentenceTestDetail),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {

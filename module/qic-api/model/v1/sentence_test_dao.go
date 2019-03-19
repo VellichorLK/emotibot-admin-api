@@ -3,9 +3,9 @@ package model
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 	"emotibot.com/emotigo/pkg/logger"
 	"encoding/json"
+	"strings"
 )
 
 const (
@@ -28,7 +28,7 @@ type SentenceTestDao interface {
 	GetTestSentences(tx SqlLike, query *TestSentenceQuery) ([]*TestSentence, error)
 	InsertOrUpdateSentenceTestResult(tx SqlLike, result *SentenceTestResult) error
 	UpdateSentenceTest(tx SqlLike, s *TestSentence) error
-	GetSentenceTestResultByCategory(tx SqlLike, enterpriseID string, categoryID uint64) ([]*SentenceTestResult, error)
+	GetSentenceTestResult(tx SqlLike, query *SentenceTestResultQuery) ([]*SentenceTestResult, error)
 }
 
 type TestSentence struct {
@@ -67,6 +67,16 @@ type SentenceTestResult struct {
 	Accuracy   float32 `json:"accuracy"`
 	CreateTime int64   `json:"create_time"`
 	UpdateTime int64   `json:"update_time"`
+	OrgID      uint64  `json:"org_id"`
+}
+
+type SentenceTestResultQuery struct {
+	ID         []uint64
+	UUID       []string
+	Enterprise *string
+	IsDelete   *int8
+	Name       *string
+	CategoryID *uint64
 }
 
 func NewSentenceTestSQLDao(conn *sql.DB) *SentenceTestSQLDao {
@@ -89,10 +99,11 @@ func (d *SentenceTestSQLDao) InsertTestSentence(tx SqlLike, s *TestSentence) err
 		return err
 	}
 
-	sqlStr := fmt.Sprintf("INSERT INTO %s ( %s, %s, %s, %s, %s, %s, %s ) "+
-		"VALUES ( ?, ?, ?, ?, ?, ?, ? )",
-		TblSentenceTest,
-		fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, FldTestedID)
+	fields := []string{fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, FldTestedID}
+	fieldStr := strings.Join(fields, ", ")
+	valueStr := "(?" + strings.Repeat(", ?", len(fields)-1) + ")"
+
+	sqlStr := fmt.Sprintf("INSERT INTO %s (%s) VALUES %s", TblSentenceTest, fieldStr, valueStr)
 
 	res, err := exe.Exec(sqlStr, s.IsDelete, s.Name, s.Enterprise, s.UUID, s.CreateTime, s.UpdateTime, s.TestedID)
 	if err != nil {
@@ -138,7 +149,7 @@ func (d *SentenceTestSQLDao) CountTestSentences(tx SqlLike, query *TestSentenceQ
 		condition, params = query.whereSQL()
 	}
 
-	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", "sentence_test", condition)
+	queryStr := fmt.Sprintf("SELECT COUNT(*) FROM %s %s", TblSentenceTest, condition)
 	var num int64
 	if err = q.QueryRow(queryStr, params...).Scan(&num); err != nil {
 		logger.Error.Printf("fail to query. %s \n", err.Error())
@@ -158,9 +169,9 @@ func (d *SentenceTestSQLDao) GetTestSentences(tx SqlLike, query *TestSentenceQue
 	}
 	condition, params := query.whereSQL()
 
-	queryStr := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s FROM %s %s",
-		fldID, fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldTestedID, FldHitTags, FldFailTags, FldMatchText,
-		TblSentenceTest, condition)
+	fields := []string{fldID, fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldTestedID, FldHitTags, FldFailTags, FldMatchText}
+	fieldStr := strings.Join(fields, ", ")
+	queryStr := fmt.Sprintf("SELECT %s FROM %s %s", fieldStr, TblSentenceTest, condition)
 	rows, err := q.Query(queryStr, params...)
 	if err != nil {
 		logger.Error.Printf("Query: %s, Params:%+v, failed. %s\n", queryStr, params, err)
@@ -196,70 +207,6 @@ func (d *SentenceTestSQLDao) GetTestSentences(tx SqlLike, query *TestSentenceQue
 	return testSentences, nil
 }
 
-func (query TestSentenceQuery) whereSQL() (string, []interface{}) {
-	numOfUUID := len(query.UUID)
-	params := make([]interface{}, 0, numOfUUID+1)
-	conditions := make([]string, 0)
-
-	if numOfUUID > 0 {
-		condition := fldUUID + " IN ( ?" + strings.Repeat(", ?", numOfUUID-1) + " )"
-		conditions = append(conditions, condition)
-		for i := 0; i < numOfUUID; i++ {
-			params = append(params, query.UUID[i])
-		}
-	}
-
-	numOfID := len(query.ID)
-	if numOfID > 0 {
-		condition := fldID + " IN ( ?" + strings.Repeat(", ?", numOfID-1) + " )"
-		conditions = append(conditions, condition)
-		for i := 0; i < numOfID; i++ {
-			params = append(params, query.ID[i])
-		}
-	}
-
-	numOfTestedID := len(query.TestedID)
-	if numOfTestedID > 0 {
-		condition := "tested_id" + " IN ( ?" + strings.Repeat(", ?", numOfTestedID-1) + " )"
-		conditions = append(conditions, condition)
-		for i := 0; i < numOfTestedID; i++ {
-			params = append(params, query.TestedID[i])
-		}
-	}
-
-	if query.Enterprise != nil {
-		condition := fldEnterprise + " = ?"
-		conditions = append(conditions, condition)
-		params = append(params, *query.Enterprise)
-	}
-
-	if query.IsDelete != nil {
-		condition := fldIsDelete + " = ?"
-		conditions = append(conditions, condition)
-		params = append(params, *query.IsDelete)
-	}
-
-	if query.Name != nil {
-		condition := fldName + " = ?"
-		conditions = append(conditions, condition)
-		params = append(params, *query.Name)
-	}
-
-	if query.CategoryID != nil {
-		condition := fldCategoryID + " = ?"
-		conditions = append(conditions, condition)
-		params = append(params, *query.CategoryID)
-	}
-
-	var whereSQL string
-	if len(conditions) > 0 {
-		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
-	}
-	whereSQL += " ORDER BY " + fldID + " DESC "
-
-	return whereSQL, params
-}
-
 func (d *SentenceTestSQLDao) InsertOrUpdateSentenceTestResult(tx SqlLike, result *SentenceTestResult) error {
 	if result == nil {
 		return fmt.Errorf("invalid param")
@@ -278,9 +225,11 @@ func (d *SentenceTestSQLDao) InsertOrUpdateSentenceTestResult(tx SqlLike, result
 	var sqlStr string
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sqlStr = fmt.Sprintf("INSERT INTO %s ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) "+"VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
-				TblSentenceTestResult, fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldHit, FldTotal, FldAccuracy)
-			_, err = exe.Exec(sqlStr, 0, result.Name, result.Enterprise, result.UUID, result.CreateTime, result.UpdateTime, result.CategoryID, result.Hit, result.Total, result.Accuracy)
+			fields := []string{fldIsDelete, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldHit, FldTotal, FldAccuracy, fldOrgID}
+			fieldStr := strings.Join(fields, ", ")
+			valueStr := "(?" + strings.Repeat(", ?", len(fields)-1) + ")"
+			sqlStr = fmt.Sprintf("INSERT INTO %s (%s) "+"VALUES %s", TblSentenceTestResult, fieldStr, valueStr)
+			_, err = exe.Exec(sqlStr, 0, result.Name, result.Enterprise, result.UUID, result.CreateTime, result.UpdateTime, result.CategoryID, result.Hit, result.Total, result.Accuracy, result.OrgID)
 			return err
 		}
 		return err
@@ -328,15 +277,17 @@ func (d *SentenceTestSQLDao) UpdateSentenceTest(tx SqlLike, s *TestSentence) err
 	return err
 }
 
-func (d *SentenceTestSQLDao) GetSentenceTestResultByCategory(tx SqlLike, enterpriseID string, categoryID uint64) ([]*SentenceTestResult, error) {
+func (d *SentenceTestSQLDao) GetSentenceTestResult(tx SqlLike, query *SentenceTestResultQuery) ([]*SentenceTestResult, error) {
 	q, err := genrateExecutor(d.conn, tx)
 	if err != nil {
 		return nil, err
 	}
+	condition, params := query.whereSQL()
 
-	queryStr := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ? AND %s = ?",
-		fldID, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldHit, FldTotal, FldAccuracy, TblSentenceTestResult, fldEnterprise, fldCategoryID)
-	rows, err := q.Query(queryStr, enterpriseID, categoryID)
+	fields := []string{fldID, fldName, fldEnterprise, fldUUID, fldCreateTime, fldUpdateTime, fldCategoryID, FldHit, FldTotal, FldAccuracy, fldOrgID}
+	fieldStr := strings.Join(fields, ", ")
+	queryStr := fmt.Sprintf("SELECT %s FROM %s %s", fieldStr, TblSentenceTestResult, condition)
+	rows, err := q.Query(queryStr, params...)
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -345,9 +296,128 @@ func (d *SentenceTestSQLDao) GetSentenceTestResultByCategory(tx SqlLike, enterpr
 	results := make([]*SentenceTestResult, 0)
 	for rows.Next() {
 		var result SentenceTestResult
-		rows.Scan(&result.ID, &result.Name, &result.Enterprise, &result.UUID, &result.CreateTime, &result.UpdateTime, &result.CategoryID, &result.Hit, &result.Total, &result.Accuracy)
+		rows.Scan(&result.ID, &result.Name, &result.Enterprise, &result.UUID, &result.CreateTime, &result.UpdateTime, &result.CategoryID, &result.Hit, &result.Total, &result.Accuracy, &result.OrgID)
 		results = append(results, &result)
 
 	}
 	return results, nil
+}
+
+func (query TestSentenceQuery) whereSQL() (string, []interface{}) {
+	numOfUUID := len(query.UUID)
+	params := make([]interface{}, 0, numOfUUID+1)
+	conditions := make([]string, 0)
+
+	if numOfUUID > 0 {
+		condition := fldUUID + " IN ( ?" + strings.Repeat(", ?", numOfUUID-1) + " )"
+		conditions = append(conditions, condition)
+		for i := 0; i < numOfUUID; i++ {
+			params = append(params, query.UUID[i])
+		}
+	}
+
+	numOfID := len(query.ID)
+	if numOfID > 0 {
+		condition := fldID + " IN ( ?" + strings.Repeat(", ?", numOfID-1) + " )"
+		conditions = append(conditions, condition)
+		for i := 0; i < numOfID; i++ {
+			params = append(params, query.ID[i])
+		}
+	}
+
+	numOfTestedID := len(query.TestedID)
+	if numOfTestedID > 0 {
+		condition := FldTestedID + " IN ( ?" + strings.Repeat(", ?", numOfTestedID-1) + " )"
+		conditions = append(conditions, condition)
+		for i := 0; i < numOfTestedID; i++ {
+			params = append(params, query.TestedID[i])
+		}
+	}
+
+	if query.Enterprise != nil {
+		condition := fldEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.Enterprise)
+	}
+
+	if query.IsDelete != nil {
+		condition := fldIsDelete + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.IsDelete)
+	}
+
+	if query.Name != nil {
+		condition := fldName + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.Name)
+	}
+
+	if query.CategoryID != nil {
+		condition := fldCategoryID + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.CategoryID)
+	}
+
+	var whereSQL string
+	if len(conditions) > 0 {
+		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	whereSQL += " ORDER BY " + fldID + " DESC "
+
+	return whereSQL, params
+}
+
+func (query SentenceTestResultQuery) whereSQL() (string, []interface{}) {
+	numOfUUID := len(query.UUID)
+	params := make([]interface{}, 0, numOfUUID+1)
+	conditions := make([]string, 0)
+
+	if numOfUUID > 0 {
+		condition := fldUUID + " IN ( ?" + strings.Repeat(", ?", numOfUUID-1) + " )"
+		conditions = append(conditions, condition)
+		for i := 0; i < numOfUUID; i++ {
+			params = append(params, query.UUID[i])
+		}
+	}
+
+	numOfID := len(query.ID)
+	if numOfID > 0 {
+		condition := fldID + " IN ( ?" + strings.Repeat(", ?", numOfID-1) + " )"
+		conditions = append(conditions, condition)
+		for i := 0; i < numOfID; i++ {
+			params = append(params, query.ID[i])
+		}
+	}
+
+	if query.Enterprise != nil {
+		condition := fldEnterprise + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.Enterprise)
+	}
+
+	if query.IsDelete != nil {
+		condition := fldIsDelete + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.IsDelete)
+	}
+
+	if query.Name != nil {
+		condition := fldName + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.Name)
+	}
+
+	if query.CategoryID != nil {
+		condition := fldCategoryID + " = ?"
+		conditions = append(conditions, condition)
+		params = append(params, *query.CategoryID)
+	}
+
+	var whereSQL string
+	if len(conditions) > 0 {
+		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
+	}
+	whereSQL += " ORDER BY " + fldID + " DESC "
+
+	return whereSQL, params
 }

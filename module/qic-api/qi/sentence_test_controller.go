@@ -37,6 +37,7 @@ func handlePredictSentences(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
+	util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.SUCCESS, nil), http.StatusOK)
 }
 
 func handleGetTestSentences(w http.ResponseWriter, r *http.Request) {
@@ -98,18 +99,15 @@ func handleDeleteTestSentence(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGetSentenceTestByCategory(w http.ResponseWriter, r *http.Request) {
+func handleGetSentenceTestResult(w http.ResponseWriter, r *http.Request) {
 	enterpriseID := requestheader.GetEnterpriseID(r)
-	idStr := parseID(r)
-
-	categoryID, err := strconv.ParseUint(idStr, 10, 64)
+	categoryID, err := getQueryCategoryID(r)
 	if err != nil {
-		logger.Error.Println("invalid categoryID")
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err), http.StatusBadRequest)
 		return
 	}
 
-	testResults, err := GetSentenceTestByCategory(enterpriseID, categoryID)
+	testResults, err := GetSentenceTestResult(enterpriseID, categoryID)
 	if err != nil {
 		logger.Error.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

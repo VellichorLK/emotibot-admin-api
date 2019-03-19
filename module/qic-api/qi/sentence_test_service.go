@@ -101,11 +101,11 @@ func predictSentence(enterpriseID string, testedID uint64) error {
 	matched, err := TagMatch([]uint64{models[0].ID}, testSenName, 3*time.Second)
 
 	sentenceTestResult := model.SentenceTestResult{
-		ID:         testedID,
 		Name:       sentence.Name,
 		Total:      len(allTagIDs),
 		Enterprise: enterpriseID,
 		CategoryID: sentence.CategoryID,
+		OrgID:      testedID,
 	}
 	for _, matchedData := range matched {
 		result := TestResult{
@@ -246,8 +246,9 @@ func SoftDeleteTestSentence(enterpriseID string, testSenUUID string) (int64, err
 	return affected, err
 }
 
-func GetSentenceTestByCategory(enterpriseID string, categoryID uint64) ([]*model.SentenceTestResult, error) {
-	testResults, err := sentenceTestDao.GetSentenceTestResultByCategory(nil, enterpriseID, categoryID)
+func GetSentenceTestResult(enterpriseID string, categoryID *uint64) ([]*model.SentenceTestResult, error) {
+	query := &model.SentenceTestResultQuery{Enterprise: &enterpriseID, CategoryID: categoryID}
+	testResults, err := sentenceTestDao.GetSentenceTestResult(nil, query)
 	if err != nil {
 		return nil, err
 	}
@@ -419,7 +420,7 @@ func GetSentenceTestOverview(enterpriseID string) (*SentenceTestOverview, error)
 		Accuracy: 0,
 		Count:    totalTestSens,
 		Account:  "hardcode_account",
-		Date:     "hardcode_date",
+		Date:     "2019/03/19",
 	}
 
 	senTestOverview := &SentenceTestOverview{
@@ -443,6 +444,7 @@ func GetSentenceTestOverview(enterpriseID string) (*SentenceTestOverview, error)
 
 	// add "全部" category
 	senTestOverview.Categories = append(senTestOverview.Categories, SenTestByCategory{
+		ID:       -1,
 		Name:     "全部",
 		Accuracy: 0,
 	})
@@ -458,13 +460,16 @@ func GetSentenceTestOverview(enterpriseID string) (*SentenceTestOverview, error)
 
 	totalAcc := float32(0)
 	totalNum := 0
+	var updateTime int64
 	for _, category := range categories {
-		testResults, err := sentenceTestDao.GetSentenceTestResultByCategory(nil, enterpriseID, category.ID)
+		resultQuery := &model.SentenceTestResultQuery{Enterprise: &enterpriseID, CategoryID: &category.ID}
+		testResults, err := sentenceTestDao.GetSentenceTestResult(nil, resultQuery)
 		if err != nil {
 			return nil, err
 		}
 
 		senTestByCategory := SenTestByCategory{
+			ID:       int64(category.ID),
 			Name:     category.Name,
 			Accuracy: 0,
 		}
@@ -478,6 +483,7 @@ func GetSentenceTestOverview(enterpriseID string) (*SentenceTestOverview, error)
 		var acc = float32(0)
 		for _, testResult := range testResults {
 			acc += testResult.Accuracy
+			updateTime = testResult.UpdateTime
 		}
 		totalAcc += acc
 		totalNum += len(testResults)
@@ -489,17 +495,13 @@ func GetSentenceTestOverview(enterpriseID string) (*SentenceTestOverview, error)
 	}
 
 	totalAcc = totalAcc / float32(totalNum)
-	//senTestOverview.Summary.Count = int64(totalNum)
 	senTestOverview.Summary.Accuracy = totalAcc
+	senTestOverview.Summary.Date = time.Unix(updateTime, 0).Format("2006/01/02")
 	// set accuracy for "全部" category
 	senTestOverview.Categories[0].Accuracy = totalAcc
 
 	return senTestOverview, nil
 }
-
-//func GetSentenceTestResultByCategory(enterpriseID string, categoryID uint64) ([]*model.SentenceTestResult, error) {
-//	return sentenceTestDao.GetSentenceTestResultByCategory(nil, enterpriseID, categoryID)
-//}
 
 type SenTestSummary struct {
 	Accuracy float32 `json:"accuracy"`
@@ -509,6 +511,7 @@ type SenTestSummary struct {
 }
 
 type SenTestByCategory struct {
+	ID       int64   `json:"id"`
 	Name     string  `json:"name"`
 	Accuracy float32 `json:"accuracy"`
 }
