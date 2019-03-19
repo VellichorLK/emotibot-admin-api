@@ -233,7 +233,7 @@ func UpdateRuleSilence(q *model.GeneralQuery, d *model.SilenceUpdateSet) (int64,
 
 const SilenceSpeaker = -1
 
-type silenceDuration struct {
+type segDuration struct {
 	index    int
 	duration float64
 }
@@ -257,7 +257,7 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		return nil, nil
 	}
 
-	silenceSegs, segs := extractSilenceSegment(allSegs)
+	silenceSegs, segs := extractSegmentDuration(allSegs, SilenceSpeaker)
 
 	silenceNum := len(silenceSegs)
 
@@ -292,15 +292,15 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 	return credits, nil
 }
 
-//extract the silence segment and sorts it in descending order by silence duration
-//return silence segment and semgent without silence segment
-func extractSilenceSegment(segments []*SegmentWithSpeaker) ([]silenceDuration, []*SegmentWithSpeaker) {
-	silenceSegs := make([]silenceDuration, 0, 16)
+//extract the segment with given speaker and sorts it in descending order by segment's duration
+//return  segment with only given speaker and semgent without segment with given speaker
+func extractSegmentDuration(segments []*SegmentWithSpeaker, speaker int) ([]segDuration, []*SegmentWithSpeaker) {
+	silenceSegs := make([]segDuration, 0, 16)
 	segs := make([]*SegmentWithSpeaker, 0, len(segments))
 	for k, v := range segments {
-		if v.Speaker == SilenceSpeaker {
+		if v.Speaker == speaker {
 			silenceDur := v.EndTime - v.StartTime
-			s := silenceDuration{index: k, duration: silenceDur}
+			s := segDuration{index: k, duration: silenceDur}
 			silenceSegs = append(silenceSegs, s)
 		} else {
 			segs = append(segs, v)
@@ -452,7 +452,7 @@ type senTypeKey struct {
 //this function doesn't check the len of data, the input data must not be empty
 //silenceSegs must sort by duration in descending order
 func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedData,
-	allSegs []*SegmentWithSpeaker, segs []*SegmentWithSpeaker, silenceSegs []silenceDuration) ([]RulesException, error) {
+	allSegs []*SegmentWithSpeaker, segs []*SegmentWithSpeaker, silenceSegs []segDuration) ([]RulesException, error) {
 
 	callID := allSegs[0].CallID
 	segMatchedTag := extractTagMatchedData(tagMatchDat)
