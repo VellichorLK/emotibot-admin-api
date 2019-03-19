@@ -237,11 +237,11 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 type NewCallReq struct {
 	FileName      string                 `json:"file_name"`
 	CallTime      int64                  `json:"call_time"`
-	CallComment   string                 `json:"call_comment"`
+	Description   string                 `json:"description"`
 	Transaction   int64                  `json:"transaction"`
 	Series        string                 `json:"series"`
-	HostID        string                 `json:"host_id"`
-	HostName      string                 `json:"host_name"`
+	HostID        string                 `json:"staff_id"`
+	HostName      string                 `json:"staff_name"`
 	Extension     string                 `json:"extension"`
 	Department    string                 `json:"department"`
 	GuestID       string                 `json:"customer_id"`

@@ -237,7 +237,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	call := &model.Call{
 		UUID:           hex.EncodeToString(uid[:]),
 		FileName:       &c.FileName,
-		Description:    &c.CallComment,
+		Description:    &c.Description,
 		UploadUnixTime: time.Now().Unix(),
 		CallUnixTime:   c.CallTime,
 		StaffID:        c.HostID,
