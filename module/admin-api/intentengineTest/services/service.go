@@ -346,12 +346,12 @@ func parseImportTestFile(appID string,
 }
 
 func runIntentsTest(appID string, version int64, ieModelID string) {
-	var err error
+	var err, predictErr error
 	var sentences []*data.IntentTestSentence
 	overallTestResult := &data.TestResult{}
 
 	defer func() {
-		if err != nil {
+		if predictErr != nil || err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
 			logger.Info.Printf("Intent test task failed: %s.", err.Error())
 		} else {
@@ -438,7 +438,7 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 		overallTestResult.FalseNegatives += testResult.FalseNegatives
 
 		if testResult.Error != nil {
-			err = testResult.Error
+			predictErr = testResult.Error
 		}
 	}
 
