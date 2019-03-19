@@ -409,11 +409,20 @@ func UpdateCall(call *model.Call) error {
 
 //ConfirmCall is the workflow to update call File Path and send the request into message queue.
 func ConfirmCall(call *model.Call) error {
+	type VAD struct {
+		SegmentID int64   `json:"segment_id"`
+		Speaker   int8    `json:"speaker"`
+		StartTime float64 `json:"start_time"`
+		EndTime   float64 `json:"end_time"`
+	}
+
 	type ASRInput struct {
 		Version float64 `json:"version"`
 		CallID  string  `json:"call_id"`
 		Path    string  `json:"path"`
+		VADList []*VAD  `json:"vad_list"`
 	}
+
 	//TODO: if call already Confirmed, it should not be able to
 	if call.FilePath == nil {
 		return fmt.Errorf("call FilePath should not be nil")
@@ -436,6 +445,30 @@ func ConfirmCall(call *model.Call) error {
 		CallID:  strconv.FormatInt(call.ID, 10),
 		Path:    path.Join(basePath, *call.FilePath),
 	}
+
+	if call.Type == model.CallTypeRealTime {
+		vadList := []*VAD{}
+
+		// Get call's segments to create VAD list of the call
+		segments, err := getSegments(*call)
+		if err != nil {
+			return err
+		}
+
+		for _, segment := range segments {
+			vad := VAD{
+				SegmentID: segment.SegmentID,
+				Speaker:   callRoleTyp(segment.Speaker),
+				StartTime: segment.StartTime,
+				EndTime:   segment.EndTime,
+			}
+
+			vadList = append(vadList, &vad)
+		}
+
+		input.VADList = vadList
+	}
+
 	resp, err := json.Marshal(input)
 	if err != nil {
 		return fmt.Errorf("marshal asr input failed, %v", err)
