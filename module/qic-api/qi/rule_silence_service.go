@@ -257,7 +257,7 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		return nil, nil
 	}
 
-	silenceSegs, segs := extractSegmentDuration(allSegs, SilenceSpeaker)
+	silenceSegs, segs := extractSegmentSpeaker(allSegs, SilenceSpeaker)
 
 	silenceNum := len(silenceSegs)
 
@@ -294,7 +294,7 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 
 //extract the segment with given speaker and sorts it in descending order by segment's duration
 //return  segment with only given speaker and semgent without segment with given speaker
-func extractSegmentDuration(segments []*SegmentWithSpeaker, speaker int) ([]segDuration, []*SegmentWithSpeaker) {
+func extractSegmentSpeaker(segments []*SegmentWithSpeaker, speaker int) ([]segDuration, []*SegmentWithSpeaker) {
 	silenceSegs := make([]segDuration, 0, 16)
 	segs := make([]*SegmentWithSpeaker, 0, len(segments))
 	for k, v := range segments {
@@ -464,7 +464,7 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 		var violateSegs []int64
 		//find which segments break the silence rule
 		for _, seg := range silenceSegs {
-			if seg.duration < float64(rule.Seconds) {
+			if seg.duration <= float64(rule.Seconds) {
 				break
 			}
 			violateSegs = append(violateSegs, allSegs[seg.index].RealSegment.ID)
@@ -476,7 +476,7 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 		}
 
 		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp,
-			Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSeg: violateSegs,
+			Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSegs: violateSegs,
 			RuleGroupID: rule.RuleGroupID}
 
 		//generates the all exception sentences result structure
