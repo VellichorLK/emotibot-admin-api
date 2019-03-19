@@ -351,7 +351,10 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 	overallTestResult := &data.TestResult{}
 
 	defer func() {
-		if predictErr != nil || err != nil {
+		if predictErr != nil {
+			intentTestDao.TestIntentsFailed(version, err.Error())
+			logger.Info.Printf("Intent test task failed: %s.", predictErr.Error())
+		} else if err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
 			logger.Info.Printf("Intent test task failed: %s.", err.Error())
 		} else {
@@ -390,7 +393,8 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 	fakeAppID := fmt.Sprintf("%s_%s", appID, now.Format("20060102_150405"))
 
 	// Load model with fake app ID
-	logger.Info.Printf("Load Intent Engine model with fake app ID: %s.\n", fakeAppID)
+	logger.Info.Printf("Load Intent Engine model: %s with fake app ID: %s.\n",
+		ieModelID, fakeAppID)
 	err = loadIEModel(fakeAppID, ieModelID)
 	if err != nil {
 		return
