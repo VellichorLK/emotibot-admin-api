@@ -251,6 +251,23 @@ func RuleSpeedCheck(ruleGroup model.Group, tagMatchDat []*MatchedData, segs []*S
 	return credits, nil
 }
 
+func composeTagCredits(m *MatchedData, segID int64) []*TagCredit {
+	resp := make([]*TagCredit, 0, len(m.Matched))
+	for _, data := range m.Matched {
+		var tagCredit TagCredit
+		//TagID
+		tagCredit.ID = data.Tag
+		tagCredit.Score = data.Score
+		//SentenceID is the cu term for segment Idx, which is 1 based index
+		tagCredit.SegmentIdx = data.SentenceID
+		tagCredit.Match = data.Match
+		tagCredit.MatchTxt = data.MatchText
+		tagCredit.SegmentID = segID
+		resp = append(resp, &tagCredit)
+	}
+	return resp
+}
+
 func getExceptionMatched(criteria []model.SimpleSentence, segs []*SegmentWithSpeaker,
 	senMatchDat map[uint64][]int, tagMatchDat []*MatchedData, typ levelType) ([]*ExceptionMatched, bool) {
 
@@ -264,18 +281,8 @@ func getExceptionMatched(criteria []model.SimpleSentence, segs []*SegmentWithSpe
 			for _, seg := range segsIdx {
 				matchedIdx := seg - 1
 				matchedTags := tagMatchDat[matchedIdx]
-				for _, data := range matchedTags.Matched {
-					var tagCredit TagCredit
-					//TagID
-					tagCredit.ID = data.Tag
-					tagCredit.Score = data.Score
-					//SentenceID is the cu term for segment Idx, which is 1 based index
-					tagCredit.SegmentIdx = data.SentenceID
-					tagCredit.Match = data.Match
-					tagCredit.MatchTxt = data.MatchText
-					tagCredit.SegmentID = segs[matchedIdx].ID
-					matched.Tags = append(matched.Tags, &tagCredit)
-				}
+				tagCredits := composeTagCredits(matchedTags, segs[matchedIdx].ID)
+				matched.Tags = append(matched.Tags, tagCredits...)
 			}
 		}
 		resp = append(resp, matched)
