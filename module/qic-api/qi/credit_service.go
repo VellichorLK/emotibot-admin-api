@@ -691,15 +691,16 @@ type ExceptionMatched struct {
 	Tags       []*TagCredit
 }
 type RulesException struct {
-	RuleID      int64     //rule ids
-	Typ         levelType //type
-	Whos        WhosType
-	CallID      int64
-	Valid       bool
-	Score       int
-	RuleGroupID int64
-	Exception   []*ExceptionMatched
-	SilenceSeg  []int64 //the segment id that break the silence rule
+	RuleID         int64     //rule ids
+	Typ            levelType //type
+	Whos           WhosType
+	CallID         int64
+	Valid          bool
+	Score          int
+	RuleGroupID    int64
+	Exception      []*ExceptionMatched
+	SilenceSegs    []int64 //the segment id that break the silence rule
+	InterposalSegs []int64 // the segment id that break the interposal rule
 }
 
 //StoreRulesException stores the rule exception
@@ -766,9 +767,9 @@ func StoreRulesException(credits []RulesException) error {
 		}
 
 		//silence
-		for _, segID := range r.SilenceSeg {
+		for _, segID := range r.SilenceSegs {
 			s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(levSegSilenceTyp), ParentID: uint64(rParent),
-				OrgID: uint64(segID), Score: 0, CreateTime: now, Revise: unactivate, Valid: notMatched, Whos: int(r.Whos)}
+				OrgID: uint64(segID), Score: 0, CreateTime: now, Revise: unactivate, Valid: unactivate, Whos: int(r.Whos)}
 
 			_, err = creditDao.InsertCredit(tx, s)
 			if err != nil {
@@ -776,6 +777,19 @@ func StoreRulesException(credits []RulesException) error {
 				return err
 			}
 		}
+
+		//interposal segs
+		for _, segID := range r.InterposalSegs {
+			s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(levSegInterposalTyp), ParentID: uint64(rParent),
+				OrgID: uint64(segID), Score: 0, CreateTime: now, Revise: unactivate, Valid: unactivate, Whos: int(r.Whos)}
+
+			_, err = creditDao.InsertCredit(tx, s)
+			if err != nil {
+				logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+				return err
+			}
+		}
+
 	}
 
 	return tx.Commit()
