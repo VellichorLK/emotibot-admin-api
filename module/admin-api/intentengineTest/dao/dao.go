@@ -1843,15 +1843,19 @@ func toggleInUsedIntentTestWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN id = ? THEN 1
-				ELSE in_used
-			END
-		WHERE app_id = ?`, IntentTestVersionsTable)
-	_, err = tx.Exec(queryStr, version, appID)
-	return
+		SET in_used = 0
+		WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE app_id = ? AND id = ?`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID, version)
+	return err
 }
 
 func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
@@ -1862,14 +1866,18 @@ func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN version = ? THEN 1
-				ELSE in_used
-			END
-		WHERE appid = ?`, IntentVersionsTable)
-	_, err = tx.Exec(queryStr, intentVersion, appID)
+		SET in_used = 0
+		WHERE appid = ? AND in_used = 1`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE appid = ? AND version = ?`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID, intentVersion)
 	return
 }
 
