@@ -34,6 +34,7 @@ type InterposalRuleDao interface {
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *InterposalUpdateSet) (int64, error)
 	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
+	GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*InterposalRule, error)
 }
 
 type InterposalRuleSQLDao struct {
@@ -41,6 +42,9 @@ type InterposalRuleSQLDao struct {
 
 //Add inserts a new record
 func (s *InterposalRuleSQLDao) Add(conn SqlLike, r *InterposalRule) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if conn == nil {
 		return 0, ErroNoConn
 	}
@@ -78,6 +82,9 @@ func (s *InterposalRuleSQLDao) Add(conn SqlLike, r *InterposalRule) (int64, erro
 
 //Get gets the data under the condition
 func (s *InterposalRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*InterposalRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
 	flds := []string{
 		fldID,
 		fldName,
@@ -150,6 +157,9 @@ func (s *InterposalRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, erro
 
 //SoftDelete simply set the is_delete to 1
 func (s *InterposalRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -159,6 +169,9 @@ func (s *InterposalRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64,
 
 //Update updates the records
 func (s *InterposalRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *InterposalUpdateSet) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -174,6 +187,9 @@ func (s *InterposalRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *Interpos
 
 //Copy copys only one record, only use the first ID in q
 func (s *InterposalRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -203,4 +219,67 @@ func (s *InterposalRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+//GetByRuleGroup gets the rule under the conditon of RuleGroup.
+//Hence, q is the condition for getting RuleGroup
+func (s *InterposalRuleSQLDao) GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*InterposalRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	if q == nil || len(q.UUID) == 0 {
+		return nil, ErrNeedCondition
+	}
+	flds := []string{
+		fldID,
+		fldName,
+		fldEnterprise,
+		fldScore,
+		fldOverLappedSec,
+		fldOverLappedTimes,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+	for i := range flds {
+		flds[i] = "b.`" + flds[i] + "`"
+	}
+
+	params := make([]interface{}, 0, len(q.UUID))
+	for _, v := range q.UUID {
+		params = append(params, v)
+	}
+
+	condition := "WHERE a.`" + fldRGUUID + "` IN (?" + strings.Repeat(",?", len(q.UUID)-1) + ")"
+
+	query := fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b %s %s",
+		strings.Join(flds, ","),
+		tblRelRGInterposal, tblInterposalRule,
+		condition)
+
+	return getInterposalRules(conn, query, params)
+}
+
+func getInterposalRules(conn SqlLike, querySQL string, params []interface{}) ([]*InterposalRule, error) {
+	rows, err := conn.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
+		return nil, err
+	}
+	defer rows.Close()
+	resp := make([]*InterposalRule, 0, 4)
+	for rows.Next() {
+		var d InterposalRule
+		err = rows.Scan(&d.ID, &d.Name, &d.Enterprise,
+			&d.Score, &d.Seconds, &d.Times,
+			&d.IsDelete, &d.CreateTime, &d.UpdateTime,
+			&d.UUID)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+		resp = append(resp, &d)
+	}
+	return resp, nil
 }

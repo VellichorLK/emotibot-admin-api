@@ -47,6 +47,9 @@ const (
 	tblSilenceRule      = "SilenceRule"
 	tblSpeedRule        = "SpeedRule"
 	tblInterposalRule   = "InterposalRule"
+	tblRelRGSilence     = "Relation_RuleGroup_Silence"
+	tblRelRGInterposal  = "Relation_RuleGroup_Interposal"
+	tblRelRGSpeed       = "Relation_RuleGroup_Speed"
 )
 
 //field name in Conversation table
@@ -234,6 +237,11 @@ const (
 
 	fldOverLappedSec   = "overlapped_sec"
 	fldOverLappedTimes = "overlapped_time"
+
+	fldRGUUID         = "rg_uuid"
+	fldInterposalUUID = "int_uuid"
+	fldSpeedUUID      = "spe_uuid"
+	fldSilenceUUID    = "sil_uuid"
 )
 
 //relation field name
