@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"bytes"
+
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 	"emotibot.com/emotigo/module/qic-api/util/test"
-	"bytes"
 )
 
 var mockCtxSentences = []string{
@@ -1168,7 +1169,7 @@ func TestRuleGroupCriteria(t *testing.T) {
 
 	timeout := time.Duration(3 * time.Second)
 
-	c, err := RuleGroupCriteria(model.Group{ID: 1}, segments, timeout)
+	cs, err := RuleGroupCriteria([]model.Group{model.Group{ID: 1}}, segments, timeout)
 	if err != nil {
 		t.Errorf("expecting no error, but get %s\n", err)
 	} else {
@@ -1216,6 +1217,10 @@ func TestRuleGroupCriteria(t *testing.T) {
 				b, _ := json.Marshal(expect)
 				fmt.Printf("%s\n", b)
 			*/
+			if 1 != len(cs) {
+				t.Fatalf("expecting get 1 credit, but get %d\n", len(cs))
+			}
+			c := cs[0]
 			//check the result
 			if expect.ID != c.ID {
 				t.Fatalf("expecting rule group id %d, but get %d\n", expect.ID, c.ID)

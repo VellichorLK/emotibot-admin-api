@@ -50,27 +50,10 @@ const (
 )
 
 //StoreCredit stores the result of the quality
-func StoreCredit(call uint64, credit *RuleGrpCredit) error {
+func StoreCredit(call uint64, credits []*RuleGrpCredit) error {
 	if dbLike == nil {
 		return ErrNilCon
 	}
-	if credit == nil {
-		return nil
-	}
-	var parentID uint64
-
-	s := &model.SimpleCredit{}
-
-	now := time.Now().Unix()
-
-	s.CreateTime = now
-	s.CallID = call
-	s.OrgID = credit.ID
-	s.ParentID = parentID
-	s.Score = credit.Score
-	s.Type = int(levRuleGrpTyp)
-	s.Valid = unactivate
-	s.Revise = unactivate
 
 	tx, err := dbLike.Begin()
 	if err != nil {
@@ -79,90 +62,111 @@ func StoreCredit(call uint64, credit *RuleGrpCredit) error {
 	}
 	defer tx.Rollback()
 
-	lastID, err := creditDao.InsertCredit(tx, s)
-	if err != nil {
-		logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
-		return err
-	}
+	for _, credit := range credits {
 
-	parentID = uint64(lastID)
-	for _, rule := range credit.Rules {
-
-		s = &model.SimpleCredit{CallID: call, Type: int(levRuleTyp), ParentID: parentID,
-			OrgID: rule.ID, Score: rule.Score, CreateTime: now, Revise: unactivate}
-		if rule.Valid {
-			s.Valid = matched
+		if credit == nil {
+			return nil
 		}
+		var parentID uint64
 
-		parentRule, err := creditDao.InsertCredit(tx, s)
+		s := &model.SimpleCredit{}
+
+		now := time.Now().Unix()
+
+		s.CreateTime = now
+		s.CallID = call
+		s.OrgID = credit.ID
+		s.ParentID = parentID
+		s.Score = credit.Score
+		s.Type = int(levRuleGrpTyp)
+		s.Valid = unactivate
+		s.Revise = unactivate
+
+		lastID, err := creditDao.InsertCredit(tx, s)
 		if err != nil {
-			logger.Error.Printf("insert rule credit %+v failed. %s\n", s, err)
+			logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
 			return err
 		}
 
-		for _, cf := range rule.CFs {
+		parentID = uint64(lastID)
+		for _, rule := range credit.Rules {
 
-			s = &model.SimpleCredit{CallID: call, Type: int(levCFTyp), ParentID: uint64(parentRule),
-				OrgID: cf.ID, Score: 0, CreateTime: now, Revise: unactivate}
-			if cf.Valid {
+			s = &model.SimpleCredit{CallID: call, Type: int(levRuleTyp), ParentID: parentID,
+				OrgID: rule.ID, Score: rule.Score, CreateTime: now, Revise: unactivate}
+			if rule.Valid {
 				s.Valid = matched
 			}
 
-			parentCF, err := creditDao.InsertCredit(tx, s)
+			parentRule, err := creditDao.InsertCredit(tx, s)
 			if err != nil {
-				logger.Error.Printf("insert conversation flow credit %+v failed. %s\n", s, err)
+				logger.Error.Printf("insert rule credit %+v failed. %s\n", s, err)
 				return err
 			}
 
-			for _, senGrp := range cf.SentenceGrps {
+			for _, cf := range rule.CFs {
 
-				s = &model.SimpleCredit{CallID: call, Type: int(levSenGrpTyp), ParentID: uint64(parentCF),
-					OrgID: senGrp.ID, Score: 0, CreateTime: now, Revise: unactivate}
-				if senGrp.Valid {
+				s = &model.SimpleCredit{CallID: call, Type: int(levCFTyp), ParentID: uint64(parentRule),
+					OrgID: cf.ID, Score: 0, CreateTime: now, Revise: unactivate}
+				if cf.Valid {
 					s.Valid = matched
 				}
 
-				parentSenGrp, err := creditDao.InsertCredit(tx, s)
+				parentCF, err := creditDao.InsertCredit(tx, s)
 				if err != nil {
-					logger.Error.Printf("insert sentence group credit %+v failed. %s\n", s, err)
+					logger.Error.Printf("insert conversation flow credit %+v failed. %s\n", s, err)
 					return err
 				}
 
-				for _, sen := range senGrp.Sentences {
+				for _, senGrp := range cf.SentenceGrps {
 
-					s = &model.SimpleCredit{CallID: call, Type: int(levSenTyp), ParentID: uint64(parentSenGrp),
-						OrgID: sen.ID, Score: 0, CreateTime: now, Revise: unactivate}
-					if sen.Valid {
+					s = &model.SimpleCredit{CallID: call, Type: int(levSenGrpTyp), ParentID: uint64(parentCF),
+						OrgID: senGrp.ID, Score: 0, CreateTime: now, Revise: unactivate}
+					if senGrp.Valid {
 						s.Valid = matched
 					}
 
-					parentSen, err := creditDao.InsertCredit(tx, s)
+					parentSenGrp, err := creditDao.InsertCredit(tx, s)
 					if err != nil {
-						logger.Error.Printf("insert sentence credit %+v failed. %s\n", s, err)
+						logger.Error.Printf("insert sentence group credit %+v failed. %s\n", s, err)
 						return err
 					}
-					duplicateSegIDMap := make(map[uint64]bool)
 
-					for _, tag := range sen.Tags {
-						s := &model.SegmentMatch{SegID: uint64(tag.SegmentID), TagID: tag.ID, Score: tag.Score,
-							Match: tag.Match, MatchedText: tag.MatchTxt, CreateTime: now}
-						_, err = creditDao.InsertSegmentMatch(tx, s)
+					for _, sen := range senGrp.Sentences {
+
+						s = &model.SimpleCredit{CallID: call, Type: int(levSenTyp), ParentID: uint64(parentSenGrp),
+							OrgID: sen.ID, Score: 0, CreateTime: now, Revise: unactivate}
+						if sen.Valid {
+							s.Valid = matched
+						}
+
+						parentSen, err := creditDao.InsertCredit(tx, s)
 						if err != nil {
-							logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+							logger.Error.Printf("insert sentence credit %+v failed. %s\n", s, err)
 							return err
 						}
-						duplicateSegIDMap[uint64(tag.SegmentID)] = true
-					}
+						duplicateSegIDMap := make(map[uint64]bool)
 
-					if sen.Valid {
-						for segID := range duplicateSegIDMap {
-							s := &model.SimpleCredit{CallID: call, Type: int(levSegTyp), ParentID: uint64(parentSen),
-								OrgID: segID, Score: 0, CreateTime: now, Revise: unactivate, Valid: matched}
-
-							_, err = creditDao.InsertCredit(tx, s)
+						for _, tag := range sen.Tags {
+							s := &model.SegmentMatch{SegID: uint64(tag.SegmentID), TagID: tag.ID, Score: tag.Score,
+								Match: tag.Match, MatchedText: tag.MatchTxt, CreateTime: now}
+							_, err = creditDao.InsertSegmentMatch(tx, s)
 							if err != nil {
 								logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
 								return err
+							}
+							duplicateSegIDMap[uint64(tag.SegmentID)] = true
+						}
+
+						if sen.Valid {
+							for segID := range duplicateSegIDMap {
+								s := &model.SimpleCredit{CallID: call, Type: int(levSegTyp), ParentID: uint64(parentSen),
+									OrgID: segID, Score: 0, CreateTime: now, Revise: unactivate, Valid: matched}
+
+								_, err = creditDao.InsertCredit(tx, s)
+								if err != nil {
+									logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+									return err
+								}
 							}
 						}
 					}
