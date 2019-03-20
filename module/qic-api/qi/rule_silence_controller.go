@@ -44,9 +44,6 @@ func checkSilenceRule(r *model.SilenceRule) error {
 	if r.Name == "" {
 		return ErrEmptyName
 	}
-	if r.Score < 0 {
-		return ErrorWrongScore
-	}
 	if r.Seconds <= 0 {
 		return ErrWrongSecond
 	}
