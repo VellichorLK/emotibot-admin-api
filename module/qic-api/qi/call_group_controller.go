@@ -13,7 +13,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-func handleCreateCallGroup(w http.ResponseWriter, r *http.Request) {
+func handleCreateCallGroupCondition(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 
 	var reqModel model.CallGroupCondition
@@ -64,7 +64,7 @@ func checkCallGroupCondition(cond *model.CallGroupCondition) error {
 	return nil
 }
 
-func handleGetCallGroupList(w http.ResponseWriter, r *http.Request) {
+func handleGetCallGroupConditionList(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	page, limit, err := getPageLimit(r)
 	if err != nil {
@@ -115,7 +115,7 @@ func handleGetCallGroupList(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleGetCallGroup(w http.ResponseWriter, r *http.Request) {
+func handleGetCallGroupCondition(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	isDelete := 0
 	idStr := general.ParseID(r)
@@ -156,7 +156,7 @@ func handleGetCallGroup(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleUpdateCallGroup(w http.ResponseWriter, r *http.Request) {
+func handleUpdateCallGroupCondition(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	isDelete := 0
 	idStr := general.ParseID(r)
@@ -202,7 +202,7 @@ func checkCallGroupConditionUpdateSet(data model.CallGroupConditionUpdateSet) er
 	return checkCallGroupCondition(&cond)
 }
 
-func handleDeleteCallGroup(w http.ResponseWriter, r *http.Request) {
+func handleDeleteCallGroupCondition(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	isDelete := 0
 	idStr := general.ParseID(r)
@@ -217,6 +217,31 @@ func handleDeleteCallGroup(w http.ResponseWriter, r *http.Request) {
 	_, err = DeleteCallGroupCondition(query)
 	if err != nil {
 		logger.Error.Printf("delete CallGroupCondition:%s failed. %s\n", idStr, err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		return
+	}
+}
+
+func handleCreateCallGroups(w http.ResponseWriter, r *http.Request) {
+	enterprise := requestheader.GetEnterpriseID(r)
+	idStr := general.ParseID(r)
+	conditionID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		logger.Error.Printf("invalid cg_condition_id: %s\n", idStr)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	var reqModel model.CallGroupCreateList
+	err = util.ReadJSON(r, &reqModel)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	err = CreateCallGroups(enterprise, conditionID, &reqModel)
+	if err != nil {
+		logger.Error.Printf("create call group failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
