@@ -393,13 +393,19 @@ func setSentenceWithPredictionInfo(sp []*SentenceWithPrediction) {
 }
 
 //RetrieveCredit gets the credit by call id
-func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
+func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 	if dbLike == nil {
 		return nil, ErrNilCon
 	}
+
+	callID, err := callDao.GetCallIDByUUID(dbLike.Conn(), callUUID)
+	if err != nil {
+		return nil, err
+	}
+
 	//!!MUST make sure the return credits in order from parent to child level
 	//parent must be in the front of the child
-	credits, err := creditDao.GetCallCredit(dbLike.Conn(), &model.CreditQuery{Calls: []uint64{call}})
+	credits, err := creditDao.GetCallCredit(dbLike.Conn(), &model.CreditQuery{Calls: []uint64{uint64(callID)}})
 	if err != nil {
 		logger.Error.Printf("get credits failed\n")
 		return nil, err
@@ -868,10 +874,10 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 				}
 			}
 		}
-	}
+	}	
 
 	segments, err := segmentDao.Segments(dbLike.Conn(),
-		model.SegmentQuery{ID: invalidSegsID, CallID: []int64{int64(call)}})
+		model.SegmentQuery{ID: invalidSegsID, CallID: []int64{callID}})
 
 	if err != nil {
 		logger.Error.Printf("get segments failed. %s\n", err)

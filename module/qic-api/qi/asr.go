@@ -30,7 +30,7 @@ func ASRWorkFlow(output []byte) error {
 		return nil
 	}
 
-	c, err := Call(resp.CallID, "")
+	c, err := Call(resp.CallUUID, "")
 	if err == ErrNotFound {
 		logger.Error.Printf("unrecoverable error: call '%d' no such call exist. \n", resp.CallID)
 		return nil
@@ -58,7 +58,7 @@ func ASRWorkFlow(output []byte) error {
 	}()
 
 	if resp.Status != 0 {
-		logger.Error.Printf("unrecoverable error: asr response status is not ok, CallID: %d, Status: %d\n", resp.CallID, resp.Status)
+		logger.Error.Printf("unrecoverable error: asr response status is not ok, CallUUID: %s, Status: %d\n", resp.CallUUID, resp.Status)
 		return nil
 	}
 
@@ -292,6 +292,7 @@ type ASRResponse struct {
 	Version      float64  `json:"version"`
 	Status       int64    `json:"ret"`
 	CallID       int64    `json:"call_id,string"`
+	CallUUID     string   `json:"call_uuid"`
 	Length       float64  `json:"length"`
 	Mp3          *string  `json:"mp3"`
 	LeftChannel  vChannel `json:"left_channel"`

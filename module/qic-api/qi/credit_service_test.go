@@ -419,6 +419,7 @@ func getExpect() []*HistoryCredit {
 
 func TestRetreiveCredit(t *testing.T) {
 	//creditDao = &mockGroupDaoCredit{}
+	callDao = &mockCallDao{}
 	creditDao = &mockCreditDao{}
 	serviceDAO = &mockGroupDaoCredit{}
 	conversationRuleDao = &mockRuleDaoCredit{}
@@ -429,7 +430,7 @@ func TestRetreiveCredit(t *testing.T) {
 	tagDao = &mockTagSQLDaoCredit{}
 	dbLike = &test.MockDBLike{}
 	segmentDao = &mockCreditSegmentDao{}
-	credits, err := RetrieveCredit(1234)
+	credits, err := RetrieveCredit("b570f3fc63ae43728fbebb91e009cc02")
 	if err != nil {
 		t.Fatalf("expecting no error, but get %s\n", err)
 	}

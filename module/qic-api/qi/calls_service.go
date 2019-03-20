@@ -45,9 +45,9 @@ func HasCall(id int64) (bool, error) {
 }
 
 var (
-	call = func(callID int64, enterprise string) (c model.Call, err error) {
+	call = func(callUUID string, enterprise string) (c model.Call, err error) {
 		query := model.CallQuery{
-			ID: []int64{callID},
+			UUID: []string{callUUID},
 		}
 		if enterprise != "" {
 			query.EnterpriseID = &enterprise
@@ -133,6 +133,7 @@ var (
 
 			r := CallResp{
 				CallID:        c.ID,
+				CallUUID:      c.UUID,
 				FileName:      *c.FileName,
 				CallTime:      c.CallUnixTime,
 				CallComment:   *c.Description,
@@ -172,8 +173,8 @@ var (
 // Call return a call by given callID and enterprise
 // If enterprise is empty, it will ignore it in conditions.
 // If callID can not found, a ErrNotFound will returned
-func Call(callID int64, enterprise string) (c model.Call, err error) {
-	return call(callID, enterprise)
+func Call(callUUID string, enterprise string) (c model.Call, err error) {
+	return call(callUUID, enterprise)
 }
 
 // Calls is just a wrapper for callDao's calls.
@@ -417,10 +418,11 @@ func ConfirmCall(call *model.Call) error {
 	}
 
 	type ASRInput struct {
-		Version float64 `json:"version"`
-		CallID  string  `json:"call_id"`
-		Path    string  `json:"path"`
-		VADList []*VAD  `json:"vad_list"`
+		Version  float64 `json:"version"`
+		CallID   string  `json:"call_id"`
+		CallUUID string  `json:"call_uuid"`
+		Path     string  `json:"path"`
+		VADList  []*VAD  `json:"vad_list"`
 	}
 
 	//TODO: if call already Confirmed, it should not be able to
@@ -441,9 +443,10 @@ func ConfirmCall(call *model.Call) error {
 		logger.Warn.Println("expect ASR_HARDCODE_VOLUME have setup, or asr may not be able to read the path.")
 	}
 	input := ASRInput{
-		Version: 1.0,
-		CallID:  strconv.FormatInt(call.ID, 10),
-		Path:    path.Join(basePath, *call.FilePath),
+		Version:  1.0,
+		CallID:   strconv.FormatInt(call.ID, 10),
+		CallUUID: call.UUID,
+		Path:     path.Join(basePath, *call.FilePath),
 	}
 
 	if call.Type == model.CallTypeRealTime {

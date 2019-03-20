@@ -15,8 +15,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
-	"github.com/gorilla/mux"
-
 	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -68,7 +66,7 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 // NewCallsHandler create a call but no upload file itself.
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
-		CallID int64 `json:"call_id"`
+		CallUUID string `json:"call_uuid"`
 	}
 	req, err := extractNewCallReq(r)
 	if err != nil {
@@ -85,7 +83,7 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := response{CallID: call.ID}
+	resp := response{CallUUID: call.UUID}
 	util.WriteJSON(w, resp)
 }
 
@@ -165,25 +163,16 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
 // any request error will terminate handler as BadRequest.
 func callRequest(next func(w http.ResponseWriter, r *http.Request, c *model.Call)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const IDKey = "call_id"
-		callID := mux.Vars(r)[IDKey]
-		if callID == "" {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require %s in path", IDKey))
-			return
-		}
-		id, err := strconv.ParseInt(callID, 10, 64)
-		if err != nil {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int", callID))
-			return
-		}
+		uuid := general.ParseID(r)
+
 		enterprise := requestheader.GetEnterpriseID(r)
 		if enterprise == "" {
 			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("empty enterprise ID"))
 			return
 		}
-		c, err := Call(id, enterprise)
+		c, err := Call(uuid, enterprise)
 		if err == ErrNotFound {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", uuid))
 			return
 		}
 		if err != nil {
@@ -344,6 +333,7 @@ type CallsResponse struct {
 //CallResp is the UI struct of the call.
 type CallResp struct {
 	CallID           int64                  `json:"call_id"`
+	CallUUID         string                 `json:"call_uuid"`
 	CallTime         int64                  `json:"call_time"`
 	Transaction      int8                   `json:"deal"`
 	Status           int64                  `json:"status"`

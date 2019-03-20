@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"emotibot.com/emotigo/pkg/logger"
-	"bytes"
-	"github.com/tealeg/xlsx"
-	"reflect"
 	"bufio"
+	"bytes"
+	"reflect"
+
+	"emotibot.com/emotigo/pkg/logger"
+	"github.com/tealeg/xlsx"
 )
 
 type CallDao interface {
@@ -19,6 +20,7 @@ type CallDao interface {
 	SetCall(delegatee SqlLike, call Call) error
 	Count(delegatee SqlLike, query CallQuery) (int64, error)
 	ExportCalls(delegatee SqlLike) (*bytes.Buffer, error)
+	GetCallIDByUUID(delegatee SqlLike, callUUID string) (int64, error)
 }
 
 //CallSQLDao is the sql implements of the call table
@@ -438,6 +440,21 @@ func (c *CallSQLDao) ExportCalls(delegatee SqlLike) (*bytes.Buffer, error) {
 	xlFile.Write(writer)
 
 	return &buf, err
+}
+
+func (c *CallSQLDao) GetCallIDByUUID(delegatee SqlLike, callUUID string) (int64, error) {
+	if delegatee == nil {
+		delegatee = c.db
+	}
+
+	var callID int64
+	queryStr := "SELECT `" + fldCallID + "` FROM `" + tblCall + "` WHERE `" + fldCallUUID + "` = ?"
+	err := delegatee.QueryRow(queryStr, callUUID).Scan(&callID)
+	if err != nil {
+		return 0, err
+	}
+
+	return callID, nil
 }
 
 type ExportCall struct {

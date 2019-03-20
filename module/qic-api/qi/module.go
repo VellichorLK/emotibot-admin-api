@@ -99,10 +99,10 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, callRequest(CallsDetailHandler)),
-			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, callRequest(CallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}", []string{}, callRequest(CallsDetailHandler)),
+			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/file", []string{}, callRequest(CallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
