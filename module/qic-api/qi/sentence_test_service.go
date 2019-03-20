@@ -62,7 +62,11 @@ func predictSentence(enterpriseID string, testedID uint64) error {
 		IsDelete:   &deleted,
 	}
 	sentences, err := sentenceDao.GetSentences(nil, query)
-	if len(sentences) != 1 {
+	if len(sentences) == 0 {
+		logger.Error.Println("failed to find sentence")
+		return fmt.Errorf("failed to find one sentence")
+	}
+	if len(sentences) > 1 {
 		logger.Error.Println("find more than one sentence")
 		return fmt.Errorf("find more than one sentence")
 	}
@@ -302,7 +306,11 @@ func GetSentenceTestDetail(enterpriseID string, sentenceID uint64) (*SentenceTes
 	senQuery := &model.SentenceQuery{ID: []uint64{sentenceID}, IsDelete: &deleted, Enterprise: &enterpriseID}
 
 	sentences, err := sentenceDao.GetSentences(nil, senQuery)
-	if len(sentences) != 1 {
+	if len(sentences) == 0 {
+		logger.Error.Println("failed to find sentence")
+		return nil, fmt.Errorf("failed to find sentence")
+	}
+	if len(sentences) > 1 {
 		logger.Error.Println("find more than one sentence")
 		return nil, fmt.Errorf("find more than one sentence")
 	}
@@ -323,11 +331,10 @@ func GetSentenceTestDetail(enterpriseID string, sentenceID uint64) (*SentenceTes
 	tagsIndexMap := make(map[uint64]int)
 	for i := 0; i < len(tags); i++ {
 		tagsIDMap[tags[i].ID] = &tags[i]
-		tagsIndexMap[tags[i].ID] = i + 1
 	}
 
 	tagItems := make([]TagItem, 0)
-	for _, tagID := range sentence.TagIDs {
+	for i, tagID := range sentence.TagIDs {
 		if tag, ok := tagsIDMap[tagID]; ok {
 			item := TagItem{
 				ID:   tag.ID,
@@ -336,8 +343,9 @@ func GetSentenceTestDetail(enterpriseID string, sentenceID uint64) (*SentenceTes
 			}
 			tagItems = append(tagItems, item)
 		} else {
-			return nil, fmt.Errorf("fail to convert tag info")
+			return nil, fmt.Errorf("failed to convert tag info")
 		}
+		tagsIndexMap[tagID] = i + 1
 	}
 
 	sentenceItem := SentenceItem{
