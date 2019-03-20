@@ -7,7 +7,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-// CallGroupDao defines dao interface for CallGroupCondition
+// CallGroupDao defines dao interface call group
 type CallGroupDao interface {
 	CreateCondition(conn SqlLike, model *CallGroupCondition) (int64, error)
 	GetConditionList(conn SqlLike, query *GeneralQuery, pagination *Pagination) ([]*CallGroupCondition, error)
@@ -35,14 +35,14 @@ type CallGroupCondition struct {
 	UpdateTime  int64  `json:"-"`
 }
 
-// CallGroupConditionUpdateSet defines the json body of handleUpdateCallGroup request
+// CallGroupConditionUpdateSet defines the json body of handleUpdateCallGroupCondition request
 type CallGroupConditionUpdateSet struct {
 	Name        *string `json:name`
 	Description *string `json:"description"`
 	IsEnable    *int    `json:"is_enable"`
 }
 
-// CallGroupConditionListResponseItem defines the item in the response data list of handleGetCallGroupList
+// CallGroupConditionListResponseItem defines the item in the response data list of handleGetCallGroupConditionList
 type CallGroupConditionListResponseItem struct {
 	ID          int64  `json:"cg_condition_id"`
 	Name        string `json:"name"`
@@ -50,7 +50,7 @@ type CallGroupConditionListResponseItem struct {
 	IsEnable    bool   `json:"is_enable"`
 }
 
-// CallGroupConditionResponse defines the response data of handleGetCallGroup
+// CallGroupConditionResponse defines the response data of handleGetCallGroupCondition
 type CallGroupConditionResponse struct {
 	Name          string        `json:"name"`
 	Description   string        `json:"description"`
@@ -60,6 +60,10 @@ type CallGroupConditionResponse struct {
 	DurationMax   int           `json:"duration_max"`
 	FilterByValue []interface{} `json:"filter_by_value"`
 	GroupByValue  []string      `json:"group_by_value"`
+}
+
+type CallGroupCreateList struct {
+	CallGroups [][]int64 `json:"call_groups"`
 }
 
 var (
@@ -172,4 +176,9 @@ func (*CallGroupSQLDao) SoftDeleteCondition(conn SqlLike, query *GeneralQuery) (
 		return 0, ErrNeedCondition
 	}
 	return softDelete(conn, query, tblCallGroupCondition)
+}
+
+// CreateCallGroups create relation between CallGroups and Calls
+func (*CallGroupSQLDao) CreateCallGroups(model *CallGroupCondition) error {
+	return nil
 }

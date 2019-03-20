@@ -77,3 +77,8 @@ func DeleteCallGroupCondition(query *model.GeneralQuery) (int64, error) {
 	}
 	return callGroupDao.SoftDeleteCondition(dbLike.Conn(), query)
 }
+
+// CreateCallGroups create call groups
+func CreateCallGroups(enterprise string, conditionID int64, data *model.CallGroupCreateList) error {
+	return nil
+}
