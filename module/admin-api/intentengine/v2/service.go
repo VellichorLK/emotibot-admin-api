@@ -487,7 +487,7 @@ func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, e
 		rows = rows[1:]
 		for rowIdx := range rows {
 			cells := rows[rowIdx].Cells
-			if len(cells) != 2 {
+			if len(cells) < 2 {
 				return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadBF2RowInvalidTpl"),
 					sheets[idx].Name, rowIdx+1)
 			}

@@ -300,8 +300,13 @@ func parseImportTestFile(appID string,
 	intentNameHeader := headerRow.Cells[0].String()
 	sentenceHeader := headerRow.Cells[1].String()
 
-	if intentNameHeader != localemsg.Get(locale, "IntentName") ||
-		sentenceHeader != localemsg.Get(locale, "TestSentence") {
+	if intentNameHeader != localemsg.Get(locale, "IntentName") &&
+		intentNameHeader != localemsg.Get("", "IntentName") {
+		return nil, data.ErrTestImportSheetNoHeader
+	}
+
+	if sentenceHeader != localemsg.Get(locale, "TestSentence") &&
+		sentenceHeader != localemsg.Get("", "TestSentence") {
 		return nil, data.ErrTestImportSheetNoHeader
 	}
 
@@ -346,12 +351,15 @@ func parseImportTestFile(appID string,
 }
 
 func runIntentsTest(appID string, version int64, ieModelID string) {
-	var err error
+	var err, predictErr error
 	var sentences []*data.IntentTestSentence
 	overallTestResult := &data.TestResult{}
 
 	defer func() {
-		if err != nil {
+		if predictErr != nil {
+			intentTestDao.TestIntentsFailed(version, err.Error())
+			logger.Info.Printf("Intent test task failed: %s.", predictErr.Error())
+		} else if err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
 			logger.Info.Printf("Intent test task failed: %s.", err.Error())
 		} else {
@@ -390,7 +398,8 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 	fakeAppID := fmt.Sprintf("%s_%s", appID, now.Format("20060102_150405"))
 
 	// Load model with fake app ID
-	logger.Info.Printf("Load Intent Engine model with fake app ID: %s.\n", fakeAppID)
+	logger.Info.Printf("Load Intent Engine model: %s with fake app ID: %s.\n",
+		ieModelID, fakeAppID)
 	err = loadIEModel(fakeAppID, ieModelID)
 	if err != nil {
 		return
@@ -438,7 +447,7 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 		overallTestResult.FalseNegatives += testResult.FalseNegatives
 
 		if testResult.Error != nil {
-			err = testResult.Error
+			predictErr = testResult.Error
 		}
 	}
 

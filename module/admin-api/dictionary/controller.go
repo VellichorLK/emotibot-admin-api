@@ -702,6 +702,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 	errno := ApiError.SUCCESS
 	errMsg := ""
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	now := time.Now()
 	buf := []byte{}
 	defer func() {
@@ -753,7 +754,7 @@ func handleUploadToMySQLV3(w http.ResponseWriter, r *http.Request) {
 		err = fmt.Errorf("%s: %s", util.Msg["ErrorReadFileError"], err.Error())
 		return
 	}
-	root, err := parseDictionaryFromXLSXV3(buf)
+	root, err := parseDictionaryFromXLSXV3(buf, locale)
 	if err != nil {
 		errno = ApiError.REQUEST_ERROR
 		return
@@ -782,8 +783,9 @@ func handleGetWordV3(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
 		return
 	}
+	locale := requestheader.GetLocale(r)
 
-	err, wordLines, _ := GetWordDataV3(appid)
+	err, wordLines, _ := GetWordDataV3(appid, locale)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -800,7 +802,9 @@ func handleGetSynonymsV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err, _, synonymLines := GetWordDataV3(appid)
+	locale := requestheader.GetLocale(r)
+
+	err, _, synonymLines := GetWordDataV3(appid, locale)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return
@@ -812,12 +816,13 @@ func handleGetSynonymsV3(w http.ResponseWriter, r *http.Request) {
 
 func handleExportFromMySQLV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	if appid == "" {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "invalid appid"), http.StatusBadRequest)
 		return
 	}
 
-	buf, err := ExportWordbankV3(appid)
+	buf, err := ExportWordbankV3(appid, locale)
 	if err != nil {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		return

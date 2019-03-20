@@ -73,6 +73,67 @@ type RuleMatchedResult struct {
 	Score int //plus or minus
 }
 
+type SentenceWithPrediction struct {
+	ID    uint64 `json:"id"`
+	Valid bool   `json:"valid"`
+	model.SimpleSentence
+	MatchedSegments []*model.SegmentMatch `json:"segment_predictions"`
+	Credit          *SentenceCredit       `json:"-"`
+}
+
+type BothExceptionCredit struct {
+	Staff    []*SentenceWithPrediction `json:"staff"`
+	Customer []*SentenceWithPrediction `json:"customer"`
+}
+
+type StaffExceptionCredit struct {
+	Staff []*SentenceWithPrediction `json:"staff"`
+}
+type CustomerExceptionCredit struct {
+	Customer []*SentenceWithPrediction `json:"customer"`
+}
+
+type SilenceExceptionCredit struct {
+	Before BothExceptionCredit  `json:"before"`
+	After  StaffExceptionCredit `json:"after"`
+}
+type SegmentTimeRange struct {
+	Start float64 `json:"start_time"`
+	End   float64 `json:"end_time"`
+}
+type SilenceRuleCredit struct {
+	ID          int64                  `json:"id"`
+	Name        string                 `json:"name"`
+	Valid       bool                   `json:"valid"`
+	Score       int                    `json:"score"`
+	Setting     model.SilenceRule      `json:"setting"`
+	Exception   SilenceExceptionCredit `json:"exception"`
+	InvalidSegs []SegmentTimeRange     `json:"invalid_semgent"`
+}
+
+type SpeedExceptionCredit struct {
+	Under CustomerExceptionCredit `json:"under"`
+	Over  CustomerExceptionCredit `json:"over"`
+}
+
+type SpeedRuleCredit struct {
+	ID        int64                `json:"id"`
+	Name      string               `json:"name"`
+	Valid     bool                 `json:"valid"`
+	Score     int                  `json:"score"`
+	Setting   model.SpeedRule      `json:"setting"`
+	Exception SpeedExceptionCredit `json:"exception"`
+}
+
+type InterposalRuleCredit struct {
+	ID          int64                `json:"id"`
+	Name        string               `json:"name"`
+	Valid       bool                 `json:"valid"`
+	Score       int                  `json:"score"`
+	Setting     model.InterposalRule `json:"setting"`
+	InvalidSegs []SegmentTimeRange   `json:"invalid_semgent"`
+}
+
 //RuleGrpCredit is the result of the segments
 type RuleGrpCredit struct {
 	ID      uint64            `json:"id"`
@@ -80,6 +141,12 @@ type RuleGrpCredit struct {
 	Score   int               `json:"score"`
 	Rules   []*RuleCredit     `json:"rules"`
 	Setting *model.GroupWCond `json:"setting"`
+
+	SilenceRule    []*SilenceRuleCredit    `json:"silence_rule"`
+	SpeedRule      []*SpeedRuleCredit      `json:"speed_rule"`
+	InterposalRule []*InterposalRuleCredit `json:"interposal_rule"`
+
+	Matched []*MatchedData `json:"-"`
 }
 
 //RuleCredit stores the rule level result
@@ -876,6 +943,7 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 		}
 		resp.Rules = append(resp.Rules, credit)
 	}
+	resp.Matched = tagMatchDat
 
 	return &resp, nil
 }

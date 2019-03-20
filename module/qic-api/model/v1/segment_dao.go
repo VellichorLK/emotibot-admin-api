@@ -10,6 +10,7 @@ import (
 type SegmentDao interface {
 	NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error)
 	Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error)
+	NewEmotions(delegatee SqlLike, emotions []RealSegmentEmotion) error
 }
 
 type SegmentSQLDao struct {
@@ -166,4 +167,52 @@ func (s *SegmentSQLDao) NewSegments(delegatee SqlLike, segments []RealSegment) (
 		err = ErrAutoIDDisabled
 	}
 	return segments, err
+}
+
+// UpdateEmotions will update segments' emotions into emotion database.
+// Best use with a delegatee transcation to avoid data corruption.
+func (s *SegmentSQLDao) NewEmotions(delegatee SqlLike, emotions []RealSegmentEmotion) error {
+	if delegatee == nil {
+		delegatee = s.db
+	}
+
+	emotionCols := []string{
+		fldSegEmoSegmentID, fldSegEmoType, fldSegEmoScore,
+	}
+
+	emotionValues := make([]interface{}, 0)
+
+	for _, emotion := range emotions {
+		emotionValues = append(emotionValues, emotion.SegmentID, emotion.Typ, emotion.Score)
+	}
+
+	emotionsPerOp := 2000
+	start := 0
+	repeatedPlaceholders := strings.Repeat(", ?", len(emotionCols)-1)
+
+	if len(emotionValues) > 0 {
+		for {
+			end := start + emotionsPerOp*3
+			if end > len(emotionValues) {
+				end = len(emotionValues)
+			}
+
+			params := emotionValues[start:end]
+
+			rawsql := "INSERT INTO `" + tblSegmentEmotion + "` (`" +
+				strings.Join(emotionCols, "`, `") + "`) VALUES (?" + repeatedPlaceholders + ")" +
+				strings.Repeat(", (?"+repeatedPlaceholders+")", len(params)/3-1)
+			_, err := delegatee.Exec(rawsql, params...)
+			if err != nil {
+				return err
+			}
+
+			if end == len(emotionValues) {
+				return nil
+			}
+			start = end
+		}
+	}
+
+	return nil
 }

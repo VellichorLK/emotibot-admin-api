@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/pkg/misc/emotijwt"
 
 	"github.com/gorilla/mux"
@@ -415,7 +417,30 @@ func setRoute() *mux.Router {
 				})
 		}
 	}
-	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
+	router.PathPrefix("/Files/").Methods("GET").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		locale := requestheader.GetLocale(r)
+		if locale == "" {
+			locale = localemsg.ZhCn
+		}
+		handler := http.FileServer(http.Dir(util.GetMountDir()))
+
+		if newPath := strings.TrimPrefix(r.URL.Path, "/Files/"); len(newPath) < len(r.URL.Path) {
+			newRequest := new(http.Request)
+			*newRequest = *r
+			newRequest.URL = new(url.URL)
+			*newRequest.URL = *r.URL
+			newRequest.URL.Path = fmt.Sprintf("%s/%s", locale, newPath)
+			logger.Trace.Printf("Get file from %s\n", newRequest.URL.Path)
+
+			if strings.HasSuffix(newPath, ".xlsx") {
+				w.Header().Set("Content-Type", "application/octet-stream")
+			}
+
+			handler.ServeHTTP(w, newRequest)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
 	router.HandleFunc(fmt.Sprintf("/%s/_health_check", constant["API_PREFIX"]), func(w http.ResponseWriter, r *http.Request) {
 		// A very simple health check.
 		ret := healthCheck()

@@ -108,3 +108,58 @@ func UpdateRuleInterposal(q *model.GeneralQuery, d *model.InterposalUpdateSet) (
 	return affected, err
 
 }
+
+//InterposalSpeaker indicates the speak in SegmentWithSpeaker strcuture for interposal segments
+const InterposalSpeaker = -2
+
+//RuleInterposalCheck checks the interposal rules
+func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]RulesException, error) {
+	if len(segs) == 0 {
+		return nil, nil
+	}
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
+
+	callID := segs[0].CallID
+
+	isDelete := 0
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	rules, err := ruleInterposalDao.GetByRuleGroup(dbLike.Conn(), q)
+	if err != nil {
+		logger.Error.Printf("get rule silence failed. %s\n", err)
+		return nil, err
+	}
+	if len(rules) == 0 {
+		return nil, nil
+	}
+
+	interposalSegs, _ := extractSegmentSpeaker(segs, InterposalSpeaker)
+
+	resp := make([]RulesException, 0, len(rules))
+	for _, r := range rules {
+
+		var numOfBreak int
+		var violateSegs []int64
+		for _, seg := range interposalSegs {
+			if seg.duration <= float64(r.Seconds) {
+				break
+			}
+			violateSegs = append(violateSegs, segs[seg.index].RealSegment.ID)
+			numOfBreak++
+		}
+		var defaultVaild bool
+		if numOfBreak <= r.Times {
+			defaultVaild = true
+		}
+
+		result := RulesException{RuleID: r.ID, Typ: levInterposalTyp,
+			Whos: Interposal, CallID: callID, Valid: defaultVaild, InterposalSegs: violateSegs,
+			RuleGroupID: ruleGroup.ID}
+
+		resp = append(resp, result)
+	}
+
+	return resp, nil
+
+}

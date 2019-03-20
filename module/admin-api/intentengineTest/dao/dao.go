@@ -1527,9 +1527,6 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 	}
 
 	// Insert into 'intent_test_sentences' table
-	queryStr := fmt.Sprintf(`
-		INSERT INTO %s (sentence, test_intent, result, score, answer)
-		VALUES (?, ?, ?, ?, ?)`, IntentTestSentencesTable)
 	sentencesPerOp := 2000
 	start := 0
 
@@ -1541,7 +1538,10 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 			}
 
 			params := sentenceValues[start:end]
-			queryStr = fmt.Sprintf("%s%s", queryStr,
+
+			queryStr := fmt.Sprintf(`
+				INSERT INTO %s (sentence, test_intent, result, score, answer)
+				VALUES (?, ?, ?, ?, ?)%s`, IntentTestSentencesTable,
 				strings.Repeat(", (?, ?, ?, ?, ?)", len(params)/5-1))
 			_, err := tx.Exec(queryStr, params...)
 			if err != nil {
@@ -1803,9 +1803,6 @@ func restoreIntentsWithTx(tx *sql.Tx, appID string, intentVersion int64) (err er
 		intents[intentName].id = id
 	}
 
-	queryStr = fmt.Sprintf(`
-		INSERT INTO %s (sentence, intent)
-		VALUES (?, ?)`, IntentTrainSetsTable)
 	sentencesPerOp := 2000
 
 	if len(trainSets) > 0 {
@@ -1813,6 +1810,9 @@ func restoreIntentsWithTx(tx *sql.Tx, appID string, intentVersion int64) (err er
 		ops := 0
 
 		for sentence, intentName := range trainSets {
+			queryStr = fmt.Sprintf(`
+				INSERT INTO %s (sentence, intent)
+				VALUES (?, ?)`, IntentTrainSetsTable)
 			intentID := intents[intentName].id
 			params = append(params, sentence, intentID)
 			ops++
@@ -1843,15 +1843,19 @@ func toggleInUsedIntentTestWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN id = ? THEN 1
-				ELSE in_used
-			END
-		WHERE app_id = ?`, IntentTestVersionsTable)
-	_, err = tx.Exec(queryStr, version, appID)
-	return
+		SET in_used = 0
+		WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE app_id = ? AND id = ?`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID, version)
+	return err
 }
 
 func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
@@ -1862,14 +1866,18 @@ func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN version = ? THEN 1
-				ELSE in_used
-			END
-		WHERE appid = ?`, IntentVersionsTable)
-	_, err = tx.Exec(queryStr, intentVersion, appID)
+		SET in_used = 0
+		WHERE appid = ? AND in_used = 1`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE appid = ? AND version = ?`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID, intentVersion)
 	return
 }
 

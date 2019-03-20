@@ -22,6 +22,76 @@ var tagTypeDict = map[int8]string{
 	3: "user_response",
 }
 
+var updateTag = func(t model.Tag) (id uint64, err error) {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("begin transaction failed, %v", err)
+	}
+	id, err = updateTagTx(tx, t)
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("update tag failed, %v", err)
+	}
+	return id, tx.Commit()
+}
+var updateTags = func(tags []model.Tag) error {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return fmt.Errorf("begin transaction failed, %v", err)
+	}
+	for _, t := range tags {
+		_, err = updateTagTx(tx, t)
+		if err != nil {
+			tx.Rollback()
+			return fmt.Errorf("update tag '%s' failed, %v", t.UUID, err)
+		}
+	}
+	return tx.Commit()
+}
+var updateTagTx = func(tx model.SQLTx, t model.Tag) (id uint64, err error) {
+	tagsSentences, err := sentenceDao.GetRelSentenceIDByTagIDs(tx, []uint64{t.ID})
+	if err != nil {
+		return 0, fmt.Errorf("dao get sentence id failed, %v", err)
+	}
+	rowsCount, err := tagDao.DeleteTags(tx, model.TagQuery{
+		ID: []uint64{t.ID},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("dao delete failed, %v", err)
+	}
+	if rowsCount != 1 {
+		return 0, fmt.Errorf("delete tag failed, no affected rows")
+	}
+	t.UpdateTime = time.Now().Unix()
+	tags, err := tagDao.NewTags(tx, []model.Tag{t})
+	// TODO: support elegant handle for sql driver not support return incremental id.
+	// if err == model.ErrAutoIDDisabled {
+	//	tagDao.Tags()
+	// 	tx.Commit()
+	// }
+	if err != nil {
+		return 0, fmt.Errorf("dao create new tags failed, %v", err)
+	}
+	newTag := tags[0]
+
+	sentences := tagsSentences[t.ID]
+	// to avoid nil panic if tag have no sentences
+	if sentences == nil {
+		return newTag.ID, nil
+	}
+
+	sentenceGrp, err := sentenceDao.GetSentences(tx, &model.SentenceQuery{
+		ID: sentences,
+	})
+
+	err = propagateUpdateFromSentence(sentenceGrp, newTag.ID, t.ID, t.Enterprise, tx)
+	if err != nil {
+		logger.Error.Printf("propage update  failed. %s", err)
+		return 0, err
+	}
+	return newTag.ID, nil
+}
+
 // Tags is the service for getting the tags json response.
 // If the query.Paging is nil, response.paging.Limit & paging will be 0, 0.
 // If the query.Enterprise is nil, an error will be returned.
@@ -120,67 +190,17 @@ func NewTag(t model.Tag) (id uint64, err error) {
 	return createdTags[0].ID, nil
 }
 
+// UpdateTags update the given tags.
+// Just like UpdateTag, it will delete the old one and create new one.
+// It is wrapped with a transaction to ensure any failure will rollbacked all update.
+func UpdateTags(tags []model.Tag) error {
+	return updateTags(tags)
+}
+
 // UpdateTag update the origin t, since tag need to keep the origin value.
 // update will try to delete the old one with the same uuid, and create new one.
-// multiple update called on the same t will try it best to resolve to one state, but not guarantee success.
-// if conflicted can not be resolved, id will be 0 and err will be nil.
 func UpdateTag(t model.Tag) (id uint64, err error) {
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return 0, fmt.Errorf("dao init transaction failed, %v", err)
-	}
-	defer func() {
-		tx.Rollback()
-	}()
-
-	tagsSentences, err := sentenceDao.GetRelSentenceIDByTagIDs(tx, []uint64{t.ID})
-	if err != nil {
-		return 0, fmt.Errorf("dao get sentence id failed, %v", err)
-	}
-	rowsCount, err := tagDao.DeleteTags(tx, model.TagQuery{
-		ID: []uint64{t.ID},
-	})
-	if err != nil {
-		return 0, fmt.Errorf("dao delete failed, %v", err)
-	}
-	if rowsCount != 1 {
-		return 0, fmt.Errorf("delete tag failed, no affected rows")
-	}
-	t.UpdateTime = time.Now().Unix()
-	tags, err := tagDao.NewTags(tx, []model.Tag{t})
-	// TODO: support elegant handle for sql driver not support return incremental id.
-	// if err == model.ErrAutoIDDisabled {
-	//	tagDao.Tags()
-	// 	tx.Commit()
-	// }
-	if err != nil {
-		return 0, fmt.Errorf("dao create new tags failed, %v", err)
-	}
-	newTag := tags[0]
-
-	sentences := tagsSentences[t.ID]
-	// to avoid nil panic if tag have no sentences
-	if sentences == nil {
-		return newTag.ID, nil
-	}
-
-	sentenceGrp, err := sentenceDao.GetSentences(tx, &model.SentenceQuery{
-		ID: sentences,
-	})
-
-	err = propagateUpdateFromSentence(sentenceGrp, newTag.ID, t.ID, t.Enterprise, tx)
-	if err != nil {
-		logger.Error.Printf("propage update  failed. %s", err)
-		return 0, err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		logger.Error.Printf("commit transcation failed. %s", err)
-		return 0, err
-	}
-
-	return newTag.ID, nil
+	return updateTag(t)
 }
 
 // DeleteTag delete the tag by dao.
@@ -334,4 +354,100 @@ func propagateUpdateFromSentence(sentences []*model.Sentence, newTag, oldTag uin
 	}
 
 	return propagateUpdateFromSentenceGroup(sgs, activeSentences, tx)
+}
+
+// NewTagUpdateCmd query tags by given uuid, and prepare a TagUpdateCmd by queried tags.
+// If tags query failed, an error will returned.
+func NewTagUpdateCmd(enterprise string, uuid []string) (*TagUpdateCmd, error) {
+	tags, err := tags(nil, model.TagQuery{
+		Enterprise: &enterprise,
+		UUID:       uuid,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get tag failed, %v", err)
+	}
+
+	return &TagUpdateCmd{tags: tags}, nil
+}
+
+// TagUpdateCmd is the command prepared to Update tags.
+// It MUST create by NewTagUpdateCmd to prepare the target tags.
+type TagUpdateCmd struct {
+	tags []model.Tag
+	err  error
+}
+
+type UpdateOp string
+
+var (
+	UpdateOpAdd UpdateOp = "add"
+	UpdateOpDel UpdateOp = "del"
+)
+
+// AddSentenceUpdate modify its tag sentences by the given uuid and sentences.
+// All updates WILL NOT
+// parameters
+// 	uuid string should be one of the tags NewTagUpdateCmd included.
+// 	op UpdateOp SHOULD be either "add" or "del".
+//	sentences []string
+// sentences is the
+// ex:
+//	given tag A has sentences [1, 2, 3]
+//  	AddSentenceUpdate(A, "add", 4) will result tag A [1, 2, 3, 4]
+//		AddSentenceUpdate(A, "add", 3) will result error("duplicated sentence 3")
+//		AddSentenceUpdate(A, "del", 1) will result tag A [2, 3]
+func (t *TagUpdateCmd) AddSentenceUpdate(uuid string, op UpdateOp, sentences []string) error {
+	var (
+		index        int
+		tag          model.Tag
+		tagSentences []string
+	)
+	for ; index < len(t.tags); index++ {
+		tag = t.tags[index]
+		if tag.UUID == uuid {
+			break
+		}
+	}
+	if index == len(t.tags) {
+		return fmt.Errorf("uuid %s not in the range", uuid)
+	}
+	json.Unmarshal([]byte(tag.PositiveSentence), &tagSentences)
+	sentenceIndexes := make(map[string]int, len(tagSentences))
+	for i, sen := range tagSentences {
+		sentenceIndexes[sen] = i
+	}
+	switch op {
+	case "add":
+		for _, sen := range sentences {
+			_, exist := sentenceIndexes[sen]
+			if exist {
+				return fmt.Errorf("tag %s duplicated sentence '%s'", tag.UUID, sen)
+			}
+			tagSentences = append(tagSentences, sen)
+			sentenceIndexes[sen] = len(tagSentences)
+		}
+	case "del":
+		for _, sen := range sentences {
+			idx, exist := sentenceIndexes[sen]
+			if !exist {
+				return fmt.Errorf("tag %s does not has sentece '%s'", tag.UUID, sen)
+			}
+			tagSentences = append(tagSentences[:idx], tagSentences[idx+1:]...)
+		}
+	default:
+		return fmt.Errorf("unsupported update operation '%s'", op)
+	}
+	if len(tagSentences) == 0 {
+		return fmt.Errorf("tag %s need at least one sentence", tag.UUID)
+	}
+	data, _ := json.Marshal(tagSentences)
+	tag.PositiveSentence = string(data)
+	t.tags[index] = tag
+	return nil
+}
+
+// Update will submits all added sentences to update.
+// notice: even unchanged tags in UpdateCmd will be changed.
+func (t *TagUpdateCmd) Update() error {
+	return UpdateTags(t.tags)
 }

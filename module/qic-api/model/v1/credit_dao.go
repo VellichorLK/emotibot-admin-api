@@ -19,7 +19,7 @@ type CreditDao interface {
 //SegmentPredictQuery is the condition used to query the SegmentPredict
 type SegmentPredictQuery struct {
 	Segs []uint64
-	Whos int
+	Whos *int
 }
 
 func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface{}, err error) {

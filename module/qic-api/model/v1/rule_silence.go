@@ -58,6 +58,7 @@ type SilenceRuleDao interface {
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error)
 	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
+	GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*SilenceRule, error)
 }
 
 type SilenceRuleSQLDao struct {
@@ -104,6 +105,9 @@ func (s *SilenceRuleSQLDao) Add(conn SqlLike, r *SilenceRule) (int64, error) {
 
 //Get gets the data under the condition
 func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*SilenceRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
 	flds := []string{
 		fldID,
 		fldName,
@@ -136,24 +140,7 @@ func (s *SilenceRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([
 		offset = p.offsetSQL()
 	}
 	querySQL := fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(flds, ","), tblSilenceRule, condition, offset)
-	rows, err := conn.Query(querySQL, params...)
-	if err != nil {
-		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
-		return nil, err
-	}
-	defer rows.Close()
-	resp := make([]*SilenceRule, 0, 4)
-	for rows.Next() {
-		var d SilenceRule
-		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Seconds, &d.Times,
-			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
-		if err != nil {
-			logger.Error.Printf("scan failed. %s\n", err)
-			return nil, err
-		}
-		resp = append(resp, &d)
-	}
-	return resp, nil
+	return getSilenceRules(conn, querySQL, params)
 
 }
 
@@ -176,6 +163,9 @@ func (s *SilenceRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, error) 
 
 //SoftDelete simply set the is_delete to 1
 func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -185,6 +175,9 @@ func (s *SilenceRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, er
 
 //Update updates the records
 func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpdateSet) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -202,6 +195,9 @@ func (s *SilenceRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SilenceUpda
 
 //Copy copys only one record, only use the first ID in q
 func (s *SilenceRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -234,6 +230,69 @@ func (s *SilenceRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+//GetByRuleGroup gets the rule under the conditon of RuleGroup.
+//Hence, q is the condition for getting RuleGroup
+func (s *SilenceRuleSQLDao) GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*SilenceRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	if q == nil || len(q.UUID) == 0 {
+		return nil, ErrNeedCondition
+	}
+	flds := []string{
+		fldID,
+		fldName,
+		fldScore,
+		fldSilSecond,
+		fldSilTime,
+		fldExcptBefore,
+		fldExcptAfter,
+		fldEnterprise,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+	for i := range flds {
+		flds[i] = "b.`" + flds[i] + "`"
+	}
+
+	params := make([]interface{}, 0, len(q.UUID))
+	for _, v := range q.UUID {
+		params = append(params, v)
+	}
+
+	condition := "WHERE a.`" + fldRGUUID + "` IN (?" + strings.Repeat(",?", len(q.UUID)-1) + ")"
+
+	query := fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b %s",
+		strings.Join(flds, ","),
+		tblRelRGSilence, tblSilenceRule,
+		condition)
+
+	return getSilenceRules(conn, query, params)
+}
+
+func getSilenceRules(conn SqlLike, querySQL string, params []interface{}) ([]*SilenceRule, error) {
+	rows, err := conn.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
+		return nil, err
+	}
+	defer rows.Close()
+	resp := make([]*SilenceRule, 0, 4)
+	for rows.Next() {
+		var d SilenceRule
+		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Seconds, &d.Times,
+			&d.ExceptionBefore, &d.ExceptionAfter, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+		resp = append(resp, &d)
+	}
+	return resp, nil
 }
 
 type condition interface {

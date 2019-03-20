@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 const (
@@ -18,7 +20,7 @@ const (
 
 	// ConstLocaleHeaderKey is header record the request locale, which may be zh-cn or zh-tw
 	ConstLocaleHeaderKey = "X-Locale"
-	defaultLocale        = "zh-cn"
+	defaultLocale        = localemsg.ZhCn
 
 	ConstEnterpriseIDHeaderKey = "X-EnterpriseID"
 	ConstAppIDHeaderKey        = "X-AppID"
@@ -72,6 +74,14 @@ func GetUserIP(r *http.Request) string {
 
 func GetLocale(r *http.Request) string {
 	locale := r.Header.Get(ConstLocaleHeaderKey)
+	if locale != localemsg.ZhCn && locale != localemsg.ZhTw {
+		locale = ""
+	}
+	if locale != "" {
+		return locale
+	}
+
+	locale = r.URL.Query().Get("locale")
 	if locale == "" {
 		locale = defaultLocale
 	}

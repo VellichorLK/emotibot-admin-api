@@ -221,7 +221,7 @@ func (dao *SensitiveWordSqlDao) Create(word *SensitiveWord, sqlLike SqlLike) (ro
 		return
 	}
 
-	if dao.Redis != nil {
+	if !general.IsNil(dao.Redis) {
 		ierr = dao.Redis.Do(radix.Cmd(nil, "DEL", redisKey))
 		if ierr != nil {
 			logger.Error.Print(ierr)
@@ -280,6 +280,12 @@ func (dao *SensitiveWordSqlDao) CountBy(filter *SensitiveWordFilter, sqlLike Sql
 
 func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLike) (sensitiveWords []SensitiveWord, err error) {
 	queryStr, values := getSensitiveWordQuerySQL(filter)
+
+	if filter.Limit > 0 {
+		start := filter.Page * filter.Limit
+		queryStr = fmt.Sprintf("%s LIMIT %d, %d", queryStr, start, filter.Limit)
+		logger.Info.Printf("queryStr: %s", queryStr)
+	}
 
 	rows, err := sqlLike.Query(queryStr, values...)
 	if err != nil {

@@ -16,6 +16,9 @@ var (
 
 var conversationRuleDao model.ConversationRuleDao = &model.ConversationRuleSqlDaoImpl{}
 
+// getConversationRulesBy is the private function for other public functions mocking.
+var getConversationRulesBy = GetConversationRulesBy
+
 func simpleConversationFlowsOf(rule *model.ConversationRule, sql model.SqlLike) (simpleFlows []model.SimpleConversationFlow, err error) {
 	simpleFlows = []model.SimpleConversationFlow{}
 	if len(rule.Flows) == 0 {
@@ -218,30 +221,19 @@ func DeleteConversationRule(id string) (err error) {
 		return
 	}
 
-	if len(groups) > 0 {
-		// remove the rule from groups which are related to this rule
-		for idx := range groups {
-			group := &groups[idx]
-			rules := *group.Rules
-			if len(rules) == 0 {
-				newRules := []model.SimpleConversationRule{}
+	// remove the rule from groups which are related to this rule
+	for i, group := range groups {
+		if group.Rules == nil {
+			continue
+		}
+		rules = *group.Rules
+		for j, rule := range rules {
+			if rule.UUID == id {
+				newRules := append(rules[:j], rules[j+1:]...)
 				group.Rules = &newRules
-				continue
-			}
-
-			for j, rule := range rules {
-				if rule.UUID == id {
-					var newRules []model.SimpleConversationRule
-					if j == len(rules)-1 {
-						newRules = rules[:j]
-					} else {
-						newRules = append(rules[:j], rules[j+1:]...)
-					}
-					group.Rules = &newRules
-				}
 			}
 		}
-
+		groups[i] = group
 		err = propagateUpdateFromGroup(groups, rules, tx)
 		if err != nil {
 			return
@@ -252,37 +244,42 @@ func DeleteConversationRule(id string) (err error) {
 	return
 }
 
+// propagateUpdateFromGroup update groups (create new, delete old one) because rules had been modified.
+// Groups can contains the old rules which have the same uuid.
+// To keep groups up to date, input rules is the changed rules
 func propagateUpdateFromGroup(groups []model.GroupWCond, rules []model.ConversationRule, sqlLike model.SqlLike) error {
-	logger.Info.Printf("groups: %+v", groups)
-	logger.Info.Printf("rules: %+v", rules)
+	logger.Trace.Printf("groups: %+v", groups)
+	logger.Trace.Printf("new rules: %+v", rules)
 	var err error
 	if len(groups) == 0 {
 		return err
 	}
 
-	// create rule map
+	// ruleMap is the id reference for changed rules.
 	ruleMap := map[string]int64{}
 	for _, rule := range rules {
 		ruleMap[rule.UUID] = rule.ID
 	}
 
-	groupUUID := []string{}
-	activeGroups := []model.GroupWCond{}
-	for i := range groups {
-		group := &groups[i]
+	groupUUID := make([]string, 0, len(groups))
+	activeGroups := make([]model.GroupWCond, 0, len(groups))
+	for _, group := range groups {
+		//filter deleted groups
 		if group.Deleted == 1 {
 			continue
 		}
-
+		// Even we copy the slice, the internal array is still the same.
+		// so accessing address can change the rule in group.
 		rules := *group.Rules
 		for j := range rules {
 			rule := &rules[j]
+			// Since CreateMany function only use id to associate relation
 			if ruleID, ok := ruleMap[rule.UUID]; ok {
 				rule.ID = ruleID
 			}
 		}
 		groupUUID = append(groupUUID, group.UUID)
-		activeGroups = append(activeGroups, *group)
+		activeGroups = append(activeGroups, group)
 	}
 
 	err = serviceDAO.DeleteMany(groupUUID, sqlLike)

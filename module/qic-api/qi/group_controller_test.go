@@ -1,14 +1,18 @@
 package qi
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
+
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/stretchr/testify/assert"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"github.com/gorilla/mux"
@@ -27,106 +31,138 @@ func getTestRouter() *mux.Router {
 }
 
 func TestHandleGetGroups(t *testing.T) {
-	// mockDAO is defined in service_test.go
-	originDBLike, originDao, originRuleDao := setupGroupMockTest()
-	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
-
-	reqBody, err := json.Marshal(mockGroup)
-	if err != nil {
-		t.Error(err)
-		return
+	expect := `
+{
+  "paging": {
+    "page": 1,
+    "total": 1,
+    "limit": 10
+  },
+  "data": [
+    {
+      "group_id": "45f8577451d0478095197ega3d054133",
+			"group_name": "a group",
+			"description": "",
+      "is_enable": 1,
+      "other": {
+				"type": 0,
+        "file_name": "example.wav",
+        "call_time": 78923981273,
+        "deal": 1,
+        "series": "abcd-123",
+        "staff_id": "host-abcd",
+        "staff_name": "Melvina",
+        "extension": "",
+				"department": "",
+        "customer_id": "guest-123",
+        "customer_name": "Nina",
+        "customer_phone": "886-1234-5678",
+        "left_channel": "staff",
+        "right_channel": "customer",
+        "call_from": 78923981273,
+        "call_end": 78923981273
+      },
+      "create_time": 0,
+      "rule_count": 56
+    }
+  ]
+}
+`
+	tmp := groupResps
+	defer func() {
+		groupResps = tmp
+	}()
+	groupResps = func(filter *model.GroupFilter) (int64, []GroupResp, error) {
+		return 1, []GroupResp{
+			GroupResp{
+				GroupID:   "45f8577451d0478095197ega3d054133",
+				GroupName: "a group",
+				IsEnable:  1,
+				Other: Other{
+					Type:          0,
+					FileName:      "example.wav",
+					CallTime:      78923981273,
+					Deal:          1,
+					Series:        "abcd-123",
+					StaffID:       "host-abcd",
+					StaffName:     "Melvina",
+					CustomerID:    "guest-123",
+					CustomerName:  "Nina",
+					CustomerPhone: "886-1234-5678",
+					LeftChannel:   "staff",
+					RightChannel:  "customer",
+					CallFrom:      78923981273,
+					CallEnd:       78923981273,
+				},
+				CreateTime: 0,
+				RuleCount:  56,
+			},
+		}, nil
 	}
-
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/qi/groups", bytes.NewBuffer(reqBody))
-	handleCreateGroup(w, r)
-
-	body, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	group := model.GroupWCond{}
-	err = json.Unmarshal(body, &group)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if group.UUID != "abcde" {
-		t.Error("create group failed")
-		return
-	}
+	r := httptest.NewRequest(http.MethodGet, "/qi/groups", nil)
+	q := r.URL.Query()
+	q.Set("limit", "10")
+	q.Set("page", "1")
+	r.URL.RawQuery = q.Encode()
+	handleGetGroups(w, r)
+	assert.Equal(t, 200, w.Code)
+	assert.JSONEq(t, expect, w.Body.String())
 }
 
 func TestHandleCreateGroup(t *testing.T) {
-	// mockDAO is defined in service_test.go
-	originDBLike, originDao, originRuleDao := setupGroupMockTest()
-	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
+	var (
+		expect = `{"group_id": "45f8577451d0478095197ega3d054133"}`
+	)
+	tmp := newGroupWithAllConditions
+	tmp2 := getConversationRulesBy
+	defer func() {
+		newGroupWithAllConditions = tmp
+		getConversationRulesBy = tmp2
+	}()
+
+	newGroupWithAllConditions = func(group model.Group, condition model.Condition, customCols map[string][]interface{}) (model.Group, error) {
+		return model.Group{
+			ID:   1,
+			UUID: "45f8577451d0478095197ega3d054133",
+		}, nil
+	}
+	getConversationRulesBy = func(filter *model.ConversationRuleFilter) (int64, []model.ConversationRule, error) {
+		return 0, []model.ConversationRule{}, nil
+	}
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/qi/groups", nil)
-	handleGetGroups(w, r)
+	r := httptest.NewRequest(http.MethodPost, "/qi/groups", strings.NewReader("{}"))
+	handleCreateGroup(w, r)
 
-	body, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	response := SimpleGroupsResponse{}
-	json.Unmarshal(body, &response)
-
-	if response.Paging.Total != int64(len(mockGroups)) {
-		t.Errorf("expect 2 groups but got %d", response.Paging.Total)
-		return
-	}
-
-	for idx := range response.Data {
-		g := response.Data[idx]
-		targetG := mockGroups[idx]
-
-		if g.ID != targetG.UUID || g.Name != *targetG.Name {
-			t.Errorf("expect ID: %s, Name: %s, but got %s, %s", targetG.UUID, *targetG.Name, g.ID, g.Name)
-			return
-		}
-	}
+	assert.Equal(t, 200, w.Code)
+	assert.JSONEq(t, expect, w.Body.String(), "expect json equal")
 }
 
 func TestHandleGetGroup(t *testing.T) {
 	// mockDAO is defined in service_test.go
-	originDBLike, originDao, originRuleDao := setupGroupMockTest()
-	defer restoreGroupMock(originDBLike, originDao, originRuleDao)
-
+	tmp := getConditionOfGroup
+	tmp1 := customConditionsOfGroup
+	defer func() {
+		getConditionOfGroup = tmp
+		customConditionsOfGroup = tmp1
+	}()
+	getConditionOfGroup = func(groupID int64) (*model.Condition, error) {
+		return &model.Condition{}, nil
+	}
+	customConditionsOfGroup = func(groupID int64) (map[string][]interface{}, error) {
+		return make(map[string][]interface{}, 0), nil
+	}
+	mg := mockGroup
+	mg.Rules = &[]model.ConversationRule{}
+	mg.RuleCount = 0
 	w := httptest.NewRecorder()
-	r, err := http.NewRequest(http.MethodGet, "/groups/ABCDE", nil)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	router := getTestRouter()
-
-	router.ServeHTTP(w, r)
-
-	body, err := ioutil.ReadAll(w.Body)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	group := model.GroupWCond{}
-	err = json.Unmarshal(body, &group)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-
-	if !sameGroup(&group, mockGroup) {
-		t.Errorf("expect group: %+v,\n but got %+v", mockGroup, group)
-		return
-	}
+	r := httptest.NewRequest(http.MethodGet, "http://testing/groups/ABCDE", nil)
+	r.Header.Set(requestheader.ConstEnterpriseIDHeaderKey, "csbot")
+	handleGetGroup(w, r, mockGroup)
+	require.Equal(t, http.StatusOK, w.Code, "Body: %s", w.Body.String())
+	expect := `{"group_id":"123456","group_name":"group_name","is_enable":1,"other":{"call_end":0,"call_from":0,"call_time":0,"customer_id":"","customer_name":"","customer_phone":"","deal":0,"department":"","extension":"","file_name":"","left_channel":"staff","right_channel":"staff","series":"","staff_id":"","staff_name":"","type":0},"create_time":0,"description":"group_description","rule_count":0,"rules":[]}`
+	assert.JSONEq(t, expect, w.Body.String())
 }
 
 func TestParseGroupFilter(t *testing.T) {

@@ -132,11 +132,18 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Cal
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
-	if c.FilePath == nil {
+	if c.DemoFilePath == nil && c.FilePath == nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
 		return
 	}
-	fp := path.Join(volume, *c.FilePath)
+
+	var fp string
+	if c.DemoFilePath != nil {
+		fp = path.Join(volume, *c.DemoFilePath)
+	} else {
+		fp = path.Join(volume, *c.FilePath)
+	}
+
 	f, err := os.Open(fp)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))
@@ -230,11 +237,11 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 type NewCallReq struct {
 	FileName      string                 `json:"file_name"`
 	CallTime      int64                  `json:"call_time"`
-	CallComment   string                 `json:"call_comment"`
+	Description   string                 `json:"description"`
 	Transaction   int64                  `json:"transaction"`
 	Series        string                 `json:"series"`
-	HostID        string                 `json:"host_id"`
-	HostName      string                 `json:"host_name"`
+	HostID        string                 `json:"staff_id"`
+	HostName      string                 `json:"staff_name"`
 	Extension     string                 `json:"extension"`
 	Department    string                 `json:"department"`
 	GuestID       string                 `json:"customer_id"`
@@ -248,7 +255,8 @@ type NewCallReq struct {
 	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
 }
 
-var callRequestJSONKeys = parseJSONKeys(NewCallReq{})
+// ReservedCustomKeywords is a list of keywords reserved at NewCallReq.
+var ReservedCustomKeywords = parseJSONKeys(NewCallReq{})
 
 func parseJSONKeys(n interface{}) map[string]struct{} {
 	ta := reflect.TypeOf(n)
@@ -294,7 +302,7 @@ func (n *NewCallReq) UnmarshalJSON(data []byte) error {
 	}
 
 	for col, val := range columns {
-		if _, exist := callRequestJSONKeys[col]; exist {
+		if _, exist := ReservedCustomKeywords[col]; exist {
 			continue
 		}
 		if n.CustomColumns == nil {

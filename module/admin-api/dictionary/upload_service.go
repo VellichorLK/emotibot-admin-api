@@ -15,6 +15,9 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
@@ -364,7 +367,7 @@ func TriggerUpdateWordbankV3(appid string) (err error) {
 	}
 	now := time.Now()
 
-	err, wordLines, synonymLines := GetWordDataV3(appid)
+	err, wordLines, synonymLines := GetWordDataV3(appid, "")
 	wordContent := strings.Join(wordLines, "\n") + "\n"
 	synonymContent := strings.Join(synonymLines, "\n") + "\n"
 	md5Words := md5.Sum([]byte(wordContent))
@@ -394,7 +397,7 @@ func GetWordData(appid string) (error, []string, []string) {
 }
 
 // below functions is for dictionary V3
-func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
+func parseDictionaryFromXLSXV3(buf []byte, locale string) (root *WordBankClassV3, err error) {
 	defer func() {
 		if err != nil {
 			logger.Error.Println("Parse xlsx fail: ", err.Error())
@@ -406,7 +409,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		return
 	}
 
-	_, rows, err := getSheetRowsInWordbankXLSX(xlsxFile)
+	_, rows, err := getSheetRowsInWordbankXLSX(xlsxFile, locale)
 	if err != nil {
 		return
 	}
@@ -441,7 +444,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		similars := strings.Split(currentWordbankRow.SimilarWords, ",")
 		for _, similar := range similars {
 			if utf8.RuneCountInString(similar) > maxSimilaryLen {
-				err = fmt.Errorf(util.Msg["ErrorSimilarTooLongTpl"], idx+1)
+				err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorSimilarTooLongTpl"), idx+1)
 				return
 			}
 		}
@@ -452,30 +455,30 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 		}
 
 		if utf8.RuneCountInString(currentWordbankRow.Level1) > maxDirNameLen {
-			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorPathTooLongTpl"), idx+1)
 			return
 		}
 		if utf8.RuneCountInString(currentWordbankRow.Level2) > maxDirNameLen {
-			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorPathTooLongTpl"), idx+1)
 			return
 		}
 		if utf8.RuneCountInString(currentWordbankRow.Level3) > maxDirNameLen {
-			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorPathTooLongTpl"), idx+1)
 			return
 		}
 		if utf8.RuneCountInString(currentWordbankRow.Level4) > maxDirNameLen {
-			err = fmt.Errorf(util.Msg["ErrorPathTooLongTpl"], idx+1)
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorPathTooLongTpl"), idx+1)
 			return
 		}
 
 		if utf8.RuneCountInString(currentWordbankRow.Name) > maxNameLen {
-			err = fmt.Errorf(util.Msg["ErrorNameTooLongTpl"], idx+1)
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorNameTooLongTpl"), idx+1)
 			return
 		}
 
 		err = fillV3RowWithLast(currentWordbankRow, lastWordbankRow)
 		if err != nil {
-			err = fmt.Errorf(util.Msg["ErrorRowErrorTpl"], idx+1, err.Error())
+			err = fmt.Errorf(localemsg.Get(locale, "DictionaryErrorRowErrorTpl"), idx+1, err.Error())
 			return
 		}
 
@@ -484,7 +487,7 @@ func parseDictionaryFromXLSXV3(buf []byte) (root *WordBankClassV3, err error) {
 	}
 
 	if len(wordbankRowList) == 0 {
-		err = errors.New(util.Msg["EmptyRows"])
+		err = errors.New(localemsg.Get(locale, "DictionaryEmptyRows"))
 		return
 	}
 
@@ -704,15 +707,15 @@ func SaveWordbankV3Rows(appid string, root *WordBankClassV3) error {
 	return saveWordbankV3Rows(appid, root)
 }
 
-func GetWordDataV3(appid string) (error, []string, []string) {
+func GetWordDataV3(appid string, locale string) (error, []string, []string) {
 	root, err := getWordbanksV3(appid)
 	if err != nil {
 		return err, nil, nil
 	}
-	return GetWordDataFromWordbanksV3(root)
+	return GetWordDataFromWordbanksV3(root, locale)
 }
 
-func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []string) {
+func GetWordDataFromWordbanksV3(root *WordBankClassV3, locale string) (error, []string, []string) {
 	var getClassData func(class *WordBankClassV3, path []string) (words []string, synonyms []string)
 	getClassData = func(class *WordBankClassV3, path []string) (words []string, synonyms []string) {
 		words = []string{}
@@ -783,10 +786,24 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3) (error, []string, []strin
 
 	words, syonyms := getClassData(root, []string{})
 
-	return nil, words, syonyms
+	converter := zhconverter.T2S
+	if locale == localemsg.ZhTw {
+		converter = zhconverter.S2T
+	}
+
+	retWords := make([]string, len(words))
+	for idx := range words {
+		retWords[idx] = converter(words[idx])
+	}
+	retSyonyms := make([]string, len(syonyms))
+	for idx := range syonyms {
+		retSyonyms[idx] = converter(syonyms[idx])
+	}
+
+	return nil, retWords, retSyonyms
 }
 
-func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
+func ExportWordbankV3(appid string, locale string) (*bytes.Buffer, error) {
 	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath())
 	if err != nil {
 		return nil, err
@@ -800,7 +817,7 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 		return nil, errors.New("Wordbank nil error")
 	}
 
-	sheet, rows, err := getSheetRowsInWordbankXLSX(xlsxFile)
+	sheet, rows, err := getSheetRowsInWordbankXLSX(xlsxFile, locale)
 	if err != nil {
 		return nil, err
 	}
@@ -884,14 +901,14 @@ func ExportWordbankV3(appid string) (*bytes.Buffer, error) {
 	return &buf, err
 }
 
-func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File) (sheet *xlsx.Sheet, rows []*xlsx.Row, err error) {
+func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File, locale string) (sheet *xlsx.Sheet, rows []*xlsx.Row, err error) {
 	sheets := xlsxFile.Sheets
 	if sheets == nil {
-		err = errors.New(util.Msg["SheetError"])
+		err = errors.New(localemsg.Get(locale, "DictionarySheetError"))
 		return
 	}
 	if len(sheets) != exceptSheetNum {
-		err = errors.New(util.Msg["SheetError"])
+		err = errors.New(localemsg.Get(locale, "DictionarySheetError"))
 		return
 	}
 
@@ -900,14 +917,14 @@ func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File) (sheet *xlsx.Sheet, rows []
 
 	// Check if sheet is correct and format is correct
 	switch {
-	case sheet.Name != util.Msg["TemplateXLSXName"]:
-		err = errors.New(util.Msg["SheetError"])
+	case sheet.Name != localemsg.Get(locale, "DictionaryTemplateXLSXName"):
+		err = errors.New(localemsg.Get(locale, "DictionarySheetError"))
 		return
 	case rows == nil:
-		err = errors.New(util.Msg["EmptyRows"])
+		err = errors.New(localemsg.Get(locale, "DictionaryEmptyRows"))
 		return
 	case len(rows) <= 1:
-		err = errors.New(util.Msg["EmptyRows"])
+		err = errors.New(localemsg.Get(locale, "DictionaryEmptyRows"))
 		return
 	}
 	return

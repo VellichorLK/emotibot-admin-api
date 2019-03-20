@@ -90,6 +90,7 @@ type ConversationInfo struct {
 // GroupQuery can used to query the group table
 type GroupQuery struct {
 	ID               []int64
+	UUID             []string
 	Type             []int8
 	EnterpriseID     *string
 	IsEnable         *bool
@@ -145,6 +146,7 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 		data:        []interface{}{},
 	}
 	builder.In(fldRuleGrpID, int64ToWildCard(g.ID...))
+	builder.In(fldRuleGrpUUID, stringToWildCard(g.UUID...))
 	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
 	if g.EnterpriseID != nil {
 		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)

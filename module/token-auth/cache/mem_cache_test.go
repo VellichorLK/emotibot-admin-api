@@ -1,11 +1,16 @@
 package cache
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
+
+	"emotibot.com/emotigo/module/token-auth/internal/util"
 )
 
 func TestMemCache(t *testing.T) {
+	util.LogInit(ioutil.Discard, ioutil.Discard, ioutil.Discard, os.Stderr, "TEST")
 	cache := NewLocalCache()
 
 	if cache.IsKeyValid("test", "key") {
@@ -42,9 +47,11 @@ func TestMemCache(t *testing.T) {
 }
 
 func TestCacheTimeout(t *testing.T) {
+	util.LogInit(os.Stderr, os.Stderr, os.Stderr, os.Stderr, "TEST")
 	cache := NewLocalCache()
 	cache.Set("test", "key", "123", 1)
-	time.Sleep(5)
+
+	time.Sleep(time.Second * 5)
 
 	if cache.IsKeyValid("test", "key") {
 		t.Errorf("Check key validation fail")

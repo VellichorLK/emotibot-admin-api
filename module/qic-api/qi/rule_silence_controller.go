@@ -44,9 +44,6 @@ func checkSilenceRule(r *model.SilenceRule) error {
 	if r.Name == "" {
 		return ErrEmptyName
 	}
-	if r.Score < 0 {
-		return ErrorWrongScore
-	}
 	if r.Seconds <= 0 {
 		return ErrWrongSecond
 	}
@@ -147,7 +144,7 @@ func handleGetRuleSilence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	except, err := GetRuleSilenceException(settings[0])
+	except, _, err := GetRuleSilenceException(settings[0])
 	if err != nil {
 		logger.Error.Printf("get the exception rule failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)

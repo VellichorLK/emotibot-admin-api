@@ -9,8 +9,16 @@ import (
 	"github.com/satori/go.uuid"
 	"time"
 	"encoding/json"
-	"encoding/hex"
 	"bytes"
+	"emotibot.com/emotigo/module/qic-api/util/general"
+)
+
+const (
+	FlowSheetName       = "rule"
+	TagKeywordSheetName = "tag-keyword"
+	TagIntentSheetName  = "tag-intent"
+	PositiveCorpusType  = "positive"
+	NegativeCorpusType  = "negative"
 )
 
 func BatchAddTags(fileName string, enterpriseID string) error {
@@ -21,12 +29,12 @@ func BatchAddTags(fileName string, enterpriseID string) error {
 		return err
 	}
 
-	err = batchAddTagsBy(xlFile, enterpriseID, "tag-keyword")
+	err = batchAddTagsBy(xlFile, enterpriseID, TagKeywordSheetName)
 	if err != nil {
 		logger.Error.Printf("fail to batch add tags by sheet %s \n", "tag-keyword")
 		return err
 	}
-	err = batchAddTagsBy(xlFile, enterpriseID, "tag-intent")
+	err = batchAddTagsBy(xlFile, enterpriseID, TagIntentSheetName)
 	if err != nil {
 		logger.Error.Printf("fail to batch add tag by sheet %s \n", "tag-intent")
 		return err
@@ -385,13 +393,16 @@ func batchAddTagsBy(xlFile *xlsx.File, enterpriseID string, sheetName string) er
 
 	if !ok {
 		logger.Error.Printf("can not get sheet %s \n", sheetName)
-		return fmt.Errorf("can not get sheet %s \n", sheetName)
+		return fmt.Errorf("can not get sheet %s", sheetName)
 	}
 
-	var name, content string
-	tagMap := make(map[string][]string)
+	var name, content, contentType string
+	// key is tag name, value is positive corpus
+	posCorpusMap := make(map[string][]string)
+	// key is tag name, value is negative corpus
+	negCorpusMap := make(map[string][]string)
 	var tagType int8
-	if sheetName == "tag-keyword" {
+	if sheetName == TagKeywordSheetName {
 		tagType = 1
 	} else {
 		tagType = 2
@@ -402,18 +413,36 @@ func batchAddTagsBy(xlFile *xlsx.File, enterpriseID string, sheetName string) er
 			continue
 		}
 
-		// TODO check value
+		if len(row.Cells) < 2 || row.Cells[0] == nil || row.Cells[1] == nil {
+			return fmt.Errorf("lack of required column")
+		}
 		name = row.Cells[0].String()
 		content = row.Cells[1].String()
-
-		if corpus, ok := tagMap[name]; ok {
-			tagMap[name] = append(corpus, content)
+		if len(row.Cells) == 2 {
+			contentType = ""
 		} else {
-			tagMap[name] = []string{content}
+			contentType = row.Cells[2].String()
+		}
+
+		switch contentType {
+		case "":
+			fallthrough
+		case PositiveCorpusType:
+			if corpus, ok := posCorpusMap[name]; ok {
+				posCorpusMap[name] = append(corpus, content)
+			} else {
+				posCorpusMap[name] = []string{content}
+			}
+		case NegativeCorpusType:
+			if corpus, ok := negCorpusMap[name]; ok {
+				negCorpusMap[name] = append(corpus, content)
+			} else {
+				negCorpusMap[name] = []string{content}
+			}
 		}
 	}
 
-	for name, corpus := range tagMap {
+	for name, posCorpus := range posCorpusMap {
 		query := model.TagQuery{
 			Enterprise: &enterpriseID,
 			Name:       &name,
@@ -426,15 +455,19 @@ func batchAddTagsBy(xlFile *xlsx.File, enterpriseID string, sheetName string) er
 		}
 
 		if resp.Paging.Total > 0 {
-			logger.Trace.Printf("found exist tag: %s \n", name)
+			logger.Trace.Printf("found existing tag: %s \n", name)
 			continue
 		}
 
-		posSentences, _ := json.Marshal(corpus)
-		negSentences, _ := json.Marshal([]string{})
+		posSentences, _ := json.Marshal(posCorpus)
+		negStr := make([]string, 0)
+		if negCorpus, ok := negCorpusMap[name]; ok {
+			negStr = negCorpus
+		}
+		negSentences, _ := json.Marshal(negStr)
 
 		current := time.Now().Unix()
-		tagUUID, err := uuid.NewV4()
+		uuidStr, err := general.UUID()
 		if err != nil {
 			return err
 		}
@@ -447,7 +480,7 @@ func batchAddTagsBy(xlFile *xlsx.File, enterpriseID string, sheetName string) er
 			NegativeSentence: string(negSentences),
 			CreateTime:       current,
 			UpdateTime:       current,
-			UUID:             hex.EncodeToString(tagUUID[:]),
+			UUID:             uuidStr,
 		}
 
 		_, err = NewTag(tag)
@@ -471,22 +504,21 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 
 	// add tag
 	if err = BatchAddTags(fileName, enterpriseID); err != nil {
-		logger.Error.Println("fail to add tag when execute BatchAddFlows")
+		logger.Error.Println("failed to add tag when execute BatchAddFlows")
 		return err
 	}
 
 	// add sentence
 	if err = BatchAddSentences(fileName, enterpriseID); err != nil {
-		logger.Error.Println("fail to add sentence when execute BatchAddFlows")
+		logger.Error.Println("failed to add sentence when execute BatchAddFlows")
 		return err
 	}
 
-	flowSheetName := "rule"
-	sheet, ok := xlFile.Sheet[flowSheetName]
+	sheet, ok := xlFile.Sheet[FlowSheetName]
 
 	if !ok {
-		logger.Error.Printf("can not get sheet %s \n", flowSheetName)
-		return fmt.Errorf("can not get sheet %s \n", flowSheetName)
+		logger.Error.Printf("can not get sheet %s \n", FlowSheetName)
+		return fmt.Errorf("can not get sheet %s \n", FlowSheetName)
 	}
 
 	var flowName, logicList string
@@ -503,14 +535,15 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		flag := 0
 		query := &model.NavQuery{Enterprise: &enterpriseID, IsDelete: &flag, Name: &flowName}
 		flows, err := GetFlows(query, 1, 1)
+		// if find existing flow, recreate it
 		if len(flows) > 0 {
-			logger.Trace.Printf("found exist flow: %s \n", flowName)
+			logger.Trace.Printf("found existing flow: %s \n", flowName)
 			// should use first
 			_, err := DeleteFlow(flows[0].ID, enterpriseID)
 			if err != nil {
-				logger.Error.Printf("fail to delete flow %s \n", flowName)
+				logger.Error.Printf("failed to delete flow %s \n", flowName)
 			}
-			logger.Trace.Printf("delete exist flow: %s \n", flowName)
+			logger.Trace.Printf("delete existing flow: %s \n", flowName)
 		}
 
 		// default flow type
@@ -524,7 +557,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		logger.Trace.Printf("create flow: %s \n", flowName)
 
 		if err != nil {
-			logger.Error.Printf("fail to create flow: %s\n", err)
+			logger.Error.Printf("failed to create flow: %s\n", err)
 			return err
 		}
 
@@ -617,7 +650,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 				flow.IntentName = &flowName
 
 				if _, err = UpdateFlow(flowID, enterpriseID, flow); err != nil {
-					logger.Error.Println("fail to update flow")
+					logger.Error.Println("failed to update flow")
 					return err
 				}
 				logger.Trace.Printf("create intent node %s \n", item)
@@ -628,7 +661,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			err = NewNode(flowID, sentenceGroup)
 
 			if err != nil {
-				logger.Error.Println("fail to create node")
+				logger.Error.Println("failed to create node")
 				return err
 			}
 			logger.Trace.Printf("create node: %s \n", item)
