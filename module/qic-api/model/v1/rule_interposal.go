@@ -253,7 +253,7 @@ func (s *InterposalRuleSQLDao) GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]
 
 	condition := "WHERE a.`" + fldRGUUID + "` IN (?" + strings.Repeat(",?", len(q.UUID)-1) + ")"
 
-	query := fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b %s %s",
+	query := fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b %s",
 		strings.Join(flds, ","),
 		tblRelRGInterposal, tblInterposalRule,
 		condition)
