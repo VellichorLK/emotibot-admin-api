@@ -51,6 +51,9 @@ const (
 
 //StoreCredit stores the result of the quality
 func StoreCredit(call uint64, credit *RuleGrpCredit) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
 	if credit == nil {
 		return nil
 	}
@@ -215,6 +218,9 @@ func setSentenceWithPredictionInfo(sp []*SentenceWithPrediction) {
 
 //RetrieveCredit gets the credit by call id
 func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 	//!!MUST make sure the return credits in order from parent to child level
 	//parent must be in the front of the child
 	credits, err := creditDao.GetCallCredit(dbLike.Conn(), &model.CreditQuery{Calls: []uint64{call}})
@@ -227,21 +233,21 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	}
 	var rgIDs, ruleIDs, cfIDs, senGrpIDs, senIDs, segIDs []uint64
 	var silenceIDs, speedIDs, interposalIDs []int64
-	var silenceSegs, interposalSegs []int64
+	var invalidSegsID []int64
 
 	rgCreditsMap := make(map[uint64]*RuleGrpCredit)
 	rgSetIDMap := make(map[uint64]*model.GroupWCond)
 	rCreditsMap := make(map[uint64]*RuleCredit)
 
 	rSilenceCreditMap := make(map[uint64]*SilenceRuleCredit)       //silence of rule, use the id in the CUPredictReuslt as key
-	rSpeedCreditMap := make(map[uint64]*SpeedRuleCredit)           //speed of rule
-	rInterposalCreditMap := make(map[uint64]*InterposalRuleCredit) //interposal of rule
+	rSpeedCreditMap := make(map[uint64]*SpeedRuleCredit)           //speed of rule. use the id in the CUPredictReuslt as key
+	rInterposalCreditMap := make(map[uint64]*InterposalRuleCredit) //interposal of rule. use the id in the CUPredictReuslt as key
 
-	rSilenceIDMap := make(map[int64][]*SilenceRuleCredit)        //silence of rule. use the id in the SilenceRule as the key
-	rSpeedIDMap := make(map[int64][]*SpeedRuleCredit)            //silence of rule
-	rInterposalIDMap := make(map[int64][]*InterposalRuleCredit)  //silence of rule
-	silenceSegIDMap := make(map[uint64]*SilenceRuleCredit)       //silence segment id to silence rule credit
-	interposalSegIDMap := make(map[uint64]*InterposalRuleCredit) //interposal segment id to interposal rule credit
+	rSilenceIDMap := make(map[int64][]*SilenceRuleCredit)          //silence of rule. use the id in the SilenceRule as the key
+	rSpeedIDMap := make(map[int64][]*SpeedRuleCredit)              //speed of rule. use the id in the SpeedRule as the key
+	rInterposalIDMap := make(map[int64][]*InterposalRuleCredit)    //interposal of rule. use the id in the InterposalRule as the key
+	silenceSegIDMap := make(map[uint64][]*SilenceRuleCredit)       //silence segment id to silence rule credit
+	interposalSegIDMap := make(map[uint64][]*InterposalRuleCredit) //interposal segment id to interposal rule credit
 
 	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
@@ -460,14 +466,14 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 		case levSegSilenceTyp:
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				silenceSegs = append(silenceSegs, int64(v.OrgID))
-				silenceSegIDMap[v.OrgID] = pCredit
+				invalidSegsID = append(invalidSegsID, int64(v.OrgID))
+				silenceSegIDMap[v.OrgID] = append(silenceSegIDMap[v.OrgID], pCredit)
 			}
 
 		case levSegInterposalTyp:
 			if pCredit, ok := rInterposalCreditMap[v.ParentID]; ok {
-				interposalSegs = append(interposalSegs, int64(v.OrgID))
-				interposalSegIDMap[v.OrgID] = pCredit
+				invalidSegsID = append(invalidSegsID, int64(v.OrgID))
+				interposalSegIDMap[v.OrgID] = append(interposalSegIDMap[v.OrgID], pCredit)
 			}
 		default:
 			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
@@ -650,7 +656,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			return nil, err
 		}
 		for _, ir := range interposalRules {
-			if credits, ok := rSpeedIDMap[ir.ID]; ok {
+			if credits, ok := rInterposalIDMap[ir.ID]; ok {
 				for _, c := range credits {
 					c.Name = ir.Name
 				}
@@ -658,14 +664,25 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 		}
 	}
 
-	//TODO: fill up the silence segment and interposal segment
-	//silenceSegIDMap
-	//interposalSegIDMap
-	/*
-		if pCredit, ok := silenceSegIDMap[ID]; ok {
-			pCredit.InvalidSegs
+	segments, err := segmentDao.Segments(dbLike.Conn(),
+		model.SegmentQuery{ID: invalidSegsID, CallID: []int64{int64(call)}})
+
+	if err != nil {
+		logger.Error.Printf("get segments failed. %s\n", err)
+		return nil, err
+	}
+
+	for _, v := range segments {
+		if pCredits, ok := silenceSegIDMap[uint64(v.ID)]; ok {
+			for _, pCredit := range pCredits {
+				pCredit.InvalidSegs = append(pCredit.InvalidSegs, SegmentTimeRange{Start: v.StartTime, End: v.EndTime})
+			}
+		} else if pCredits, ok := interposalSegIDMap[uint64(v.ID)]; ok {
+			for _, pCredit := range pCredits {
+				pCredit.InvalidSegs = append(pCredit.InvalidSegs, SegmentTimeRange{Start: v.StartTime, End: v.EndTime})
+			}
 		}
-	*/
+	}
 
 	//desc order
 	sort.SliceStable(resp, func(i, j int) bool {

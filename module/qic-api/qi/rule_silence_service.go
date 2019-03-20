@@ -244,11 +244,13 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 	if len(allSegs) == 0 {
 		return nil, nil
 	}
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 
-	//TODO: fix it, get rules by rule group id and sets the rulegroup id to the attribute RuleGroup in RulesException
 	isDelete := 0
-	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete}
-	sRules, err := GetRuleSilences(q, nil)
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	sRules, err := ruleSilenceDao.GetByRuleGroup(dbLike.Conn(), q)
 	if err != nil {
 		logger.Error.Printf("get rule silence failed. %s\n", err)
 		return nil, err
