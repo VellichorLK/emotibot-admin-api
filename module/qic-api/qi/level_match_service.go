@@ -646,14 +646,17 @@ func RuleMatch(cfMatchID map[uint64]bool, criteria map[uint64]*RuleCriteria) (ma
 // segments must be sorted by time ascended.
 // timeout is used to wait for cu module result.
 // if success, a RuleGrpCredit is returned.
-func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, timeout time.Duration) (*RuleGrpCredit, error) {
+func RuleGroupCriteria(ruleGroups []model.Group, segments []*SegmentWithSpeaker, timeout time.Duration) ([]*RuleGrpCredit, error) {
 	numOfLines := len(segments)
 	if numOfLines == 0 {
 		return nil, ErrNoArgument
 	}
+	if len(ruleGroups) == 0 {
+		return nil, ErrNoArgument
+	}
 
-	logger.Info.Printf("doing %d rule group credit with enterprise %s\n", ruleGroup.ID, ruleGroup.EnterpriseID)
-	enterprise := ruleGroup.EnterpriseID
+	logger.Info.Printf("doing %+v rule group credit\n", ruleGroups)
+	enterprise := ruleGroups[0].EnterpriseID
 	models, err := GetUsingModelByEnterprise(enterprise)
 	if err != nil {
 		logger.Error.Printf("get the model failed. %s\n", err.Error())
@@ -665,35 +668,6 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	} else if numOfModels > 1 {
 		logger.Warn.Printf("More than 1 models is marked as using status with enterprise %s\n", enterprise)
 		logger.Warn.Printf("Using the first one %d as prediction model", models[0].ID)
-	}
-
-	//get the relation table from RuleGroup to Tag
-	levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)}, true)
-	if err != nil {
-		logger.Error.Printf("get level relations failed. %s\n", err)
-		return nil, err
-	}
-
-	//check the return level
-	//If the level is not the same, it might mean data corruption.
-	tagLev := int(LevTag)
-	if len(levels) < tagLev {
-		logger.Error.Printf("get less relation table. %d\n", tagLev)
-		return nil, errors.New("get less relation table.")
-	}
-
-	numOfSens := len(levels[LevSentence])
-	//sentence(句子)
-	sentenceCreditMap := make(map[uint64]*SentenceCredit)
-	//extract the sentence id and tag id
-	senIDs := make([]uint64, 0, numOfSens)
-	tagIDs := make([]uint64, 0, numOfSens)
-	for sID, tIDs := range levels[LevSentence] {
-		senIDs = append(senIDs, sID)
-		tagIDs = append(tagIDs, tIDs...)
-
-		credit := &SentenceCredit{ID: sID}
-		sentenceCreditMap[sID] = credit
 	}
 
 	//extract the words
@@ -713,239 +687,272 @@ func RuleGroupCriteria(ruleGroup model.Group, segments []*SegmentWithSpeaker, ti
 	if len(tagMatchDat) != numOfLines {
 		return nil, fmt.Errorf("get less tag match sentence %d with %d", len(tagMatchDat), numOfLines)
 	}
-	//--------------------------------------------------------------------------
-	//do the sentence check
-	// segMatchedTag struct []map[uint64]bool,
-	// every slice index is a segment, which has a bunch of uint64(tag id),
-	// use map for quick search later
-	segMatchedTag := extractTagMatchedData(tagMatchDat)
-	//do the checking, sentence match
-	senMatchDat, err := SentencesMatch(segMatchedTag, levels[LevSentence])
-	if err != nil {
-		logger.Warn.Printf("doing sentence  match failed.%s\n", err)
-		return nil, err
-	}
 
-	//stores the sentence result in map for later user
-
-	for senID, segIdxs := range senMatchDat {
-		var credit *SentenceCredit
-
-		if v, ok := sentenceCreditMap[senID]; ok {
-			credit = v
-			v.Valid = true
-		} else {
-			logger.Error.Printf("sentence matched id %d exist in credit map, check the relation sentence to tag\n", senID)
-			return nil, ErrRequestNotEqualGet
-		}
-
-		for _, segIdx := range segIdxs {
-			// because slice is 0 based index, but cu is 1 based index.
-			matched := tagMatchDat[segIdx-1]
-			for _, data := range matched.Matched {
-				var tagCredit TagCredit
-				//TagID
-				tagCredit.ID = data.Tag
-				tagCredit.Score = data.Score
-				//SentenceID is the cu term for segment Idx, which is 1 based index
-				tagCredit.SegmentIdx = data.SentenceID
-				tagCredit.Match = data.Match
-				tagCredit.MatchTxt = data.MatchText
-				tagCredit.SegmentID = segments[segIdx-1].ID
-				credit.Tags = append(credit.Tags, &tagCredit)
-			}
-		}
-	}
-
-	//--------------------------------------------------------------------------
-
-	//extract the sentence group id
-	conContainSenGrp := levels[LevConversation]
-	senGrpIDs := make([]uint64, 0)
-	cfIDs := make([]uint64, 0, len(conContainSenGrp))
-	for cfID, senGrpIDList := range conContainSenGrp {
-		senGrpIDs = append(senGrpIDs, senGrpIDList...)
-		cfIDs = append(cfIDs, cfID)
-	}
-
-	//get the sentence group information for condition usage
-	sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs}
-	_, senGrp, err := GetSentenceGroupsBy(sgFilter)
-
-	if err != nil {
-		logger.Error.Printf("get sentence group info failed.%s\n", err)
-		return nil, err
-	}
-	numOfSenGrp := len(senGrp)
-	//may duplicate
-	/*
-		if numOfSenGrp != len(senGrpIDs) {
-			logger.Error.Printf("request sentence group(%d) %v not equal to get %d\n", len(senGrpIDs), senGrpIDs, numOfSenGrp)
-			return nil, ErrRequestNotEqualGet
-		}
-	*/
-
-	//transform the sentence group information to the sentence group critera struct
-	senGrpContainSen := levels[LevSenGroup]
-	senGrpCriteria := make(map[uint64]*SenGroupCriteria)
-	senGrpUUIDMapID := make(map[string]uint64, numOfSenGrp)
-	senGrpCreditMap := make(map[uint64]*SentenceGrpCredit)
-
-	for i := 0; i < numOfSenGrp; i++ {
-		id := uint64(senGrp[i].ID)
-		var criterion SenGroupCriteria
-		credit := &SentenceGrpCredit{ID: id}
-		senGrpCreditMap[id] = credit
-		if senIDs, ok := senGrpContainSen[id]; ok {
-			senGrpCriteria[id] = &criterion
-			senGrpCriteria[id].ID = id
-			senGrpCriteria[id].Role = senGrp[i].Role
-			senGrpCriteria[id].Range = senGrp[i].Distance
-			senGrpCriteria[id].Position = senGrp[i].Position
-			senGrpCriteria[id].SentenceID = senIDs
-			senGrpUUIDMapID[senGrp[i].UUID] = id
-		} else {
-			logger.Error.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", id)
-			return nil, ErrRequestNotEqualGet
-		}
-	}
-
-	//do the check, sentence group
-	matchSgID, err := SentenceGroupMatch(senMatchDat, senGrpCriteria, segments)
-	if err != nil {
-		logger.Warn.Printf("doing sentence group match failed.%s\n", err)
-		return nil, err
-	}
-
-	//stores the sentence group level result
-	for senGrp, sentences := range senGrpContainSen {
-		for _, sID := range sentences {
-			if sCredit, ok := sentenceCreditMap[sID]; ok {
-				if _, ok := matchSgID[senGrp]; ok {
-					senGrpCreditMap[senGrp].Valid = true
-				}
-				senGrpCreditMap[senGrp].Sentences = append(senGrpCreditMap[senGrp].Sentences, sCredit)
-			} else {
-				logger.Error.Printf("sentence matched id %d doesn't exitst in credit map\n", sID)
-				return nil, ErrRequestNotEqualGet
-			}
-		}
-
-	}
-	//--------------------------------------------------------------------------
-
-	//get the conversation flow inforamtion
-	cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
-	_, cfInfo, err := GetConversationFlowsBy(cfFilter)
-	if err != nil {
-		logger.Error.Printf("get conversation flow failed.%s\n", err)
-		return nil, err
-	}
-
-	//sorting the matched segment index
-	for _, segIdxs := range matchSgID {
-		sort.Ints(segIdxs)
-	}
-
-	matchCFID := make(map[uint64]bool)
-	cfCreditMap := make(map[uint64]*ConversationFlowCredit)
-	//doing check for each conversation flow
-	for i := 0; i < len(cfInfo); i++ {
-		var c ConFlowCriteria
-		c.ID = uint64(cfInfo[i].ID)
-		c.Expression = cfInfo[i].Expression
-		c.Repeat = cfInfo[i].Min
-
-		cfMatched, err := ConversationFlowMatch(matchSgID, senGrpCriteria, &c, senGrpUUIDMapID, numOfLines)
+	resp := make([]*RuleGrpCredit, 0, len(ruleGroups))
+	for _, ruleGroup := range ruleGroups {
+		//get the relation table from RuleGroup to Tag
+		levels, _, err := GetLevelsRel(LevRuleGroup, LevTag, []uint64{uint64(ruleGroup.ID)}, true)
 		if err != nil {
-			logger.Error.Printf("getting the conversation flow match failed. %s\n", err)
+			logger.Error.Printf("get level relations failed. %s\n", err)
 			return nil, err
 		}
-		if cfMatched {
-			matchCFID[c.ID] = true
+
+		//check the return level
+		//If the level is not the same, it might mean data corruption.
+		tagLev := int(LevTag)
+		if len(levels) < tagLev {
+			logger.Error.Printf("get less relation table. %d\n", tagLev)
+			return nil, errors.New("get less relation table")
 		}
 
-		//stores the conversation flow level result
-		senGrpIDs := conContainSenGrp[c.ID]
-		credit := &ConversationFlowCredit{ID: c.ID, Valid: cfMatched}
-		for _, senGrpID := range senGrpIDs {
-			if v, ok := senGrpCreditMap[senGrpID]; ok {
-				credit.SentenceGrps = append(credit.SentenceGrps, v)
+		numOfSens := len(levels[LevSentence])
+		//sentence(句子)
+		sentenceCreditMap := make(map[uint64]*SentenceCredit)
+		//extract the sentence id and tag id
+		senIDs := make([]uint64, 0, numOfSens)
+		tagIDs := make([]uint64, 0, numOfSens)
+		for sID, tIDs := range levels[LevSentence] {
+			senIDs = append(senIDs, sID)
+			tagIDs = append(tagIDs, tIDs...)
+
+			credit := &SentenceCredit{ID: sID}
+			sentenceCreditMap[sID] = credit
+		}
+
+		//--------------------------------------------------------------------------
+		//do the sentence check
+		// segMatchedTag struct []map[uint64]bool,
+		// every slice index is a segment, which has a bunch of uint64(tag id),
+		// use map for quick search later
+		segMatchedTag := extractTagMatchedData(tagMatchDat)
+		//do the checking, sentence match
+		senMatchDat, err := SentencesMatch(segMatchedTag, levels[LevSentence])
+		if err != nil {
+			logger.Warn.Printf("doing sentence  match failed.%s\n", err)
+			return nil, err
+		}
+
+		//stores the sentence result in map for later user
+
+		for senID, segIdxs := range senMatchDat {
+			var credit *SentenceCredit
+
+			if v, ok := sentenceCreditMap[senID]; ok {
+				credit = v
+				v.Valid = true
 			} else {
-				logger.Error.Printf("sentence group id %d doesn't exist in the sentence group map\n", senGrpID)
+				logger.Error.Printf("sentence matched id %d exist in credit map, check the relation sentence to tag\n", senID)
+				return nil, ErrRequestNotEqualGet
+			}
+
+			for _, segIdx := range segIdxs {
+				// because slice is 0 based index, but cu is 1 based index.
+				matched := tagMatchDat[segIdx-1]
+				for _, data := range matched.Matched {
+					var tagCredit TagCredit
+					//TagID
+					tagCredit.ID = data.Tag
+					tagCredit.Score = data.Score
+					//SentenceID is the cu term for segment Idx, which is 1 based index
+					tagCredit.SegmentIdx = data.SentenceID
+					tagCredit.Match = data.Match
+					tagCredit.MatchTxt = data.MatchText
+					tagCredit.SegmentID = segments[segIdx-1].ID
+					credit.Tags = append(credit.Tags, &tagCredit)
+				}
+			}
+		}
+
+		//--------------------------------------------------------------------------
+
+		//extract the sentence group id
+		conContainSenGrp := levels[LevConversation]
+		senGrpIDs := make([]uint64, 0)
+		cfIDs := make([]uint64, 0, len(conContainSenGrp))
+		for cfID, senGrpIDList := range conContainSenGrp {
+			senGrpIDs = append(senGrpIDs, senGrpIDList...)
+			cfIDs = append(cfIDs, cfID)
+		}
+
+		//get the sentence group information for condition usage
+		sgFilter := &model.SentenceGroupFilter{ID: senGrpIDs}
+		_, senGrp, err := GetSentenceGroupsBy(sgFilter)
+
+		if err != nil {
+			logger.Error.Printf("get sentence group info failed.%s\n", err)
+			return nil, err
+		}
+		numOfSenGrp := len(senGrp)
+		//may duplicate
+		/*
+			if numOfSenGrp != len(senGrpIDs) {
+				logger.Error.Printf("request sentence group(%d) %v not equal to get %d\n", len(senGrpIDs), senGrpIDs, numOfSenGrp)
+				return nil, ErrRequestNotEqualGet
+			}
+		*/
+
+		//transform the sentence group information to the sentence group critera struct
+		senGrpContainSen := levels[LevSenGroup]
+		senGrpCriteria := make(map[uint64]*SenGroupCriteria)
+		senGrpUUIDMapID := make(map[string]uint64, numOfSenGrp)
+		senGrpCreditMap := make(map[uint64]*SentenceGrpCredit)
+
+		for i := 0; i < numOfSenGrp; i++ {
+			id := uint64(senGrp[i].ID)
+			var criterion SenGroupCriteria
+			credit := &SentenceGrpCredit{ID: id}
+			senGrpCreditMap[id] = credit
+			if senIDs, ok := senGrpContainSen[id]; ok {
+				senGrpCriteria[id] = &criterion
+				senGrpCriteria[id].ID = id
+				senGrpCriteria[id].Role = senGrp[i].Role
+				senGrpCriteria[id].Range = senGrp[i].Distance
+				senGrpCriteria[id].Position = senGrp[i].Position
+				senGrpCriteria[id].SentenceID = senIDs
+				senGrpUUIDMapID[senGrp[i].UUID] = id
+			} else {
+				logger.Error.Printf("No sentence group id %d in sentence group table, but exist in relation table\n", id)
 				return nil, ErrRequestNotEqualGet
 			}
 		}
-		cfCreditMap[c.ID] = credit
-	}
 
-	//--------------------------------------------------------------------------
-
-	ruleGrpContainRule := levels[LevRuleGroup]
-	ruleGrpIDs := make([]uint64, 0, len(ruleGrpContainRule))
-	ruleIDs := make([]uint64, 0, len(ruleGrpContainRule))
-	for rGrpID, ruleList := range ruleGrpContainRule {
-		ruleGrpIDs = append(ruleGrpIDs, rGrpID)
-		ruleIDs = append(ruleIDs, ruleList...)
-	}
-
-	ruleFilter := &model.ConversationRuleFilter{ID: ruleIDs, IsDeleted: -1, Severity: -1}
-	_, rules, err := GetConversationRulesBy(ruleFilter)
-	if err != nil {
-		logger.Error.Printf("get the rules failed.%s\n", err)
-		return nil, err
-	}
-	if len(rules) != len(ruleIDs) {
-		logger.Error.Printf("request rules(%d) %v not equal to get %d\n", len(ruleIDs), ruleIDs, len(rules))
-		return nil, ErrRequestNotEqualGet
-	}
-
-	ruleCriteria := make(map[uint64]*RuleCriteria)
-	for _, v := range rules {
-		c := &RuleCriteria{}
-		c.ID = uint64(v.ID)
-		c.Method = int(v.Method)
-		c.Min = v.Min
-		c.Score = v.Score
-		for _, cfID := range v.Flows {
-			c.CFIDs = append(c.CFIDs, uint64(cfID.ID))
-		}
-		ruleCriteria[c.ID] = c
-	}
-
-	matchRule, totalScore, err := RuleMatch(matchCFID, ruleCriteria)
-	if err != nil {
-		logger.Error.Printf("rule level match failed.%s\n", err)
-		return nil, err
-	}
-
-	//stores the every result in every level
-	var resp RuleGrpCredit
-
-	resp.ID = uint64(ruleGroup.ID)
-	resp.Plus = totalScore
-	resp.Score = totalScore
-	for _, ruleID := range ruleIDs {
-		cfIDs := levels[LevRule][ruleID]
-		credit := &RuleCredit{ID: ruleID}
-		if v, ok := matchRule[ruleID]; ok {
-			credit.Valid = v.Valid
-			credit.Score = v.Score
+		//do the check, sentence group
+		matchSgID, err := SentenceGroupMatch(senMatchDat, senGrpCriteria, segments)
+		if err != nil {
+			logger.Warn.Printf("doing sentence group match failed.%s\n", err)
+			return nil, err
 		}
 
-		for _, cfID := range cfIDs {
-			if v, ok := cfCreditMap[cfID]; ok {
-				credit.CFs = append(credit.CFs, v)
-			} else {
-				logger.Error.Printf("cannot get conversation flow %d credit in credit map\n", cfID)
-				return nil, ErrRequestNotEqualGet
+		//stores the sentence group level result
+		for senGrp, sentences := range senGrpContainSen {
+			for _, sID := range sentences {
+				if sCredit, ok := sentenceCreditMap[sID]; ok {
+					if _, ok := matchSgID[senGrp]; ok {
+						senGrpCreditMap[senGrp].Valid = true
+					}
+					senGrpCreditMap[senGrp].Sentences = append(senGrpCreditMap[senGrp].Sentences, sCredit)
+				} else {
+					logger.Error.Printf("sentence matched id %d doesn't exitst in credit map\n", sID)
+					return nil, ErrRequestNotEqualGet
+				}
 			}
-		}
-		resp.Rules = append(resp.Rules, credit)
-	}
-	resp.Matched = tagMatchDat
 
-	return &resp, nil
+		}
+		//--------------------------------------------------------------------------
+
+		//get the conversation flow inforamtion
+		cfFilter := &model.ConversationFlowFilter{ID: cfIDs}
+		_, cfInfo, err := GetConversationFlowsBy(cfFilter)
+		if err != nil {
+			logger.Error.Printf("get conversation flow failed.%s\n", err)
+			return nil, err
+		}
+
+		//sorting the matched segment index
+		for _, segIdxs := range matchSgID {
+			sort.Ints(segIdxs)
+		}
+
+		matchCFID := make(map[uint64]bool)
+		cfCreditMap := make(map[uint64]*ConversationFlowCredit)
+		//doing check for each conversation flow
+		for i := 0; i < len(cfInfo); i++ {
+			var c ConFlowCriteria
+			c.ID = uint64(cfInfo[i].ID)
+			c.Expression = cfInfo[i].Expression
+			c.Repeat = cfInfo[i].Min
+
+			cfMatched, err := ConversationFlowMatch(matchSgID, senGrpCriteria, &c, senGrpUUIDMapID, numOfLines)
+			if err != nil {
+				logger.Error.Printf("getting the conversation flow match failed. %s\n", err)
+				return nil, err
+			}
+			if cfMatched {
+				matchCFID[c.ID] = true
+			}
+
+			//stores the conversation flow level result
+			senGrpIDs := conContainSenGrp[c.ID]
+			credit := &ConversationFlowCredit{ID: c.ID, Valid: cfMatched}
+			for _, senGrpID := range senGrpIDs {
+				if v, ok := senGrpCreditMap[senGrpID]; ok {
+					credit.SentenceGrps = append(credit.SentenceGrps, v)
+				} else {
+					logger.Error.Printf("sentence group id %d doesn't exist in the sentence group map\n", senGrpID)
+					return nil, ErrRequestNotEqualGet
+				}
+			}
+			cfCreditMap[c.ID] = credit
+		}
+
+		//--------------------------------------------------------------------------
+
+		ruleGrpContainRule := levels[LevRuleGroup]
+		ruleGrpIDs := make([]uint64, 0, len(ruleGrpContainRule))
+		ruleIDs := make([]uint64, 0, len(ruleGrpContainRule))
+		for rGrpID, ruleList := range ruleGrpContainRule {
+			ruleGrpIDs = append(ruleGrpIDs, rGrpID)
+			ruleIDs = append(ruleIDs, ruleList...)
+		}
+
+		ruleFilter := &model.ConversationRuleFilter{ID: ruleIDs, IsDeleted: -1, Severity: -1}
+		_, rules, err := GetConversationRulesBy(ruleFilter)
+		if err != nil {
+			logger.Error.Printf("get the rules failed.%s\n", err)
+			return nil, err
+		}
+		if len(rules) != len(ruleIDs) {
+			logger.Error.Printf("request rules(%d) %v not equal to get %d\n", len(ruleIDs), ruleIDs, len(rules))
+			return nil, ErrRequestNotEqualGet
+		}
+
+		ruleCriteria := make(map[uint64]*RuleCriteria)
+		for _, v := range rules {
+			c := &RuleCriteria{}
+			c.ID = uint64(v.ID)
+			c.Method = int(v.Method)
+			c.Min = v.Min
+			c.Score = v.Score
+			for _, cfID := range v.Flows {
+				c.CFIDs = append(c.CFIDs, uint64(cfID.ID))
+			}
+			ruleCriteria[c.ID] = c
+		}
+
+		matchRule, totalScore, err := RuleMatch(matchCFID, ruleCriteria)
+		if err != nil {
+			logger.Error.Printf("rule level match failed.%s\n", err)
+			return nil, err
+		}
+
+		//stores the every result in every level
+		var rgCredit RuleGrpCredit
+
+		rgCredit.ID = uint64(ruleGroup.ID)
+		rgCredit.Plus = totalScore
+		rgCredit.Score = totalScore
+		for _, ruleID := range ruleIDs {
+			cfIDs := levels[LevRule][ruleID]
+			credit := &RuleCredit{ID: ruleID}
+			if v, ok := matchRule[ruleID]; ok {
+				credit.Valid = v.Valid
+				credit.Score = v.Score
+			}
+
+			for _, cfID := range cfIDs {
+				if v, ok := cfCreditMap[cfID]; ok {
+					credit.CFs = append(credit.CFs, v)
+				} else {
+					logger.Error.Printf("cannot get conversation flow %d credit in credit map\n", cfID)
+					return nil, ErrRequestNotEqualGet
+				}
+			}
+			rgCredit.Rules = append(rgCredit.Rules, credit)
+		}
+		rgCredit.Matched = tagMatchDat
+		resp = append(resp, &rgCredit)
+	}
+	return resp, nil
 }
 
 //SimpleSentenceMatch gives the matched sentence id as key and index of segments that matched the sentence
