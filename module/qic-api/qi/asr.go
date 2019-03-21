@@ -20,7 +20,10 @@ import (
 func ASRWorkFlow(output []byte) error {
 	logger.Trace.Println("ASR workflow started")
 
-	var resp ASRResponse
+	var (
+		resp   ASRResponse
+		isDone bool
+	)
 	err := json.Unmarshal(output, &resp)
 	if err != nil {
 		logger.Error.Println("unrecoverable error: unmarshal asr response failed, ", err, " Body: ", string(output))
@@ -42,26 +45,27 @@ func ASRWorkFlow(output []byte) error {
 	// defer a clean up function.
 	// If any error happened, tx will be revert and status will be marked as failed.
 	defer func() {
-		if err != nil {
-			//We need to release tx before update call, or it may be locked.
-			tx.Rollback()
-			c.Status = model.CallStatusFailed
-			updateErr := UpdateCall(&c)
-			if updateErr != nil {
-				logger.Error.Println("update call critical failed, ", updateErr)
-			}
+		if isDone {
+			return
+		}
+		//We need to release tx before update call, or it may be locked.
+		tx.Rollback()
+		c.Status = model.CallStatusFailed
+		updateErr := UpdateCall(&c)
+		if updateErr != nil {
+			logger.Error.Println("update call critical failed, ", updateErr)
 		}
 	}()
 
 	if resp.Status != 0 {
-		logger.Error.Println("unrecoverable error: asr response status is not ok, CallID: ", resp.CallID, ", Status: ", resp.Status)
+		logger.Error.Printf("unrecoverable error: asr response status is not ok, CallID: %d, Status: %d\n", resp.CallID, resp.Status)
 		return nil
 	}
 
 	c.DurationMillSecond = int(resp.Length * 1000)
 
 	if volume == "" {
-		return fmt.Errorf("volume is not exist, please contact ops and check init log for volume init error.")
+		return fmt.Errorf("volume is not exist, please contact ops and check init log for volume init error")
 	}
 
 	if resp.Mp3 != nil {
@@ -160,6 +164,7 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
+	isDone = true
 	c.Status = model.CallStatusDone
 	c.LeftSpeed = &resp.LeftChannel.Speed
 	c.RightSpeed = &resp.RightChannel.Speed
@@ -169,8 +174,6 @@ func ASRWorkFlow(output []byte) error {
 	logger.Info.Println("finish asr flow for ", resp.CallID)
 	if err != nil {
 		logger.Error.Printf("inconsistent status error: call '%d' ASR finished, but status update failed. %v", c.ID, err)
-		//Dont bother trigger clean up function
-		err = nil
 	}
 	return nil
 }
