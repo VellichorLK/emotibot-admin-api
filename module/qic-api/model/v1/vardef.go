@@ -152,25 +152,25 @@ const (
 
 // field name in RuleGroupCondition table
 const (
-	fldCondID            = "id"
-	fldCondGroupID       = "rg_id"
-	fldCondType          = "type" // Toggle, if 1 then no condition consider, 0 condition on.
-	fldCondFileName      = "file_name"
-	fldCondDeal          = "deal"
-	fldCondSeries        = "series"
-	fldCondUploadTime    = "upload_time"
-	fldCondStaffID       = "staff_id"
-	fldCondStaffName     = "staff_name"
-	fldCondExtension     = "extension"
-	fldCondDepartment    = "department"
-	fldCondCustomerID    = "customer_id"
-	fldCondCustomerName  = "customer_name"
-	fldCondCustomerPhone = "customer_phone"
-	fldCondCategory      = "category"
-	fldCondCallStart     = "call_start"
-	fldCondCallEnd       = "call_end"
-	fldCondLeftChan      = "left_channel"
-	fldCondRightChan     = "right_channel"
+	fldCondID              = "id"
+	fldCondGroupID         = "rg_id"
+	fldCondType            = "type" // Toggle, if 1 then no condition consider, 0 condition on.
+	fldCondFileName        = "file_name"
+	fldCondDeal            = "deal"
+	fldCondSeries          = "series"
+	fldCondUploadTimeStart = "upload_time_start"
+	fldCondUploadTimeEnd   = "upload_time_end"
+	fldCondStaffID         = "staff_id"
+	fldCondStaffName       = "staff_name"
+	fldCondExtension       = "extension"
+	fldCondDepartment      = "department"
+	fldCondCustomerID      = "customer_id"
+	fldCondCustomerName    = "customer_name"
+	fldCondCustomerPhone   = "customer_phone"
+	fldCondCallStart       = "call_start"
+	fldCondCallEnd         = "call_end"
+	fldCondLeftChanRole    = "left_channel_role"
+	fldCondRightChanRole   = "right_channel_role"
 )
 
 // field name in RuleGroup

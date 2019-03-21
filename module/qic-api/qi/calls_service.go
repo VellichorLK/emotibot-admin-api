@@ -262,7 +262,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	call = &calls[0]
 	isEnable := true
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
-		EnterpriseID: &c.Enterprise,
+		EnterpriseID: c.Enterprise,
 		IsEnable:     &isEnable,
 	})
 	if err != nil {

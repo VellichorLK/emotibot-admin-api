@@ -5,13 +5,14 @@ import (
 	"strings"
 	"time"
 
-	"emotibot.com/emotigo/pkg/logger"
-	"bytes"
-	"github.com/tealeg/xlsx"
 	"bufio"
+	"bytes"
 	"reflect"
 	"strconv"
+
+	"emotibot.com/emotigo/pkg/logger"
 	"github.com/kataras/iris/core/errors"
+	"github.com/tealeg/xlsx"
 )
 
 // TODO: Refractor Group & GroupWCond; Condition & GroupCondition
@@ -286,7 +287,7 @@ func (s *GroupSQLDao) GetGroupsBy(filter *GroupFilter, sqlLike SqlLike) (groups 
 		fldCondStaffID, fldCondStaffName, fldCondExtension,
 		fldCondDepartment, fldCondCustomerID, fldCondCustomerName,
 		fldCondCustomerPhone, fldCondCallStart, fldCondCallEnd,
-		fldCondLeftChan, fldCondRightChan,
+		fldCondLeftChanRole, fldCondRightChanRole,
 	}
 	ruleCols := []string{
 		fldID, fldUUID, fldName,
@@ -539,8 +540,8 @@ func genInsertConditionSQL(groups []GroupWCond) (insertStr string, values []inte
 		fldCondCustomerPhone,
 		fldCondCallStart,
 		fldCondCallEnd,
-		fldCondLeftChan,
-		fldCondRightChan,
+		fldCondLeftChanRole,
+		fldCondRightChanRole,
 	}
 
 	insertStr = fmt.Sprintf(
@@ -653,15 +654,18 @@ func (s *GroupSQLDao) DeleteGroup(id string, sqlLike SqlLike) (err error) {
 	return
 }
 
+var groupCols = []string{
+	fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
+	fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
+	fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
+	fldRuleGrpLimitSilence, fldRuleGrpType, fldRuleGrpUUID,
+}
+
+// Group query simple group with the group query.
+// No relation will be queried.
 func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error) {
 	if delegatee == nil {
 		delegatee = s.conn
-	}
-	groupCols := []string{
-		fldRuleGrpID, fldRuleGrpIsDelete, fldRuleGrpName,
-		fldRuleGrpEnterpriseID, fldRuleGrpDescription, fldRuleGrpCreateTime,
-		fldRuleGrpUpdateTime, fldRuleGrpIsEnable, fldRuleGrpLimitSpeed,
-		fldRuleGrpLimitSilence, fldRuleGrpType, fldRuleGrpUUID,
 	}
 
 	sqlQuery := fmt.Sprintf("SELECT `%s` FROM `%s`", strings.Join(groupCols, "`, `"), tblRuleGroup)
@@ -702,6 +706,132 @@ func (s *GroupSQLDao) Group(delegatee SqlLike, query GroupQuery) ([]Group, error
 
 	return groups, nil
 }
+
+func (s *GroupSQLDao) GroupsWithCondition(delegatee SqlLike, query GroupQuery) ([]Group, error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	wherePart, bindData := query.whereSQL()
+	sqlQuery := fmt.Sprintf("SELECT g.`%s`, c.`%s` "+
+		"FROM `%s` as g LEFT JOIN `%s` as c "+
+		"ON g.`%s` = c.`%s` %s",
+		strings.Join(groupCols, "`, g.`"), strings.Join(conditionCols, "`, c.`"),
+		tblRuleGroup, tblRGC,
+		fldRuleGrpID, fldCondGroupID, wherePart,
+	)
+	rows, err := delegatee.Query(sqlQuery, bindData...)
+	if err != nil {
+		return nil, fmt.Errorf("sql query failed, %v", err)
+	}
+	defer rows.Close()
+	var groups = make([]Group, 0)
+	for rows.Next() {
+		var (
+			g                    Group
+			isDeleted, isEnabled int
+			c                    Condition
+		)
+		rows.Scan(
+			&g.ID, &isDeleted, &g.Name,
+			&g.EnterpriseID, &g.Description, &g.CreatedTime,
+			&g.UpdatedTime, &isEnabled, &g.LimitedSpeed,
+			&g.LimitedSilence, &g.Typ, &g.UUID,
+			&c.ID, &c.GroupID, &c.Type,
+			&c.FileName, &c.Deal, &c.Series,
+			&c.UploadTimeStart, &c.UploadTimeEnd, &c.StaffID,
+			&c.StaffName, &c.Extension, &c.Department,
+			&c.CustomerID, &c.CustomerName, &c.CustomerPhone,
+			&c.CallStart, &c.CallEnd, &c.LeftChannel,
+			&c.RightChannel,
+		)
+		if isDeleted == 1 {
+			g.IsDelete = true
+		}
+		if isEnabled == 1 {
+			g.IsEnable = true
+		}
+		g.Condition = &c
+		groups = append(groups, g)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("sql scan error, %v", err)
+	}
+	return groups, nil
+}
+
+// GroupRelation indicate a relation struct of group.
+// columns is the select columns for sql
+// joinSQL should be the left join condition to the group table.
+// type GroupRelation func(group Group) (columns string, joinSQL string)
+
+//WithCondition return a GroupRelation of Condition.
+// func WithCondition() GroupRelation {
+// 	return func(group Group) (string, string) {
+// 		selectSQL := fmt.Sprintf("c.`%s`", strings.Join(conditionCols, "`, c.`"))
+// 		joinSQL := fmt.Sprintf(" LEFT JOIN `%s` as c ON g.`%s` = c.`%s` ", tblRGC, fldRuleGrpID, fldCondGroupID)
+// 		return selectSQL, joinSQL
+// 	}
+// }
+
+// func WithRules() GroupRelation {
+// 	return func() (string, string) {
+
+// 		return fmt.Sprintf()
+// 	}
+// }
+
+// Groups query groups with possible relation tables.
+// func (s *GroupSQLDao) Groups(delegatee SqlLike, query GroupQuery, relations ...GroupRelation) ([]Group, error) {
+// 	if delegatee == nil {
+// 		delegatee = s.conn
+// 	}
+// 	wherePart, bindData := query.whereSQL()
+// 	selectSQL := fmt.Sprintf("SELECT g.`%s` ", strings.Join(groupCols, "`, g.`"))
+// 	fromSQL := fmt.Sprintf(" FROM `%s` as g ", tblRuleGroup)
+// 	for _, r := range relations {
+// 		cols, join := r()
+// 		selectSQL += cols
+// 		fromSQL += join + " "
+// 	}
+// 	sqlQuery := selectSQL + " " + fromSQL + " " + wherePart
+// 	rows, err := delegatee.Query(sqlQuery, bindData...)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("sql query failed, %v", err)
+// 	}
+// 	defer rows.Close()
+// 	var groups = make([]Group, 0)
+// 	for rows.Next() {
+// 		var (
+// 			g                    Group
+// 			isDeleted, isEnabled int
+// 			c                    Condition
+// 		)
+// 		rows.Scan(
+// 			&g.ID, &isDeleted, &g.Name,
+// 			&g.EnterpriseID, &g.Description, &g.CreatedTime,
+// 			&g.UpdatedTime, &isEnabled, &g.LimitedSpeed,
+// 			&g.LimitedSilence, &g.Typ, &g.UUID,
+// 			&c.ID, &c.GroupID, &c.Type,
+// 			&c.FileName, &c.Deal, &c.Series,
+// 			&c.UploadTimeStart, &c.StaffID, &c.StaffName,
+// 			&c.Extension, &c.Department, &c.CustomerID,
+// 			&c.CustomerName, &c.CustomerPhone, &c.CallStart,
+// 			&c.CallEnd, &c.LeftChannel, &c.RightChannel,
+// 		)
+// 		if isDeleted == 1 {
+// 			g.IsDelete = true
+// 		}
+// 		if isEnabled == 1 {
+// 			g.IsEnable = true
+// 		}
+// 		g.Condition = &c
+// 		groups = append(groups, g)
+// 	}
+// 	if err = rows.Err(); err != nil {
+// 		return nil, fmt.Errorf("sql scan error, %v", err)
+// 	}
+// 	return groups, nil
+// }
 
 // NewGroup create a plain group without condition or rules.
 func (s *GroupSQLDao) NewGroup(delegatee SqlLike, group Group) (Group, error) {

@@ -71,7 +71,6 @@ func TestITGroupSQLDao_Group(t *testing.T) {
 		wantTx bool
 		query  GroupQuery
 	}
-	queryEnt := "csbot"
 	tests := []struct {
 		name string
 		args args
@@ -84,7 +83,7 @@ func TestITGroupSQLDao_Group(t *testing.T) {
 		{
 			name: "query enterprise",
 			args: args{
-				query: GroupQuery{EnterpriseID: &queryEnt, IgnoreSoftDelete: true},
+				query: GroupQuery{EnterpriseID: "csbot", IgnoreSoftDelete: true},
 			},
 			want: []Group{seeds[2]},
 		},
@@ -136,6 +135,7 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 	mc := readMockConditions(t)
 	groups[0].Condition = ToGroupCondition(mc[0])
 	groups[1].Condition = ToGroupCondition(mc[1])
+	groups[2].Condition = ToGroupCondition(mc[2])
 	mr := readMockRules(t)
 	rules := []ConversationRule{mr[0], mr[1]}
 	groups[0].Rules = &rules
@@ -169,4 +169,52 @@ func TestITGroupSQLDao_GetGroupsBy(t *testing.T) {
 			checkDBStat(t)
 		})
 	}
+}
+
+func TestITGroupSQLDao_GroupsWithCondition(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := GroupSQLDao{conn: db}
+	groups := seedGroups(t)
+	conds := readMockConditions(t)
+	for i, g := range groups {
+		for _, c := range conds {
+			if c.GroupID == g.ID {
+				g.Condition = &c
+				groups[i] = g
+				break
+			}
+		}
+	}
+	type args struct {
+		wantTx bool
+		query  GroupQuery
+	}
+	tests := []struct {
+		name string
+		args args
+		want []Group
+	}{
+		{
+			name: "get all without deleted",
+			want: groups[:2],
+		},
+		{
+			name: "query enterprise",
+			args: args{
+				query: GroupQuery{
+					EnterpriseID: "csbot", IgnoreSoftDelete: true,
+				},
+			},
+			want: []Group{groups[2]},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dao.GroupsWithCondition(nil, tt.args.query)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+	checkDBStat(t)
 }
