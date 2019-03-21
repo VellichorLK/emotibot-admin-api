@@ -157,6 +157,15 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 			Whos: Interposal, CallID: callID, Valid: defaultVaild, InterposalSegs: violateSegs,
 			RuleGroupID: ruleGroup.ID}
 
+		if result.Valid {
+			if r.Score > 0 {
+				result.Score = r.Score
+			}
+		} else {
+			if r.Score < 0 {
+				result.Score = r.Score
+			}
+		}
 		resp = append(resp, result)
 	}
 
