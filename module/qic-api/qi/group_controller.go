@@ -411,14 +411,10 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 	}
 }
 
-func handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
-	id := parseID(r)
-
-	err := DeleteGroup(id)
-
+func handleDeleteGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
+	err := DeleteGroup(group.UUID)
 	if err != nil {
-		logger.Error.Printf("error while delete group in handleDeleteGroup, reason: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("delete group failed, %v", err))
 		return
 	}
 }

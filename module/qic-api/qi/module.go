@@ -55,7 +55,7 @@ func init() {
 			util.NewEntryPoint("GET", "groups/filters", []string{}, handleGetGroupsByFilter),
 			util.NewEntryPoint("GET", "groups/{group_id}", []string{}, groupRequest(handleGetGroup)),
 			util.NewEntryPoint("PUT", "groups/{group_id}", []string{}, groupRequest(handleUpdateGroup)),
-			util.NewEntryPoint("DELETE", "groups/{group_id}", []string{}, handleDeleteGroup),
+			util.NewEntryPoint("DELETE", "groups/{group_id}", []string{}, groupRequest(handleDeleteGroup)),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
