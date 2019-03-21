@@ -132,26 +132,19 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("get groups by call failed, %v", err)
 	}
-	credits := []*RuleGrpCredit{}
+
 	score := BaseScore
-	for _, grp := range groups {
-		var credit *RuleGrpCredit
-		if !grp.IsEnable {
-			continue
-		}
-		credit, err = RuleGroupCriteria(grp, segWithSp, time.Duration(30)*time.Minute)
-		if err != nil {
-			return fmt.Errorf("get rule group credit failed, %v", err)
-		}
-		credits = append(credits, credit)
-		score += credit.Score
+	credits, err := RuleGroupCriteria(groups, segWithSp, time.Duration(30)*time.Minute)
+	if err != nil {
+		return fmt.Errorf("get rule group credit failed, %v", err)
 	}
 	for _, credit := range credits {
-		credit.Score = score
-		err = StoreCredit(uint64(c.ID), credit)
-		if err != nil {
-			return fmt.Errorf("store credit failed, %v", err)
-		}
+		score += credit.Score
+	}
+
+	err = StoreCredit(uint64(c.ID), credits)
+	if err != nil {
+		return fmt.Errorf("store credit failed, %v", err)
 	}
 
 	swCredits, err := SensitiveWordsVerification(resp.CallID, segWithSp, c.EnterpriseID)
