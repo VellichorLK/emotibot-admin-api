@@ -9,12 +9,12 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 
 	"encoding/hex"
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"github.com/satori/go.uuid"
 )
 
 //ErrNotFound is indicated the resource is asked, but nowhere to found it.
@@ -390,7 +390,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 			}
 		}
 	}
-	var matchedGroups = MatchGroup(groups, groupConditions, userInputs)
+	matchedGroups := MatchGroup(matchDefaultConditions(groups, *call), groupConditions, userInputs)
 	_, err = callDao.SetRuleGroupRelations(tx, *call, matchedGroups)
 	if err != nil {
 		return nil, fmt.Errorf("set rule group failed, %v", err)
@@ -516,6 +516,71 @@ func MatchGroup(groups []model.Group, groupConditions map[int64][]model.UserKey,
 		if isValid {
 			matchedGroups = append(matchedGroups, grp)
 		}
+	}
+	return matchedGroups
+}
+
+func matchDefaultConditions(groups []model.Group, c model.Call) []model.Group {
+	var matchedGroups = make([]model.Group, 0, len(groups))
+	for _, grp := range groups {
+		if grp.Condition == nil {
+			continue
+		}
+		cond := grp.Condition
+		if cond.Type == model.GroupCondTypOff {
+			matchedGroups = append(matchedGroups, grp)
+			continue
+		}
+		if cond.FileName != "" && cond.FileName != *c.FileName {
+			continue
+		}
+		// if cond.Deal != -1 && cond.Deal != c.Transaction {
+		// 	continue
+		// }
+		// if cond.Series != "" && cond.Series != c. {
+		// 	continue
+		// }
+		if cond.UploadTimeStart != 0 && cond.UploadTimeStart > c.UploadUnixTime {
+			continue
+		}
+		if cond.UploadTimeEnd != 0 && c.UploadUnixTime > cond.UploadTimeEnd {
+			continue
+		}
+		if cond.StaffID != "" && c.StaffID != cond.StaffID {
+			continue
+		}
+		if cond.StaffName != "" && cond.StaffName != c.StaffName {
+			continue
+		}
+		if cond.Extension != "" && cond.Extension != c.Ext {
+			continue
+		}
+		if cond.Department != "" && cond.Department != c.Department {
+			continue
+		}
+		if cond.CustomerID != "" && cond.CustomerID != c.CustomerID {
+			continue
+		}
+		if cond.CustomerName != "" && cond.CustomerName != c.CustomerName {
+			continue
+		}
+		if cond.CustomerPhone != "" && cond.CustomerPhone != c.CustomerPhone {
+			continue
+		}
+		if cond.CallStart != 0 && cond.CallStart > c.CallUnixTime {
+			continue
+		}
+		if cond.CallEnd != 0 && c.CallUnixTime > cond.CallEnd {
+			continue
+		}
+		if cond.LeftChannel != model.GroupCondRoleAny && cond.LeftChannel != c.LeftChanRole {
+			continue
+		}
+		if cond.RightChannel != model.GroupCondRoleAny && cond.RightChannel != c.RightChanRole {
+			continue
+		}
+
+		matchedGroups = append(matchedGroups, grp)
 	}
 	return matchedGroups
 }
