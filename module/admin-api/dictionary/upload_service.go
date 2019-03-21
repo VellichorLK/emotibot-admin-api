@@ -917,7 +917,8 @@ func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File, locale string) (sheet *xlsx
 
 	// Check if sheet is correct and format is correct
 	switch {
-	case sheet.Name != localemsg.Get(locale, "DictionaryTemplateXLSXName"):
+	case sheet.Name != localemsg.Get(locale, "DictionaryTemplateXLSXName") ||
+		sheet.Name != localemsg.Get("", "DictionaryTemplateXLSXName"):
 		err = errors.New(localemsg.Get(locale, "DictionarySheetError"))
 		return
 	case rows == nil:
