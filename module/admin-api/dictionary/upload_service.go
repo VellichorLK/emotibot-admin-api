@@ -804,7 +804,7 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3, locale string) (error, []
 }
 
 func ExportWordbankV3(appid string, locale string) (*bytes.Buffer, error) {
-	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath())
+	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath(locale))
 	if err != nil {
 		return nil, err
 	}
