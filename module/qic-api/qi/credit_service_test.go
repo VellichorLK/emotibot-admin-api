@@ -69,6 +69,10 @@ func (m *mockCreditDao) InsertCredits(conn model.SqlLike, cs []model.SimpleCredi
 	return nil
 }
 
+func (m *mockCreditDao) Update(conn model.SqlLike, q *model.GeneralQuery, d *model.UpdateCreditSet) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockCreditDao) InsertSegmentMatch(conn model.SqlLike, s *model.SegmentMatch) (int64, error) {
 	return 0, nil
 }
