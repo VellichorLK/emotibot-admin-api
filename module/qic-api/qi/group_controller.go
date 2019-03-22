@@ -22,21 +22,28 @@ import (
 
 // NewGroupReq is the request body schema of the POST or PUT group api
 type NewGroupReq struct {
-	GroupName   string   `json:"group_name"`
-	GroupID     string   `json:"group_id"`
-	Description string   `json:"description"`
-	IsEnable    int8     `json:"is_enable"`
-	Other       Other    `json:"other"`
-	Rules       []string `json:"rules"`
+	GroupName       string   `json:"group_name"`
+	GroupID         string   `json:"group_id"`
+	Description     string   `json:"description"`
+	IsEnable        int8     `json:"is_enable"`
+	Other           Other    `json:"other"`
+	Rules           []string `json:"rules"`
+	SilenceRules    []string `json:"silence_rules"`
+	SpeedRules      []string `json:"speed_rules"`
+	InterposalRules []string `json:"interposal_rules"`
 }
 
 //Group transfer NewGroupReq as a model.Group struct, any virtual fields(etc: Other, Rules...) should be handled by the caller.
 func (n *NewGroupReq) Group() model.Group {
 	return model.Group{
-		UUID:        n.GroupID,
-		Name:        n.GroupName,
-		Description: n.Description,
-		IsEnable:    n.IsEnable != 0,
+		UUID:            n.GroupID,
+		Name:            n.GroupName,
+		Description:     n.Description,
+		IsEnable:        n.IsEnable != 0,
+		Rules:           make([]model.ConversationRule, 0),
+		SilenceRules:    make([]model.SilenceRule, 0),
+		SpeedRules:      make([]model.SpeedRule, 0),
+		InterposalRules: make([]model.InterposalRule, 0),
 	}
 }
 
@@ -241,6 +248,15 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if len(reqBody.SilenceRules) > 0 {
+
+	}
+	if len(reqBody.SpeedRules) > 0 {
+
+	}
+	if len(reqBody.InterposalRules) > 0 {
+
+	}
 
 	condition := reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
@@ -298,16 +314,24 @@ var methodDict = map[int8]string{
 	model.RuleMethodNegative: "negative",
 }
 
-func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
+func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.Group) {
+	type GeneralRuleResp struct {
+		UUID string `json:"rule_id"`
+		Name string `json:"rule_name"`
+	}
 	type RuleResp struct {
-		UUID   string `json:"rule_id"`
-		Name   string `json:"rule_name"`
+		GeneralRuleResp
 		Method string `json:"method"`
 	}
 	type GroupDetailResp struct {
 		GroupResp
-		Rules []RuleResp `json:"rules"`
+		Rules        []RuleResp        `json:"rules"`
+		SilenceRules []GeneralRuleResp `json:"silence_rules"`
+		SpeedRules   []GeneralRuleResp `json:"speed_rules"`
+		Interposal   []GeneralRuleResp `json:"interposal_rules"`
 	}
+	var err error
+	group, err = GetGroupRules(*group)
 	customData, err := customConditionsOfGroup(group.ID)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("Get conditions of group failed, %v", err))
@@ -318,28 +342,50 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWC
 		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get con"))
 		return
 	}
-	var ruleCount int
-	if group.Rules != nil {
-		ruleCount = len(*group.Rules)
-	}
+	ruleCount := len(group.Rules) + len(group.SpeedRules) + len(group.SilenceRules) + len(group.InterposalRules)
 	var resp = GroupDetailResp{
 		GroupResp: GroupResp{
 			GroupID:     group.UUID,
-			GroupName:   *group.Name,
-			IsEnable:    *group.Enabled,
+			GroupName:   group.Name,
 			Other:       toOther(cond, customData),
-			CreateTime:  group.CreateTime,
-			Description: *group.Description,
+			CreateTime:  group.CreatedTime,
+			Description: group.Description,
 			RuleCount:   ruleCount,
 		},
-		Rules: make([]RuleResp, 0, ruleCount),
+		Rules:        make([]RuleResp, 0, ruleCount),
+		SilenceRules: make([]GeneralRuleResp, 0),
+		SpeedRules:   make([]GeneralRuleResp, 0),
+		Interposal:   make([]GeneralRuleResp, 0),
+	}
+	if group.IsEnable {
+		resp.IsEnable = 1
 	}
 
-	for _, r := range *group.Rules {
+	for _, r := range group.Rules {
 		resp.Rules = append(resp.Rules, RuleResp{
-			UUID:   r.UUID,
-			Name:   r.Name,
+			GeneralRuleResp: GeneralRuleResp{
+				UUID: r.UUID,
+				Name: r.Name,
+			},
 			Method: methodDict[r.Method],
+		})
+	}
+	for _, r := range group.SilenceRules {
+		resp.SilenceRules = append(resp.SilenceRules, GeneralRuleResp{
+			UUID: r.UUID,
+			Name: r.Name,
+		})
+	}
+	for _, r := range group.SpeedRules {
+		resp.SpeedRules = append(resp.SpeedRules, GeneralRuleResp{
+			UUID: r.UUID,
+			Name: r.Name,
+		})
+	}
+	for _, r := range group.InterposalRules {
+		resp.Interposal = append(resp.Interposal, GeneralRuleResp{
+			UUID: r.UUID,
+			Name: r.Name,
 		})
 	}
 	util.WriteJSON(w, resp)
@@ -363,6 +409,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 	newGroup.UUID = group.UUID
 	newGroup.Condition = reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
+	notDeleted := 0
 	if len(reqBody.Rules) > 0 {
 		var (
 			total int64
@@ -373,6 +420,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 			Enterprise: group.Enterprise,
 			Severity:   -1,
 			UUID:       reqBody.Rules,
+			IsDeleted:  0,
 		})
 		if err != nil {
 			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get rules failed, %v", err))
@@ -402,14 +450,72 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 
 		newGroup.Rules = rules
 	}
+	if len(reqBody.SilenceRules) > 0 {
+		rules, err := GetRuleSilences(&model.GeneralQuery{
+			UUID:       reqBody.SilenceRules,
+			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
+		}, nil)
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get silence rules failed, %v", err))
+			return
+		}
+		if len(reqBody.SilenceRules) != len(rules) {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid silence rule input"))
+			return
+		}
+		for _, rule := range rules {
+			newGroup.SilenceRules = append(newGroup.SilenceRules, *rule)
+		}
+	}
+	if len(reqBody.SpeedRules) > 0 {
+		rules, err := GetRuleSpeeds(&model.GeneralQuery{
+			UUID:       reqBody.SpeedRules,
+			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
+		}, nil)
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get speed rules failed, %v", err))
+			return
+		}
+		if len(reqBody.SpeedRules) != len(rules) {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid speed rules input"))
+			return
+		}
+		for _, rule := range rules {
+			newGroup.SpeedRules = append(newGroup.SpeedRules, *rule)
+		}
+	}
+	if len(reqBody.InterposalRules) > 0 {
+		rules, err := GetRuleInterposals(&model.GeneralQuery{
+			UUID:       reqBody.InterposalRules,
+			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
+		}, nil)
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get interposal rules failed, %v", err))
+			return
+		}
+		if len(reqBody.InterposalRules) != len(rules) {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid interposal rules input"))
+			return
+		}
+		for _, rule := range rules {
+			newGroup.InterposalRules = append(newGroup.InterposalRules, *rule)
+		}
+	}
 
 	err = UpdateGroup(newGroup, customConditions)
 	if err != nil {
-		logger.Error.Printf("error while update group in handleUpdateGroup, reason: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("update group failed, %v", err))
 		return
 	}
 }
+
+// func handleUpdateGroupBasic(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
+
+// 	UpdateGroupBasic()
+// }
 
 func handleDeleteGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
 	err := DeleteGroup(group.UUID)
@@ -508,7 +614,35 @@ func parseGroupFilter(values *url.Values) (filter *model.GroupFilter, err error)
 	}
 	return
 }
-
+func simpleGroupRequest(next func(w http.ResponseWriter, r *http.Request, group *model.Group)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		const GroupIDKey = "group_id"
+		groupUUID := mux.Vars(r)[GroupIDKey]
+		if GroupIDKey == "" {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require %s in path", GroupIDKey))
+			return
+		}
+		enterprise := requestheader.GetEnterpriseID(r)
+		if enterprise == "" {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("empty enterprise ID"))
+			return
+		}
+		groups, err := groups(nil, model.GroupQuery{
+			UUID:         []string{groupUUID},
+			EnterpriseID: enterprise,
+		})
+		if len(groups) == 0 {
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("id '%s' is not exist", groupUUID))
+			return
+		}
+		g := groups[0]
+		if err != nil {
+			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get group failed, %v", err))
+			return
+		}
+		next(w, r, &g)
+	}
+}
 func groupRequest(next func(w http.ResponseWriter, r *http.Request, group *model.GroupWCond)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const GroupIDKey = "group_id"

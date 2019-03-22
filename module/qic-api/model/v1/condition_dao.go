@@ -57,39 +57,42 @@ func (c *ConditionQuery) whereSQL() (string, []interface{}) {
 // Condition represent the same table `RuleGroupCondition` as struct GroupCondition,
 // but without those json tagging and with its ID & group ID & missing fields.
 type Condition struct {
-	ID            int64
-	GroupID       int64
-	Type          int8
-	FileName      string
-	Deal          int8
-	Series        string
-	UploadTime    int64
-	StaffID       string
-	StaffName     string
-	Extension     string
-	Department    string
-	CustomerID    string
-	CustomerName  string
-	CustomerPhone string
-	Category      string
-	CallStart     int64
-	CallEnd       int64
-	LeftChannel   int8
-	RightChannel  int8
+	ID              int64
+	GroupID         int64
+	Type            int8
+	FileName        string
+	Deal            int8
+	Series          string
+	UploadTimeStart int64
+	UploadTimeEnd   int64
+	StaffID         string
+	StaffName       string
+	Extension       string
+	Department      string
+	CustomerID      string
+	CustomerName    string
+	CustomerPhone   string
+	CallStart       int64
+	CallEnd         int64
+	LeftChannel     int8
+	RightChannel    int8
+}
+
+var conditionCols = []string{
+	fldCondID, fldCondGroupID, fldCondType,
+	fldCondFileName, fldCondDeal, fldCondSeries,
+	fldCondUploadTimeStart, fldCondUploadTimeEnd, fldCondStaffID,
+	fldCondStaffName, fldCondExtension, fldCondDepartment,
+	fldCondCustomerID, fldCondCustomerName, fldCondCustomerPhone,
+	fldCondCallStart, fldCondCallEnd, fldCondLeftChanRole,
+	fldCondRightChanRole,
 }
 
 func (g *GroupConditionDao) Conditions(delegatee SqlLike, query ConditionQuery) ([]Condition, error) {
 	if delegatee == nil {
 		delegatee = g.db.Conn()
 	}
-	condCols := []string{
-		fldCondID, fldCondGroupID, fldCondType,
-		fldCondFileName, fldCondDeal, fldCondSeries,
-		fldCondUploadTime, fldCondStaffID, fldCondStaffName,
-		fldCondExtension, fldCondDepartment, fldCondCustomerID,
-		fldCondCustomerName, fldCondCustomerPhone, fldCondCallStart,
-		fldCondCallEnd, fldCondLeftChan, fldCondRightChan,
-	}
+
 	var (
 		offsetSQL string
 	)
@@ -99,7 +102,7 @@ func (g *GroupConditionDao) Conditions(delegatee SqlLike, query ConditionQuery) 
 	wherePart, data := query.whereSQL()
 	rawsql := fmt.Sprintf("SELECT `%s`FROM `%s`"+
 		" %s %s ORDER BY `%s` ASC",
-		strings.Join(condCols, "`, `"), tblRGC,
+		strings.Join(conditionCols, "`, `"), tblRGC,
 		wherePart, offsetSQL, fldCondID,
 	)
 	rows, err := delegatee.Query(rawsql, data...)
@@ -117,10 +120,11 @@ func (g *GroupConditionDao) Conditions(delegatee SqlLike, query ConditionQuery) 
 		rows.Scan(
 			&cond.ID, &cond.GroupID, &cond.Type,
 			&cond.FileName, &cond.Deal, &cond.Series,
-			&cond.UploadTime, &cond.StaffID, &cond.StaffName,
-			&cond.Extension, &cond.Department, &cond.CustomerID,
-			&cond.CustomerName, &cond.CustomerPhone, &cond.CallStart,
-			&cond.CallEnd, &cond.LeftChannel, &cond.RightChannel,
+			&cond.UploadTimeStart, &cond.UploadTimeEnd, &cond.StaffID,
+			&cond.StaffName, &cond.Extension, &cond.Department,
+			&cond.CustomerID, &cond.CustomerName, &cond.CustomerPhone,
+			&cond.CallStart, &cond.CallEnd, &cond.LeftChannel,
+			&cond.RightChannel,
 		)
 		scanned = append(scanned, cond)
 	}
@@ -136,21 +140,21 @@ func (g *GroupConditionDao) NewCondition(delegatee SqlLike, cond Condition) (Con
 	}
 	condCols := []string{
 		fldCondGroupID, fldCondType, fldCondFileName,
-		fldCondDeal, fldCondSeries, fldCondUploadTime,
-		fldCondStaffID, fldCondStaffName, fldCondExtension,
-		fldCondDepartment, fldCondCustomerID, fldCondCustomerName,
-		fldCondCustomerPhone, fldCondCallStart, fldCondCallEnd,
-		fldCondLeftChan, fldCondRightChan,
+		fldCondDeal, fldCondSeries, fldCondUploadTimeStart,
+		fldCondUploadTimeEnd, fldCondStaffID, fldCondStaffName,
+		fldCondExtension, fldCondDepartment, fldCondCustomerID,
+		fldCondCustomerName, fldCondCustomerPhone, fldCondCallStart,
+		fldCondCallEnd, fldCondLeftChanRole, fldCondRightChanRole,
 	}
 	rawsql := fmt.Sprintf("INSERT INTO `%s` (`%s`) VALUE(?%s)",
 		tblRGC, strings.Join(condCols, "`,`"), strings.Repeat(", ?", len(condCols)-1))
 	result, err := delegatee.Exec(rawsql,
 		cond.GroupID, cond.Type, cond.FileName,
-		cond.Deal, cond.Series, cond.UploadTime,
-		cond.StaffID, cond.StaffName, cond.Extension,
-		cond.Department, cond.CustomerID, cond.CustomerName,
-		cond.CustomerPhone, cond.CallStart, cond.CallEnd,
-		cond.LeftChannel, cond.RightChannel,
+		cond.Deal, cond.Series, cond.UploadTimeStart,
+		cond.UploadTimeEnd, cond.StaffID, cond.StaffName,
+		cond.Extension, cond.Department, cond.CustomerID,
+		cond.CustomerName, cond.CustomerPhone, cond.CallStart,
+		cond.CallEnd, cond.LeftChannel, cond.RightChannel,
 	)
 	if err != nil {
 		return Condition{}, fmt.Errorf("sql execute failed, %v", err)
