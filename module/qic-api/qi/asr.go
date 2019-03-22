@@ -114,8 +114,10 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	var channelRoles = map[int8]int{
-		1: int(c.LeftChanRole),
-		2: int(c.RightChanRole),
+		SilenceSpeaker:    SilenceSpeaker,
+		InterposalSpeaker: InterposalSpeaker,
+		1:                 int(c.LeftChanRole),
+		2:                 int(c.RightChanRole),
 	}
 
 	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
