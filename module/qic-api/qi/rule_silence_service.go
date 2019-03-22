@@ -259,13 +259,9 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		return nil, nil
 	}
 
-	silenceSegs, segs := extractSegmentSpeaker(allSegs, SilenceSpeaker)
-
-	silenceNum := len(silenceSegs)
-
-	totalSeg := len(allSegs)
-	matchedSeg := len(matched)
-	if (totalSeg - silenceNum) != matchedSeg {
+	silenceSegs, _ := extractSegmentSpeaker(allSegs, SilenceSpeaker)
+	pureWordSegs := extractPureWordsSegment(allSegs)
+	if len(pureWordSegs) != len(matched) {
 		return nil, errors.New("total seg without silence not equal to matched seg")
 	}
 
@@ -285,13 +281,23 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		rules = append(rules, exceptionRule)
 	}
 
-	credits, err := silenceRuleCheck(rules, matched, allSegs, segs, silenceSegs)
+	credits, err := silenceRuleCheck(rules, matched, allSegs, pureWordSegs, silenceSegs)
 	if err != nil {
 		logger.Error.Printf("silence rule check failed.%s\n", err)
 		return nil, err
 	}
 
 	return credits, nil
+}
+
+func extractPureWordsSegment(segments []*SegmentWithSpeaker) []*SegmentWithSpeaker {
+	segs := make([]*SegmentWithSpeaker, 0, len(segments))
+	for _, v := range segments {
+		if v.Speaker == int(model.CallChanStaff) || v.Speaker == int(model.CallChanCustomer) {
+			segs = append(segs, v)
+		}
+	}
+	return segs
 }
 
 //extract the segment with given speaker and sorts it in descending order by segment's duration
