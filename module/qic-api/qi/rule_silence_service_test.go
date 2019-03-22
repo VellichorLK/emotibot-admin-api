@@ -98,3 +98,43 @@ func TestSilenceRuleCheck(t *testing.T) {
 	}
 
 }
+
+func TestInjectSilenceInterposalSegs(t *testing.T) {
+	segs := []model.RealSegment{
+		model.RealSegment{StartTime: 1.11, EndTime: 3.05},
+		model.RealSegment{StartTime: 3.6, EndTime: 9},
+		model.RealSegment{StartTime: 7, EndTime: 13},  //interposal
+		model.RealSegment{StartTime: 15, EndTime: 17}, //silence
+		model.RealSegment{StartTime: 17.2, EndTime: 19.2},
+		model.RealSegment{StartTime: 24.3, EndTime: 26}, //silence
+		model.RealSegment{StartTime: 29, EndTime: 31},   //silence
+	}
+
+	expect := []model.RealSegment{
+		model.RealSegment{StartTime: 1.11, EndTime: 3.05},
+		model.RealSegment{StartTime: 3.6, EndTime: 9},
+		model.RealSegment{StartTime: 7, EndTime: 9, Channel: InterposalSpeaker}, //interposal
+		model.RealSegment{StartTime: 7, EndTime: 13},
+		model.RealSegment{StartTime: 13, EndTime: 15, Channel: SilenceSpeaker},
+		model.RealSegment{StartTime: 15, EndTime: 17},
+		model.RealSegment{StartTime: 17.2, EndTime: 19.2},
+		model.RealSegment{StartTime: 19.2, EndTime: 24.3, Channel: SilenceSpeaker},
+		model.RealSegment{StartTime: 24.3, EndTime: 26}, //silence
+		model.RealSegment{StartTime: 26, EndTime: 29, Channel: SilenceSpeaker},
+		model.RealSegment{StartTime: 29, EndTime: 31}, //silence
+	}
+
+	result := injectSilenceInterposalSegs(segs)
+
+	if len(expect) != len(result) {
+		t.Fatalf("expected get %d segments, but get %d\n", len(expect), len(result))
+	}
+
+	for idx, r := range result {
+		e := expect[idx]
+		if e.StartTime != r.StartTime || e.EndTime != r.EndTime || e.Channel != r.Channel {
+			t.Errorf("expecting get start:%v, end:%v, channel:%d at %d'th credit, but get start:%v, end:%v, channel:%d",
+				e.StartTime, e.EndTime, e.Channel, idx, r.StartTime, r.EndTime, r.Channel)
+		}
+	}
+}
