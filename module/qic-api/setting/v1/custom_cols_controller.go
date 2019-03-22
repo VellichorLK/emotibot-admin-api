@@ -98,6 +98,16 @@ func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require header of enterprise ID"))
 		return
 	}
+	if request.Name == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require non empty name"))
+		return
+	}
+	if request.Input == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require non empty input"))
+	}
+	if request.Type == 0 {
+		request.Type = 1
+	}
 	customCols, err := NewCustomCols([]NewUKRequest{NewUKRequest{
 		Enterprise: enterpriseID,
 		Name:       request.Name,

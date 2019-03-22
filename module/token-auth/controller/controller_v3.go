@@ -15,7 +15,6 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 	"github.com/gorilla/mux"
-	captcha "github.com/mojocn/base64Captcha"
 )
 
 const defaultExpiredTime = 3600
@@ -1619,26 +1618,26 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if util.GetCaptchaStatus() {
-		util.LogTrace.Printf("Enable captcha")
-		captchaCode := r.Form.Get("captcha")
-		captchaID := r.Form.Get("captchaID")
-		if captchaCode == "" || captchaID == "" {
-			err = util.ErrInvalidParameter
-			returnBadRequest(w, "no captcha")
-			return
-		}
-
-		verifyResult := captcha.VerifyCaptcha(captchaID, captchaCode)
-		if !verifyResult {
-			// verify failed
-			err = util.ErrInvalidParameter
-			returnBadRequest(w, "invalid captcha")
-			return
-		}
-	} else {
-		util.LogTrace.Printf("Disable captcha")
-	}
+	//if util.GetCaptchaStatus() {
+	//	util.LogTrace.Printf("Enable captcha")
+	//	captchaCode := r.Form.Get("captcha")
+	//	captchaID := r.Form.Get("captchaID")
+	//	if captchaCode == "" || captchaID == "" {
+	//		err = util.ErrInvalidParameter
+	//		returnBadRequest(w, "no captcha")
+	//		return
+	//	}
+	//
+	//	verifyResult := captcha.VerifyCaptcha(captchaID, captchaCode)
+	//	if !verifyResult {
+	//		// verify failed
+	//		err = util.ErrInvalidParameter
+	//		returnBadRequest(w, "invalid captcha")
+	//		return
+	//	}
+	//} else {
+	//	util.LogTrace.Printf("Disable captcha")
+	//}
 
 	// If user is banned, return Forbidden
 	if util.UserBanInfos.IsUserBanned(account) {

@@ -58,9 +58,6 @@ func checkSpeedRule(r *model.SpeedRule) error {
 	if r.Name == "" {
 		return ErrEmptyName
 	}
-	if r.Score < 0 {
-		return ErrorWrongScore
-	}
 	if r.Min <= 0 {
 		return ErrorWrongMin
 	}

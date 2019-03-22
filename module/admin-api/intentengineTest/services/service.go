@@ -300,8 +300,13 @@ func parseImportTestFile(appID string,
 	intentNameHeader := headerRow.Cells[0].String()
 	sentenceHeader := headerRow.Cells[1].String()
 
-	if intentNameHeader != localemsg.Get(locale, "IntentName") ||
-		sentenceHeader != localemsg.Get(locale, "TestSentence") {
+	if intentNameHeader != localemsg.Get(locale, "IntentName") &&
+		intentNameHeader != localemsg.Get("", "IntentName") {
+		return nil, data.ErrTestImportSheetNoHeader
+	}
+
+	if sentenceHeader != localemsg.Get(locale, "TestSentence") &&
+		sentenceHeader != localemsg.Get("", "TestSentence") {
 		return nil, data.ErrTestImportSheetNoHeader
 	}
 

@@ -21,6 +21,9 @@ const (
 	roleTable          = "roles"
 	rolePrivilegeTable = "privileges"
 	moduleTable        = "modules"
+	moduleGroup		   = "module_group"
+	productTabel		   = "product"
+
 )
 
 var (

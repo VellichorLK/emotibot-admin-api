@@ -131,7 +131,7 @@ var groupEnabled int8 = int8(1)
 var groupSpeed float64 = 300
 var groupDuration float64 = 0.33
 var groupDescription = "group_description"
-var groupRules []model.ConversationRule = []model.ConversationRule{
+var mockGroupRules []model.ConversationRule = []model.ConversationRule{
 	model.ConversationRule{
 		ID: 1,
 	},
@@ -152,7 +152,7 @@ var mockGroup = &model.GroupWCond{
 	SlienceDuration: &groupDuration,
 	Description:     &groupDescription,
 	Condition:       mockCondition,
-	Rules:           &groupRules,
+	Rules:           &mockGroupRules,
 	RuleCount:       3,
 }
 

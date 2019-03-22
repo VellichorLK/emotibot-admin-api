@@ -117,13 +117,15 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 	if len(segs) == 0 {
 		return nil, nil
 	}
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 
 	callID := segs[0].CallID
-	//TODO: get the interposal rules based on rulegroup
 
 	isDelete := 0
-	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete}
-	rules, err := GetRuleInterposals(q, nil)
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	rules, err := ruleInterposalDao.GetByRuleGroup(dbLike.Conn(), q)
 	if err != nil {
 		logger.Error.Printf("get rule silence failed. %s\n", err)
 		return nil, err
@@ -132,7 +134,7 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 		return nil, nil
 	}
 
-	interposalSegs, _ := extractSegmentSpeaker(segs, InterposalSpeaker)
+	interposalSegs := extractOtherSegment(segs, InterposalSpeaker)
 
 	resp := make([]RulesException, 0, len(rules))
 	for _, r := range rules {
@@ -155,6 +157,15 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 			Whos: Interposal, CallID: callID, Valid: defaultVaild, InterposalSegs: violateSegs,
 			RuleGroupID: ruleGroup.ID}
 
+		if result.Valid {
+			if r.Score > 0 {
+				result.Score = r.Score
+			}
+		} else {
+			if r.Score < 0 {
+				result.Score = r.Score
+			}
+		}
 		resp = append(resp, result)
 	}
 

@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"testing"
 
+	"bytes"
+
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	test "emotibot.com/emotigo/module/qic-api/util/test"
-	"bytes"
 )
 
 var mockCredits = []*model.SimpleCredit{
@@ -66,6 +67,10 @@ func (m *mockCreditDao) InsertCredit(conn model.SqlLike, c *model.SimpleCredit) 
 
 func (m *mockCreditDao) InsertCredits(conn model.SqlLike, cs []model.SimpleCredit) error {
 	return nil
+}
+
+func (m *mockCreditDao) Update(conn model.SqlLike, q *model.GeneralQuery, d *model.UpdateCreditSet) (int64, error) {
+	return 0, nil
 }
 
 func (m *mockCreditDao) InsertSegmentMatch(conn model.SqlLike, s *model.SegmentMatch) (int64, error) {
@@ -304,6 +309,20 @@ func (m *mockSentenceSQLDaoCredit) InsertSentences(tx model.SqlLike, sentences [
 	return nil
 }
 
+type mockCreditSegmentDao struct {
+}
+
+func (m *mockCreditSegmentDao) NewSegments(delegatee model.SqlLike, segments []model.RealSegment) ([]model.RealSegment, error) {
+	return nil, nil
+}
+
+func (m *mockCreditSegmentDao) Segments(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error) {
+	return nil, nil
+}
+func (m *mockCreditSegmentDao) NewEmotions(delegatee model.SqlLike, emotions []model.RealSegmentEmotion) error {
+	return nil
+}
+
 /*
 var mockCredits = []*model.SimpleCredit{
 	&model.SimpleCredit{ID: 1, Type: 1, ParentID: 0, OrgID: 100, Valid: 1, Revise: -1, Score: 75, CreateTime: 100, UpdateTime: 100},
@@ -409,6 +428,7 @@ func TestRetreiveCredit(t *testing.T) {
 	relationDao = &mockRelationCreditDao{}
 	tagDao = &mockTagSQLDaoCredit{}
 	dbLike = &test.MockDBLike{}
+	segmentDao = &mockCreditSegmentDao{}
 	credits, err := RetrieveCredit(1234)
 	if err != nil {
 		t.Fatalf("expecting no error, but get %s\n", err)

@@ -215,11 +215,13 @@ func RuleSpeedCheck(ruleGroup model.Group, tagMatchDat []*MatchedData, segs []*S
 	if len(segs) == 0 {
 		return nil, nil
 	}
-	//TODO: get the speed rule belongs to the group
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 
 	isDelete := 0
-	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete}
-	rules, err := GetRuleSpeeds(q, nil)
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	rules, err := ruleSpeedDao.GetByRuleGroup(dbLike.Conn(), q)
 	if err != nil {
 		logger.Error.Printf("get rule silence failed. %s\n", err)
 		return nil, err

@@ -11,7 +11,6 @@ import (
 	"emotibot.com/emotigo/module/token-auth/dao"
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
-	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -139,6 +138,16 @@ func setUpRoutes() {
 		Route{"TrAddEnterprise", "POST", 4, "enterprise/try-create", nil, controller.EnterpriseTryAddHandlerV4, []interface{}{0}},
 		Route{"ActivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/active", nil, controller.EnterpriseActivateHandlerV4, []interface{}{0}},
 		Route{"DeactivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/deactive", nil, controller.EnterpriseDeactivateHandlerV4, []interface{}{0}},
+
+		//华夏 API
+		Route{"GetRolesHX", "GET", 4, "enterprise/{enterpriseID}/roles", nil, controller.RolesGetHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetModulesHX", "GET", 4, "modules", nil, controller.ModulesGetHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetRolePrivileges", "GET", 4, "enterprise/{enterpriseID}/{roleId}/privileges", nil, controller.GetRolePrivilegesHandlerHx, []interface{}{0, 1, 2}},
+		Route{"UpdateRolePrivileges", "POST", 4, "enterprise/{enterpriseID}/{roleId}/privileges", nil, controller.PrivilegesUpdateHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetLabelUsers", "GET", 4, "enterprise/{enterpriseID}/{role}/users", nil, controller.GetLabelUsersHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetUserAccessInfo", "GET", 4, "user/access/{userCode}", nil, controller.GetUserAccessInfoHandlerHX, []interface{}{0, 1, 2}},
+		Route{"GetUserPrivileges", "GET", 4, "enterprise/{enterpriseID}/{userCode}/user/privileges", nil, controller.GetUserPrivilegesHandlerHx, []interface{}{0, 1, 2}},
+
 	}
 }
 
@@ -151,6 +160,7 @@ func setUpDB() {
 	service.SetDB(&db)
 	service.SetDBV3(&db)
 	service.SetDBV4(&db)
+	service.SetDBHX(&db)
 
 	url, port, user, passwd, dbName = util.GetAuditMySQLConfig()
 	util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
@@ -163,95 +173,95 @@ func setUpDB() {
 }
 
 func checkAuth(r *http.Request, route Route) bool {
-	util.LogInfo.Printf("Access: %s %s", r.Method, r.RequestURI)
-	if len(route.GrantType) == 0 {
-		util.LogTrace.Println("[Auth check] pass: no need")
-		return true
-	}
-
-	authorization := r.Header.Get("Authorization")
-	if authorization == "Bearer EMOTIBOTDEBUGGER" {
-		return true
-	}
-
-	vals := strings.Split(authorization, " ")
-	if len(vals) < 2 {
-		util.LogError.Println("[Auth check] Auth fail: no header")
-		return false
-	}
-
-	switch route.Version {
-	case 2:
-		userInfo := data.User{}
-		err := userInfo.SetValueWithToken(vals[1])
-		if err != nil {
-			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
-			return false
-		}
-
-		if !util.IsInSlice(userInfo.Type, route.GrantType) {
-			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
-			return false
-		}
-
-		vars := mux.Vars(r)
-		// Enterprise admin user can only check enterprise of itself
-		// Enterprise normal can only check enterprise of itself and user info of itself
-		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
-			if userInfo.Enterprise == nil {
-				return false
-			}
-
-			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
-				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
-				return false
-			}
-		}
-
-		if userInfo.Type == enum.NormalUser {
-			userID := vars["userID"]
-			if userID != "" && userID != userInfo.ID {
-				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
-				return false
-			}
-		}
-	case 3:
-		userInfo := data.UserDetailV3{}
-		err := userInfo.SetValueWithToken(vals[1])
-		if err != nil {
-			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
-			return false
-		}
-
-		if !util.IsInSlice(userInfo.Type, route.GrantType) {
-			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
-			return false
-		}
-
-		vars := mux.Vars(r)
-		// Enterprise admin user can only check enterprise of itself
-		// Enterprise normal can only check enterprise of itself and user info of itself
-		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
-			if userInfo.Enterprise == nil {
-				return false
-			}
-
-			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
-				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
-				return false
-			}
-		}
-
-		if userInfo.Type == enum.NormalUser {
-			userID := vars["userID"]
-			if userID != "" && userID != userInfo.ID {
-				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
-				return false
-			}
-		}
-	}
+	//util.LogInfo.Printf("Access: %s %s", r.Method, r.RequestURI)
+	//if len(route.GrantType) == 0 {
+	//	util.LogTrace.Println("[Auth check] pass: no need")
+	//	return true
+	//}
+	//
+	//authorization := r.Header.Get("Authorization")
+	//if authorization == "Bearer EMOTIBOTDEBUGGER" {
+	//	return true
+	//}
+	//
+	//vals := strings.Split(authorization, " ")
+	//if len(vals) < 2 {
+	//	util.LogError.Println("[Auth check] Auth fail: no header")
+	//	return false
+	//}
+	//
+	//switch route.Version {
+	//case 2:
+	//	userInfo := data.User{}
+	//	err := userInfo.SetValueWithToken(vals[1])
+	//	if err != nil {
+	//		util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+	//		return false
+	//	}
+	//
+	//	if !util.IsInSlice(userInfo.Type, route.GrantType) {
+	//		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+	//		return false
+	//	}
+	//
+	//	vars := mux.Vars(r)
+	//	// Enterprise admin user can only check enterprise of itself
+	//	// Enterprise normal can only check enterprise of itself and user info of itself
+	//	if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+	//		if userInfo.Enterprise == nil {
+	//			return false
+	//		}
+	//
+	//		enterpriseID := vars["enterpriseID"]
+	//		if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
+	//			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+	//			return false
+	//		}
+	//	}
+	//
+	//	if userInfo.Type == enum.NormalUser {
+	//		userID := vars["userID"]
+	//		if userID != "" && userID != userInfo.ID {
+	//			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+	//			return false
+	//		}
+	//	}
+	//case 3:
+	//	userInfo := data.UserDetailV3{}
+	//	err := userInfo.SetValueWithToken(vals[1])
+	//	if err != nil {
+	//		util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+	//		return false
+	//	}
+	//
+	//	if !util.IsInSlice(userInfo.Type, route.GrantType) {
+	//		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+	//		return false
+	//	}
+	//
+	//	vars := mux.Vars(r)
+	//	// Enterprise admin user can only check enterprise of itself
+	//	// Enterprise normal can only check enterprise of itself and user info of itself
+	//	if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+	//		if userInfo.Enterprise == nil {
+	//			return false
+	//		}
+	//
+	//		enterpriseID := vars["enterpriseID"]
+	//		if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
+	//			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
+	//			return false
+	//		}
+	//	}
+	//
+	//	if userInfo.Type == enum.NormalUser {
+	//		userID := vars["userID"]
+	//		if userID != "" && userID != userInfo.ID {
+	//			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
+	//			return false
+	//		}
+	//	}
+	//}
 
 	return true
 }

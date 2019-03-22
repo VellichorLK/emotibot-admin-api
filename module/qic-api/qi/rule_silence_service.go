@@ -244,11 +244,13 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 	if len(allSegs) == 0 {
 		return nil, nil
 	}
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
 
-	//TODO: fix it, get rules by rule group id and sets the rulegroup id to the attribute RuleGroup in RulesException
 	isDelete := 0
-	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete}
-	sRules, err := GetRuleSilences(q, nil)
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	sRules, err := ruleSilenceDao.GetByRuleGroup(dbLike.Conn(), q)
 	if err != nil {
 		logger.Error.Printf("get rule silence failed. %s\n", err)
 		return nil, err
@@ -257,13 +259,9 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		return nil, nil
 	}
 
-	silenceSegs, segs := extractSegmentSpeaker(allSegs, SilenceSpeaker)
-
-	silenceNum := len(silenceSegs)
-
-	totalSeg := len(allSegs)
-	matchedSeg := len(matched)
-	if (totalSeg - silenceNum) != matchedSeg {
+	silenceSegs := extractOtherSegment(allSegs, SilenceSpeaker)
+	pureWordSegs := extractPureWordsSegment(allSegs)
+	if len(pureWordSegs) != len(matched) {
 		return nil, errors.New("total seg without silence not equal to matched seg")
 	}
 
@@ -283,13 +281,35 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		rules = append(rules, exceptionRule)
 	}
 
-	credits, err := silenceRuleCheck(rules, matched, allSegs, segs, silenceSegs)
+	credits, err := silenceRuleCheck(rules, matched, allSegs, pureWordSegs, silenceSegs)
 	if err != nil {
 		logger.Error.Printf("silence rule check failed.%s\n", err)
 		return nil, err
 	}
 
 	return credits, nil
+}
+
+func extractPureWordsSegment(segments []*SegmentWithSpeaker) []*SegmentWithSpeaker {
+	segs := make([]*SegmentWithSpeaker, 0, len(segments))
+	for _, v := range segments {
+		if v.Speaker == int(model.CallChanStaff) || v.Speaker == int(model.CallChanCustomer) {
+			segs = append(segs, v)
+		}
+	}
+	return segs
+}
+
+func extractOtherSegment(segments []*SegmentWithSpeaker, speaker int) []segDuration {
+	segs := make([]segDuration, 0, len(segments))
+	for k, v := range segments {
+		if int(v.Channel) == speaker {
+			dur := v.EndTime - v.StartTime
+			s := segDuration{index: k, duration: dur}
+			segs = append(segs, s)
+		}
+	}
+	return segs
 }
 
 //extract the segment with given speaker and sorts it in descending order by segment's duration
@@ -390,7 +410,7 @@ func countNumOfOtherSegsBeforeIdx(idx int, allSegs []*SegmentWithSpeaker) int {
 		if k >= idx {
 			break
 		}
-		if v.Speaker == SilenceSpeaker {
+		if v.Speaker != int(model.CallChanStaff) && v.Speaker != int(model.CallChanCustomer) {
 			numOfOtherSegs++
 		}
 	}
@@ -586,4 +606,29 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 	}
 
 	return resp, nil
+}
+
+func injectSilenceInterposalSegs(segs []model.RealSegment) []model.RealSegment {
+	if len(segs) == 0 {
+		return nil
+	}
+
+	var segsWithSilence []model.RealSegment
+	segsWithSilence = append(segsWithSilence, segs[0])
+	durationStandard := float64(1) // 1 second
+	for idx, v := range segs[1:] {
+
+		diff := v.StartTime - segs[idx].EndTime
+		if diff >= durationStandard {
+			newSeg := model.RealSegment{Channel: SilenceSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: segs[idx].EndTime, EndTime: v.StartTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		} else if diff <= -durationStandard {
+			newSeg := model.RealSegment{Channel: InterposalSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: v.StartTime, EndTime: segs[idx].EndTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		}
+		segsWithSilence = append(segsWithSilence, v)
+	}
+	return segsWithSilence
 }
