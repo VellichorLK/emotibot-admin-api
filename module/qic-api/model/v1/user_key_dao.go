@@ -36,22 +36,30 @@ type UserKeySQLDao struct {
 
 // UserKeyQuery is the query for UserKey table
 // It exclude soft delete row by default
+// It has a special global UserKey
 type UserKeyQuery struct {
-	ID               []int64
-	FuzzyName        string // search with LIKE *name*
-	InputNames       []string
-	Enterprise       string
-	IgnoreSoftDelete bool
-	Paging           *Pagination
+	ID                  []int64
+	FuzzyName           string // search with LIKE *name*
+	InputNames          []string
+	Enterprise          string
+	IgnoreSoftDelete    bool
+	IgnoreGlobalUserKey bool
+	Paging              *Pagination
 }
 
 func (u *UserKeyQuery) whereSQL(alias string) (string, []interface{}) {
 	builder := NewWhereBuilder(andLogic, alias)
 	builder.In(fldUserKeyID, int64ToWildCard(u.ID...))
 	builder.In(fldUserKeyInputName, stringToWildCard(u.InputNames...))
+	var enterprises = make([]interface{}, 0, 2)
 	if u.Enterprise != "" {
-		builder.Eq(fldUserKeyEnterprise, u.Enterprise)
+		enterprises = append(enterprises, u.Enterprise)
 	}
+	if !u.IgnoreGlobalUserKey && len(enterprises) > 0 {
+		enterprises = append(enterprises, "global")
+	}
+	builder.In(fldUserKeyEnterprise, enterprises)
+
 	if !u.IgnoreSoftDelete {
 		builder.Eq(fldUserKeyIsDelete, u.IgnoreSoftDelete)
 	}

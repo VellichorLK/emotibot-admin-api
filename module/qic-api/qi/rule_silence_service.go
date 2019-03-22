@@ -589,3 +589,28 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 
 	return resp, nil
 }
+
+func injectSilenceInterposalSegs(segs []model.RealSegment) []model.RealSegment {
+	if len(segs) == 0 {
+		return nil
+	}
+
+	var segsWithSilence []model.RealSegment
+	segsWithSilence = append(segsWithSilence, segs[0])
+	durationStandard := float64(1) // 1 second
+	for idx, v := range segs[1:] {
+
+		diff := v.StartTime - segs[idx].EndTime
+		if diff >= durationStandard {
+			newSeg := model.RealSegment{Channel: SilenceSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: segs[idx].EndTime, EndTime: v.StartTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		} else if diff <= -durationStandard {
+			newSeg := model.RealSegment{Channel: InterposalSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: v.StartTime, EndTime: segs[idx].EndTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		}
+		segsWithSilence = append(segsWithSilence, v)
+	}
+	return segsWithSilence
+}

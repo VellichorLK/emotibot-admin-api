@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -245,7 +247,10 @@ func GetMapTableListV2(root *dictionary.WordBankClassV3) []string {
 }
 
 func parseWordBankClassV3Tree(root *dictionary.WordBankClassV3) (retMtMap map[string][]*dictionary.WordBankV3) {
-	teRoot := root.GetChildByName(util.Msg["TaskEngineWordbank"])
+	teRoot := root.GetChildByName(localemsg.Get(localemsg.ZhTw, "TaskEngineWordbank"))
+	if teRoot == nil {
+		teRoot = root.GetChildByName(localemsg.Get(localemsg.ZhCn, "TaskEngineWordbank"))
+	}
 	if teRoot == nil {
 		return
 	}

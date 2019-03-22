@@ -150,3 +150,125 @@ func TestMatchGroup(t *testing.T) {
 		})
 	}
 }
+
+func Test_matchDefaultConditions(t *testing.T) {
+	type args struct {
+		groups []model.Group
+		call   model.Call
+	}
+	tests := []struct {
+		name            string
+		args            args
+		filteredIndexes []int // must be descending order index
+	}{
+		{
+			name: "test type 1 group condition",
+			args: args{
+				groups: []model.Group{
+					{
+						ID: 1,
+						Condition: &model.Condition{
+							Type: 1,
+						},
+					},
+				},
+				call: model.Call{},
+			},
+			filteredIndexes: []int{},
+		},
+		{
+			name: "filter UploadTime range",
+			args: args{
+				groups: []model.Group{
+					{
+						ID: 1,
+						Condition: &model.Condition{
+							UploadTimeStart: 1553159400,
+						},
+					},
+					{
+						ID: 2,
+						Condition: &model.Condition{
+							UploadTimeEnd: 1553159600,
+						},
+					},
+					{
+						ID: 3,
+						Condition: &model.Condition{
+							UploadTimeStart: 1553159600,
+						},
+					},
+					{
+						ID: 4,
+						Condition: &model.Condition{
+							UploadTimeEnd: 1553159000,
+						},
+					},
+					{
+						ID: 5,
+						Condition: &model.Condition{
+							UploadTimeStart: 1553159300,
+							UploadTimeEnd:   1553159600,
+						},
+					},
+				},
+				call: model.Call{
+					UploadUnixTime: 1553159500,
+				},
+			},
+			filteredIndexes: []int{3, 2},
+		},
+		{
+			name: "filter call time range",
+			args: args{
+				groups: []model.Group{
+					{
+						ID: 1,
+						Condition: &model.Condition{
+							CallStart: 1553159400,
+						},
+					},
+					{
+						ID: 2,
+						Condition: &model.Condition{
+							CallEnd: 1553159600,
+						},
+					},
+					{
+						ID: 3,
+						Condition: &model.Condition{
+							CallStart: 1553159600,
+						},
+					},
+					{
+						ID: 4,
+						Condition: &model.Condition{
+							CallEnd: 1553159000,
+						},
+					},
+					{
+						ID: 5,
+						Condition: &model.Condition{
+							CallStart: 1553159300,
+							CallEnd:   1553159600,
+						},
+					},
+				},
+				call: model.Call{
+					CallUnixTime: 1553159500,
+				},
+			},
+			filteredIndexes: []int{3, 2},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			groups := tt.args.groups
+			got := matchDefaultConditions(tt.args.groups, tt.args.call)
+			for _, idx := range tt.filteredIndexes {
+				groups = append(groups[:idx], groups[idx+1:]...)
+			}
+			assert.Equal(t, groups, got)
+		})
+	}
+}

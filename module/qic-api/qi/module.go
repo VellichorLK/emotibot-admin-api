@@ -41,9 +41,12 @@ var (
 )
 
 var (
-	newCondition = condDao.NewCondition
-	newGroup     func(delegatee model.SqlLike, group model.Group) (model.Group, error)
-	setGroupRule func(delegatee model.SqlLike, groupID int64, rules []model.ConversationRule) ([]int64, error)
+	newCondition    = condDao.NewCondition
+	groups          func(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error)
+	newGroup        func(delegatee model.SqlLike, group model.Group) (model.Group, error)
+	setGroupRule    func(delegatee model.SqlLike, groups ...model.Group) error
+	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
+	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
 )
 
 func init() {
@@ -53,9 +56,9 @@ func init() {
 			util.NewEntryPoint("POST", "groups", []string{}, handleCreateGroup),
 			util.NewEntryPoint("GET", "groups", []string{}, handleGetGroups),
 			util.NewEntryPoint("GET", "groups/filters", []string{}, handleGetGroupsByFilter),
-			util.NewEntryPoint("GET", "groups/{group_id}", []string{}, groupRequest(handleGetGroup)),
+			util.NewEntryPoint("GET", "groups/{group_id}", []string{}, simpleGroupRequest(handleGetGroup)),
 			util.NewEntryPoint("PUT", "groups/{group_id}", []string{}, groupRequest(handleUpdateGroup)),
-			util.NewEntryPoint("DELETE", "groups/{group_id}", []string{}, handleDeleteGroup),
+			util.NewEntryPoint("DELETE", "groups/{group_id}", []string{}, groupRequest(handleDeleteGroup)),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
@@ -192,8 +195,11 @@ func init() {
 				// init group dao
 				groupSqlDao := model.NewGroupSQLDao(dbLike)
 				serviceDAO = groupSqlDao
+				groups = groupSqlDao.Group
 				newGroup = groupSqlDao.NewGroup
 				setGroupRule = groupSqlDao.SetGroupRules
+				groupRules = groupSqlDao.GroupRules
+				resetGroupRules = groupSqlDao.ResetGroupRules
 				// init tag dao
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {

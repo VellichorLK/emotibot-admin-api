@@ -24,7 +24,8 @@ func readMockConditions(t *testing.T) []Condition {
 	var conditions []Condition
 	for i := 1; i < len(records); i++ {
 		var cond Condition
-		rec := records[i]
+		//remove category
+		rec := append(records[i][:15], records[i][16:]...)
 		Binding(&cond, rec)
 		conditions = append(conditions, cond)
 	}

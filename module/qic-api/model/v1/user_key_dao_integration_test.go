@@ -5,6 +5,8 @@ import (
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func newUserKeys(t *testing.T) []UserKey {
@@ -78,7 +80,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 			arg: UserKeyQuery{
 				IgnoreSoftDelete: true,
 			},
-			expectOutput: []UserKey{exampleKeys[2], exampleKeys[0], exampleKeys[1]},
+			expectOutput: []UserKey{exampleKeys[3], exampleKeys[2], exampleKeys[0], exampleKeys[1]},
 			expectCount:  int64(len(exampleKeys)),
 		},
 		{
@@ -90,7 +92,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 					Page:  1,
 				},
 			},
-			expectOutput: exampleKeys[2:],
+			expectOutput: exampleKeys[len(exampleKeys)-1:],
 			expectCount:  int64(len(exampleKeys)),
 		},
 	}
@@ -103,10 +105,7 @@ func TestITUserKeySQLDaoUserKeys(t *testing.T) {
 			if err != nil && !tt.expectError {
 				t.Fatal("not expect error, but got error ", err)
 			}
-			if !reflect.DeepEqual(keys, tt.expectOutput) {
-				t.Logf("keys: %#v\nexpect:%#v\n", keys, tt.expectOutput)
-				t.Error("non-equal output for result")
-			}
+			assert.Equal(t, tt.expectOutput, keys, "non-equal output for result")
 			total, err := dao.CountUserKeys(nil, tt.arg)
 			if err != nil {
 				t.Fatal("expect count ok, but got ", err)
@@ -201,7 +200,7 @@ func TestITUserKeySqlDaoKeyValues(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "id = 1",
+			name: "query by id",
 			args: args{
 				userQuery: UserKeyQuery{
 					ID: []int64{1},
@@ -227,13 +226,11 @@ func TestITUserKeySqlDaoKeyValues(t *testing.T) {
 			if (err == nil) == tt.wantErr {
 				t.Fatalf("KeyValues error %v, wantErr = %v", err, tt.wantErr)
 			}
-			for i, w := range tt.want {
-				k := got[i]
-				if !reflect.DeepEqual(w, *k) {
-					t.Errorf("KeyValues %d return %v, want = %v", i, *k, w)
-				}
+			gv := make([]UserKey, 0, len(got))
+			for _, g := range got {
+				gv = append(gv, *g)
 			}
-
+			assert.Equal(t, tt.want, gv)
 		})
 	}
 }

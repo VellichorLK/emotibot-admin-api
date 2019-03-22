@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -125,9 +127,9 @@ func SaveNLUFileFromEntity(appid string, wordLines []string, synonyms []string) 
 	return
 }
 
-func GetWordbankTemplatePath() string {
-	mountPath := getGlobalEnv(mountDirPathKey)
-	return fmt.Sprintf("%s/%s", mountPath, wordbankTemplateFile)
+func GetWordbankTemplatePath(locale string) string {
+	templateDir := GetTemplateDir(locale)
+	return fmt.Sprintf("%s/%s", templateDir, wordbankTemplateFile)
 }
 
 func CompressFiles(filePaths []string, outFilePath string) error {
@@ -172,4 +174,13 @@ func CompressFiles(filePaths []string, outFilePath string) error {
 	}
 
 	return nil
+}
+
+func GetTemplateDir(locale string) string {
+	actualLocale := locale
+	if locale != localemsg.ZhCn && locale != localemsg.ZhTw {
+		actualLocale = localemsg.ZhCn
+	}
+	mountPath := getGlobalEnv(mountDirPathKey)
+	return fmt.Sprintf("%s/%s", mountPath, actualLocale)
 }

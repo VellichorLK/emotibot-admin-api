@@ -238,7 +238,7 @@ type NewCallReq struct {
 	FileName      string                 `json:"file_name"`
 	CallTime      int64                  `json:"call_time"`
 	Description   string                 `json:"description"`
-	Transaction   int64                  `json:"transaction"`
+	Transaction   int8                   `json:"transaction"`
 	Series        string                 `json:"series"`
 	HostID        string                 `json:"staff_id"`
 	HostName      string                 `json:"staff_name"`

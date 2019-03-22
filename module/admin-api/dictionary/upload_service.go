@@ -804,7 +804,7 @@ func GetWordDataFromWordbanksV3(root *WordBankClassV3, locale string) (error, []
 }
 
 func ExportWordbankV3(appid string, locale string) (*bytes.Buffer, error) {
-	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath())
+	xlsxFile, err := xlsx.OpenFile(util.GetWordbankTemplatePath(locale))
 	if err != nil {
 		return nil, err
 	}
@@ -917,7 +917,8 @@ func getSheetRowsInWordbankXLSX(xlsxFile *xlsx.File, locale string) (sheet *xlsx
 
 	// Check if sheet is correct and format is correct
 	switch {
-	case sheet.Name != localemsg.Get(locale, "DictionaryTemplateXLSXName"):
+	case sheet.Name != localemsg.Get(locale, "DictionaryTemplateXLSXName") &&
+		sheet.Name != localemsg.Get("", "DictionaryTemplateXLSXName"):
 		err = errors.New(localemsg.Get(locale, "DictionarySheetError"))
 		return
 	case rows == nil:
