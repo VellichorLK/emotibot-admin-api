@@ -89,6 +89,7 @@ func ASRWorkFlow(output []byte) error {
 	switch c.Type {
 	case model.CallTypeWholeFile:
 		logger.Trace.Println("Create segments returned from ASR.")
+		segments = injectSilenceInterposalSegs(segments)
 		segments, err = segmentDao.NewSegments(tx, segments)
 		if err != nil {
 			return fmt.Errorf("new segment failed, %v", err)
