@@ -38,13 +38,13 @@ func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface
 //CreditQuery is the condition used to query the CUPredictReuslt
 type CreditQuery struct {
 	Calls []uint64
-	Whos  int
+	//	Whos  int
 }
 
 func (c *CreditQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	flds := []string{
 		fldCallID,
-		fldWhos,
+		//	fldWhos,
 	}
 	return makeAndCondition(c, flds)
 }
