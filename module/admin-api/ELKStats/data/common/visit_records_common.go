@@ -35,6 +35,7 @@ const (
 	VisitRecordsMetricCustomFeedback  = "custom_feedback"
 	VisitRecordsMetricFeedbackTime    = "feedback_time"
 	VisitRecordsMetricThreshold       = "threshold"
+	VisitRecordsMetricTSpan           = "tspan"
 )
 
 type VisitRecordsExportResponse struct {

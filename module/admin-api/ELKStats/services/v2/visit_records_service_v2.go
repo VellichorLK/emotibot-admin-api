@@ -36,7 +36,9 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		"answer.value",
 		dataCommon.VisitRecordsMetricLogTime,
 		dataCommon.VisitRecordsMetricEmotion,
+		dataCommon.VisitRecordsMetricEmotionScore,
 		dataCommon.VisitRecordsMetricIntent,
+		dataCommon.VisitRecordsMetricIntentScore,
 		dataCommon.VisitRecordsMetricModule,
 		dataCommon.VisitRecordsMetricSource,
 		"unique_id",
@@ -48,6 +50,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
 		dataCommon.VisitRecordsMetricThreshold,
+		dataCommon.VisitRecordsMetricTSpan,
 	)
 
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
@@ -215,17 +218,19 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 
 	record := &dataV2.VisitRecordsCommon{
 		VisitRecordsDataBase: dataV2.VisitRecordsDataBase{
-			SessionID:   rawRecord.SessionID,
-			TESessionID: rawRecord.TESessionID,
-			UserID:      rawRecord.UserID,
-			UserQ:       rawRecord.UserQ,
-			Score:       rawRecord.Score,
-			StdQ:        rawRecord.StdQ,
-			LogTime:     logTime.Format(data.StandardTimeFormat),
-			Emotion:     rawRecord.Emotion,
-			Intent:      rawRecord.Intent,
-			Module:      rawRecord.Module,
-			Source:      rawRecord.Source,
+			SessionID:    rawRecord.SessionID,
+			TESessionID:  rawRecord.TESessionID,
+			UserID:       rawRecord.UserID,
+			UserQ:        rawRecord.UserQ,
+			Score:        rawRecord.Score,
+			StdQ:         rawRecord.StdQ,
+			LogTime:      logTime.Format(data.StandardTimeFormat),
+			Emotion:      rawRecord.Emotion,
+			EmotionScore: rawRecord.EmotionScore,
+			Intent:       rawRecord.Intent,
+			IntentScore:  rawRecord.IntentScore,
+			Module:       rawRecord.Module,
+			Source:       rawRecord.Source,
 		},
 		Answer:         strings.Join(answers, ", "),
 		FaqCategoryID:  rawRecord.FaqCategoryID,
@@ -234,6 +239,7 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 		CustomFeedback: rawRecord.CustomFeedback,
 		FeedbackTime:   feedbackTime,
 		Threshold:      rawRecord.Threshold,
+		TSpan:          rawRecord.TSpan,
 	}
 
 	return record, nil
@@ -309,8 +315,6 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 
 	recordPtr = &dataV2.VisitRecordsExportData{
 		VisitRecordsCommon: *recordCommon,
-		EmotionScore:       rawRecord.EmotionScore,
-		IntentScore:        rawRecord.IntentScore,
 		CustomInfo:         customInfo,
 	}
 
@@ -390,6 +394,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 			record.CustomFeedback,
 			record.FeedbackTime,
 			strconv.FormatInt(record.Threshold, 10),
+			strconv.FormatInt(record.TSpan, 10),
 		}
 
 		for _, d := range xlsxData {
@@ -430,6 +435,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
 		dataCommon.VisitRecordsMetricThreshold,
+		dataCommon.VisitRecordsMetricTSpan,
 	)
 
 	return &data.ExportTaskOption{

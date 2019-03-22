@@ -64,17 +64,19 @@ type VisitRecordsResponse struct {
 }
 
 type VisitRecordsDataBase struct {
-	SessionID   string  `json:"session_id"`
-	TESessionID string  `json:"taskengine_session_id"`
-	UserID      string  `json:"user_id"`
-	UserQ       string  `json:"user_q"`
-	Score       float64 `json:"score"`
-	StdQ        string  `json:"std_q"`
-	LogTime     string  `json:"log_time"`
-	Emotion     string  `json:"emotion"`
-	Intent      string  `json:"intent"`
-	Module      string  `json:"module"`
-	Source      string  `json:"source"`
+	SessionID    string  `json:"session_id"`
+	TESessionID  string  `json:"taskengine_session_id"`
+	UserID       string  `json:"user_id"`
+	UserQ        string  `json:"user_q"`
+	Score        float64 `json:"score"`
+	StdQ         string  `json:"std_q"`
+	LogTime      string  `json:"log_time"`
+	Emotion      string  `json:"emotion"`
+	EmotionScore float64 `json:"emotion_score"`
+	Intent       string  `json:"intent"`
+	IntentScore  float64 `json:"intent_score"`
+	Module       string  `json:"module"`
+	Source       string  `json:"source"`
 }
 
 type VisitRecordsRawData struct {
@@ -93,6 +95,7 @@ type VisitRecordsRawData struct {
 	CustomFeedback string                 `json:"custom_feedback"`
 	FeedbackTime   int64                  `json:"feedback_time"`
 	Threshold      int64                  `json:"threshold"`
+	TSpan          int64                  `json:"tspan"`
 }
 
 type VisitRecordsCommon struct {
@@ -106,6 +109,7 @@ type VisitRecordsCommon struct {
 	CustomFeedback   string  `json:"custom_feedback"`
 	FeedbackTime     string  `json:"feedback_time"`
 	Threshold        int64   `json:"threshold"`
+	TSpan            int64   `json:"tspan"`
 }
 type VisitRecordsData struct {
 	VisitRecordsCommon
@@ -123,9 +127,7 @@ type VisitRecordsQueryResult struct {
 
 type VisitRecordsExportData struct {
 	VisitRecordsCommon
-	EmotionScore float64 `json:"emotion_score"`
-	IntentScore  float64 `json:"intent_score"`
-	CustomInfo   string  `json:"custom_info"`
+	CustomInfo string `json:"custom_info"`
 }
 
 var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
@@ -167,8 +169,16 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 			ID:   common.VisitRecordsMetricEmotion,
 		},
 		data.TableHeaderItem{
+			Text: "情感分数",
+			ID:   common.VisitRecordsMetricEmotionScore,
+		},
+		data.TableHeaderItem{
 			Text: "意图",
 			ID:   common.VisitRecordsMetricIntent,
+		},
+		data.TableHeaderItem{
+			Text: "意图分数",
+			ID:   common.VisitRecordsMetricIntentScore,
 		},
 		data.TableHeaderItem{
 			Text: "出话模块",
@@ -201,6 +211,10 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: "出话阈值",
 			ID:   common.VisitRecordsMetricThreshold,
+		},
+		data.TableHeaderItem{
+			Text: "响应时间",
+			ID:   common.VisitRecordsMetricTSpan,
 		},
 	},
 	"zh-tw": []data.TableHeaderItem{
@@ -241,8 +255,16 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 			ID:   common.VisitRecordsMetricEmotion,
 		},
 		data.TableHeaderItem{
+			Text: "情感分數",
+			ID:   common.VisitRecordsMetricEmotionScore,
+		},
+		data.TableHeaderItem{
 			Text: "意圖",
 			ID:   common.VisitRecordsMetricIntent,
+		},
+		data.TableHeaderItem{
+			Text: "意圖分數",
+			ID:   common.VisitRecordsMetricIntentScore,
 		},
 		data.TableHeaderItem{
 			Text: "出話模組",
@@ -276,6 +298,10 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 			Text: "出話閾值",
 			ID:   common.VisitRecordsMetricThreshold,
 		},
+		data.TableHeaderItem{
+			Text: "響應時間",
+			ID:   common.VisitRecordsMetricTSpan,
+		},
 	},
 }
 
@@ -301,6 +327,7 @@ var VisitRecordsExportHeader = []string{
 	"反馈文字",
 	"反馈时间",
 	"出话阈值",
+	"响应时间",
 }
 
 type VisitRecordsExportResponse struct {
