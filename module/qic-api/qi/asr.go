@@ -116,14 +116,20 @@ func ASRWorkFlow(output []byte) error {
 		1: int(c.LeftChanRole),
 		2: int(c.RightChanRole),
 	}
-	segWithSp := make([]*SegmentWithSpeaker, 0, len(segments))
+
+	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
+	segWithSp := make([]*SegmentWithSpeaker, 0)              //segments only with speaker,staff and customer
 	for _, s := range segments {
 		ws := &SegmentWithSpeaker{
 			RealSegment: s,
 			Speaker:     channelRoles[s.Channel],
 		}
-		segWithSp = append(segWithSp, ws)
+		allSegs = append(allSegs, ws)
+		if ws.Channel > 0 {
+			segWithSp = append(segWithSp, ws)
+		}
 	}
+
 	//TODO: 計算靜音比例跟規則
 	isEnabled := true
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
@@ -134,18 +140,57 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	score := BaseScore
+	rootID, err := StoreRootCallCredit(uint64(c.ID))
+	if err != nil {
+		return fmt.Errorf("create root call %d credit failed, %s", rootID, err)
+	}
 	if len(groups) != 0 {
 		credits, err := RuleGroupCriteria(groups, segWithSp, time.Duration(30)*time.Minute)
 		if err != nil {
 			return fmt.Errorf("get rule group credit failed, %v", err)
 		}
-		for _, credit := range credits {
-			score += credit.Score
+		if len(credits) != len(groups) {
+			return fmt.Errorf("get credits %d not equal to groups %d", len(credits), len(groups))
 		}
+		machineCredits := make([]machineCredit, 0, len(groups))
 
-		err = StoreCredit(uint64(c.ID), credits)
+		for idx, grp := range groups {
+			var rulesWithException []RulesException
+			var combineCredit machineCredit
+			combineCredit.credit = credits[idx]
+
+			silenceCredit, err := RuleSilenceCheck(grp, allSegs, credits[0].Matched)
+			if err != nil {
+				return fmt.Errorf("get silence rule credit failed, %v", err)
+			}
+
+			var staffSpeed float64
+			if c.LeftChanRole == model.CallChanStaff {
+				staffSpeed = resp.LeftChannel.Speed
+			} else {
+				staffSpeed = resp.RightChannel.Speed
+			}
+
+			speedCredit, err := RuleSpeedCheck(grp, credits[0].Matched, segWithSp, staffSpeed)
+			if err != nil {
+				return fmt.Errorf("get speed rule credit failed, %v", err)
+			}
+			interposalCredit, err := RuleInterposalCheck(grp, allSegs)
+			if err != nil {
+				return fmt.Errorf("get speed rule credit failed, %v", err)
+			}
+			rulesWithException = append(rulesWithException, silenceCredit...)
+			rulesWithException = append(rulesWithException, speedCredit...)
+			rulesWithException = append(rulesWithException, interposalCredit...)
+			combineCredit.others = rulesWithException
+			machineCredits = append(machineCredits, combineCredit)
+			for _, r := range rulesWithException {
+				score += r.Score
+			}
+		}
+		err = StoreMachineCredit(uint64(c.ID), uint64(rootID), machineCredits)
 		if err != nil {
-			return fmt.Errorf("store credit failed, %v", err)
+			return fmt.Errorf("store machine credits failed. %s", err)
 		}
 	}
 
