@@ -134,7 +134,7 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 		return nil, nil
 	}
 
-	interposalSegs, _ := extractSegmentSpeaker(segs, InterposalSpeaker)
+	interposalSegs := extractOtherSegment(segs, InterposalSpeaker)
 
 	resp := make([]RulesException, 0, len(rules))
 	for _, r := range rules {

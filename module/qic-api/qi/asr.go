@@ -86,6 +86,10 @@ func ASRWorkFlow(output []byte) error {
 
 	segments := resp.Segments()
 
+	sort.SliceStable(segments, func(i, j int) bool {
+		return segments[i].StartTime < segments[j].StartTime
+	})
+
 	switch c.Type {
 	case model.CallTypeWholeFile:
 		logger.Trace.Println("Create segments returned from ASR.")
@@ -109,13 +113,11 @@ func ASRWorkFlow(output []byte) error {
 		}
 	}
 
-	sort.SliceStable(segments, func(i, j int) bool {
-		return segments[i].StartTime < segments[j].StartTime
-	})
-
 	var channelRoles = map[int8]int{
-		1: int(c.LeftChanRole),
-		2: int(c.RightChanRole),
+		SilenceSpeaker:    SilenceSpeaker,
+		InterposalSpeaker: InterposalSpeaker,
+		1:                 int(c.LeftChanRole),
+		2:                 int(c.RightChanRole),
 	}
 
 	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment

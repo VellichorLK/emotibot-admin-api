@@ -259,7 +259,7 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 		return nil, nil
 	}
 
-	silenceSegs, _ := extractSegmentSpeaker(allSegs, SilenceSpeaker)
+	silenceSegs := extractOtherSegment(allSegs, SilenceSpeaker)
 	pureWordSegs := extractPureWordsSegment(allSegs)
 	if len(pureWordSegs) != len(matched) {
 		return nil, errors.New("total seg without silence not equal to matched seg")
@@ -295,6 +295,18 @@ func extractPureWordsSegment(segments []*SegmentWithSpeaker) []*SegmentWithSpeak
 	for _, v := range segments {
 		if v.Speaker == int(model.CallChanStaff) || v.Speaker == int(model.CallChanCustomer) {
 			segs = append(segs, v)
+		}
+	}
+	return segs
+}
+
+func extractOtherSegment(segments []*SegmentWithSpeaker, speaker int) []segDuration {
+	segs := make([]segDuration, 0, len(segments))
+	for k, v := range segments {
+		if int(v.Channel) == speaker {
+			dur := v.EndTime - v.StartTime
+			s := segDuration{index: k, duration: dur}
+			segs = append(segs, s)
 		}
 	}
 	return segs
