@@ -100,6 +100,9 @@ type Group struct {
 	Typ              int8
 	UUID             string
 	Rules            []ConversationRule
+	SilenceRules     []SilenceRule
+	SpeedRules       []SpeedRule
+	InterposalRules  []InterposalRule
 	Condition        *Condition
 	CustomConditions []UserValue
 }
@@ -867,35 +870,191 @@ func (s *GroupSQLDao) NewGroup(delegatee SqlLike, group Group) (Group, error) {
 	return group, nil
 }
 
-// SetGroupRules set the group rule relation table with given groupID and rules.
-func (s *GroupSQLDao) SetGroupRules(delegatee SqlLike, groupID int64, rules []ConversationRule) ([]int64, error) {
+type GroupRuleType int8
 
+const (
+	GroupRuleTypeSilence GroupRuleType = iota
+	GroupRuleTypeSpeed
+	GroupRuleTypeInterposal
+)
+
+func (s *GroupSQLDao) GroupRules(delegatee SqlLike, group Group) (conversationRules []int64, OtherGroupRules map[GroupRuleType][]string, err error) {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	//TODO: Find a way to optimize it
+	rawsql := fmt.Sprintf(
+		"SELECT `%s` FROM `%s` WHERE `%s` = ? ORDER BY `%s` ASC",
+		RRRRuleID,
+		tblRelGrpRule,
+		RRRGroupID,
+		RRRRuleID,
+	)
+	rows, err := delegatee.Query(rawsql, group.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query conversation rules relation failed, %v", err)
+	}
+	defer rows.Close()
+	conversationRules = make([]int64, 0)
+	for rows.Next() {
+		var ruleID int64
+		rows.Scan(&ruleID)
+		conversationRules = append(conversationRules, ruleID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("scan row err: %v", err)
+	}
+	OtherGroupRules = make(map[GroupRuleType][]string, 3)
+	rawsql = fmt.Sprintf(
+		"SELECT `%s` FROM `%s` WHERE `%s` = ? ORDER BY `%s` ASC",
+		fldSilenceUUID,
+		tblRelRGSilence,
+		fldRGUUID,
+		fldSilenceUUID,
+	)
+	silenceRows, err := delegatee.Query(rawsql, group.UUID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query conversation rules relation failed, %v", err)
+	}
+	defer silenceRows.Close()
+	silence := make([]string, 0)
+	for silenceRows.Next() {
+		var silenceUUID string
+		silenceRows.Scan(&silenceUUID)
+		silence = append(silence, silenceUUID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("scan row err: %v", err)
+	}
+	OtherGroupRules[GroupRuleTypeSilence] = silence
+
+	rawsql = fmt.Sprintf(
+		"SELECT `%s` FROM `%s` WHERE `%s` = ? ORDER BY `%s` ASC",
+		fldSpeedUUID,
+		tblRelRGSpeed,
+		fldRGUUID,
+		fldSpeedUUID,
+	)
+	speedRows, err := delegatee.Query(rawsql, group.UUID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query conversation rules relation failed, %v", err)
+	}
+	defer speedRows.Close()
+	speed := make([]string, 0)
+	for speedRows.Next() {
+		var speedUUID string
+		speedRows.Scan(&speedUUID)
+		speed = append(speed, speedUUID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("scan row err: %v", err)
+	}
+	OtherGroupRules[GroupRuleTypeSpeed] = speed
+
+	rawsql = fmt.Sprintf(
+		"SELECT `%s` FROM `%s` WHERE `%s` = ? ORDER BY `%s` ASC",
+		fldInterposalUUID,
+		tblRelRGInterposal,
+		fldRGUUID,
+		fldInterposalUUID,
+	)
+	interRows, err := delegatee.Query(rawsql, group.UUID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("query conversation rules relation failed, %v", err)
+	}
+	defer interRows.Close()
+	interposals := make([]string, 0)
+	for interRows.Next() {
+		var interposalUUID string
+		interRows.Scan(&interposalUUID)
+		interposals = append(interposals, interposalUUID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("scan row err: %v", err)
+	}
+	OtherGroupRules[GroupRuleTypeInterposal] = interposals
+
+	return conversationRules, OtherGroupRules, nil
+}
+
+// SetGroupRules set the group rule relation table with given groupID and rules.
+func (s *GroupSQLDao) SetGroupRules(delegatee SqlLike, groups ...Group) error {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
 	rawsql := fmt.Sprintf(
 		"INSERT INTO `%s` (`%s`, `%s`) VALUES(?, ?)",
 		tblRelGrpRule,
 		RRRGroupID,
 		RRRRuleID,
 	)
-	stmt, err := delegatee.Prepare(rawsql)
+	ruleStmt, err := delegatee.Prepare(rawsql)
 	if err != nil {
-		return nil, fmt.Errorf("sql prepare failed, %v", err)
+		return fmt.Errorf("sql prepare failed, %v", err)
 	}
-	defer stmt.Close()
-	relationIDs := make([]int64, 0)
-	for _, r := range rules {
-		result, err := stmt.Exec(groupID, r.ID)
-		if err != nil {
-			return nil, fmt.Errorf("insert group %d with rule %d", groupID, r.ID)
-		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			return nil, ErrAutoIDDisabled
-		}
-		relationIDs = append(relationIDs, id)
+	defer ruleStmt.Close()
+	silenceStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"INSERT INTO `%s` (`%s`, `%s`) VALUES(?, ?)",
+		tblRelRGSilence,
+		fldRGUUID,
+		fldSilenceUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
 	}
-	return relationIDs, nil
+	defer silenceStmt.Close()
+	speedStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"INSERT INTO `%s` (`%s`, `%s`) VALUES(?, ?)",
+		tblRelRGSpeed,
+		fldRGUUID,
+		fldSpeedUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer speedStmt.Close()
+	interposalStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"INSERT INTO `%s` (`%s`, `%s`) VALUES(?, ?)",
+		tblRelRGInterposal,
+		fldRGUUID,
+		fldInterposalUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer interposalStmt.Close()
+
+	for _, g := range groups {
+		for _, r := range g.Rules {
+			_, err := ruleStmt.Exec(g.ID, r.ID)
+			if err != nil {
+				return fmt.Errorf("insert rule relation failed, %v", err)
+			}
+		}
+		for _, sr := range g.SilenceRules {
+			_, err := silenceStmt.Exec(g.UUID, sr.UUID)
+			if err != nil {
+				return fmt.Errorf("insert silence relation failed, %v", err)
+			}
+		}
+		for _, sr := range g.SpeedRules {
+			_, err := speedStmt.Exec(g.UUID, sr.UUID)
+			if err != nil {
+				return fmt.Errorf("insert speed relation failed, %v", err)
+			}
+		}
+		for _, ir := range g.InterposalRules {
+			_, err := interposalStmt.Exec(g.UUID, ir.UUID)
+			if err != nil {
+				return fmt.Errorf("insert interposal relation failed, %v", err)
+			}
+		}
+	}
+
+	return nil
 }
 
+// func (s *GroupSQLDao) Group
 // GroupsByCalls find the groups that asssociated with the call given by the query.
 // If success, a map of callID with slice of rule group is returned.
 func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error) {

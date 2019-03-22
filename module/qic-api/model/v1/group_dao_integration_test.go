@@ -218,3 +218,39 @@ func TestITGroupSQLDao_GroupsWithCondition(t *testing.T) {
 	}
 	checkDBStat(t)
 }
+
+func TestITGroupSQLDao_SetGroupRules(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := GroupSQLDao{conn: db}
+	type args struct {
+		groups []Group
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "normal",
+			args: args{
+				groups: []Group{
+					Group{
+						Rules:           []ConversationRule{{ID: 1}},
+						SilenceRules:    []SilenceRule{{UUID: "1"}},
+						SpeedRules:      []SpeedRule{{UUID: "1"}},
+						InterposalRules: []InterposalRule{{UUID: "1"}},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := dao.SetGroupRules(nil, tt.args.groups...)
+			assert.Equal(t, tt.wantErr, (err != nil))
+		})
+	}
+	checkDBStat(t)
+}
