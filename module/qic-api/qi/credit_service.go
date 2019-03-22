@@ -15,6 +15,7 @@ import (
 type levelType int
 
 var (
+	levCallType   levelType = 0
 	levRuleGrpTyp levelType = 1
 	levRuleTyp    levelType = 10
 	levCFTyp      levelType = 20
@@ -195,6 +196,18 @@ func StoreRootCallCredit(call uint64) (int64, error) {
 		return 0, err
 	}
 	return rootID, err
+}
+
+//UpdateCredit updates the credit information
+func UpdateCredit(id int64, d *model.UpdateCreditSet) (int64, error) {
+	if dbLike == nil {
+		return 0, ErrNilCon
+	}
+	if d == nil {
+		return 0, ErrNoArgument
+	}
+	return creditDao.Update(dbLike.Conn(), &model.GeneralQuery{ID: []int64{id}}, d)
+
 }
 
 //StoreMachineCredit stores the conversation/silence/speed/interposal 's credit
@@ -415,6 +428,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 
+	rootParentIDMap := make(map[uint64]*HistoryCredit)
+
 	rSetIDMap := make(map[uint64]*ConversationRuleInRes)
 	cfCreditsMap := make(map[uint64]*ConversationFlowCredit)
 	cfSetIDMap := make(map[uint64]*ConversationFlowInRes)
@@ -431,13 +446,31 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	for _, v := range credits {
 		//fmt.Printf("%d. id:%d org_id:%d parent_id:%d type:%d\n", k, v.ID, v.OrgID, v.ParentID, v.Type)
 		switch levelType(v.Type) {
-		case levRuleGrpTyp:
+		case levCallType:
 			var ok bool
 			var history *HistoryCredit
 			if history, ok = creditTimeMap[v.CreateTime]; !ok {
 				history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
 				creditTimeMap[v.CreateTime] = history
 				resp = append(resp, history)
+				rootParentIDMap[v.ID] = history
+			}
+
+		case levRuleGrpTyp:
+			var ok bool
+			var history *HistoryCredit
+
+			//for old compatible
+			if v.ParentID == 0 {
+				if history, ok = creditTimeMap[v.CreateTime]; !ok {
+					history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
+					creditTimeMap[v.CreateTime] = history
+					resp = append(resp, history)
+				}
+			} else {
+				if history, ok = rootParentIDMap[v.ParentID]; !ok {
+					continue
+				}
 			}
 			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score}
 			history.Credit = append(history.Credit, credit)

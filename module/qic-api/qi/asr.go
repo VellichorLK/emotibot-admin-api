@@ -152,6 +152,9 @@ func ASRWorkFlow(output []byte) error {
 		if len(credits) != len(groups) {
 			return fmt.Errorf("get credits %d not equal to groups %d", len(credits), len(groups))
 		}
+		for _, credit := range credits {
+			score += credit.Score
+		}
 		machineCredits := make([]machineCredit, 0, len(groups))
 
 		for idx, grp := range groups {
@@ -194,9 +197,15 @@ func ASRWorkFlow(output []byte) error {
 		}
 	}
 
+	//TODO: when sensitive finished,
+	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
+
 	swCredits, err := SensitiveWordsVerification(resp.CallID, segWithSp, c.EnterpriseID)
 	if err != nil {
 		return err
+	}
+	for _, sc := range swCredits {
+		score += sc.Score
 	}
 	err = creditDao.InsertCredits(tx, swCredits)
 
@@ -204,6 +213,12 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
+	//TODO: check wehter sensitive score is right
+	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
+	if err != nil {
+		return fmt.Errorf("update the credit failed. %s", err)
+	}
+
 	isDone = true
 	c.Status = model.CallStatusDone
 	c.LeftSpeed = &resp.LeftChannel.Speed
