@@ -83,6 +83,10 @@ var newGroupWithAllConditions = func(group model.Group, condition model.Conditio
 	if err != nil {
 		return model.Group{}, fmt.Errorf("new group failed, %v", err)
 	}
+	err = setGroupRule(tx, group)
+	if err != nil {
+		return model.Group{}, fmt.Errorf("set rule relation failed, %v", err)
+	}
 
 	condition.GroupID = group.ID
 	_, err = newCondition(tx, condition)
@@ -322,48 +326,65 @@ func GetGroupsByFilter(filter *model.GroupFilter) (total int64, groups []model.G
 }
 
 func GetGroupRules(group model.Group) (*model.Group, error) {
+	var isDeleted = 0
 	rules, otherRules, err := groupRules(nil, group)
 	if err != nil {
 		return nil, fmt.Errorf("query group rules failed, %v", err)
 	}
-	filter := &model.ConversationRuleFilter{}
+	filter := &model.ConversationRuleFilter{
+		IsDeleted: 0,
+	}
 	for _, rule := range rules {
 		filter.ID = append(filter.ID, uint64(rule))
 	}
-	_, group.Rules, err = GetConversationRulesBy(filter)
-	if err != nil {
-		return nil, fmt.Errorf("get rule failed, %v", err)
+	group.Rules = make([]model.ConversationRule, 0)
+	if len(filter.ID) > 0 {
+		_, group.Rules, err = GetConversationRulesBy(filter)
+		if err != nil {
+			return nil, fmt.Errorf("get rule failed, %v", err)
+		}
 	}
 
-	rs, err := GetRuleSilences(&model.GeneralQuery{
-		UUID: otherRules[model.GroupRuleTypeSilence],
-	}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("get silence rules failed, %v", err)
+	group.SilenceRules = make([]model.SilenceRule, 0)
+	if len(otherRules[model.GroupRuleTypeSilence]) > 0 {
+		rs, err := GetRuleSilences(&model.GeneralQuery{
+			UUID:     otherRules[model.GroupRuleTypeSilence],
+			IsDelete: &isDeleted,
+		}, nil)
+		if err != nil {
+			return nil, fmt.Errorf("get silence rules failed, %v", err)
+		}
+		for _, r := range rs {
+			group.SilenceRules = append(group.SilenceRules, *r)
+		}
 	}
-	for _, r := range rs {
-		group.SilenceRules = append(group.SilenceRules, *r)
+	group.SpeedRules = make([]model.SpeedRule, 0)
+	if len(otherRules[model.GroupRuleTypeSpeed]) > 0 {
+		ruleSpeeds, err := GetRuleSpeeds(&model.GeneralQuery{
+			UUID:     otherRules[model.GroupRuleTypeSpeed],
+			IsDelete: &isDeleted,
+		}, nil)
+		if err != nil {
+			return nil, fmt.Errorf("get speed rules failed, %v", err)
+		}
+		for _, r := range ruleSpeeds {
+			group.SpeedRules = append(group.SpeedRules, *r)
+		}
+	}
+	group.InterposalRules = make([]model.InterposalRule, 0)
+	if len(otherRules[model.GroupRuleTypeInterposal]) > 0 {
+		ruleInterposal, err := GetRuleInterposals(&model.GeneralQuery{
+			UUID:     otherRules[model.GroupRuleTypeInterposal],
+			IsDelete: &isDeleted,
+		}, nil)
+		if err != nil {
+			return nil, fmt.Errorf("get interposal failed, %v", err)
+		}
+		for _, r := range ruleInterposal {
+			group.InterposalRules = append(group.InterposalRules, *r)
+		}
 	}
 
-	ruleSpeeds, err := GetRuleSpeeds(&model.GeneralQuery{
-		UUID: otherRules[model.GroupRuleTypeSpeed],
-	}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("get speed rules failed, %v", err)
-	}
-	for _, r := range ruleSpeeds {
-		group.SpeedRules = append(group.SpeedRules, *r)
-	}
-
-	ruleInterposal, err := GetRuleInterposals(&model.GeneralQuery{
-		UUID: otherRules[model.GroupRuleTypeInterposal],
-	}, nil)
-	if err != nil {
-		return nil, fmt.Errorf("get interposal failed, %v", err)
-	}
-	for _, r := range ruleInterposal {
-		group.InterposalRules = append(group.InterposalRules, *r)
-	}
 	return &group, nil
 }
 
@@ -391,7 +412,10 @@ func UpdateGroup(group model.Group, customcols map[string][]interface{}) (err er
 	if err != nil {
 		return
 	}
-
+	err = resetGroupRules(tx, group)
+	if err != nil {
+		return fmt.Errorf("reset group rule failed, %v", err)
+	}
 	err = setGroupRule(tx, group)
 	if err != nil {
 		return fmt.Errorf("update group rule failed, %v", err)

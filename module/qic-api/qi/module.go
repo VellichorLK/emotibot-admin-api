@@ -41,11 +41,12 @@ var (
 )
 
 var (
-	newCondition = condDao.NewCondition
-	groups       func(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error)
-	newGroup     func(delegatee model.SqlLike, group model.Group) (model.Group, error)
-	setGroupRule func(delegatee model.SqlLike, groups ...model.Group) error
-	groupRules   func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
+	newCondition    = condDao.NewCondition
+	groups          func(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error)
+	newGroup        func(delegatee model.SqlLike, group model.Group) (model.Group, error)
+	setGroupRule    func(delegatee model.SqlLike, groups ...model.Group) error
+	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
+	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
 )
 
 func init() {
@@ -198,6 +199,7 @@ func init() {
 				newGroup = groupSqlDao.NewGroup
 				setGroupRule = groupSqlDao.SetGroupRules
 				groupRules = groupSqlDao.GroupRules
+				resetGroupRules = groupSqlDao.ResetGroupRules
 				// init tag dao
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {

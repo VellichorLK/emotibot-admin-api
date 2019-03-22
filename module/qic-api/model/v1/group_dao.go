@@ -977,6 +977,56 @@ func (s *GroupSQLDao) GroupRules(delegatee SqlLike, group Group) (conversationRu
 	return conversationRules, OtherGroupRules, nil
 }
 
+func (s *GroupSQLDao) ResetGroupRules(delegatee SqlLike, groups ...Group) error {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	silenceStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"DELETE FROM `%s` WHERE `%s` = ?",
+		tblRelRGSilence,
+		fldRGUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer silenceStmt.Close()
+	speedStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"DELETE FROM `%s` WHERE `%s` = ?",
+		tblRelRGSpeed,
+		fldRGUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer speedStmt.Close()
+	interposalStmt, err := delegatee.Prepare(fmt.Sprintf(
+		"DELETE FROM `%s` WHERE `%s` = ?",
+		tblRelRGInterposal,
+		fldRGUUID,
+	))
+	if err != nil {
+		return fmt.Errorf("sql prepare failed, %v", err)
+	}
+	defer interposalStmt.Close()
+
+	for _, g := range groups {
+		_, err := silenceStmt.Exec(g.UUID)
+		if err != nil {
+			return fmt.Errorf("delete silence relation failed, %v", err)
+		}
+		_, err = speedStmt.Exec(g.UUID)
+		if err != nil {
+			return fmt.Errorf("delete speed relation failed, %v", err)
+		}
+		_, err = interposalStmt.Exec(g.UUID)
+		if err != nil {
+			return fmt.Errorf("delete interposal relation failed, %v", err)
+		}
+	}
+
+	return nil
+}
+
 // SetGroupRules set the group rule relation table with given groupID and rules.
 func (s *GroupSQLDao) SetGroupRules(delegatee SqlLike, groups ...Group) error {
 	if delegatee == nil {

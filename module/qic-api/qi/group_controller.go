@@ -36,10 +36,14 @@ type NewGroupReq struct {
 //Group transfer NewGroupReq as a model.Group struct, any virtual fields(etc: Other, Rules...) should be handled by the caller.
 func (n *NewGroupReq) Group() model.Group {
 	return model.Group{
-		UUID:        n.GroupID,
-		Name:        n.GroupName,
-		Description: n.Description,
-		IsEnable:    n.IsEnable != 0,
+		UUID:            n.GroupID,
+		Name:            n.GroupName,
+		Description:     n.Description,
+		IsEnable:        n.IsEnable != 0,
+		Rules:           make([]model.ConversationRule, 0),
+		SilenceRules:    make([]model.SilenceRule, 0),
+		SpeedRules:      make([]model.SpeedRule, 0),
+		InterposalRules: make([]model.InterposalRule, 0),
 	}
 }
 
@@ -244,6 +248,15 @@ func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if len(reqBody.SilenceRules) > 0 {
+
+	}
+	if len(reqBody.SpeedRules) > 0 {
+
+	}
+	if len(reqBody.InterposalRules) > 0 {
+
+	}
 
 	condition := reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
@@ -339,7 +352,10 @@ func handleGetGroup(w http.ResponseWriter, r *http.Request, group *model.Group) 
 			Description: group.Description,
 			RuleCount:   ruleCount,
 		},
-		Rules: make([]RuleResp, 0, ruleCount),
+		Rules:        make([]RuleResp, 0, ruleCount),
+		SilenceRules: make([]GeneralRuleResp, 0),
+		SpeedRules:   make([]GeneralRuleResp, 0),
+		Interposal:   make([]GeneralRuleResp, 0),
 	}
 	if group.IsEnable {
 		resp.IsEnable = 1
@@ -393,6 +409,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 	newGroup.UUID = group.UUID
 	newGroup.Condition = reqBody.Other.ToCondition()
 	customConditions := reqBody.Other.CustomColumns
+	notDeleted := 0
 	if len(reqBody.Rules) > 0 {
 		var (
 			total int64
@@ -403,6 +420,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 			Enterprise: group.Enterprise,
 			Severity:   -1,
 			UUID:       reqBody.Rules,
+			IsDeleted:  0,
 		})
 		if err != nil {
 			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get rules failed, %v", err))
@@ -436,6 +454,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 		rules, err := GetRuleSilences(&model.GeneralQuery{
 			UUID:       reqBody.SilenceRules,
 			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
 		}, nil)
 		if err != nil {
 			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get silence rules failed, %v", err))
@@ -453,6 +472,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 		rules, err := GetRuleSpeeds(&model.GeneralQuery{
 			UUID:       reqBody.SpeedRules,
 			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
 		}, nil)
 		if err != nil {
 			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get speed rules failed, %v", err))
@@ -470,6 +490,7 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 		rules, err := GetRuleInterposals(&model.GeneralQuery{
 			UUID:       reqBody.InterposalRules,
 			Enterprise: &newGroup.EnterpriseID,
+			IsDelete:   &notDeleted,
 		}, nil)
 		if err != nil {
 			util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get interposal rules failed, %v", err))
