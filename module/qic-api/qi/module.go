@@ -120,6 +120,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPatch, "call-in/{id}", []string{}, callRequest(handleFlowUpdate)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
 

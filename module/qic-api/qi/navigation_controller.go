@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -466,6 +468,20 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) {
+	req, err := extractNewCallReq(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
+		return
+	}
+
+	err = updateFlowQI(req, call)
+	if err != nil {
+		logger.Error.Printf("Update qi flow failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	}
 }
 
 //the speaker in wording in navigation flow only
