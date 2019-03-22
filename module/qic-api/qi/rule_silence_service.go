@@ -293,7 +293,17 @@ func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matc
 func extractPureWordsSegment(segments []*SegmentWithSpeaker) []*SegmentWithSpeaker {
 	segs := make([]*SegmentWithSpeaker, 0, len(segments))
 	for _, v := range segments {
-		if v.Speaker == int(model.CallChanStaff) || v.Speaker == int(model.CallChanCustomer) {
+		if v.Channel > 0 {
+			segs = append(segs, v)
+		}
+	}
+	return segs
+}
+
+func extractOtherSegment(segments []*SegmentWithSpeaker, speaker int) []*SegmentWithSpeaker {
+	segs := make([]*SegmentWithSpeaker, 0, len(segments))
+	for _, v := range segments {
+		if int(v.Channel) == speaker {
 			segs = append(segs, v)
 		}
 	}
