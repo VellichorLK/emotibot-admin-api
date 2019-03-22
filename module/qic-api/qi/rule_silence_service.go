@@ -398,7 +398,7 @@ func countNumOfOtherSegsBeforeIdx(idx int, allSegs []*SegmentWithSpeaker) int {
 		if k >= idx {
 			break
 		}
-		if v.Speaker == SilenceSpeaker {
+		if v.Speaker != int(model.CallChanStaff) && v.Speaker != int(model.CallChanCustomer) {
 			numOfOtherSegs++
 		}
 	}
