@@ -15,6 +15,7 @@ import (
 type levelType int
 
 var (
+	levCallType   levelType = 0
 	levRuleGrpTyp levelType = 1
 	levRuleTyp    levelType = 10
 	levCFTyp      levelType = 20
@@ -177,6 +178,177 @@ func StoreCredit(call uint64, credits []*RuleGrpCredit) error {
 	return tx.Commit()
 }
 
+type machineCredit struct {
+	credit *RuleGrpCredit
+	others []RulesException
+}
+
+//StoreRootCallCredit creates the credit the a call
+func StoreRootCallCredit(call uint64) (int64, error) {
+	if dbLike == nil {
+		return 0, ErrNilCon
+	}
+	now := time.Now().Unix()
+	s := &model.SimpleCredit{CallID: call, CreateTime: now, UpdateTime: now}
+	rootID, err := creditDao.InsertCredit(dbLike.Conn(), s)
+	if err != nil {
+		logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
+		return 0, err
+	}
+	return rootID, err
+}
+
+//UpdateCredit updates the credit information
+func UpdateCredit(id int64, d *model.UpdateCreditSet) (int64, error) {
+	if dbLike == nil {
+		return 0, ErrNilCon
+	}
+	if d == nil {
+		return 0, ErrNoArgument
+	}
+	return creditDao.Update(dbLike.Conn(), &model.GeneralQuery{ID: []int64{id}}, d)
+
+}
+
+//StoreMachineCredit stores the conversation/silence/speed/interposal 's credit
+func StoreMachineCredit(call uint64, rootID uint64, combinations []machineCredit) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		logger.Error.Printf("get transaction failed. %s\n", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	now := time.Now().Unix()
+
+	for _, combination := range combinations {
+		credit := combination.credit
+		if credit == nil {
+			return nil
+		}
+		parentID := uint64(rootID)
+
+		s := &model.SimpleCredit{}
+
+		s.CreateTime = now
+		s.CallID = call
+		s.OrgID = credit.ID
+		s.ParentID = parentID
+		s.Score = credit.Score
+		s.Type = int(levRuleGrpTyp)
+		s.Valid = unactivate
+		s.Revise = unactivate
+
+		//insert the rule group record
+		lastID, err := creditDao.InsertCredit(tx, s)
+		if err != nil {
+			logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
+			return err
+		}
+		parentID = uint64(lastID)
+
+		//stores the interposal/speed/silence credits
+		err = storeRulesException(tx, combination.others, parentID)
+
+		if err != nil {
+			logger.Error.Printf("store the rule exceptions failed. %s\n", err)
+			return err
+		}
+
+		for _, rule := range credit.Rules {
+
+			s = &model.SimpleCredit{CallID: call, Type: int(levRuleTyp), ParentID: parentID,
+				OrgID: rule.ID, Score: rule.Score, CreateTime: now, Revise: unactivate}
+			if rule.Valid {
+				s.Valid = matched
+			}
+
+			parentRule, err := creditDao.InsertCredit(tx, s)
+			if err != nil {
+				logger.Error.Printf("insert rule credit %+v failed. %s\n", s, err)
+				return err
+			}
+
+			for _, cf := range rule.CFs {
+
+				s = &model.SimpleCredit{CallID: call, Type: int(levCFTyp), ParentID: uint64(parentRule),
+					OrgID: cf.ID, Score: 0, CreateTime: now, Revise: unactivate}
+				if cf.Valid {
+					s.Valid = matched
+				}
+
+				parentCF, err := creditDao.InsertCredit(tx, s)
+				if err != nil {
+					logger.Error.Printf("insert conversation flow credit %+v failed. %s\n", s, err)
+					return err
+				}
+
+				for _, senGrp := range cf.SentenceGrps {
+
+					s = &model.SimpleCredit{CallID: call, Type: int(levSenGrpTyp), ParentID: uint64(parentCF),
+						OrgID: senGrp.ID, Score: 0, CreateTime: now, Revise: unactivate}
+					if senGrp.Valid {
+						s.Valid = matched
+					}
+
+					parentSenGrp, err := creditDao.InsertCredit(tx, s)
+					if err != nil {
+						logger.Error.Printf("insert sentence group credit %+v failed. %s\n", s, err)
+						return err
+					}
+
+					for _, sen := range senGrp.Sentences {
+
+						s = &model.SimpleCredit{CallID: call, Type: int(levSenTyp), ParentID: uint64(parentSenGrp),
+							OrgID: sen.ID, Score: 0, CreateTime: now, Revise: unactivate}
+						if sen.Valid {
+							s.Valid = matched
+						}
+
+						parentSen, err := creditDao.InsertCredit(tx, s)
+						if err != nil {
+							logger.Error.Printf("insert sentence credit %+v failed. %s\n", s, err)
+							return err
+						}
+						duplicateSegIDMap := make(map[uint64]bool)
+
+						for _, tag := range sen.Tags {
+							s := &model.SegmentMatch{SegID: uint64(tag.SegmentID), TagID: tag.ID, Score: tag.Score,
+								Match: tag.Match, MatchedText: tag.MatchTxt, CreateTime: now}
+							_, err = creditDao.InsertSegmentMatch(tx, s)
+							if err != nil {
+								logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+								return err
+							}
+							duplicateSegIDMap[uint64(tag.SegmentID)] = true
+						}
+
+						if sen.Valid {
+							for segID := range duplicateSegIDMap {
+								s := &model.SimpleCredit{CallID: call, Type: int(levSegTyp), ParentID: uint64(parentSen),
+									OrgID: segID, Score: 0, CreateTime: now, Revise: unactivate, Valid: matched}
+
+								_, err = creditDao.InsertCredit(tx, s)
+								if err != nil {
+									logger.Error.Printf("insert matched tag segment  %+v failed. %s\n", s, err)
+									return err
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	return tx.Commit()
+}
+
 func errCannotFindParent(id, parent uint64) error {
 	_, _, line, _ := runtime.Caller(1)
 	msg := fmt.Sprintf("Line[%d] .Cannot find %d's parent %d credit\n", line, id, parent)
@@ -256,6 +428,8 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
 
+	rootParentIDMap := make(map[uint64]*HistoryCredit)
+
 	rSetIDMap := make(map[uint64]*ConversationRuleInRes)
 	cfCreditsMap := make(map[uint64]*ConversationFlowCredit)
 	cfSetIDMap := make(map[uint64]*ConversationFlowInRes)
@@ -272,13 +446,31 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 	for _, v := range credits {
 		//fmt.Printf("%d. id:%d org_id:%d parent_id:%d type:%d\n", k, v.ID, v.OrgID, v.ParentID, v.Type)
 		switch levelType(v.Type) {
-		case levRuleGrpTyp:
+		case levCallType:
 			var ok bool
 			var history *HistoryCredit
 			if history, ok = creditTimeMap[v.CreateTime]; !ok {
 				history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
 				creditTimeMap[v.CreateTime] = history
 				resp = append(resp, history)
+				rootParentIDMap[v.ID] = history
+			}
+
+		case levRuleGrpTyp:
+			var ok bool
+			var history *HistoryCredit
+
+			//for old compatible
+			if v.ParentID == 0 {
+				if history, ok = creditTimeMap[v.CreateTime]; !ok {
+					history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
+					creditTimeMap[v.CreateTime] = history
+					resp = append(resp, history)
+				}
+			} else {
+				if history, ok = rootParentIDMap[v.ParentID]; !ok {
+					continue
+				}
 			}
 			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score}
 			history.Credit = append(history.Credit, credit)
@@ -725,22 +917,15 @@ type RulesException struct {
 }
 
 //StoreRulesException stores the rule exception
-func StoreRulesException(credits []RulesException) error {
+func storeRulesException(tx model.SqlLike, credits []RulesException, parentID uint64) error {
 	if len(credits) == 0 {
 		return ErrNoArgument
 	}
-	if dbLike == nil {
-		return ErrNilCon
-	}
-	tx, err := dbLike.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+
 	now := time.Now().Unix()
 
 	for _, r := range credits {
-		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(r.RuleGroupID),
+		s := &model.SimpleCredit{CallID: uint64(r.CallID), Type: int(r.Typ), ParentID: uint64(parentID),
 			OrgID: uint64(r.RuleID), Score: r.Score, CreateTime: now, Revise: unactivate, Whos: int(r.Whos)}
 		if r.Valid {
 			s.Valid = matched
@@ -812,6 +997,5 @@ func StoreRulesException(credits []RulesException) error {
 		}
 
 	}
-
-	return tx.Commit()
+	return nil
 }
