@@ -254,10 +254,10 @@ func StoreMachineCredit(call uint64, rootID uint64, combinations []machineCredit
 		//stores the interposal/speed/silence credits
 		if len(combination.others) != 0 {
 			err = storeRulesException(tx, combination.others, parentID)
-		}
-		if err != nil {
-			logger.Error.Printf("store the rule exceptions failed. %s\n", err)
-			return err
+			if err != nil {
+				logger.Error.Printf("store the rule exceptions failed. %s\n", err)
+				return err
+			}
 		}
 
 		for _, rule := range credit.Rules {
