@@ -10,27 +10,38 @@ var violatedPattern = "segment"
 
 var okSegment SegmentWithSpeaker = SegmentWithSpeaker{
 	RealSegment: model.RealSegment{
+		ID:   605,
 		Text: "ok",
 	},
-	Speaker: int(model.CallChanCustomer),
+	Speaker: int(model.CallChanStaff),
 }
 var violatedSegment SegmentWithSpeaker = SegmentWithSpeaker{
 	RealSegment: model.RealSegment{
-		Text: "violated" + violatedPattern,
+		ID:   603,
+		Text: "violated",
+	},
+	Speaker: int(model.CallChanStaff),
+}
+var cvSegment = SegmentWithSpeaker{
+	RealSegment: model.RealSegment{
+		ID:   604,
+		Text: violatedPattern,
 	},
 	Speaker: int(model.CallChanStaff),
 }
 var staffExceptionSegment SegmentWithSpeaker = SegmentWithSpeaker{
 	RealSegment: model.RealSegment{
+		ID:   601,
 		Text: "staff" + violatedPattern,
 	},
 	Speaker: int(model.CallChanStaff),
 }
 var CustomerExceptionSegment SegmentWithSpeaker = SegmentWithSpeaker{
 	RealSegment: model.RealSegment{
-		Text: "customer" + violatedPattern,
+		ID:   602,
+		Text: "customer",
 	},
-	Speaker: int(model.CallChanCustomer),
+	Speaker: int(model.CallChanStaff),
 }
 
 type mockSWVerificationDao struct {
@@ -75,13 +86,55 @@ func (dao *mockSWVerificationDao) Names(model.SqlLike, bool) ([]string, error) {
 	return []string{}, nil
 }
 
+func (dao *mockSWVerificationDao) GetSentences(tx model.SqlLike, q *model.SentenceQuery) ([]*model.Sentence, error) {
+	return []*model.Sentence{
+		&model.Sentence{
+			ID: 1,
+			TagIDs: []uint64{
+				501,
+				502,
+			},
+		},
+		&model.Sentence{
+			ID: 2,
+			TagIDs: []uint64{
+				503,
+				504,
+			},
+		},
+	}, nil
+}
+func (dao *mockSWVerificationDao) InsertSentence(tx model.SqlLike, s *model.Sentence) (int64, error) {
+	return 1, nil
+}
+func (dao *mockSWVerificationDao) SoftDeleteSentence(tx model.SqlLike, q *model.SentenceQuery) (int64, error) {
+	return 1, nil
+}
+func (dao *mockSWVerificationDao) CountSentences(tx model.SqlLike, q *model.SentenceQuery) (uint64, error) {
+	return 1, nil
+}
+
+func (dao *mockSWVerificationDao) InsertSenTagRelation(tx model.SqlLike, s *model.Sentence) error {
+	return nil
+}
+func (dao *mockSWVerificationDao) GetRelSentenceIDByTagIDs(tx model.SqlLike, tagIDs []uint64) (map[uint64][]uint64, error) {
+	return map[uint64][]uint64{}, nil
+}
+
+func (dao *mockSWVerificationDao) MoveCategories(x model.SqlLike, q *model.SentenceQuery, category uint64) (int64, error) {
+	return 1, nil
+}
+func (dao *mockSWVerificationDao) InsertSentences(x model.SqlLike, ss []model.Sentence) error {
+	return nil
+}
+
 func mockSentenceMatch(segs []string, ids []uint64, enterprise string) (map[uint64][]int, error) {
 	return map[uint64][]int{
 		1: []int{
-			0,
+			1,
 		},
 		2: []int{
-			1,
+			0,
 		},
 	}, nil
 }
@@ -114,10 +167,10 @@ func mockUserValues(delegatee model.SqlLike, query model.UserValueQuery) ([]mode
 	} else if query.Type[0] == model.UserValueTypSensitiveWord {
 		return []model.UserValue{
 			model.UserValue{
-				ID:     301,
+				ID:     401,
 				Type:   model.UserValueTypSensitiveWord,
 				Value:  "201",
-				LinkID: 301,
+				LinkID: 303,
 			},
 		}, nil
 	} else {
@@ -140,90 +193,6 @@ func setupSensitiveWordVerificationTest(sws []model.SensitiveWord) (model.DBLike
 	return originDBLike, originSWDao
 }
 
-func TestSensitiveWordsVerification(t *testing.T) {
-	sws := []model.SensitiveWord{
-		model.SensitiveWord{
-			ID:   55688,
-			Name: violatedPattern,
-			StaffException: []model.SimpleSentence{
-				model.SimpleSentence{
-					ID: 1,
-				},
-			},
-			CustomerException: []model.SimpleSentence{
-				model.SimpleSentence{
-					ID: 2,
-				},
-			},
-		},
-		model.SensitiveWord{
-			ID:   55699,
-			Name: violatedPattern[0 : len(violatedPattern)-2],
-		},
-	}
-	setupSensitiveWordVerificationTest(sws)
-
-	segments := []*SegmentWithSpeaker{
-		&violatedSegment,
-		&staffExceptionSegment,
-		&CustomerExceptionSegment,
-		&okSegment,
-	}
-
-	callID := int64(5)
-	credits, err := SensitiveWordsVerification(callID, segments, "enterprise")
-	if err != nil {
-		t.Errorf("something happened in verification, err: %s", err.Error())
-		return
-	}
-
-	if len(credits) != 4 {
-		t.Errorf("verification failed, credits: %+v", credits)
-		return
-	}
-}
-
-func TestSensitiveWordsCustomValues(t *testing.T) {
-	sws := []model.SensitiveWord{
-		model.SensitiveWord{
-			ID:   301,
-			Name: "301",
-		},
-		model.SensitiveWord{
-			ID:   302,
-			Name: "302",
-		},
-	}
-	setupSensitiveWordVerificationTest(sws)
-
-	segments := []*SegmentWithSpeaker{
-		&SegmentWithSpeaker{
-			RealSegment: model.RealSegment{
-				Text: "301",
-			},
-			Speaker: int(model.CallChanStaff),
-		},
-		&SegmentWithSpeaker{
-			RealSegment: model.RealSegment{
-				Text: "302",
-			},
-			Speaker: int(model.CallChanStaff),
-		},
-	}
-
-	callID := int64(5)
-	credits, err := SensitiveWordsVerification(callID, segments, "enterprise")
-	if err != nil {
-		t.Errorf("something happened in verification, err: %s", err.Error())
-		return
-	}
-
-	if len(credits) != 1 {
-		t.Errorf("verification failed, credits: %+v", credits)
-		return
-	}
-}
-
 func TestCallToSWUserKeyValues(t *testing.T) {
 	setupSensitiveWordVerificationTest([]model.SensitiveWord{})
 
@@ -239,8 +208,69 @@ func TestCallToSWUserKeyValues(t *testing.T) {
 		return
 	}
 
-	if !passedMap[301] || passedMap[302] || passedMap[303] {
+	if len(passedMap[301]) != 0 || len(passedMap[302]) != 0 || len(passedMap[303]) == 0 {
 		t.Errorf("get map failed, map: %+v", passedMap)
+		return
+	}
+}
+
+func TestSensitiveWordsVerification(t *testing.T) {
+	sws := []model.SensitiveWord{
+		model.SensitiveWord{
+			ID:   301,
+			Name: violatedPattern,
+			StaffException: []model.SimpleSentence{
+				model.SimpleSentence{
+					ID: 1,
+				},
+			},
+		},
+		model.SensitiveWord{
+			ID:   302,
+			Name: "customer",
+			CustomerException: []model.SimpleSentence{
+				model.SimpleSentence{
+					ID: 2,
+				},
+			},
+		},
+		model.SensitiveWord{
+			ID:   303,
+			Name: "violated",
+		},
+		model.SensitiveWord{
+			ID:   304,
+			Name: "will not violate",
+		},
+	}
+	setupSensitiveWordVerificationTest(sws)
+
+	customerSegment := SegmentWithSpeaker{
+		RealSegment: model.RealSegment{
+			ID:   606,
+			Text: "ok",
+		},
+		Speaker: int(model.CallChanCustomer),
+	}
+
+	segments := []*SegmentWithSpeaker{
+		&customerSegment,
+		&staffExceptionSegment,
+		&CustomerExceptionSegment,
+		&violatedSegment,
+		&cvSegment,
+		&okSegment,
+	}
+
+	callID := int64(5)
+	credits, err := SensitiveWordsVerification(callID, segments, "enterprise")
+	if err != nil {
+		t.Errorf("something happened in verification, err: %s", err.Error())
+		return
+	}
+
+	if len(credits) != 13 {
+		t.Errorf("verification failed, credits: %+v", credits)
 		return
 	}
 }

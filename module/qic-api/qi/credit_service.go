@@ -21,7 +21,6 @@ var (
 	levSenGrpTyp  levelType = 30
 	levSenTyp     levelType = 40
 	levSegTyp     levelType = 50
-	levSWTyp      levelType = 60
 
 	levSilenceTyp    levelType = 11
 	levSpeedTyp      levelType = 12
