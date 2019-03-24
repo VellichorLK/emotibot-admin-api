@@ -15,10 +15,13 @@ import (
 
 const (
 	FlowSheetName       = "rule"
+	SentenceSheetName   = "sentence"
 	TagKeywordSheetName = "tag-keyword"
 	TagIntentSheetName  = "tag-intent"
 	PositiveCorpusType  = "positive"
 	NegativeCorpusType  = "negative"
+
+	NavigationFlowIntentType = "intent"
 )
 
 func BatchAddTags(fileName string, enterpriseID string) error {
@@ -63,6 +66,203 @@ func BatchAddSentences(fileName string, enterpriseID string) error {
 	// 导入的语料中如果有重复的sentenceName，目前会以第一条为准
 
 	return err
+}
+
+func PrepareSentenceGroups(fileName string, enterpriseID string) (map[string]*model.SentenceGroup, error) {
+	xlFile, err := xlsx.OpenFile(fileName)
+	if err != nil {
+		logger.Error.Printf("Failed to open file %s \n", fileName)
+		return nil, err
+	}
+	sheet, ok := xlFile.Sheet[SentenceSheetName]
+	if !ok {
+		logger.Error.Printf("Failed to get sheet %s \n", SentenceSheetName)
+		return nil, fmt.Errorf("failed to get sheet %s \n", SentenceSheetName)
+	}
+
+	// key is sentenceGroup name
+	sentenceGroupMap := make(map[string]ImportSentenceGroupItem)
+	preparedSentenceGroupMap := make(map[string]*model.SentenceGroup)
+
+	var groupName, sentenceName, tagName, nodeType, role string
+
+	for i, row := range sheet.Rows {
+		if i == 0 {
+			continue
+		}
+
+		fmt.Printf("groupName is %s, column is %d \n", row.Cells[0].String(), len(row.Cells))
+		groupName = row.Cells[0].String()
+		sentenceName = row.Cells[1].String()
+		tagName = row.Cells[2].String()
+		if len(row.Cells) < 3 {
+			return nil, fmt.Errorf("invalid column content")
+		}
+		if len(row.Cells) < 7 {
+			nodeType = ""
+			role = ""
+		} else if len(row.Cells) < 8 {
+			nodeType = row.Cells[6].String()
+			role = ""
+		} else {
+			nodeType = row.Cells[6].String()
+			role = row.Cells[7].String()
+		}
+
+		sentenceItem := ImportSentenceItem{
+			SentenceName: sentenceName,
+			TagName:      tagName,
+		}
+		if sentenceGroup, ok := sentenceGroupMap[groupName]; ok {
+			sentenceGroup.SentenceItems = append(sentenceGroup.SentenceItems, &sentenceItem)
+			sentenceGroupMap[groupName] = sentenceGroup
+		} else {
+			sentenceGroupMap[groupName] = ImportSentenceGroupItem{
+				GroupName:     groupName,
+				NodeType:      nodeType,
+				Role:          role,
+				SentenceItems: []*ImportSentenceItem{&sentenceItem},
+			}
+		}
+	}
+
+	// default category
+	categoryID := uint64(0)
+	deleted := int8(0)
+	for groupName, sentenceGroupInfo := range sentenceGroupMap {
+		// ------------------
+		// create sentence
+		// ------------------
+		createdSentences := make([]*DataSentence, 0)
+		for _, sentenceItem := range sentenceGroupInfo.SentenceItems {
+			senQuery := &model.SentenceQuery{
+				Enterprise: &enterpriseID,
+				IsDelete:   &deleted,
+				Name:       &sentenceItem.SentenceName,
+			}
+			count, err := sentenceDao.CountSentences(nil, senQuery)
+			if err != nil {
+				return nil, err
+			}
+			if count > 0 {
+				logger.Trace.Printf("Found existing sentence %s \n", sentenceItem.SentenceName)
+				// it is assumed that sentence name is unique
+				data, err := getSentences(senQuery)
+				if err != nil {
+					return nil, err
+				}
+				createdSentences = append(createdSentences, data[0])
+				continue
+			}
+
+			splits := strings.Split(sentenceItem.TagName, "+")
+			var uuidArr []string
+			// get uuid according to tag name
+			for _, item := range splits {
+				query := &model.TagQuery{
+					Enterprise: &enterpriseID,
+					Name:       &item,
+				}
+				resp, err := Tags(*query)
+				if err != nil {
+					logger.Error.Printf("Error occurred, when query tag %s \n", item)
+					return nil, err
+				}
+				if resp.Paging.Total == 0 {
+					logger.Error.Printf("Failed to find tag %s for sentence %s", item, sentenceItem.SentenceName)
+					return nil, fmt.Errorf("failed to find tag %s for sentence %s", item, sentenceItem.SentenceName)
+				}
+				uuidArr = append(uuidArr, resp.Data[0].TagUUID)
+			}
+
+			createdSentence, err := NewSentence(enterpriseID, categoryID, sentenceItem.SentenceName, uuidArr)
+			if err != nil {
+				logger.Error.Printf("Fail to create sentence %s \n", sentenceItem.SentenceName)
+				return nil, err
+			}
+			createdSentences = append(createdSentences, createdSentence)
+			logger.Trace.Printf("Create sentence %s \n", sentenceItem.SentenceName)
+		}
+
+		// ----------------------------
+		// collect sentenceGroup info
+		// ----------------------------
+
+		filter := &model.SentenceGroupFilter{
+			Name:       groupName,
+			Enterprise: enterpriseID,
+			Limit:      0,
+			IsDelete:   &deleted,
+		}
+		total, groups, err := GetSentenceGroupsBy(filter)
+		if err != nil {
+			logger.Error.Printf("Failed to get sentenceGroup, %s \n", err.Error())
+			return nil, err
+		}
+		if total > 1 {
+			// TODO check if sentenceGroup exists, should skip, and report, if sentenceGroup contains deleted sentence
+			// delete existing sentenceGroup ?
+			logger.Trace.Printf("Found existing sentenceGroup %s, skip ... \n", groupName)
+			// it is assumed that sentenceGroup name is unique
+			//preparedSentenceGroupMap[groupName] = &groups[0]
+			//continue
+			if err := DeleteSentenceGroup(groups[0].UUID); err != nil {
+				return nil, err
+			}
+		}
+
+		senGroup := &model.SentenceGroup{
+			Name:       groupName,
+			Enterprise: enterpriseID,
+		}
+		// do not check if sentence exists
+		sentences := make([]model.SimpleSentence, 0)
+		for _, item := range createdSentences {
+			sentences = append(sentences, model.SimpleSentence{
+				ID:   item.ID,
+				UUID: item.UUID,
+				Name: item.Name,
+			})
+		}
+		senGroup.Sentences = sentences
+
+		if sentenceGroupInfo.Role != "" {
+			if roleCode, ok := roleMapping[sentenceGroupInfo.Role]; ok {
+				senGroup.Role = roleCode
+			} else {
+				// default role: any
+				senGroup.Role = 2
+			}
+		}
+		// default position: 2, positionMap
+		senGroup.Position = 2
+		// default type: call-in, typeMapping
+		senGroup.Type = 1
+		// TODO 中文
+		if sentenceGroupInfo.NodeType == "可选" {
+			senGroup.Optional = 1
+		} else {
+			// default optional: 0
+			senGroup.Optional = 0
+		}
+		// default range: 0
+		senGroup.Distance = 0
+
+		preparedSentenceGroupMap[groupName] = senGroup
+	}
+	return preparedSentenceGroupMap, nil
+}
+
+type ImportSentenceGroupItem struct {
+	GroupName     string
+	NodeType      string
+	Role          string
+	SentenceItems []*ImportSentenceItem
+}
+
+type ImportSentenceItem struct {
+	SentenceName string
+	TagName      string
 }
 
 func BatchAddRules(fileName string, enterpriseID string) error {
@@ -356,7 +556,7 @@ func batchAddSentencesBy(xlFile *xlsx.File, enterpriseID string, sheetName strin
 
 			resp, err := Tags(*query)
 			if err != nil {
-				logger.Error.Printf("error occurred, when query tag %s \n", name)
+				logger.Error.Printf("error occurred, when query tag %s \n", item)
 				return err
 			}
 
@@ -494,31 +694,30 @@ func batchAddTagsBy(xlFile *xlsx.File, enterpriseID string, sheetName string) er
 }
 
 func BatchAddFlows(fileName string, enterpriseID string) error {
-
-	xlFile, err := xlsx.OpenFile(fileName)
-
-	if err != nil {
-		logger.Error.Printf("can not open file %s \n", fileName)
-		return err
-	}
+	var err error
 
 	// add tag
 	if err = BatchAddTags(fileName, enterpriseID); err != nil {
-		logger.Error.Println("failed to add tag when execute BatchAddFlows")
+		logger.Error.Printf("Failed to call BatchAddTags, %s \n", err.Error())
 		return err
 	}
 
-	// add sentence
-	if err = BatchAddSentences(fileName, enterpriseID); err != nil {
-		logger.Error.Println("failed to add sentence when execute BatchAddFlows")
+	// add sentenceGroup
+	preparedSentenceGroupMap, err := PrepareSentenceGroups(fileName, enterpriseID);
+	if err != nil {
+		logger.Error.Printf("Failed to call BatchAddSentenceGroups, %s \n", err.Error())
 		return err
 	}
 
+	xlFile, err := xlsx.OpenFile(fileName)
+	if err != nil {
+		logger.Error.Printf("Failed to open file %s \n", fileName)
+		return err
+	}
 	sheet, ok := xlFile.Sheet[FlowSheetName]
-
 	if !ok {
-		logger.Error.Printf("can not get sheet %s \n", FlowSheetName)
-		return fmt.Errorf("can not get sheet %s \n", FlowSheetName)
+		logger.Error.Printf("Failed to get sheet %s \n", FlowSheetName)
+		return fmt.Errorf("failed to get sheet %s \n", FlowSheetName)
 	}
 
 	var flowName, logicList string
@@ -537,11 +736,11 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		flows, err := GetFlows(query, 1, 1)
 		// if find existing flow, recreate it
 		if len(flows) > 0 {
-			logger.Trace.Printf("found existing flow: %s \n", flowName)
+			logger.Trace.Printf("Found existing flow %s \n", flowName)
 			// should use first
 			_, err := DeleteFlow(flows[0].ID, enterpriseID)
 			if err != nil {
-				logger.Error.Printf("failed to delete flow %s \n", flowName)
+				logger.Error.Printf("Failed to delete flow %s \n", flowName)
 			}
 			logger.Trace.Printf("delete existing flow: %s \n", flowName)
 		}
@@ -550,92 +749,32 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		flow := reqNewFlow{
 			Name:       flowName,
 			IntentName: flowName,
-			Type:       "intent",
+			Type:       NavigationFlowIntentType,
 		}
 
 		flowID, err := NewFlow(&flow, enterpriseID)
-		logger.Trace.Printf("create flow: %s \n", flowName)
-
+		logger.Trace.Printf("Create flow %s \n", flowName)
 		if err != nil {
-			logger.Error.Printf("failed to create flow: %s\n", err)
+			logger.Error.Printf("Failed to create flow %s \n", err)
 			return err
 		}
 
-		// ------------------------------------
-		// add intent or node (SentenceGroup)
-		// ------------------------------------
+		// ---------------------------------------------------
+		// create intent node or normal node (SentenceGroup)
+		// ---------------------------------------------------
 
-		senFlag := int8(0)
-		// get sentence according to logic_list, a node may contain more than one sentence
+		// get sentence according to logic_list
 		splits := strings.Split(logicList, "|")
-		for i, item := range splits {
-
-			sentenceGroup := &model.SentenceGroup{
-				Name:       item,
-				Enterprise: enterpriseID,
+		for i, groupName := range splits {
+			sentenceGroup, ok := preparedSentenceGroupMap[groupName]
+			if !ok {
+				// TODO need prepared sentenceGroup info ?
+				logger.Error.Printf("Failed to find needed sentenceGroup in map")
+				return fmt.Errorf("failed to find needed sentenceGroup info")
 			}
 
-			// TODO check if exist sentenceGroup, and sentenceName == sentenceGroupName (need tuning)
-
-			query := &model.SentenceQuery{
-				Enterprise: &enterpriseID,
-				IsDelete:   &senFlag,
-				Name:       &item,
-			}
-			count, err := sentenceDao.CountSentences(nil, query)
-			if err != nil {
-				return err
-			}
-			if count == 0 {
-				logger.Trace.Printf("invalid sentence: %s \n", item)
-				continue
-			}
-			if count > 1 {
-				logger.Warn.Printf("more than one needed sentence: %s \n", item)
-			}
-
-			data, err := getSentences(query)
-			if err != nil {
-				return err
-			}
-			// default get the first one
-			sentence := data[0]
-
-			// add sentence to sentenceGroup
-			sentences := make([]model.SimpleSentence, 0)
-			sentences = append(sentences, model.SimpleSentence{
-				ID:   sentence.ID,
-				UUID: sentence.UUID,
-				Name: sentence.Name,
-			})
-			sentenceGroup.Sentences = sentences
-
-			// default role: any
-			sentenceGroup.Role = 2
-			if roleCode, ok := roleMapping["any"]; ok {
-				sentenceGroup.Role = roleCode
-			} else {
-				sentenceGroup.Position = -1
-			}
-			// default position: 2
-			if positionCode, ok := positionMap[""]; ok {
-				sentenceGroup.Position = positionCode
-			} else {
-				sentenceGroup.Position = -1
-			}
-			// default type: call-in
-			if typeCode, ok := typeMapping["call_in"]; ok {
-				sentenceGroup.Type = typeCode
-			} else {
-				sentenceGroup.Type = -1
-			}
-			// default optional: 0
-			sentenceGroup.Optional = 0
-			// default range: 0
-			sentenceGroup.Distance = 0
-
-			// the first sentence is intent, the rest is node
-			// add intent SentenceGroup
+			// the first sentence is intent node, the rest is normal node
+			// add intent node
 			if i == 0 {
 				flow := &model.NavFlowUpdate{}
 				ignore := 0
@@ -643,28 +782,27 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 
 				createdSentenceGroup, err := CreateSentenceGroup(sentenceGroup)
 				if err != nil {
-					logger.Error.Printf("error while create sentence in handleCreateSentenceGroup, reason: %s\n", err.Error())
+					logger.Error.Printf("Failed to create sentenceGroup %s, %s \n", groupName, err.Error())
 					return err
 				}
 				flow.IntentLinkID = &createdSentenceGroup.ID
 				flow.IntentName = &flowName
 
 				if _, err = UpdateFlow(flowID, enterpriseID, flow); err != nil {
-					logger.Error.Println("failed to update flow")
+					logger.Error.Println("Failed to update flow")
 					return err
 				}
-				logger.Trace.Printf("create intent node %s \n", item)
+				logger.Trace.Printf("Create intent node %s \n", groupName)
 				continue
 			}
 
-			// add node SentenceGroup
+			// add normal node
 			err = NewNode(flowID, sentenceGroup)
-
 			if err != nil {
-				logger.Error.Println("failed to create node")
+				logger.Error.Println("Failed to create normal node")
 				return err
 			}
-			logger.Trace.Printf("create node: %s \n", item)
+			logger.Trace.Printf("Create normal node %s \n", groupName)
 		}
 	}
 	return nil
