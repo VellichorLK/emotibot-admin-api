@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	FlowSheetName       = "rule"
+	RuleSheetName       = "rule"
 	SentenceSheetName   = "sentence"
 	TagKeywordSheetName = "tag-keyword"
 	TagIntentSheetName  = "tag-intent"
@@ -22,6 +22,9 @@ const (
 	NegativeCorpusType = "negative"
 
 	NavigationFlowIntentType = "intent"
+
+	FromRule = "rule"
+	FromFlow = "flow"
 )
 
 func BatchAddTags(fileName string, enterpriseID string) error {
@@ -52,7 +55,7 @@ func BatchAddTags(fileName string, enterpriseID string) error {
 func BatchAddSentences(fileName string, enterpriseID string) error {
 	xlFile, err := xlsx.OpenFile(fileName)
 	if err != nil {
-		logger.Error.Printf("can not open file %s \n", fileName)
+		logger.Error.Printf("Failed to open file %s \n", fileName)
 		return err
 	}
 
@@ -66,7 +69,7 @@ func BatchAddSentences(fileName string, enterpriseID string) error {
 	return err
 }
 
-func PrepareSentenceGroups(fileName string, enterpriseID string) (map[string]*model.SentenceGroup, error) {
+func PrepareSentenceGroups(fileName string, enterpriseID string, from string) (map[string]*model.SentenceGroup, error) {
 	xlFile, err := xlsx.OpenFile(fileName)
 	if err != nil {
 		logger.Error.Printf("Failed to open file %s \n", fileName)
@@ -204,10 +207,12 @@ func PrepareSentenceGroups(fileName string, enterpriseID string) (map[string]*mo
 			// it is assumed that sentenceGroup name is unique
 			//preparedSentenceGroupMap[groupName] = &groups[0]
 			//continue
-			if err := DeleteSentenceGroup(groups[0].UUID); err != nil {
-				return nil, err
+			if from == FromFlow {
+				if err := DeleteSentenceGroup(groups[0].UUID); err != nil {
+					return nil, err
+				}
+				logger.Trace.Printf("Delete existing sentenceGroup %s \n", groupName)
 			}
-			logger.Trace.Printf("Delete existing sentenceGroup %s \n", groupName)
 		}
 
 		senGroup := &model.SentenceGroup{
@@ -265,26 +270,22 @@ type ImportSentenceItem struct {
 }
 
 func BatchAddRules(fileName string, enterpriseID string) error {
-	xlFile, err := xlsx.OpenFile(fileName)
-	if err != nil {
-		logger.Error.Printf("can not open file %s \n", fileName)
-		return err
-	}
-
-	err = batchAddRulesBy(xlFile, enterpriseID, FlowSheetName)
-
 	// TODO need a check function
 	// [][WARN ] 2019/03/05 09:01:37 tags_services.go:472: more than one needed sentence: 回访-分红险责任告知-询问是否清楚
 	// 如果系统原先错误操作导致more than one sentence会存在隐患
 
-	return err
-}
+	// get sentenceGroup info
+	preparedSentenceGroupMap, err := PrepareSentenceGroups(fileName, enterpriseID, FromRule)
 
-func batchAddRulesBy(xlFile *xlsx.File, enterpriseID string, sheetName string) error {
-	sheet, ok := xlFile.Sheet[sheetName]
+	xlFile, err := xlsx.OpenFile(fileName)
+	if err != nil {
+		logger.Error.Printf("Failed to open file %s \n", fileName)
+		return err
+	}
+	sheet, ok := xlFile.Sheet[RuleSheetName]
 	if !ok {
-		logger.Error.Printf("Failed to get sheet %s \n", sheetName)
-		return fmt.Errorf("failed to get sheet %s \n", sheetName)
+		logger.Error.Printf("Failed to get sheet %s \n", RuleSheetName)
+		return fmt.Errorf("failed to get sheet %s \n", RuleSheetName)
 	}
 
 	var ruleName, description, logicList string
@@ -342,33 +343,13 @@ func batchAddRulesBy(xlFile *xlsx.File, enterpriseID string, sheetName string) e
 		var createdSentenceGroups []*model.SentenceGroup
 
 		splits := strings.Split(logicList, "|")
-		flag := int8(0)
-		for _, split := range splits {
-			// suppose sentence name is unique
-			query := &model.SentenceQuery{
-				Enterprise: &enterpriseID,
-				IsDelete:   &flag,
-				Name:       &split,
+		//flag := int8(0)
+		for _, groupName := range splits {
+			senGroupInfo, ok := preparedSentenceGroupMap[groupName]
+			if !ok {
+				logger.Error.Printf("Failed to find required sentenceGroup %s \n", groupName)
+				return fmt.Errorf("failed to find required sentenceGroup info")
 			}
-
-			count, err := sentenceDao.CountSentences(nil, query)
-			if err != nil {
-				return err
-			}
-			if count == 0 {
-				logger.Trace.Printf("Invalid sentence %s \n", split)
-				continue
-			}
-			if count > 1 {
-				logger.Warn.Printf("Found more than one needed sentence %s \n", split)
-			}
-
-			data, err := getSentences(query)
-			if err != nil {
-				return err
-			}
-			sentence := data[0]
-			sentenceUUID := sentence.UUID
 
 			// ------------------
 			// add sentence-group
@@ -376,40 +357,17 @@ func batchAddRulesBy(xlFile *xlsx.File, enterpriseID string, sheetName string) e
 			sentenceGroup := &model.SentenceGroup{
 				Name:       "",
 				Enterprise: enterpriseID,
+				Sentences:  senGroupInfo.Sentences,
+				Role:       senGroupInfo.Role,
+				Position:   senGroupInfo.Position,
+				Type:       0,
+				Optional:   senGroupInfo.Optional,
+				Distance:   senGroupInfo.Distance,
 			}
-			// add sentence to sentenceGroup
-			sentences := make([]model.SimpleSentence, 0)
-			sentences = append(sentences, model.SimpleSentence{
-				ID:   sentence.ID,
-				UUID: sentenceUUID,
-				Name: sentence.Name,
-			})
-			sentenceGroup.Sentences = sentences
-
-			// default role is staff
-			if roleCode, ok := roleMapping["staff"]; ok {
-				sentenceGroup.Role = roleCode
-			} else {
-				sentenceGroup.Role = -1
-			}
-
-			// default position
-			if positionCode, ok := positionMap[""]; ok {
-				sentenceGroup.Position = positionCode
-			} else {
-				sentenceGroup.Position = -1
-			}
-
-			// default type
-			sentenceGroup.Type = 0
-			// default optional
-			sentenceGroup.Optional = 0
-			// default positionSentence
-			sentenceGroup.Distance = 0
 
 			createdSentenceGroup, err := CreateSentenceGroup(sentenceGroup)
 			if err != nil {
-				logger.Error.Printf("Failed to create sentenceGroup, sentence is %s, %s \n", sentence.Name, err.Error())
+				logger.Error.Printf("Failed to create sentenceGroup, sentence is %s, %s \n", groupName, err.Error())
 				return err
 			}
 			createdSentenceGroups = append(createdSentenceGroups, createdSentenceGroup)
@@ -523,8 +481,8 @@ func batchAddSentencesBy(xlFile *xlsx.File, enterpriseID string, sheetName strin
 			continue
 		}
 
-		name = row.Cells[0].String()
-		content = row.Cells[1].String()
+		name = row.Cells[1].String()
+		content = row.Cells[2].String()
 
 		deleted := int8(0)
 		query := &model.SentenceQuery{
@@ -538,7 +496,7 @@ func batchAddSentencesBy(xlFile *xlsx.File, enterpriseID string, sheetName strin
 			return err
 		}
 		if count > 0 {
-			logger.Trace.Printf("found exist sentence: %s \n", name)
+			logger.Trace.Printf("Found existing sentence %s \n", name)
 			continue
 		}
 
@@ -573,7 +531,7 @@ func batchAddSentencesBy(xlFile *xlsx.File, enterpriseID string, sheetName strin
 
 		_, err = NewSentence(enterpriseID, categoryID, name, uuidArr)
 		if err != nil {
-			logger.Error.Printf("Fail to create sentence %s, %s \n", name, err.Error())
+			logger.Error.Printf("Failed to create sentence %s, %s \n", name, err.Error())
 			return err
 		}
 		logger.Trace.Printf("Create sentence %s \n", name)
@@ -693,8 +651,8 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		return err
 	}
 
-	// add sentenceGroup
-	preparedSentenceGroupMap, err := PrepareSentenceGroups(fileName, enterpriseID);
+	// get sentenceGroup info
+	preparedSentenceGroupMap, err := PrepareSentenceGroups(fileName, enterpriseID, FromFlow);
 	if err != nil {
 		logger.Error.Printf("Failed to call BatchAddSentenceGroups, %s \n", err.Error())
 		return err
@@ -705,10 +663,10 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 		logger.Error.Printf("Failed to open file %s \n", fileName)
 		return err
 	}
-	sheet, ok := xlFile.Sheet[FlowSheetName]
+	sheet, ok := xlFile.Sheet[RuleSheetName]
 	if !ok {
-		logger.Error.Printf("Failed to get sheet %s \n", FlowSheetName)
-		return fmt.Errorf("failed to get sheet %s \n", FlowSheetName)
+		logger.Error.Printf("Failed to get sheet %s \n", RuleSheetName)
+		return fmt.Errorf("failed to get sheet %s \n", RuleSheetName)
 	}
 
 	var flowName, logicList string
