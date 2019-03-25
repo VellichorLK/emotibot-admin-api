@@ -52,9 +52,19 @@ func TestSilenceRuleCheck(t *testing.T) {
 				5: []uint64{16},
 			},
 		},
+
+		SilenceRuleWithException{SilenceRule: model.SilenceRule{Seconds: 1, Times: 1},
+			RuleSilenceException: RuleSilenceException{
+				Before: RuleException{Staff: []model.SimpleSentence{}, Customer: []model.SimpleSentence{}},
+				After:  OnlyStaffException{Staff: []model.SimpleSentence{model.SimpleSentence{ID: 5}}},
+			},
+			sentences: map[uint64][]uint64{
+				5: []uint64{},
+			},
+		},
 	}
 
-	expected := []bool{true, false, true}
+	expected := []bool{true, false, true, false}
 
 	staffSpeaker := int(model.CallChanStaff)
 	customerSpeaker := int(model.CallChanCustomer)
@@ -93,7 +103,7 @@ func TestSilenceRuleCheck(t *testing.T) {
 
 	for k, v := range expected {
 		if v != credits[k].Valid {
-			t.Errorf("expecting get %t at %d credit, but get %t\n", v, k, credits[k].Valid)
+			t.Errorf("expecting get %t at %d'th credit, but get %t\n", v, k+1, credits[k].Valid)
 		}
 	}
 

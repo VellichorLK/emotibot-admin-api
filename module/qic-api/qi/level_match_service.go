@@ -414,7 +414,8 @@ func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[ui
 					}
 					count++
 				}
-				if count == numOfChild {
+				//count!=0 to avoid the unfinished sentences, set sentences with no tag to false
+				if count != 0 && count == numOfChild {
 					resp[sID] = append(resp[sID], idx+1)
 				}
 			}

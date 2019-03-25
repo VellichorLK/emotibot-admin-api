@@ -511,6 +511,10 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 		//some segments break the rule
 		if numOfBreak > 0 {
 			var exceptionTimes int
+
+			//do the checking, sentence match
+			senMatchDat, _ := SentencesMatch(segMatchedTag, rule.sentences)
+
 			//check whether the exception happened before the silence segment
 			for i := 0; i < numOfBreak; i++ {
 				silenceIdx := silenceSegs[i].index
@@ -526,9 +530,6 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 				aStaffIdx, _ := findFirstSegAfterIndex(silenceIdx, allSegs)
 				numOfSilence = countNumOfOtherSegsBeforeIdx(aStaffIdx, allSegs)
 				aStaffMatchIdx := aStaffIdx - numOfSilence
-
-				//do the checking, sentence match
-				senMatchDat, _ := SentencesMatch(segMatchedTag, rule.sentences)
 
 				//go through each exception
 				for _, exception := range result.Exception {
@@ -588,7 +589,7 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 				}
 			}
 
-			if (numOfBreak - exceptionTimes) <= rule.Times {
+			if (numOfBreak - exceptionTimes) < rule.Times {
 				result.Valid = true
 			}
 			if result.Valid {
