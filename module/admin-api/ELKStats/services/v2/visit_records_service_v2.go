@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
@@ -132,7 +134,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 	return
 }
 
-func VisitRecordsExport(query *dataV2.VisitRecordsQuery) (exportTaskID string, err error) {
+func VisitRecordsExport(query *dataV2.VisitRecordsQuery, locale string) (exportTaskID string, err error) {
 	// Try to create export task
 	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
 	if err != nil {
@@ -141,8 +143,8 @@ func VisitRecordsExport(query *dataV2.VisitRecordsQuery) (exportTaskID string, e
 
 	// Create a goroutine to exporting records in background
 	go func() {
-		option := createExportRecordsTaskOption(query, exportTaskID)
-		servicesCommon.ExportTask(option)
+		option := createExportRecordsTaskOption(query, exportTaskID, locale)
+		servicesCommon.ExportTask(option, locale)
 	}()
 
 	return
@@ -317,7 +319,7 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -376,7 +378,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 			record.StdQ,
 			record.Answer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
-			record.Module,
+			localemsg.Get(locale[0], record.Module),
 			record.Source,
 			record.LogTime,
 			record.Emotion,
@@ -402,7 +404,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 	return
 }
 
-func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID string) *data.ExportTaskOption {
+func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID string, locale string) *data.ExportTaskOption {
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 
 	boolQuery := newBoolQueryWithRecordQuery(query)

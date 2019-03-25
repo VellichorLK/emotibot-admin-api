@@ -235,7 +235,7 @@ func extractExportTERecordsHitResultHandler(hit *elastic.SearchHit) (teRecordPtr
 	return
 }
 
-func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string) (xlsxFilePath string, err error) {
+func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err

@@ -280,7 +280,7 @@ func GetRecordsExportStatus(exportTaskID string) (status string, err error) {
 // ExportTask exports records to Excel file in background
 // TODO: Cancel the corresponding running exporting records task when:
 //		 DELETE /export/{export-id} API is called.
-func ExportTask(option *data.ExportTaskOption) {
+func ExportTask(option *data.ExportTaskOption, locale ...string) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -328,7 +328,13 @@ func ExportTask(option *data.ExportTaskOption) {
 					numOfXlsxFiles++
 					xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
 					logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", option.TaskID, xlsxFileName)
-					xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName)
+					var xlsxFilePath string
+					var _err error
+					if locale != nil {
+						xlsxFilePath, _err = option.XlsxCreateHandler(records, xlsxFileName, locale[0])
+					} else {
+						xlsxFilePath, _err = option.XlsxCreateHandler(records, xlsxFileName)
+					}
 					if _err != nil {
 						err = _err
 						return
