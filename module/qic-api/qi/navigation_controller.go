@@ -477,6 +477,39 @@ func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) 
 		return
 	}
 
+	if req.RemoteFile == "" {
+		err = fmt.Errorf("Remote file path not specified for realtime QI flow, call UUID: %s",
+			call.UUID)
+		logger.Error.Println(err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	resp := RealtimeCallResp{
+		CallID:     call.ID,
+		CallUUID:   call.UUID,
+		RemoteFile: req.RemoteFile,
+	}
+
+	p, err := json.Marshal(&resp)
+	if err != nil {
+		logger.Error.Printf("Marshal realtime call resp failed, error: %s",
+			err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR,
+			err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	err = realtimeCallProducer.Produce(p)
+	if err != nil {
+		logger.Error.Printf("Cannot create realtime call download task: %s",
+			err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()),
+			http.StatusInternalServerError)
+		return
+	}
+
 	err = updateFlowQI(req, call)
 	if err != nil {
 		logger.Error.Printf("Update qi flow failed. %s\n", err)

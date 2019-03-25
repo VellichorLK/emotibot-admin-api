@@ -19,22 +19,24 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo   util.ModuleInfo
-	tagDao       model.TagDao
-	callDao      model.CallDao = &model.CallSQLDao{}
-	segmentDao   model.SegmentDao
-	taskDao      = &model.TaskSQLDao{}
-	userValueDao = &model.UserValueDao{}
-	userKeyDao   = &model.UserKeySQLDao{}
-	swDao        model.SensitiveWordDao
-	condDao      = &model.GroupConditionDao{}
-	serviceDAO   model.GroupDAO
-	producer     *rabbitmq.Producer
-	consumer     *rabbitmq.Consumer
-	sqlConn      *sql.DB
-	dbLike       model.DBLike
-	volume       string
-	creditDao    model.CreditDao = &model.CreditSQLDao{}
+	ModuleInfo           util.ModuleInfo
+	tagDao               model.TagDao
+	callDao              model.CallDao = &model.CallSQLDao{}
+	segmentDao           model.SegmentDao
+	taskDao              = &model.TaskSQLDao{}
+	userValueDao         = &model.UserValueDao{}
+	userKeyDao           = &model.UserKeySQLDao{}
+	swDao                model.SensitiveWordDao
+	condDao              = &model.GroupConditionDao{}
+	serviceDAO           model.GroupDAO
+	producer             *rabbitmq.Producer
+	consumer             *rabbitmq.Consumer
+	realtimeCallProducer *rabbitmq.Producer
+	realtimeCallConsumer *rabbitmq.Consumer
+	sqlConn              *sql.DB
+	dbLike               model.DBLike
+	volume               string
+	creditDao            model.CreditDao = &model.CreditSQLDao{}
 )
 var (
 	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
@@ -266,7 +268,30 @@ func init() {
 					MaxRetry:  10,
 				})
 				// require dao init first.
-				consumer.Subscribe(ASRWorkFlow)
+				err = consumer.Subscribe(ASRWorkFlow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"dst_queue", err.Error())
+					return
+				}
+
+				// Realtime call
+				realtimeCallProducer = client.NewProducer(rabbitmq.ProducerConfig{
+					QueueName:   "realtime_call_queue",
+					ContentType: "application/json",
+					MaxRetry:    10,
+				})
+				realtimeCallConsumer = client.NewConsumer(rabbitmq.ConsumerConfig{
+					QueueName: "realtime_call_queue",
+					MaxRetry:  10,
+				})
+				err = realtimeCallConsumer.Subscribe(RealtimeCallWorkflow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"realtime_call_queue", err.Error())
+					return
+				}
+
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 
 				// init swDao

@@ -242,6 +242,7 @@ type NewCallReq struct {
 	UploadUser    string                 `json:"-"`
 	Type          int8                   `json:"-"`
 	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
+	RemoteFile    string                 `json:"remote_file"`
 }
 
 // ReservedCustomKeywords is a list of keywords reserved at NewCallReq.
