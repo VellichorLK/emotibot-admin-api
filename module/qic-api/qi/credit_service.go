@@ -584,7 +584,11 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 
 		case levSilenceTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}}
+				credit.Exception.After.Staff = make([]*SentenceWithPrediction, 0)
+				credit.Exception.Before.Customer = make([]*SentenceWithPrediction, 0)
+				credit.Exception.Before.Staff = make([]*SentenceWithPrediction, 0)
+
 				parentCredit.SilenceRule = append(parentCredit.SilenceRule, credit)
 				silenceIDs = append(silenceIDs, int64(v.OrgID))
 				rSilenceCreditMap[v.ID] = credit
@@ -593,6 +597,9 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 		case levSpeedTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
 				credit := &SpeedRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				credit.Exception.Under.Customer = make([]*SentenceWithPrediction, 0)
+				credit.Exception.Over.Customer = make([]*SentenceWithPrediction, 0)
+
 				parentCredit.SpeedRule = append(parentCredit.SpeedRule, credit)
 				speedIDs = append(speedIDs, int64(v.OrgID))
 				rSpeedCreditMap[v.ID] = credit
@@ -600,7 +607,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			}
 		case levInterposalTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &InterposalRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				credit := &InterposalRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}}
 				parentCredit.InterposalRule = append(parentCredit.InterposalRule, credit)
 				interposalIDs = append(interposalIDs, int64(v.OrgID))
 				rInterposalCreditMap[v.ID] = credit
