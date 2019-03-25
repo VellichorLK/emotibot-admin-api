@@ -1343,7 +1343,8 @@ func TestSimpleSentenceMatch(t *testing.T) {
 				t.Errorf("expect sentence id %d has %d matched seg, but get %d\n", expID, len(expList), len(getList))
 			} else {
 				for i := 0; i < len(expList); i++ {
-					if expList[i] != getList[i] {
+					//because using the zero based index
+					if expList[i]-1 != getList[i] {
 						t.Errorf("expect sentence id %d, %d'th segment is %d, but get %d\n", expID, i, expList[i], getList[i])
 					}
 				}

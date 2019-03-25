@@ -1,11 +1,12 @@
 package qi
 
 import (
+	"time"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/anknown/ahocorasick"
-	"time"
+	goahocorasick "github.com/anknown/ahocorasick"
 )
 
 var sentenceMatchFunc func([]string, []uint64, string) (map[uint64][]int, error) = SimpleSentenceMatch
@@ -220,14 +221,15 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 			CallID:     uint64(callID),
 			Type:       int(levSWTyp),
 			OrgID:      uint64(sw.ID),
-			Revise:     1,
+			Revise:     -1,
+			Valid:      1,
 			Score:      sw.Score,
 			CreateTime: now,
 			UpdateTime: now,
 		}
 
 		if violated {
-			credit.Revise = 0
+			credit.Valid = 0
 		}
 		credits = append(credits, credit)
 	}
@@ -259,9 +261,15 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 		return
 	}
 
+	usrCallVals := make([]string, 0, len(callValues))
+	for _, v := range callValues {
+		usrCallVals = append(usrCallVals, v.Value)
+	}
+
 	// get custom values of all sensitive words
 	query = model.UserValueQuery{
 		Type:             []int8{model.UserValueTypSensitiveWord},
+		Values:           usrCallVals,
 		IgnoreSoftDelete: true,
 	}
 	swValues, err := userValues(sqlLike, query)

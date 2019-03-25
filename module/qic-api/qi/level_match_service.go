@@ -424,6 +424,36 @@ func SentencesMatch(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[ui
 	return resp, nil
 }
 
+//SentencesMatchWithZeroBasedIndex matches the sentence and gives the 0 based index
+func SentencesMatchWithZeroBasedIndex(senMatched []map[uint64]bool, c map[uint64][]uint64) (map[uint64][]int, error) {
+	//func SentencesMatch(m []*MatchedData, c map[uint64][]uint64) (map[uint64][]int, error) {
+
+	resp := make(map[uint64][]int, len(c))
+
+	//for loop the criteria for each tag in each sentence
+	for sID, tagIDs := range c {
+		//compare the given matched tags in each segement to the criteria
+		for idx, d := range senMatched {
+			if len(d) > 0 {
+				numOfChild := len(tagIDs)
+				var count int
+				//check whether this segment match all tags
+				for _, tagID := range tagIDs {
+					if _, ok := d[tagID]; !ok {
+						break
+					}
+					count++
+				}
+				//count!=0 to avoid the unfinished sentences, set sentences with no tag to false
+				if count != 0 && count == numOfChild {
+					resp[sID] = append(resp[sID], idx)
+				}
+			}
+		}
+	}
+	return resp, nil
+}
+
 //SentenceGroupMatch matches the given matched sentence to sentence group
 //matchedSen is matched sentence id and the matched segment id
 //c is the sentenceGroup criteria used to judge whether the sentence group is meet
@@ -1011,7 +1041,7 @@ func SimpleSentenceMatch(segs []string, ids []uint64, enterprise string) (map[ui
 	// use map for quick search later
 	segMatchedTag := extractTagMatchedData(tagMatchDat)
 	//do the checking, sentence match
-	senMatchDat, err := SentencesMatch(segMatchedTag, levels[0])
+	senMatchDat, err := SentencesMatchWithZeroBasedIndex(segMatchedTag, levels[0])
 	if err != nil {
 		logger.Warn.Printf("doing sentence  match failed.%s\n", err)
 	}
