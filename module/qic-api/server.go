@@ -197,29 +197,12 @@ func setRoute() *mux.Router {
 			// entry will be api/v_/<module>/<entry>
 			entryPath := fmt.Sprintf("/%s/v%d/%s/%s", constant["API_PREFIX"],
 				entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
-			router.
-				Methods(entrypoint.AllowMethod).
-				Path(entryPath).
-				Name(entrypoint.EntryPath).
-				HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					defer logHandleRuntime(w, r)()
-					clientNoStoreCache(w)
-					defer func() {
-						if err := recover(); err != nil {
-							errMsg := fmt.Sprintf("%#v", err)
-							util.WriteWithStatus(w, errMsg, http.StatusInternalServerError)
-							util.PrintRuntimeStack(30)
-							logger.Error.Println("Panic error:", errMsg)
-						}
-					}()
-
-					if checkPrivilege(r, entrypoint) {
-						r.Header.Set(audit.AuditCustomHeader, info.ModuleName)
-						entrypoint.Callback(w, r)
-					} else {
-						http.Error(w, "Unauthorized", http.StatusUnauthorized)
-					}
-				})
+			// To compatible with Huaxia CCQA project, we add one more prefix path for qic/.
+			// They need to have admin-api and qic-api both running in the same container.
+			compatiblePath := fmt.Sprintf("/qic/v%d/%s/%s",
+				entrypoint.Version, info.ModuleName, entrypoint.EntryPath)
+			addAPIRoute(router, entryPath, info.ModuleName, entrypoint)
+			addAPIRoute(router, compatiblePath, info.ModuleName, entrypoint)
 		}
 	}
 	router.PathPrefix("/Files/").Methods("GET").Handler(http.StripPrefix("/Files/", http.FileServer(http.Dir(util.GetMountDir()))))
@@ -231,6 +214,31 @@ func setRoute() *mux.Router {
 	return router
 }
 
+func addAPIRoute(r *mux.Router, path, moduleName string, entrypoint util.EntryPoint) {
+	r.
+		Methods(entrypoint.AllowMethod).
+		Path(path).
+		Name(entrypoint.EntryPath).
+		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer logHandleRuntime(w, r)()
+			clientNoStoreCache(w)
+			defer func() {
+				if err := recover(); err != nil {
+					errMsg := fmt.Sprintf("%#v", err)
+					util.WriteWithStatus(w, errMsg, http.StatusInternalServerError)
+					util.PrintRuntimeStack(30)
+					logger.Error.Println("Panic error:", errMsg)
+				}
+			}()
+
+			if checkPrivilege(r, entrypoint) {
+				r.Header.Set(audit.AuditCustomHeader, moduleName)
+				entrypoint.Callback(w, r)
+			} else {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			}
+		})
+}
 func logHandleRuntime(w http.ResponseWriter, r *http.Request) func() {
 	now := time.Now()
 	return func() {
