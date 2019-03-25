@@ -5,9 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"emotibot.com/emotigo/pkg/logger"
-
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 // Dao is the interface of feedback dao, it can be used for mock
@@ -74,17 +73,19 @@ func (dao feedbackDao) AddReason(appid string, content string) (int64, error) {
 	}
 	defer util.ClearTransition(tx)
 
-	queryStr := "SELECT 1 FROM feedback_reason WHERE appid = ? AND content = ?"
+	queryStr := "SELECT content FROM feedback_reason WHERE appid = ? AND content = ?"
 	row := tx.QueryRow(queryStr, appid, content)
-	ret := 0
-	err = row.Scan(&ret)
-	if err != nil && err != sql.ErrNoRows {
-		return 0, err
-	}
-	err = nil
-	if ret == 1 {
+	if row == nil {
 		logger.Error.Printf("Trying to add duplicate reason with [%s] [%s]\n", appid, content)
 		return 0, ErrDuplicateContent
+	} else {
+		logger.Info.Printf("%+v\n", row)
+		ret := ""
+		err = row.Scan(&ret)
+		if err != nil && err != sql.ErrNoRows {
+			return 0, err
+		}
+		err = nil
 	}
 
 	queryStr = `
@@ -107,7 +108,12 @@ func (dao feedbackDao) AddReason(appid string, content string) (int64, error) {
 		return 0, err
 	}
 
-	return id, nil
+	err = tx.Commit()
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	return id, err
 }
 
 func (dao feedbackDao) DeleteReason(appid string, id int64) error {
