@@ -480,3 +480,50 @@ func updateEnterpriseStatus(w http.ResponseWriter, r *http.Request, status bool)
 
 	util.Return(w, nil, true)
 }
+
+func UsersGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	retData, err := service.GetUsersV3(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func UserGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	userID := vars["userID"]
+	if !util.IsValidUUID(userID) {
+		returnBadRequest(w, "user-id")
+		return
+	}
+
+	retData, err := service.GetUserV3(enterpriseID, userID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
