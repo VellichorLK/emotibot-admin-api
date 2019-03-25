@@ -4,6 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"emotibot.com/emotigo/pkg/logger"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 // Dao is the interface of feedback dao, it can be used for mock
@@ -64,28 +68,38 @@ func (dao feedbackDao) AddReason(appid string, content string) (int64, error) {
 		return 0, ErrDBNotInit
 	}
 
-	sql := `
-		INSERT INTO feedback_reason (appid, content, created_at)
-		SELECT ?, ?, ?
-		FROM feedback_reason
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM feedback_reason
-			WHERE appid = ? AND content = ?
-		)
-		LIMIT 1`
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer util.ClearTransition(tx)
 
-	result, err := dao.db.Exec(sql, appid, content, timestampHandler(),
-		appid, content)
+	queryStr := "SELECT 1 FROM feedback_reason WHERE appid = ? AND content = ?"
+	row := tx.QueryRow(queryStr, appid, content)
+	ret := 0
+	err = row.Scan(&ret)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	err = nil
+	if ret == 1 {
+		logger.Error.Printf("Trying to add duplicate reason with [%s] [%s]\n", appid, content)
+		return 0, ErrDuplicateContent
+	}
+
+	queryStr = `
+		INSERT INTO feedback_reason
+			(appid, content, created_at)
+			VALUES (?, ?, ?)
+		`
+	result, err := dao.db.Exec(queryStr, appid, content, timestampHandler())
 	if err != nil {
 		return 0, err
 	}
 
-	affected, err := result.RowsAffected()
+	_, err = result.RowsAffected()
 	if err != nil {
 		return 0, err
-	} else if affected == 0 {
-		return 0, ErrDuplicateContent
 	}
 
 	id, err := result.LastInsertId()
