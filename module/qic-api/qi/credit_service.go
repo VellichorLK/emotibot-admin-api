@@ -856,7 +856,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 		}
 	}
 	if len(interposalIDs) > 0 {
-		interposalRules, err := GetRuleInterposals(&model.GeneralQuery{ID: speedIDs}, nil)
+		interposalRules, err := GetRuleInterposals(&model.GeneralQuery{ID: interposalIDs}, nil)
 		if err != nil {
 			logger.Error.Printf("get silence rule failed. %s\n", err)
 			return nil, err
