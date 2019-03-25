@@ -91,7 +91,7 @@ func PrepareSentenceGroups(fileName string, enterpriseID string) (map[string]*mo
 			continue
 		}
 
-		fmt.Printf("groupName is %s, column is %d \n", row.Cells[0].String(), len(row.Cells))
+		// TODO if groupName, sentenceName is empty, report error
 		groupName = row.Cells[0].String()
 		sentenceName = row.Cells[1].String()
 		tagName = row.Cells[2].String()
@@ -209,6 +209,7 @@ func PrepareSentenceGroups(fileName string, enterpriseID string) (map[string]*mo
 			if err := DeleteSentenceGroup(groups[0].UUID); err != nil {
 				return nil, err
 			}
+			logger.Trace.Printf("Delete existing sentenceGroup %s \n", groupName)
 		}
 
 		senGroup := &model.SentenceGroup{
@@ -769,7 +770,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			sentenceGroup, ok := preparedSentenceGroupMap[groupName]
 			if !ok {
 				// TODO need prepared sentenceGroup info ?
-				logger.Error.Printf("Failed to find needed sentenceGroup in map")
+				logger.Error.Printf("Failed to find needed sentenceGroup %s \n", groupName)
 				return fmt.Errorf("failed to find needed sentenceGroup info")
 			}
 
