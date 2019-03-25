@@ -491,7 +491,7 @@ func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedD
 			numOfBreak++
 		}
 		var defaultVaild bool
-		if numOfBreak <= rule.Times {
+		if numOfBreak < rule.Times {
 			defaultVaild = true
 		}
 

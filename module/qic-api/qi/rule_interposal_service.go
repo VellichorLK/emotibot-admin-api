@@ -149,7 +149,7 @@ func RuleInterposalCheck(ruleGroup model.Group, segs []*SegmentWithSpeaker) ([]R
 			numOfBreak++
 		}
 		var defaultVaild bool
-		if numOfBreak <= r.Times {
+		if numOfBreak < r.Times {
 			defaultVaild = true
 		}
 
