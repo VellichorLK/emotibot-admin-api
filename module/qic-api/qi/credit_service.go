@@ -833,6 +833,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					setSentenceWithPredictionInfo(c.Exception.Before.Customer)
 					setSentenceWithPredictionInfo(c.Exception.Before.Staff)
 					setSentenceWithPredictionInfo(c.Exception.After.Staff)
+					c.Setting = *sr
 				}
 			}
 		}
@@ -849,6 +850,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 					c.Name = sr.Name
 					setSentenceWithPredictionInfo(c.Exception.Under.Customer)
 					setSentenceWithPredictionInfo(c.Exception.Over.Customer)
+					c.Setting = *sr
 				}
 			}
 		}
@@ -863,6 +865,7 @@ func RetrieveCredit(call uint64) ([]*HistoryCredit, error) {
 			if credits, ok := rInterposalIDMap[ir.ID]; ok {
 				for _, c := range credits {
 					c.Name = ir.Name
+					c.Setting = *ir
 				}
 			}
 		}
