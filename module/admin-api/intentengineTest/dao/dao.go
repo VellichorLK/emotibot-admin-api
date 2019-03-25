@@ -1126,7 +1126,7 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 			return 0, data.TestStatusNeedTest, 0, 0, nil
 		}
 	} else {
-		err = fmt.Errorf("end_time should not be null for tested intent test version: %d, status: %d",
+		err = fmt.Errorf("end_time should not be null for in used intent test version: %d, status: %d",
 			version, status)
 		logger.Error.Println(err.Error())
 		return
