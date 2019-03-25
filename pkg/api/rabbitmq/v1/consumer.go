@@ -23,7 +23,23 @@ type ConsumerConfig struct {
 type Task func(message []byte) error
 
 // Subscribe will create a routine to check for the
-func (c *Consumer) Subscribe(task Task) {
+func (c *Consumer) Subscribe(task Task) error {
+	// Create queue if not exists
+	ch, _ := c.client.rwChannels()
+	_, err := ch.QueueDeclare(
+		c.config.QueueName, // name
+		false,              // durable
+		false,              // delete when unused
+		false,              // exclusive
+		false,              // no-wait
+		nil,                // arguments
+	)
+	if err != nil {
+		e := fmt.Errorf("Fail to create queue: %s, error: %s",
+			c.config.QueueName, err.Error())
+		return e
+	}
+
 	go func() {
 		for {
 			ch, _ := c.client.rwChannels()
@@ -54,7 +70,10 @@ func (c *Consumer) Subscribe(task Task) {
 			c.client.reconnect()
 		}
 	}()
+
+	return nil
 }
+
 func (c *Consumer) Consume() ([]byte, error) {
 	var err error
 	maxRetry := c.config.MaxRetry

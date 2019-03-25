@@ -45,9 +45,9 @@ func HasCall(id int64) (bool, error) {
 }
 
 var (
-	call = func(callID int64, enterprise string) (c model.Call, err error) {
+	call = func(callUUID string, enterprise string) (c model.Call, err error) {
 		query := model.CallQuery{
-			ID: []int64{callID},
+			UUID: []string{callUUID},
 		}
 		if enterprise != "" {
 			query.EnterpriseID = &enterprise
@@ -133,6 +133,7 @@ var (
 
 			r := CallResp{
 				CallID:        c.ID,
+				CallUUID:      c.UUID,
 				FileName:      *c.FileName,
 				CallTime:      c.CallUnixTime,
 				CallComment:   *c.Description,
@@ -172,8 +173,8 @@ var (
 // Call return a call by given callID and enterprise
 // If enterprise is empty, it will ignore it in conditions.
 // If callID can not found, a ErrNotFound will returned
-func Call(callID int64, enterprise string) (c model.Call, err error) {
-	return call(callID, enterprise)
+func Call(callUUID string, enterprise string) (c model.Call, err error) {
+	return call(callUUID, enterprise)
 }
 
 // Calls is just a wrapper for callDao's calls.
@@ -260,18 +261,27 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		return nil, err
 	}
 	call = &calls[0]
+	err = updateCallCustomInfo(tx, c, call, timestamp)
+	if err != nil {
+		return nil, err
+	}
+
+	return call, nil
+}
+
+func updateCallCustomInfo(tx model.SQLTx, c *NewCallReq, call *model.Call, timestamp int64) error {
 	isEnable := true
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
 		EnterpriseID: c.Enterprise,
 		IsEnable:     &isEnable,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query group failed, %v", err)
+		return fmt.Errorf("query group failed, %v", err)
 	}
 
 	keys, err := userKeys(tx, model.UserKeyQuery{Enterprise: c.Enterprise})
 	if err != nil {
-		return nil, fmt.Errorf("fetch key values failed, %v", err)
+		return fmt.Errorf("fetch key values failed, %v", err)
 	}
 	// filtered customcolumns from user
 	var userInputs = make(map[string][]string)
@@ -294,7 +304,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		case model.UserKeyTypArray:
 			values, ok := value.([]interface{})
 			if !ok {
-				return nil, ErrCCTypeMismatch
+				return ErrCCTypeMismatch
 			}
 			for _, val := range values {
 				v := model.UserValue{
@@ -312,7 +322,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 			if !ok {
 				_, isInt := value.(int)
 				if !isInt {
-					return nil, ErrCCTypeMismatch
+					return ErrCCTypeMismatch
 				}
 			}
 			v := model.UserValue{
@@ -327,7 +337,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		case model.UserKeyTypTime:
 			_, ok := value.(int)
 			if !ok {
-				return nil, ErrCCTypeMismatch
+				return ErrCCTypeMismatch
 			}
 			v := model.UserValue{
 				LinkID:     call.ID,
@@ -352,11 +362,10 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		for _, v := range uv {
 			v, err = newUserValue(tx, v)
 			if err != nil {
-				return nil, fmt.Errorf("new user values failed, %v", err)
+				return fmt.Errorf("new user values failed, %v", err)
 			}
 			userInputs[name] = insertAndOrderStrings(userInputs[name], v.Value)
 		}
-
 	}
 
 	//TODO: add matching for custom columns and conditions.
@@ -371,7 +380,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	}
 	conditions, err := keyvalues(tx, keyQuery, valueQuery)
 	if err != nil {
-		return nil, fmt.Errorf("fetch conditions failed, %v", err)
+		return fmt.Errorf("fetch conditions failed, %v", err)
 	}
 	groupConditions := make(map[int64][]model.UserKey, len(groups))
 	for _, cond := range conditions {
@@ -393,13 +402,14 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	matchedGroups := MatchGroup(matchDefaultConditions(groups, *call), groupConditions, userInputs)
 	_, err = callDao.SetRuleGroupRelations(tx, *call, matchedGroups)
 	if err != nil {
-		return nil, fmt.Errorf("set rule group failed, %v", err)
+		return fmt.Errorf("set rule group failed, %v", err)
 	}
 
 	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit new call transaction failed, %v", err)
+		return fmt.Errorf("commit new call transaction failed, %v", err)
 	}
-	return call, nil
+
+	return nil
 }
 
 //UpdateCall update the call data source
@@ -417,10 +427,11 @@ func ConfirmCall(call *model.Call) error {
 	}
 
 	type ASRInput struct {
-		Version float64 `json:"version"`
-		CallID  string  `json:"call_id"`
-		Path    string  `json:"path"`
-		VADList []*VAD  `json:"vad_list"`
+		Version  float64 `json:"version"`
+		CallID   string  `json:"call_id"`
+		CallUUID string  `json:"call_uuid"`
+		Path     string  `json:"path"`
+		VADList  []*VAD  `json:"vad_list"`
 	}
 
 	//TODO: if call already Confirmed, it should not be able to
@@ -441,9 +452,10 @@ func ConfirmCall(call *model.Call) error {
 		logger.Warn.Println("expect ASR_HARDCODE_VOLUME have setup, or asr may not be able to read the path.")
 	}
 	input := ASRInput{
-		Version: 1.0,
-		CallID:  strconv.FormatInt(call.ID, 10),
-		Path:    path.Join(basePath, *call.FilePath),
+		Version:  1.0,
+		CallID:   strconv.FormatInt(call.ID, 10),
+		CallUUID: call.UUID,
+		Path:     path.Join(basePath, *call.FilePath),
 	}
 
 	if call.Type == model.CallTypeRealTime {

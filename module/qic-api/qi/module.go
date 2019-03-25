@@ -19,22 +19,24 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo   util.ModuleInfo
-	tagDao       model.TagDao
-	callDao      model.CallDao = &model.CallSQLDao{}
-	segmentDao   model.SegmentDao
-	taskDao      = &model.TaskSQLDao{}
-	userValueDao = &model.UserValueDao{}
-	userKeyDao   = &model.UserKeySQLDao{}
-	swDao        model.SensitiveWordDao
-	condDao      = &model.GroupConditionDao{}
-	serviceDAO   model.GroupDAO
-	producer     *rabbitmq.Producer
-	consumer     *rabbitmq.Consumer
-	sqlConn      *sql.DB
-	dbLike       model.DBLike
-	volume       string
-	creditDao    model.CreditDao = &model.CreditSQLDao{}
+	ModuleInfo           util.ModuleInfo
+	tagDao               model.TagDao
+	callDao              model.CallDao = &model.CallSQLDao{}
+	segmentDao           model.SegmentDao
+	taskDao              = &model.TaskSQLDao{}
+	userValueDao         = &model.UserValueDao{}
+	userKeyDao           = &model.UserKeySQLDao{}
+	swDao                model.SensitiveWordDao
+	condDao              = &model.GroupConditionDao{}
+	serviceDAO           model.GroupDAO
+	producer             *rabbitmq.Producer
+	consumer             *rabbitmq.Consumer
+	realtimeCallProducer *rabbitmq.Producer
+	realtimeCallConsumer *rabbitmq.Consumer
+	sqlConn              *sql.DB
+	dbLike               model.DBLike
+	volume               string
+	creditDao            model.CreditDao = &model.CreditSQLDao{}
 )
 var (
 	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
@@ -99,10 +101,10 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, callRequest(CallsDetailHandler)),
-			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, callRequest(CallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}", []string{}, callRequest(CallsDetailHandler)),
+			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/file", []string{}, callRequest(CallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
@@ -120,6 +122,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPatch, "call-in/{id}", []string{}, callRequest(handleFlowUpdate)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
 
@@ -265,7 +268,30 @@ func init() {
 					MaxRetry:  10,
 				})
 				// require dao init first.
-				consumer.Subscribe(ASRWorkFlow)
+				err = consumer.Subscribe(ASRWorkFlow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"dst_queue", err.Error())
+					return
+				}
+
+				// Realtime call
+				realtimeCallProducer = client.NewProducer(rabbitmq.ProducerConfig{
+					QueueName:   "realtime_call_queue",
+					ContentType: "application/json",
+					MaxRetry:    10,
+				})
+				realtimeCallConsumer = client.NewConsumer(rabbitmq.ConsumerConfig{
+					QueueName: "realtime_call_queue",
+					MaxRetry:  10,
+				})
+				err = realtimeCallConsumer.Subscribe(RealtimeCallWorkflow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"realtime_call_queue", err.Error())
+					return
+				}
+
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 
 				// init swDao

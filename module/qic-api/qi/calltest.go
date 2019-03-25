@@ -30,7 +30,7 @@ func (m *mockCallDao) Calls(delegatee model.SqlLike, query model.CallQuery) ([]m
 func (m *mockCallDao) NewCalls(delegatee model.SqlLike, calls []model.Call) ([]model.Call, error) {
 	return m.readMockCallData()[1:], nil
 }
-func (m *mockCallDao) SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []uint64) ([]int64, error) {
+func (m *mockCallDao) SetRuleGroupRelations(delegatee model.SqlLike, call model.Call, rulegroups []model.Group) ([]int64, error) {
 	return []int64{1, 2}, nil
 }
 
@@ -50,6 +50,15 @@ func (m *mockCallDao) Count(delegatee model.SqlLike, query model.CallQuery) (int
 
 func (m *mockCallDao) SetCall(delegatee model.SqlLike, call model.Call) error {
 	return nil
+}
+
+func (m *mockCallDao) ExportCalls(delegatee model.SqlLike) (*bytes.Buffer, error) {
+	// TODO: Return valid calls
+	return nil, nil
+}
+
+func (m *mockCallDao) GetCallIDByUUID(delegatee model.SqlLike, callUUID string) (int64, error) {
+	return 1, nil
 }
 
 func (m *mockCallDao) readMockTaskData() []model.Task {

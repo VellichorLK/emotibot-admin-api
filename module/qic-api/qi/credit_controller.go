@@ -2,27 +2,19 @@ package qi
 
 import (
 	"net/http"
-	"strconv"
-
-	"emotibot.com/emotigo/pkg/logger"
-	"github.com/gorilla/mux"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 func handleGetCredit(w http.ResponseWriter, r *http.Request) {
-	callStr := mux.Vars(r)["call_id"]
-	//check the category authorization
-	call, err := strconv.ParseUint(callStr, 10, 64)
-	if err != nil {
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-		return
-	}
+	uuid := general.ParseID(r)
 
-	resp, err := RetrieveCredit(call)
+	resp, err := RetrieveCredit(uuid)
 	if err != nil {
 		logger.Error.Printf("get credit failed.\n")
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -39,13 +31,9 @@ func handleGetCredit(w http.ResponseWriter, r *http.Request) {
 func WithCallIDCheck(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enterprise := requestheader.GetEnterpriseID(r)
-		callStr := mux.Vars(r)["call_id"]
-		call, err := strconv.ParseInt(callStr, 10, 64)
-		if err != nil {
-			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
-			return
-		}
-		q := model.CallQuery{ID: []int64{call}, EnterpriseID: &enterprise}
+		uuid := general.ParseID(r)
+
+		q := model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise}
 		count, err := callDao.Count(nil, q)
 		if err != nil {
 			logger.Error.Printf("count call failed. %s\n", err)
