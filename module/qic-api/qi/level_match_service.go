@@ -108,7 +108,7 @@ type SilenceRuleCredit struct {
 	Score       int                    `json:"score"`
 	Setting     model.SilenceRule      `json:"setting"`
 	Exception   SilenceExceptionCredit `json:"exception"`
-	InvalidSegs []SegmentTimeRange     `json:"invalid_semgent"`
+	InvalidSegs []SegmentTimeRange     `json:"invalid_segment"`
 }
 
 type SpeedExceptionCredit struct {
@@ -131,7 +131,7 @@ type InterposalRuleCredit struct {
 	Valid       bool                 `json:"valid"`
 	Score       int                  `json:"score"`
 	Setting     model.InterposalRule `json:"setting"`
-	InvalidSegs []SegmentTimeRange   `json:"invalid_semgent"`
+	InvalidSegs []SegmentTimeRange   `json:"invalid_segment"`
 }
 
 //RuleGrpCredit is the result of the segments
