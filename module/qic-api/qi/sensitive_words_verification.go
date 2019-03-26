@@ -29,6 +29,7 @@ type SensitiveWordCredit struct {
 	invalidSegments              []model.SimpleCredit
 	staffMatchedExceptionSegs    map[int64][]model.SimpleCredit
 	customerMatchedExceptionSegs map[int64][]model.SimpleCredit
+	usrValsMatched               bool
 }
 
 //SensitiveWordsVerificationWithPacked packages the sensitive words result into the structure
@@ -129,7 +130,7 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 				OrgID:      uint64(vid),
 				ParentID:   uint64(swid),
 				Revise:     unactivate,
-				Valid:      unactivate,
+				Valid:      0,
 				Score:      0,
 				CreateTime: now,
 				UpdateTime: now,
@@ -174,6 +175,7 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 					// check if the call passed user value
 					if _, ok := passedMap[sw.ID]; ok {
 						passed = true
+						swCredit.usrValsMatched = true
 					}
 
 					// check if the segment is a staff exception sentence
@@ -237,8 +239,8 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 		}
 	}
 
-	//sets the sentence with exception to be true
 	for _, v := range resp {
+		//sets the sentence with exception to be true
 		for _, e := range v.customerExceptions {
 			if len(v.customerMatchedExceptionSegs[int64(e.OrgID)]) != 0 {
 				e.Valid = 1
@@ -249,6 +251,13 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 				e.Valid = 1
 			}
 		}
+		//if usr val is matched, set the valid
+		if v.usrValsMatched {
+			for _, usrVal := range v.usrVals {
+				usrVal.Valid = 1
+			}
+		}
+
 	}
 
 	return resp, nil
