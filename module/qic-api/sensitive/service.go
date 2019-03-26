@@ -3,6 +3,7 @@ package sensitive
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	_ "emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"github.com/anknown/ahocorasick"
 )
@@ -82,27 +83,37 @@ func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, c
 func getWordExceptionSentences(customerSentences, staffSentences []string, enterprise string, sqlLike model.SqlLike) ([]model.SimpleSentence, []model.SimpleSentence, error) {
 	customerException := []model.SimpleSentence{}
 	staffException := []model.SimpleSentence{}
-
+	var sq *model.SentenceQuery
 	var deleted int8
-	sq := &model.SentenceQuery{
-		UUID:       customerSentences,
-		IsDelete:   &deleted,
-		Enterprise: &enterprise,
-		Limit:      100,
+
+	if len(customerSentences) > 0 {
+		sq = &model.SentenceQuery{
+			UUID:       customerSentences,
+			IsDelete:   &deleted,
+			Enterprise: &enterprise,
+			Limit:      100,
+		}
+
+		customerExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+		if err != nil {
+			return customerException, staffException, err
+		}
+		customerException = model.ToSimpleSentences(customerExceptionSentences)
 	}
 
-	customerExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
-	if err != nil {
-		return customerException, staffException, err
+	if len(staffSentences) > 0 {
+		sq = &model.SentenceQuery{
+			UUID:       customerSentences,
+			IsDelete:   &deleted,
+			Enterprise: &enterprise,
+			Limit:      100,
+		}
+		staffExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+		if err != nil {
+			return customerException, staffException, err
+		}
+		staffException = model.ToSimpleSentences(staffExceptionSentences)
 	}
-	customerException = model.ToSimpleSentences(customerExceptionSentences)
-
-	sq.UUID = staffSentences
-	staffExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
-	if err != nil {
-		return customerException, staffException, err
-	}
-	staffException = model.ToSimpleSentences(staffExceptionSentences)
 
 	return customerException, staffException, nil
 }
@@ -144,6 +155,8 @@ func GetSensitiveWordInDetail(wUUID string, enterprise string) (word *model.Sens
 	}
 
 	word = &words[0]
+	word.StaffException = []model.SimpleSentence{}
+	word.CustomerException = []model.SimpleSentence{}
 
 	rels, err := swDao.GetRel(word.ID, sqlConn)
 	if err != nil {
