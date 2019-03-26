@@ -424,6 +424,7 @@ func ConfirmCall(call *model.Call) error {
 		Speaker   int8    `json:"speaker"`
 		StartTime float64 `json:"start_time"`
 		EndTime   float64 `json:"end_time"`
+		ASRText   string  `json:"asr_text"`
 	}
 
 	type ASRInput struct {
@@ -473,6 +474,7 @@ func ConfirmCall(call *model.Call) error {
 				Speaker:   callRoleTyp(segment.Speaker),
 				StartTime: segment.StartTime,
 				EndTime:   segment.EndTime,
+				ASRText:   segment.ASRText,
 			}
 
 			vadList = append(vadList, &vad)
