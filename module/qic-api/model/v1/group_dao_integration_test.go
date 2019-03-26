@@ -254,3 +254,23 @@ func TestITGroupSQLDao_SetGroupRules(t *testing.T) {
 	}
 	checkDBStat(t)
 }
+
+func TestITGroupSQLDao_Suite(t *testing.T) {
+	skipIntergartion(t)
+	db := newIntegrationTestDB(t)
+	dao := GroupSQLDao{conn: db}
+	g, err := dao.NewGroup(nil, Group{UUID: "ABCD"})
+	require.NoError(t, err)
+	groups, err := dao.Group(nil, GroupQuery{
+		ID: []int64{g.ID},
+	})
+	group := groups[0]
+	group.IsEnable = true
+	require.NoError(t, dao.SetGroupBasic(nil, &group))
+	newGroups, err := dao.Group(nil, GroupQuery{
+		ID: []int64{g.ID},
+	})
+	assert.Equal(t, group, newGroups[0])
+	dao.DeleteGroup(g.UUID, db)
+	checkDBStat(t)
+}

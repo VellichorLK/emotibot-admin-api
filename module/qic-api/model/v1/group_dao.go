@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-sql-driver/mysql"
+
 	"bufio"
 	"bytes"
 	"reflect"
@@ -1104,7 +1106,36 @@ func (s *GroupSQLDao) SetGroupRules(delegatee SqlLike, groups ...Group) error {
 	return nil
 }
 
-// func (s *GroupSQLDao) Group
+// SetGroupBasic update group basic info.
+// It only can be used with flag toggle or basic info(description, name...) update.
+// Because it wont trigger an soft delete update.
+// Once updated, the group's updateTime will be changed to new value.
+func (s *GroupSQLDao) SetGroupBasic(delegatee SqlLike, group *Group) error {
+	if delegatee == nil {
+		delegatee = s.conn
+	}
+	group.UpdatedTime = time.Now().Unix()
+	updateCols := []string{
+		fldRuleGrpName, fldRuleGrpDescription, fldRuleGrpIsEnable,
+		fldRuleGrpUpdateTime,
+	}
+	rawSQL := fmt.Sprintf("UPDATE `%s` SET %s = ? WHERE `%s` = ?",
+		tblRuleGroup, strings.Join(updateCols, " = ?, "), fldRuleGrpID,
+	)
+	_, err := delegatee.Exec(
+		rawSQL,
+		group.Name, group.Description, group.IsEnable,
+		group.UpdatedTime, group.ID,
+	)
+	if sqlErr, ok := err.(*mysql.MySQLError); ok && sqlErr.Number == 1064 {
+		logger.Error.Printf("error sql: %s\n", rawSQL)
+	}
+	if err != nil {
+		return fmt.Errorf("update execute failed, %v", err)
+	}
+	return nil
+}
+
 // GroupsByCalls find the groups that asssociated with the call given by the query.
 // If success, a map of callID with slice of rule group is returned.
 func (s *GroupSQLDao) GroupsByCalls(delegatee SqlLike, query CallQuery) (map[int64][]Group, error) {

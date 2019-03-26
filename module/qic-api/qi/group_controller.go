@@ -218,6 +218,10 @@ func toOther(cond *model.Condition, customCond map[string][]interface{}) Other {
 // 	return group
 // }
 
+// handleCreateGroup handle the group creation controller logic.
+//
+// **FIXME: It ignore the other rules and only creates group with conversation rules,**
+// but it should be a minor issue since UI separate the creation of group and its rules.
 func handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	var (
 		reqBody NewGroupReq
@@ -512,10 +516,14 @@ func handleUpdateGroup(w http.ResponseWriter, r *http.Request, group *model.Grou
 	}
 }
 
-// func handleUpdateGroupBasic(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
-
-// 	UpdateGroupBasic()
-// }
+// handleUpdateGroupBaisc is the
+func handleUpdateGroupBasic(w http.ResponseWriter, r *http.Request, group *model.Group) {
+	err := UpdateGroupBasic(group)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("update group basic failed, %v", err))
+		return
+	}
+}
 
 func handleDeleteGroup(w http.ResponseWriter, r *http.Request, group *model.GroupWCond) {
 	err := DeleteGroup(group.UUID)

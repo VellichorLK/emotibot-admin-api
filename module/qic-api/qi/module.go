@@ -49,6 +49,7 @@ var (
 	setGroupRule    func(delegatee model.SqlLike, groups ...model.Group) error
 	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
 	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
+	setGroupBasic   func(delegatee model.SqlLike, group *model.Group) error
 )
 
 func init() {
@@ -203,6 +204,7 @@ func init() {
 				setGroupRule = groupSqlDao.SetGroupRules
 				groupRules = groupSqlDao.GroupRules
 				resetGroupRules = groupSqlDao.ResetGroupRules
+				setGroupBasic = groupSqlDao.SetGroupBasic
 				// init tag dao
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {

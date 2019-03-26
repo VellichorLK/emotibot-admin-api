@@ -388,9 +388,9 @@ func GetGroupRules(group model.Group) (*model.Group, error) {
 	return &group, nil
 }
 
-// func UpdateGroupBasic(group model.Group) error {
-// 	updateGroup()
-// }
+func UpdateGroupBasic(group *model.Group) error {
+	return setGroupBasic(nil, group)
+}
 
 // UpdateGroup soft delete the group and create new group & conditions & custom conditions
 func UpdateGroup(group model.Group, customcols map[string][]interface{}) (err error) {
