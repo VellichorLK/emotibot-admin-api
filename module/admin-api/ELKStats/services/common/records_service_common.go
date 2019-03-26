@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -280,7 +282,7 @@ func GetRecordsExportStatus(exportTaskID string) (status string, err error) {
 // ExportTask exports records to Excel file in background
 // TODO: Cancel the corresponding running exporting records task when:
 //		 DELETE /export/{export-id} API is called.
-func ExportTask(option *data.ExportTaskOption) {
+func ExportTask(option *data.ExportTaskOption, locale string) {
 	var err error
 	defer func() {
 		if err != nil {
@@ -316,6 +318,11 @@ func ExportTask(option *data.ExportTaskOption) {
 	timestamp := time.Now().Format(data.XlsxFileTimestampFormat)
 	numOfXlsxFiles := 0
 
+	var localeStr string = localemsg.ZhCn
+	if locale != "" {
+		localeStr = locale
+	}
+
 	for {
 		logger.Trace.Printf("Task %s: Fetching results..\n", option.TaskID)
 		results, _err := service.Do(ctx)
@@ -328,7 +335,7 @@ func ExportTask(option *data.ExportTaskOption) {
 					numOfXlsxFiles++
 					xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
 					logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", option.TaskID, xlsxFileName)
-					xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName)
+					xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName, localeStr)
 					if _err != nil {
 						err = _err
 						return
@@ -406,7 +413,7 @@ func ExportTask(option *data.ExportTaskOption) {
 			numOfXlsxFiles++
 			xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
 			logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", option.TaskID, xlsxFileName)
-			xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName)
+			xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName, localeStr)
 			if _err != nil {
 				err = _err
 				return
