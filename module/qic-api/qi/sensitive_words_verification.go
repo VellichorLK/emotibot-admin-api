@@ -229,13 +229,14 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 			OrgID:      uint64(sw.ID),
 			Revise:     unactivate,
 			Valid:      1,
-			Score:      sw.Score,
 			CreateTime: now,
 			UpdateTime: now,
 		}
 
 		if violated {
 			credit.Valid = 0
+			//notice,currently sensitive words score use the positive number as the violated score
+			credit.Score = -sw.Score
 		}
 		credits = append(credits, credit)
 	}
