@@ -80,7 +80,7 @@ func SessionsQuery(query *dataV1.SessionsQuery) (sessions []*dataV1.SessionsData
 	return
 }
 
-func SessionsExport(query *dataV1.SessionsQuery) (exportTaskID string, err error) {
+func SessionsExport(query *dataV1.SessionsQuery, locale string) (exportTaskID string, err error) {
 	// Try to create export task
 	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
 	if err != nil {
@@ -89,8 +89,8 @@ func SessionsExport(query *dataV1.SessionsQuery) (exportTaskID string, err error
 
 	// Create a goroutine to exporting records in background
 	go func() {
-		option := createExportSessionsTaskOption(query, exportTaskID)
-		servicesCommon.ExportTask(option)
+		option := createExportSessionsTaskOption(query, exportTaskID, locale)
+		servicesCommon.ExportTask(option, locale)
 	}()
 
 	return
@@ -281,7 +281,7 @@ func extractExportSessionsHitResultHandler(hit *elastic.SearchHit) (sessionPtr i
 	return
 }
 
-func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
+func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -335,7 +335,7 @@ func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, lo
 }
 
 func createExportSessionsTaskOption(query *dataV1.SessionsQuery,
-	exportTaskID string) *data.ExportTaskOption {
+	exportTaskID string, locale string) *data.ExportTaskOption {
 	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
 
 	boolQuery := newSessionBoolQuery(query)

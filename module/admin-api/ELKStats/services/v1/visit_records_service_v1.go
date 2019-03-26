@@ -14,6 +14,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
@@ -160,7 +161,7 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 	return r, nil
 }
 
-func VisitRecordsExport(query *dataV1.RecordQuery) (exportTaskID string, err error) {
+func VisitRecordsExport(query *dataV1.RecordQuery, locale string) (exportTaskID string, err error) {
 	// Try to create export task
 	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
 	if err != nil {
@@ -170,7 +171,7 @@ func VisitRecordsExport(query *dataV1.RecordQuery) (exportTaskID string, err err
 	// Create a goroutine to exporting records in background
 	go func() {
 		option := createExportRecordsTaskOption(query, exportTaskID)
-		servicesCommon.ExportTask(option)
+		servicesCommon.ExportTask(option, locale)
 	}()
 
 	return
@@ -435,7 +436,7 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -469,7 +470,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 			record.StdQ,
 			record.Answer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
-			record.Module,
+			localemsg.Get(locale, record.Module),
 			record.Source,
 			record.LogTime,
 			record.Emotion,

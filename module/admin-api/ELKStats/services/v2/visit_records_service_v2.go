@@ -319,7 +319,7 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -378,7 +378,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 			record.StdQ,
 			record.Answer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
-			localemsg.Get(locale[0], record.Module),
+			localemsg.Get(locale, record.Module),
 			record.Source,
 			record.LogTime,
 			record.Emotion,

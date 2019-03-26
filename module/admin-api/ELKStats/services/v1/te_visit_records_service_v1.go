@@ -78,7 +78,7 @@ func TEVisitRecordsQuery(query *dataV1.TEVisitRecordsQuery) (teRecords []*dataV1
 	return
 }
 
-func TEVisitRecordsExport(query *dataV1.TEVisitRecordsQuery) (exportTaskID string, err error) {
+func TEVisitRecordsExport(query *dataV1.TEVisitRecordsQuery, locale string) (exportTaskID string, err error) {
 	// Try to create export task
 	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
 	if err != nil {
@@ -87,8 +87,8 @@ func TEVisitRecordsExport(query *dataV1.TEVisitRecordsQuery) (exportTaskID strin
 
 	// Create a goroutine to exporting records in background
 	go func() {
-		option := createExportTERecordsTaskOption(query, exportTaskID)
-		servicesCommon.ExportTask(option)
+		option := createExportTERecordsTaskOption(query, exportTaskID, locale)
+		servicesCommon.ExportTask(option, locale)
 	}()
 
 	return
@@ -235,7 +235,7 @@ func extractExportTERecordsHitResultHandler(hit *elastic.SearchHit) (teRecordPtr
 	return
 }
 
-func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, locale ...string) (xlsxFilePath string, err error) {
+func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -288,7 +288,7 @@ func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, 
 }
 
 func createExportTERecordsTaskOption(query *dataV1.TEVisitRecordsQuery,
-	exportTaskID string) *data.ExportTaskOption {
+	exportTaskID string, locale string) *data.ExportTaskOption {
 	index := fmt.Sprintf("%s-*", data.ESTERecordsIndex)
 
 	boolQuery := newTEBoolQueryWithRecordQuery(query)
