@@ -41,7 +41,7 @@ type SensitiveWordInDetail struct {
 	UUID       string     `json:"sw_id"`
 	Name       string     `json:"sw_name"`
 	Score      int        `json:"score"`
-	Exception  Exceptions `json:"execption"`
+	Exception  Exceptions `json:"exception"`
 	CategoryID int64      `json:"category_id"`
 }
 
@@ -204,7 +204,7 @@ func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	customerException := []model.SimpleSentence{}
-	for _, sUUID := range swInReq.Exception.Staff {
+	for _, sUUID := range swInReq.Exception.Customer {
 		ss := model.SimpleSentence{
 			UUID: sUUID,
 		}
