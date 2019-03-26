@@ -94,6 +94,7 @@ var (
 								return nil, 0, fmt.Errorf("call %d value %d said it is array, but %s is not valid", c.ID, v.ID, v.Value)
 							}
 							data = append(data, v.Value)
+							callCustomCols[v.UserKey.InputName] = data
 						}
 
 					case model.UserKeyTypNumber:
