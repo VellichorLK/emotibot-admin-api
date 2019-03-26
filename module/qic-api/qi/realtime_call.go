@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -20,6 +21,8 @@ func RealtimeCallWorkflow(output []byte) error {
 	logger.Trace.Println("Realtime call workflow started")
 
 	var callResp RealtimeCallResp
+	var isDone bool
+
 	err := json.Unmarshal(output, &callResp)
 	if err != nil {
 		return fmt.Errorf("Unmarshal realtime call response failed %s, body: %s",
@@ -32,6 +35,18 @@ func RealtimeCallWorkflow(output []byte) error {
 	} else if err != nil {
 		return fmt.Errorf("Fetch call failed, %v", err)
 	}
+
+	defer func() {
+		if isDone {
+			return
+		}
+
+		c.Status = model.CallStatusFailed
+		updateErr := UpdateCall(&c)
+		if updateErr != nil {
+			logger.Error.Println("update call critical failed, ", updateErr)
+		}
+	}()
 
 	if volume == "" {
 		return fmt.Errorf("Volume does not exist, please contact ops and check init log for volume init error")
@@ -75,5 +90,6 @@ func RealtimeCallWorkflow(output []byte) error {
 		return fmt.Errorf("Confirm call failed, %v", err)
 	}
 
+    isDone = true
 	return nil
 }
