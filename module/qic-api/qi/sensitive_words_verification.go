@@ -228,7 +228,7 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 			Type:       int(levSWTyp),
 			OrgID:      uint64(sw.ID),
 			Revise:     unactivate,
-			Valid:      0,
+			Valid:      1,
 			Score:      sw.Score,
 			CreateTime: now,
 			UpdateTime: now,
