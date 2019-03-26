@@ -83,8 +83,6 @@ func handleImportCallIn(w http.ResponseWriter, r *http.Request) {
 	var err error
 	enterpriseID := requestheader.GetEnterpriseID(r)
 
-	// need to check unique flow name
-
 	fileName := fmt.Sprintf("flow_%s.xlsx", time.Now().Format("20060102150405"))
 
 	if err = getUploadedFile(r, fileName); err != nil {
