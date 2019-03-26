@@ -139,6 +139,11 @@ func setUpRoutes() {
 		Route{"TrAddEnterprise", "POST", 4, "enterprise/try-create", nil, controller.EnterpriseTryAddHandlerV4, []interface{}{0}},
 		Route{"ActivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/active", nil, controller.EnterpriseActivateHandlerV4, []interface{}{0}},
 		Route{"DeactivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/deactive", nil, controller.EnterpriseDeactivateHandlerV4, []interface{}{0}},
+
+		// 获取账号信息
+		Route{"GetUsers", "GET", 4, "enterprise/{enterpriseID}/users", nil, controller.UsersGetHandlerV4, []interface{}{0, 1, 2}},
+		// 获取企业用户下所有子账号
+		Route{"GetUser", "GET", 4, "enterprise/{enterpriseID}/user/{userID}", nil, controller.UserGetHandlerV4, []interface{}{0, 1, 2}},
 	}
 }
 
