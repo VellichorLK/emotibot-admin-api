@@ -147,9 +147,12 @@ func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err 
 		paramStr = fmt.Sprintf("%s %s", paramStr, paramStrTemplate)
 	}
 	paramStr = paramStr[:len(paramStr)-1]
+	for i := 0; i < len(insertFlds); i++ {
+		insertFlds[i] = "`" + insertFlds[i] + "`"
+	}
 
 	insertStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) %s",
+		"INSERT INTO %s (%s) VALUES %s",
 		table,
 		strings.Join(insertFlds, ","),
 		paramStr,

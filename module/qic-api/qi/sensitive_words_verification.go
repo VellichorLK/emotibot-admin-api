@@ -1,11 +1,12 @@
 package qi
 
 import (
+	"time"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/anknown/ahocorasick"
-	"time"
+	goahocorasick "github.com/anknown/ahocorasick"
 )
 
 var sentenceMatchFunc func([]string, []uint64, string) (map[uint64][]int, error) = SimpleSentenceMatch
@@ -92,7 +93,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 				Type:       int(levSWUserValTyp),
 				OrgID:      uint64(vid),
 				ParentID:   uint64(swid),
-				Revise:     -1,
+				Revise:     unactivate,
+				Valid:      unactivate,
 				Score:      0,
 				CreateTime: now,
 				UpdateTime: now,
@@ -115,7 +117,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 					Type:       int(levSWSegTyp),
 					OrgID:      uint64(seg.ID),
 					ParentID:   uint64(sw.ID),
-					Revise:     -1,
+					Revise:     unactivate,
+					Valid:      unactivate,
 					Score:      0,
 					CreateTime: now,
 					UpdateTime: now,
@@ -147,8 +150,9 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 								Type:       int(levSWSenTyp),
 								OrgID:      uint64(sen.ID),
 								ParentID:   uint64(sw.ID),
-								Revise:     -1,
+								Revise:     unactivate,
 								Score:      0,
+								Valid:      1,
 								CreateTime: now,
 								UpdateTime: now,
 							}
@@ -159,7 +163,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 								Type:       int(levSWSenSegTyp),
 								OrgID:      uint64(seg.ID),
 								ParentID:   uint64(sen.ID),
-								Revise:     -1,
+								Revise:     unactivate,
+								Valid:      unactivate,
 								Score:      0,
 								CreateTime: now,
 								UpdateTime: now,
@@ -184,7 +189,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 								Type:       int(levSWSenTyp),
 								OrgID:      uint64(sen.ID),
 								ParentID:   uint64(sw.ID),
-								Revise:     -1,
+								Revise:     unactivate,
+								Valid:      1,
 								Score:      0,
 								CreateTime: now,
 								UpdateTime: now,
@@ -196,7 +202,8 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 								Type:       int(levSWSenSegTyp),
 								OrgID:      uint64(matchedSeg.ID),
 								ParentID:   uint64(sen.ID),
-								Revise:     -1,
+								Revise:     unactivate,
+								Valid:      unactivate,
 								Score:      0,
 								CreateTime: now,
 								UpdateTime: now,
@@ -220,14 +227,16 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 			CallID:     uint64(callID),
 			Type:       int(levSWTyp),
 			OrgID:      uint64(sw.ID),
-			Revise:     1,
-			Score:      sw.Score,
+			Revise:     unactivate,
+			Valid:      1,
 			CreateTime: now,
 			UpdateTime: now,
 		}
 
 		if violated {
-			credit.Revise = 0
+			credit.Valid = 0
+			//notice,currently sensitive words score use the positive number as the violated score
+			credit.Score = -sw.Score
 		}
 		credits = append(credits, credit)
 	}
@@ -259,9 +268,15 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 		return
 	}
 
+	usrCallVals := make([]string, 0, len(callValues))
+	for _, v := range callValues {
+		usrCallVals = append(usrCallVals, v.Value)
+	}
+
 	// get custom values of all sensitive words
 	query = model.UserValueQuery{
 		Type:             []int8{model.UserValueTypSensitiveWord},
+		Values:           usrCallVals,
 		IgnoreSoftDelete: true,
 	}
 	swValues, err := userValues(sqlLike, query)
