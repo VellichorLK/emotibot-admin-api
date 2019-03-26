@@ -32,6 +32,93 @@ type SensitiveWordCredit struct {
 	usrValsMatched               bool
 }
 
+func insertCreditsWithParentID(tx model.SqlLike, credits []model.SimpleCredit, parent int64) error {
+	for _, v := range credits {
+		v.ParentID = uint64(parent)
+		_, err := creditDao.InsertCredit(tx, &v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func insertCreditsWthParentIDAndChildCredits(tx model.SqlLike, credits []model.SimpleCredit,
+	parent int64, children map[int64][]model.SimpleCredit) error {
+	for _, v := range credits {
+		v.ParentID = uint64(parent)
+		parent, err := creditDao.InsertCredit(tx, &v)
+		if err != nil {
+			return err
+		}
+		if descendant, ok := children[int64(v.OrgID)]; ok {
+			for _, c := range descendant {
+				c.ParentID = uint64(parent)
+				_, err = creditDao.InsertCredit(tx, &c)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+
+}
+
+//StoreSensitiveCredit stores the sensitive credits
+func StoreSensitiveCredit(credits []*SensitiveWordCredit, root int64) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		logger.Error.Printf("get transaction failed. %s\n", err)
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, c := range credits {
+
+		if c == nil {
+			continue
+		}
+
+		c.sensitiveWord.ParentID = uint64(root)
+		lastID, err := creditDao.InsertCredit(tx, &c.sensitiveWord)
+		if err != nil {
+			logger.Error.Printf("insert credit %v failed. %s\n", c.sensitiveWord, err)
+			return err
+		}
+
+		err = insertCreditsWthParentIDAndChildCredits(tx, c.customerExceptions, lastID, c.customerMatchedExceptionSegs)
+		if err != nil {
+			logger.Error.Printf("insert credit %+v failed. %s\n", c.customerExceptions, err)
+			return err
+		}
+
+		err = insertCreditsWthParentIDAndChildCredits(tx, c.staffExceptions, lastID, c.staffMatchedExceptionSegs)
+		if err != nil {
+			logger.Error.Printf("insert credit %+v failed. %s\n", c.staffExceptions, err)
+			return err
+		}
+
+		err = insertCreditsWithParentID(tx, c.invalidSegments, lastID)
+		if err != nil {
+			logger.Error.Printf("insert credit %+v failed. %s\n", c.invalidSegments, err)
+			return err
+		}
+
+		err = insertCreditsWithParentID(tx, c.usrVals, lastID)
+		if err != nil {
+			logger.Error.Printf("insert credit %+v failed. %s\n", c.usrVals, err)
+			return err
+		}
+	}
+	return tx.Commit()
+
+}
+
 //SensitiveWordsVerificationWithPacked packages the sensitive words result into the structure
 func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithSpeaker, enterprise string) ([]*SensitiveWordCredit, error) {
 	if dbLike == nil {
