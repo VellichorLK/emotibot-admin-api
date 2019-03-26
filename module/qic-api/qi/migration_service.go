@@ -288,7 +288,7 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 		return fmt.Errorf("failed to get sheet %s \n", RuleSheetName)
 	}
 
-	var ruleName, description, logicList string
+	var ruleName, description, logicList, operatorStr string
 	var method, score, dialogueRepeat int
 
 	tx, err := dbLike.Begin()
@@ -305,6 +305,7 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 		ruleName = row.Cells[3].String()
 		description = row.Cells[4].String()
 		logicList = row.Cells[6].String()
+		operatorStr = row.Cells[7].String()
 		score, err = row.Cells[2].Int()
 		if err != nil {
 			logger.Error.Printf("Failed to get value from score column, row is %d, %s \n", i+1, err.Error())
@@ -339,6 +340,9 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 			logger.Trace.Printf("Found existing rule %s, skip ... \n", ruleName)
 			continue
 		}
+
+		// TODO the length of operatorList should be equal to logicList
+		operatorList := strings.Split(operatorStr, "|")
 
 		var createdSentenceGroups []*model.SentenceGroup
 
@@ -401,10 +405,9 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 			}
 
 			if i == 0 {
-				cfExpression = "must " + item.UUID
+				cfExpression = operatorList[i] + " " + item.UUID
 			} else {
-				// default: must -> and
-				cfExpression = cfExpression + " and " + item.UUID
+				cfExpression = cfExpression + " " + operatorList[i] + " " + item.UUID
 			}
 		}
 
