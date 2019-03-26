@@ -3,7 +3,6 @@ package qi
 import (
 	"bytes"
 	"encoding/csv"
-	"fmt"
 	"strconv"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
@@ -34,16 +33,6 @@ func (m *mockCallDao) SetRuleGroupRelations(delegatee model.SqlLike, call model.
 	return []int64{1, 2}, nil
 }
 
-func (m *mockCallDao) CallTask(delegatee model.SqlLike, call model.Call) (model.Task, error) {
-	tasks := m.readMockTaskData()
-	for _, t := range tasks {
-		if call.TaskID == t.ID {
-			return t, nil
-		}
-	}
-	return model.Task{}, fmt.Errorf("no such task")
-}
-
 func (m *mockCallDao) Count(delegatee model.SqlLike, query model.CallQuery) (int64, error) {
 	return int64(len(m.readMockCallData())), nil
 }
@@ -61,34 +50,6 @@ func (m *mockCallDao) GetCallIDByUUID(delegatee model.SqlLike, callUUID string) 
 	return 1, nil
 }
 
-func (m *mockCallDao) readMockTaskData() []model.Task {
-	reader := csv.NewReader(bytes.NewReader(m.mockTaskData))
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil
-	}
-	var tasks = make([]model.Task, len(rows)-1)
-	for i, row := range rows[1:] {
-		task := tasks[i]
-		id, err := strconv.ParseInt(row[0], 10, 64)
-		task.ID = id
-		status, err := strconv.ParseInt(row[1], 10, 8)
-		task.Status = int8(status)
-		deal, err := strconv.ParseInt(row[3], 10, 8)
-		if deal > 0 {
-			task.IsDeal = true
-		}
-		task.Series = row[4]
-		createdTime, err := strconv.ParseInt(row[5], 10, 64)
-		task.CreatedTime = createdTime
-		updatedTime, err := strconv.ParseInt(row[6], 10, 64)
-		task.UpdatedTime = updatedTime
-		tasks[i] = task
-		_ = err
-	}
-	return tasks
-}
-
 func (m *mockCallDao) readMockCallData() []model.Call {
 	reader := csv.NewReader(bytes.NewReader(m.mockdata))
 	rows, err := reader.ReadAll()
@@ -99,9 +60,6 @@ func (m *mockCallDao) readMockCallData() []model.Call {
 	for i, row := range rows[1:] {
 		c := calls[i]
 		c.ID, _ = strconv.ParseInt(row[0], 10, 64)
-		taskID, _ := strconv.ParseInt(row[1], 10, 64)
-		c.TaskID = taskID
-
 		status, _ := strconv.ParseInt(row[2], 10, 8)
 		c.Status = int8(status)
 		c.UUID = row[3]

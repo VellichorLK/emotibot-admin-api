@@ -36,7 +36,6 @@ const (
 	tblOutline          = "Outline"
 	tblUsers            = "users"
 	tblRelITCallStaff   = "Relation_InspectorTask_Call_Staff"
-	tblTask             = "task"
 	tblRelITStaff       = "Relation_InspectorTask_Staff"
 	tblCategory         = "Category"
 	tblPredictResult    = "CUPredictResult"
@@ -326,7 +325,7 @@ const (
 	fldCallRightChan        = "right_channel"
 	fldCallStatus           = "status"
 	fldCallDemoFilePath     = "demo_file_path"
-	fldCallTaskID           = "task_id"
+	fldCallDeal             = "deal"
 	fldWhos                 = "whos"
 )
 
@@ -351,15 +350,6 @@ const (
 // fields for users
 const (
 	USERDisplayName = "display_name"
-)
-const (
-	fldTaskID          = "task_id"
-	fldTaskStatus      = "status"
-	fldTaskDescription = "description"
-	fldTaskDeal        = "deal"
-	fldTaskSeries      = "series"
-	fldTaskCreateTime  = "create_time"
-	fldTaskUpdateTime  = "update_time"
 )
 
 // fields for Relation_InspectorTask_Staff

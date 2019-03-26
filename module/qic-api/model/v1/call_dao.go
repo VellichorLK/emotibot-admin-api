@@ -74,7 +74,7 @@ func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 		builder.Eq(fldCallCustomerPhone, *c.CustomerPhone)
 	}
 	// deal status need to query the task, we will implement this later
-	// if c.DealStatus != nil {
+	// if c.IsDealStatus != nil {
 	// 	cond := fmt.Sprintf("`%s`=?", f)
 	// 	conditions = append(conditions, cond)
 	// 	bindData = append(bindData, c.CustomerPhone)
@@ -109,6 +109,7 @@ type Call struct {
 	StaffName          string
 	Ext                string
 	Department         string
+	IsDeal             int8
 	CustomerID         string
 	CustomerName       string
 	CustomerPhone      string
@@ -123,7 +124,6 @@ type Call struct {
 	RightChanRole      int8
 	Status             int8
 	DemoFilePath       *string
-	TaskID             int64
 }
 
 // the type of the call is created, different type indicate different incoming source of call.
@@ -139,9 +139,9 @@ const (
 //	- 1: customer(客戶)
 // 	- 9: default
 const (
-	CallChanStaff    int8 = iota
+	CallChanStaff int8 = iota
 	CallChanCustomer
-	CallChanDefault  = 9
+	CallChanDefault = 9
 )
 
 // asr status types of the call
@@ -153,7 +153,7 @@ const (
 	CallStatusWaiting int8 = iota
 	CallStatusRunning
 	CallStatusDone
-	CallStatusFailed  = 9
+	CallStatusFailed = 9
 )
 
 func ValidCallStatus(status int8) bool {
@@ -184,7 +184,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
 		fldCallLeftChan, fldCallRightChan, fldCallStatus,
-		fldCallTaskID, fldCallDemoFilePath,
+		fldCallDeal, fldCallDemoFilePath,
 	}
 	wheresql, data := query.whereSQL("")
 	limitsql := ""
@@ -219,7 +219,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			&c.UploadUser, &leftSTime, &rightSTime,
 			&lSpeed, &rSpeed, &c.Type,
 			&c.LeftChanRole, &c.RightChanRole, &c.Status,
-			&c.TaskID, &demoFp,
+			&c.IsDeal, &demoFp,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %v", err)
@@ -270,7 +270,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
-		fldCallLeftChan, fldCallRightChan, fldCallTaskID,
+		fldCallLeftChan, fldCallRightChan, fldCallDeal,
 	}
 
 	rawquery := "INSERT INTO `" + tblCall + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE(?" + strings.Repeat(",? ", len(insertCols)-1) + ")"
@@ -291,7 +291,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
 			c.UploadUser, c.LeftSilenceTime, c.RightSilenceTime,
 			c.LeftSpeed, c.RightSpeed, c.Type,
-			c.LeftChanRole, c.RightChanRole, c.TaskID)
+			c.LeftChanRole, c.RightChanRole, c.IsDeal)
 		if err != nil {
 			return nil, fmt.Errorf("create new call failed, %v", err)
 		}
@@ -388,7 +388,7 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallType, fldCallLeftChan,
 		fldCallRightChan, fldCallStatus, fldCallDemoFilePath,
-		fldCallTaskID, fldCallLeftSilenceTime, fldCallRightSilenceTime,
+		fldCallDeal, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed,
 	}
 
@@ -400,7 +400,7 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 		c.CustomerName, c.CustomerPhone, c.EnterpriseID,
 		c.UploadUser, c.Type, c.LeftChanRole,
 		c.RightChanRole, c.Status, c.DemoFilePath,
-		c.TaskID, c.LeftSilenceTime, c.RightSilenceTime,
+		c.IsDeal, c.LeftSilenceTime, c.RightSilenceTime,
 		c.LeftSpeed, c.RightSpeed,
 	}
 

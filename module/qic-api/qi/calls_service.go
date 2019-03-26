@@ -70,7 +70,7 @@ var (
 		if err != nil {
 			return nil, 0, fmt.Errorf("call dao call query failed, %v", err)
 		}
-		values, err := userValueDao.ValuesKey(nil, model.UserValueQuery{
+		values, err := valuesKey(nil, model.UserValueQuery{
 			Type:     []int8{model.UserValueTypCall},
 			ParentID: query.ID,
 		})
@@ -78,22 +78,8 @@ var (
 			return nil, 0, fmt.Errorf("find user value failed, %v", err)
 		}
 
-		tasks, err := TasksByCalls(calls)
-		if err != nil {
-			return nil, 0, fmt.Errorf("find tasks by calls failed, %v", err)
-		}
 		var result = make([]CallResp, 0, len(calls))
 		for _, c := range calls {
-			var t *model.Task
-			for _, t = range tasks {
-				if t.ID == c.TaskID {
-					break
-				}
-			}
-			var transaction int8
-			if t.IsDeal {
-				transaction = 1
-			}
 			callCustomCols := map[string]interface{}{}
 			for _, v := range values {
 				if v.LinkID == c.ID {
@@ -137,8 +123,7 @@ var (
 				FileName:      *c.FileName,
 				CallTime:      c.CallUnixTime,
 				CallComment:   *c.Description,
-				Transaction:   transaction,
-				Series:        t.Series,
+				Transaction:   c.IsDeal,
 				HostID:        c.StaffID,
 				HostName:      c.StaffName,
 				Extension:     c.Ext,
@@ -204,31 +189,6 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	}
 	defer tx.Rollback()
 	timestamp := time.Now().Unix()
-	var cTask *model.Task
-	// call's task is determine by its serial number, if the same then use the old one.
-	tasks, err := taskDao.Task(tx, model.TaskQuery{
-		SN: []string{c.Series},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("fetch task failed, %v", err)
-	}
-	if len(tasks) >= 1 {
-		cTask = &tasks[0]
-		// TODO: Update time
-		// cTask.UpdatedTime = timestamp
-	} else {
-		cTask, err = taskDao.NewTask(tx, model.Task{
-			Status:      int8(0),
-			Series:      c.Series,
-			IsDeal:      c.Transaction == 1,
-			CreatedTime: timestamp,
-			UpdatedTime: timestamp,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("create new task failed, %v", err)
-		}
-	}
-
 	// create uuid for call
 	uid, err := uuid.NewV4()
 	if err != nil {
@@ -245,6 +205,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		StaffName:      c.HostName,
 		Ext:            c.Extension,
 		Department:     c.Department,
+		IsDeal:         c.Transaction,
 		CustomerID:     c.GuestID,
 		CustomerName:   c.GuestName,
 		CustomerPhone:  c.GuestPhone,
@@ -252,7 +213,6 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		UploadUser:     c.UploadUser,
 		LeftChanRole:   callRoleTyp(c.LeftChannel),
 		RightChanRole:  callRoleTyp(c.RightChannel),
-		TaskID:         cTask.ID,
 		Type:           c.Type,
 	}
 
@@ -548,12 +508,6 @@ func matchDefaultConditions(groups []model.Group, c model.Call) []model.Group {
 		if cond.FileName != "" && cond.FileName != *c.FileName {
 			continue
 		}
-		// if cond.Deal != -1 && cond.Deal != c.Transaction {
-		// 	continue
-		// }
-		// if cond.Series != "" && cond.Series != c. {
-		// 	continue
-		// }
 		if cond.UploadTimeStart != 0 && cond.UploadTimeStart > c.UploadUnixTime {
 			continue
 		}

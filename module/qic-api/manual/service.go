@@ -1,14 +1,12 @@
 package manual
 
 import (
+	"fmt"
+	"time"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"emotibot.com/emotigo/module/qic-api/qi"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	_ "emotibot.com/emotigo/pkg/logger"
-	"fmt"
-	"math"
-	"math/rand"
-	"time"
 )
 
 var (
@@ -316,94 +314,94 @@ func UpdateTask(taskID int64, task *model.InspectTask) (err error) {
 	return
 }
 
-func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask) (err error) {
-	tx, err := manualDB.Begin()
-	if err != nil {
-		return
-	}
+// func AssignInspectorTask(taskID int64, enterprise string, assignTask *AssignTask) (err error) {
+// 	tx, err := manualDB.Begin()
+// 	if err != nil {
+// 		return
+// 	}
 
-	// get task
-	filter := &model.InspectTaskFilter{
-		ID: []int64{
-			taskID,
-		},
-		Enterprise: enterprise,
-	}
-	tasks, err := taskDao.GetBy(filter, tx)
-	if err != nil {
-		return
-	}
+// 	// get task
+// 	filter := &model.InspectTaskFilter{
+// 		ID: []int64{
+// 			taskID,
+// 		},
+// 		Enterprise: enterprise,
+// 	}
+// 	tasks, err := taskDao.GetBy(filter, tx)
+// 	if err != nil {
+// 		return
+// 	}
 
-	if len(tasks) == 0 {
-		err = ErrNoTask
-		return
-	}
+// 	if len(tasks) == 0 {
+// 		err = ErrNoTask
+// 		return
+// 	}
 
-	task := tasks[0]
+// 	task := tasks[0]
 
-	// fetch matched calls
-	callQuery := model.CallQuery{
-		CallTimeStart: &task.CallStart,
-		CallTimeEnd:   &task.CallEnd,
-		StaffID:       assignTask.Users,
-	}
-	calls, err := qi.Calls(tx, callQuery)
-	if err != nil {
-		return
-	}
+// 	// fetch matched calls
+// 	callQuery := model.CallQuery{
+// 		CallTimeStart: &task.CallStart,
+// 		CallTimeEnd:   &task.CallEnd,
+// 		StaffID:       assignTask.Users,
+// 	}
+// 	calls, err := qi.Calls(tx, callQuery)
+// 	if err != nil {
+// 		return
+// 	}
 
-	// calls to callTasks
-	callTasks, err := qi.TasksByCalls(calls)
-	if err != nil {
-		return
-	}
+// 	// calls to callTasks
+// 	callTasks, err := qi.TasksByCalls(calls)
+// 	if err != nil {
+// 		return
+// 	}
 
-	// assign inspector to call task by sampling rules
-	percentage := task.InspectPercentage
-	taskType := int8(0)
-	// byperson := task.InspectByPerson
-	if assignTask.Type == "reviewer" {
-		percentage = assignTask.Sampling.Percentage
-		taskType = int8(1)
-		// byperson = assignTask.Sampling.ByPerson
-	}
-	// byperson := task.InspectByPerson
-	toInspectTasks := []*model.Task{}
+// 	// assign inspector to call task by sampling rules
+// 	percentage := task.InspectPercentage
+// 	taskType := int8(0)
+// 	// byperson := task.InspectByPerson
+// 	if assignTask.Type == "reviewer" {
+// 		percentage = assignTask.Sampling.Percentage
+// 		taskType = int8(1)
+// 		// byperson = assignTask.Sampling.ByPerson
+// 	}
+// 	// byperson := task.InspectByPerson
+// 	toInspectTasks := []*model.Task{}
 
-	if percentage != 0 {
-		total := len(callTasks)
-		totalInspect := math.Ceil(float64(total*percentage) / float64(100))
-		end := int64(totalInspect)
-		toInspectTasks = callTasks[0:end]
-	} else {
-		// TODO: by person need to check
-		toInspectTasks = callTasks
-	}
+// 	if percentage != 0 {
+// 		total := len(callTasks)
+// 		totalInspect := math.Ceil(float64(total*percentage) / float64(100))
+// 		end := int64(totalInspect)
+// 		toInspectTasks = callTasks[0:end]
+// 	} else {
+// 		// TODO: by person need to check
+// 		toInspectTasks = callTasks
+// 	}
 
-	// inspector to call task
-	assigns := []model.StaffTaskInfo{}
-	inspectorNum := len(assignTask.Users)
-	for _, task := range toInspectTasks {
-		idx := rand.Intn(inspectorNum)
-		inspectorID := assignTask.Users[idx]
+// 	// inspector to call task
+// 	assigns := []model.StaffTaskInfo{}
+// 	inspectorNum := len(assignTask.Users)
+// 	for _, task := range toInspectTasks {
+// 		idx := rand.Intn(inspectorNum)
+// 		inspectorID := assignTask.Users[idx]
 
-		assignTask := model.StaffTaskInfo{
-			StaffID: inspectorID,
-			TaskID:  taskID,
-			CallID:  task.ID,
-			Type:    taskType,
-		}
-		assigns = append(assigns, assignTask)
-	}
+// 		assignTask := model.StaffTaskInfo{
+// 			StaffID: inspectorID,
+// 			TaskID:  taskID,
+// 			CallID:  task.ID,
+// 			Type:    taskType,
+// 		}
+// 		assigns = append(assigns, assignTask)
+// 	}
 
-	err = taskDao.AssignInspectTasks(assigns, tx)
-	if err != nil {
-		return
-	}
+// 	err = taskDao.AssignInspectTasks(assigns, tx)
+// 	if err != nil {
+// 		return
+// 	}
 
-	err = manualDB.Commit(tx)
-	return
-}
+// 	err = manualDB.Commit(tx)
+// 	return
+// }
 
 func GetCallsOfUser(userID string) (calls []model.Call, err error) {
 	return

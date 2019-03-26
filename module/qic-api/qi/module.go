@@ -23,7 +23,6 @@ var (
 	tagDao               model.TagDao
 	callDao              model.CallDao = &model.CallSQLDao{}
 	segmentDao           model.SegmentDao
-	taskDao              = &model.TaskSQLDao{}
 	userValueDao         = &model.UserValueDao{}
 	userKeyDao           = &model.UserKeySQLDao{}
 	swDao                model.SensitiveWordDao
@@ -218,10 +217,6 @@ func init() {
 				callDao = model.NewCallSQLDao(sqlConn)
 				callCount = callDao.Count
 				calls = callDao.Calls
-				// init task dao
-				taskDao = model.NewTaskDao(sqlConn)
-				callTask = taskDao.CallTask
-				tasks = taskDao.Task
 				// init relation dao
 				relationDao = &model.RelationSQLDao{}
 				// init segment dao

@@ -1,15 +1,16 @@
 package manual
 
 import (
+	"net/http"
+	"net/url"
+	"strconv"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/gorilla/mux"
-	"net/http"
-	"net/url"
-	"strconv"
 )
 
 const (
@@ -434,44 +435,44 @@ func handleUpdateTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
-	taskIDstr := general.ParseID(r)
-	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+// func handleAssignStaffToTask(w http.ResponseWriter, r *http.Request) {
+// 	taskIDstr := general.ParseID(r)
+// 	taskID, err := strconv.ParseInt(taskIDstr, 10, 64)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
 
-	enterprise := requestheader.GetEnterpriseID(r)
+// 	enterprise := requestheader.GetEnterpriseID(r)
 
-	userID := requestheader.GetUserID(r)
-	user, err := GetUser(userID)
-	if err != nil {
-		logger.Error.Printf("error while get user in handleAssignStaffToTask, reason: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// 	userID := requestheader.GetUserID(r)
+// 	user, err := GetUser(userID)
+// 	if err != nil {
+// 		logger.Error.Printf("error while get user in handleAssignStaffToTask, reason: %s", err.Error())
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-	if user == nil || user.Type == NORMAL_USER {
-		http.Error(w, "", http.StatusUnauthorized)
-		return
-	}
+// 	if user == nil || user.Type == NORMAL_USER {
+// 		http.Error(w, "", http.StatusUnauthorized)
+// 		return
+// 	}
 
-	assigns := AssignTask{}
-	err = util.ReadJSON(r, &assigns)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+// 	assigns := AssignTask{}
+// 	err = util.ReadJSON(r, &assigns)
+// 	if err != nil {
+// 		http.Error(w, err.Error(), http.StatusBadRequest)
+// 		return
+// 	}
 
-	err = AssignInspectorTask(taskID, enterprise, &assigns)
-	if err != nil {
-		logger.Error.Printf("error while assign tasks in handleAssignStaffToTask, reason: %s", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+// 	err = AssignInspectorTask(taskID, enterprise, &assigns)
+// 	if err != nil {
+// 		logger.Error.Printf("error while assign tasks in handleAssignStaffToTask, reason: %s", err.Error())
+// 		http.Error(w, err.Error(), http.StatusInternalServerError)
+// 		return
+// 	}
 
-}
+// }
 
 func handleInspectTaskPublish(w http.ResponseWriter, r *http.Request) {
 	userID := requestheader.GetUserID(r)

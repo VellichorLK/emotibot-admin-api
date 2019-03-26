@@ -346,7 +346,6 @@ type CallResp struct {
 	RightSpeed       *float64               `json:"right_speed"` // to compatible with old response
 	FileName         string                 `json:"file_name,omitempty"`
 	CallComment      string                 `json:"call_comment,omitempty"`
-	Series           string                 `json:"series,omitempty"`
 	HostID           string                 `json:"staff_id,omitempty"`
 	HostName         string                 `json:"staff_name,omitempty"`
 	Extension        string                 `json:"extension,omitempty"`
