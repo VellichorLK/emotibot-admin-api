@@ -31,6 +31,7 @@ const (
 	UserValueTypGroup
 	UserValueTypCall
 	UserValueTypSensitiveWord
+	UserValueTypCallGroupCondition
 )
 
 const (

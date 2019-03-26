@@ -82,3 +82,181 @@ func DeleteCallGroupCondition(query *model.GeneralQuery) (int64, error) {
 func CreateCallGroups(enterprise string, conditionID int64, data *model.CallGroupCreateList) error {
 	return nil
 }
+
+// GroupCalls groups calls
+func GroupCalls(call *model.Call) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	enterpriseID := "global"
+	var zero, one int = 0, 1
+	query := model.CGConditionQuery{
+		Enterprise:      &enterpriseID,
+		IsEnable:        &one,
+		IsDelete:        &zero,
+		UserKeyIsDelete: &zero,
+	}
+	cgConds, err := callGroupDao.GetCGCondition(dbLike.Conn(), &query)
+	if err != nil {
+		logger.Error.Printf("get call group condition failed. %s\n", err)
+		return err
+	}
+
+	callResps, _, err := CallRespsWithTotal(model.CallQuery{
+		ID: []int64{call.ID},
+	})
+	if err != nil {
+		logger.Error.Printf("get call response with total failed. %s\n", err)
+		return err
+	}
+	if len(callResps) == 0 {
+		logger.Error.Printf("failed to find call with id: %d\n", call.ID)
+	}
+	callResp := callResps[0]
+	for _, cgCond := range cgConds {
+		var valid = true
+		for inputname, validValue := range cgCond.FilterBy {
+			vs, ok := callResp.CustomColumns[inputname]
+			if !ok {
+				valid = false
+				break
+			}
+			values := vs.([]string)
+			exist := contains(values, validValue)
+			if !exist {
+				valid = false
+				break
+			}
+		}
+		if valid {
+			err = groupCalls(call.EnterpriseID, callResp, cgCond)
+			if err != nil {
+				logger.Error.Printf("group calls failed. call.ID: %d, error: %s\n", call.ID, err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func contains(strings []string, s string) bool {
+	for _, string := range strings {
+		if string == s {
+			return true
+		}
+	}
+	return false
+}
+
+func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGCondition) error {
+	if dbLike == nil {
+		return ErrNilCon
+	}
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	uploadTime := time.Unix(callResp.UploadTime, 0)
+	uploadTimeUnix := uploadTime.Unix()
+
+	groupBy := cgCond.GroupBy[0] // TODO: implement multiple groupBy keys
+	values := callResp.CustomColumns[groupBy.Inputname].([]string)
+	valueType := model.UserValueTypCall
+	fromTime := uploadTime.AddDate(0, 0, cgCond.DayRange*-1).Unix()
+	toTime := uploadTimeUnix
+	query := model.CallsToGroupQuery{
+		UserValueType: &valueType,
+		UserKeyID:     &groupBy.ID,
+		UserValue:     &values,
+		StartTime:     &fromTime,
+		EndTime:       &toTime,
+	}
+	callIDs, err := callGroupDao.GetCallIDsToGroup(tx, &query)
+	if err != nil {
+		logger.Error.Printf("failed to get call ids to group . %s\n", err)
+		return err
+	}
+
+	isDelete := int(0)
+	cgQuery := model.CallGroupToGroupQuery{
+		IsDelete:  &isDelete,
+		CallIDs:   &callIDs,
+		StartTime: &fromTime,
+		EndTime:   &toTime,
+	}
+	callGroupList, err := callGroupDao.GetCallGroupToGroup(tx, &cgQuery)
+	if err != nil {
+		logger.Error.Printf("failed to get CallGroup list to group . %s\n", err)
+		return err
+	}
+
+	callGroupToDelete := []int64{}
+	callsToGroup := []int64{}
+	callMap := make(map[int64]bool)
+	for _, callGroup := range callGroupList {
+		callGroupToDelete = append(callGroupToDelete, callGroup.ID)
+		for _, callID := range callGroup.Calls {
+			if _, ok := callMap[callID]; !ok {
+				callMap[callID] = true
+				callsToGroup = append(callsToGroup, callID)
+			}
+		}
+	}
+	for _, callID := range callIDs {
+		if _, ok := callMap[callID]; !ok {
+			callMap[callID] = true
+			callsToGroup = append(callsToGroup, callID)
+		}
+	}
+	if len(callsToGroup) == 0 {
+		return nil
+	}
+
+	// out, _ = json.Marshal(callGroupToDelete)
+	// logger.Trace.Printf("callGroupToDelete")
+	// logger.Trace.Printf(string(out))
+	// out, _ = json.Marshal(callsToGroup)
+	// logger.Trace.Printf("callsToGroup")
+	// logger.Trace.Printf(string(out))
+
+	// delete old CallGroup
+	gQuery := model.GeneralQuery{
+		ID: callGroupToDelete,
+	}
+	err = callGroupDao.SoftDeleteCallGroup(tx, &gQuery)
+	if err != nil {
+		logger.Error.Printf("failed to soft delete CallGroup list. %s\n", err)
+		return err
+	}
+
+	// create new call group
+	callGroup := model.CallGroup{
+		IsDelete:             0,
+		CallGroupConditionID: cgCond.ID,
+		Enterprise:           enterpriseID,
+		CreateTime:           uploadTimeUnix,
+		UpdateTime:           uploadTimeUnix,
+		Calls:                callsToGroup,
+	}
+	callGroupID, err := callGroupDao.CreateCallGroup(tx, &callGroup)
+	if err != nil {
+		logger.Error.Printf("failed to create CallGroup. %s\n", err)
+		return err
+	}
+
+	// create new CallGroup to Call relations
+	for _, callID := range callGroup.Calls {
+		callGroupRelation := model.CallGroupRelation{
+			CallGroupID: callGroupID,
+			CallID:      callID,
+		}
+		_, err = callGroupDao.CreateCallGroupRelation(tx, &callGroupRelation)
+		if err != nil {
+			logger.Error.Printf("failed to create CallGroupRelation. %s\n", err)
+			return err
+		}
+	}
+	return tx.Commit()
+}
