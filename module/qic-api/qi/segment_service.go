@@ -27,12 +27,8 @@ func getSegments(call model.Call) ([]segment, error) {
 			EndTime:    s.EndTime,
 			Speaker:    channelsRole[s.Channel],
 			ASRText:    s.Text,
-			Status:     200,
+			Status:     s.Status,
 			SegmentID:  s.ID,
-		}
-		//Since we dont have ster in db, we have to manually check it.
-		if vr.ASRText == "" {
-			vr.Status = 500
 		}
 		result = append(result, vr)
 	}

@@ -32,9 +32,11 @@ type RealSegment struct {
 	CallID     int64
 	StartTime  float64
 	EndTime    float64
-	CreateTime int64
 	Channel    int8
+	CreateTime int64
 	Text       string
+	Status     int
+	UpdateTime int64
 	Emotions   []RealSegmentEmotion
 }
 
@@ -86,6 +88,7 @@ func (s *SegmentSQLDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealS
 	selectCols := []string{
 		fldSegmentID, fldSegmentCallID, fldSegmentStartTime,
 		fldSegmentEndTime, fldSegmentChannel, fldSegmentText,
+		fldSegmentCreateTime, fldSegmentUpdateTime, fldSegmentStatus,
 	}
 	wherepart, binddata := query.whereSQL()
 	rawquery := "SELECT `" + strings.Join(selectCols, "`, `") + "` FROM `" + tblSegment + "` " + wherepart + " ORDER BY `" + fldSegmentStartTime + "` "
@@ -102,7 +105,11 @@ func (s *SegmentSQLDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealS
 	var segments = []RealSegment{}
 	for rows.Next() {
 		var s RealSegment
-		rows.Scan(&s.ID, &s.CallID, &s.StartTime, &s.EndTime, &s.Channel, &s.Text)
+		rows.Scan(
+			&s.ID, &s.CallID, &s.StartTime,
+			&s.EndTime, &s.Channel, &s.Text,
+			&s.CreateTime, &s.UpdateTime, &s.Status,
+		)
 		segments = append(segments, s)
 	}
 	if err = rows.Err(); err != nil {

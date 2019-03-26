@@ -1,12 +1,62 @@
 package model
 
 import (
+	"encoding/csv"
+	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
+func readMockSegments(t *testing.T) []RealSegment {
+	f, err := os.Open("./testdata/seed/Segment.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := csv.NewReader(f)
+	rows, err := reader.ReadAll()
+	var segments = make([]RealSegment, 0, len(rows)-1)
+	for _, cols := range rows[1:] {
+		var s RealSegment
+		Binding(&s, cols)
+		segments = append(segments, s)
+	}
+	return segments
+}
+
+func TestITSegmentDao_Segments(t *testing.T) {
+	skipIntergartion(t)
+	dao := SegmentSQLDao{db: newIntegrationTestDB(t)}
+	segments := readMockSegments(t)
+	type args struct {
+		query SegmentQuery
+	}
+	tests := []struct {
+		name string
+		args args
+		want []RealSegment
+	}{
+		{
+			name: "query by call",
+			args: args{
+				query: SegmentQuery{
+					CallID: []int64{1},
+				},
+			},
+			want: []RealSegment{segments[0]},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := dao.Segments(nil, tt.args.query)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 func TestITSegmentDaoNewSegments(t *testing.T) {
-	t.Log("I am running TestITSegmentDaoNewSegments")
 	skipIntergartion(t)
 	type args struct {
 		segments []RealSegment

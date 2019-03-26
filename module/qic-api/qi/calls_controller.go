@@ -311,7 +311,7 @@ type segment struct {
 	EndTime    float64      `json:"end_time"`
 	SentenceID int64        `json:"sent_id"`
 	SegmentID  int64        `json:"segment_id"`
-	Status     int64        `json:"status"`
+	Status     int          `json:"status"`
 }
 
 type asrEmotion struct {

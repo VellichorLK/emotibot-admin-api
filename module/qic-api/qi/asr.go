@@ -216,7 +216,7 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
-	//TODO: check wehter sensitive score is right
+	//TODO: check whethㄊer sensitive score is right
 	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
 	if err != nil {
 		return fmt.Errorf("update the credit failed. %s", err)
@@ -246,6 +246,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 		s := model.RealSegment{
 			CallID:     resp.CallID,
 			CreateTime: timestamp,
+			UpdateTime: timestamp,
 			StartTime:  sen.Start,
 			EndTime:    sen.End,
 			Channel:    1,
@@ -257,6 +258,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 					Score:     sen.Emotion,
 				},
 			},
+			Status: int(sen.Status),
 		}
 		segments = append(segments, s)
 	}
@@ -265,6 +267,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 		s := model.RealSegment{
 			CallID:     resp.CallID,
 			CreateTime: timestamp,
+			UpdateTime: timestamp,
 			StartTime:  sen.Start,
 			EndTime:    sen.End,
 			Channel:    2,
@@ -276,6 +279,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 					Score:     sen.Emotion,
 				},
 			},
+			Status: int(sen.Status),
 		}
 		segments = append(segments, s)
 	}

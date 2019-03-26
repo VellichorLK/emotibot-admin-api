@@ -94,7 +94,9 @@ const (
 	fldSegmentEndTime    = "end_time"
 	fldSegmentChannel    = "channel"
 	fldSegmentCreateTime = "create_time"
+	fldSegmentUpdateTime = "update_time"
 	fldSegmentText       = "asr_text"
+	fldSegmentStatus     = "status"
 )
 
 const (
