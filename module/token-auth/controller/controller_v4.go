@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+
 	"emotibot.com/emotigo/module/token-auth/cache"
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
 	"github.com/gorilla/mux"
@@ -485,20 +487,20 @@ func UsersGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
-		returnBadRequest(w, "enterprise-id")
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "enterprise-id")
 		return
 	}
 
 	retData, err := service.GetUsersV3(enterpriseID)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 		return
 	} else if retData == nil {
-		returnNotFound(w)
+		util.ReturnError(w, AdminErrors.ErrnoNotFound, err.Error())
 		return
 	}
 
-	returnSuccess(w, retData)
+	util.Return(w, nil, retData)
 }
 
 func UserGetHandlerV4(w http.ResponseWriter, r *http.Request) {
@@ -506,24 +508,24 @@ func UserGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
-		returnBadRequest(w, "enterprise-id")
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "enterprise-id")
 		return
 	}
 
 	userID := vars["userID"]
 	if !util.IsValidUUID(userID) {
-		returnBadRequest(w, "user-id")
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "user-id")
 		return
 	}
 
 	retData, err := service.GetUserV3(enterpriseID, userID)
 	if err != nil {
-		returnInternalError(w, err.Error())
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 		return
 	} else if retData == nil {
-		returnNotFound(w)
+		util.ReturnError(w, AdminErrors.ErrnoNotFound, err.Error())
 		return
 	}
 
-	returnSuccess(w, retData)
+	util.Return(w, nil, retData)
 }
