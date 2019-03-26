@@ -175,6 +175,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "call-groups", []string{}, handleCreateCallGroupCondition),
 			util.NewEntryPoint(http.MethodGet, "call-groups", []string{}, handleGetCallGroupConditionList),
+			// util.NewEntryPoint(http.MethodGet, "call-groups/group", []string{}, handleGroupCalls),
 			util.NewEntryPoint(http.MethodGet, "call-groups/{id}", []string{}, handleGetCallGroupCondition),
 			util.NewEntryPoint(http.MethodPut, "call-groups/{id}", []string{}, handleUpdateCallGroupCondition),
 			util.NewEntryPoint(http.MethodDelete, "call-groups/{id}", []string{}, handleDeleteCallGroupCondition),
