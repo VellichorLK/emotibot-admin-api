@@ -185,7 +185,7 @@ func handleUpdateCallGroupCondition(w http.ResponseWriter, r *http.Request) {
 		if err == ErrNoSuchID {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()), http.StatusBadRequest)
 		} else {
-			logger.Error.Printf("update call group condition:%s failed. %s\n", id, err)
+			logger.Error.Printf("update call group condition:%s failed. %s\n", idStr, err)
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		}
 	}
