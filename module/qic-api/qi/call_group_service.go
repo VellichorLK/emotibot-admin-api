@@ -161,6 +161,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	uploadTime := time.Unix(callResp.UploadTime, 0)
 	uploadTimeUnix := uploadTime.Unix()
 
+	// get call list of those which have the targe groupBy UserValue
 	groupBy := cgCond.GroupBy[0] // TODO: implement multiple groupBy keys
 	values := callResp.CustomColumns[groupBy.Inputname].([]string)
 	valueType := model.UserValueTypCall
@@ -179,19 +180,19 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		return err
 	}
 
+	// get CallGroup list related to target callIDs
 	isDelete := int(0)
-	cgQuery := model.CallGroupToGroupQuery{
+	cgQuery := model.CallGroupQuery{
 		IsDelete:  &isDelete,
 		CallIDs:   &callIDs,
 		StartTime: &fromTime,
 		EndTime:   &toTime,
 	}
-	callGroupList, err := callGroupDao.GetCallGroupToGroup(tx, &cgQuery)
+	callGroupList, err := callGroupDao.GetCallGroups(tx, &cgQuery)
 	if err != nil {
-		logger.Error.Printf("failed to get CallGroup list to group . %s\n", err)
+		logger.Error.Printf("failed to get CallGroup list. %s\n", err)
 		return err
 	}
-
 	callGroupToDelete := []int64{}
 	callsToGroup := []int64{}
 	callMap := make(map[int64]bool)
@@ -221,7 +222,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	// logger.Trace.Printf("callsToGroup")
 	// logger.Trace.Printf(string(out))
 
-	// delete old CallGroup
+	// delete old CallGroups
 	gQuery := model.GeneralQuery{
 		ID: callGroupToDelete,
 	}
@@ -231,7 +232,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		return err
 	}
 
-	// create new call group
+	// create a new call group
 	callGroup := model.CallGroup{
 		IsDelete:             0,
 		CallGroupConditionID: cgCond.ID,
@@ -246,7 +247,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		return err
 	}
 
-	// create new CallGroup to Call relations
+	// create new relations between CallGroup and Call
 	for _, callID := range callGroup.Calls {
 		callGroupRelation := model.CallGroupRelation{
 			CallGroupID: callGroupID,
@@ -259,4 +260,100 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		}
 	}
 	return tx.Commit()
+}
+
+// GroupedCallsResp defines the response structure of GetGroupedCalls
+type GroupedCallsResp struct {
+	Setting *CallResp   `json:"setting"`
+	IsGroup bool        `json:"is_group"`
+	Calls   []*CallResp `json:"calls"`
+}
+
+// GetGroupedCalls return the list of Calls and CallGroups
+func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error) {
+	total, err := callCount(nil, *query)
+	if err != nil {
+		logger.Error.Printf("failed to count calls. %s\n", err)
+		return nil, 0, err
+	}
+	calls, err := calls(nil, *query)
+	if err != nil {
+		logger.Error.Printf("failed to get calls. %s\n", err)
+		return nil, 0, err
+	}
+	if len(calls) == 0 {
+		return []*GroupedCallsResp{}, 0, nil
+	}
+
+	callIDs := []int64{}
+	callIDMap := make(map[int64]bool)
+	mostRecentCallTime := int64(0)
+	for _, call := range calls {
+		callIDs = append(callIDs, call.ID)
+		callIDMap[call.ID] = true
+		if call.CallUnixTime > mostRecentCallTime {
+			mostRecentCallTime = call.CallUnixTime
+		}
+	}
+
+	// get CallGroups related to target callIDs
+	isDelete := int(0)
+	cgQuery := model.CallGroupQuery{
+		IsDelete: &isDelete,
+		CallIDs:  &callIDs,
+	}
+	callGroupList, err := callGroupDao.GetCallGroups(dbLike.Conn(), &cgQuery)
+	if err != nil {
+		logger.Error.Printf("failed to get CallGroup list. %s\n", err)
+		return nil, 0, err
+	}
+	// append all calls in callGroupList to callIDs
+	for _, callGroup := range callGroupList {
+		for _, id := range callGroup.Calls {
+			if _, ok := callIDMap[id]; !ok {
+				callIDs = append(callIDs, id)
+				callIDMap[id] = true
+			}
+		}
+	}
+
+	callQuery := model.CallQuery{
+		ID: callIDs,
+	}
+	callResps, _, err := CallRespsWithTotal(callQuery)
+	callRespMap := make(map[int64]*CallResp)
+	for i := 0; i < len(callResps); i++ {
+		callResp := callResps[i]
+		callRespMap[callResp.CallID] = &callResp
+	}
+
+	respList := []*GroupedCallsResp{}
+	callRespsInGroupMap := make(map[int64]bool)
+	for _, callGroup := range callGroupList {
+		callResps := []*CallResp{}
+		for _, id := range callGroup.Calls {
+			callResps = append(callResps, callRespMap[id])
+			callRespsInGroupMap[id] = true
+		}
+		resp := GroupedCallsResp{
+			IsGroup: true,
+			Calls:   callResps,
+		}
+		respList = append(respList, &resp)
+	}
+
+	for id, callResp := range callRespMap {
+		if _, ok := callRespsInGroupMap[id]; !ok {
+			resp := GroupedCallsResp{
+				Setting: callResp,
+				IsGroup: false,
+			}
+			respList = append(respList, &resp)
+		}
+	}
+
+	// out, _ = json.Marshal(respList)
+	// logger.Trace.Printf("respList")
+	// logger.Trace.Printf(string(out))
+	return respList, total, nil
 }
