@@ -157,6 +157,14 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
 			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
 			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
+
+			util.NewEntryPoint(http.MethodGet, "testing/predict/sentences", []string{}, handlePredictSentences),
+			util.NewEntryPoint(http.MethodGet, "testing/sentences/{id}", []string{}, handleGetTestSentences),
+			util.NewEntryPoint(http.MethodPost, "testing/sentences", []string{}, handleNewTestSentence),
+			util.NewEntryPoint(http.MethodDelete, "testing/sentences/{id}", []string{}, handleDeleteTestSentence),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences", []string{}, handleGetSentenceTestOverview),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_info", []string{}, handleGetSentenceTestResult),
+			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_detail/{id}", []string{}, handleGetSentenceTestDetail),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -230,6 +238,8 @@ func init() {
 				// init condition dao
 				condDao = model.NewConditionDao(dbLike)
 				newCondition = condDao.NewCondition
+				// init sentenceTest dao
+				sentenceTestDao = model.NewSentenceTestSQLDao(sqlConn)
 				// init cu trainer & predictor
 				cuURL := envs["LOGIC_PREDICT_URL"]
 				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
