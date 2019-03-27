@@ -109,8 +109,9 @@ func (controller MYSQLController) AddEnterpriseV4(enterprise *data.EnterpriseV3,
 
 	queryStr = fmt.Sprintf(`
 		UPDATE enterprises
-		SET secret = concat(md5(concat(now(), uuid)), sha1(rand()));`)
-	_, err = t.Exec(queryStr)
+		SET secret = concat(md5(concat(now(), uuid)), sha1(rand()))
+		WHERE uuid = ?;`)
+	_, err = t.Exec(queryStr, enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return
