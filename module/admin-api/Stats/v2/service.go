@@ -5,6 +5,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -26,7 +27,7 @@ func GetRobotAuditRecord(filter *AuditInput, locale string) (*AuditResult, Admin
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
-	transformLogsWording(logs)
+	transformLogsWording(logs, locale)
 
 	ret := AuditResult{
 		Total:  count,
@@ -56,7 +57,7 @@ func GetEnterpriseAuditRecord(filter *AuditInput, locale string) (*AuditResult, 
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
-	transformLogsWording(logs)
+	transformLogsWording(logs, locale)
 
 	ret := AuditResult{
 		Total:  count,
@@ -85,7 +86,7 @@ func GetSystemAuditRecord(filter *AuditInput, locale string) (*AuditResult, Admi
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
-	transformLogsWording(logs)
+	transformLogsWording(logs, locale)
 
 	ret := AuditResult{
 		Total:  count,
@@ -110,7 +111,7 @@ func getModuleOpPtr(filter *AuditFilter) ([]string, *string) {
 	return modulePtr, opPtr
 }
 
-func transformLogsWording(logs []*AuditLog) error {
+func transformLogsWording(logs []*AuditLog, locale string) error {
 	userMap := map[string]bool{}
 	for idx := range logs {
 		userMap[logs[idx].UserID] = true
@@ -124,17 +125,23 @@ func transformLogsWording(logs []*AuditLog) error {
 		usernameMap = map[string]string{}
 	}
 
+	converter := zhconverter.T2S
+	if locale == localemsg.ZhTw {
+		converter = zhconverter.S2T
+	}
+
 	for idx := range logs {
-		logs[idx].Module = audit.GetAuditModuleName("", logs[idx].Module)
-		logs[idx].Operation = audit.GetAuditOperationName("", logs[idx].Operation)
+		logs[idx].Module = audit.GetAuditModuleName(locale, logs[idx].Module)
+		logs[idx].Operation = audit.GetAuditOperationName(locale, logs[idx].Operation)
 		if logs[idx].Result > 0 {
-			logs[idx].ResultStr = localemsg.Get("", "Success")
+			logs[idx].ResultStr = localemsg.Get(locale, "Success")
 		} else {
-			logs[idx].ResultStr = localemsg.Get("", "Fail")
+			logs[idx].ResultStr = localemsg.Get(locale, "Fail")
 		}
 		if name, ok := usernameMap[logs[idx].UserID]; ok {
 			logs[idx].UserID = name
 		}
+		logs[idx].Content = converter(logs[idx].Content)
 	}
 	return err
 }

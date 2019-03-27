@@ -10,6 +10,7 @@ import (
 type SegmentDao interface {
 	NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error)
 	Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error)
+	NewEmotions(delegatee SqlLike, emotions []RealSegmentEmotion) error
 }
 
 type SegmentSQLDao struct {
@@ -31,9 +32,11 @@ type RealSegment struct {
 	CallID     int64
 	StartTime  float64
 	EndTime    float64
-	CreateTime int64
 	Channel    int8
+	CreateTime int64
 	Text       string
+	Status     int
+	UpdateTime int64
 	Emotions   []RealSegmentEmotion
 }
 
@@ -85,6 +88,7 @@ func (s *SegmentSQLDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealS
 	selectCols := []string{
 		fldSegmentID, fldSegmentCallID, fldSegmentStartTime,
 		fldSegmentEndTime, fldSegmentChannel, fldSegmentText,
+		fldSegmentCreateTime, fldSegmentUpdateTime, fldSegmentStatus,
 	}
 	wherepart, binddata := query.whereSQL()
 	rawquery := "SELECT `" + strings.Join(selectCols, "`, `") + "` FROM `" + tblSegment + "` " + wherepart + " ORDER BY `" + fldSegmentStartTime + "` "
@@ -101,7 +105,11 @@ func (s *SegmentSQLDao) Segments(delegatee SqlLike, query SegmentQuery) ([]RealS
 	var segments = []RealSegment{}
 	for rows.Next() {
 		var s RealSegment
-		rows.Scan(&s.ID, &s.CallID, &s.StartTime, &s.EndTime, &s.Channel, &s.Text)
+		rows.Scan(
+			&s.ID, &s.CallID, &s.StartTime,
+			&s.EndTime, &s.Channel, &s.Text,
+			&s.CreateTime, &s.UpdateTime, &s.Status,
+		)
 		segments = append(segments, s)
 	}
 	if err = rows.Err(); err != nil {
@@ -166,4 +174,52 @@ func (s *SegmentSQLDao) NewSegments(delegatee SqlLike, segments []RealSegment) (
 		err = ErrAutoIDDisabled
 	}
 	return segments, err
+}
+
+// UpdateEmotions will update segments' emotions into emotion database.
+// Best use with a delegatee transcation to avoid data corruption.
+func (s *SegmentSQLDao) NewEmotions(delegatee SqlLike, emotions []RealSegmentEmotion) error {
+	if delegatee == nil {
+		delegatee = s.db
+	}
+
+	emotionCols := []string{
+		fldSegEmoSegmentID, fldSegEmoType, fldSegEmoScore,
+	}
+
+	emotionValues := make([]interface{}, 0)
+
+	for _, emotion := range emotions {
+		emotionValues = append(emotionValues, emotion.SegmentID, emotion.Typ, emotion.Score)
+	}
+
+	emotionsPerOp := 2000
+	start := 0
+	repeatedPlaceholders := strings.Repeat(", ?", len(emotionCols)-1)
+
+	if len(emotionValues) > 0 {
+		for {
+			end := start + emotionsPerOp*3
+			if end > len(emotionValues) {
+				end = len(emotionValues)
+			}
+
+			params := emotionValues[start:end]
+
+			rawsql := "INSERT INTO `" + tblSegmentEmotion + "` (`" +
+				strings.Join(emotionCols, "`, `") + "`) VALUES (?" + repeatedPlaceholders + ")" +
+				strings.Repeat(", (?"+repeatedPlaceholders+")", len(params)/3-1)
+			_, err := delegatee.Exec(rawsql, params...)
+			if err != nil {
+				return err
+			}
+
+			if end == len(emotionValues) {
+				return nil
+			}
+			start = end
+		}
+	}
+
+	return nil
 }

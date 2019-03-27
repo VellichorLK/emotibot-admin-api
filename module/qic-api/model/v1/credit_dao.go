@@ -11,15 +11,20 @@ import (
 type CreditDao interface {
 	InsertCredit(conn SqlLike, c *SimpleCredit) (int64, error)
 	InsertCredits(SqlLike, []SimpleCredit) error
+	Update(conn SqlLike, q *GeneralQuery, d *UpdateCreditSet) (int64, error)
 	InsertSegmentMatch(conn SqlLike, s *SegmentMatch) (int64, error)
 	GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCredit, error)
 	GetSegmentMatch(conn SqlLike, q *SegmentPredictQuery) ([]*SegmentMatch, error)
 }
 
+type UpdateCreditSet struct {
+	Score int
+}
+
 //SegmentPredictQuery is the condition used to query the SegmentPredict
 type SegmentPredictQuery struct {
 	Segs []uint64
-	Whos int
+	Whos *int
 }
 
 func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface{}, err error) {
@@ -33,13 +38,13 @@ func (s *SegmentPredictQuery) whereSQL() (condition string, bindData []interface
 //CreditQuery is the condition used to query the CUPredictReuslt
 type CreditQuery struct {
 	Calls []uint64
-	Whos  int
+	//	Whos  int
 }
 
 func (c *CreditQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	flds := []string{
 		fldCallID,
-		fldWhos,
+		//	fldWhos,
 	}
 	return makeAndCondition(c, flds)
 }
@@ -142,9 +147,12 @@ func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err 
 		paramStr = fmt.Sprintf("%s %s", paramStr, paramStrTemplate)
 	}
 	paramStr = paramStr[:len(paramStr)-1]
+	for i := 0; i < len(insertFlds); i++ {
+		insertFlds[i] = "`" + insertFlds[i] + "`"
+	}
 
 	insertStr := fmt.Sprintf(
-		"INSERT INTO %s (%s) %s",
+		"INSERT INTO %s (%s) VALUES %s",
 		table,
 		strings.Join(insertFlds, ","),
 		paramStr,
@@ -155,6 +163,21 @@ func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err 
 		logger.Error.Printf("insert credits failed. %s.\n %s, %+v\n", err, insertStr, params)
 	}
 	return err
+}
+
+//Update updates the records
+func (c *CreditSQLDao) Update(conn SqlLike, q *GeneralQuery, d *UpdateCreditSet) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
+	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
+		return 0, ErrNeedCondition
+	}
+	flds := []string{
+		fldScore,
+	}
+	table := tblPredictResult
+	return updateSQL(conn, q, d, table, flds)
 }
 
 //InsertSegmentMatch inserts the matched context data

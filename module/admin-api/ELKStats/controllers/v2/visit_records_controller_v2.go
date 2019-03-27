@@ -84,7 +84,8 @@ func VisitRecordsExportHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	exportTaskID, err := servicesV2.VisitRecordsExport(query)
+	locale := requestheader.GetLocale(r)
+	exportTaskID, err := servicesV2.VisitRecordsExport(query, locale)
 	if err != nil {
 		var errResponse data.ErrorResponse
 		if rootCauseErrors, ok := elasticsearch.ExtractElasticsearchRootCauseErrors(err); ok {

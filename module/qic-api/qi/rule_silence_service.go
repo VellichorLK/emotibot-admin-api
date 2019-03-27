@@ -2,6 +2,8 @@ package qi
 
 import (
 	"encoding/json"
+	"errors"
+	"sort"
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -61,31 +63,35 @@ type RuleException struct {
 	Staff    []model.SimpleSentence `json:"staff"`
 	Customer []model.SimpleSentence `json:"customer"`
 }
+type OnlyStaffException struct {
+	Staff []model.SimpleSentence `json:"staff"`
+}
 
 //RuleSilenceException is used to return the exception
 type RuleSilenceException struct {
-	Before RuleException `json:"before"`
-	After  struct {
-		Staff []model.SimpleSentence `json:"staff"`
-	} `json:"after"`
+	Before RuleException      `json:"before"`
+	After  OnlyStaffException `json:"after"`
+}
+
+type SilenceRuleWithException struct {
+	RuleGroupID int64
+	model.SilenceRule
+	RuleSilenceException
+	sentences map[uint64][]uint64
 }
 
 //GetRuleSilenceException gets the rule silence exception
-func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error) {
+func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, map[uint64][]uint64, error) {
 
 	if r == nil {
 		return &RuleSilenceException{
 			Before: RuleException{Staff: make([]model.SimpleSentence, 0), Customer: make([]model.SimpleSentence, 0)},
-			After: struct {
-				Staff []model.SimpleSentence `json:"staff"`
-			}{
-				Staff: make([]model.SimpleSentence, 0),
-			},
-		}, nil
+			After:  OnlyStaffException{Staff: make([]model.SimpleSentence, 0)},
+		}, nil, nil
 	}
 
 	if dbLike == nil {
-		return nil, ErrNilCon
+		return nil, nil, ErrNilCon
 	}
 
 	var exception []string
@@ -95,7 +101,7 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 		err := json.Unmarshal([]byte(r.ExceptionBefore), &lowerExcpt)
 		if err != nil {
 			logger.Error.Printf("unmarshal %d exception before failed\n", r.ID)
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		lowerExcpt.Customer = make([]string, 0)
@@ -105,7 +111,7 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 		err := json.Unmarshal([]byte(r.ExceptionAfter), &upperExcpt)
 		if err != nil {
 			logger.Error.Printf("unmarshal %d exception after failed\n", r.ID)
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		upperExcpt.Staff = make([]string, 0)
@@ -115,26 +121,27 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 	exception = append(exception, lowerExcpt.Staff...)
 	exception = append(exception, upperExcpt.Staff...)
 
+	var isDelete int8
 	sentences, err := sentenceDao.GetSentences(dbLike.Conn(),
-		&model.SentenceQuery{UUID: exception, Enterprise: &r.Enterprise})
+		&model.SentenceQuery{UUID: exception, Enterprise: &r.Enterprise, IsDelete: &isDelete})
 
+	sentencesCriteria := make(map[uint64][]uint64)
 	if err != nil {
 		logger.Error.Printf("get sentence %+v failed. %s\n", exception, err)
-		return nil, err
+		return nil, nil, err
 	}
 
 	uuidSentenceMap := make(map[string]*model.Sentence, len(sentences))
 	for _, v := range sentences {
 		uuidSentenceMap[v.UUID] = v
+		sentencesCriteria[v.ID] = append(sentencesCriteria[v.ID], v.TagIDs...)
 	}
 
 	resp := RuleSilenceException{Before: RuleException{Staff: make([]model.SimpleSentence, 0), Customer: make([]model.SimpleSentence, 0)},
-		After: struct {
-			Staff []model.SimpleSentence `json:"staff"`
-		}{Staff: make([]model.SimpleSentence, 0)}}
+		After: OnlyStaffException{Staff: make([]model.SimpleSentence, 0)}}
 	for _, v := range lowerExcpt.Staff {
 		if s, ok := uuidSentenceMap[v]; ok {
-			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID}
+			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID, ID: s.ID}
 			resp.Before.Staff = append(resp.Before.Staff, ss)
 		} else {
 			logger.Warn.Printf("Cannot find %s sentence, but it exists in %d before staff exception\n", v, r.ID)
@@ -143,7 +150,7 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 
 	for _, v := range lowerExcpt.Customer {
 		if s, ok := uuidSentenceMap[v]; ok {
-			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID}
+			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID, ID: s.ID}
 			resp.Before.Customer = append(resp.Before.Customer, ss)
 		} else {
 			logger.Warn.Printf("Cannot find %s sentence, but it exists in %d before customer exception\n", v, r.ID)
@@ -152,14 +159,14 @@ func GetRuleSilenceException(r *model.SilenceRule) (*RuleSilenceException, error
 
 	for _, v := range upperExcpt.Staff {
 		if s, ok := uuidSentenceMap[v]; ok {
-			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID}
+			ss := model.SimpleSentence{UUID: v, Name: s.Name, CategoryID: s.CategoryID, ID: s.ID}
 			resp.After.Staff = append(resp.After.Staff, ss)
 		} else {
 			logger.Warn.Printf("Cannot find %s sentence, but it exists in %d after staff exception\n", v, r.ID)
 		}
 	}
 
-	return &resp, nil
+	return &resp, sentencesCriteria, nil
 
 }
 
@@ -222,4 +229,407 @@ func UpdateRuleSilence(q *model.GeneralQuery, d *model.SilenceUpdateSet) (int64,
 	tx.Commit()
 	return affected, err
 
+}
+
+const SilenceSpeaker = -1
+
+type segDuration struct {
+	index    int
+	duration float64
+}
+
+//RuleSilenceCheck checks the silence rules
+func RuleSilenceCheck(ruleGroup model.Group, allSegs []*SegmentWithSpeaker, matched []*MatchedData) ([]RulesException, error) {
+
+	if len(allSegs) == 0 {
+		return nil, nil
+	}
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
+
+	isDelete := 0
+	q := &model.GeneralQuery{Enterprise: &ruleGroup.EnterpriseID, IsDelete: &isDelete, UUID: []string{ruleGroup.UUID}}
+	sRules, err := ruleSilenceDao.GetByRuleGroup(dbLike.Conn(), q)
+	if err != nil {
+		logger.Error.Printf("get rule silence failed. %s\n", err)
+		return nil, err
+	}
+	if len(sRules) == 0 {
+		return nil, nil
+	}
+
+	silenceSegs := extractOtherSegment(allSegs, SilenceSpeaker)
+	pureWordSegs := extractPureWordsSegment(allSegs)
+	if len(pureWordSegs) != len(matched) {
+		return nil, errors.New("total seg without silence not equal to matched seg")
+	}
+
+	//get rules with exception data
+	rules := make([]SilenceRuleWithException, 0, len(sRules))
+	for _, r := range sRules {
+		var exceptionRule SilenceRuleWithException
+		exceptionRule.SilenceRule = *r
+		exception, senCriteria, err := GetRuleSilenceException(r)
+		if err != nil {
+			logger.Error.Printf("get silence exception failed. %s\n", err)
+			return nil, err
+		}
+		exceptionRule.RuleGroupID = ruleGroup.ID
+		exceptionRule.RuleSilenceException = *exception
+		exceptionRule.sentences = senCriteria
+		rules = append(rules, exceptionRule)
+	}
+
+	credits, err := silenceRuleCheck(rules, matched, allSegs, pureWordSegs, silenceSegs)
+	if err != nil {
+		logger.Error.Printf("silence rule check failed.%s\n", err)
+		return nil, err
+	}
+
+	return credits, nil
+}
+
+func extractPureWordsSegment(segments []*SegmentWithSpeaker) []*SegmentWithSpeaker {
+	segs := make([]*SegmentWithSpeaker, 0, len(segments))
+	for _, v := range segments {
+		if v.Speaker == int(model.CallChanStaff) || v.Speaker == int(model.CallChanCustomer) {
+			segs = append(segs, v)
+		}
+	}
+	return segs
+}
+
+func extractOtherSegment(segments []*SegmentWithSpeaker, speaker int) []segDuration {
+	segs := make([]segDuration, 0, len(segments))
+	for k, v := range segments {
+		if int(v.Channel) == speaker {
+			dur := v.EndTime - v.StartTime
+			s := segDuration{index: k, duration: dur}
+			segs = append(segs, s)
+		}
+	}
+	return segs
+}
+
+//extract the segment with given speaker and sorts it in descending order by segment's duration
+//return  segment with only given speaker and semgent without segment with given speaker
+func extractSegmentSpeaker(segments []*SegmentWithSpeaker, speaker int) ([]segDuration, []*SegmentWithSpeaker) {
+	silenceSegs := make([]segDuration, 0, 16)
+	segs := make([]*SegmentWithSpeaker, 0, len(segments))
+	for k, v := range segments {
+		if v.Speaker == speaker {
+			silenceDur := v.EndTime - v.StartTime
+			s := segDuration{index: k, duration: silenceDur}
+			silenceSegs = append(silenceSegs, s)
+		} else {
+			segs = append(segs, v)
+		}
+	}
+	sort.SliceStable(silenceSegs, func(i, j int) bool {
+		return silenceSegs[i].duration > silenceSegs[j].duration
+	})
+	return silenceSegs, segs
+}
+
+func getDExceptionAndBuildMap(exception []model.SimpleSentence, typ levelType, m map[senTypeKey]*ExceptionMatched) []*ExceptionMatched {
+	resp := make([]*ExceptionMatched, 0, len(exception))
+	for _, v := range exception {
+		e := &ExceptionMatched{SentenceID: int64(v.ID), Typ: typ}
+		resp = append(resp, e)
+	}
+	addExceptionMap(m, resp)
+	return resp
+}
+
+func getDefaultException(exception []model.SimpleSentence, typ levelType) []*ExceptionMatched {
+	resp := make([]*ExceptionMatched, 0, len(exception))
+	for _, v := range exception {
+		e := &ExceptionMatched{SentenceID: int64(v.ID), Typ: typ}
+		resp = append(resp, e)
+	}
+	return resp
+}
+func addExceptionMap(m map[senTypeKey]*ExceptionMatched, es []*ExceptionMatched) {
+	for _, v := range es {
+		k := senTypeKey{typ: v.Typ, sentenceID: v.SentenceID}
+		m[k] = v
+	}
+}
+
+//findFirstSegBeforeIndex finds the first index of segment, for both staff and customer, which is not silence before the given index
+//return the index of the first index for staff and customer  before the given idx
+func findFirstSegBeforeIndex(idx int, allSegs []*SegmentWithSpeaker) (int, int) {
+	var isCheckStaff, isCheckCustomer bool
+	var staffIdx, customerIdx int
+	//check before exception
+	for j := idx - 1; j >= 0; j-- {
+		if isCheckStaff && isCheckCustomer {
+			break
+		}
+		if allSegs[j].Speaker == SilenceSpeaker {
+			continue
+		} else if allSegs[j].Speaker == int(model.CallChanStaff) && !isCheckStaff {
+			staffIdx = j
+			isCheckStaff = true
+		} else if allSegs[j].Speaker == int(model.CallChanCustomer) && !isCheckCustomer {
+			customerIdx = j
+			isCheckCustomer = true
+		}
+	}
+	return staffIdx, customerIdx
+}
+
+//findFirstSegAfterIndex finds the first index of segment, for both staff and customer, which is not silence after the given index
+//return the index of the first index for staff and customer  before the given idx
+func findFirstSegAfterIndex(idx int, allSegs []*SegmentWithSpeaker) (int, int) {
+	var isCheckStaff, isCheckCustomer bool
+	var staffIdx, customerIdx int
+
+	for j := idx + 1; j < len(allSegs); j++ {
+		if isCheckStaff && isCheckCustomer {
+			break
+		}
+		if allSegs[j].Speaker == SilenceSpeaker {
+			continue
+		} else if allSegs[j].Speaker == int(model.CallChanStaff) && !isCheckStaff {
+			staffIdx = j
+			isCheckStaff = true
+		} else if allSegs[j].Speaker == int(model.CallChanCustomer) && !isCheckCustomer {
+			customerIdx = j
+			isCheckCustomer = true
+		}
+	}
+	return staffIdx, customerIdx
+}
+
+//counts number of other segments, not from staff and customer
+func countNumOfOtherSegsBeforeIdx(idx int, allSegs []*SegmentWithSpeaker) int {
+	var numOfOtherSegs int
+	for k, v := range allSegs {
+		if k >= idx {
+			break
+		}
+		if v.Speaker != int(model.CallChanStaff) && v.Speaker != int(model.CallChanCustomer) {
+			numOfOtherSegs++
+		}
+	}
+
+	return numOfOtherSegs
+}
+
+/*
+func countNumOfSilenceBeforeIdxs(idxs []int, allSegs []*SegmentWithSpeaker) []int {
+	numOfIdx := len(idxs)
+	if numOfIdx == 0 {
+		return nil
+	}
+
+	sortIdx := make([]int, 0, numOfIdx)
+	copy(sortIdx, idxs)
+	sort.Ints(sortIdx)
+	max := sortIdx[numOfIdx-1]
+
+	if max >= len(allSegs) {
+		return nil
+	}
+	numOfSilences := make([]int, numOfIdx)
+
+	var cur int
+
+	var numOfSilence int
+	for i := 0; i <= max; i++ {
+		if allSegs[i].Speaker == SilenceSpeaker {
+			numOfSilence++
+		}
+		if sortIdx[cur] == i {
+			numOfSilences[cur] = numOfSilence
+			cur++
+		}
+	}
+
+	resp := make([]int, numOfIdx)
+
+	for k, v := range idxs {
+		for k2, v2 := range sortIdx {
+			if v == v2 {
+				resp[k] = numOfSilences[k2]
+			}
+		}
+	}
+	return resp
+}
+*/
+
+type senTypeKey struct {
+	typ        levelType
+	sentenceID int64
+}
+
+//NOTICE !!! allSegs includes the silence segments,
+//but matched only contains the segments with words, excludes the silence segment,
+//which means length of the slice of them are different
+//this function doesn't check the len of data, the input data must not be empty
+//silenceSegs must sort by duration in descending order
+func silenceRuleCheck(sRules []SilenceRuleWithException, tagMatchDat []*MatchedData,
+	allSegs []*SegmentWithSpeaker, segs []*SegmentWithSpeaker, silenceSegs []segDuration) ([]RulesException, error) {
+
+	callID := allSegs[0].CallID
+	segMatchedTag := extractTagMatchedData(tagMatchDat)
+
+	resp := make([]RulesException, 0, len(sRules))
+	for _, rule := range sRules {
+		var numOfBreak int
+
+		var violateSegs []int64
+		//find which segments break the silence rule
+		for _, seg := range silenceSegs {
+			if seg.duration <= float64(rule.Seconds) {
+				break
+			}
+			violateSegs = append(violateSegs, allSegs[seg.index].RealSegment.ID)
+			numOfBreak++
+		}
+		var defaultVaild bool
+		if numOfBreak < rule.Times {
+			defaultVaild = true
+		}
+
+		result := RulesException{RuleID: rule.ID, Typ: levSilenceTyp,
+			Whos: Silence, CallID: callID, Valid: defaultVaild, SilenceSegs: violateSegs,
+			RuleGroupID: rule.RuleGroupID}
+
+		//generates the all exception sentences result structure
+		exceptionMap := make(map[senTypeKey]*ExceptionMatched) //the map with key sentence id and value ExceptionMatch structure
+		staffBeforeExceptions := getDExceptionAndBuildMap(rule.Before.Staff, levLStaffSenTyp, exceptionMap)
+		result.Exception = append(result.Exception, staffBeforeExceptions...)
+		customerBeforeExceptions := getDExceptionAndBuildMap(rule.Before.Customer, levLCustomerSenTyp, exceptionMap)
+		result.Exception = append(result.Exception, customerBeforeExceptions...)
+		staffAfterExceptions := getDExceptionAndBuildMap(rule.After.Staff, levUStaffSenTyp, exceptionMap)
+		result.Exception = append(result.Exception, staffAfterExceptions...)
+
+		//some segments break the rule
+		if numOfBreak > 0 {
+			var exceptionTimes int
+
+			//do the checking, sentence match
+			senMatchDat, _ := SentencesMatch(segMatchedTag, rule.sentences)
+
+			//check whether the exception happened before the silence segment
+			for i := 0; i < numOfBreak; i++ {
+				silenceIdx := silenceSegs[i].index
+
+				//find the first sentence index before the silence index
+				staffIdx, customerIdx := findFirstSegBeforeIndex(silenceIdx, allSegs)
+				numOfSilence := countNumOfOtherSegsBeforeIdx(staffIdx, allSegs)
+				staffMatchIdx := staffIdx - numOfSilence
+				numOfSilence = countNumOfOtherSegsBeforeIdx(customerIdx, allSegs)
+				customerMatchIdx := customerIdx - numOfSilence
+
+				//find the first sentence index after the silence index
+				aStaffIdx, _ := findFirstSegAfterIndex(silenceIdx, allSegs)
+				numOfSilence = countNumOfOtherSegsBeforeIdx(aStaffIdx, allSegs)
+				aStaffMatchIdx := aStaffIdx - numOfSilence
+
+				//go through each exception
+				for _, exception := range result.Exception {
+					//check whether the exception sentence is matched
+					if segIdxs, ok := senMatchDat[uint64(exception.SentenceID)]; ok {
+
+						//check each matched segment, whether the segment is at the right posotion
+						if matched, ok := exceptionMap[senTypeKey{sentenceID: exception.SentenceID, typ: exception.Typ}]; ok {
+							for _, segIdx := range segIdxs {
+								matchedIdx := segIdx - 1
+								switch matched.Typ {
+								case levLStaffSenTyp:
+									if staffMatchIdx == matchedIdx {
+										matched.Valid = true
+										result.Valid = true
+									} else {
+										continue
+									}
+								case levLCustomerSenTyp:
+									if customerMatchIdx == matchedIdx {
+										matched.Valid = true
+										result.Valid = true
+									} else {
+										continue
+									}
+								case levUStaffSenTyp:
+									if aStaffMatchIdx == matchedIdx {
+										matched.Valid = true
+										result.Valid = true
+									} else {
+										continue
+									}
+								default:
+									continue
+								}
+
+								matchedTags := tagMatchDat[matchedIdx]
+								for _, data := range matchedTags.Matched {
+									var tagCredit TagCredit
+									//TagID
+									tagCredit.ID = data.Tag
+									tagCredit.Score = data.Score
+									//SentenceID is the cu term for segment Idx, which is 1 based index
+									tagCredit.SegmentIdx = data.SentenceID
+									tagCredit.Match = data.Match
+									tagCredit.MatchTxt = data.MatchText
+									tagCredit.SegmentID = segs[matchedIdx].ID
+									matched.Tags = append(matched.Tags, &tagCredit)
+								}
+							}
+						}
+					}
+
+				}
+				if result.Valid {
+					exceptionTimes++
+				}
+			}
+
+			if (numOfBreak - exceptionTimes) < rule.Times {
+				result.Valid = true
+			}
+			if result.Valid {
+				if rule.Score > 0 {
+					result.Score = rule.Score
+				}
+			} else {
+				if rule.Score < 0 {
+					result.Score = rule.Score
+				}
+			}
+
+		}
+		resp = append(resp, result)
+	}
+
+	return resp, nil
+}
+
+func injectSilenceInterposalSegs(segs []model.RealSegment) []model.RealSegment {
+	if len(segs) == 0 {
+		return nil
+	}
+
+	var segsWithSilence []model.RealSegment
+	segsWithSilence = append(segsWithSilence, segs[0])
+	durationStandard := float64(1) // 1 second
+	for idx, v := range segs[1:] {
+
+		diff := v.StartTime - segs[idx].EndTime
+		if diff >= durationStandard {
+			newSeg := model.RealSegment{Channel: SilenceSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: segs[idx].EndTime, EndTime: v.StartTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		} else if diff <= -durationStandard {
+			newSeg := model.RealSegment{Channel: InterposalSpeaker, CallID: v.CallID, CreateTime: v.CreateTime,
+				StartTime: v.StartTime, EndTime: segs[idx].EndTime}
+			segsWithSilence = append(segsWithSilence, newSeg)
+		}
+		segsWithSilence = append(segsWithSilence, v)
+	}
+	return segsWithSilence
 }

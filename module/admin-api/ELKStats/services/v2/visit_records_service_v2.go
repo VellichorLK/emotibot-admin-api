@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
@@ -36,7 +38,9 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		"answer.value",
 		dataCommon.VisitRecordsMetricLogTime,
 		dataCommon.VisitRecordsMetricEmotion,
+		dataCommon.VisitRecordsMetricEmotionScore,
 		dataCommon.VisitRecordsMetricIntent,
+		dataCommon.VisitRecordsMetricIntentScore,
 		dataCommon.VisitRecordsMetricModule,
 		dataCommon.VisitRecordsMetricSource,
 		"unique_id",
@@ -48,6 +52,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
 		dataCommon.VisitRecordsMetricThreshold,
+		dataCommon.VisitRecordsMetricTSpan,
 	)
 
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
@@ -132,7 +137,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 	return
 }
 
-func VisitRecordsExport(query *dataV2.VisitRecordsQuery) (exportTaskID string, err error) {
+func VisitRecordsExport(query *dataV2.VisitRecordsQuery, locale string) (exportTaskID string, err error) {
 	// Try to create export task
 	exportTaskID, err = dao.TryCreateExportTask(query.EnterpriseID)
 	if err != nil {
@@ -141,8 +146,8 @@ func VisitRecordsExport(query *dataV2.VisitRecordsQuery) (exportTaskID string, e
 
 	// Create a goroutine to exporting records in background
 	go func() {
-		option := createExportRecordsTaskOption(query, exportTaskID)
-		servicesCommon.ExportTask(option)
+		option := createExportRecordsTaskOption(query, exportTaskID, locale)
+		servicesCommon.ExportTask(option, locale)
 	}()
 
 	return
@@ -215,17 +220,19 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 
 	record := &dataV2.VisitRecordsCommon{
 		VisitRecordsDataBase: dataV2.VisitRecordsDataBase{
-			SessionID:   rawRecord.SessionID,
-			TESessionID: rawRecord.TESessionID,
-			UserID:      rawRecord.UserID,
-			UserQ:       rawRecord.UserQ,
-			Score:       rawRecord.Score,
-			StdQ:        rawRecord.StdQ,
-			LogTime:     logTime.Format(data.StandardTimeFormat),
-			Emotion:     rawRecord.Emotion,
-			Intent:      rawRecord.Intent,
-			Module:      rawRecord.Module,
-			Source:      rawRecord.Source,
+			SessionID:    rawRecord.SessionID,
+			TESessionID:  rawRecord.TESessionID,
+			UserID:       rawRecord.UserID,
+			UserQ:        rawRecord.UserQ,
+			Score:        rawRecord.Score,
+			StdQ:         rawRecord.StdQ,
+			LogTime:      logTime.Format(data.StandardTimeFormat),
+			Emotion:      rawRecord.Emotion,
+			EmotionScore: rawRecord.EmotionScore,
+			Intent:       rawRecord.Intent,
+			IntentScore:  rawRecord.IntentScore,
+			Module:       rawRecord.Module,
+			Source:       rawRecord.Source,
 		},
 		Answer:         strings.Join(answers, ", "),
 		FaqCategoryID:  rawRecord.FaqCategoryID,
@@ -234,6 +241,7 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 		CustomFeedback: rawRecord.CustomFeedback,
 		FeedbackTime:   feedbackTime,
 		Threshold:      rawRecord.Threshold,
+		TSpan:          rawRecord.TSpan,
 	}
 
 	return record, nil
@@ -309,15 +317,13 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 
 	recordPtr = &dataV2.VisitRecordsExportData{
 		VisitRecordsCommon: *recordCommon,
-		EmotionScore:       rawRecord.EmotionScore,
-		IntentScore:        rawRecord.IntentScore,
 		CustomInfo:         customInfo,
 	}
 
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -376,7 +382,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 			record.StdQ,
 			record.Answer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
-			record.Module,
+			localemsg.Get(locale, record.Module),
 			record.Source,
 			record.LogTime,
 			record.Emotion,
@@ -390,6 +396,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 			record.CustomFeedback,
 			record.FeedbackTime,
 			strconv.FormatInt(record.Threshold, 10),
+			strconv.FormatInt(record.TSpan, 10),
 		}
 
 		for _, d := range xlsxData {
@@ -402,7 +409,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string) (xls
 	return
 }
 
-func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID string) *data.ExportTaskOption {
+func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID string, locale string) *data.ExportTaskOption {
 	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
 
 	boolQuery := newBoolQueryWithRecordQuery(query)
@@ -430,6 +437,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
 		dataCommon.VisitRecordsMetricThreshold,
+		dataCommon.VisitRecordsMetricTSpan,
 	)
 
 	return &data.ExportTaskOption{

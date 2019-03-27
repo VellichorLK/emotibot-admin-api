@@ -55,9 +55,6 @@ func handleImportSentences(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportRules(w http.ResponseWriter, r *http.Request) {
-
-	// TODO use general.UUID() to simply code
-
 	var err error
 	//appID := requestheader.GetAppID(r)
 	enterpriseID := requestheader.GetEnterpriseID(r)
@@ -82,8 +79,6 @@ func handleImportRules(w http.ResponseWriter, r *http.Request) {
 func handleImportCallIn(w http.ResponseWriter, r *http.Request) {
 	var err error
 	enterpriseID := requestheader.GetEnterpriseID(r)
-
-	// need to check unique flow name
 
 	fileName := fmt.Sprintf("flow_%s.xlsx", time.Now().Format("20060102150405"))
 

@@ -30,6 +30,7 @@ var validUUIDCase = []stringValidTestCase{
 	stringValidTestCase{"a0f7b4143-f0ae-11e7-bd86-0242ac120003b", false},
 	stringValidTestCase{"a0f7b4143-f0ae-11e7-bd86-0242ac120003", false},
 	stringValidTestCase{"0f7b4143-f0ae-11e7-bd86-0242ac120003b", false},
+	stringValidTestCase{"b32b76d3c4044c519dad3fe650bf7535", true},
 }
 
 func TestValidUUID(t *testing.T) {

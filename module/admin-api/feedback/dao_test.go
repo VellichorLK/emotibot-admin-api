@@ -71,10 +71,17 @@ func TestDaoAddReason(t *testing.T) {
 		}
 	})
 
+	rows := sqlmock.NewRows([]string{"content"}).
+		AddRow(newReason)
 	t.Run("Test add correctly", func(t *testing.T) {
-		mock.ExpectExec("INSERT INTO feedback_reason").
-			WithArgs(appid, newReason, getFixTimestamp(), appid, newReason).
+		mock.ExpectBegin()
+		mock.ExpectQuery("SELECT content FROM feedback_reason WHERE appid = (.+) AND content = (.+)").
+			WithArgs(appid, newReason).
+			WillReturnRows(rows)
+		mock.ExpectExec("INSERT INTO feedback_reason .*").
+			WithArgs(appid, newReason, getFixTimestamp()).
 			WillReturnResult(sqlmock.NewResult(10, 1))
+		mock.ExpectCommit()
 
 		dao.db = db
 		timestampHandler = getFixTimestamp

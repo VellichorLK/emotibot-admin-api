@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -466,6 +468,53 @@ func handleFlowFinish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+}
+
+func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) {
+	req, err := extractNewCallReq(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
+		return
+	}
+
+	if req.RemoteFile == "" {
+		err = fmt.Errorf("Remote file path not specified for realtime QI flow, call UUID: %s",
+			call.UUID)
+		logger.Error.Println(err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()),
+			http.StatusBadRequest)
+		return
+	}
+
+	resp := RealtimeCallResp{
+		CallID:     call.ID,
+		CallUUID:   call.UUID,
+		RemoteFile: req.RemoteFile,
+	}
+
+	p, err := json.Marshal(&resp)
+	if err != nil {
+		logger.Error.Printf("Marshal realtime call resp failed, error: %s",
+			err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR,
+			err.Error()), http.StatusBadRequest)
+		return
+	}
+
+	err = realtimeCallProducer.Produce(p)
+	if err != nil {
+		logger.Error.Printf("Cannot create realtime call download task: %s",
+			err.Error())
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()),
+			http.StatusInternalServerError)
+		return
+	}
+
+	err = updateFlowQI(req, call)
+	if err != nil {
+		logger.Error.Printf("Update qi flow failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	}
 }
 
 //the speaker in wording in navigation flow only

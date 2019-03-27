@@ -6,8 +6,10 @@ import (
 )
 
 const (
-	// UUIDPattern is regex of UUID
-	UUIDPattern = "^[a-f0-9]{32}$"
+	// UUIDPattern is regex of UUID v1
+	UUIDPattern = "^[0-9a-f]{8}(-[0-9a-f]{4}){4}[0-9a-f]{8}$"
+	// UUIDV4Pattern is regex of UUID v4
+	UUIDV4Pattern = "^[a-f0-9]{32}$"
 	// MD5Pattern is regex for md5
 	MD5Pattern = "^[a-f0-9]{32}$"
 )
@@ -30,6 +32,9 @@ func IsValidUUID(str string) bool {
 		return true
 	}
 	match, _ := regexp.MatchString(UUIDPattern, str)
+	if !match {
+		match, _ = regexp.MatchString(UUIDV4Pattern, str)
+	}
 	return match
 }
 

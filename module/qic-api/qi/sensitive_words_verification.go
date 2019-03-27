@@ -1,16 +1,25 @@
 package qi
 
 import (
+	"time"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/anknown/ahocorasick"
-	"time"
+	goahocorasick "github.com/anknown/ahocorasick"
 )
 
 var sentenceMatchFunc func([]string, []uint64, string) (map[uint64][]int, error) = SimpleSentenceMatch
 
-// DoSensitiveWordsVerification　takes callID and segments as input and do sensitive word verification
+var (
+	levSWTyp        levelType = 60
+	levSWSegTyp     levelType = 61
+	levSWUserValTyp levelType = 62
+	levSWSenTyp     levelType = 63
+	levSWSenSegTyp  levelType = 64
+)
+
+// SensitiveWordsVerification　takes callID and segments as input and do sensitive word verification
 // it return slice of credits and err if err is happened
 func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, enterprise string) (credits []model.SimpleCredit, err error) {
 	// get sensitive words and its settings
@@ -25,12 +34,18 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 		return
 	}
 
+	if len(sws) == 0 {
+		return
+	}
+
 	swID := make([]int64, len(sws))
 	swMap := map[string]model.SensitiveWord{}
+	swViolated := map[string]bool{} // records sensitive words which are violated
 	swNames := make([]string, len(sws))
 	for idx, sw := range sws {
 		swID[idx] = sw.ID
 		swMap[sw.Name] = sw
+		swViolated[sw.Name] = false
 		swNames[idx] = sw.Name
 	}
 
@@ -45,13 +60,16 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 	}
 
 	sids := []uint64{} // sentence ids
-	appendSentenceID(&sids, staffExceptions)
-	appendSentenceID(&sids, customerExceptions)
+	sids = appendSentenceID(sids, staffExceptions)
+	sids = appendSentenceID(sids, customerExceptions)
 
 	// get sentence to segment match
-	senToSegments, err := sentenceMatchFunc(segContents, sids, enterprise)
-	if err != nil {
-		return
+	senToSegments := map[uint64][]int{}
+	if len(sids) > 0 {
+		senToSegments, err = sentenceMatchFunc(segContents, sids, enterprise)
+		if err != nil {
+			return
+		}
 	}
 
 	// create matching machine
@@ -61,99 +79,178 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 		return
 	}
 
+	// sensitive word passed maps
 	passedMap, err := callToSWUserKeyValues(callID, swID, sqlConn)
 	if err != nil {
 		return
 	}
 
+	now := time.Now().Unix()
+	for swid, userValueID := range passedMap {
+		for _, vid := range userValueID {
+			credit := model.SimpleCredit{
+				CallID:     uint64(callID),
+				Type:       int(levSWUserValTyp),
+				OrgID:      uint64(vid),
+				ParentID:   uint64(swid),
+				Revise:     unactivate,
+				Valid:      unactivate,
+				Score:      0,
+				CreateTime: now,
+				UpdateTime: now,
+			}
+			credits = append(credits, credit)
+		}
+	}
+
 	// for each segment check if violate sensitive word
-	for idx, seg := range segments {
+	for segIdx, seg := range segments {
+		if seg.Speaker == int(model.CallChanCustomer) {
+			// ignore what customer said
+			continue
+		}
 		if violates := m.MultiPatternSearch([]rune(seg.Text), false); len(violates) > 0 {
-			// violate some sensitive words
 			for _, term := range violates {
-				violated := true
+				sw := swMap[string(term.Word)]
+				credit := model.SimpleCredit{
+					CallID:     uint64(callID),
+					Type:       int(levSWSegTyp),
+					OrgID:      uint64(seg.ID),
+					ParentID:   uint64(sw.ID),
+					Revise:     unactivate,
+					Valid:      unactivate,
+					Score:      0,
+					CreateTime: now,
+					UpdateTime: now,
+				}
+				credits = append(credits, credit)
+
+				passed := false
 				sw, ok := swMap[string(term.Word)]
 				if !ok {
 					logger.Warn.Printf("should get sensitive words, but do exist")
 					continue
 				}
 
-				// verify if pass staff exception condition
-				sentences := staffExceptions[sw.ID]
-				for _, sid := range sentences {
-					if segIndxes, ok := senToSegments[sid]; ok {
-						for _, segIdx := range segIndxes {
-							if seg.Speaker == int(model.CallChanStaff) && segIdx < idx {
-								violated = false
-								break
-							}
-						}
-					}
+				// check if the call passed user value
+				if _, ok := passedMap[sw.ID]; ok {
+					passed = true
 
-					if !violated {
-						break
-					}
 				}
 
-				if !violated {
-					break
-				}
-
-				// verify if pass customer exception condition
-				sentences = customerExceptions[sw.ID]
-				for _, sid := range sentences {
-					if segIndxes, ok := senToSegments[sid]; ok {
-						for _, segIdx := range segIndxes {
-							if seg.Speaker == int(model.CallChanCustomer) && segIdx < idx {
-								violated = false
-								break
+				// check if the segment is a staff exception sentence
+				exceptions := sw.StaffException
+				for _, sen := range exceptions {
+					matchedSegIdxes := senToSegments[sen.ID]
+					for _, idx := range matchedSegIdxes {
+						if segIdx == idx && seg.Speaker == int(model.CallChanStaff) {
+							passed = true
+							credit = model.SimpleCredit{
+								CallID:     uint64(callID),
+								Type:       int(levSWSenTyp),
+								OrgID:      uint64(sen.ID),
+								ParentID:   uint64(sw.ID),
+								Revise:     unactivate,
+								Score:      0,
+								Valid:      1,
+								CreateTime: now,
+								UpdateTime: now,
 							}
-						}
+							credits = append(credits, credit)
 
-						if !violated {
+							credit = model.SimpleCredit{
+								CallID:     uint64(callID),
+								Type:       int(levSWSenSegTyp),
+								OrgID:      uint64(seg.ID),
+								ParentID:   uint64(sen.ID),
+								Revise:     unactivate,
+								Valid:      unactivate,
+								Score:      0,
+								CreateTime: now,
+								UpdateTime: now,
+							}
+							credits = append(credits, credit)
 							break
 						}
 					}
 				}
 
-				if passed, ok := passedMap[sw.ID]; ok && passed {
-					violated = false
-				}
+				// check if customer has say exception sentences
+				exceptions = sw.CustomerException
+				for _, sen := range exceptions {
+					matchedSegIdxes := senToSegments[sen.ID]
+					logger.Info.Printf("matchedSegIdxes: %+v\n", matchedSegIdxes)
+					for _, idx := range matchedSegIdxes {
+						matchedSeg := segments[idx]
+						if idx < segIdx && matchedSeg.Speaker == int(model.CallChanCustomer) {
+							passed = true
+							credit = model.SimpleCredit{
+								CallID:     uint64(callID),
+								Type:       int(levSWSenTyp),
+								OrgID:      uint64(sen.ID),
+								ParentID:   uint64(sw.ID),
+								Revise:     unactivate,
+								Valid:      1,
+								Score:      0,
+								CreateTime: now,
+								UpdateTime: now,
+							}
+							credits = append(credits, credit)
 
-				if !violated {
-					break
-				}
-
-				// the segment violates this sensitive word
-				if violated {
-					now := time.Now().Unix()
-					credit := model.SimpleCredit{
-						CallID:     uint64(callID),
-						Type:       int(levSWTyp),
-						OrgID:      uint64(sw.ID),
-						Revise:     -1,
-						Score:      sw.Score,
-						CreateTime: now,
-						UpdateTime: now,
+							credit = model.SimpleCredit{
+								CallID:     uint64(callID),
+								Type:       int(levSWSenSegTyp),
+								OrgID:      uint64(matchedSeg.ID),
+								ParentID:   uint64(sen.ID),
+								Revise:     unactivate,
+								Valid:      unactivate,
+								Score:      0,
+								CreateTime: now,
+								UpdateTime: now,
+							}
+							credits = append(credits, credit)
+							break
+						}
 					}
-					credits = append(credits, credit)
 				}
+
+				swViolated[sw.Name] = !passed
 			}
+
 		}
 	}
 
-	return
+	// for each sensitive words, check if any violated
+	for name, violated := range swViolated {
+		sw := swMap[name]
+		credit := model.SimpleCredit{
+			CallID:     uint64(callID),
+			Type:       int(levSWTyp),
+			OrgID:      uint64(sw.ID),
+			Revise:     unactivate,
+			Valid:      1,
+			CreateTime: now,
+			UpdateTime: now,
+		}
 
+		if violated {
+			credit.Valid = 0
+			//notice,currently sensitive words score use the positive number as the violated score
+			credit.Score = -sw.Score
+		}
+		credits = append(credits, credit)
+	}
+	return
 }
 
 // callToSWUserKeyValues takes callID, slice of sensitive word id, and sqlLike as input
 // and returns a map which indicates if the call passes a sensitive word or not
 // if some error happened, it will returns the error
-func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (passedMap map[int64]bool, err error) {
+func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (passedMap map[int64][]int64, err error) {
 	// init map
-	passedMap = map[int64]bool{}
+	passedMap = map[int64][]int64{}
 	for _, swid := range sws {
-		passedMap[swid] = false
+		passedMap[swid] = []int64{}
 	}
 
 	// get custom values of the call
@@ -171,9 +268,15 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 		return
 	}
 
+	usrCallVals := make([]string, 0, len(callValues))
+	for _, v := range callValues {
+		usrCallVals = append(usrCallVals, v.Value)
+	}
+
 	// get custom values of all sensitive words
 	query = model.UserValueQuery{
 		Type:             []int8{model.UserValueTypSensitiveWord},
+		Values:           usrCallVals,
 		IgnoreSoftDelete: true,
 	}
 	swValues, err := userValues(sqlLike, query)
@@ -183,15 +286,18 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 
 	// set true to the sensitive word if custom values of the call exist in custom values of a sensitive word
 	for _, cv := range swValues {
-		passedMap[cv.LinkID] = true
+		if _, ok := passedMap[cv.LinkID]; !ok {
+			passedMap[cv.LinkID] = []int64{}
+		}
+
+		passedMap[cv.LinkID] = append(passedMap[cv.LinkID], cv.ID)
 	}
 	return
 }
 
-func appendSentenceID(ids *[]uint64, sentences map[int64][]uint64) {
-	newids := *ids
+func appendSentenceID(ids []uint64, sentences map[int64][]uint64) []uint64 {
 	for sid := range sentences {
-		newids = append(newids, uint64(sid))
+		ids = append(ids, uint64(sid))
 	}
-	ids = &newids
+	return ids
 }

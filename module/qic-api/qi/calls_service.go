@@ -5,15 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"sort"
 	"strconv"
 
 	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 
 	"encoding/hex"
 	"time"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
-	"github.com/satori/go.uuid"
 )
 
 //ErrNotFound is indicated the resource is asked, but nowhere to found it.
@@ -30,32 +31,6 @@ var (
 	keyvalues    = userKeyDao.KeyValues
 )
 
-var callTypeDict = map[string]int8{
-	CallStaffRoleName:    model.CallChanStaff,
-	CallCustomerRoleName: model.CallChanCustomer,
-}
-
-const (
-	CallStaffRoleName    = "staff"
-	CallCustomerRoleName = "customer"
-)
-
-func callRoleTyp(role string) int8 {
-	value, found := callTypeDict[role]
-	if !found {
-		return model.CallChanDefault
-	}
-	return value
-}
-func callRoleTypStr(typ int8) string {
-	for key, val := range callTypeDict {
-		if val == typ {
-			return key
-		}
-	}
-	return "default"
-}
-
 func HasCall(id int64) (bool, error) {
 	count, err := callDao.Count(nil, model.CallQuery{
 		ID: []int64{id},
@@ -70,9 +45,9 @@ func HasCall(id int64) (bool, error) {
 }
 
 var (
-	call = func(callID int64, enterprise string) (c model.Call, err error) {
+	call = func(callUUID string, enterprise string) (c model.Call, err error) {
 		query := model.CallQuery{
-			ID: []int64{callID},
+			UUID: []string{callUUID},
 		}
 		if enterprise != "" {
 			query.EnterpriseID = &enterprise
@@ -158,6 +133,7 @@ var (
 
 			r := CallResp{
 				CallID:        c.ID,
+				CallUUID:      c.UUID,
 				FileName:      *c.FileName,
 				CallTime:      c.CallUnixTime,
 				CallComment:   *c.Description,
@@ -197,8 +173,8 @@ var (
 // Call return a call by given callID and enterprise
 // If enterprise is empty, it will ignore it in conditions.
 // If callID can not found, a ErrNotFound will returned
-func Call(callID int64, enterprise string) (c model.Call, err error) {
-	return call(callID, enterprise)
+func Call(callUUID string, enterprise string) (c model.Call, err error) {
+	return call(callUUID, enterprise)
 }
 
 // Calls is just a wrapper for callDao's calls.
@@ -262,7 +238,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 	call := &model.Call{
 		UUID:           hex.EncodeToString(uid[:]),
 		FileName:       &c.FileName,
-		Description:    &c.CallComment,
+		Description:    &c.Description,
 		UploadUnixTime: time.Now().Unix(),
 		CallUnixTime:   c.CallTime,
 		StaffID:        c.HostID,
@@ -285,34 +261,30 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		return nil, err
 	}
 	call = &calls[0]
+	err = updateCallCustomInfo(tx, c, call, timestamp)
+	if err != nil {
+		return nil, err
+	}
+
+	return call, nil
+}
+
+func updateCallCustomInfo(tx model.SQLTx, c *NewCallReq, call *model.Call, timestamp int64) error {
 	isEnable := true
 	groups, err := serviceDAO.Group(tx, model.GroupQuery{
-		EnterpriseID: &c.Enterprise,
+		EnterpriseID: c.Enterprise,
 		IsEnable:     &isEnable,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query group failed, %v", err)
-	}
-	//TODO: add matching for custom columns and conditions.
-	// valueQuery := model.UserValueQuery{
-	// 	Type: []int8{model.UserValueTypGroup},
-	// }
-	// for _, g := range groups {
-	// 	valueQuery.ParentID = append(valueQuery.ParentID, g.ID)
-	// }
-	// keys, err := keyvalues(tx, model.UserKeyQuery{Enterprise: c.Enterprise}, valueQuery)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("fetch keyValules failed, %v", err)
-	// }
-	_, err = callDao.SetRuleGroupRelations(tx, *call, groups)
-	if err != nil {
-		return nil, fmt.Errorf("set rule group failed, %v", err)
+		return fmt.Errorf("query group failed, %v", err)
 	}
 
 	keys, err := userKeys(tx, model.UserKeyQuery{Enterprise: c.Enterprise})
 	if err != nil {
-		return nil, fmt.Errorf("fetch key values failed, %v", err)
+		return fmt.Errorf("fetch key values failed, %v", err)
 	}
+	// filtered customcolumns from user
+	var userInputs = make(map[string][]string)
 	for name, value := range c.CustomColumns {
 		var (
 			k       model.UserKey
@@ -327,11 +299,12 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		if !isValid {
 			continue
 		}
+		uv := make([]model.UserValue, 0)
 		switch k.Type {
 		case model.UserKeyTypArray:
 			values, ok := value.([]interface{})
 			if !ok {
-				return nil, ErrCCTypeMismatch
+				return ErrCCTypeMismatch
 			}
 			for _, val := range values {
 				v := model.UserValue{
@@ -342,17 +315,14 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 					CreateTime: timestamp,
 					UpdateTime: timestamp,
 				}
-				v, err = newUserValue(tx, v)
-				if err != nil {
-					break
-				}
+				uv = append(uv, v)
 			}
 		case model.UserKeyTypNumber:
 			_, ok := value.(float64)
 			if !ok {
 				_, isInt := value.(int)
 				if !isInt {
-					return nil, ErrCCTypeMismatch
+					return ErrCCTypeMismatch
 				}
 			}
 			v := model.UserValue{
@@ -363,11 +333,11 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		case model.UserKeyTypTime:
 			_, ok := value.(int)
 			if !ok {
-				return nil, ErrCCTypeMismatch
+				return ErrCCTypeMismatch
 			}
 			v := model.UserValue{
 				LinkID:     call.ID,
@@ -377,7 +347,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		case model.UserKeyTypString:
 			v := model.UserValue{
 				LinkID:     call.ID,
@@ -387,17 +357,59 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 				CreateTime: timestamp,
 				UpdateTime: timestamp,
 			}
-			_, err = newUserValue(tx, v)
+			uv = append(uv, v)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("new user values failed, %v", err)
+		for _, v := range uv {
+			v, err = newUserValue(tx, v)
+			if err != nil {
+				return fmt.Errorf("new user values failed, %v", err)
+			}
+			userInputs[name] = insertAndOrderStrings(userInputs[name], v.Value)
 		}
 	}
 
-	if err = tx.Commit(); err != nil {
-		return nil, fmt.Errorf("commit new call transaction failed, %v", err)
+	//TODO: add matching for custom columns and conditions.
+	valueQuery := model.UserValueQuery{
+		Type: []int8{model.UserValueTypGroup},
 	}
-	return call, nil
+	for _, grp := range groups {
+		valueQuery.ParentID = append(valueQuery.ParentID, grp.ID)
+	}
+	keyQuery := model.UserKeyQuery{
+		Enterprise: c.Enterprise,
+	}
+	conditions, err := keyvalues(tx, keyQuery, valueQuery)
+	if err != nil {
+		return fmt.Errorf("fetch conditions failed, %v", err)
+	}
+	groupConditions := make(map[int64][]model.UserKey, len(groups))
+	for _, cond := range conditions {
+		for _, val := range cond.UserValues {
+			c := *cond
+			c.UserValues = []model.UserValue{val}
+			hasKey := false
+			keys := groupConditions[val.LinkID]
+			for _, k := range keys {
+				if k.ID == c.ID {
+					k.UserValues = append(k.UserValues, val)
+				}
+			}
+			if !hasKey {
+				keys = append(keys, c)
+			}
+		}
+	}
+	matchedGroups := MatchGroup(matchDefaultConditions(groups, *call), groupConditions, userInputs)
+	_, err = callDao.SetRuleGroupRelations(tx, *call, matchedGroups)
+	if err != nil {
+		return fmt.Errorf("set rule group failed, %v", err)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("commit new call transaction failed, %v", err)
+	}
+
+	return nil
 }
 
 //UpdateCall update the call data source
@@ -407,11 +419,22 @@ func UpdateCall(call *model.Call) error {
 
 //ConfirmCall is the workflow to update call File Path and send the request into message queue.
 func ConfirmCall(call *model.Call) error {
-	type ASRInput struct {
-		Version float64 `json:"version"`
-		CallID  string  `json:"call_id"`
-		Path    string  `json:"path"`
+	type VAD struct {
+		SegmentID int64   `json:"segment_id"`
+		Speaker   int8    `json:"speaker"`
+		StartTime float64 `json:"start_time"`
+		EndTime   float64 `json:"end_time"`
+		ASRText   string  `json:"asr_text"`
 	}
+
+	type ASRInput struct {
+		Version  float64 `json:"version"`
+		CallID   string  `json:"call_id"`
+		CallUUID string  `json:"call_uuid"`
+		Path     string  `json:"path"`
+		VADList  []*VAD  `json:"vad_list"`
+	}
+
 	//TODO: if call already Confirmed, it should not be able to
 	if call.FilePath == nil {
 		return fmt.Errorf("call FilePath should not be nil")
@@ -430,10 +453,36 @@ func ConfirmCall(call *model.Call) error {
 		logger.Warn.Println("expect ASR_HARDCODE_VOLUME have setup, or asr may not be able to read the path.")
 	}
 	input := ASRInput{
-		Version: 1.0,
-		CallID:  strconv.FormatInt(call.ID, 10),
-		Path:    path.Join(basePath, *call.FilePath),
+		Version:  1.0,
+		CallID:   strconv.FormatInt(call.ID, 10),
+		CallUUID: call.UUID,
+		Path:     path.Join(basePath, *call.FilePath),
 	}
+
+	if call.Type == model.CallTypeRealTime {
+		vadList := []*VAD{}
+
+		// Get call's segments to create VAD list of the call
+		segments, err := getSegments(*call)
+		if err != nil {
+			return err
+		}
+
+		for _, segment := range segments {
+			vad := VAD{
+				SegmentID: segment.SegmentID,
+				Speaker:   callRoleTyp(segment.Speaker),
+				StartTime: segment.StartTime,
+				EndTime:   segment.EndTime,
+				ASRText:   segment.ASRText,
+			}
+
+			vadList = append(vadList, &vad)
+		}
+
+		input.VADList = vadList
+	}
+
 	resp, err := json.Marshal(input)
 	if err != nil {
 		return fmt.Errorf("marshal asr input failed, %v", err)
@@ -443,4 +492,126 @@ func ConfirmCall(call *model.Call) error {
 		return fmt.Errorf("publish failed, %v", err)
 	}
 	return nil
+}
+
+// MatchGroup filter the given groups by the groupConditions and userInputs.
+// groupConditions
+func MatchGroup(groups []model.Group, groupConditions map[int64][]model.UserKey, userInputs map[string][]string) []model.Group {
+	var matchedGroups = make([]model.Group, 0)
+	for _, grp := range groups {
+		isValid := true
+		conds := groupConditions[grp.ID]
+		// group's conditions need to be all matched.
+		if len(userInputs) < len(conds) {
+			continue
+		}
+		for _, cond := range conds {
+			uv, exist := userInputs[cond.InputName]
+			if !exist {
+				isValid = false
+				break
+			}
+			//simple intersect n^2
+			//TODO: change to sorted or hash
+			var intersect = make([]string, 0)
+			for _, kv := range cond.UserValues {
+				for _, v := range uv {
+					if kv.Value == v {
+						intersect = append(intersect, v)
+					}
+				}
+			}
+			// need at least one value matched
+			if len(intersect) == 0 {
+				isValid = false
+			}
+
+		}
+		if isValid {
+			matchedGroups = append(matchedGroups, grp)
+		}
+	}
+	return matchedGroups
+}
+
+func matchDefaultConditions(groups []model.Group, c model.Call) []model.Group {
+	var matchedGroups = make([]model.Group, 0, len(groups))
+	for _, grp := range groups {
+		if grp.Condition == nil {
+			continue
+		}
+		cond := grp.Condition
+		if cond.Type == model.GroupCondTypOff {
+			matchedGroups = append(matchedGroups, grp)
+			continue
+		}
+		if cond.FileName != "" && cond.FileName != *c.FileName {
+			continue
+		}
+		// if cond.Deal != -1 && cond.Deal != c.Transaction {
+		// 	continue
+		// }
+		// if cond.Series != "" && cond.Series != c. {
+		// 	continue
+		// }
+		if cond.UploadTimeStart != 0 && cond.UploadTimeStart > c.UploadUnixTime {
+			continue
+		}
+		if cond.UploadTimeEnd != 0 && c.UploadUnixTime > cond.UploadTimeEnd {
+			continue
+		}
+		if cond.StaffID != "" && c.StaffID != cond.StaffID {
+			continue
+		}
+		if cond.StaffName != "" && cond.StaffName != c.StaffName {
+			continue
+		}
+		if cond.Extension != "" && cond.Extension != c.Ext {
+			continue
+		}
+		if cond.Department != "" && cond.Department != c.Department {
+			continue
+		}
+		if cond.CustomerID != "" && cond.CustomerID != c.CustomerID {
+			continue
+		}
+		if cond.CustomerName != "" && cond.CustomerName != c.CustomerName {
+			continue
+		}
+		if cond.CustomerPhone != "" && cond.CustomerPhone != c.CustomerPhone {
+			continue
+		}
+		if cond.CallStart != 0 && cond.CallStart > c.CallUnixTime {
+			continue
+		}
+		if cond.CallEnd != 0 && c.CallUnixTime > cond.CallEnd {
+			continue
+		}
+		if cond.LeftChannel != model.GroupCondRoleAny && cond.LeftChannel != c.LeftChanRole {
+			continue
+		}
+		if cond.RightChannel != model.GroupCondRoleAny && cond.RightChannel != c.RightChanRole {
+			continue
+		}
+
+		matchedGroups = append(matchedGroups, grp)
+	}
+	return matchedGroups
+}
+
+// insertAndOrderStrings insert v into orderedValues by ascending order.
+func insertAndOrderStrings(orderedValues []string, v string) []string {
+	values := make([]string, len(orderedValues)+1)
+	index := sort.Search(len(orderedValues), func(i int) bool {
+		return orderedValues[i] > v
+	})
+	// tail only need append
+	if index == len(orderedValues) {
+		values = append(orderedValues, v)
+		return values
+	}
+	copy(values, orderedValues[:index])
+	values[index] = v
+	copy(values[index+1:], orderedValues[index:])
+	return values
 }

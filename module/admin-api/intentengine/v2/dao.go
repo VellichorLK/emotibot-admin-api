@@ -1323,14 +1323,18 @@ func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
 
 	queryStr := `
 		UPDATE intent_versions
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN version = ? THEN 1
-				ELSE in_used
-			END
-		WHERE appid = ?`
-	_, err = tx.Exec(queryStr, intentVersion, appID)
+		SET in_used = 0
+		WHERE appid = ? AND in_used = 1`
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = `
+		UPDATE intent_versions
+		SET in_used = 1
+		WHERE appid = ? AND version = ?`
+	_, err = tx.Exec(queryStr, appID, intentVersion)
 	return
 }
 

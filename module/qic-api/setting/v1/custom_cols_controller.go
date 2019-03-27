@@ -1,9 +1,7 @@
 package setting
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -82,23 +80,33 @@ func GetCustomColsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
+	//TODO: check reserved keywords in conditions
 	type requestBody struct {
 		Name  string `json:"name"`
 		Type  int8   `json:"type"`
 		Input string `json:"inputname"`
 	}
+
 	var request requestBody
-	body, err := ioutil.ReadAll(r.Body)
+	err := util.ReadJSON(r, &request)
 	if err != nil {
-
-	}
-	err = json.Unmarshal(body, &request)
-	if err != nil {
-
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("bad json payload, %v", err))
+		return
 	}
 	enterpriseID := requestheader.GetEnterpriseID(r)
 	if enterpriseID == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require header of enterprise ID"))
 		return
+	}
+	if request.Name == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require non empty name"))
+		return
+	}
+	if request.Input == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require non empty input"))
+	}
+	if request.Type == 0 {
+		request.Type = 1
 	}
 	customCols, err := NewCustomCols([]NewUKRequest{NewUKRequest{
 		Enterprise: enterpriseID,
@@ -107,10 +115,8 @@ func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
 		InputName:  request.Input,
 	}})
 	if err != nil {
-
-	}
-	if len(customCols) == 0 {
-
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("new custom columns failed, %v", err))
+		return
 	}
 	cusCol := customCols[0]
 	util.WriteJSON(w, CustomCol{
@@ -125,10 +131,12 @@ func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
 func DeleteCustomColHandler(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
 	if enterprise == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require enterprise id"))
 		return
 	}
 	inputname := mux.Vars(r)["col_inputname"]
 	if inputname == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require path parameter"))
 		return
 	}
 	keys, err := userKeys(nil, model.UserKeyQuery{

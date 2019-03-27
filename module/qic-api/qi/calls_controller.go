@@ -15,8 +15,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 
-	"github.com/gorilla/mux"
-
 	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -68,7 +66,7 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 // NewCallsHandler create a call but no upload file itself.
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
-		CallID int64 `json:"call_id"`
+		CallUUID string `json:"call_uuid"`
 	}
 	req, err := extractNewCallReq(r)
 	if err != nil {
@@ -85,7 +83,7 @@ func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := response{CallID: call.ID}
+	resp := response{CallUUID: call.UUID}
 	util.WriteJSON(w, resp)
 }
 
@@ -132,11 +130,18 @@ func UpdateCallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Cal
 }
 
 func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
-	if c.FilePath == nil {
+	if c.DemoFilePath == nil && c.FilePath == nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("file path has not set yet, pleasse check status before calling api"))
 		return
 	}
-	fp := path.Join(volume, *c.FilePath)
+
+	var fp string
+	if c.DemoFilePath != nil {
+		fp = path.Join(volume, *c.DemoFilePath)
+	} else {
+		fp = path.Join(volume, *c.FilePath)
+	}
+
 	f, err := os.Open(fp)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, fmt.Sprintf("open file %s failed, %v", *c.FilePath, err))
@@ -158,25 +163,16 @@ func CallsFileHandler(w http.ResponseWriter, r *http.Request, c *model.Call) {
 // any request error will terminate handler as BadRequest.
 func callRequest(next func(w http.ResponseWriter, r *http.Request, c *model.Call)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const IDKey = "call_id"
-		callID := mux.Vars(r)[IDKey]
-		if callID == "" {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("require %s in path", IDKey))
-			return
-		}
-		id, err := strconv.ParseInt(callID, 10, 64)
-		if err != nil {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("invalid call_id '%s', need to be int", callID))
-			return
-		}
+		uuid := general.ParseID(r)
+
 		enterprise := requestheader.GetEnterpriseID(r)
 		if enterprise == "" {
 			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("empty enterprise ID"))
 			return
 		}
-		c, err := Call(id, enterprise)
+		c, err := Call(uuid, enterprise)
 		if err == ErrNotFound {
-			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", callID))
+			util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("call_id '%s' is not exist", uuid))
 			return
 		}
 		if err != nil {
@@ -230,11 +226,11 @@ func extractNewCallReq(r *http.Request) (*NewCallReq, error) {
 type NewCallReq struct {
 	FileName      string                 `json:"file_name"`
 	CallTime      int64                  `json:"call_time"`
-	CallComment   string                 `json:"call_comment"`
-	Transaction   int64                  `json:"transaction"`
+	Description   string                 `json:"description"`
+	Transaction   int8                   `json:"transaction"`
 	Series        string                 `json:"series"`
-	HostID        string                 `json:"host_id"`
-	HostName      string                 `json:"host_name"`
+	HostID        string                 `json:"staff_id"`
+	HostName      string                 `json:"staff_name"`
 	Extension     string                 `json:"extension"`
 	Department    string                 `json:"department"`
 	GuestID       string                 `json:"customer_id"`
@@ -246,9 +242,11 @@ type NewCallReq struct {
 	UploadUser    string                 `json:"-"`
 	Type          int8                   `json:"-"`
 	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
+	RemoteFile    string                 `json:"remote_file"`
 }
 
-var callRequestJSONKeys = parseJSONKeys(NewCallReq{})
+// ReservedCustomKeywords is a list of keywords reserved at NewCallReq.
+var ReservedCustomKeywords = parseJSONKeys(NewCallReq{})
 
 func parseJSONKeys(n interface{}) map[string]struct{} {
 	ta := reflect.TypeOf(n)
@@ -294,7 +292,7 @@ func (n *NewCallReq) UnmarshalJSON(data []byte) error {
 	}
 
 	for col, val := range columns {
-		if _, exist := callRequestJSONKeys[col]; exist {
+		if _, exist := ReservedCustomKeywords[col]; exist {
 			continue
 		}
 		if n.CustomColumns == nil {
@@ -313,7 +311,7 @@ type segment struct {
 	EndTime    float64      `json:"end_time"`
 	SentenceID int64        `json:"sent_id"`
 	SegmentID  int64        `json:"segment_id"`
-	Status     int64        `json:"status"`
+	Status     int          `json:"status"`
 }
 
 type asrEmotion struct {
@@ -336,6 +334,7 @@ type CallsResponse struct {
 //CallResp is the UI struct of the call.
 type CallResp struct {
 	CallID           int64                  `json:"call_id"`
+	CallUUID         string                 `json:"call_uuid"`
 	CallTime         int64                  `json:"call_time"`
 	Transaction      int8                   `json:"deal"`
 	Status           int64                  `json:"status"`

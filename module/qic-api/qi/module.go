@@ -19,20 +19,37 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo   util.ModuleInfo
-	tagDao       model.TagDao
-	callDao      model.CallDao = &model.CallSQLDao{}
-	segmentDao   model.SegmentDao
-	taskDao      = &model.TaskSQLDao{}
-	userValueDao = &model.UserValueDao{}
-	userKeyDao   = &model.UserKeySQLDao{}
-	swDao        model.SensitiveWordDao
-	producer     *rabbitmq.Producer
-	consumer     *rabbitmq.Consumer
-	sqlConn      *sql.DB
-	dbLike       model.DBLike
-	volume       string
-	creditDao    model.CreditDao = &model.CreditSQLDao{}
+	ModuleInfo           util.ModuleInfo
+	tagDao               model.TagDao
+	callDao              model.CallDao = &model.CallSQLDao{}
+	segmentDao           model.SegmentDao
+	taskDao              = &model.TaskSQLDao{}
+	userValueDao         = &model.UserValueDao{}
+	userKeyDao           = &model.UserKeySQLDao{}
+	swDao                model.SensitiveWordDao
+	condDao              = &model.GroupConditionDao{}
+	serviceDAO           model.GroupDAO
+	producer             *rabbitmq.Producer
+	consumer             *rabbitmq.Consumer
+	realtimeCallProducer *rabbitmq.Producer
+	realtimeCallConsumer *rabbitmq.Consumer
+	sqlConn              *sql.DB
+	dbLike               model.DBLike
+	volume               string
+	creditDao            model.CreditDao = &model.CreditSQLDao{}
+)
+var (
+	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
+)
+
+var (
+	newCondition    = condDao.NewCondition
+	groups          func(delegatee model.SqlLike, query model.GroupQuery) ([]model.Group, error)
+	newGroup        func(delegatee model.SqlLike, group model.Group) (model.Group, error)
+	setGroupRule    func(delegatee model.SqlLike, groups ...model.Group) error
+	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
+	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
+	setGroupBasic   func(delegatee model.SqlLike, group *model.Group) error
 )
 
 func init() {
@@ -42,9 +59,9 @@ func init() {
 			util.NewEntryPoint("POST", "groups", []string{}, handleCreateGroup),
 			util.NewEntryPoint("GET", "groups", []string{}, handleGetGroups),
 			util.NewEntryPoint("GET", "groups/filters", []string{}, handleGetGroupsByFilter),
-			util.NewEntryPoint("GET", "groups/{id}", []string{}, handleGetGroup),
-			util.NewEntryPoint("PUT", "groups/{id}", []string{}, handleUpdateGroup),
-			util.NewEntryPoint("DELETE", "groups/{id}", []string{}, handleDeleteGroup),
+			util.NewEntryPoint("GET", "groups/{group_id}", []string{}, simpleGroupRequest(handleGetGroup)),
+			util.NewEntryPoint("PUT", "groups/{group_id}", []string{}, groupRequest(handleUpdateGroup)),
+			util.NewEntryPoint("DELETE", "groups/{group_id}", []string{}, groupRequest(handleDeleteGroup)),
 
 			util.NewEntryPoint("GET", "tags", []string{}, HandleGetTags),
 			util.NewEntryPoint("POST", "tags", []string{}, HandlePostTags),
@@ -85,10 +102,10 @@ func init() {
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}", []string{}, callRequest(CallsDetailHandler)),
-			util.NewEntryPoint(http.MethodPost, "calls/{call_id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/file", []string{}, callRequest(CallsFileHandler)),
-			util.NewEntryPoint(http.MethodGet, "calls/{call_id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}", []string{}, callRequest(CallsDetailHandler)),
+			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/file", []string{}, callRequest(CallsFileHandler)),
+			util.NewEntryPoint(http.MethodGet, "calls/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
@@ -106,6 +123,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "call-in/conversation", []string{}, handleFlowCreate),
 			util.NewEntryPoint(http.MethodPut, "call-in/{id}", []string{}, WithFlowCallIDEnterpriseCheck(handleFlowFinish)),
+			util.NewEntryPoint(http.MethodPatch, "call-in/{id}", []string{}, callRequest(handleFlowUpdate)),
 			util.NewEntryPoint(http.MethodPost, "call-in/{id}/append", []string{}, handleStreaming),
 			//util.NewEntryPoint(http.MethodGet, "call-in/{id}", []string{}, handleGetCurCheck),
 
@@ -140,14 +158,6 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "rule/interposal/{id}", []string{}, handleGetRuleInterposal),
 			util.NewEntryPoint(http.MethodDelete, "rule/interposal/{id}", []string{}, handleDeleteRuleInterposal),
 			util.NewEntryPoint(http.MethodPut, "rule/interposal/{id}", []string{}, handleModifyRuleInterposal),
-
-			util.NewEntryPoint(http.MethodGet, "testing/predict/sentences", []string{}, handlePredictSentences),
-			util.NewEntryPoint(http.MethodGet, "testing/sentences/{id}", []string{}, handleGetTestSentences),
-			util.NewEntryPoint(http.MethodPost, "testing/sentences", []string{}, handleNewTestSentence),
-			util.NewEntryPoint(http.MethodDelete, "testing/sentences/{id}", []string{}, handleDeleteTestSentence),
-			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences", []string{}, handleGetSentenceTestOverview),
-			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_info", []string{}, handleGetSentenceTestResult),
-			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_detail/{id}", []string{}, handleGetSentenceTestDetail),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
@@ -186,31 +196,50 @@ func init() {
 				dbLike = &model.DefaultDBLike{
 					DB: sqlConn,
 				}
-				serviceDAO = model.NewGroupSQLDao(sqlConn)
+				// init group dao
+				groupSqlDao := model.NewGroupSQLDao(dbLike)
+				serviceDAO = groupSqlDao
+				groups = groupSqlDao.Group
+				newGroup = groupSqlDao.NewGroup
+				setGroupRule = groupSqlDao.SetGroupRules
+				groupRules = groupSqlDao.GroupRules
+				resetGroupRules = groupSqlDao.ResetGroupRules
+				setGroupBasic = groupSqlDao.SetGroupBasic
+				// init tag dao
 				tagDao, err = model.NewTagSQLDao(sqlConn)
 				if err != nil {
 					logger.Error.Printf("init tag dao failed, %v", err)
 					return
 				}
+				tags = tagDao.Tags
+				// init sentence dao
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
-				sentenceTestDao = model.NewSentenceTestSQLDao(sqlConn)
-
-				cuURL := envs["LOGIC_PREDICT_URL"]
-				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init call dao
 				callDao = model.NewCallSQLDao(sqlConn)
 				callCount = callDao.Count
 				calls = callDao.Calls
+				// init task dao
 				taskDao = model.NewTaskDao(sqlConn)
 				callTask = taskDao.CallTask
 				tasks = taskDao.Task
+				// init relation dao
 				relationDao = &model.RelationSQLDao{}
-				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init segment dao
 				segmentDao = model.NewSegmentDao(dbLike)
+				// init user value & keys dao
 				userValueDao = model.NewUserValueDao(dbLike.Conn())
 				valuesKey = userValueDao.ValuesKey
 				userKeyDao = model.NewUserKeyDao(dbLike.Conn())
 				userKeys = userKeyDao.UserKeys
 				keyvalues = userKeyDao.KeyValues
+				// init condition dao
+				condDao = model.NewConditionDao(dbLike)
+				newCondition = condDao.NewCondition
+				// init cu trainer & predictor
+				cuURL := envs["LOGIC_PREDICT_URL"]
+				predictor = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				trainer = &logicaccess.Client{URL: cuURL, Timeout: time.Duration(300 * time.Second)}
+				// init RABBITMQ client
 				host := envs["RABBITMQ_HOST"]
 				if host == "" {
 					logger.Error.Println("RABBITMQ_HOST is required!")
@@ -241,7 +270,30 @@ func init() {
 					MaxRetry:  10,
 				})
 				// require dao init first.
-				consumer.Subscribe(ASRWorkFlow)
+				err = consumer.Subscribe(ASRWorkFlow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"dst_queue", err.Error())
+					return
+				}
+
+				// Realtime call
+				realtimeCallProducer = client.NewProducer(rabbitmq.ProducerConfig{
+					QueueName:   "realtime_call_queue",
+					ContentType: "application/json",
+					MaxRetry:    10,
+				})
+				realtimeCallConsumer = client.NewConsumer(rabbitmq.ConsumerConfig{
+					QueueName: "realtime_call_queue",
+					MaxRetry:  10,
+				})
+				err = realtimeCallConsumer.Subscribe(RealtimeCallWorkflow)
+				if err != nil {
+					logger.Error.Printf("Failed to subscribe queue: %s, error: %s",
+						"realtime_call_queue", err.Error())
+					return
+				}
+
 				logger.Info.Println("init & subscribe to RabbitMQ success")
 
 				// init swDao

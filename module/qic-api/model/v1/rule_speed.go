@@ -38,6 +38,7 @@ type SpeedRuleDao interface {
 	SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error)
 	Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSet) (int64, error)
 	Copy(conn SqlLike, q *GeneralQuery) (int64, error)
+	GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*SpeedRule, error)
 }
 
 type SpeedRuleSQLDao struct {
@@ -84,6 +85,9 @@ func (s *SpeedRuleSQLDao) Add(conn SqlLike, r *SpeedRule) (int64, error) {
 
 //Get gets the data under the condition
 func (s *SpeedRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*SpeedRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
 	flds := []string{
 		fldID,
 		fldName,
@@ -116,25 +120,8 @@ func (s *SpeedRuleSQLDao) Get(conn SqlLike, q *GeneralQuery, p *Pagination) ([]*
 		offset = p.offsetSQL()
 	}
 	querySQL := fmt.Sprintf("SELECT %s FROM %s %s %s", strings.Join(flds, ","), tblSpeedRule, condition, offset)
-	rows, err := conn.Query(querySQL, params...)
-	if err != nil {
-		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
-		return nil, err
-	}
-	defer rows.Close()
-	resp := make([]*SpeedRule, 0, 4)
-	for rows.Next() {
-		var d SpeedRule
-		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Min, &d.Max,
-			&d.ExceptionUnder, &d.ExceptionOver, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
-		if err != nil {
-			logger.Error.Printf("scan failed. %s\n", err)
-			return nil, err
-		}
-		resp = append(resp, &d)
-	}
-	return resp, nil
 
+	return getSpeedRules(conn, querySQL, params)
 }
 
 //Count counts number of the rows under the condition
@@ -156,6 +143,9 @@ func (s *SpeedRuleSQLDao) Count(conn SqlLike, q *GeneralQuery) (int64, error) {
 
 //SoftDelete simply set the is_delete to 1
 func (s *SpeedRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -165,6 +155,9 @@ func (s *SpeedRuleSQLDao) SoftDelete(conn SqlLike, q *GeneralQuery) (int64, erro
 
 //Update updates the records
 func (s *SpeedRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSet) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0 && len(q.UUID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -182,6 +175,9 @@ func (s *SpeedRuleSQLDao) Update(conn SqlLike, q *GeneralQuery, d *SpeedUpdateSe
 
 //Copy copys only one record, only use the first ID in q
 func (s *SpeedRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
+	if conn == nil {
+		return 0, ErroNoConn
+	}
 	if q == nil || (len(q.ID) == 0) {
 		return 0, ErrNeedCondition
 	}
@@ -214,4 +210,76 @@ func (s *SpeedRuleSQLDao) Copy(conn SqlLike, q *GeneralQuery) (int64, error) {
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+//GetByRuleGroup gets the rule under the conditon of RuleGroup.
+//Hence, q is the condition for getting RuleGroup
+func (s *SpeedRuleSQLDao) GetByRuleGroup(conn SqlLike, q *GeneralQuery) ([]*SpeedRule, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	if q == nil || len(q.UUID) == 0 {
+		return nil, ErrNeedCondition
+	}
+	flds := []string{
+		fldID,
+		fldName,
+		fldScore,
+		fldMin,
+		fldMax,
+		fldExcptUnder,
+		fldExcptOver,
+		fldEnterprise,
+		fldIsDelete,
+		fldCreateTime,
+		fldUpdateTime,
+		fldUUID,
+	}
+	for i := range flds {
+		flds[i] = "b.`" + flds[i] + "`"
+	}
+
+	params := make([]interface{}, 0, len(q.UUID))
+	for _, v := range q.UUID {
+		params = append(params, v)
+	}
+
+	condition := "WHERE a.`" + fldRGUUID + "` IN (?" + strings.Repeat(",?", len(q.UUID)-1) + ")"
+	if q.IsDelete != nil {
+		condition += " AND b." + fldIsDelete + "=?"
+		params = append(params, *q.IsDelete)
+	}
+	if q.Enterprise != nil {
+		condition += " AND b." + fldEnterprise + "=?"
+		params = append(params, *q.Enterprise)
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b ON a.%s=b.%s %s",
+		strings.Join(flds, ","),
+		tblRelRGSpeed, tblSpeedRule,
+		fldSpeedUUID, fldUUID,
+		condition)
+
+	return getSpeedRules(conn, query, params)
+}
+
+func getSpeedRules(conn SqlLike, querySQL string, params []interface{}) ([]*SpeedRule, error) {
+	rows, err := conn.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
+		return nil, err
+	}
+	defer rows.Close()
+	resp := make([]*SpeedRule, 0, 4)
+	for rows.Next() {
+		var d SpeedRule
+		err = rows.Scan(&d.ID, &d.Name, &d.Score, &d.Min, &d.Max,
+			&d.ExceptionUnder, &d.ExceptionOver, &d.Enterprise, &d.IsDelete, &d.CreateTime, &d.UpdateTime, &d.UUID)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+		resp = append(resp, &d)
+	}
+	return resp, nil
 }

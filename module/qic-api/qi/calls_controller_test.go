@@ -112,7 +112,7 @@ func TestCallResp_MarshalJSON(t *testing.T) {
 				CallID: 1,
 				Status: 2,
 			},
-			want: []byte(`{"call_id":1,"call_time":0,"deal":0,"status":2,"upload_time":0,"duration":0,"left_silence_time":0,"right_silence_time":0,"left_speed":null,"right_speed":null}`),
+			want: []byte(`{"call_id":1,"call_time":0,"deal":0,"status":2,"upload_time":0,"duration":0,"left_silence_time":0,"right_silence_time":0,"left_speed":null,"right_speed":null, "call_uuid": ""}`),
 		},
 		{
 			name: "with custom columns",
@@ -122,7 +122,7 @@ func TestCallResp_MarshalJSON(t *testing.T) {
 					"location": "taipei",
 				},
 			},
-			want: []byte(`{"call_id":1,"call_time":0,"deal":0,"status":0,"upload_time":0,"duration":0,"left_silence_time":0,"right_silence_time":0,"left_speed":null,"right_speed":null, "location": "taipei"}`),
+			want: []byte(`{"call_id":1,"call_time":0,"deal":0,"status":0,"upload_time":0,"duration":0,"left_silence_time":0,"right_silence_time":0,"left_speed":null,"right_speed":null, "location": "taipei", "call_uuid": ""}`),
 		},
 		{
 			name: "with overlapped columns",
@@ -156,19 +156,19 @@ func TestCallResp_MarshalJSON(t *testing.T) {
 func Test_callRequest(t *testing.T) {
 	//dumpNext always write call id back to body.
 	dumpNext := func(w http.ResponseWriter, r *http.Request, c *model.Call) {
-		fmt.Fprintf(w, "[%d]", c.ID)
+		fmt.Fprintf(w, "[\"%s\"]", c.UUID)
 	}
 	tmp := call
 	defer func() {
 		call = tmp
 	}()
-	// mock call always return an empty call with given callID.
-	call = func(callID int64, enterprise string) (c model.Call, err error) {
-		return model.Call{ID: callID}, nil
+	// mock call always return an empty call with given call UUID.
+	call = func(callUUID string, enterprise string) (c model.Call, err error) {
+		return model.Call{UUID: callUUID}, nil
 	}
 	type args struct {
-		callID string
-		header map[string]string
+		callUUID string
+		header   map[string]string
 	}
 	tests := []struct {
 		name       string
@@ -179,30 +179,22 @@ func Test_callRequest(t *testing.T) {
 		{
 			name: "success condition",
 			args: args{
-				callID: "1",
+				callUUID: "3cd247ae943845f7bcc08c6f480dba91",
 				header: map[string]string{
 					requestheader.ConstEnterpriseIDHeaderKey: "csbot",
 				},
 			},
-			wantBody:   []byte(`[1]`),
+			wantBody:   []byte(`["3cd247ae943845f7bcc08c6f480dba91"]`),
 			wantStatus: 200,
-		},
-		{
-			name: "invalid call_id",
-			args: args{
-				callID: "notanumber",
-			},
-			wantBody:   []byte("{\"status\":-3,\"message\":\"请求参数错误: invalid call_id 'notanumber', need to be int\",\"result\":null}"),
-			wantStatus: 400,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := callRequest(dumpNext)
 			sm := mux.NewRouter()
-			sm.HandleFunc("/test/{call_id}", h).Methods("GET").Name("testing")
+			sm.HandleFunc("/test/{id}", h).Methods("GET").Name("testing")
 			w := httptest.NewRecorder()
-			addr, _ := sm.Get("testing").URL("call_id", tt.args.callID)
+			addr, _ := sm.Get("testing").URL("id", tt.args.callUUID)
 			r := httptest.NewRequest("GET", addr.String(), nil)
 			for n, v := range tt.args.header {
 				r.Header.Set(n, v)

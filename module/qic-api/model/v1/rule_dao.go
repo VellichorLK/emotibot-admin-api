@@ -90,8 +90,9 @@ type ConversationInfo struct {
 // GroupQuery can used to query the group table
 type GroupQuery struct {
 	ID               []int64
+	UUID             []string
 	Type             []int8
-	EnterpriseID     *string
+	EnterpriseID     string
 	IsEnable         *bool
 	IgnoreSoftDelete bool
 }
@@ -145,8 +146,9 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 		data:        []interface{}{},
 	}
 	builder.In(fldRuleGrpID, int64ToWildCard(g.ID...))
+	builder.In(fldRuleGrpUUID, stringToWildCard(g.UUID...))
 	builder.In(fldRuleGrpType, int8ToWildCard(g.Type...))
-	if g.EnterpriseID != nil {
+	if g.EnterpriseID != "" {
 		builder.Eq(fldRuleGrpEnterpriseID, g.EnterpriseID)
 	}
 	if g.IsEnable != nil {
@@ -155,11 +157,7 @@ func (g *GroupQuery) whereSQL() (whereSQL string, bindData []interface{}) {
 	if !g.IgnoreSoftDelete {
 		builder.Eq(fldRuleGrpIsDelete, g.IgnoreSoftDelete)
 	}
-	rawsql, data := builder.Parse()
-	if len(data) > 0 {
-		rawsql = " WHERE " + rawsql
-	}
-	return rawsql, data
+	return builder.ParseWithWhere()
 }
 
 func (r *RuleQuery) whereSQL() (whereSQL string, bindData []interface{}) {

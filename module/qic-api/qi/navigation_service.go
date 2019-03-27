@@ -452,6 +452,17 @@ func finishFlowQI(req *apiFlowFinish, uuid string) error {
 	return nil
 }
 
+func updateFlowQI(c *NewCallReq, call *model.Call) error {
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return fmt.Errorf("error while get transaction, %v", err)
+	}
+	defer tx.Rollback()
+
+	timestamp := time.Now().Unix()
+	return updateCallCustomInfo(tx, c, call, timestamp)
+}
+
 type NavFlowSetting struct {
 	Model     int64                        `json:"model"`
 	NavResult NavResponse                  `json:"nav"`

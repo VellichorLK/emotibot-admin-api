@@ -96,7 +96,16 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 					}
 				}
 
-				logger.Trace.Printf("Reply %d messages\n", len(lineAnswers))
+				sourceID := ""
+				switch event.Source.Type {
+				case linebot.EventSourceTypeGroup:
+					sourceID = event.Source.GroupID
+				case linebot.EventSourceTypeRoom:
+					sourceID = event.Source.RoomID
+				case linebot.EventSourceTypeUser:
+					sourceID = event.Source.UserID
+				}
+				logger.Trace.Printf("Reply %d messages to %s\n", len(lineAnswers), sourceID)
 				lineTaskQueue <- &lineTask{
 					Bot:        bot,
 					ReplyToken: event.ReplyToken,

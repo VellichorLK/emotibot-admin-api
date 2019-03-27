@@ -1050,14 +1050,15 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 	}
 
 	// Get latest test task status and progress, make sure there's no test task in progress
+	var startTime int64
 	queryStr := fmt.Sprintf(`
-		SELECT id, status, sentences_count, progress
+		SELECT id, status, start_time, sentences_count, progress
 		FROM %s
 		WHERE app_id = ?
 		ORDER BY id DESC
 		LIMIT 1`, IntentTestVersionsTable)
-	err = dao.db.QueryRow(queryStr, appID).Scan(&version, &status, &sentencesCount,
-		&progress)
+	err = dao.db.QueryRow(queryStr, appID).Scan(&version, &status, &startTime,
+		&sentencesCount, &progress)
 	if err != nil && err == sql.ErrNoRows {
 		// Never tested before, check if there are editing test intents
 		var exist bool
@@ -1079,6 +1080,15 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 	}
 
 	if status == data.TestStatusTesting {
+		// Currently there's already a running test task exists,
+		// check whether it has expired or not
+		// Return test failed if it has expired
+		testStartTime := time.Unix(startTime, 0)
+		now := time.Now()
+		if now.Sub(testStartTime) > data.TestTaskExpiredDuration {
+			return 0, data.TestStatusFailed, 0, 0, nil
+		}
+
 		return
 	}
 
@@ -1527,9 +1537,6 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 	}
 
 	// Insert into 'intent_test_sentences' table
-	queryStr := fmt.Sprintf(`
-		INSERT INTO %s (sentence, test_intent, result, score, answer)
-		VALUES (?, ?, ?, ?, ?)`, IntentTestSentencesTable)
 	sentencesPerOp := 2000
 	start := 0
 
@@ -1541,7 +1548,10 @@ func insertIntentTestsWithTx(tx *sql.Tx, appID string,
 			}
 
 			params := sentenceValues[start:end]
-			queryStr = fmt.Sprintf("%s%s", queryStr,
+
+			queryStr := fmt.Sprintf(`
+				INSERT INTO %s (sentence, test_intent, result, score, answer)
+				VALUES (?, ?, ?, ?, ?)%s`, IntentTestSentencesTable,
 				strings.Repeat(", (?, ?, ?, ?, ?)", len(params)/5-1))
 			_, err := tx.Exec(queryStr, params...)
 			if err != nil {
@@ -1843,15 +1853,19 @@ func toggleInUsedIntentTestWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN id = ? THEN 1
-				ELSE in_used
-			END
-		WHERE app_id = ?`, IntentTestVersionsTable)
-	_, err = tx.Exec(queryStr, version, appID)
-	return
+		SET in_used = 0
+		WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE app_id = ? AND id = ?`, IntentTestVersionsTable)
+	_, err = tx.Exec(queryStr, appID, version)
+	return err
 }
 
 func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
@@ -1862,14 +1876,18 @@ func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
 
 	queryStr := fmt.Sprintf(`
 		UPDATE %s
-		SET in_used =
-			CASE
-				WHEN in_used = 1 THEN 0
-				WHEN version = ? THEN 1
-				ELSE in_used
-			END
-		WHERE appid = ?`, IntentVersionsTable)
-	_, err = tx.Exec(queryStr, intentVersion, appID)
+		SET in_used = 0
+		WHERE appid = ? AND in_used = 1`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID)
+	if err != nil {
+		return err
+	}
+
+	queryStr = fmt.Sprintf(`
+		UPDATE %s
+		SET in_used = 1
+		WHERE appid = ? AND version = ?`, IntentVersionsTable)
+	_, err = tx.Exec(queryStr, appID, intentVersion)
 	return
 }
 

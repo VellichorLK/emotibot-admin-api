@@ -47,6 +47,9 @@ const (
 	tblSilenceRule      = "SilenceRule"
 	tblSpeedRule        = "SpeedRule"
 	tblInterposalRule   = "InterposalRule"
+	tblRelRGSilence     = "Relation_RuleGroup_Silence"
+	tblRelRGInterposal  = "Relation_RuleGroup_Interposal"
+	tblRelRGSpeed       = "Relation_RuleGroup_Speed"
 )
 
 //field name in Conversation table
@@ -91,7 +94,9 @@ const (
 	fldSegmentEndTime    = "end_time"
 	fldSegmentChannel    = "channel"
 	fldSegmentCreateTime = "create_time"
+	fldSegmentUpdateTime = "update_time"
 	fldSegmentText       = "asr_text"
+	fldSegmentStatus     = "status"
 )
 
 const (
@@ -127,6 +132,11 @@ const (
 	fldRuleMethod      = "method"
 	fldRuleScore       = "score"
 	fldRuleDescription = "description"
+	fldRuleMin         = "min"
+	fldRuleMax         = "max"
+	fldRuleSeverity    = "severity"
+	fldRuleCreateTime  = "create_time"
+	fldRuleUpdateTime  = "update_time"
 	fldRuleEnterprise  = "enterprise"
 )
 
@@ -144,25 +154,25 @@ const (
 
 // field name in RuleGroupCondition table
 const (
-	RGCID            = "id"
-	RGCGroupID       = "rg_id"
-	RGCType          = "type"
-	RGCFileName      = "file_name"
-	RGCDeal          = "deal"
-	RGCSeries        = "series"
-	RGCUploadTime    = "upload_time"
-	RGCStaffID       = "staff_id"
-	RGCStaffName     = "staff_name"
-	RGCExtension     = "extension"
-	RGCDepartment    = "department"
-	RGCCustomerID    = "customer_id"
-	RGCCustomerName  = "customer_name"
-	RGCCustomerPhone = "customer_phone"
-	RGCCategory      = "category"
-	RGCCallStart     = "call_start"
-	RGCCallEnd       = "call_end"
-	RGCLeftChannel   = "left_channel"
-	RGCRightChannel  = "right_channel"
+	fldCondID              = "id"
+	fldCondGroupID         = "rg_id"
+	fldCondType            = "type" // Toggle, if 1 then no condition consider, 0 condition on.
+	fldCondFileName        = "file_name"
+	fldCondDeal            = "deal"
+	fldCondSeries          = "series"
+	fldCondUploadTimeStart = "upload_time_start"
+	fldCondUploadTimeEnd   = "upload_time_end"
+	fldCondStaffID         = "staff_id"
+	fldCondStaffName       = "staff_name"
+	fldCondExtension       = "extension"
+	fldCondDepartment      = "department"
+	fldCondCustomerID      = "customer_id"
+	fldCondCustomerName    = "customer_name"
+	fldCondCustomerPhone   = "customer_phone"
+	fldCondCallStart       = "call_start"
+	fldCondCallEnd         = "call_end"
+	fldCondLeftChanRole    = "left_channel_role"
+	fldCondRightChanRole   = "right_channel_role"
 )
 
 // field name in RuleGroup
@@ -229,6 +239,11 @@ const (
 
 	fldOverLappedSec   = "overlapped_sec"
 	fldOverLappedTimes = "overlapped_time"
+
+	fldRGUUID         = "rg_uuid"
+	fldInterposalUUID = "int_uuid"
+	fldSpeedUUID      = "spe_uuid"
+	fldSilenceUUID    = "sil_uuid"
 )
 
 //relation field name

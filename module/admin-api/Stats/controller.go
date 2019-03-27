@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	statsV2 "emotibot.com/emotigo/module/admin-api/Stats/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -97,18 +100,30 @@ func getGlobalEnv(key string) string {
 
 func handleListAudit(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	input, err := loadFilter(r)
 	if err != nil {
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
+	converter := zhconverter.T2S
+	if locale == localemsg.ZhTw {
+		converter = zhconverter.S2T
+	}
+
 	ret, errCode, err := GetAuditList(appid, input)
 	if err != nil {
 		util.WriteJSON(w, util.GenRetObj(errCode, err.Error()))
-	} else {
-		util.WriteJSON(w, util.GenRetObj(errCode, ret))
+		return
 	}
+
+	if ret != nil && ret.Data != nil {
+		for _, log := range ret.Data {
+			log.Content = converter(log.Content)
+		}
+	}
+	util.WriteJSON(w, util.GenRetObj(errCode, ret))
 }
 
 func loadFilter(r *http.Request) (*AuditInput, error) {

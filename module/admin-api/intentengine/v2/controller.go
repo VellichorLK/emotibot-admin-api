@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
@@ -313,6 +315,15 @@ func handleGetTrainDataV2(w http.ResponseWriter, r *http.Request) {
 		util.Return(w, err, nil)
 		return
 	}
+
+	locale := r.URL.Query().Get("locale")
+	converter := zhconverter.T2S
+	if locale != "" && locale == localemsg.ZhTw {
+		converter = zhconverter.S2T
+	}
+
+	rsp = convertResult(rsp, converter)
+
 	js, jsonErr := json.Marshal(rsp)
 	if jsonErr != nil {
 		return
@@ -322,6 +333,40 @@ func handleGetTrainDataV2(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Write(js)
 	return
+}
+
+func convertResult(rsp *TrainDataResponse, converter func(string) string) *TrainDataResponse {
+	if rsp == nil || converter == nil {
+		return nil
+	}
+	for _, intent := range rsp.Intent {
+		if intent.Sentences != nil {
+			if intent.Sentences.Negative != nil {
+				negatives := make([]string, len(intent.Sentences.Negative))
+				for idx, s := range intent.Sentences.Negative {
+					negatives[idx] = converter(s)
+				}
+				intent.Sentences.Negative = negatives
+			}
+			if intent.Sentences.Positive != nil {
+				positives := make([]string, len(intent.Sentences.Positive))
+				for idx, s := range intent.Sentences.Positive {
+					positives[idx] = converter(s)
+				}
+				intent.Sentences.Positive = positives
+			}
+		}
+	}
+	for _, dict := range rsp.IntentDict {
+		if dict.Words == nil {
+			continue
+		}
+		words := make([]string, len(dict.Words))
+		for idx, word := range dict.Words {
+			words[idx] = converter(word)
+		}
+	}
+	return rsp
 }
 
 func handleImportIntentV2(w http.ResponseWriter, r *http.Request) {

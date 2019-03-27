@@ -54,14 +54,36 @@ func checkDBStat(t *testing.T) {
 func Binding(g interface{}, data []string) {
 	v := reflect.ValueOf(g)
 	s := v.Elem()
-	for j := 0; j < s.NumField(); j++ {
+	for j := 0; j < len(data); j++ {
 		f := s.Field(j)
 		fieldName := s.Type().Field(j).Name
-		switch f.Kind() {
+		kind := f.Kind()
+		if kind == reflect.Ptr {
+			kind = f.Type().Elem().Kind()
+		}
+		switch kind {
 		case reflect.Uint, reflect.Uint64, reflect.Uint32, reflect.Uint8:
 			uv, err := strconv.ParseUint(data[j], 10, 64)
 			if err != nil {
 				panic(fmt.Sprintf("column %d: '%s' parse as %s uint failed, %s", j, data[j], fieldName, err))
+			}
+			if f.Kind() == reflect.Ptr {
+				if kind == reflect.Uint {
+					v := uint(uv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Uint32 {
+					v := uint32(uv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Uint16 {
+					v := uint16(uv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Uint8 {
+					v := uint8(uv)
+					f.Set(reflect.ValueOf(&v))
+				} else {
+					f.Set(reflect.ValueOf(&uv))
+				}
+				continue
 			}
 			f.SetUint(uv)
 		case reflect.Int, reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8:
@@ -69,25 +91,60 @@ func Binding(g interface{}, data []string) {
 			if err != nil {
 				panic(fmt.Sprintf("column %d: '%s' parse as %s int failed, %v", j, data[j], fieldName, err))
 			}
+			if f.Kind() == reflect.Ptr {
+				if kind == reflect.Int {
+					v := int(iv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Int32 {
+					v := int32(iv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Int16 {
+					v := int16(iv)
+					f.Set(reflect.ValueOf(&v))
+				} else if kind == reflect.Int8 {
+					v := int8(iv)
+					f.Set(reflect.ValueOf(&v))
+				} else {
+					f.Set(reflect.ValueOf(&iv))
+				}
+				continue
+			}
 			f.SetInt(iv)
 		case reflect.Float32, reflect.Float64:
 			fv, err := strconv.ParseFloat(data[j], 64)
 			if err != nil {
 				panic(fmt.Sprintf("column %d: '%s' parse as %s float failed, %s", j, data[j], fieldName, err))
 			}
+			if f.Kind() == reflect.Ptr {
+				if kind == reflect.Float32 {
+					v := float32(fv)
+					f.Set(reflect.ValueOf(&v))
+				} else {
+					f.Set(reflect.ValueOf(&fv))
+				}
+				continue
+			}
 			f.SetFloat(fv)
 		case reflect.String:
+			if f.Kind() == reflect.Ptr {
+				f.Set(reflect.ValueOf(&data[j]))
+				continue
+			}
 			f.SetString(data[j])
 		case reflect.Bool:
 			bv, err := strconv.ParseInt(data[j], 10, 8)
 			if err != nil {
 				panic(fmt.Sprintf("column %d: '%s' parse as %s int8 failed, %v", j, data[j], fieldName, err))
 			}
-			if bv == 0 {
-				f.SetBool(false)
-			} else {
-				f.SetBool(true)
+			boolean := false
+			if bv != 0 {
+				boolean = true
 			}
+			if f.Kind() == reflect.Ptr {
+				f.Set(reflect.ValueOf(&boolean))
+				continue
+			}
+			f.SetBool(boolean)
 		}
 
 	}

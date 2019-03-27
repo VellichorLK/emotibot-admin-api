@@ -1,0 +1,4 @@
+"id","rg_id","type","file_name","deal","series","upload_time_start","upload_time_end","staff_id","staff_name","extension","department","customer_id","customer_name","customer_phone","category","call_start","call_end","left_channel_role","right_channel_role"
+1,1,1,"檔名",0,"保单编号",0,0,"","分机","所属部门","","","","","",1546328220,1549006620,2,2
+2,2,1,"aaa",0,"aaa",0,0,"","eee","fff","","","","","",1547869080,1548992280,2,2
+3,3,1,"bbb",0,"bbb",0,0,"","eee","fff","","","","","",1547869100,1548992200,2,2

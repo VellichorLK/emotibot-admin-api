@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"testing"
 
-	"emotibot.com/emotigo/module/qic-api/util/general"
-	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
-
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/util/general"
+	"github.com/stretchr/testify/assert"
+	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
 type testDao struct {
@@ -371,4 +371,118 @@ func mockTx(t *testing.T) *sql.Tx {
 	mock.ExpectCommit()
 	tx, _ := db.Begin()
 	return tx
+}
+
+func TestTagUpdateCmd_AddSentenceUpdate(t *testing.T) {
+	type fields struct {
+		tags []model.Tag
+		err  error
+	}
+	type args struct {
+		uuid      string
+		op        UpdateOp
+		sentences []string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []model.Tag
+		wantErr bool
+	}{
+		{
+			name: "success add case",
+			fields: fields{
+				tags: []model.Tag{
+					{
+						UUID: "A",
+					},
+				},
+			},
+			args: args{
+				uuid:      "A",
+				op:        UpdateOpAdd,
+				sentences: []string{"1", "2"},
+			},
+			want: []model.Tag{
+				{
+					UUID:             "A",
+					PositiveSentence: `["1","2"]`,
+				},
+			},
+		},
+		{
+			name: "success del case",
+			fields: fields{
+				tags: []model.Tag{
+					{
+						UUID:             "A",
+						PositiveSentence: `["1", "2"]`,
+					},
+				},
+			},
+			args: args{
+				uuid:      "A",
+				op:        UpdateOpDel,
+				sentences: []string{"2"},
+			},
+			want: []model.Tag{
+				{
+					UUID:             "A",
+					PositiveSentence: `["1"]`,
+				},
+			},
+		},
+		{
+			name: "add duplicated should fail",
+			fields: fields{
+				tags: []model.Tag{
+					{
+						UUID:             "A",
+						PositiveSentence: `["1", "2"]`,
+					},
+				},
+			},
+			args: args{
+				uuid:      "A",
+				op:        UpdateOpAdd,
+				sentences: []string{"1"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "delete nonexist should fail",
+			fields: fields{
+				tags: []model.Tag{
+					{
+						UUID:             "A",
+						PositiveSentence: `["1", "2"]`,
+					},
+				},
+			},
+			args: args{
+				uuid:      "A",
+				op:        UpdateOpDel,
+				sentences: []string{"3"},
+			},
+			wantErr: true,
+		},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tu := &TagUpdateCmd{
+				tags: tt.fields.tags,
+				err:  tt.fields.err,
+			}
+			err := tu.AddSentenceUpdate(tt.args.uuid, tt.args.op, tt.args.sentences)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TagUpdateCmd.AddSentenceUpdate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr {
+				assert.Equal(t, tt.want, tu.tags)
+			}
+
+		})
+	}
 }

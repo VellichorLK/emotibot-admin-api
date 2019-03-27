@@ -20,7 +20,7 @@ var localeMsg = map[string]map[string]string{
 
 func init() {
 	allMsg := []map[string]map[string]string{
-		intentMsg, intentTestMsg, auditMsg, dictionaryMsg, statsMsg,
+		intentMsg, intentTestMsg, auditMsg, dictionaryMsg, statsMsg, taskengineMsg, recordsMsg,
 	}
 
 	// merge all module lang map
