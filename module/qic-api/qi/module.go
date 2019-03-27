@@ -107,6 +107,7 @@ func init() {
 			util.NewEntryPoint(http.MethodDelete, "category/{id}", []string{}, handleDeleteCategory),
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/grouped", []string{}, CallsGroupedHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}", []string{}, callRequest(CallsDetailHandler)),
 			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),

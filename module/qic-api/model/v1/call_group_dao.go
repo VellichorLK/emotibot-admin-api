@@ -19,7 +19,7 @@ type CallGroupDao interface {
 	// GetCGCondition(conn SqlLike, enterprise string) ([]*CGCondition, error)
 	GetCGCondition(conn SqlLike, query *CGConditionQuery) ([]*CGCondition, error)
 	GetCallIDsToGroup(conn SqlLike, query *CallsToGroupQuery) ([]int64, error)
-	GetCallGroupToGroup(conn SqlLike, query *CallGroupToGroupQuery) ([]*CallGroup, error)
+	GetCallGroups(conn SqlLike, query *CallGroupQuery) ([]*CallGroup, error)
 	SoftDeleteCallGroup(conn SqlLike, query *GeneralQuery) error
 	CreateCallGroup(conn SqlLike, model *CallGroup) (int64, error)
 	CreateCallGroupRelation(conn SqlLike, model *CallGroupRelation) (int64, error)
@@ -71,6 +71,7 @@ type CallGroupConditionResponse struct {
 	GroupByValue  []string      `json:"group_by_value"`
 }
 
+// CallGroupCreateList defines the CallGroup list structrue to be created
 type CallGroupCreateList struct {
 	CallGroups [][]int64 `json:"call_groups"`
 }
@@ -373,7 +374,7 @@ func (q *CallsToGroupQuery) whereSQL() (condition string, bindData []interface{}
 		conds = append(conds, cond)
 		bindData = append(bindData, *q.UserKeyID)
 	}
-	if q.UserValue != nil {
+	if q.UserValue != nil && len(*q.UserValue) > 0 {
 		cond := fmt.Sprintf("`%s`.%s IN %s", tblUserValue, fldUserValueVal, "(?"+strings.Repeat(",?", len(*q.UserValue)-1)+")")
 		conds = append(conds, cond)
 		for _, value := range *q.UserValue {
@@ -433,30 +434,45 @@ type CallGroup struct {
 	Calls                []int64
 }
 
-// CallGroupToGroupQuery defines the query parameters to get CallGroup to gorup
-type CallGroupToGroupQuery struct {
-	IsDelete  *int
-	CallIDs   *[]int64
-	StartTime *int64
-	EndTime   *int64
+// CallGroupQuery defines the query parameters to get CallGroup list
+type CallGroupQuery struct {
+	IDs        *[]int64
+	Enterprise *string
+	IsDelete   *int
+	CallIDs    *[]int64
+	StartTime  *int64
+	EndTime    *int64
 }
 
-func (q *CallGroupToGroupQuery) whereSQL() (condition string, bindData []interface{}, err error) {
+func (q *CallGroupQuery) whereSQL() (condition string, bindData []interface{}, err error) {
 	conds := []string{}
+	if q.IDs != nil {
+		cond := fmt.Sprintf("cg.%s IN %s", fldID, "(?"+strings.Repeat(",?", len(*q.IDs)-1)+")")
+		conds = append(conds, cond)
+		for _, id := range *q.IDs {
+			bindData = append(bindData, id)
+		}
+	}
+	if q.Enterprise != nil {
+		cond := fmt.Sprintf("cg.%s = ?", fldEnterprise)
+		conds = append(conds, cond)
+		bindData = append(bindData, *q.Enterprise)
+	}
 	if q.IsDelete != nil {
-		cond := fmt.Sprintf("`%s`.%s = ?", tblCallGroup, fldIsDelete)
+		cond := fmt.Sprintf("cg.%s = ?", fldIsDelete)
 		conds = append(conds, cond)
 		bindData = append(bindData, *q.IsDelete)
 	}
-	if q.CallIDs != nil {
-		cond := fmt.Sprintf("`%s`.%s IN %s", tblRelCallGroupCall, fldCallID, "(?"+strings.Repeat(",?", len(*q.CallIDs)-1)+")")
+	if q.CallIDs != nil && len(*q.CallIDs) > 0 {
+		cond := fmt.Sprintf("relcg.%s IN (SELECT %s FROM %s WHERE %s IN %s)",
+			fldCallGroupID, fldCallGroupID, tblRelCallGroupCall, fldCallID, "(?"+strings.Repeat(",?", len(*q.CallIDs)-1)+")")
 		conds = append(conds, cond)
 		for _, id := range *q.CallIDs {
 			bindData = append(bindData, id)
 		}
 	}
 	if q.StartTime != nil && q.EndTime != nil {
-		cond := fmt.Sprintf("`%s`.%s BETWEEN ? AND ?", tblCallGroup, fldCreateTime)
+		cond := fmt.Sprintf("cg.%s BETWEEN ? AND ?", fldCreateTime)
 		conds = append(conds, cond)
 		bindData = append(bindData, *q.StartTime, *q.EndTime)
 	}
@@ -464,8 +480,8 @@ func (q *CallGroupToGroupQuery) whereSQL() (condition string, bindData []interfa
 	return
 }
 
-// GetCallGroupToGroup return call group list to group
-func (*CallGroupSQLDao) GetCallGroupToGroup(conn SqlLike, query *CallGroupToGroupQuery) ([]*CallGroup, error) {
+// GetCallGroups return the queried CallGroup list
+func (*CallGroupSQLDao) GetCallGroups(conn SqlLike, query *CallGroupQuery) ([]*CallGroup, error) {
 	if conn == nil {
 		return nil, ErroNoConn
 	}
@@ -474,13 +490,12 @@ func (*CallGroupSQLDao) GetCallGroupToGroup(conn SqlLike, query *CallGroupToGrou
 		return nil, ErrGenCondition
 	}
 	querySQL := fmt.Sprintf(
-		`SELECT %s.*, %s.call_id
-		FROM %s
-		LEFT JOIN %s
-		ON %s.id = %s.cg_id
+		`SELECT cg.*, relcg.call_id
+		FROM %s as cg
+		LEFT JOIN %s as relcg
+		ON cg.id = relcg.cg_id
 		%s`,
-		tblCallGroup, tblRelCallGroupCall, tblCallGroup, tblRelCallGroupCall, tblCallGroup,
-		tblRelCallGroupCall, whereSQL)
+		tblCallGroup, tblRelCallGroupCall, whereSQL)
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
 		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
@@ -551,6 +566,7 @@ const (
 	fldCallGroupID          = "cg_id"
 )
 
+// error message
 var (
 	ErroNoCalls = errors.New("no calls to group")
 )
