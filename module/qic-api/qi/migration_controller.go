@@ -55,9 +55,6 @@ func handleImportSentences(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleImportRules(w http.ResponseWriter, r *http.Request) {
-
-	// TODO use general.UUID() to simply code
-
 	var err error
 	//appID := requestheader.GetAppID(r)
 	enterpriseID := requestheader.GetEnterpriseID(r)

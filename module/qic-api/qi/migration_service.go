@@ -305,7 +305,11 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 		ruleName = row.Cells[3].String()
 		description = row.Cells[4].String()
 		logicList = row.Cells[6].String()
-		operatorStr = row.Cells[7].String()
+		if len(row.Cells) < 8 {
+			operatorStr = ""
+		} else {
+			operatorStr = row.Cells[7].String()
+		}
 		score, err = row.Cells[2].Int()
 		if err != nil {
 			logger.Error.Printf("Failed to get value from score column, row is %d, %s \n", i+1, err.Error())
@@ -342,12 +346,14 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 		}
 
 		// TODO the length of operatorList should be equal to logicList
-		operatorList := strings.Split(operatorStr, "|")
+		var operatorList = make([]string, 0)
+		if operatorStr != "" {
+			operatorList = strings.Split(operatorStr, "|")
+		}
 
 		var createdSentenceGroups []*model.SentenceGroup
 
 		splits := strings.Split(logicList, "|")
-		//flag := int8(0)
 		for _, groupName := range splits {
 			senGroupInfo, ok := preparedSentenceGroupMap[groupName]
 			if !ok {
@@ -396,6 +402,7 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 			UpdateTime: now,
 		}
 		var cfExpression string
+		numOfOP := len(operatorList)
 		sentenceGroups := make([]model.SimpleSentenceGroup, len(createdSentenceGroups))
 		for i, item := range createdSentenceGroups {
 			sentenceGroups[i] = model.SimpleSentenceGroup{
@@ -403,11 +410,19 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 				UUID: item.UUID,
 				Name: item.Name,
 			}
-
-			if i == 0 {
-				cfExpression = operatorList[i] + " " + item.UUID
+			if numOfOP != 0 {
+				if i == 0 {
+					cfExpression = operatorList[i] + " " + item.UUID
+				} else {
+					cfExpression = cfExpression + " " + operatorList[i] + " " + item.UUID
+				}
 			} else {
-				cfExpression = cfExpression + " " + operatorList[i] + " " + item.UUID
+				// default logic format: must -> then
+				if i == 0 {
+					cfExpression = "must " + item.UUID
+				} else {
+					cfExpression = cfExpression + " then " + item.UUID
+				}
 			}
 		}
 
@@ -435,7 +450,7 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 			Name:        ruleName,
 			Min:         1,
 			Max:         0,
-			Score:       -score,
+			Score:       score,
 			Description: description,
 			Enterprise:  enterpriseID,
 			Severity:    int8(0),
