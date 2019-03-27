@@ -15,8 +15,10 @@ var (
 	swDao       model.SensitiveWordDao
 	categoryDao model.CategoryDao
 	sentenceDao model.SentenceDao
-	sqlConn     *sql.DB
-	dbLike      model.DBLike
+	userValueDao = &model.UserValueDao{}
+	userKeyDao           = &model.UserKeySQLDao{}
+	sqlConn *sql.DB
+	dbLike  model.DBLike
 )
 
 func init() {
@@ -60,6 +62,8 @@ func init() {
 
 				categoryDao = &model.CategorySQLDao{}
 				sentenceDao = model.NewSentenceSQLDao(sqlConn)
+				userValueDao = model.NewUserValueDao(sqlConn)
+				userKeyDao = model.NewUserKeyDao(sqlConn)
 
 				cluster, err := redis.NewClusterFromEnvs(envs)
 				if err != nil {
