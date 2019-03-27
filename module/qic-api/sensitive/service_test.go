@@ -126,6 +126,14 @@ func (dao *mockDAO) InsertSentences(sqlLike model.SqlLike, sentences []model.Sen
 	return nil
 }
 
+func mockNewUserValue(sqlLike model.SqlLike, user model.UserValue) (model.UserValue, error) {
+	return model.UserValue{}, nil
+}
+
+func mockUserKeys(delegatee model.SqlLike, query model.UserKeyQuery) ([]model.UserKey, error) {
+	return []model.UserKey{}, nil
+}
+
 var mockdao sensitiveDao = &mockDAO{}
 
 func setupSensitiveWordMock() (model.DBLike, model.SensitiveWordDao, model.SentenceDao, model.CategoryDao) {
@@ -142,6 +150,9 @@ func setupSensitiveWordMock() (model.DBLike, model.SensitiveWordDao, model.Sente
 	originSentenceDao := sentenceDao
 	sentenceDao = mockdao
 
+	newUserValue = mockNewUserValue
+	userKeys = mockUserKeys
+
 	return originDBLike, originDao, originSentenceDao, originCateDao
 }
 
@@ -150,6 +161,8 @@ func restoreSensitiveWordMock(originDBLike model.DBLike, originDao model.Sensiti
 	swDao = originDao
 	sentenceDao = originSDao
 	categoryDao = originCateDao
+	newUserValue = userValueDao.NewUserValue
+	userKeys = userKeyDao.UserKeys
 }
 
 func TestIsSensitive(t *testing.T) {
@@ -178,7 +191,7 @@ func TestCreateSensitiveWord(t *testing.T) {
 		Enterprise: "abcd",
 	}
 
-	uid, err := CreateSensitiveWord(word.Name, word.Enterprise, word.Score, 55, []string{}, []string{})
+	uid, err := CreateSensitiveWord(word.Name, word.Enterprise, word.Score, 55, []string{}, []string{}, []model.UserValue{})
 	if err != nil {
 		t.Errorf("error when create sensitive word, err: %s", err.Error())
 		return

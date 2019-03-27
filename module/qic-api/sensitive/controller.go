@@ -15,8 +15,9 @@ import (
 )
 
 type ExceptionInReq struct {
-	Staff    []string `json:"staff"`
-	Customer []string `json:"customer"`
+	Staff    []string       `json:"staff"`
+	Customer []string       `json:"customer"`
+	Values   []CustomValues `json:"customcol"`
 }
 
 type SensitiveWordInReq struct {
@@ -35,6 +36,7 @@ type SensitiveWordInRes struct {
 type Exceptions struct {
 	Staff    []model.SimpleSentence `json:"staff"`
 	Customer []model.SimpleSentence `json:"customer"`
+	Values   []CustomValues         `json:"customcol"`
 }
 
 type SensitiveWordInDetail struct {
@@ -43,6 +45,15 @@ type SensitiveWordInDetail struct {
 	Score      int        `json:"score"`
 	Exception  Exceptions `json:"exception"`
 	CategoryID int64      `json:"category_id"`
+}
+
+type CustomValues struct {
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	InputName   string   `json:"inputname"`
+	Type        int8     `json:"type"`
+	Description string   `json:"description"`
+	Values      []string `json:"value"`
 }
 
 type Req struct {
@@ -59,7 +70,20 @@ func handleCreateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uid, err := CreateSensitiveWord(swInReq.Name, enterprise, swInReq.Score, swInReq.CategoryID, swInReq.Exception.Customer, swInReq.Exception.Staff)
+	userValues := []model.UserValue{}
+	for _, value := range swInReq.Exception.Values {
+		uk := &model.UserKey{
+			InputName: value.InputName,
+		}
+		uv := model.UserValue{
+			Type:    value.Type,
+			Value:   value.Name,
+			UserKey: uk,
+		}
+		userValues = append(userValues, uv)
+	}
+
+	uid, err := CreateSensitiveWord(swInReq.Name, enterprise, swInReq.Score, swInReq.CategoryID, swInReq.Exception.Customer, swInReq.Exception.Staff, userValues)
 	if err != nil {
 		logger.Error.Printf("create sensitive word failed after CreateSensitiveWord, reason: %s", err.Error())
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -169,6 +193,20 @@ func handleGetSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
+	// transform user values
+	customvals := []CustomValues{}
+	for _, value := range word.UserValues {
+		customval := CustomValues{
+			ID:        value.ID,
+			Name:      value.UserKey.Name,
+			InputName: value.UserKey.InputName,
+			Type:      value.UserKey.Type,
+			Values:    []string{value.Value},
+		}
+		customvals = append(customvals, customval)
+	}
+
 	wordInDetail := SensitiveWordInDetail{
 		UUID:  word.UUID,
 		Name:  word.Name,
@@ -176,6 +214,7 @@ func handleGetSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		Exception: Exceptions{
 			Staff:    word.StaffException,
 			Customer: word.CustomerException,
+			Values:   customvals,
 		},
 		CategoryID: word.CategoryID,
 	}
@@ -211,6 +250,24 @@ func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		customerException = append(customerException, ss)
 	}
 
+	// TODO: handle different type of UserValue
+	userValues := []model.UserValue{}
+	for _, cv := range swInReq.Exception.Values {
+		for _, content := range cv.Values {
+			uk := &model.UserKey{
+				InputName: cv.InputName,
+				Name:      cv.Name,
+				Type:      cv.Type,
+			}
+			uv := model.UserValue{
+				Value:   content,
+				UserKey: uk,
+				Type:    model.UserValueTypSensitiveWord,
+			}
+			userValues = append(userValues, uv)
+		}
+	}
+
 	word := &model.SensitiveWord{
 		UUID:              wUUID,
 		Name:              swInReq.Name,
@@ -218,6 +275,7 @@ func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		Score:             swInReq.Score,
 		CustomerException: customerException,
 		StaffException:    staffException,
+		UserValues:        userValues,
 	}
 
 	err = UpdateSensitiveWord(word)
