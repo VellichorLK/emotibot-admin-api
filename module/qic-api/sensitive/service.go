@@ -3,6 +3,7 @@ package sensitive
 import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/pkg/logger"
 	"fmt"
 	"github.com/anknown/ahocorasick"
 )
@@ -10,6 +11,8 @@ import (
 var dao sensitiveDao = &sensitiveDAOImpl{}
 var (
 	ErrZeroAffectedRows = fmt.Errorf("No rows are affected")
+	newUserValue        = userValueDao.NewUserValue
+	userKeys            = userKeyDao.UserKeys
 )
 
 func IsSensitive(content string) ([]string, error) {
@@ -39,8 +42,49 @@ func IsSensitive(content string) ([]string, error) {
 	return matched, nil
 }
 
+func inputNamesToKeyID(names []string, sqlLike model.SqlLike) (nameMap map[string]int64, err error) {
+	q := model.UserKeyQuery{
+		InputNames:       names,
+		IgnoreSoftDelete: true,
+	}
+
+	keys, err := userKeys(sqlLike, q)
+	if err != nil {
+		return
+	}
+
+	nameMap = map[string]int64{}
+	for _, key := range keys {
+		nameMap[key.InputName] = key.ID
+	}
+	return
+}
+
+// fillUserKeyID fill all link ids of given user values
+func fillUserKeyID(values []model.UserValue, sqlLike model.SqlLike) (filledValues []model.UserValue, err error) {
+	names := []string{}
+	for _, value := range values {
+		names = append(names, value.UserKey.InputName)
+	}
+
+	nameMap, err := inputNamesToKeyID(names, sqlLike)
+	if err != nil {
+		return
+	}
+
+	filledValues = []model.UserValue{}
+	for _, value := range values {
+		if keyID, ok := nameMap[value.UserKey.InputName]; ok {
+			value.UserKeyID = keyID
+			filledValues = append(filledValues, value)
+		}
+	}
+	logger.Info.Printf("filledValues: %+v\n", filledValues)
+	return
+}
+
 // CreateSensitiveWord create a uuid and create a new sensitive word
-func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, customerException, staffException []string) (uid string, err error) {
+func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, customerException, staffException []string, values []model.UserValue) (uid string, err error) {
 	uid, err = general.UUID()
 	if err != nil {
 		return
@@ -73,6 +117,21 @@ func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, c
 	}
 
 	word.ID = rowID
+
+	// create values
+	filledValues, err := fillUserKeyID(values, tx)
+	if err != nil {
+		return
+	}
+
+	for _, value := range filledValues {
+		value.LinkID = rowID
+		_, err = newUserValue(tx, value)
+		if err != nil {
+			return
+		}
+	}
+
 	err = dbLike.Commit(tx)
 	return
 }
@@ -82,27 +141,37 @@ func CreateSensitiveWord(name, enterprise string, score int, categoryID int64, c
 func getWordExceptionSentences(customerSentences, staffSentences []string, enterprise string, sqlLike model.SqlLike) ([]model.SimpleSentence, []model.SimpleSentence, error) {
 	customerException := []model.SimpleSentence{}
 	staffException := []model.SimpleSentence{}
-
+	var sq *model.SentenceQuery
 	var deleted int8
-	sq := &model.SentenceQuery{
-		UUID:       customerSentences,
-		IsDelete:   &deleted,
-		Enterprise: &enterprise,
-		Limit:      100,
+
+	if len(customerSentences) > 0 {
+		sq = &model.SentenceQuery{
+			UUID:       customerSentences,
+			IsDelete:   &deleted,
+			Enterprise: &enterprise,
+			Limit:      100,
+		}
+
+		customerExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+		if err != nil {
+			return customerException, staffException, err
+		}
+		customerException = model.ToSimpleSentences(customerExceptionSentences)
 	}
 
-	customerExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
-	if err != nil {
-		return customerException, staffException, err
+	if len(staffSentences) > 0 {
+		sq = &model.SentenceQuery{
+			UUID:       customerSentences,
+			IsDelete:   &deleted,
+			Enterprise: &enterprise,
+			Limit:      100,
+		}
+		staffExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
+		if err != nil {
+			return customerException, staffException, err
+		}
+		staffException = model.ToSimpleSentences(staffExceptionSentences)
 	}
-	customerException = model.ToSimpleSentences(customerExceptionSentences)
-
-	sq.UUID = staffSentences
-	staffExceptionSentences, err := sentenceDao.GetSentences(sqlLike, sq)
-	if err != nil {
-		return customerException, staffException, err
-	}
-	staffException = model.ToSimpleSentences(staffExceptionSentences)
 
 	return customerException, staffException, nil
 }
@@ -144,6 +213,8 @@ func GetSensitiveWordInDetail(wUUID string, enterprise string) (word *model.Sens
 	}
 
 	word = &words[0]
+	word.StaffException = []model.SimpleSentence{}
+	word.CustomerException = []model.SimpleSentence{}
 
 	rels, err := swDao.GetRel(word.ID, sqlConn)
 	if err != nil {
@@ -177,6 +248,18 @@ func GetSensitiveWordInDetail(wUUID string, enterprise string) (word *model.Sens
 
 		word.CustomerException = model.ToSimpleSentences(sens)
 	}
+
+	// get user values
+	q := model.UserValueQuery{
+		Type:             []int8{model.UserValueTypSensitiveWord},
+		IgnoreSoftDelete: true,
+		ParentID:         []int64{word.ID},
+	}
+	values, err := userValueDao.ValuesKey(sqlConn, q)
+	if err != nil {
+		return
+	}
+	word.UserValues = values
 	return
 }
 
@@ -206,10 +289,25 @@ func UpdateSensitiveWord(word *model.SensitiveWord) (err error) {
 	word.CustomerException = customerExceptionSentences
 	word.StaffException = staffExceptionSentences
 
-	_, err = swDao.Create(word, tx)
+	rowID, err := swDao.Create(word, tx)
 	if err != nil {
 		return
 	}
+
+	// update UserValue
+	filledValues, err := fillUserKeyID(word.UserValues, tx)
+	if err != nil {
+		return
+	}
+
+	for _, value := range filledValues {
+		value.LinkID = rowID
+		_, err = userValueDao.NewUserValue(tx, value)
+		if err != nil {
+			return
+		}
+	}
+
 	err = dbLike.Commit(tx)
 	return
 }
