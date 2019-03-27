@@ -88,7 +88,7 @@ func (dao configMySQL) GetConfigs(appid string) ([]*Config, error) {
 	}
 
 	queryStr := `
-		SELECT appid, code, module, value, update_time
+		SELECT appid, code, module, value, update_time, status
 		FROM bfop_config
 		WHERE appid = ? OR appid = ''`
 	rows, err := dao.db.Query(queryStr, appid)
@@ -98,18 +98,19 @@ func (dao configMySQL) GetConfigs(appid string) ([]*Config, error) {
 
 	configMap := map[string]*Config{}
 	for rows.Next() {
-		t := Config{}
-		robot := ""
-		err = rows.Scan(&robot, &t.Code, &t.Module, &t.Value, &t.UpdateTime)
+		var robot string
+		var t *Config
+		robot, t, err = scanBFOPConfigRowToObj(rows)
 		if err != nil {
 			return nil, err
 		}
+
 		if _, ok := configMap[robot]; !ok {
 			// If config is not set, set it to map
-			configMap[t.Code] = &t
+			configMap[t.Code] = t
 		} else if robot != "" {
 			// If config is set, but current row is the custom value of robot, change its value.
-			configMap[t.Code] = &t
+			configMap[t.Code] = t
 		}
 	}
 	rows.Close()
@@ -121,8 +122,8 @@ func (dao configMySQL) GetConfigs(appid string) ([]*Config, error) {
 
 	// Get configs from BF system
 	queryStr =
-		"SELECT default.name, default.value, custom.value FROM " +
-			"(SELECT `name`, `value` FROM `ent_config` WHERE `module` not in ('helper', 'validator', 'functions')) AS `default` " +
+		"SELECT default.name, default.value, custom.value, default.enabled FROM " +
+			"(SELECT `name`, `value`, `enabled` FROM `ent_config` WHERE `module` not in ('helper', 'validator', 'functions')) AS `default` " +
 			"LEFT JOIN " +
 			"(SELECT `name`, `app_id`, `value` FROM `ent_config_appid_customization` WHERE `app_id` = ?) AS `custom` " +
 			"ON default.name = custom.name"
@@ -133,17 +134,12 @@ func (dao configMySQL) GetConfigs(appid string) ([]*Config, error) {
 	}
 
 	for rows.Next() {
-		t := Config{}
-		var customValue *string
-		err = rows.Scan(&t.Code, &t.Value, &customValue)
+		var t *Config
+		t, err = scanBF2ConfigRowToObj(rows)
 		if err != nil {
 			return nil, err
 		}
-		if customValue != nil {
-			t.Value = *customValue
-		}
-		t.Module = moduleBFSource
-		ret = append(ret, &t)
+		ret = append(ret, t)
 	}
 	rows.Close()
 	return ret, nil
@@ -160,7 +156,7 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 
 	// order by appid will let row with appid nonempty be the first row.
 	queryStr := `
-		SELECT module, value, update_time
+		SELECT appid, module, value, update_time, status
 		FROM bfop_config
 		WHERE
 			(appid = ? OR appid = '') AND
@@ -168,10 +164,10 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 		ORDER BY appid DESC limit 1`
 	row := dao.db.QueryRow(queryStr, appid, configName)
 
-	ret := Config{}
-	err = row.Scan(&ret.Code, &ret.Module, &ret.Value, &ret.UpdateTime)
+	var ret *Config
+	_, ret, err = scanBFOPConfigRowToObj(row)
 	if err == nil {
-		return &ret, nil
+		return ret, nil
 	}
 
 	if err != sql.ErrNoRows {
@@ -180,21 +176,50 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 
 	// If config not find in BFOP system, Get config from BF system
 	queryStr =
-		"SELECT default.name, default.value, custom.value FROM " +
+		"SELECT default.name, default.value, custom.value, default.enabled FROM " +
 			"(SELECT `name`, `value` FROM `ent_config` WHERE name = ?) AS `default` " +
 			"LEFT JOIN " +
 			"(SELECT `name`, `app_id`, `value` FROM `ent_config_appid_customization` WHERE `app_id` = ?) AS `custom` " +
 			"ON default.name = custom.name"
 	row = dao.db.QueryRow(queryStr, configName, appid)
+	return scanBF2ConfigRowToObj(row)
+}
 
+type scannable interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanBFOPConfigRowToObj(row scannable) (string, *Config, error) {
+	ret := Config{}
+	statusInt := 0
+	robot := ""
+	err := row.Scan(&robot, &ret.Code, &ret.Module, &ret.Value, &ret.UpdateTime, &statusInt)
+	if err != nil {
+		return "", nil, err
+	}
+	ret.Status = true
+	if statusInt <= 0 {
+		ret.Status = false
+	}
+	return robot, &ret, nil
+}
+
+func scanBF2ConfigRowToObj(row scannable) (*Config, error) {
+	ret := Config{}
 	var customValue *string
-	err = row.Scan(&ret.Code, &ret.Value, &customValue)
+	var enableValue string
+
+	err := row.Scan(&ret.Code, &ret.Value, &customValue, &enableValue)
 	if err != nil {
 		return nil, err
 	}
 
 	if customValue != nil {
 		ret.Value = *customValue
+	}
+	ret.Status = false
+	if enableValue == "\x01" {
+		ret.Status = true
 	}
 	ret.Module = moduleBFSource
 	return &ret, nil

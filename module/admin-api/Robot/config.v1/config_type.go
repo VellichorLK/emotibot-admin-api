@@ -6,4 +6,5 @@ type Config struct {
 	Module     string `json:"module"`
 	Value      string `json:"value"`
 	UpdateTime int64  `json:"update_time"`
+	Status     bool   `json:"status"`
 }
