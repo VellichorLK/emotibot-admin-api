@@ -59,8 +59,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ret := ret_msg{
 		Code: 200,
 	}
-	var acct = parameters["ac"][0]
-	var password = parameters["pw"][0]
+	var acct, password string
+	acct, err = url.QueryUnescape(parameters["ac"][0])
+	password, err = url.QueryUnescape(parameters["pw"][0])
 	log.Printf("login attempt from ip:%s ac:%s, pw:%s", r.RemoteAddr, acct, password)
 	if !validateUser(acct, password) {
 		log.Println("failed! ")
@@ -73,16 +74,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 var valid_users = map[string]string{
-	"user1":  "12345",
-	"user2":  "12345",
-	"user3":  "12345",
-	"user4":  "12345",
-	"user5":  "12345",
-	"user6":  "12345",
-	"user7":  "12345",
-	"user8":  "12345",
-	"user9":  "12345",
-	"user10": "12345",
+	"user1":   "12345",
+	"user2":   "12345",
+	"user3":   "12345",
+	"user4":   "12345",
+	"user5":   "12345",
+	"user6":   "12345",
+	"user7":   "12345",
+	"user8":   "12345",
+	"user9":   "12345",
+	"user10":  "12345",
+	"user1+1": "12345+6",
 }
 
 func validateUser(userID string, pw string) (isValid bool) {
