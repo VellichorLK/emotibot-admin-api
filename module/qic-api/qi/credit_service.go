@@ -370,7 +370,7 @@ func checkAndSetSenID(senSetIDMap map[uint64]*DataSentence,
 	} else {
 		set := &DataSentence{ID: v.OrgID}
 		senSetIDMap[v.OrgID] = set
-		s.Credit = &SentenceCredit{}
+		s.Credit = &SentenceCredit{ID: v.OrgID}
 		s.Credit.Setting = set
 
 	}
@@ -621,11 +621,11 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		case levLStaffSenTyp:
 
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+
 				pCredit.Exception.Before.Staff = append(pCredit.Exception.Before.Staff, s)
 				checkAndSetSenID(senSetIDMap, s, v)
-
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
 				silenceSenCreditMap[v.ID] = s
@@ -633,43 +633,41 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 
 		case levLCustomerSenTyp:
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Before.Customer = append(pCredit.Exception.Before.Customer, s)
-				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
 				silenceSenCreditMap[v.ID] = s
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			} else if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Under.Customer = append(pCredit.Exception.Under.Customer, s)
-				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
 				speedSenCreditMap[v.ID] = s
-
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 		case levUStaffSenTyp:
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+
 				pCredit.Exception.After.Staff = append(pCredit.Exception.After.Staff, s)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
 				silenceSenCreditMap[v.ID] = s
 
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 		case levUCustomerSenTyp:
 			if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Over.Customer = append(pCredit.Exception.Over.Customer, s)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
 				speedSenCreditMap[v.ID] = s
 
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 
