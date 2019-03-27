@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -23,7 +24,7 @@ const validAppID = "vipshop"
 
 const (
 	StoreCollectNum = 1024
-	StoreExpireDur = 60 * time.Minute
+	StoreExpireDur  = 60 * time.Minute
 )
 
 func init() {
@@ -73,8 +74,8 @@ func handleLogin(ctx context.Context) {
 		return
 	}
 
-
-	getURL := fmt.Sprintf("%s?type=json&appid=%s&ac=%s&pw=%s", getCASServer(), getCASAppid(), userID, pwd)
+	// getURL := fmt.Sprintf("%s?type=json&appid=%s&ac=%s&pw=%s", getCASServer(), getCASAppid(), userID, pwd)
+	getURL := fmt.Sprintf("%s?type=json&appid=%s&ac=%s&pw=%s", getCASServer(), getCASAppid(), url.QueryEscape(userID), url.QueryEscape(pwd))
 
 	_, resp, err := HTTPSGetRequest(getURL, 5, true)
 
@@ -139,7 +140,7 @@ func handleGetCatpcha(ctx context.Context) {
 
 	var response CaptchaRet = CaptchaRet{
 		Data: base64blob,
-		ID: captchaId,
+		ID:   captchaId,
 	}
 
 	ctx.JSON(response)
@@ -147,8 +148,8 @@ func handleGetCatpcha(ctx context.Context) {
 
 func captchaConfig() *captcha.ConfigCharacter {
 	return &captcha.ConfigCharacter{
-		Height:             60,
-		Width:              265,
+		Height: 60,
+		Width:  265,
 		//const CaptchaModeNumber:数字,CaptchaModeAlphabet:字母,CaptchaModeArithmetic:算术,CaptchaModeNumberAlphabet:数字字母混合.
 		Mode:               captcha.CaptchaModeNumber,
 		ComplexOfNoiseText: captcha.CaptchaComplexLower,
