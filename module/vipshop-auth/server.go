@@ -38,9 +38,9 @@ func main() {
 
 	serverConfig = util.GetEnvOf("server")
 	if port, ok := serverConfig["PORT"]; ok {
-		app.Run(iris.Addr(":"+port), iris.WithoutVersionChecker)
+		app.Run(iris.Addr(":" + port))
 	} else {
-		app.Run(iris.Addr(":8786"), iris.WithoutVersionChecker)
+		app.Run(iris.Addr(":8786"))
 	}
 
 }
