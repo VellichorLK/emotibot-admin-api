@@ -42,7 +42,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.Compare(parameters["appid"][0], "vca") != 0 {
+	if strings.EqualFold(parameters["appid"][0], "vca") {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "appid incorrect")
 		return
