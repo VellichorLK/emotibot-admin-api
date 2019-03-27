@@ -620,7 +620,6 @@ func callToSWUserKeyValues(callID int64, sws []int64, sqlLike model.SqlLike) (pa
 		if _, ok := passedMap[cv.LinkID]; !ok {
 			passedMap[cv.LinkID] = []int64{}
 		}
-
 		passedMap[cv.LinkID] = append(passedMap[cv.LinkID], cv.ID)
 	}
 	return

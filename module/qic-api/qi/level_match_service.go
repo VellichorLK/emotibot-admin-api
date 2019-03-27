@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 )
 
@@ -194,6 +195,41 @@ type TagCredit struct {
 	MatchTxt   string
 	SegmentIdx int
 	SegmentID  int64 //for controller usage
+}
+
+/*
+//SensitiveUsrCol is the usr column exception
+type SensitiveUsrCol struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	InputName   string `json:"inputname"`
+	Type        int    `json:"type"`
+	Description string `json:"description"`
+	//Values
+}
+*/
+//SWExceptionMatched is the exception and its matched segment
+type SWExceptionMatched struct {
+	Customer  []*SentenceWithPrediction `json:"customer"`
+	CustomCol []*sensitive.CustomValues `json:"customcol"`
+	Staff     []*SentenceWithPrediction `json:"staff"`
+}
+
+//SWSettingException is the setting of sensitive word and exception matched segments
+type SWSettingException struct {
+	ID         string             `json:"sw_id"`
+	Name       string             `json:"sw_name"`
+	Score      int                `json:"score"`
+	Exceptions SWExceptionMatched `json:"exception"`
+}
+
+//SWRuleCredit is the sensitive word result credit
+type SWRuleCredit struct {
+	Valid               bool               `json:"valid"`
+	Score               int                `json:"score"`
+	InvalidSegs         []int64            `json:"invalid_segment"`
+	CustomMatched       bool               `json:"customcol_matched"`
+	SettingAndException SWSettingException `json:"setting"`
 }
 
 //FlowExpressionToNode converts the conversation flow expression to node
