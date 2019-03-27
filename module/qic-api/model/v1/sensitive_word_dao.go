@@ -80,6 +80,7 @@ type SensitiveWord struct {
 	CustomerException []SimpleSentence
 	Enterprise        string
 	CategoryID        int64
+	UserValues        []UserValue
 }
 
 type SensitiveWordSqlDao struct {
