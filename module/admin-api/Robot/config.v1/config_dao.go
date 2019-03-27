@@ -198,7 +198,7 @@ func scanBFOPConfigRowToObj(row scannable) (string, *Config, error) {
 		return "", nil, err
 	}
 	ret.Status = true
-	if statusInt <= 0 {
+	if statusInt < 0 {
 		ret.Status = false
 	}
 	return robot, &ret, nil
