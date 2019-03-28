@@ -260,7 +260,7 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 					passed := false
 
 					// check if the call passed user value
-					if _, ok := passedMap[sw.ID]; ok {
+					if vals, ok := passedMap[sw.ID]; ok && len(vals) != 0 {
 						passed = true
 						swCredit.usrValsMatched = true
 					}
@@ -464,7 +464,7 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 				}
 
 				// check if the call passed user value
-				if _, ok := passedMap[sw.ID]; ok {
+				if vals, ok := passedMap[sw.ID]; ok && len(vals) != 0 {
 					passed = true
 
 				}

@@ -433,10 +433,11 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 	silenceSegIDMap := make(map[uint64][]*SilenceRuleCredit)       //silence segment id to silence rule credit
 	interposalSegIDMap := make(map[uint64][]*InterposalRuleCredit) //interposal segment id to interposal rule credit
 
-	sensitiveCreditIDMap := make(map[uint64]*SWRuleCredit) //id in the CUPredictResult
-	sensitiveCreditMap := make(map[uint64]*SWRuleCredit)   //id in the SW
+	sensitiveCreditIDMap := make(map[uint64]*SWRuleCredit) //key is the id in the CUPredictResult
+	sensitiveCreditMap := make(map[uint64]*SWRuleCredit)   //key is the id in the SW
 	swSenCreditsMap := make(map[uint64]*SentenceCredit)
 	customValIDs := make([]int64, 0)
+	swIDs := make([]int64, 0)
 
 	rootParentIDMap := make(map[uint64]*HistoryCredit)
 
@@ -681,6 +682,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 				credit.SettingAndException.Exceptions.Staff = make([]*SentenceWithPrediction, 0)
 				sensitiveCreditIDMap[v.ID] = credit
 				sensitiveCreditMap[v.OrgID] = credit
+				swIDs = append(swIDs, int64(v.OrgID))
 				history.SensitiveCredits = append(history.SensitiveCredits, credit)
 			}
 		case levSWCustomerSenTyp:
@@ -904,6 +906,24 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		}
 	}
 
+	//fill up the sensitive setting information
+	if len(swIDs) > 0 {
+		_, sws, err := sensitive.GetSensitiveWords(&model.SensitiveWordFilter{ID: swIDs})
+		if err != nil {
+			logger.Error.Printf("get the sensitive information failed. %s\n", err)
+			return nil, err
+		}
+		for _, sw := range sws {
+			if credit, ok := sensitiveCreditMap[uint64(sw.ID)]; ok {
+				credit.SettingAndException.ID = sw.UUID
+				credit.SettingAndException.Name = sw.Name
+				credit.SettingAndException.Score = sw.Score
+			}
+
+		}
+	}
+
+	//fill up the usr colume and value in the sensitive
 	if len(customValIDs) > 0 {
 		userVals, err := userValueDao.ValuesKey(dbLike.Conn(), model.UserValueQuery{ID: customValIDs})
 		if err != nil {
