@@ -433,9 +433,9 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 	silenceSegIDMap := make(map[uint64][]*SilenceRuleCredit)       //silence segment id to silence rule credit
 	interposalSegIDMap := make(map[uint64][]*InterposalRuleCredit) //interposal segment id to interposal rule credit
 
-	sensitiveCreditIDMap := make(map[uint64]*SWRuleCredit)
+	sensitiveCreditIDMap := make(map[uint64]*SWRuleCredit) //id in the CUPredictResult
+	sensitiveCreditMap := make(map[uint64]*SWRuleCredit)   //id in the SW
 	swSenCreditsMap := make(map[uint64]*SentenceCredit)
-	customValIDMap := make(map[uint64]*sensitive.CustomValues)
 	customValIDs := make([]int64, 0)
 
 	rootParentIDMap := make(map[uint64]*HistoryCredit)
@@ -680,6 +680,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 				credit.SettingAndException.Exceptions.Customer = make([]*SentenceWithPrediction, 0)
 				credit.SettingAndException.Exceptions.Staff = make([]*SentenceWithPrediction, 0)
 				sensitiveCreditIDMap[v.ID] = credit
+				sensitiveCreditMap[v.OrgID] = credit
 				history.SensitiveCredits = append(history.SensitiveCredits, credit)
 			}
 		case levSWCustomerSenTyp:
@@ -699,11 +700,8 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 				senIDs = append(senIDs, v.OrgID)
 			}
 		case levSWUserValTyp:
-			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
-				credits := &sensitive.CustomValues{ID: int64(v.OrgID)}
-				customValIDMap[v.OrgID] = credits
-				customValIDs = append(customValIDs, credits.ID)
-				pCredit.SettingAndException.Exceptions.CustomCol = append(pCredit.SettingAndException.Exceptions.CustomCol, credits)
+			if _, ok := sensitiveCreditIDMap[v.ParentID]; ok {
+				customValIDs = append(customValIDs, int64(v.OrgID))
 			}
 		case levSWSegTyp:
 			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
@@ -903,6 +901,35 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 					c.Setting = *ir
 				}
 			}
+		}
+	}
+
+	if len(customValIDs) > 0 {
+		userVals, err := userValueDao.ValuesKey(dbLike.Conn(), model.UserValueQuery{ID: customValIDs})
+		if err != nil {
+			logger.Error.Printf("get custom values failed. %s\n", err)
+			return nil, err
+		}
+
+		for _, userVal := range userVals {
+			userKeyMapCredit := make(map[int64]*sensitive.CustomValues)
+			if swCredit, ok := sensitiveCreditMap[uint64(userVal.LinkID)]; ok {
+
+				var credit *sensitive.CustomValues
+				var ok bool
+				if credit, ok = userKeyMapCredit[userVal.UserKeyID]; !ok {
+					credit = &sensitive.CustomValues{}
+					credit.ID = userVal.ID
+					credit.InputName = userVal.UserKey.InputName
+					credit.Name = userVal.UserKey.Name
+					credit.Type = userVal.Type
+					swCredit.SettingAndException.Exceptions.CustomCol = append(swCredit.SettingAndException.Exceptions.CustomCol, credit)
+				}
+
+				credit.Values = append(credit.Values, userVal.Value)
+
+			}
+
 		}
 	}
 
