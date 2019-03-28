@@ -333,7 +333,7 @@ func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLi
 		flds := append(fldsA, fldsB...)
 
 		queryStr = fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b on a.`%s`=b.`%s` WHERE a.`%s` in (?%s)",
-			strings.Join(flds, ","), tblSensitiveWord, tblRelSensitiveWordSen,
+			strings.Join(flds, ","), tblRelSensitiveWordSen, tblSentence,
 			fldRelSenID, fldID, fldRelSWID, strings.Repeat(",?", counter-1))
 
 		rows, err := sqlLike.Query(queryStr, sensitiveIDs...)
