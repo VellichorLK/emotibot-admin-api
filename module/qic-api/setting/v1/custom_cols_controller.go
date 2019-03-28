@@ -124,7 +124,7 @@ func CreateCustomColHandler(w http.ResponseWriter, r *http.Request) {
 		Name:        cusCol.Name,
 		InputName:   cusCol.InputName,
 		Type:        cusCol.Type,
-		Description: "", // Update user key to have description
+		Description: "", // TODO: Update user key to have description
 	})
 }
 

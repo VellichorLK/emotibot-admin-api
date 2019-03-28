@@ -10,6 +10,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 )
 
 type levelType int
@@ -188,7 +189,7 @@ func StoreRootCallCredit(call uint64) (int64, error) {
 		return 0, ErrNilCon
 	}
 	now := time.Now().Unix()
-	s := &model.SimpleCredit{CallID: call, CreateTime: now, UpdateTime: now}
+	s := &model.SimpleCredit{CallID: call, CreateTime: now, UpdateTime: now, Revise: unactivate}
 	rootID, err := creditDao.InsertCredit(dbLike.Conn(), s)
 	if err != nil {
 		logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
@@ -358,9 +359,10 @@ func errCannotFindParent(id, parent uint64) error {
 
 //HistoryCredit records the time and its credit
 type HistoryCredit struct {
-	CreateTime int64            `json:"create_time"`
-	Score      int              `json:"score"`
-	Credit     []*RuleGrpCredit `json:"credit"`
+	CreateTime       int64            `json:"create_time"`
+	Score            int              `json:"score"`
+	Credit           []*RuleGrpCredit `json:"credit"`
+	SensitiveCredits []*SWRuleCredit  `json:"sensitive_words"`
 }
 
 func checkAndSetSenID(senSetIDMap map[uint64]*DataSentence,
@@ -370,7 +372,7 @@ func checkAndSetSenID(senSetIDMap map[uint64]*DataSentence,
 	} else {
 		set := &DataSentence{ID: v.OrgID}
 		senSetIDMap[v.OrgID] = set
-		s.Credit = &SentenceCredit{}
+		s.Credit = &SentenceCredit{ID: v.OrgID, MatchedSegments: []*model.SegmentMatch{}}
 		s.Credit.Setting = set
 
 	}
@@ -431,8 +433,10 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 	silenceSegIDMap := make(map[uint64][]*SilenceRuleCredit)       //silence segment id to silence rule credit
 	interposalSegIDMap := make(map[uint64][]*InterposalRuleCredit) //interposal segment id to interposal rule credit
 
-	silenceSenCreditMap := make(map[uint64]*SentenceWithPrediction)
-	speedSenCreditMap := make(map[uint64]*SentenceWithPrediction)
+	sensitiveCreditIDMap := make(map[uint64]*SWRuleCredit) //id in the CUPredictResult
+	sensitiveCreditMap := make(map[uint64]*SWRuleCredit)   //id in the SW
+	swSenCreditsMap := make(map[uint64]*SentenceCredit)
+	customValIDs := make([]int64, 0)
 
 	rootParentIDMap := make(map[uint64]*HistoryCredit)
 
@@ -456,7 +460,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			var ok bool
 			var history *HistoryCredit
 			if history, ok = creditTimeMap[v.CreateTime]; !ok {
-				history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
+				history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score, SensitiveCredits: []*SWRuleCredit{}}
 				creditTimeMap[v.CreateTime] = history
 				resp = append(resp, history)
 				rootParentIDMap[v.ID] = history
@@ -466,10 +470,9 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			var ok bool
 			var history *HistoryCredit
 
-			//for old compatible
-			if v.ParentID == 0 {
+			if v.ParentID == 0 { //for old compatible
 				if history, ok = creditTimeMap[v.CreateTime]; !ok {
-					history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score}
+					history = &HistoryCredit{CreateTime: v.CreateTime, Score: v.Score, SensitiveCredits: []*SWRuleCredit{}}
 					creditTimeMap[v.CreateTime] = history
 					resp = append(resp, history)
 				}
@@ -478,7 +481,8 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 					continue
 				}
 			}
-			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score}
+			credit := &RuleGrpCredit{ID: v.OrgID, Score: v.Score,
+				SpeedRule: []*SpeedRuleCredit{}, SilenceRule: []*SilenceRuleCredit{}, InterposalRule: []*InterposalRuleCredit{}}
 			history.Credit = append(history.Credit, credit)
 			rgCreditsMap[v.ID] = credit
 			if set, ok := rgSetIDMap[v.OrgID]; ok {
@@ -567,26 +571,18 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			var ok bool
 
 			if pCredit, ok = senCreditsMap[v.ParentID]; ok {
-			} else if credit, ok := silenceSenCreditMap[v.ParentID]; ok {
-				pCredit = credit.Credit
-			} else if credit, ok := speedSenCreditMap[v.ParentID]; ok {
-				pCredit = credit.Credit
-			} else {
-				continue
-			}
-
-			sID := pCredit.ID
-			if _, ok := senSegDup[sID]; ok {
-				if _, ok := senSegDup[sID][v.OrgID]; ok {
-					continue
+				sID := pCredit.ID
+				if _, ok := senSegDup[sID]; ok {
+					if _, ok := senSegDup[sID][v.OrgID]; ok {
+						continue
+					}
+				} else {
+					senSegDup[sID] = make(map[uint64]bool)
 				}
-			} else {
-				senSegDup[sID] = make(map[uint64]bool)
+				senSegDup[sID][v.OrgID] = true
+				senSegMap[sID] = append(senSegMap[sID], v.OrgID)
+				segIDs = append(segIDs, v.OrgID)
 			}
-			senSegDup[sID][v.OrgID] = true
-			senSegMap[sID] = append(senSegMap[sID], v.OrgID)
-			segIDs = append(segIDs, v.OrgID)
-
 		case levSilenceTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
 				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}}
@@ -621,55 +617,47 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		case levLStaffSenTyp:
 
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+
 				pCredit.Exception.Before.Staff = append(pCredit.Exception.Before.Staff, s)
 				checkAndSetSenID(senSetIDMap, s, v)
-
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
-				silenceSenCreditMap[v.ID] = s
 			}
 
 		case levLCustomerSenTyp:
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Before.Customer = append(pCredit.Exception.Before.Customer, s)
-				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
-				silenceSenCreditMap[v.ID] = s
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			} else if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Under.Customer = append(pCredit.Exception.Under.Customer, s)
-				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
-				speedSenCreditMap[v.ID] = s
-
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 		case levUStaffSenTyp:
 			if pCredit, ok := rSilenceCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+
 				pCredit.Exception.After.Staff = append(pCredit.Exception.After.Staff, s)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
-				silenceSenCreditMap[v.ID] = s
-
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 		case levUCustomerSenTyp:
 			if pCredit, ok := rSpeedCreditMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], Credit: &SentenceCredit{ID: v.OrgID}}
-				senCreditsMap[v.ID] = s.Credit
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
 				pCredit.Exception.Over.Customer = append(pCredit.Exception.Over.Customer, s)
 				//expSenIDMap[v.OrgID] = append(expSenIDMap[v.OrgID], s)
-				speedSenCreditMap[v.ID] = s
 
 				checkAndSetSenID(senSetIDMap, s, v)
+				senCreditsMap[v.ID] = s.Credit
 				senIDs = append(senIDs, v.OrgID)
 			}
 
@@ -683,6 +671,46 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			if pCredit, ok := rInterposalCreditMap[v.ParentID]; ok {
 				invalidSegsID = append(invalidSegsID, int64(v.OrgID))
 				interposalSegIDMap[v.OrgID] = append(interposalSegIDMap[v.OrgID], pCredit)
+			}
+		case levSWTyp:
+			if history, ok := rootParentIDMap[v.ParentID]; ok {
+				credit := &SWRuleCredit{Valid: validMap[v.Valid], Score: v.Score}
+				credit.InvalidSegs = make([]int64, 0)
+				credit.SettingAndException.Exceptions.CustomCol = make([]*sensitive.CustomValues, 0)
+				credit.SettingAndException.Exceptions.Customer = make([]*SentenceWithPrediction, 0)
+				credit.SettingAndException.Exceptions.Staff = make([]*SentenceWithPrediction, 0)
+				sensitiveCreditIDMap[v.ID] = credit
+				sensitiveCreditMap[v.OrgID] = credit
+				history.SensitiveCredits = append(history.SensitiveCredits, credit)
+			}
+		case levSWCustomerSenTyp:
+			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+				checkAndSetSenID(senSetIDMap, s, v)
+				pCredit.SettingAndException.Exceptions.Customer = append(pCredit.SettingAndException.Exceptions.Customer, s)
+				swSenCreditsMap[v.ID] = s.Credit
+				senIDs = append(senIDs, v.OrgID)
+			}
+		case levSWStaffSenTyp:
+			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+				checkAndSetSenID(senSetIDMap, s, v)
+				pCredit.SettingAndException.Exceptions.Staff = append(pCredit.SettingAndException.Exceptions.Staff, s)
+				swSenCreditsMap[v.ID] = s.Credit
+				senIDs = append(senIDs, v.OrgID)
+			}
+		case levSWUserValTyp:
+			if _, ok := sensitiveCreditIDMap[v.ParentID]; ok {
+				customValIDs = append(customValIDs, int64(v.OrgID))
+			}
+		case levSWSegTyp:
+			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
+				pCredit.InvalidSegs = append(pCredit.InvalidSegs, int64(v.OrgID))
+			}
+		case levSWSenSegTyp:
+			if pCredit, ok := swSenCreditsMap[v.ParentID]; ok {
+				s := &model.SegmentMatch{SegID: v.OrgID}
+				pCredit.MatchedSegments = append(pCredit.MatchedSegments, s)
 			}
 		default:
 			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
@@ -874,7 +902,36 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 				}
 			}
 		}
-	}	
+	}
+
+	if len(customValIDs) > 0 {
+		userVals, err := userValueDao.ValuesKey(dbLike.Conn(), model.UserValueQuery{ID: customValIDs})
+		if err != nil {
+			logger.Error.Printf("get custom values failed. %s\n", err)
+			return nil, err
+		}
+
+		for _, userVal := range userVals {
+			userKeyMapCredit := make(map[int64]*sensitive.CustomValues)
+			if swCredit, ok := sensitiveCreditMap[uint64(userVal.LinkID)]; ok {
+
+				var credit *sensitive.CustomValues
+				var ok bool
+				if credit, ok = userKeyMapCredit[userVal.UserKeyID]; !ok {
+					credit = &sensitive.CustomValues{}
+					credit.ID = userVal.ID
+					credit.InputName = userVal.UserKey.InputName
+					credit.Name = userVal.UserKey.Name
+					credit.Type = userVal.Type
+					swCredit.SettingAndException.Exceptions.CustomCol = append(swCredit.SettingAndException.Exceptions.CustomCol, credit)
+				}
+
+				credit.Values = append(credit.Values, userVal.Value)
+
+			}
+
+		}
+	}
 
 	segments, err := segmentDao.Segments(dbLike.Conn(),
 		model.SegmentQuery{ID: invalidSegsID, CallID: []int64{callID}})

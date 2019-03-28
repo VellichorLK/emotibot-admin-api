@@ -4,7 +4,7 @@ source ${DIR}/../docker/image_tags.sh
 
 HASH=`git rev-parse HEAD`
 TS=`date +%s`
-DIFF=`git log -r ${GIT_PREVIOUS_SUCCESSFUL_COMMIT}..${GIT_COMMIT} --pretty=format:"### %h(%an) - %s"`
+DIFF=`git log -r ${GIT_PREVIOUS_SUCCESSFUL_COMMIT}..${GIT_COMMIT} --pretty=format:"### %h(%an) - %s"| sed -e "s/\"/'/g"`
 curl -k --request POST --header "PRIVATE-TOKEN: WiwsnhS-gES_jPaNDjVG" --form "note=docker pack finish (tag: \`${TAG}\`)" "https://gitlab.emotibot.com/api/v3/projects/deployment%2Femotigo/repository/commits/${HASH}/comments"
 NEWTAG=`git rev-parse --short=7 HEAD`-`git log HEAD -n1 --pretty='format:%cd' --date=format:'%Y%m%d-%H%M'`
 

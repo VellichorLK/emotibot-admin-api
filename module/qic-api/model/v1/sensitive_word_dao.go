@@ -1,12 +1,13 @@
 package model
 
 import (
-	"emotibot.com/emotigo/module/qic-api/util/general"
-	"emotibot.com/emotigo/pkg/logger"
 	"errors"
 	"fmt"
-	"github.com/mediocregopher/radix"
 	"strings"
+
+	"emotibot.com/emotigo/module/qic-api/util/general"
+	"emotibot.com/emotigo/pkg/logger"
+	"github.com/mediocregopher/radix"
 )
 
 const (
@@ -80,6 +81,7 @@ type SensitiveWord struct {
 	CustomerException []SimpleSentence
 	Enterprise        string
 	CategoryID        int64
+	UserValues        []UserValue
 }
 
 type SensitiveWordSqlDao struct {
@@ -296,6 +298,10 @@ func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLi
 	}
 	defer rows.Close()
 
+	sensitiveIDs := make([]interface{}, 0)
+	wordsIndexMap := make(map[int64]int)
+	counter := 0
+
 	sensitiveWords = []SensitiveWord{}
 	for rows.Next() {
 		word := SensitiveWord{}
@@ -308,6 +314,56 @@ func (dao *SensitiveWordSqlDao) GetBy(filter *SensitiveWordFilter, sqlLike SqlLi
 			&word.CategoryID,
 		)
 		sensitiveWords = append(sensitiveWords, word)
+		sensitiveIDs = append(sensitiveIDs, word.ID)
+		wordsIndexMap[word.ID] = counter
+		counter++
+	}
+
+	//get the exceptions
+	if counter > 0 {
+		fldsA := []string{fldRelSWID, fldType}
+		fldsB := []string{fldID, fldUUID, fldName, fldCategoryID}
+
+		for idx, v := range fldsA {
+			fldsA[idx] = "a.`" + v + "`"
+		}
+		for idx, v := range fldsB {
+			fldsB[idx] = "b.`" + v + "`"
+		}
+		flds := append(fldsA, fldsB...)
+
+		queryStr = fmt.Sprintf("SELECT %s FROM %s AS a INNER JOIN %s AS b on a.`%s`=b.`%s` WHERE a.`%s` in (?%s)",
+			strings.Join(flds, ","), tblSensitiveWord, tblRelSensitiveWordSen,
+			fldRelSenID, fldID, fldRelSWID, strings.Repeat(",?", counter-1))
+
+		rows, err := sqlLike.Query(queryStr, sensitiveIDs...)
+		if err != nil {
+			logger.Error.Printf("error when get exception in  dao.GetBy, sql: %s. %s\n", queryStr, err)
+			logger.Error.Printf("values: %+v\n", sensitiveIDs)
+			err = fmt.Errorf("get sensitive words exception failed, err: %s", err.Error())
+			return nil, err
+		}
+		defer rows.Close()
+
+		var swID int64
+		var typ int8
+		var s SimpleSentence
+		for rows.Next() {
+			err = rows.Scan(&swID, &typ, &s.ID, &s.UUID, &s.Name, &s.CategoryID)
+			if err != nil {
+				logger.Error.Printf("error when scan exception data in  dao.GetBy, sql: %s, %s\n", queryStr, err)
+				logger.Error.Printf("values: %+v\n", sensitiveIDs)
+				err = fmt.Errorf("scan exception failed, err: %s", err.Error())
+				return nil, err
+			}
+			if idx, ok := wordsIndexMap[swID]; ok {
+				if typ == StaffExceptionType {
+					sensitiveWords[idx].StaffException = append(sensitiveWords[idx].StaffException, s)
+				} else {
+					sensitiveWords[idx].CustomerException = append(sensitiveWords[idx].CustomerException, s)
+				}
+			}
+		}
 	}
 	return
 }
