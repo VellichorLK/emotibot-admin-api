@@ -906,6 +906,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		}
 	}
 
+	//fill up the sensitive setting information
 	if len(swIDs) > 0 {
 		_, sws, err := sensitive.GetSensitiveWords(&model.SensitiveWordFilter{ID: swIDs})
 		if err != nil {
@@ -922,7 +923,6 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		}
 	}
 
-	//fmt.Printf("customValIDs:%+v\n", customValIDs)
 	//fill up the usr colume and value in the sensitive
 	if len(customValIDs) > 0 {
 		userVals, err := userValueDao.ValuesKey(dbLike.Conn(), model.UserValueQuery{ID: customValIDs})
