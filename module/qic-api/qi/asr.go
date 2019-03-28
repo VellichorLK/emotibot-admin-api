@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emotibot.com/emotigo/pkg/logger"
 
@@ -264,12 +265,20 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 			sort.SliceStable(sentences, lessSorter)
 		}
 		var lastSeg *model.RealSegment
+		var lastWordCount = 0
 		for _, sen := range sentences {
-			if lastSeg != nil && lastSeg.Status == 200 && sen.Status == 200 && sen.Start-lastSeg.EndTime < 3 {
+			currentWordCount := utf8.RuneCountInString(sen.ASR)
+			if lastSeg != nil &&
+				lastSeg.Status == 200 &&
+				sen.Status == 200 &&
+				sen.Start-lastSeg.EndTime < 3 &&
+				lastWordCount+currentWordCount < model.MAXIMUM_SEGMENT_LENGTH {
+
 				lastSeg.EndTime = sen.End
 				lastSeg.Text = fmt.Sprintf("%s %s", lastSeg.Text, sen.ASR)
 				angryEmotion := &lastSeg.Emotions[0]
 				angryEmotion.Score = math.Max(angryEmotion.Score, sen.Emotion)
+				lastWordCount += utf8.RuneCountInString(sen.ASR) + 1
 			} else {
 				s := model.RealSegment{
 					CallID:     resp.CallID,
@@ -290,6 +299,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 				}
 				segments = append(segments, s)
 				lastSeg = &segments[len(segments)-1]
+				lastWordCount = currentWordCount
 			}
 		}
 	}
