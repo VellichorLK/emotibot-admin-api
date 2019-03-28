@@ -160,13 +160,15 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 
 	uploadTime := time.Unix(callResp.UploadTime, 0)
 	uploadTimeUnix := uploadTime.Unix()
+	callTime := time.Unix(callResp.CallTime, 0)
+	callTimeUnix := callTime.Unix()
 
 	// get call list of those which have the targe groupBy UserValue
 	groupBy := cgCond.GroupBy[0] // TODO: implement multiple groupBy keys
 	values := callResp.CustomColumns[groupBy.Inputname].([]string)
 	valueType := model.UserValueTypCall
-	fromTime := uploadTime.AddDate(0, 0, cgCond.DayRange*-1).Unix()
-	toTime := uploadTimeUnix
+	fromTime := callTime.AddDate(0, 0, cgCond.DayRange*-1).Unix()
+	toTime := callTimeUnix
 	query := model.CallsToGroupQuery{
 		UserValueType: &valueType,
 		UserKeyID:     &groupBy.ID,
@@ -237,6 +239,8 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		IsDelete:             0,
 		CallGroupConditionID: cgCond.ID,
 		Enterprise:           enterpriseID,
+		LastCallID:           callResp.CallID,
+		LastCallTime:         callTimeUnix,
 		CreateTime:           uploadTimeUnix,
 		UpdateTime:           uploadTimeUnix,
 		Calls:                callsToGroup,
@@ -335,8 +339,13 @@ func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error)
 			callResps = append(callResps, callRespMap[id])
 			callRespsInGroupMap[id] = true
 		}
+		isGroup := bool(false)
+		if len(callGroup.Calls) > 1 {
+			isGroup = true
+		}
 		resp := GroupedCallsResp{
-			IsGroup: true,
+			Setting: callRespMap[callGroup.LastCallID],
+			IsGroup: isGroup,
 			Calls:   callResps,
 		}
 		respList = append(respList, &resp)
@@ -344,9 +353,11 @@ func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error)
 
 	for id, callResp := range callRespMap {
 		if _, ok := callRespsInGroupMap[id]; !ok {
+			callResps := []*CallResp{}
 			resp := GroupedCallsResp{
 				Setting: callResp,
 				IsGroup: false,
+				Calls:   callResps,
 			}
 			respList = append(respList, &resp)
 		}

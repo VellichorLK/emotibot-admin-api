@@ -400,7 +400,7 @@ func (*CallGroupSQLDao) GetCallIDsToGroup(conn SqlLike, query *CallsToGroupQuery
 		return nil, ErrGenCondition
 	}
 	querySQL := fmt.Sprintf(
-		"SELECT `%s`.link_id FROM `%s` LEFT JOIN `%s` ON `%s`.link_id = `%s`.call_id %s",
+		"SELECT DISTINCT `%s`.link_id FROM `%s` LEFT JOIN `%s` ON `%s`.link_id = `%s`.call_id %s",
 		tblUserValue, tblUserValue, tblCall, tblUserValue, tblCall, whereSQL)
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
@@ -424,14 +424,15 @@ func (*CallGroupSQLDao) GetCallIDsToGroup(conn SqlLike, query *CallsToGroupQuery
 
 // CallGroup defines the CallGroup model
 type CallGroup struct {
-	ID                   int64
-	IsDelete             int
-	CallGroupConditionID int64
-	Enterprise           string
-	FirstCallID          int64
-	CreateTime           int64
-	UpdateTime           int64
-	Calls                []int64
+	ID                   int64   `json:"call_group_id"`
+	IsDelete             int     `json:"-"`
+	CallGroupConditionID int64   `json:"call_group_condition_id"`
+	Enterprise           string  `json:"-"`
+	LastCallID           int64   `json:"last_call_id"`
+	LastCallTime         int64   `json:"last_call_time"`
+	CreateTime           int64   `json:"-"`
+	UpdateTime           int64   `json:"-"`
+	Calls                []int64 `json:"-"`
 }
 
 // CallGroupQuery defines the query parameters to get CallGroup list
@@ -494,8 +495,8 @@ func (*CallGroupSQLDao) GetCallGroups(conn SqlLike, query *CallGroupQuery) ([]*C
 		FROM %s as cg
 		LEFT JOIN %s as relcg
 		ON cg.id = relcg.cg_id
-		%s`,
-		tblCallGroup, tblRelCallGroupCall, whereSQL)
+		%s ORDER BY cg.%s DESC`,
+		tblCallGroup, tblRelCallGroupCall, whereSQL, fldLastCallTime)
 	rows, err := conn.Query(querySQL, params...)
 	if err != nil {
 		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
@@ -508,7 +509,7 @@ func (*CallGroupSQLDao) GetCallGroups(conn SqlLike, query *CallGroupQuery) ([]*C
 		var data CallGroup
 		var callID int64
 		err = rows.Scan(&data.ID, &data.IsDelete, &data.CallGroupConditionID, &data.Enterprise,
-			&data.FirstCallID, &data.CreateTime, &data.UpdateTime, &callID)
+			&data.LastCallID, &data.LastCallTime, &data.CreateTime, &data.UpdateTime, &callID)
 		if err != nil {
 			logger.Error.Printf("scan failed. %s\n", err)
 			return nil, err
@@ -563,6 +564,8 @@ func (*CallGroupSQLDao) SoftDeleteCallGroup(conn SqlLike, query *GeneralQuery) e
 const (
 	fldCallGroupConditionID = "cg_cond_id"
 	fldFirstCallID          = "first_call_id"
+	fldLastCallID           = "last_call_id"
+	fldLastCallTime         = "last_call_time"
 	fldCallGroupID          = "cg_id"
 )
 
@@ -583,12 +586,12 @@ func (*CallGroupSQLDao) CreateCallGroup(conn SqlLike, model *CallGroup) (int64, 
 		return 0, ErroNoCalls
 	}
 	insertCols := []string{
-		fldIsDelete, fldCallGroupConditionID, fldEnterprise, fldFirstCallID, fldCreateTime,
-		fldUpdateTime,
+		fldIsDelete, fldCallGroupConditionID, fldEnterprise, fldLastCallID, fldLastCallTime,
+		fldCreateTime, fldUpdateTime,
 	}
 	params := []interface{}{
-		model.IsDelete, model.CallGroupConditionID, model.Enterprise, model.FirstCallID, model.CreateTime,
-		model.UpdateTime,
+		model.IsDelete, model.CallGroupConditionID, model.Enterprise, model.LastCallID, model.LastCallTime,
+		model.CreateTime, model.UpdateTime,
 	}
 	querySQL := fmt.Sprintf(
 		"INSERT INTO `%s` (`%s`) VALUES (%s)",

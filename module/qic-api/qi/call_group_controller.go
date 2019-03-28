@@ -247,7 +247,7 @@ func handleCreateCallGroups(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func handleGroupCalls(w http.ResponseWriter, r *http.Request) {
-// 	call := model.Call{ID: 16, EnterpriseID: "enterprise_id"}
-// 	_ = GroupCalls(&call)
-// }
+func handleGroupCalls(w http.ResponseWriter, r *http.Request) {
+	call := model.Call{ID: 14, EnterpriseID: "enterprise_id"}
+	_ = GroupCalls(&call)
+}
