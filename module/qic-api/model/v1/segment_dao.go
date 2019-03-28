@@ -7,6 +7,8 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+const MAXIMUM_SEGMENT_LENGTH = 256
+
 type SegmentDao interface {
 	NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error)
 	Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error)
