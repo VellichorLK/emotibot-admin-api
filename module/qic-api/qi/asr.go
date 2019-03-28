@@ -192,6 +192,7 @@ func ASRWorkFlow(output []byte) error {
 			machineCredits = append(machineCredits, combineCredit)
 			for _, r := range rulesWithException {
 				score += r.Score
+				credits[idx].Score += r.Score //Add the silence/interposal/speed score to rule group
 			}
 		}
 		err = StoreMachineCredit(uint64(c.ID), uint64(rootID), machineCredits)
