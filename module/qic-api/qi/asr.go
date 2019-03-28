@@ -3,6 +3,7 @@ package qi
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
@@ -85,10 +86,6 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	segments := resp.Segments()
-
-	sort.SliceStable(segments, func(i, j int) bool {
-		return segments[i].StartTime < segments[j].StartTime
-	})
 
 	switch c.Type {
 	case model.CallTypeWholeFile:
@@ -221,7 +218,7 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
-	//TODO: check whethㄊer sensitive score is right
+	//TODO: check whether sensitive score is right
 	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
 	if err != nil {
 		return fmt.Errorf("update the credit failed. %s", err)
@@ -242,52 +239,63 @@ func ASRWorkFlow(output []byte) error {
 }
 
 // Segments transfer ASRResponse's sentence to []model.RealSegment
+// returned Real Segments will be sorted by start timestamp
+// It also merge the sentences of channel if it endtime is within start time.
+//	ex:
+//		Left channel sentences: [ 1.0-2.0, 2.5-3.5, 20.0-21.0 ]
+//		Right Channel sentences: [ 0.5-1.5, 2.0-5.0]
+// 		return: [0.5-5.0, 1.0-3.5, 20.0-21.0]
 func (resp *ASRResponse) Segments() []model.RealSegment {
-
-	var segments = []model.RealSegment{}
+	var segments = make([]model.RealSegment, 0, len(resp.LeftChannel.Sentences)+len(resp.RightChannel.Sentences))
 	//TODO: check sret & emotion = -1
-	timestamp := time.Now().Unix()
-	for _, sen := range resp.LeftChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     resp.CallID,
-			CreateTime: timestamp,
-			UpdateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    1,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					SegmentID: sen.SegmentID,
-					Typ:       model.ETypAngry,
-					Score:     sen.Emotion,
-				},
-			},
-			Status: int(sen.Status),
+	var (
+		timestamp     = unix()
+		sentencesChan = map[int8][]voiceSentence{
+			1: resp.LeftChannel.Sentences,
+			2: resp.RightChannel.Sentences,
 		}
-		segments = append(segments, s)
-	}
-
-	for _, sen := range resp.RightChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     resp.CallID,
-			CreateTime: timestamp,
-			UpdateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    2,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					SegmentID: sen.SegmentID,
-					Typ:       model.ETypAngry,
-					Score:     sen.Emotion,
-				},
-			},
-			Status: int(sen.Status),
+	)
+	for chanNo, sentences := range sentencesChan {
+		var lessSorter = func(i, j int) bool {
+			return sentences[i].Start < sentences[j].Start
 		}
-		segments = append(segments, s)
+		// To ensure sentences has been sorted.
+		if !sort.SliceIsSorted(sentences, lessSorter) {
+			sort.SliceStable(sentences, lessSorter)
+		}
+		var lastSeg *model.RealSegment
+		for _, sen := range sentences {
+			if lastSeg != nil && lastSeg.Status == 200 && sen.Status == 200 && sen.Start-lastSeg.EndTime < 3 {
+				lastSeg.EndTime = sen.End
+				lastSeg.Text = fmt.Sprintf("%s %s", lastSeg.Text, sen.ASR)
+				angryEmotion := &lastSeg.Emotions[0]
+				angryEmotion.Score = math.Max(angryEmotion.Score, sen.Emotion)
+			} else {
+				s := model.RealSegment{
+					CallID:     resp.CallID,
+					CreateTime: timestamp,
+					UpdateTime: timestamp,
+					StartTime:  sen.Start,
+					EndTime:    sen.End,
+					Channel:    chanNo,
+					Text:       sen.ASR,
+					Emotions: []model.RealSegmentEmotion{
+						model.RealSegmentEmotion{
+							SegmentID: sen.SegmentID,
+							Typ:       model.ETypAngry,
+							Score:     sen.Emotion,
+						},
+					},
+					Status: int(sen.Status),
+				}
+				segments = append(segments, s)
+				lastSeg = &segments[len(segments)-1]
+			}
+		}
 	}
+	sort.SliceStable(segments, func(i, j int) bool {
+		return segments[i].StartTime < segments[j].StartTime
+	})
 	return segments
 }
 
