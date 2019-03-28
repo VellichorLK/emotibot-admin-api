@@ -1,0 +1,8 @@
+FROM golang:1.8-alpine AS build-env
+
+
+ARG PROJECT
+RUN apk add --no-cache git
+
+COPY . /go/src/emotibot.com/emotigo/module
+RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper download 

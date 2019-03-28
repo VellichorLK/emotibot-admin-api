@@ -1,11 +1,10 @@
-FROM golang:1.8-alpine AS build-env
+FROM docker-reg.emotibot.com.cn:55688/vipshop-fake-auth-base:2019032801-rc1 AS build-env
 
 
 ARG PROJECT
 RUN apk add --no-cache git
 
 COPY . /go/src/emotibot.com/emotigo/module
-RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper download 
 RUN cd /go/src/emotibot.com/emotigo/module/${PROJECT} && go-wrapper install
 
 FROM alpine:3.5
