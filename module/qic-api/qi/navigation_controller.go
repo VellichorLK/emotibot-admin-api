@@ -501,6 +501,14 @@ func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) 
 		return
 	}
 
+	call.RemoteFile = &resp.RemoteFile
+
+	err = updateFlowQI(req, call)
+	if err != nil {
+		logger.Error.Printf("Update qi flow failed. %s\n", err)
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+	}
+
 	err = realtimeCallProducer.Produce(p)
 	if err != nil {
 		logger.Error.Printf("Cannot create realtime call download task: %s",
@@ -508,12 +516,6 @@ func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) 
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()),
 			http.StatusInternalServerError)
 		return
-	}
-
-	err = updateFlowQI(req, call)
-	if err != nil {
-		logger.Error.Printf("Update qi flow failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 	}
 }
 
