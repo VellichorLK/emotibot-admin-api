@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -190,6 +191,56 @@ func TestASRResponse_Segments(t *testing.T) {
 							Score: 20,
 						},
 					},
+				},
+			},
+		},
+		{
+			name: "maximum length check",
+			fields: fields{
+				LeftChannel: vChannel{
+					Sentences: []voiceSentence{
+						{
+							Start:   2,
+							End:     4,
+							ASR:     strings.Repeat("a", 250),
+							Emotion: 20,
+							Status:  200,
+						},
+						{
+							Start:  3,
+							End:    5,
+							ASR:    strings.Repeat("b", 250),
+							Status: 200,
+						},
+					},
+				},
+			},
+			want: []model.RealSegment{
+				{
+					StartTime: 2,
+					EndTime:   4,
+					Text:      strings.Repeat("a", 250),
+					Emotions: []model.RealSegmentEmotion{
+						model.RealSegmentEmotion{
+							Typ:   model.ETypAngry,
+							Score: 20,
+						},
+					},
+					Status:  200,
+					Channel: 1,
+				},
+				{
+					StartTime: 3,
+					EndTime:   5,
+					Text:      strings.Repeat("b", 250),
+					Emotions: []model.RealSegmentEmotion{
+						model.RealSegmentEmotion{
+							Typ:   model.ETypAngry,
+							Score: 0,
+						},
+					},
+					Status:  200,
+					Channel: 1,
 				},
 			},
 		},
