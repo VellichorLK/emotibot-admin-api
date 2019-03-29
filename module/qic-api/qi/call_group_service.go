@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/json"
 	"time"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
@@ -8,7 +9,8 @@ import (
 )
 
 var (
-	callGroupDao model.CallGroupDao = &model.CallGroupSQLDao{}
+	callGroupDao       model.CallGroupDao       = &model.CallGroupSQLDao{}
+	creditCallGroupDao model.CreditCallGroupDao = &model.CreditCallGroupSQLDao{}
 )
 
 // CreateCallGroupCondition create a new call group condition
@@ -129,9 +131,19 @@ func GroupCalls(call *model.Call) error {
 			}
 		}
 		if valid {
-			err = groupCalls(call.EnterpriseID, callResp, cgCond)
+			callGroupID, callIDs, err := groupCalls(call.EnterpriseID, callResp, cgCond)
 			if err != nil {
 				logger.Error.Printf("group calls failed. call.ID: %d, error: %s\n", call.ID, err)
+				return err
+			}
+			creditTree, ruleIDs, err := GetCallGroupCreditTree(callIDs)
+			if err != nil {
+				logger.Error.Printf("get call group credit tree failed. error: %s\n", err)
+				return err
+			}
+			_, err = CreateCreditCallGroups(uint64(callGroupID), creditTree, ruleIDs)
+			if err != nil {
+				logger.Error.Printf("create call group credit failed. error: %s\n", err)
 				return err
 			}
 		}
@@ -148,13 +160,13 @@ func contains(strings []string, s string) bool {
 	return false
 }
 
-func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGCondition) error {
+func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGCondition) (int64, []int64, error) {
 	if dbLike == nil {
-		return ErrNilCon
+		return 0, nil, ErrNilCon
 	}
 	tx, err := dbLike.Begin()
 	if err != nil {
-		return err
+		return 0, nil, err
 	}
 	defer tx.Rollback()
 
@@ -179,7 +191,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	callIDs, err := callGroupDao.GetCallIDsToGroup(tx, &query)
 	if err != nil {
 		logger.Error.Printf("failed to get call ids to group . %s\n", err)
-		return err
+		return 0, nil, err
 	}
 
 	// get CallGroup list related to target callIDs
@@ -193,7 +205,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	callGroupList, err := callGroupDao.GetCallGroups(tx, &cgQuery)
 	if err != nil {
 		logger.Error.Printf("failed to get CallGroup list. %s\n", err)
-		return err
+		return 0, nil, err
 	}
 	callGroupToDelete := []int64{}
 	callsToGroup := []int64{}
@@ -214,7 +226,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		}
 	}
 	if len(callsToGroup) == 0 {
-		return nil
+		return 0, nil, nil
 	}
 
 	// out, _ = json.Marshal(callGroupToDelete)
@@ -231,7 +243,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	err = callGroupDao.SoftDeleteCallGroup(tx, &gQuery)
 	if err != nil {
 		logger.Error.Printf("failed to soft delete CallGroup list. %s\n", err)
-		return err
+		return 0, nil, err
 	}
 
 	// create a new call group
@@ -248,7 +260,7 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 	callGroupID, err := callGroupDao.CreateCallGroup(tx, &callGroup)
 	if err != nil {
 		logger.Error.Printf("failed to create CallGroup. %s\n", err)
-		return err
+		return 0, nil, err
 	}
 
 	// create new relations between CallGroup and Call
@@ -260,10 +272,10 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		_, err = callGroupDao.CreateCallGroupRelation(tx, &callGroupRelation)
 		if err != nil {
 			logger.Error.Printf("failed to create CallGroupRelation. %s\n", err)
-			return err
+			return 0, nil, err
 		}
 	}
-	return tx.Commit()
+	return callGroupID, callGroup.Calls, tx.Commit()
 }
 
 // GroupedCallsResp defines the response structure of GetGroupedCalls
@@ -367,4 +379,363 @@ func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error)
 	// logger.Trace.Printf("respList")
 	// logger.Trace.Printf(string(out))
 	return respList, total, nil
+}
+
+// CallGroupCreditTree defines the call group credit tree structure
+type CallGroupCreditTree struct {
+	Credit       *model.SimpleCredit
+	RuleGroupMap map[uint64]*ruleGroupCredit
+}
+type ruleGroupCredit struct {
+	Credit  *model.SimpleCredit
+	RuleMap map[uint64]*ruleCredit
+	Rules   map[uint64]*[]*model.SimpleCredit
+}
+type ruleCredit struct {
+	Credit   *model.SimpleCredit
+	CFlowMap map[uint64]*convFlowCredit
+}
+type convFlowCredit struct {
+	Credit      *model.SimpleCredit
+	SenGroupMap map[uint64]*senGroupCredit
+}
+type senGroupCredit struct {
+	Credit *model.SimpleCredit
+	SenMap map[uint64]*senCredit
+}
+type senCredit struct {
+	Credit *model.SimpleCredit
+	SegMap map[uint64]*segCredit
+}
+type segCredit struct {
+	Credit *model.SimpleCredit
+}
+
+// GetCallGroupCreditTree return the requested CallGroupCreditTree tree and the ID list of Rules
+func GetCallGroupCreditTree(inputCallIDs []int64) (*CallGroupCreditTree, []uint64, error) {
+	// inputCallIDs = []int64{153}
+	out, _ := json.Marshal(inputCallIDs)
+	logger.Trace.Printf("inputCallIDs")
+	logger.Trace.Printf(string(out))
+	if dbLike == nil {
+		return nil, nil, ErrNilCon
+	}
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+
+	callIDs := make([]uint64, len(inputCallIDs))
+	for i := 0; i < len(inputCallIDs); i++ {
+		callIDs[i] = uint64(inputCallIDs[i])
+	}
+	creditQuery := model.CreditQuery{
+		Calls: callIDs,
+	}
+	credits, err := creditDao.GetCallCredit(tx, &creditQuery)
+	if err != nil {
+		logger.Error.Printf("get credits failed\n")
+		return nil, nil, err
+	}
+
+	var ruleIDs []uint64
+	rgOrgIDMap := make(map[uint64]uint64)
+	rOrgIDMap := make(map[uint64]uint64)
+	cfOrgIDMap := make(map[uint64]uint64)
+	senGrpOrgIDMap := make(map[uint64]uint64)
+	senOrgIDMap := make(map[uint64]uint64)
+	segOrgIDMap := make(map[uint64]uint64)
+
+	rgCreditMap := make(map[uint64]*ruleGroupCredit)
+	rCreditMap := make(map[uint64]*ruleCredit)
+	cfCreditMap := make(map[uint64]*convFlowCredit)
+	senGrpCreditMap := make(map[uint64]*senGroupCredit)
+	senCreditMap := make(map[uint64]*senCredit)
+	segCreditMap := make(map[uint64]*segCredit)
+
+	cgCredit := CallGroupCreditTree{
+		Credit:       &model.SimpleCredit{},
+		RuleGroupMap: make(map[uint64]*ruleGroupCredit),
+	}
+	for _, credit := range credits {
+		switch levelType(credit.Type) {
+		// case levCallType:
+		// 	continue
+		case levRuleGrpTyp:
+			rgOrgIDMap[credit.ID] = credit.OrgID
+			if _, ok := rgCreditMap[credit.OrgID]; !ok {
+				rgCredit := ruleGroupCredit{
+					Credit:  credit,
+					RuleMap: make(map[uint64]*ruleCredit),
+					Rules:   make(map[uint64]*[]*model.SimpleCredit),
+				}
+				rgCreditMap[credit.OrgID] = &rgCredit
+			}
+		// case levRuleTyp, levSilenceTyp, levSpeedTyp, levInterposalTyp:
+		case levRuleTyp:
+			rOrgIDMap[credit.ID] = credit.OrgID
+			rCredit, ok := rCreditMap[credit.OrgID]
+			if !ok {
+				newCredit := ruleCredit{
+					Credit:   credit,
+					CFlowMap: make(map[uint64]*convFlowCredit),
+				}
+				rCreditMap[credit.OrgID] = &newCredit
+				rCredit = &newCredit
+			}
+
+			parentOrgID := rgOrgIDMap[credit.ParentID]
+			parentCredit := rgCreditMap[parentOrgID]
+			if _, ok := parentCredit.RuleMap[credit.OrgID]; !ok {
+				parentCredit.RuleMap[credit.OrgID] = rCredit
+			}
+
+			rgCredit := parentCredit
+			rOrgID := credit.OrgID
+			if rgCredit.Rules[rOrgID] == nil {
+				creditList := []*model.SimpleCredit{credit}
+				rgCredit.Rules[rOrgID] = &creditList
+			} else {
+				*rgCredit.Rules[rOrgID] = append(*rgCredit.Rules[rOrgID], credit)
+			}
+			ruleIDs = append(ruleIDs, credit.OrgID)
+		case levCFTyp:
+			cfOrgIDMap[credit.ID] = credit.OrgID
+			cfCredit, ok := cfCreditMap[credit.OrgID]
+			if !ok {
+				newCredit := convFlowCredit{
+					Credit:      credit,
+					SenGroupMap: make(map[uint64]*senGroupCredit),
+				}
+				cfCreditMap[credit.OrgID] = &newCredit
+				cfCredit = &newCredit
+			}
+			parentOrgID := rOrgIDMap[credit.ParentID]
+			parentCredit := rCreditMap[parentOrgID]
+			if _, ok := parentCredit.CFlowMap[credit.OrgID]; !ok {
+				parentCredit.CFlowMap[credit.OrgID] = cfCredit
+			}
+		case levSenGrpTyp:
+			senGrpOrgIDMap[credit.ID] = credit.OrgID
+			sgCredit, ok := senGrpCreditMap[credit.OrgID]
+			if !ok {
+				newCredit := senGroupCredit{
+					Credit: credit,
+					SenMap: make(map[uint64]*senCredit),
+				}
+				senGrpCreditMap[credit.OrgID] = &newCredit
+				sgCredit = &newCredit
+			}
+			parentOrgID := cfOrgIDMap[credit.ParentID]
+			parentCredit := cfCreditMap[parentOrgID]
+			if _, ok := parentCredit.SenGroupMap[credit.OrgID]; !ok {
+				parentCredit.SenGroupMap[credit.OrgID] = sgCredit
+			}
+		case levSenTyp:
+			senOrgIDMap[credit.ID] = credit.OrgID
+			sCredit, ok := senCreditMap[credit.OrgID]
+			if !ok {
+				newCredit := senCredit{
+					Credit: credit,
+					SegMap: make(map[uint64]*segCredit),
+				}
+				senCreditMap[credit.OrgID] = &newCredit
+				sCredit = &newCredit
+			}
+			parentOrgID := senGrpOrgIDMap[credit.ParentID]
+			parentCredit := senGrpCreditMap[parentOrgID]
+			if _, ok := parentCredit.SenMap[credit.OrgID]; !ok {
+				parentCredit.SenMap[credit.OrgID] = sCredit
+			}
+		case levSegTyp:
+			segOrgIDMap[credit.ID] = credit.OrgID
+			sCredit, ok := segCreditMap[credit.OrgID]
+			if !ok {
+				newCredit := segCredit{
+					Credit: credit,
+				}
+				segCreditMap[credit.OrgID] = &newCredit
+				sCredit = &newCredit
+			}
+			parentOrgID := senOrgIDMap[credit.ParentID]
+			parentCredit := senCreditMap[parentOrgID]
+			if _, ok := parentCredit.SegMap[credit.OrgID]; !ok {
+				parentCredit.SegMap[credit.OrgID] = sCredit
+			}
+		default:
+			//logger.Error.Printf("credit result %d id has the unknown type %d\n", v.ID, v.Type)
+			continue
+		}
+	}
+
+	// out, _ = json.Marshal(credits)
+	// logger.Trace.Printf("credits")
+	// logger.Trace.Printf(string(out))
+	cgCredit.RuleGroupMap = rgCreditMap
+	out, _ = json.Marshal(cgCredit)
+	logger.Trace.Printf("cgCredit")
+	logger.Trace.Printf(string(out))
+	return &cgCredit, ruleIDs, tx.Commit()
+}
+
+// CallGroupCreditCGTree defines the call group CreditCallGroup tree structure
+type CallGroupCreditCGTree struct {
+	Credit       *model.CreditCallGroup
+	RuleGroupMap map[uint64]*ruleGroupCreditCG
+}
+type ruleGroupCreditCG struct {
+	Credit  *model.CreditCallGroup
+	RuleMap map[uint64]*ruleCreditCG
+	Rules   map[uint64]*[]*model.SimpleCredit
+}
+type ruleCreditCG struct {
+	Credit   *model.CreditCallGroup
+	CFlowMap map[uint64]*convFlowCreditCG
+}
+type convFlowCreditCG struct {
+	Credit      *model.CreditCallGroup
+	SenGroupMap map[uint64]*senGroupCreditCG
+}
+type senGroupCreditCG struct {
+	Credit *model.CreditCallGroup
+	SenMap map[uint64]*senCreditCG
+}
+type senCreditCG struct {
+	Credit *model.CreditCallGroup
+	SegMap map[uint64]*segCreditCG
+}
+type segCreditCG struct {
+	Credit *model.CreditCallGroup
+}
+
+// CreateCreditCallGroups calculate the call group scores and store it
+func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree, ruleIDs []uint64) (*CallGroupCreditCGTree, error) {
+	out, _ := json.Marshal(ruleIDs)
+	logger.Trace.Printf("ruleIDs")
+	logger.Trace.Printf(string(out))
+	if dbLike == nil {
+		return nil, ErrNilCon
+	}
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	ruleList, err := conversationRuleDao.GetBy(&model.ConversationRuleFilter{ID: ruleIDs, Severity: -1, IsDeleted: -1}, tx)
+	if err != nil {
+		logger.Error.Printf("get rule list %+v failed. %s\n", ruleIDs, err)
+		return nil, err
+	}
+	ruleMap := make(map[uint64]model.ConversationRule)
+	for _, rule := range ruleList {
+		ruleMap[uint64(rule.ID)] = rule
+	}
+
+	const (
+		Valid   int = 1
+		InValid int = 0
+	)
+
+	callGroupScore := int(100)
+	createTime := time.Now().Unix()
+	creditCG := &model.CreditCallGroup{
+		CallGroupID: callGroupID, Type: 0, ParentID: 0, OrgID: 0, Valid: 0,
+		Revise: 0, Score: callGroupScore, CreateTime: createTime, UpdateTime: createTime, CallID: 0,
+	}
+	creditCGTree := &CallGroupCreditCGTree{
+		Credit:       creditCG,
+		RuleGroupMap: make(map[uint64]*ruleGroupCreditCG),
+	}
+	parentCG, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+	if err != nil {
+		logger.Error.Printf("create call group credit %+v failed. %s\n", creditCG, err)
+		return nil, err
+	}
+
+	for rgID, rgCredit := range creditTree.RuleGroupMap {
+		rgScore := int(0)
+		credit := rgCredit.Credit
+		creditCG = &model.CreditCallGroup{
+			CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentCG), OrgID: credit.OrgID, Valid: -1,
+			Revise: -1, Score: rgScore, CreateTime: createTime, UpdateTime: createTime, CallID: 0,
+		}
+		rgCreditCG := &ruleGroupCreditCG{
+			Credit:  creditCG,
+			RuleMap: make(map[uint64]*ruleCreditCG),
+			Rules:   make(map[uint64]*[]*model.SimpleCredit),
+		}
+		creditCGTree.RuleGroupMap[rgID] = rgCreditCG
+
+		parentRG, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+		if err != nil {
+			logger.Error.Printf("create rule group credit %+v failed. %s\n", creditCG, err)
+			return nil, err
+		}
+
+		for rID, rules := range rgCredit.Rules {
+			convRule := ruleMap[rID]
+			var valid int
+			var callID uint64
+			if convRule.Method == model.RuleMethodPositive {
+				valid = InValid
+				for _, rule := range *rules {
+					if rule.Valid == Valid {
+						valid = Valid
+						callID = rule.CallID
+						break
+					}
+				}
+			} else if convRule.Method == model.RuleMethodNegative {
+				valid = Valid
+				for _, rule := range *rules {
+					if rule.Valid == InValid {
+						valid = InValid
+						callID = rule.CallID
+						break
+					}
+				}
+			}
+			score := int(0)
+			isPosScore := convRule.Score > 0
+			if valid == Valid && isPosScore {
+				score = convRule.Score
+			} else if valid == InValid && !isPosScore {
+				score = convRule.Score
+			}
+			rgScore += score
+			credit = rgCredit.RuleMap[rID].Credit
+			creditCG = &model.CreditCallGroup{
+				CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentRG), OrgID: credit.OrgID, Valid: valid,
+				Revise: -1, Score: score, CreateTime: createTime, UpdateTime: createTime, CallID: callID,
+			}
+			rCreditCG := &ruleCreditCG{
+				Credit:   creditCG,
+				CFlowMap: make(map[uint64]*convFlowCreditCG),
+			}
+			rgCreditCG.RuleMap[rID] = rCreditCG
+			_, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+			if err != nil {
+				logger.Error.Printf("create rule credit %+v failed. %s\n", creditCG, err)
+				return nil, err
+			}
+		}
+		rgCreditCG.Credit.Score = rgScore
+		callGroupScore += rgScore
+		updateSet := model.CreditCallGroupUpdateSet{Score: &rgScore}
+		_, err = creditCallGroupDao.UpdateCreditCallGroup(tx, &model.GeneralQuery{ID: []int64{parentRG}}, &updateSet)
+		if err != nil {
+			logger.Error.Printf("update rule group credit %+v failed. %s\n", updateSet, err)
+			return nil, err
+		}
+	}
+	creditCGTree.Credit.Score = callGroupScore
+	updateSet := model.CreditCallGroupUpdateSet{Score: &callGroupScore}
+	_, err = creditCallGroupDao.UpdateCreditCallGroup(tx, &model.GeneralQuery{ID: []int64{parentCG}}, &updateSet)
+	if err != nil {
+		logger.Error.Printf("update call group credit %+v failed. %s\n", updateSet, err)
+		return nil, err
+	}
+	return creditCGTree, nil
 }

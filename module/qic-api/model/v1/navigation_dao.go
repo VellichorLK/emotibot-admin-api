@@ -491,6 +491,11 @@ func makePreprare(d interface{}, flds []string) (states []string, bindData []int
 				for _, ele := range elements {
 					bindData = append(bindData, ele)
 				}
+			case "[]int":
+				elements := vx.Interface().([]int)
+				for _, ele := range elements {
+					bindData = append(bindData, ele)
+				}
 			default:
 				err = fmt.Errorf("unsupported type %s", f.Type.String())
 				return

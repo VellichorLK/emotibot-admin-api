@@ -9,7 +9,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-// CallGroupDao defines dao interface call group
+// CallGroupDao defines the dao interface of call group
 type CallGroupDao interface {
 	CreateCondition(conn SqlLike, model *CallGroupCondition) (int64, error)
 	GetConditionList(conn SqlLike, query *GeneralQuery, pagination *Pagination) ([]*CallGroupCondition, error)
@@ -46,7 +46,7 @@ type CallGroupCondition struct {
 
 // CallGroupConditionUpdateSet defines the json body of handleUpdateCallGroupCondition request
 type CallGroupConditionUpdateSet struct {
-	Name        *string `json:name`
+	Name        *string `json:"name"`
 	Description *string `json:"description"`
 	IsEnable    *int    `json:"is_enable"`
 }
@@ -382,7 +382,7 @@ func (q *CallsToGroupQuery) whereSQL() (condition string, bindData []interface{}
 		}
 	}
 	if q.StartTime != nil && q.EndTime != nil {
-		cond := fmt.Sprintf("`%s`.%s BETWEEN ? AND ?", tblCall, fldCallUploadTime)
+		cond := fmt.Sprintf("`%s`.%s BETWEEN ? AND ?", tblCall, ConFieldCallTime)
 		conds = append(conds, cond)
 		bindData = append(bindData, *q.StartTime, *q.EndTime)
 	}
@@ -494,7 +494,7 @@ func (*CallGroupSQLDao) GetCallGroups(conn SqlLike, query *CallGroupQuery) ([]*C
 		`SELECT cg.*, relcg.call_id
 		FROM %s as cg
 		LEFT JOIN %s as relcg
-		ON cg.id = relcg.cg_id
+		ON cg.id = relcg.call_group_id
 		%s ORDER BY cg.%s DESC`,
 		tblCallGroup, tblRelCallGroupCall, whereSQL, fldLastCallTime)
 	rows, err := conn.Query(querySQL, params...)
@@ -566,7 +566,7 @@ const (
 	fldFirstCallID          = "first_call_id"
 	fldLastCallID           = "last_call_id"
 	fldLastCallTime         = "last_call_time"
-	fldCallGroupID          = "cg_id"
+	fldCallGroupID          = "call_group_id"
 )
 
 // error message
