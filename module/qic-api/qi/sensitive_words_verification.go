@@ -200,23 +200,31 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 		return nil, err
 	}
 
-	//sets the usr val exception
-	for swid, userValueID := range passedMap {
-		for _, vid := range userValueID {
+	// get custom values of all sensitive words
+	query := model.UserValueQuery{
+		Type:             []int8{model.UserValueTypSensitiveWord},
+		IgnoreSoftDelete: true,
+	}
+	swValues, err := userValues(dbLike.Conn(), query)
+	if err != nil {
+		logger.Error.Printf("get user values in sensitive word failed. %s\n", err)
+		return nil, err
+	}
+
+	for _, vals := range swValues {
+		if c, ok := swCredits[vals.LinkID]; ok {
 			credit := model.SimpleCredit{
 				CallID:     uint64(callID),
 				Type:       int(levSWUserValTyp),
-				OrgID:      uint64(vid),
-				ParentID:   uint64(swid),
+				OrgID:      uint64(vals.ID),
+				ParentID:   uint64(vals.LinkID),
 				Revise:     unactivate,
 				Valid:      0,
 				Score:      0,
 				CreateTime: now,
 				UpdateTime: now,
 			}
-			if c, ok := swCredits[swid]; ok {
-				c.usrVals = append(c.usrVals, credit)
-			}
+			c.usrVals = append(c.usrVals, credit)
 		}
 	}
 
