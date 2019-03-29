@@ -83,8 +83,6 @@ func handleLogin(ctx context.Context) {
 	logMsg := userID + " 登录"
 	userIP := util.GetUserIP(ctx)
 
-	util.LogInfo.Printf("cas userId:[%s] getURL[%s] resp: [%s]", url.QueryEscape(userID), getURL, resp)
-
 	defer func() {
 		util.AddAuditLog(userID, userIP, util.AuditModuleMembers, util.AuditOperationLogin, logMsg, result)
 	}()
