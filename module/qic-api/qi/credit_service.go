@@ -361,13 +361,11 @@ type HistoryCredit struct {
 func checkAndSetSenID(senSetIDMap map[uint64]*DataSentence,
 	s *SentenceWithPrediction, v *model.SimpleCredit) {
 	if set, ok := senSetIDMap[v.OrgID]; ok {
-		s.Credit.Setting = set
+		s.Credit = &SentenceCredit{ID: v.OrgID, MatchedSegments: []*model.SegmentMatch{}, Setting: set}
 	} else {
 		set := &DataSentence{ID: v.OrgID}
 		senSetIDMap[v.OrgID] = set
-		s.Credit = &SentenceCredit{ID: v.OrgID, MatchedSegments: []*model.SegmentMatch{}}
-		s.Credit.Setting = set
-
+		s.Credit = &SentenceCredit{ID: v.OrgID, MatchedSegments: []*model.SegmentMatch{}, Setting: set}
 	}
 }
 
@@ -448,7 +446,6 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 	var resp []*HistoryCredit
 
 	for _, v := range credits {
-		//fmt.Printf("%d. id:%d org_id:%d parent_id:%d type:%d\n", k, v.ID, v.OrgID, v.ParentID, v.Type)
 		switch levelType(v.Type) {
 		case levCallType:
 			var ok bool
@@ -680,7 +677,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levSWCustomerSenTyp:
 			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], MatchedSegments: []*model.SegmentMatch{}}
 				checkAndSetSenID(senSetIDMap, s, v)
 				pCredit.SettingAndException.Exceptions.Customer = append(pCredit.SettingAndException.Exceptions.Customer, s)
 				swSenCreditsMap[v.ID] = s.Credit
@@ -688,7 +685,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levSWStaffSenTyp:
 			if pCredit, ok := sensitiveCreditIDMap[v.ParentID]; ok {
-				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid]}
+				s := &SentenceWithPrediction{ID: v.OrgID, Valid: validMap[v.Valid], MatchedSegments: []*model.SegmentMatch{}}
 				checkAndSetSenID(senSetIDMap, s, v)
 				pCredit.SettingAndException.Exceptions.Staff = append(pCredit.SettingAndException.Exceptions.Staff, s)
 				swSenCreditsMap[v.ID] = s.Credit
@@ -911,6 +908,8 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 				credit.SettingAndException.ID = sw.UUID
 				credit.SettingAndException.Name = sw.Name
 				credit.SettingAndException.Score = sw.Score
+				setSentenceWithPredictionInfo(credit.SettingAndException.Exceptions.Customer)
+				setSentenceWithPredictionInfo(credit.SettingAndException.Exceptions.Staff)
 			}
 
 		}
