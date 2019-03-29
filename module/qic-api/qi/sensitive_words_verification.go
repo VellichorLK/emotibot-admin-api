@@ -203,6 +203,7 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 	// get custom values of all sensitive words
 	query := model.UserValueQuery{
 		Type:             []int8{model.UserValueTypSensitiveWord},
+		ID:               swID,
 		IgnoreSoftDelete: true,
 	}
 	swValues, err := userValues(dbLike.Conn(), query)
