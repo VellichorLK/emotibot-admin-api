@@ -53,6 +53,7 @@ const (
 	tblRelCallGroupCall      = "Relation_CallGroup_Call"
 	tblCallGroupCondition    = "CallGroupCondition"
 	tblCallGroupConditionKey = "CallGroupConditionKey"
+	tblPredictResultGroup    = "CUPredictResultGroup"
 )
 
 //field name in Conversation table
