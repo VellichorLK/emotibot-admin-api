@@ -156,15 +156,15 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 
 		//create the sensitive credits and its exception setting
 		c := &SensitiveWordCredit{sensitiveWord: model.SimpleCredit{
-			OrgID: uint64(sw.ID), CallID: uint64(callID), Type: int(levSWTyp), Valid: 1, CreateTime: now, UpdateTime: now,
+			OrgID: uint64(sw.ID), CallID: uint64(callID), Type: int(levSWTyp), Valid: 1, CreateTime: now, UpdateTime: now, Revise: unactivate,
 		}}
 		for _, e := range sw.CustomerException {
 			c.customerExceptions = append(c.customerExceptions, model.SimpleCredit{
-				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWCustomerSenTyp), CreateTime: now, UpdateTime: now})
+				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWCustomerSenTyp), CreateTime: now, UpdateTime: now, Revise: unactivate})
 		}
 		for _, e := range sw.StaffException {
 			c.staffExceptions = append(c.staffExceptions, model.SimpleCredit{
-				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWStaffSenTyp), CreateTime: now, UpdateTime: now})
+				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWStaffSenTyp), CreateTime: now, UpdateTime: now, Revise: unactivate})
 		}
 		resp = append(resp, c)
 		swCredits[sw.ID] = c
