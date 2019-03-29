@@ -935,7 +935,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 					credit.ID = userVal.ID
 					credit.InputName = userVal.UserKey.InputName
 					credit.Name = userVal.UserKey.Name
-					credit.Type = userVal.Type
+					credit.Type = model.UserKeyTypArray
 					swCredit.SettingAndException.Exceptions.CustomCol = append(swCredit.SettingAndException.Exceptions.CustomCol, credit)
 				}
 
