@@ -141,7 +141,7 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	score := BaseScore
-	rootID, err := StoreRootCallCredit(uint64(c.ID))
+	rootID, err := StoreRootCallCredit(tx, uint64(c.ID))
 	if err != nil {
 		return fmt.Errorf("create root call %d credit failed, %s", rootID, err)
 	}
@@ -193,39 +193,34 @@ func ASRWorkFlow(output []byte) error {
 				credits[idx].Score += r.Score //Add the silence/interposal/speed score to rule group
 			}
 		}
-		err = StoreMachineCredit(uint64(c.ID), uint64(rootID), machineCredits)
+		err = StoreMachineCredit(tx, uint64(c.ID), uint64(rootID), machineCredits)
 		if err != nil {
 			return fmt.Errorf("store machine credits failed. %s", err)
 		}
 	}
 
-	//TODO: when sensitive finished,
-	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
-
 	swCredits, err := SensitiveWordsVerificationWithPacked(resp.CallID, segWithSp, c.EnterpriseID)
 	if err != nil {
 		return err
 	}
-	logger.Trace.Printf("Before sensitive score: %d\n", score)
+
 	for _, sc := range swCredits {
 		score += sc.sensitiveWord.Score
-		logger.Trace.Printf("sensitive score: %d, current total:%d\n", sc.sensitiveWord.Score, score)
 	}
-	err = StoreSensitiveCredit(swCredits, rootID)
+	err = StoreSensitiveCredit(tx, swCredits, rootID)
 	if err != nil {
 		logger.Error.Printf("store sensitive credit failed. %s\n", err)
 		return err
 	}
 
+	_, err = UpdateCredit(tx, rootID, &model.UpdateCreditSet{Score: score})
+	if err != nil {
+		return fmt.Errorf("update the credit failed. %s", err)
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
-	}
-	logger.Trace.Printf("before last update score:%d\n", score)
-	//TODO: check whether sensitive score is right
-	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
-	if err != nil {
-		return fmt.Errorf("update the credit failed. %s", err)
 	}
 
 	isDone = true

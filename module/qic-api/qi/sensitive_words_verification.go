@@ -66,17 +66,10 @@ func insertCreditsWthParentIDAndChildCredits(tx model.SqlLike, credits []model.S
 }
 
 //StoreSensitiveCredit stores the sensitive credits
-func StoreSensitiveCredit(credits []*SensitiveWordCredit, root int64) error {
-	if dbLike == nil {
+func StoreSensitiveCredit(conn model.SqlLike, credits []*SensitiveWordCredit, root int64) error {
+	if conn == nil {
 		return ErrNilCon
 	}
-
-	tx, err := dbLike.Begin()
-	if err != nil {
-		logger.Error.Printf("get transaction failed. %s\n", err)
-		return err
-	}
-	defer tx.Rollback()
 
 	for _, c := range credits {
 
@@ -85,38 +78,37 @@ func StoreSensitiveCredit(credits []*SensitiveWordCredit, root int64) error {
 		}
 
 		c.sensitiveWord.ParentID = uint64(root)
-		lastID, err := creditDao.InsertCredit(tx, &c.sensitiveWord)
+		lastID, err := creditDao.InsertCredit(conn, &c.sensitiveWord)
 		if err != nil {
 			logger.Error.Printf("insert credit %v failed. %s\n", c.sensitiveWord, err)
 			return err
 		}
 
-		err = insertCreditsWthParentIDAndChildCredits(tx, c.customerExceptions, lastID, c.customerMatchedExceptionSegs)
+		err = insertCreditsWthParentIDAndChildCredits(conn, c.customerExceptions, lastID, c.customerMatchedExceptionSegs)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.customerExceptions, err)
 			return err
 		}
 
-		err = insertCreditsWthParentIDAndChildCredits(tx, c.staffExceptions, lastID, c.staffMatchedExceptionSegs)
+		err = insertCreditsWthParentIDAndChildCredits(conn, c.staffExceptions, lastID, c.staffMatchedExceptionSegs)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.staffExceptions, err)
 			return err
 		}
 
-		err = insertCreditsWithParentID(tx, c.invalidSegments, lastID)
+		err = insertCreditsWithParentID(conn, c.invalidSegments, lastID)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.invalidSegments, err)
 			return err
 		}
 
-		err = insertCreditsWithParentID(tx, c.usrVals, lastID)
+		err = insertCreditsWithParentID(conn, c.usrVals, lastID)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.usrVals, err)
 			return err
 		}
 	}
-	return tx.Commit()
-
+	return nil
 }
 
 //SensitiveWordsVerificationWithPacked packages the sensitive words result into the structure
