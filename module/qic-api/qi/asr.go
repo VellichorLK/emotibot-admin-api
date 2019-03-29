@@ -206,8 +206,10 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return err
 	}
+	logger.Trace.Printf("Before sensitive score: %d\n", score)
 	for _, sc := range swCredits {
 		score += sc.sensitiveWord.Score
+		logger.Trace.Printf("sensitive score: %d, current total:%d\n", sc.sensitiveWord.Score, score)
 	}
 	err = StoreSensitiveCredit(swCredits, rootID)
 	if err != nil {
@@ -219,6 +221,7 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
+	logger.Trace.Printf("before last update score:%d\n", score)
 	//TODO: check whether sensitive score is right
 	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
 	if err != nil {
