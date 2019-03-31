@@ -147,8 +147,12 @@ func stringToWildCard(inputs ...string) []interface{} {
 	return outputs
 }
 
-// EscapeLike escape the like query with possible dirty input.
-// If query contains '%', then it must be escaped
+// EscapeLike is a helper func for sanitize the special char for LIKE condition of SQL query.
+// It is advised to be used if the query is from uncontrollable user input.
+// the list of escape rules:
+// 	'\' => '\\'
+//  '%' => '\%'
+//	'_' => '\_'
 func EscapeLike(query string) string {
 	query = strings.Replace(query, "\\", "\\\\", -1)
 	query = strings.Replace(query, "%", "\\%", -1)
