@@ -98,9 +98,11 @@ func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 // Ext(分機號碼) is the receiver(staff) extension number.
 type Call struct {
 	ID                 int64
+	Status             int8
 	UUID               string
 	FileName           *string
 	FilePath           *string
+	DemoFilePath       *string
 	Description        *string
 	DurationMillSecond int
 	UploadUnixTime     int64
@@ -109,7 +111,6 @@ type Call struct {
 	StaffName          string
 	Ext                string
 	Department         string
-	IsDeal             int8
 	CustomerID         string
 	CustomerName       string
 	CustomerPhone      string
@@ -122,8 +123,7 @@ type Call struct {
 	Type               int8
 	LeftChanRole       int8
 	RightChanRole      int8
-	Status             int8
-	DemoFilePath       *string
+	IsDeal             int8
 }
 
 // the type of the call is created, different type indicate different incoming source of call.

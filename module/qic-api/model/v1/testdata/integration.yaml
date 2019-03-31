@@ -16,7 +16,7 @@ services:
       timeout: 1s
       retries: 10
   init-db:
-    image: harbor.emotibot.com/emotivoice/init-db:2019032011-986377ee-emotivoice
+    image: harbor.emotibot.com/emotivoice/init-db:2019032715-4922a502-emotivoice
     container_name: init-db
     environment:
       - INIT_MYSQL_INIT=true
