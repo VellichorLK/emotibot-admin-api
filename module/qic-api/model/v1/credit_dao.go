@@ -136,6 +136,7 @@ func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err 
 		fldCreateTime,
 		fldUpdateTime,
 		fldWhos,
+		fldDescription,
 	}
 
 	var params []interface{}
@@ -144,7 +145,7 @@ func (c *CreditSQLDao) InsertCredits(conn SqlLike, credits []SimpleCredit) (err 
 	for _, credit := range credits {
 		params = append(params, credit.CallID, credit.Type, credit.ParentID,
 			credit.OrgID, credit.Valid, credit.Revise, credit.Score, credit.CreateTime,
-			credit.CreateTime, credit.Whos)
+			credit.CreateTime, credit.Whos, credit.Comment)
 		paramStr = fmt.Sprintf("%s %s", paramStr, paramStrTemplate)
 	}
 	paramStr = paramStr[:len(paramStr)-1]
@@ -243,6 +244,7 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCre
 		fldCreateTime,
 		fldUpdateTime,
 		fldWhos,
+		fldDescription,
 	}
 	for i, v := range flds {
 		flds[i] = "`" + v + "`"
@@ -267,7 +269,7 @@ func (c *CreditSQLDao) GetCallCredit(conn SqlLike, q *CreditQuery) ([]*SimpleCre
 	resp := make([]*SimpleCredit, 0, 10)
 	for rows.Next() {
 		var s SimpleCredit
-		err = rows.Scan(&s.ID, &s.CallID, &s.Type, &s.ParentID, &s.OrgID, &s.Valid, &s.Revise, &s.Score, &s.CreateTime, &s.UpdateTime, &s.Whos)
+		err = rows.Scan(&s.ID, &s.CallID, &s.Type, &s.ParentID, &s.OrgID, &s.Valid, &s.Revise, &s.Score, &s.CreateTime, &s.UpdateTime, &s.Whos, &s.Comment)
 		if err != nil {
 			logger.Error.Printf("Scan failed. %s\n", err)
 			return nil, err
