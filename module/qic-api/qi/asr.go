@@ -111,11 +111,13 @@ func ASRWorkFlow(output []byte) error {
 		}
 	}
 
+	// Channel silence & interposal does not have role concept,
+	// but we still put it into speaker for a unify access.
 	var channelRoles = map[int8]int{
-		SilenceSpeaker:    SilenceSpeaker,
-		InterposalSpeaker: InterposalSpeaker,
-		1:                 int(c.LeftChanRole),
-		2:                 int(c.RightChanRole),
+		model.ChanSilence:    SilenceSpeaker,
+		model.ChanInterposal: InterposalSpeaker,
+		model.ChanLeft:       int(c.LeftChanRole),
+		model.ChanRight:      int(c.RightChanRole),
 	}
 
 	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
