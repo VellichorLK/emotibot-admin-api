@@ -382,7 +382,7 @@ func UpdateCall(call *model.Call) error {
 func ConfirmCall(call *model.Call) error {
 	type VAD struct {
 		SegmentID int64   `json:"segment_id"`
-		Speaker   int8    `json:"speaker"`
+		Channel   int8    `json:"channel"`
 		StartTime float64 `json:"start_time"`
 		EndTime   float64 `json:"end_time"`
 		ASRText   string  `json:"asr_text"`
@@ -424,18 +424,20 @@ func ConfirmCall(call *model.Call) error {
 		vadList := []*VAD{}
 
 		// Get call's segments to create VAD list of the call
-		segments, err := getSegments(*call)
+		segments, err := segmentDao.Segments(nil, model.SegmentQuery{
+			CallID: []int64{call.ID},
+		})
 		if err != nil {
 			return err
 		}
 
 		for _, segment := range segments {
 			vad := VAD{
-				SegmentID: segment.SegmentID,
-				Speaker:   callRoleTyp(segment.Speaker),
+				SegmentID: segment.ID,
+				Channel:   segment.Channel,
 				StartTime: segment.StartTime,
 				EndTime:   segment.EndTime,
-				ASRText:   segment.ASRText,
+				ASRText:   segment.Text,
 			}
 
 			vadList = append(vadList, &vad)
