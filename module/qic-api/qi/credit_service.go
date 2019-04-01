@@ -486,7 +486,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			rgIDs = append(rgIDs, v.OrgID)
 		case levRuleTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &RuleCredit{ID: v.OrgID, Score: v.Score, Valid: validMap[v.Valid]}
+				credit := &RuleCredit{ID: v.OrgID, Score: v.Score, Valid: validMap[v.Valid], CreditID: int64(v.ID), Revise: v.Revise, Comment: v.Comment}
 				rCreditsMap[v.ID] = credit
 				if set, ok := rSetIDMap[v.OrgID]; ok {
 					credit.Setting = set
@@ -576,7 +576,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levSilenceTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}}
+				credit := &SilenceRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}, CreditID: int64(v.ID), Revise: v.Revise, Comment: v.Comment}
 				credit.Exception.After.Staff = make([]*SentenceWithPrediction, 0)
 				credit.Exception.Before.Customer = make([]*SentenceWithPrediction, 0)
 				credit.Exception.Before.Staff = make([]*SentenceWithPrediction, 0)
@@ -588,7 +588,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levSpeedTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &SpeedRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score}
+				credit := &SpeedRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, CreditID: int64(v.ID), Revise: v.Revise, Comment: v.Comment}
 				credit.Exception.Under.Customer = make([]*SentenceWithPrediction, 0)
 				credit.Exception.Over.Customer = make([]*SentenceWithPrediction, 0)
 
@@ -599,7 +599,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levInterposalTyp:
 			if parentCredit, ok := rgCreditsMap[v.ParentID]; ok {
-				credit := &InterposalRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}}
+				credit := &InterposalRuleCredit{ID: int64(v.OrgID), Valid: validMap[v.Valid], Score: v.Score, InvalidSegs: []SegmentTimeRange{}, CreditID: int64(v.ID), Revise: v.Revise, Comment: v.Comment}
 				parentCredit.InterposalRule = append(parentCredit.InterposalRule, credit)
 				interposalIDs = append(interposalIDs, int64(v.OrgID))
 				rInterposalCreditMap[v.ID] = credit
@@ -665,7 +665,7 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 			}
 		case levSWTyp:
 			if history, ok := rootParentIDMap[v.ParentID]; ok {
-				credit := &SWRuleCredit{Valid: validMap[v.Valid], Score: v.Score}
+				credit := &SWRuleCredit{Valid: validMap[v.Valid], Score: v.Score, CreditID: int64(v.ID), Revise: v.Revise, Comment: v.Comment}
 				credit.InvalidSegs = make([]int64, 0)
 				credit.SettingAndException.Exceptions.CustomCol = make([]*sensitive.CustomValues, 0)
 				credit.SettingAndException.Exceptions.Customer = make([]*SentenceWithPrediction, 0)

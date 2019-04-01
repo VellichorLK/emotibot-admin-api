@@ -66,6 +66,7 @@ type SimpleCredit struct {
 	CreateTime int64
 	UpdateTime int64
 	Whos       int
+	Comment    string
 }
 
 //SegmentMatch is the structure used to insert the matched segment
