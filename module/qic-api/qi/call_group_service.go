@@ -654,6 +654,7 @@ func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree,
 		return nil, err
 	}
 
+	// rule groups
 	for rgID, rgCredit := range creditTree.RuleGroupMap {
 		rgScore := int(0)
 		credit := rgCredit.Credit
@@ -674,7 +675,9 @@ func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree,
 			return nil, err
 		}
 
+		// rules
 		for rID, rules := range rgCredit.Rules {
+			rCredit := rgCredit.RuleMap[rID]
 			convRule := ruleMap[rID]
 			var valid int
 			var callID uint64
@@ -705,7 +708,7 @@ func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree,
 				score = convRule.Score
 			}
 			rgScore += score
-			credit = rgCredit.RuleMap[rID].Credit
+			credit = rCredit.Credit
 			creditCG = &model.CreditCallGroup{
 				CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentRG), OrgID: credit.OrgID, Valid: valid,
 				Revise: -1, Score: score, CreateTime: createTime, UpdateTime: createTime, CallID: callID,
@@ -715,10 +718,87 @@ func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree,
 				CFlowMap: make(map[uint64]*convFlowCreditCG),
 			}
 			rgCreditCG.RuleMap[rID] = rCreditCG
-			_, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+			parentR, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
 			if err != nil {
 				logger.Error.Printf("create rule credit %+v failed. %s\n", creditCG, err)
 				return nil, err
+			}
+
+			// conversation flows
+			for cfID, cfCredit := range rCredit.CFlowMap {
+				credit := cfCredit.Credit
+				creditCG = &model.CreditCallGroup{
+					CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentR), OrgID: credit.OrgID, Valid: credit.Valid,
+					Revise: credit.Revise, Score: credit.Score, CreateTime: createTime, UpdateTime: createTime, CallID: 0,
+				}
+				cfCreditCG := &convFlowCreditCG{
+					Credit:      creditCG,
+					SenGroupMap: make(map[uint64]*senGroupCreditCG),
+				}
+				rCreditCG.CFlowMap[cfID] = cfCreditCG
+
+				parentCF, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+				if err != nil {
+					logger.Error.Printf("create conversation flow %+v failed. %s\n", creditCG, err)
+					return nil, err
+				}
+
+				// sentence group
+				for senGrpID, senGrpCredit := range cfCredit.SenGroupMap {
+					credit := senGrpCredit.Credit
+					creditCG = &model.CreditCallGroup{
+						CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentCF), OrgID: credit.OrgID, Valid: credit.Valid,
+						Revise: credit.Revise, Score: credit.Score, CreateTime: createTime, UpdateTime: createTime, CallID: 0,
+					}
+					senGrpCreditCG := &senGroupCreditCG{
+						Credit: creditCG,
+						SenMap: make(map[uint64]*senCreditCG),
+					}
+					cfCreditCG.SenGroupMap[senGrpID] = senGrpCreditCG
+
+					parentSenGrp, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+					if err != nil {
+						logger.Error.Printf("create sentence group %+v failed. %s\n", creditCG, err)
+						return nil, err
+					}
+
+					for senID, senCredit := range senGrpCredit.SenMap {
+						credit := senCredit.Credit
+						creditCG = &model.CreditCallGroup{
+							CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentSenGrp), OrgID: credit.OrgID, Valid: credit.Valid,
+							Revise: credit.Revise, Score: credit.Score, CreateTime: createTime, UpdateTime: createTime, CallID: 0,
+						}
+						sentCreditCG := &senCreditCG{
+							Credit: creditCG,
+							SegMap: make(map[uint64]*segCreditCG),
+						}
+						senGrpCreditCG.SenMap[senID] = sentCreditCG
+
+						parentSen, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+						if err != nil {
+							logger.Error.Printf("create sentence %+v failed. %s\n", creditCG, err)
+							return nil, err
+						}
+
+						for segID, segCredit := range senCredit.SegMap {
+							credit := segCredit.Credit
+							creditCG = &model.CreditCallGroup{
+								CallGroupID: callGroupID, Type: credit.Type, ParentID: uint64(parentSen), OrgID: credit.OrgID, Valid: credit.Valid,
+								Revise: credit.Revise, Score: credit.Score, CreateTime: createTime, UpdateTime: createTime, CallID: credit.CallID,
+							}
+							segmCreditCG := &segCreditCG{
+								Credit: creditCG,
+							}
+							sentCreditCG.SegMap[segID] = segmCreditCG
+
+							_, err := creditCallGroupDao.CreateCreditCallGroup(tx, creditCG)
+							if err != nil {
+								logger.Error.Printf("create segment %+v failed. %s\n", creditCG, err)
+								return nil, err
+							}
+						}
+					}
+				}
 			}
 		}
 		rgCreditCG.Credit.Score = rgScore
