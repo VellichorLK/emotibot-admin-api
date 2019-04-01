@@ -18,7 +18,9 @@ type CreditDao interface {
 }
 
 type UpdateCreditSet struct {
-	Score *int
+	Score   *int
+	Revise  *int
+	Comment *string
 }
 
 //SegmentPredictQuery is the condition used to query the SegmentPredict
@@ -177,6 +179,8 @@ func (c *CreditSQLDao) Update(conn SqlLike, q *GeneralQuery, d *UpdateCreditSet)
 	}
 	flds := []string{
 		fldScore,
+		fldRevise,
+		fldDescription,
 	}
 	table := tblPredictResult
 	return updateSQL(conn, q, d, table, flds)
