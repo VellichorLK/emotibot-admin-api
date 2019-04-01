@@ -47,7 +47,7 @@ var (
 	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
 	setGroupBasic   func(delegatee model.SqlLike, group *model.Group) error
 	tags            func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
-	segments        = segmentDao.Segments
+	segments        func(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error)
 )
 
 func init() {
