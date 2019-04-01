@@ -425,6 +425,7 @@ func (*CallGroupSQLDao) GetCallIDsToGroup(conn SqlLike, query *CallsToGroupQuery
 // CallGroup defines the CallGroup model
 type CallGroup struct {
 	ID                   int64   `json:"call_group_id"`
+	UUID                 string  `json:"call_group_uuid"`
 	IsDelete             int     `json:"-"`
 	CallGroupConditionID int64   `json:"call_group_condition_id"`
 	Enterprise           string  `json:"-"`
@@ -438,6 +439,7 @@ type CallGroup struct {
 // CallGroupQuery defines the query parameters to get CallGroup list
 type CallGroupQuery struct {
 	IDs        *[]int64
+	UUIDs      *[]string
 	Enterprise *string
 	IsDelete   *int
 	CallIDs    *[]int64
@@ -452,6 +454,13 @@ func (q *CallGroupQuery) whereSQL() (condition string, bindData []interface{}, e
 		conds = append(conds, cond)
 		for _, id := range *q.IDs {
 			bindData = append(bindData, id)
+		}
+	}
+	if q.UUIDs != nil {
+		cond := fmt.Sprintf("cg.%s IN %s", fldUUID, "(?"+strings.Repeat(",?", len(*q.UUIDs)-1)+")")
+		conds = append(conds, cond)
+		for _, uuid := range *q.UUIDs {
+			bindData = append(bindData, uuid)
 		}
 	}
 	if q.Enterprise != nil {
