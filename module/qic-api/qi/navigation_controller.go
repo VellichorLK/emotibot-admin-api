@@ -583,6 +583,19 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "empty sentence"), http.StatusBadRequest)
 		return
 	}
+	/*
+		calls, err := Calls(dbLike.Conn(), model.CallQuery{UUID: []string{uuid}, EnterpriseID: &enterprise})
+		if err != nil {
+			logger.Error.Printf("get call failed. %s %s. %s\n", enterprise, uuid, err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		if len(calls) == 0 {
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, "no such id"), http.StatusBadRequest)
+			return
+		}
+		call := &calls[0]
+	*/
 
 	cacheKey := uuid + enterprise
 	val, ok := navCallCache.GetCache(cacheKey)
@@ -672,6 +685,8 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 
 	resp := &NavMatchedResponse{NavResult: matchedInfo, Sensitive: make([]string, 0)}
 
+	//pre-check the sensitive word
+	sws := make([]string, 0)
 	for i := 0; i < len(requestBody); i++ {
 		words, err := sensitive.IsSensitive(requestBody[i].Text)
 		if err != nil {
@@ -679,7 +694,45 @@ func handleStreaming(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 			return
 		}
-		resp.Sensitive = append(resp.Sensitive, words...)
+		if len(words) > 0 {
+			sws = append(sws, words...)
+		}
+	}
+
+	//sensitive words happened, check the exception
+	if len(sws) > 0 {
+
+		//query the previous segments to check exception, which makes the system slow
+		allSegs, err := segmentDao.Segments(dbLike.Conn(), model.SegmentQuery{CallID: []int64{call.ID}, Channel: []int8{1, 2}})
+		if err != nil {
+			logger.Error.Printf("get segements failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+		segWithSp = make([]*SegmentWithSpeaker, 0)
+		for _, s := range allSegs {
+			ws := &SegmentWithSpeaker{
+				RealSegment: s,
+				Speaker:     channelRoles[s.Channel],
+			}
+			segWithSp = append(segWithSp, ws)
+		}
+
+		credits, err := SensitiveWordsVerificationWithPacked(call.ID, segWithSp, enterprise)
+		if err != nil {
+			logger.Error.Printf("get sensitive words failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+			return
+		}
+
+		//here simply find the invalid sensitive word then break
+		//which is not accuracy
+		for _, v := range credits {
+			if v.sensitiveWord.Valid == 0 {
+				resp.Sensitive = sws
+				break
+			}
+		}
 	}
 
 	err = util.WriteJSON(w, resp)

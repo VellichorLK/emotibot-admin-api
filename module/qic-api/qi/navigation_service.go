@@ -377,6 +377,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	}
 	defer tx.Rollback()
 
+	//Notice!! default sets the left channel as staff, and right channel as customer
 	reqCall := &NewCallReq{FileName: body.FileName, Enterprise: enterprise, Type: model.CallTypeRealTime, CallTime: body.CreateTime,
 		UploadUser: user, LeftChannel: CallStaffRoleName, RightChannel: CallCustomerRoleName}
 	call, err := NewCall(reqCall)
