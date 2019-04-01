@@ -218,7 +218,7 @@ func ASRWorkFlow(output []byte) error {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
 
-	_, err = UpdateCredit(dbLike.Conn(), rootID, &model.UpdateCreditSet{Score: score})
+	_, err = UpdateCredit(dbLike.Conn(), rootID, &model.UpdateCreditSet{Score: &score})
 	if err != nil {
 		logger.Error.Printf("update the score of call %d failed. %s\n", rootID, err)
 		return fmt.Errorf("update the credit failed. %s", err)

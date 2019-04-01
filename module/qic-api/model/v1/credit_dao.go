@@ -18,7 +18,7 @@ type CreditDao interface {
 }
 
 type UpdateCreditSet struct {
-	Score int
+	Score *int
 }
 
 //SegmentPredictQuery is the condition used to query the SegmentPredict
