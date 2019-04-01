@@ -150,6 +150,14 @@ const (
 	CallStatusFailed = 9
 )
 
+// Realtime call source type
+// - 0: Remote .wav file
+// - 1: text
+const (
+	CallSourceRemoteWav int8 = iota
+	CallSourceText
+)
+
 func ValidCallStatus(status int8) bool {
 	switch status {
 	case CallStatusWaiting:
