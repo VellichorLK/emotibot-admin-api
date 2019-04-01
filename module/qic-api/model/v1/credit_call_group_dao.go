@@ -10,6 +10,7 @@ import (
 // CreditCallGroupDao defines the dao interface of grouped prediction result (CUPredictResultGroup)
 type CreditCallGroupDao interface {
 	CreateCreditCallGroup(conn SqlLike, model *CreditCallGroup) (int64, error)
+	GetCreditCallGroups(conn SqlLike, query *CreditCallGroupQuery) ([]*CreditCallGroup, error)
 	UpdateCreditCallGroup(conn SqlLike, query *GeneralQuery, data *CreditCallGroupUpdateSet) (int64, error)
 }
 
@@ -66,6 +67,55 @@ func (*CreditCallGroupSQLDao) CreateCreditCallGroup(conn SqlLike, model *CreditC
 		return 0, ErrAutoIDDisabled
 	}
 	return id, nil
+}
+
+//CreditCallGroupQuery defines the query condition to get CUPredictReusltGroup
+type CreditCallGroupQuery struct {
+	CallGroupIDs []uint64
+	Type         []int
+}
+
+func (c *CreditCallGroupQuery) whereSQL() (condition string, bindData []interface{}, err error) {
+	flds := []string{
+		fldCallGroupID,
+		fldType,
+	}
+	return makeAndCondition(c, flds)
+}
+
+//GetCreditCallGroups return the queried CreditCallGroup list
+func (c *CreditCallGroupSQLDao) GetCreditCallGroups(conn SqlLike, query *CreditCallGroupQuery) ([]*CreditCallGroup, error) {
+	if conn == nil {
+		return nil, ErroNoConn
+	}
+	whereSQL, params, err := query.whereSQL()
+	if err != nil {
+		return nil, ErrGenCondition
+	}
+	querySQL := fmt.Sprintf(
+		`SELECT * FROM %s %s`,
+		tblPredictResultGroup, whereSQL)
+	rows, err := conn.Query(querySQL, params...)
+	if err != nil {
+		logger.Error.Printf("query failed. %s %+v\n", querySQL, params)
+		return nil, err
+	}
+	defer rows.Close()
+
+	var creditCGs = []*CreditCallGroup{}
+	for rows.Next() {
+		var data CreditCallGroup
+		err = rows.Scan(
+			&data.ID, &data.CallGroupID, &data.Type, &data.ParentID, &data.OrgID,
+			&data.Valid, &data.Revise, &data.Score, &data.CreateTime, &data.UpdateTime,
+			&data.CallID)
+		if err != nil {
+			logger.Error.Printf("scan failed. %s\n", err)
+			return nil, err
+		}
+		creditCGs = append(creditCGs, &data)
+	}
+	return creditCGs, nil
 }
 
 // CreditCallGroupUpdateSet defines the json body of handleUpdateCallGroupCondition request

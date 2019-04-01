@@ -113,6 +113,7 @@ func init() {
 			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}/file", []string{}, callRequest(CallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "calls/grouped/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
@@ -176,7 +177,7 @@ func init() {
 
 			util.NewEntryPoint(http.MethodPost, "call-groups", []string{}, handleCreateCallGroupCondition),
 			util.NewEntryPoint(http.MethodGet, "call-groups", []string{}, handleGetCallGroupConditionList),
-			util.NewEntryPoint(http.MethodGet, "call-groups/group", []string{}, handleGroupCalls),
+			// util.NewEntryPoint(http.MethodGet, "call-groups/group", []string{}, handleGroupCalls),
 			util.NewEntryPoint(http.MethodGet, "call-groups/{id}", []string{}, handleGetCallGroupCondition),
 			util.NewEntryPoint(http.MethodPut, "call-groups/{id}", []string{}, handleUpdateCallGroupCondition),
 			util.NewEntryPoint(http.MethodDelete, "call-groups/{id}", []string{}, handleDeleteCallGroupCondition),

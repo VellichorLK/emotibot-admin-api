@@ -1,11 +1,13 @@
 package qi
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"time"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 )
 
 var (
@@ -246,8 +248,15 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 		return 0, nil, err
 	}
 
+	uid, err := uuid.NewV4()
+	if err != nil {
+		logger.Error.Printf("failed to new uuid. %s\n", err)
+		return 0, nil, err
+	}
+
 	// create a new call group
 	callGroup := model.CallGroup{
+		UUID:                 hex.EncodeToString(uid[:]),
 		IsDelete:             0,
 		CallGroupConditionID: cgCond.ID,
 		Enterprise:           enterpriseID,
@@ -817,5 +826,5 @@ func CreateCreditCallGroups(callGroupID uint64, creditTree *CallGroupCreditTree,
 		logger.Error.Printf("update call group credit %+v failed. %s\n", updateSet, err)
 		return nil, err
 	}
-	return creditCGTree, nil
+	return creditCGTree, tx.Commit()
 }
