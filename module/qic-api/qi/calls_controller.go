@@ -437,22 +437,19 @@ func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 	}
 	query.Paging = paging
 
-	// if content := values.Get("content"); content != "" {
-	// 	query.Content = &content
-	// }
 	if start := values.Get("start"); start != "" {
 		startTime, err := strconv.ParseInt(start, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("start is not a valid int, %v", err)
 		}
-		query.CallTimeStart = &startTime
+		query.CallTime.SetLowerBound(startTime)
 	}
 	if end := values.Get("end"); end != "" {
 		endTime, err := strconv.ParseInt(end, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("end is not a valid int, %v", err)
 		}
-		query.CallTimeEnd = &endTime
+		query.CallTime.SetUpperBound(endTime)
 	}
 	if statusGrp := values["status"]; len(statusGrp) > 0 {
 		query.Status = make([]int8, 0, len(statusGrp))
