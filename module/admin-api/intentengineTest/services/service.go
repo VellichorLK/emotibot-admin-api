@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/intentengineTest/dao"
 	"emotibot.com/emotigo/module/admin-api/intentengineTest/data"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -521,7 +523,7 @@ func predictSentences(version int64, appID string,
 			retryLeft--
 			sentenceErr = nil
 
-			payload["sentence"] = sentence.Sentence
+			payload["sentence"] = zhconverter.T2S(sentence.Sentence)
 			body, err := util.HTTPPostJSON(iePredictURL, payload, 30)
 			if err != nil {
 				sentenceErr = err
