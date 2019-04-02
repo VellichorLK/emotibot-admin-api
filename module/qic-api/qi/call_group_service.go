@@ -289,18 +289,23 @@ func groupCalls(enterpriseID string, callResp CallResp, cgCond *model.CGConditio
 
 // GroupedCallsResp defines the response structure of GetGroupedCalls
 type GroupedCallsResp struct {
-	Setting *CallResp   `json:"setting"`
-	IsGroup bool        `json:"is_group"`
-	Calls   []*CallResp `json:"calls"`
+	CallGroupID   int64       `json:"call_group_id"`
+	CallGroupUUID string      `json:"call_group_uuid"`
+	Setting       *CallResp   `json:"setting"`
+	IsGroup       bool        `json:"is_group"`
+	Calls         []*CallResp `json:"calls"`
 }
 
 // GetGroupedCalls return the list of Calls and CallGroups
 func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error) {
-	total, err := callCount(nil, *query)
-	if err != nil {
-		logger.Error.Printf("failed to count calls. %s\n", err)
-		return nil, 0, err
+	if dbLike == nil {
+		return nil, 0, ErrNilCon
 	}
+	// total, err := callCount(nil, *query)
+	// if err != nil {
+	// 	logger.Error.Printf("failed to count calls. %s\n", err)
+	// 	return nil, 0, err
+	// }
 	calls, err := calls(nil, *query)
 	if err != nil {
 		logger.Error.Printf("failed to get calls. %s\n", err)
@@ -365,9 +370,11 @@ func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error)
 			isGroup = true
 		}
 		resp := GroupedCallsResp{
-			Setting: callRespMap[callGroup.LastCallID],
-			IsGroup: isGroup,
-			Calls:   callResps,
+			CallGroupID:   callGroup.ID,
+			CallGroupUUID: callGroup.UUID,
+			Setting:       callRespMap[callGroup.LastCallID],
+			IsGroup:       isGroup,
+			Calls:         callResps,
 		}
 		respList = append(respList, &resp)
 	}
@@ -383,6 +390,7 @@ func GetGroupedCalls(query *model.CallQuery) ([]*GroupedCallsResp, int64, error)
 			respList = append(respList, &resp)
 		}
 	}
+	total := int64(len(respList))
 
 	// out, _ = json.Marshal(respList)
 	// logger.Trace.Printf("respList")
