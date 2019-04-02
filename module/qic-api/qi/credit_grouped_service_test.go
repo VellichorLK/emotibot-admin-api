@@ -1,6 +1,7 @@
 package qi
 
 import (
+	"encoding/json"
 	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
@@ -76,9 +77,9 @@ func TestRetrieveGroupedCredit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expecting no error, but get %s\n", err)
 	}
-	// out, _ := json.Marshal(historyCredits)
-	// t.Log("historyCredits")
-	// t.Log(string(out))
+	out, _ := json.Marshal(historyCredits)
+	t.Log("historyCredits")
+	t.Log(string(out))
 
 	if len(historyCredits) == 0 {
 		t.Fatalf("expect %d history, but get %d\n", 1, len(historyCredits))
