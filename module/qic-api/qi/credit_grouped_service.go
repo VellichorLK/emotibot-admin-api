@@ -26,17 +26,31 @@ func RetrieveGroupedCredit(callGroupUUID string) ([]*HistoryCredit, error) {
 	callGroupID := callGroupList[0].ID
 	callIDs := callGroupList[0].Calls
 
-	query := model.CreditCallGroupQuery{
-		CallGroupIDs: []uint64{uint64(callGroupID)},
-	}
-	creditCGs, err := creditCallGroupDao.GetCreditCallGroups(dbLike.Conn(), &query)
-	if err != nil {
-		return nil, err
-	}
-	credits, err := convertToSimpleCredit(creditCGs)
-	if err != nil {
-		logger.Error.Printf("convert to SimpleCredit failed\n")
-		return nil, err
+	isGroup := len(callIDs) > 1
+	credits := []*model.SimpleCredit{}
+	if isGroup {
+		query := model.CreditCallGroupQuery{
+			CallGroupIDs: []uint64{uint64(callGroupID)},
+		}
+		creditCGs, err := creditCallGroupDao.GetCreditCallGroups(dbLike.Conn(), &query)
+		if err != nil {
+			logger.Error.Printf("get grouped credit failed\n")
+			return nil, err
+		}
+		credits, err = convertToSimpleCredit(creditCGs)
+		if err != nil {
+			logger.Error.Printf("convert to SimpleCredit failed\n")
+			return nil, err
+		}
+	} else {
+		query := model.CreditQuery{
+			Calls: []uint64{uint64(callIDs[0])},
+		}
+		credits, err = creditDao.GetCallCredit(dbLike.Conn(), &query)
+		if err != nil {
+			logger.Error.Printf("get Credit failed\n")
+			return nil, err
+		}
 	}
 	return buildHistroyCreditTree(callIDs, credits)
 }

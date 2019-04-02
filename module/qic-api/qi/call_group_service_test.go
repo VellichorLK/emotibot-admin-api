@@ -35,17 +35,6 @@ type cgstMockCreditDao struct {
 }
 
 func (m *cgstMockCreditDao) GetCallCredit(conn model.SqlLike, q *model.CreditQuery) ([]*model.SimpleCredit, error) {
-	// callIDMap := make(map[uint64]bool)
-	// for _, callID := range q.Calls {
-	// 	callIDMap[callID] = true
-	// }
-	// creditList := []*model.SimpleCredit{}
-	// for _, v := range cgstCredits {
-	// 	if _, ok := callIDMap[v.CallID]; ok {
-	// 		creditList = append(creditList, v)
-	// 	}
-	// }
-	// return creditList, nil
 	return cgstTestCredits[testCase], nil
 }
 
@@ -216,5 +205,115 @@ func TestCreateCreditCallGroups(t *testing.T) {
 			}
 		}
 	}
+}
 
+var getGCTestCase = "case1"
+
+type GetGroupedCallsMockData struct {
+	Calls         []model.Call
+	CallGroupList []*model.CallGroup
+	CallRespList  []CallResp
+}
+
+var getGroupedCallsTestData = map[string]*GetGroupedCallsMockData{
+	"case1": &GetGroupedCallsMockData{
+		Calls: []model.Call{
+			model.Call{ID: 1, CallUnixTime: 0},
+			model.Call{ID: 2, CallUnixTime: 0},
+		},
+		CallGroupList: []*model.CallGroup{
+			&model.CallGroup{ID: 1, UUID: "1", LastCallID: 1, Calls: []int64{1}},
+			&model.CallGroup{ID: 2, UUID: "2", LastCallID: 4, Calls: []int64{2, 3, 4}},
+		},
+		CallRespList: []CallResp{
+			CallResp{CallID: 1, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			CallResp{CallID: 2, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			CallResp{CallID: 3, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			CallResp{CallID: 4, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+		},
+	},
+}
+
+// func getExpectedGroupedCalls(tCase string) []*GroupedCallsResp {
+var getGroupedCallsExpectedResult = map[string][]*GroupedCallsResp{
+	"case1": []*GroupedCallsResp{
+		&GroupedCallsResp{CallGroupID: 1, CallGroupUUID: "1", IsGroup: false,
+			Setting: &CallResp{CallID: 1, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			Calls: []*CallResp{
+				&CallResp{CallID: 1, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			}},
+		&GroupedCallsResp{CallGroupID: 1, CallGroupUUID: "2", IsGroup: true,
+			Setting: &CallResp{CallID: 4, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			Calls: []*CallResp{
+				&CallResp{CallID: 2, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+				&CallResp{CallID: 3, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+				&CallResp{CallID: 4, CallUUID: "72cb03687ab44009a1fdb77beb3be874", CallTime: 0, CallLength: 232.56, FileName: "fuckdean45.wav", Status: 2, UploadTime: 1553824445},
+			}},
+	},
+}
+
+type GetGroupedCallsMock struct {
+	// callCount          func(delegatee model.SqlLike, query model.CallQuery) (int64, error)
+	calls              func(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error)
+	callRespsWithTotal func(query model.CallQuery) (responses []CallResp, total int64, err error)
+}
+
+var mock = GetGroupedCallsMock{
+	// callCount: func(delegatee model.SqlLike, query model.CallQuery) (int64, error) {
+	// 	return xx, nil
+	// },
+	calls: func(delegatee model.SqlLike, query model.CallQuery) ([]model.Call, error) {
+		return getGroupedCallsTestData[getGCTestCase].Calls, nil
+	},
+	callRespsWithTotal: func(query model.CallQuery) (responses []CallResp, total int64, err error) {
+		return getGroupedCallsTestData[getGCTestCase].CallRespList, 0, nil
+	},
+}
+
+type cgstMockCallGroupSQLDao struct {
+	model.CallGroupSQLDao
+}
+
+func (*cgstMockCallGroupSQLDao) GetCallGroups(conn model.SqlLike, query *model.CallGroupQuery) ([]*model.CallGroup, error) {
+	return getGroupedCallsTestData[getGCTestCase].CallGroupList, nil
+}
+
+func TestGetGroupedCalls(t *testing.T) {
+	// dbLike = newTestDB(t)
+	dbLike = &test.MockDBLike{}
+	// callCount = mock.callCount
+	calls = mock.calls
+	callGroupDao = &cgstMockCallGroupSQLDao{}
+	callRespsWithTotal = mock.callRespsWithTotal
+
+	for tCase := range getGroupedCallsTestData {
+		getGCTestCase = tCase
+		expGroupedCalls := getGroupedCallsExpectedResult[tCase]
+		expTotal := int64(len(expGroupedCalls))
+
+		query := &model.CallQuery{}
+		groupedCalls, total, err := GetGroupedCalls(query)
+		if err != nil {
+			t.Fatalf("expecting no error, but get %s\n", err)
+		}
+		out, _ := json.Marshal(groupedCalls)
+		t.Log("groupedCalls")
+		t.Log(string(out))
+
+		if total != expTotal {
+			t.Fatalf("expect %d grouped calls, but get %d\n", expTotal, total)
+		}
+		if len(groupedCalls) != len(expGroupedCalls) {
+			t.Fatalf("expect grouped call list with length %d, but get %d\n", len(expGroupedCalls), len(groupedCalls))
+		}
+		for idx, groupCall := range groupedCalls {
+			expGroupCall := expGroupedCalls[idx]
+			if groupCall.IsGroup != expGroupCall.IsGroup {
+				t.Fatalf("expect IsGroup: %v for groupCall of idx: %d, but get IsGroup: %v\n", expGroupCall.IsGroup, idx, groupCall.IsGroup)
+			}
+			if len(groupCall.Calls) != len(expGroupCall.Calls) {
+				t.Fatalf("expect %d calls for groupCall of idx: %d, but get %d calls\n", len(expGroupCall.Calls), idx, len(groupCall.Calls))
+			}
+		}
+	}
 }

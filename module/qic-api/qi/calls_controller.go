@@ -70,14 +70,18 @@ func CallsGroupedHandler(w http.ResponseWriter, r *http.Request) {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
 		return
 	}
-	callsGrouped, total, err := GetGroupedCalls(query)
+	groupedCalls, total, err := GetGroupedCalls(query)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get grouped calls failed, %v", err))
+		return
+	}
 	resp := CallsGroupedResponse{
 		Paging: general.Paging{
 			Page:  query.Paging.Page,
 			Limit: query.Paging.Limit,
 			Total: total,
 		},
-		Data: callsGrouped,
+		Data: groupedCalls,
 	}
 	util.WriteJSON(w, resp)
 }
