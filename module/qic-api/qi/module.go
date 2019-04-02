@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 	"emotibot.com/emotigo/module/qic-api/util/redis"
+	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
 	"emotibot.com/emotigo/pkg/api/rabbitmq/v1"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -36,6 +37,13 @@ var (
 	dbLike               model.DBLike
 	volume               string
 	creditDao            model.CreditDao = &model.CreditSQLDao{}
+)
+
+var (
+	// emotionPredict is an api instance that will be used in our api.
+	emotionPredict func(request emotionengine.PredictRequest) (predictions []emotionengine.Predict, err error)
+	// filterScore is the emotion filter standard
+	filterScore = 60
 )
 
 var (
@@ -310,6 +318,29 @@ func init() {
 
 			},
 			"init nav cache": setUpNavCache,
+			"init emotion client": func() {
+				eeAddr, found := ModuleInfo.Environments["EMOTION_ENGINE_URL"]
+				if !found {
+					logger.Error.Println("Env EMOTION_ENGINE_URL is required!")
+					return
+				}
+				client := emotionengine.Client{
+					Transport: http.DefaultClient,
+					ServerURL: eeAddr,
+				}
+				emotionPredict = client.Predict
+
+				filterScoreText, found := ModuleInfo.Environments["EMOTION_FILTER_SCORE"]
+				if found {
+					score, err := strconv.Atoi(filterScoreText)
+					if err != nil {
+						logger.Error.Println("Variable EMOTION_FILTER_SCORE ", filterScoreText, " can not convert to int: ", err)
+					}
+					filterScore = score
+				} else {
+					logger.Warn.Println("Variable EMOTION_FILTER_SCORE is not found, use default value: ", filterScore)
+				}
+			},
 		},
 	}
 }

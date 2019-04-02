@@ -477,45 +477,65 @@ func handleFlowUpdate(w http.ResponseWriter, r *http.Request, call *model.Call) 
 		return
 	}
 
-	if req.RemoteFile == "" {
-		err = fmt.Errorf("Remote file path not specified for realtime QI flow, call UUID: %s",
-			call.UUID)
-		logger.Error.Println(err.Error())
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()),
-			http.StatusBadRequest)
-		return
-	}
+	switch req.CallSource {
+	case model.CallSourceText:
+		err = updateFlowQI(req, call)
+		if err != nil {
+			logger.Error.Printf("Update qi flow failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 
-	resp := RealtimeCallResp{
-		CallID:     call.ID,
-		CallUUID:   call.UUID,
-		RemoteFile: req.RemoteFile,
-	}
+		go func() {
+			err := updateCallTextEmotion(call)
+			if err != nil {
+				call.Status = model.CallStatusFailed
+				updateErr := UpdateCall(call)
+				if updateErr != nil {
+					logger.Error.Println("update call critical failed, ", updateErr)
+				}
+			}
+		}()
+	case model.CallSourceRemoteWav:
+		fallthrough
+	default:
+		if req.RemoteFile == "" {
+			err = fmt.Errorf("Remote file path not specified for realtime QI flow, call UUID: %s",
+				call.UUID)
+			logger.Error.Println(err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.REQUEST_ERROR, err.Error()),
+				http.StatusBadRequest)
+			return
+		}
 
-	p, err := json.Marshal(&resp)
-	if err != nil {
-		logger.Error.Printf("Marshal realtime call resp failed, error: %s",
-			err.Error())
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR,
-			err.Error()), http.StatusBadRequest)
-		return
-	}
+		resp := RealtimeCallResp{
+			CallID:     call.ID,
+			CallUUID:   call.UUID,
+			RemoteFile: req.RemoteFile,
+		}
 
-	call.RemoteFile = &resp.RemoteFile
+		p, err := json.Marshal(&resp)
+		if err != nil {
+			logger.Error.Printf("Marshal realtime call resp failed, error: %s",
+				err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR,
+				err.Error()), http.StatusBadRequest)
+			return
+		}
 
-	err = updateFlowQI(req, call)
-	if err != nil {
-		logger.Error.Printf("Update qi flow failed. %s\n", err)
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
-	}
+		err = updateFlowQI(req, call)
+		if err != nil {
+			logger.Error.Printf("Update qi flow failed. %s\n", err)
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
+		}
 
-	err = realtimeCallProducer.Produce(p)
-	if err != nil {
-		logger.Error.Printf("Cannot create realtime call download task: %s",
-			err.Error())
-		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()),
-			http.StatusInternalServerError)
-		return
+		err = realtimeCallProducer.Produce(p)
+		if err != nil {
+			logger.Error.Printf("Cannot create realtime call download task: %s",
+				err.Error())
+			util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.IO_ERROR, err.Error()),
+				http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

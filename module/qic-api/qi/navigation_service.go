@@ -10,12 +10,22 @@ import (
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
 )
 
 var (
 	navDao         model.NavigationDao  = &model.NavigationSQLDao{}
 	navOnTheFlyDao model.NavOnTheFlyDao = &model.NavOnTheFlySQLDao{}
 )
+
+var emotionTypes = map[string]int8{
+	"不满": model.ETypAngry,
+	"称赞": model.EtypPraise,
+	"难过": model.EtypSad,
+	"高兴": model.EtypJoyful,
+	"冷漠": model.EtypColdness,
+	"害怕": model.EtypAfraid,
+}
 
 //NewFlow creates the new flow and sets the empty node and intent
 func NewFlow(r *reqNewFlow, enterprise string) (int64, error) {
@@ -467,6 +477,76 @@ func updateFlowQI(c *NewCallReq, call *model.Call) error {
 
 	timestamp := time.Now().Unix()
 	return updateCallCustomInfo(tx, c, call, timestamp)
+}
+
+func updateCallTextEmotion(call *model.Call) error {
+	// Get call's segments to create VAD list of the call
+	segments, err := getSegments(*call)
+	if err != nil {
+		logger.Error.Printf("Cannot get segments of call %s, error: %s",
+			call.UUID, err.Error())
+		return err
+	}
+
+	results := []model.RealSegmentEmotion{}
+
+	for _, s := range segments {
+		req := emotionengine.PredictRequest{
+			AppID:    "demo",
+			Sentence: s.ASRText,
+		}
+
+		logger.Trace.Printf("Predict emotion: %s", s.ASRText)
+
+		predictions, err := emotionPredict(req)
+		if err != nil {
+			logger.Error.Printf("Emotion prediction failed: %s\n", err.Error())
+			return err
+		}
+
+		if len(predictions) == 0 {
+			logger.Trace.Printf("%s has no emotion", s.ASRText)
+			continue
+		}
+		prediction := predictions[0]
+
+		logger.Trace.Printf("Label: %s, Score: %d\n", prediction.Label, prediction.Score)
+		if prediction.Score < filterScore {
+			continue
+		}
+
+		emotionType, ok := emotionTypes[prediction.Label]
+		if !ok {
+			logger.Warn.Printf("Unsupported emotion: %s", prediction.Label)
+			continue
+		}
+
+		results = append(results, model.RealSegmentEmotion{
+			SegmentID: s.SegmentID,
+			Typ:       emotionType,
+			Score:     float64(prediction.Score),
+		})
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return fmt.Errorf("Can not begin a transaction")
+	}
+	defer tx.Rollback()
+
+	err = segmentDao.NewEmotions(tx, results)
+	if err != nil {
+		logger.Error.Printf("Emotion prediction failed: %s\n", err.Error())
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Error.Printf("Transaction commit failed. %s\n", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 type NavFlowSetting struct {
