@@ -131,6 +131,7 @@ func auditMultiChatModify(r *http.Request, origInfos []*ChatInfo, newInfos []*Ch
 
 func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 	httpStatus := http.StatusOK
 	var ret interface{}
 	var errno int
@@ -138,7 +139,7 @@ func handleGetRobotWords(w http.ResponseWriter, r *http.Request) {
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, ret), httpStatus)
 	}()
 
-	ret, errno, err := GetRobotWords(appid)
+	ret, errno, err := GetRobotWords(appid, locale)
 	if err != nil {
 		httpStatus, ret = ApiError.GetHttpStatus(errno), err.Error()
 	}
