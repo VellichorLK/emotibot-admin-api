@@ -215,6 +215,7 @@ func NewCall(c *NewCallReq) (*model.Call, error) {
 		LeftChanRole:   callRoleTyp(c.LeftChannel),
 		RightChanRole:  callRoleTyp(c.RightChannel),
 		Type:           c.Type,
+		RemoteFile:     &c.RemoteFile,
 	}
 
 	calls, err := callDao.NewCalls(tx, []model.Call{*call})

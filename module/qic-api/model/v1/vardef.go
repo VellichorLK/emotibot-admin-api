@@ -326,6 +326,7 @@ const (
 	fldCallStatus           = "status"
 	fldCallDemoFilePath     = "demo_file_path"
 	fldCallDeal             = "deal"
+	fldCallRemoteFile       = "remote_file"
 	fldWhos                 = "whos"
 )
 

@@ -460,6 +460,11 @@ func updateFlowQI(c *NewCallReq, call *model.Call) error {
 	}
 	defer tx.Rollback()
 
+	err = callDao.SetCall(tx, *call)
+	if err != nil {
+		return err
+	}
+
 	timestamp := time.Now().Unix()
 	return updateCallCustomInfo(tx, c, call, timestamp)
 }

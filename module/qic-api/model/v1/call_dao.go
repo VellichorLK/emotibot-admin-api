@@ -118,6 +118,7 @@ type Call struct {
 	LeftChanRole       int8
 	RightChanRole      int8
 	IsDeal             int8
+	RemoteFile         *string
 }
 
 // the type of the call is created, different type indicate different incoming source of call.
@@ -178,7 +179,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
 		fldCallLeftChan, fldCallRightChan, fldCallStatus,
-		fldCallDeal, fldCallDemoFilePath,
+		fldCallDeal, fldCallDemoFilePath, fldCallRemoteFile,
 	}
 	wheresql, data := query.whereSQL("")
 	limitsql := ""
@@ -204,6 +205,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			lSpeed      sql.NullFloat64
 			rSpeed      sql.NullFloat64
 			demoFp      sql.NullString
+			remoteFp    sql.NullString
 		)
 		err := rows.Scan(&c.ID, &c.UUID, &fileName,
 			&filePath, &description, &c.DurationMillSecond,
@@ -213,7 +215,7 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 			&c.UploadUser, &leftSTime, &rightSTime,
 			&lSpeed, &rSpeed, &c.Type,
 			&c.LeftChanRole, &c.RightChanRole, &c.Status,
-			&c.IsDeal, &demoFp,
+			&c.IsDeal, &demoFp, &remoteFp,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %v", err)
@@ -242,6 +244,9 @@ func (c *CallSQLDao) Calls(delegatee SqlLike, query CallQuery) ([]Call, error) {
 		if demoFp.Valid {
 			c.DemoFilePath = &demoFp.String
 		}
+		if remoteFp.Valid {
+			c.RemoteFile = &remoteFp.String
+		}
 
 		calls = append(calls, c)
 	}
@@ -264,7 +269,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 		fldCallCustomerName, fldCallCustomerPhone, fldCallEnterprise,
 		fldCallUploadedUser, fldCallLeftSilenceTime, fldCallRightSilenceTime,
 		fldCallLeftSpeed, fldCallRightSpeed, fldCallType,
-		fldCallLeftChan, fldCallRightChan, fldCallDeal,
+		fldCallLeftChan, fldCallRightChan, fldCallDeal, fldCallRemoteFile,
 	}
 
 	rawquery := "INSERT INTO `" + tblCall + "` (`" + strings.Join(insertCols, "`, `") + "`) VALUE(?" + strings.Repeat(",? ", len(insertCols)-1) + ")"
@@ -285,7 +290,7 @@ func (c *CallSQLDao) NewCalls(delegatee SqlLike, calls []Call) ([]Call, error) {
 			c.CustomerName, c.CustomerPhone, c.EnterpriseID,
 			c.UploadUser, c.LeftSilenceTime, c.RightSilenceTime,
 			c.LeftSpeed, c.RightSpeed, c.Type,
-			c.LeftChanRole, c.RightChanRole, c.IsDeal)
+			c.LeftChanRole, c.RightChanRole, c.IsDeal, c.RemoteFile)
 		if err != nil {
 			return nil, fmt.Errorf("create new call failed, %v", err)
 		}
@@ -383,7 +388,7 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 		fldCallUploadedUser, fldCallType, fldCallLeftChan,
 		fldCallRightChan, fldCallStatus, fldCallDemoFilePath,
 		fldCallDeal, fldCallLeftSilenceTime, fldCallRightSilenceTime,
-		fldCallLeftSpeed, fldCallRightSpeed,
+		fldCallLeftSpeed, fldCallRightSpeed, fldCallRemoteFile,
 	}
 
 	data := []interface{}{
@@ -395,7 +400,7 @@ func createCallUpdateSQL(c Call) (string, []interface{}) {
 		c.UploadUser, c.Type, c.LeftChanRole,
 		c.RightChanRole, c.Status, c.DemoFilePath,
 		c.IsDeal, c.LeftSilenceTime, c.RightSilenceTime,
-		c.LeftSpeed, c.RightSpeed,
+		c.LeftSpeed, c.RightSpeed, c.RemoteFile,
 	}
 
 	for _, colName := range updateCols {
