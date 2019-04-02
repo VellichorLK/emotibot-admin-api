@@ -567,8 +567,7 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 
 		if violated {
 			credit.Valid = 0
-			//notice,currently sensitive words score use the positive number as the violated score
-			credit.Score = -sw.Score
+			credit.Score = sw.Score
 		}
 		credits = append(credits, credit)
 	}
