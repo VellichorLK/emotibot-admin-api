@@ -107,6 +107,9 @@ type SilenceRuleCredit struct {
 	Name        string                 `json:"name"`
 	Valid       bool                   `json:"valid"`
 	Score       int                    `json:"score"`
+	CreditID    int64                  `json:"revise_id,string"`
+	Revise      int                    `json:"revise"`
+	Comment     string                 `json:"comment"`
 	Setting     model.SilenceRule      `json:"setting"`
 	Exception   SilenceExceptionCredit `json:"exception"`
 	InvalidSegs []SegmentTimeRange     `json:"invalid_segment"`
@@ -121,6 +124,9 @@ type SpeedRuleCredit struct {
 	ID        int64                `json:"id"`
 	Name      string               `json:"name"`
 	Valid     bool                 `json:"valid"`
+	CreditID  int64                `json:"revise_id,string"`
+	Revise    int                  `json:"revise"`
+	Comment   string               `json:"comment"`
 	Score     int                  `json:"score"`
 	Setting   model.SpeedRule      `json:"setting"`
 	Exception SpeedExceptionCredit `json:"exception"`
@@ -130,6 +136,9 @@ type InterposalRuleCredit struct {
 	ID          int64                `json:"id"`
 	Name        string               `json:"name"`
 	Valid       bool                 `json:"valid"`
+	CreditID    int64                `json:"revise_id,string"`
+	Revise      int                  `json:"revise"`
+	Comment     string               `json:"comment"`
 	Score       int                  `json:"score"`
 	Setting     model.InterposalRule `json:"setting"`
 	InvalidSegs []SegmentTimeRange   `json:"invalid_segment"`
@@ -152,11 +161,14 @@ type RuleGrpCredit struct {
 
 //RuleCredit stores the rule level result
 type RuleCredit struct {
-	ID      uint64                    `json:"id"`
-	Valid   bool                      `json:"valid"`
-	Score   int                       `json:"score"`
-	CFs     []*ConversationFlowCredit `json:"conversation_flow"`
-	Setting *ConversationRuleInRes    `json:"setting"`
+	ID       uint64                    `json:"id"`
+	Valid    bool                      `json:"valid"`
+	Score    int                       `json:"score"`
+	CreditID int64                     `json:"revise_id,string"`
+	Revise   int                       `json:"revise"`
+	Comment  string                    `json:"comment"`
+	CFs      []*ConversationFlowCredit `json:"conversation_flow"`
+	Setting  *ConversationRuleInRes    `json:"setting"`
 }
 
 //ConversationFlowCredit stores the conversation flow level result
@@ -227,6 +239,9 @@ type SWSettingException struct {
 type SWRuleCredit struct {
 	Valid               bool               `json:"valid"`
 	Score               int                `json:"score"`
+	CreditID            int64              `json:"revise_id,string"`
+	Revise              int                `json:"revise"`
+	Comment             string             `json:"comment"`
 	InvalidSegs         []int64            `json:"invalid_segment"`
 	CustomMatched       bool               `json:"customcol_matched"`
 	SettingAndException SWSettingException `json:"setting"`
