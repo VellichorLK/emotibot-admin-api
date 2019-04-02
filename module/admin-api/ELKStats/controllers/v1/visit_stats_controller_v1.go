@@ -17,6 +17,7 @@ import (
 	servicesV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 // Top questions
@@ -382,7 +383,7 @@ func fetchVisitStats(query dataV1.VisitStatsQuery) (map[string]map[string]interf
 		visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
 	conversationsPerSessions := servicesV1.
 		CoversationsPerSessionCounts(visitStatsCounts[dataCommon.VisitStatsMetricConversations],
-			visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
+		visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
 
 	visitStatsCounts[dataCommon.VisitStatsMetricSuccessRate] = successRates
 	visitStatsCounts[dataCommon.VisitStatsMetricConversationsPerSession] = conversationsPerSessions
@@ -500,13 +501,14 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 
 func createAnswerCategoryStatsResponse(
 	statCounts map[string]interface{}, locale string) (*dataV1.AnswerCategoryStatsResponse, error) {
-	businessStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryBusiness, "业务类")
+
+	businessStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryBusiness, localemsg.Get(locale,"BizCate"))
 	businessStatData.Q.TotalAsks = statCounts[dataCommon.CategoryBusiness].(int64)
 
-	chatStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryChat, "聊天类")
+	chatStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryChat, localemsg.Get(locale,"ChatCate"))
 	chatStatData.Q.TotalAsks = statCounts[dataCommon.CategoryChat].(int64)
 
-	otherStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryOther, "其他")
+	otherStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryOther, localemsg.Get(locale,"OtherCate"))
 	otherStatData.Q.TotalAsks = statCounts[dataCommon.CategoryOther].(int64)
 
 	answerCategoryStatsData := []dataV1.AnswerCategoryStatData{
@@ -673,7 +675,7 @@ func createVisitStatsQ(
 	if totalVisitStatsQ.TotalAsks != 0 {
 		totalVisitStatsQ.SuccessRate = strconv.
 			FormatFloat((float64(totalVisitStatsQ.TotalAsks-totalVisitStatsQ.UnknownQnA) /
-				float64(totalVisitStatsQ.TotalAsks)), 'f', 2, 64)
+			float64(totalVisitStatsQ.TotalAsks)), 'f', 2, 64)
 	} else {
 		totalVisitStatsQ.SuccessRate = "N/A"
 	}
