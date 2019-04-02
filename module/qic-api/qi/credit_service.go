@@ -16,9 +16,7 @@ import (
 type levelType int
 
 var (
-	levCallType      levelType = 0
-	levCallGroupType levelType = 0
-
+	levCallType   levelType = 0
 	levRuleGrpTyp levelType = 1
 	levRuleTyp    levelType = 10
 	levCFTyp      levelType = 20
@@ -405,11 +403,6 @@ func RetrieveCredit(callUUID string) ([]*HistoryCredit, error) {
 		logger.Error.Printf("get credits failed\n")
 		return nil, err
 	}
-	return buildHistroyCreditTree([]int64{callID}, credits)
-
-}
-
-func buildHistroyCreditTree(callIDs []int64, credits []*model.SimpleCredit) ([]*HistoryCredit, error) {
 	if len(credits) == 0 {
 		return []*HistoryCredit{}, nil
 	}
@@ -953,7 +946,7 @@ func buildHistroyCreditTree(callIDs []int64, credits []*model.SimpleCredit) ([]*
 	}
 
 	segments, err := segmentDao.Segments(dbLike.Conn(),
-		model.SegmentQuery{ID: invalidSegsID, CallID: callIDs})
+		model.SegmentQuery{ID: invalidSegsID, CallID: []int64{callID}})
 
 	if err != nil {
 		logger.Error.Printf("get segments failed. %s\n", err)

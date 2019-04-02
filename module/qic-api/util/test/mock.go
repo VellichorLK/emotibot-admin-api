@@ -1,21 +1,16 @@
 package test
 
 import (
-	"fmt"
-	"os"
-
 	"emotibot.com/emotigo/module/qic-api/model/v1"
+	"fmt"
 	sqlmock "gopkg.in/DATA-DOG/go-sqlmock.v1"
+	"os"
 )
 
-type MockDBLike struct {
-	model.DefaultDBLike
-}
+type MockDBLike struct{}
 
 func (m *MockDBLike) Begin() (model.SQLTx, error) {
-	var mock sqlmock.Sqlmock
-	var err error
-	m.DB, mock, err = sqlmock.New()
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		fmt.Printf("sqlmock new failed. %s\n", err)
 		os.Exit(-1)
@@ -23,7 +18,7 @@ func (m *MockDBLike) Begin() (model.SQLTx, error) {
 	mock.ExpectBegin()
 	mock.ExpectCommit()
 
-	return m.DB.Begin()
+	return db.Begin()
 }
 
 func (m *MockDBLike) ClearTransition(tx model.SQLTx) {
@@ -35,5 +30,5 @@ func (m *MockDBLike) Commit(tx model.SQLTx) (err error) {
 }
 
 func (m *MockDBLike) Conn() model.SqlLike {
-	return m.DB
+	return nil
 }

@@ -40,8 +40,7 @@ const (
 
 //Default value
 const (
-	DPage  = 1
-	DLimit = 10
+	DPage = 1
 )
 
 //TagResponse is the Get handler response body struct.

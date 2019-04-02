@@ -9,8 +9,8 @@ import (
 
 // RuleMethod 正面與反面規則 flag
 const (
-	RuleMethodNegative int8 = -1
-	RuleMethodPositive int8 = 1
+	RuleMethodNegative int8 = 1
+	RuleMethodPositive int8 = -1
 )
 
 type RuleCompleteness struct {

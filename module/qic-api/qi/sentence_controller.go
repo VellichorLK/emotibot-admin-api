@@ -240,8 +240,6 @@ func getPageLimit(r *http.Request) (page int, limit int, err error) {
 		if err != nil || limit < 0 {
 			return 0, 0, errLimit
 		}
-	} else {
-		limit = DLimit
 	}
 
 	if pageStr != "" {
