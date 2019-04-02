@@ -127,7 +127,9 @@ func Binding(g interface{}, data []string) {
 			f.SetFloat(fv)
 		case reflect.String:
 			if f.Kind() == reflect.Ptr {
-				f.Set(reflect.ValueOf(&data[j]))
+				if data[j] != "NULL" {
+					f.Set(reflect.ValueOf(&data[j]))
+				}
 				continue
 			}
 			f.SetString(data[j])

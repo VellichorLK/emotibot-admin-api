@@ -66,17 +66,10 @@ func insertCreditsWthParentIDAndChildCredits(tx model.SqlLike, credits []model.S
 }
 
 //StoreSensitiveCredit stores the sensitive credits
-func StoreSensitiveCredit(credits []*SensitiveWordCredit, root int64) error {
-	if dbLike == nil {
+func StoreSensitiveCredit(conn model.SqlLike, credits []*SensitiveWordCredit, root int64) error {
+	if conn == nil {
 		return ErrNilCon
 	}
-
-	tx, err := dbLike.Begin()
-	if err != nil {
-		logger.Error.Printf("get transaction failed. %s\n", err)
-		return err
-	}
-	defer tx.Rollback()
 
 	for _, c := range credits {
 
@@ -85,38 +78,37 @@ func StoreSensitiveCredit(credits []*SensitiveWordCredit, root int64) error {
 		}
 
 		c.sensitiveWord.ParentID = uint64(root)
-		lastID, err := creditDao.InsertCredit(tx, &c.sensitiveWord)
+		lastID, err := creditDao.InsertCredit(conn, &c.sensitiveWord)
 		if err != nil {
 			logger.Error.Printf("insert credit %v failed. %s\n", c.sensitiveWord, err)
 			return err
 		}
 
-		err = insertCreditsWthParentIDAndChildCredits(tx, c.customerExceptions, lastID, c.customerMatchedExceptionSegs)
+		err = insertCreditsWthParentIDAndChildCredits(conn, c.customerExceptions, lastID, c.customerMatchedExceptionSegs)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.customerExceptions, err)
 			return err
 		}
 
-		err = insertCreditsWthParentIDAndChildCredits(tx, c.staffExceptions, lastID, c.staffMatchedExceptionSegs)
+		err = insertCreditsWthParentIDAndChildCredits(conn, c.staffExceptions, lastID, c.staffMatchedExceptionSegs)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.staffExceptions, err)
 			return err
 		}
 
-		err = insertCreditsWithParentID(tx, c.invalidSegments, lastID)
+		err = insertCreditsWithParentID(conn, c.invalidSegments, lastID)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.invalidSegments, err)
 			return err
 		}
 
-		err = insertCreditsWithParentID(tx, c.usrVals, lastID)
+		err = insertCreditsWithParentID(conn, c.usrVals, lastID)
 		if err != nil {
 			logger.Error.Printf("insert credit %+v failed. %s\n", c.usrVals, err)
 			return err
 		}
 	}
-	return tx.Commit()
-
+	return nil
 }
 
 //SensitiveWordsVerificationWithPacked packages the sensitive words result into the structure
@@ -156,15 +148,15 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 
 		//create the sensitive credits and its exception setting
 		c := &SensitiveWordCredit{sensitiveWord: model.SimpleCredit{
-			OrgID: uint64(sw.ID), CallID: uint64(callID), Type: int(levSWTyp), Valid: 1, CreateTime: now, UpdateTime: now,
+			OrgID: uint64(sw.ID), CallID: uint64(callID), Type: int(levSWTyp), Valid: 1, CreateTime: now, UpdateTime: now, Revise: unactivate,
 		}}
 		for _, e := range sw.CustomerException {
 			c.customerExceptions = append(c.customerExceptions, model.SimpleCredit{
-				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWCustomerSenTyp), CreateTime: now, UpdateTime: now})
+				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWCustomerSenTyp), CreateTime: now, UpdateTime: now, Revise: unactivate})
 		}
 		for _, e := range sw.StaffException {
 			c.staffExceptions = append(c.staffExceptions, model.SimpleCredit{
-				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWStaffSenTyp), CreateTime: now, UpdateTime: now})
+				OrgID: e.ID, CallID: uint64(callID), Type: int(levSWStaffSenTyp), CreateTime: now, UpdateTime: now, Revise: unactivate})
 		}
 		resp = append(resp, c)
 		swCredits[sw.ID] = c
@@ -208,23 +200,32 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 		return nil, err
 	}
 
-	//sets the usr val exception
-	for swid, userValueID := range passedMap {
-		for _, vid := range userValueID {
+	// get custom values of all sensitive words
+	query := model.UserValueQuery{
+		Type:             []int8{model.UserValueTypSensitiveWord},
+		ID:               swID,
+		IgnoreSoftDelete: true,
+	}
+	swValues, err := userValues(dbLike.Conn(), query)
+	if err != nil {
+		logger.Error.Printf("get user values in sensitive word failed. %s\n", err)
+		return nil, err
+	}
+
+	for _, vals := range swValues {
+		if c, ok := swCredits[vals.LinkID]; ok {
 			credit := model.SimpleCredit{
 				CallID:     uint64(callID),
 				Type:       int(levSWUserValTyp),
-				OrgID:      uint64(vid),
-				ParentID:   uint64(swid),
+				OrgID:      uint64(vals.ID),
+				ParentID:   uint64(vals.LinkID),
 				Revise:     unactivate,
 				Valid:      0,
 				Score:      0,
 				CreateTime: now,
 				UpdateTime: now,
 			}
-			if c, ok := swCredits[swid]; ok {
-				c.usrVals = append(c.usrVals, credit)
-			}
+			c.usrVals = append(c.usrVals, credit)
 		}
 	}
 
@@ -260,7 +261,7 @@ func SensitiveWordsVerificationWithPacked(callID int64, segments []*SegmentWithS
 					passed := false
 
 					// check if the call passed user value
-					if _, ok := passedMap[sw.ID]; ok {
+					if vals, ok := passedMap[sw.ID]; ok && len(vals) != 0 {
 						passed = true
 						swCredit.usrValsMatched = true
 					}
@@ -464,7 +465,7 @@ func SensitiveWordsVerification(callID int64, segments []*SegmentWithSpeaker, en
 				}
 
 				// check if the call passed user value
-				if _, ok := passedMap[sw.ID]; ok {
+				if vals, ok := passedMap[sw.ID]; ok && len(vals) != 0 {
 					passed = true
 
 				}

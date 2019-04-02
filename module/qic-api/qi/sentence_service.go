@@ -57,12 +57,20 @@ func GetSentence(uuid string, enterprise string) (*DataSentence, error) {
 
 //GetSentenceList gets list of sentences queried by enterprise
 //parameters:
-//isdelete, nil for no constraint, 0 for not delete, 1 for deleted
-//categortID, nil for no constraint, 0 for the sentences in unknown category, others for category id
-func GetSentenceList(enterprise string, page int, limit int, isDelete *int8, categoryID *uint64) (uint64, []*DataSentence, error) {
+//	isdelete, nil for no constraint, 0 for not delete, 1 for deleted
+//	categortID, nil for no constraint, 0 for the sentences in unknown category, others for category id
+//	sentenceName, empty for no constraint, anything will be a fuzzy search for sentence name(ex:app, will resulted as: apple, lapp)
+func GetSentenceList(enterprise string, page int, limit int, isDelete *int8, categoryID *uint64, sentenceName string) (uint64, []*DataSentence, error) {
 	//var isDelete int8
-	q := &model.SentenceQuery{Enterprise: &enterprise,
-		IsDelete: isDelete, CategoryID: categoryID}
+	q := &model.SentenceQuery{
+		Enterprise: &enterprise,
+		IsDelete:   isDelete,
+		CategoryID: categoryID,
+	}
+	if sentenceName != "" {
+		fuzzyName := model.EscapeLike(sentenceName)
+		q.FuzzyName = fuzzyName
+	}
 	count, err := sentenceDao.CountSentences(nil, q)
 	if err != nil {
 		return 0, nil, err

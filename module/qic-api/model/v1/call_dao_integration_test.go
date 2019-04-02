@@ -16,10 +16,6 @@ func TestITCallDaoCalls(t *testing.T) {
 	}
 	//testset is the reverted csv
 	testset := getCallsSeed(t)
-	var (
-		timestart int64 = 1546598521
-		timeEnd   int64 = timestart + 60
-	)
 	testTable := []struct {
 		name string
 		args CallQuery
@@ -49,19 +45,18 @@ func TestITCallDaoCalls(t *testing.T) {
 		},
 		{
 			"query call time start",
-			CallQuery{CallTimeStart: &timestart},
+			CallQuery{CallTime: NewLowerRange(1546598521)},
 			testset,
 		},
 		{
 			"query call time end",
-			CallQuery{CallTimeEnd: &timeEnd},
+			CallQuery{CallTime: NewUpperRange(1546598581)},
 			[]Call{testset[2]},
 		},
 		{
 			"query call time range",
 			CallQuery{
-				CallTimeStart: &timestart,
-				CallTimeEnd:   &timeEnd,
+				CallTime: NewRangeCondition(1546598521, 1546598581),
 			},
 			[]Call{testset[2]},
 		},

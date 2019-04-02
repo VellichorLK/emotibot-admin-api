@@ -3,10 +3,12 @@ package qi
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emotibot.com/emotigo/pkg/logger"
 
@@ -86,10 +88,6 @@ func ASRWorkFlow(output []byte) error {
 
 	segments := resp.Segments()
 
-	sort.SliceStable(segments, func(i, j int) bool {
-		return segments[i].StartTime < segments[j].StartTime
-	})
-
 	switch c.Type {
 	case model.CallTypeWholeFile:
 		logger.Trace.Println("Create segments returned from ASR.")
@@ -113,11 +111,13 @@ func ASRWorkFlow(output []byte) error {
 		}
 	}
 
+	// Channel silence & interposal does not have role concept,
+	// but we still put it into speaker for a unify access.
 	var channelRoles = map[int8]int{
-		SilenceSpeaker:    SilenceSpeaker,
-		InterposalSpeaker: InterposalSpeaker,
-		1:                 int(c.LeftChanRole),
-		2:                 int(c.RightChanRole),
+		model.ChanSilence:    SilenceSpeaker,
+		model.ChanInterposal: InterposalSpeaker,
+		model.ChanLeft:       int(c.LeftChanRole),
+		model.ChanRight:      int(c.RightChanRole),
 	}
 
 	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
@@ -143,7 +143,7 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	score := BaseScore
-	rootID, err := StoreRootCallCredit(uint64(c.ID))
+	rootID, err := StoreRootCallCredit(tx, uint64(c.ID))
 	if err != nil {
 		return fmt.Errorf("create root call %d credit failed, %s", rootID, err)
 	}
@@ -195,31 +195,34 @@ func ASRWorkFlow(output []byte) error {
 				credits[idx].Score += r.Score //Add the silence/interposal/speed score to rule group
 			}
 		}
-		err = StoreMachineCredit(uint64(c.ID), uint64(rootID), machineCredits)
+		err = StoreMachineCredit(tx, uint64(c.ID), uint64(rootID), machineCredits)
 		if err != nil {
 			return fmt.Errorf("store machine credits failed. %s", err)
 		}
 	}
 
-	//TODO: when sensitive finished,
-	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
-
-	swCredits, err := SensitiveWordsVerification(resp.CallID, segWithSp, c.EnterpriseID)
+	swCredits, err := SensitiveWordsVerificationWithPacked(resp.CallID, segWithSp, c.EnterpriseID)
 	if err != nil {
 		return err
 	}
+
 	for _, sc := range swCredits {
-		score += sc.Score
+		score += sc.sensitiveWord.Score
 	}
-	err = creditDao.InsertCredits(tx, swCredits)
+	err = StoreSensitiveCredit(tx, swCredits, rootID)
+	if err != nil {
+		logger.Error.Printf("store sensitive credit failed. %s\n", err)
+		return err
+	}
 
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("commit sql failed, %v", err)
 	}
-	//TODO: check whethㄊer sensitive score is right
-	_, err = UpdateCredit(rootID, &model.UpdateCreditSet{Score: score})
+
+	_, err = UpdateCredit(dbLike.Conn(), rootID, &model.UpdateCreditSet{Score: score})
 	if err != nil {
+		logger.Error.Printf("update the score of call %d failed. %s\n", rootID, err)
 		return fmt.Errorf("update the credit failed. %s", err)
 	}
 
@@ -238,52 +241,72 @@ func ASRWorkFlow(output []byte) error {
 }
 
 // Segments transfer ASRResponse's sentence to []model.RealSegment
+// returned Real Segments will be sorted by start timestamp
+// It also merge the sentences of channel if it endtime is within start time.
+//	ex:
+//		Left channel sentences: [ 1.0-2.0, 2.5-3.5, 20.0-21.0 ]
+//		Right Channel sentences: [ 0.5-1.5, 2.0-5.0]
+// 		return: [0.5-5.0, 1.0-3.5, 20.0-21.0]
 func (resp *ASRResponse) Segments() []model.RealSegment {
-
-	var segments = []model.RealSegment{}
+	var segments = make([]model.RealSegment, 0, len(resp.LeftChannel.Sentences)+len(resp.RightChannel.Sentences))
 	//TODO: check sret & emotion = -1
-	timestamp := time.Now().Unix()
-	for _, sen := range resp.LeftChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     resp.CallID,
-			CreateTime: timestamp,
-			UpdateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    1,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					SegmentID: sen.SegmentID,
-					Typ:       model.ETypAngry,
-					Score:     sen.Emotion,
-				},
-			},
-			Status: int(sen.Status),
+	var (
+		timestamp     = unix()
+		sentencesChan = map[int8][]voiceSentence{
+			1: resp.LeftChannel.Sentences,
+			2: resp.RightChannel.Sentences,
 		}
-		segments = append(segments, s)
-	}
+	)
+	for chanNo, sentences := range sentencesChan {
+		var lessSorter = func(i, j int) bool {
+			return sentences[i].Start < sentences[j].Start
+		}
+		// To ensure sentences has been sorted.
+		if !sort.SliceIsSorted(sentences, lessSorter) {
+			sort.SliceStable(sentences, lessSorter)
+		}
+		var lastSeg *model.RealSegment
+		var lastWordCount = 0
+		for _, sen := range sentences {
+			currentWordCount := utf8.RuneCountInString(sen.ASR)
+			if lastSeg != nil &&
+				lastSeg.Status == 200 &&
+				sen.Status == 200 &&
+				sen.Start-lastSeg.EndTime < 3 &&
+				lastWordCount+currentWordCount < model.MAXIMUM_SEGMENT_LENGTH {
 
-	for _, sen := range resp.RightChannel.Sentences {
-		s := model.RealSegment{
-			CallID:     resp.CallID,
-			CreateTime: timestamp,
-			UpdateTime: timestamp,
-			StartTime:  sen.Start,
-			EndTime:    sen.End,
-			Channel:    2,
-			Text:       sen.ASR,
-			Emotions: []model.RealSegmentEmotion{
-				model.RealSegmentEmotion{
-					SegmentID: sen.SegmentID,
-					Typ:       model.ETypAngry,
-					Score:     sen.Emotion,
-				},
-			},
-			Status: int(sen.Status),
+				lastSeg.EndTime = sen.End
+				lastSeg.Text = fmt.Sprintf("%s %s", lastSeg.Text, sen.ASR)
+				angryEmotion := &lastSeg.Emotions[0]
+				angryEmotion.Score = math.Max(angryEmotion.Score, sen.Emotion)
+				lastWordCount += utf8.RuneCountInString(sen.ASR) + 1
+			} else {
+				s := model.RealSegment{
+					CallID:     resp.CallID,
+					CreateTime: timestamp,
+					UpdateTime: timestamp,
+					StartTime:  sen.Start,
+					EndTime:    sen.End,
+					Channel:    chanNo,
+					Text:       sen.ASR,
+					Emotions: []model.RealSegmentEmotion{
+						model.RealSegmentEmotion{
+							SegmentID: sen.SegmentID,
+							Typ:       model.ETypAngry,
+							Score:     sen.Emotion,
+						},
+					},
+					Status: int(sen.Status),
+				}
+				segments = append(segments, s)
+				lastSeg = &segments[len(segments)-1]
+				lastWordCount = currentWordCount
+			}
 		}
-		segments = append(segments, s)
 	}
+	sort.SliceStable(segments, func(i, j int) bool {
+		return segments[i].StartTime < segments[j].StartTime
+	})
 	return segments
 }
 

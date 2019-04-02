@@ -49,6 +49,7 @@ type SentenceQuery struct {
 	IsDelete   *int8
 	CategoryID *uint64
 	Name       *string
+	FuzzyName  string
 }
 
 //SentenceNewRecord is used to create a new sentence
@@ -108,56 +109,29 @@ func genrateExecutor(conn *sql.DB, tx SqlLike) (SqlLike, error) {
 }
 
 func (q *SentenceQuery) whereSQL() (string, []interface{}) {
-	numOfUUID := len(q.UUID)
-	params := make([]interface{}, 0, numOfUUID+1)
-	conditions := []string{}
-
-	if numOfUUID > 0 {
-		condition := fldUUID + " IN (?" + strings.Repeat(",?", numOfUUID-1) + ")"
-		conditions = append(conditions, condition)
-		for i := 0; i < numOfUUID; i++ {
-			params = append(params, q.UUID[i])
-		}
-	}
-
-	numOfID := len(q.ID)
-	if numOfID > 0 {
-		condition := fldID + " IN (?" + strings.Repeat(",?", numOfID-1) + ")"
-		conditions = append(conditions, condition)
-		for i := 0; i < numOfID; i++ {
-			params = append(params, q.ID[i])
-		}
-	}
+	builder := NewWhereBuilder(andLogic, "")
+	builder.In(fldUUID, stringToWildCard(q.UUID...))
+	builder.In(fldID, uint64ToWildCard(q.ID...))
 
 	if q.Enterprise != nil {
-		condition := fldEnterprise + " = ?"
-		conditions = append(conditions, condition)
-		params = append(params, *q.Enterprise)
+		builder.Eq(fldEnterprise, *q.Enterprise)
 	}
 
 	if q.IsDelete != nil {
-		condition := fldIsDelete + "=?"
-		conditions = append(conditions, condition)
-		params = append(params, *q.IsDelete)
+		builder.Eq(fldIsDelete, *q.IsDelete)
 	}
 
 	if q.CategoryID != nil {
-		condition := fldCategoryID + "=?"
-		conditions = append(conditions, condition)
-		params = append(params, *q.CategoryID)
+		builder.Eq(fldCategoryID, *q.CategoryID)
 	}
 
 	if q.Name != nil {
-		condition := fldName + "=?"
-		conditions = append(conditions, condition)
-		params = append(params, *q.Name)
+		builder.Eq(fldName, *q.Name)
 	}
-
-	var whereSQL string
-	if len(conditions) > 0 {
-		whereSQL = "WHERE " + strings.Join(conditions, " AND ")
+	if q.FuzzyName != "" {
+		builder.Like(fldName, q.FuzzyName)
 	}
-
+	whereSQL, params := builder.ParseWithWhere()
 	whereSQL += " ORDER BY " + fldID + " DESC "
 
 	if q.Page > 0 && q.Limit > 0 {

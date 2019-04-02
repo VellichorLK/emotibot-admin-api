@@ -39,8 +39,7 @@ type CallQuery struct {
 	ID            []int64
 	UUID          []string
 	Status        []int8
-	CallTimeStart *int64
-	CallTimeEnd   *int64
+	CallTime      RangeCondition
 	Typ           []int8
 	StaffID       []string
 	EnterpriseID  *string
@@ -60,12 +59,7 @@ func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 	builder.In(fldCallUUID, stringToWildCard(c.UUID...))
 	builder.In(fldCallStatus, int8ToWildCard(c.Status...))
 	builder.In(fldCallType, int8ToWildCard(c.Typ...))
-	if c.CallTimeStart != nil {
-		builder.Gte(fldCallCallTime, *c.CallTimeStart)
-	}
-	if c.CallTimeEnd != nil {
-		builder.Lt(fldCallCallTime, *c.CallTimeEnd)
-	}
+	builder.Between(fldCallCallTime, c.CallTime)
 	builder.In(fldCallStaffID, stringToWildCard(c.StaffID...))
 	if c.EnterpriseID != nil {
 		builder.Eq(fldCallEnterprise, *c.EnterpriseID)
@@ -98,9 +92,11 @@ func (c *CallQuery) whereSQL(prefix string) (string, []interface{}) {
 // Ext(分機號碼) is the receiver(staff) extension number.
 type Call struct {
 	ID                 int64
+	Status             int8
 	UUID               string
 	FileName           *string
 	FilePath           *string
+	DemoFilePath       *string
 	Description        *string
 	DurationMillSecond int
 	UploadUnixTime     int64
@@ -109,7 +105,6 @@ type Call struct {
 	StaffName          string
 	Ext                string
 	Department         string
-	IsDeal             int8
 	CustomerID         string
 	CustomerName       string
 	CustomerPhone      string
@@ -122,8 +117,7 @@ type Call struct {
 	Type               int8
 	LeftChanRole       int8
 	RightChanRole      int8
-	Status             int8
-	DemoFilePath       *string
+	IsDeal             int8
 	RemoteFile         *string
 }
 

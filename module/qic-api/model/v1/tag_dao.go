@@ -84,7 +84,7 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 		builder.Eq(fldTagEnterprise, *t.Enterprise)
 	}
 	if t.Name != nil {
-		builder.Eq(fldTagName, *t.Name)
+		builder.Like(fldTagName, *t.Name)
 	}
 	if t.UpdateTimeStart > 0 {
 		builder.Gte(fldTagUpdateTime, t.UpdateTimeStart)
@@ -99,11 +99,7 @@ func (t *TagQuery) whereSQL() (string, []interface{}) {
 		builder.Eq(fldTagIsDeleted, t.IgnoreSoftDelete)
 	}
 
-	rawsql, data := builder.Parse()
-	if len(data) > 0 {
-		rawsql = "WHERE " + rawsql
-	}
-	return rawsql, data
+	return builder.ParseWithWhere()
 }
 
 type queryer interface {

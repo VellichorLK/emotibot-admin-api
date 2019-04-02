@@ -316,6 +316,7 @@ func runOnetimeJob() {
 				func() {
 					defer func() {
 						if r := recover(); r != nil {
+							util.PrintRuntimeStack(30)
 							logger.Error.Printf("Run func %s error: %s\n", key, r)
 						}
 					}()

@@ -37,9 +37,6 @@ var (
 	volume               string
 	creditDao            model.CreditDao = &model.CreditSQLDao{}
 )
-var (
-	tags func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
-)
 
 var (
 	newCondition    = condDao.NewCondition
@@ -49,6 +46,8 @@ var (
 	groupRules      func(delegatee model.SqlLike, group model.Group) (conversationRules []int64, OtherGroupRules map[model.GroupRuleType][]string, err error)
 	resetGroupRules func(delegatee model.SqlLike, groups ...model.Group) error
 	setGroupBasic   func(delegatee model.SqlLike, group *model.Group) error
+	tags            func(tx model.SqlLike, query model.TagQuery) ([]model.Tag, error)
+	segments        func(delegatee model.SqlLike, query model.SegmentQuery) ([]model.RealSegment, error)
 )
 
 func init() {
@@ -229,6 +228,7 @@ func init() {
 				relationDao = &model.RelationSQLDao{}
 				// init segment dao
 				segmentDao = model.NewSegmentDao(dbLike)
+				segments = segmentDao.Segments
 				// init user value & keys dao
 				userValueDao = model.NewUserValueDao(dbLike.Conn())
 				valuesKey = userValueDao.ValuesKey

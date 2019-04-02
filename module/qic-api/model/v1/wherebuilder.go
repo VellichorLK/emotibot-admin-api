@@ -67,10 +67,31 @@ func (w *whereBuilder) Gte(fieldName string, input interface{}) {
 
 }
 
+func (w *whereBuilder) Lte(fieldName string, input interface{}) {
+	if input != nil {
+		w.conditions = append(w.conditions, fmt.Sprintf("%s`%s` <= ?", w.alias, fieldName))
+		w.data = append(w.data, input)
+	}
+}
 func (w *whereBuilder) Lt(fieldName string, input interface{}) {
 	if input != nil {
 		w.conditions = append(w.conditions, fmt.Sprintf("%s`%s` < ?", w.alias, fieldName))
 		w.data = append(w.data, input)
+	}
+}
+
+// Between is the whereBuilder to dynamic determine how to generate a between condition based on RangeCodintion.
+// If rangeCond doest not have upper bound or lower bound specified, It became simple gt or lt comparision.
+func (w *whereBuilder) Between(fieldName string, rangeCond RangeCondition) {
+	if rangeCond.ub != nil && rangeCond.lb != nil {
+		w.conditions = append(w.conditions, fmt.Sprintf("%s`%s` BETWEEN ? AND ?", w.alias, fieldName))
+		w.data = append(w.data, *rangeCond.lb, *rangeCond.ub)
+	} else if rangeCond.ub != nil {
+		w.Lte(fieldName, *rangeCond.ub)
+	} else if rangeCond.lb != nil {
+		w.Gte(fieldName, *rangeCond.lb)
+	} else {
+		// we may receive a empty RangeCondition, so we just skip it
 	}
 }
 
@@ -124,4 +145,17 @@ func stringToWildCard(inputs ...string) []interface{} {
 		outputs[i] = val
 	}
 	return outputs
+}
+
+// EscapeLike is a helper func for sanitize the special char for LIKE condition of SQL query.
+// It is advised to be used if the query is from uncontrollable user input.
+// the list of escape rules:
+// 	'\' => '\\'
+//  '%' => '\%'
+//	'_' => '\_'
+func EscapeLike(query string) string {
+	query = strings.Replace(query, "\\", "\\\\", -1)
+	query = strings.Replace(query, "%", "\\%", -1)
+	query = strings.Replace(query, "_", "\\_", -1)
+	return query
 }
