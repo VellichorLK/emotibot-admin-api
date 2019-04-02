@@ -189,7 +189,7 @@ func StoreRootCallCredit(conn model.SqlLike, call uint64) (int64, error) {
 		return 0, ErrNilCon
 	}
 	now := time.Now().Unix()
-	s := &model.SimpleCredit{CallID: call, CreateTime: now, UpdateTime: now, Revise: unactivate}
+	s := &model.SimpleCredit{CallID: call, CreateTime: now, UpdateTime: now, Revise: unactivate, Valid: unactivate}
 	rootID, err := creditDao.InsertCredit(conn, s)
 	if err != nil {
 		logger.Error.Printf("insert credit %+v failed. %s\n", s, err)
