@@ -20,11 +20,11 @@ var (
 
 var emotionTypes = map[string]int8{
 	"不满": model.ETypAngry,
-	"称赞": model.EtypPraise,
-	"难过": model.EtypSad,
-	"高兴": model.EtypJoyful,
-	"冷漠": model.EtypColdness,
-	"害怕": model.EtypAfraid,
+	"称赞": model.ETypPraise,
+	"难过": model.ETypSad,
+	"高兴": model.ETypJoyful,
+	"冷漠": model.ETypColdness,
+	"害怕": model.ETypAfraid,
 }
 
 //NewFlow creates the new flow and sets the empty node and intent

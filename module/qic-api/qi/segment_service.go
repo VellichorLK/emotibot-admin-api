@@ -38,9 +38,34 @@ func getSegments(call model.Call) ([]segment, error) {
 			ASRText:    s.Text,
 			Status:     s.Status,
 			SegmentID:  s.ID,
+			Emotion:    make([]asrEmotion, 0),
+		}
+		for _, e := range s.Emotions {
+			emotion := asrEmotion{
+				Type:  EmotionString(e.Typ),
+				Score: e.Score,
+			}
+			vr.Emotion = append(vr.Emotion, emotion)
 		}
 		result = append(result, vr)
 	}
 
 	return result, nil
+}
+
+var emotionDict = map[int8]string{
+	model.ETypAngry:    "angry",
+	model.ETypAfraid:   "afraid",
+	model.ETypColdness: "coldness",
+	model.ETypJoyful:   "joyful",
+	model.ETypPraise:   "praise",
+	model.ETypSad:      "sad",
+}
+
+func EmotionString(e int8) string {
+	emo, found := emotionDict[e]
+	if !found {
+		emo = "unknown_emotion"
+	}
+	return emo
 }

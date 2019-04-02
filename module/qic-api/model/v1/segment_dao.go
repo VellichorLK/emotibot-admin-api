@@ -61,15 +61,15 @@ const (
 	//ETypAngry is the value of angry (憤怒、不滿) emotion type for the RealSegmentEmotion
 	ETypAngry = iota + 1
 	//EtypPraise is the value of praise (稱讚) emotion type for the RealSegmentEmotion
-	EtypPraise
+	ETypPraise
 	// EtypSad is the value of praise (難過) emotion type for the RealSegmentEmotion
-	EtypSad
+	ETypSad
 	//EtypJoyful is the value of praise (高興) emotion type for the RealSegmentEmotion
-	EtypJoyful
+	ETypJoyful
 	//EtypColdness is the value of praise (冷漠) emotion type for the RealSegmentEmotion
-	EtypColdness
+	ETypColdness
 	//EtypAfraid is the value of praise (害怕) emotion type for the RealSegmentEmotion
-	EtypAfraid
+	ETypAfraid
 )
 
 // SegmentQuery is the AND query conditions for the segment table
