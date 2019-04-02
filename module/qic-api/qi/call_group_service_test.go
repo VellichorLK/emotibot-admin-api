@@ -2,7 +2,6 @@ package qi
 
 import (
 	"database/sql"
-	"encoding/json"
 	"testing"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
@@ -170,9 +169,9 @@ func TestCreateCreditCallGroups(t *testing.T) {
 			t.Fatalf("expecting no error, but get %s\n", err)
 		}
 
-		out, _ := json.Marshal(creditCGTree)
-		t.Log("cgCreditTree")
-		t.Log(string(out))
+		// out, _ := json.Marshal(creditCGTree)
+		// t.Log("cgCreditTree")
+		// t.Log(string(out))
 
 		if len(expected.RuleGroupMap) != len(creditCGTree.RuleGroupMap) {
 			t.Fatalf("expect %d CreditCG of rule group, but get %d\n", len(expected.RuleGroupMap), len(creditCGTree.RuleGroupMap))
@@ -279,6 +278,7 @@ func (*cgstMockCallGroupSQLDao) GetCallGroups(conn model.SqlLike, query *model.C
 }
 
 func TestGetGroupedCalls(t *testing.T) {
+	defer BackupPointers(&calls, &callRespsWithTotal)()
 	// dbLike = newTestDB(t)
 	dbLike = &test.MockDBLike{}
 	// callCount = mock.callCount
@@ -296,9 +296,9 @@ func TestGetGroupedCalls(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expecting no error, but get %s\n", err)
 		}
-		out, _ := json.Marshal(groupedCalls)
-		t.Log("groupedCalls")
-		t.Log(string(out))
+		// out, _ := json.Marshal(groupedCalls)
+		// t.Log("groupedCalls")
+		// t.Log(string(out))
 
 		if total != expTotal {
 			t.Fatalf("expect %d grouped calls, but get %d\n", expTotal, total)
