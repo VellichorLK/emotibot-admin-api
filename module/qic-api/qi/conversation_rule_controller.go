@@ -1,9 +1,11 @@
 package qi
 
 import (
+	"fmt"
 	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -136,10 +138,16 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 
 func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
+	page, limit, err := getPageLimit(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request failed, %v", err))
+		return
+	}
 
 	filter := &model.ConversationRuleFilter{
 		Enterprise: enterprise,
 		Severity:   -1,
+		Paging:     &model.Pagination{Limit: limit, Page: page},
 	}
 
 	total, rules, err := GetConversationRulesBy(filter)
@@ -162,9 +170,9 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 
 	response := Response{
 		Paging: &general.Paging{
-			Page:  0,
+			Page:  page,
 			Total: total,
-			Limit: len(rules),
+			Limit: limit,
 		},
 		Data: rulesInRes,
 	}
