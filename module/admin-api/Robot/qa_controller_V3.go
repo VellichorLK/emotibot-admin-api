@@ -16,9 +16,10 @@ import (
 
 func handleRobotQAListV3(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
 
 	logger.Trace.Println("Get robot qa list of", appid)
-	qainfos, errno, err := GetRobotQAListV3(appid)
+	qainfos, errno, err := GetRobotQAListV3(appid, locale)
 	if err != nil {
 		status := ApiError.GetHttpStatus(errno)
 		util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), status)
