@@ -276,7 +276,7 @@ func Test_matchDefaultConditions(t *testing.T) {
 }
 
 func TestCallRespoWithTotal(t *testing.T) {
-	defer BackupPointers(callCount, calls, valuesKey)
+	defer BackupPointers(&callCount, &calls, &valuesKey)()
 	type args struct {
 		query model.CallQuery
 	}

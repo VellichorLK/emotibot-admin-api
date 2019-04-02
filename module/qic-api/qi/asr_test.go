@@ -10,7 +10,7 @@ import (
 )
 
 func TestASRResponse_Segments(t *testing.T) {
-	defer BackupPointers(unix)
+	defer BackupPointers(&unix)()
 	unix = func() int64 {
 		return 0
 	}
