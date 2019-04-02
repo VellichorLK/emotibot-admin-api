@@ -122,6 +122,10 @@ func ASRWorkFlow(output []byte) error {
 	if err != nil {
 		logger.Error.Printf("inconsistent status error: call '%d' ASR finished, but status update failed. %v", c.ID, err)
 	}
+	err = GroupCalls(&c)
+	if err != nil {
+		logger.Error.Printf("group calls failed for call '%d', error: %v", c.ID, err)
+	}
 	return nil
 }
 

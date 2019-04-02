@@ -63,6 +63,29 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, resp)
 }
 
+// CallsGroupedHandler return the list of Calls and CallGroups
+func CallsGroupedHandler(w http.ResponseWriter, r *http.Request) {
+	query, err := newModelCallQuery(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
+		return
+	}
+	groupedCalls, total, err := GetGroupedCalls(query)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get grouped calls failed, %v", err))
+		return
+	}
+	resp := CallsGroupedResponse{
+		Paging: general.Paging{
+			Page:  query.Paging.Page,
+			Limit: query.Paging.Limit,
+			Total: total,
+		},
+		Data: groupedCalls,
+	}
+	util.WriteJSON(w, resp)
+}
+
 // NewCallsHandler create a call but no upload file itself.
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
@@ -330,6 +353,11 @@ type CallDetail struct {
 type CallsResponse struct {
 	Paging general.Paging `json:"paging"`
 	Data   []CallResp     `json:"data"`
+}
+
+type CallsGroupedResponse struct {
+	Paging general.Paging      `json:"paging"`
+	Data   []*GroupedCallsResp `json:"data"`
 }
 
 //CallResp is the UI struct of the call.

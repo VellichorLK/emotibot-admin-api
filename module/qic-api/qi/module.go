@@ -107,11 +107,13 @@ func init() {
 			util.NewEntryPoint(http.MethodDelete, "category/{id}", []string{}, handleDeleteCategory),
 
 			util.NewEntryPoint(http.MethodGet, "calls", []string{}, CallsHandler),
+			util.NewEntryPoint(http.MethodGet, "calls/grouped", []string{}, CallsGroupedHandler),
 			util.NewEntryPoint(http.MethodPost, "calls", []string{}, NewCallsHandler),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}", []string{}, callRequest(CallsDetailHandler)),
 			util.NewEntryPoint(http.MethodPost, "calls/{id}/file", []string{}, callRequest(UpdateCallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}/file", []string{}, callRequest(CallsFileHandler)),
 			util.NewEntryPoint(http.MethodGet, "calls/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
+			util.NewEntryPoint(http.MethodGet, "calls/grouped/{id}/credits", []string{}, WithCallIDCheck(handleGetCredit)),
 
 			util.NewEntryPoint(http.MethodPost, "train/model", []string{}, handleTrainAllTags),
 			util.NewEntryPoint(http.MethodGet, "train/model", []string{}, handleTrainStatus),
@@ -172,6 +174,15 @@ func init() {
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences", []string{}, handleGetSentenceTestOverview),
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_info", []string{}, handleGetSentenceTestResult),
 			util.NewEntryPoint(http.MethodGet, "testing/overview/sentences_detail/{id}", []string{}, handleGetSentenceTestDetail),
+
+			util.NewEntryPoint(http.MethodPost, "call-groups", []string{}, handleCreateCallGroupCondition),
+			util.NewEntryPoint(http.MethodGet, "call-groups", []string{}, handleGetCallGroupConditionList),
+			// util.NewEntryPoint(http.MethodGet, "call-groups/group", []string{}, handleGroupCalls),
+			util.NewEntryPoint(http.MethodGet, "call-groups/{id}", []string{}, handleGetCallGroupCondition),
+			util.NewEntryPoint(http.MethodPut, "call-groups/{id}", []string{}, handleUpdateCallGroupCondition),
+			util.NewEntryPoint(http.MethodDelete, "call-groups/{id}", []string{}, handleDeleteCallGroupCondition),
+			util.NewEntryPoint(http.MethodPut, "call-groups/{id}/enable", []string{}, handleUpdateCallGroupCondition),
+			// util.NewEntryPoint(http.MethodPost, "call-groups/{id}/group", []string{}, handleCreateCallGroups),
 		},
 		OneTimeFunc: map[string]func(){
 			"init volume": func() {
