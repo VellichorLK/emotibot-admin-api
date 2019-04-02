@@ -2,6 +2,7 @@ package qi
 
 import (
 	"os"
+	"reflect"
 	"testing"
 
 	"emotibot.com/emotigo/pkg/logger"
@@ -13,14 +14,16 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func BackupPointers(ptrs ...interface{}) func() {
-	var tmp = make([]interface{}, len(ptrs))
-	for i, ptr := range ptrs {
-		tmp[i] = ptr
+func BackupPointers(funcPtrs ...interface{}) func() {
+	var oldValues = make([]reflect.Value, len(funcPtrs))
+	for i, ptr := range funcPtrs {
+		oldFunc := reflect.ValueOf(ptr).Elem().Interface()
+		oldValue := reflect.ValueOf(oldFunc)
+		oldValues[i] = oldValue
 	}
 	return func() {
-		for i, t := range tmp {
-			ptrs[i] = t
+		for i, value := range oldValues {
+			reflect.ValueOf(funcPtrs[i]).Elem().Set(value)
 		}
 	}
 }
