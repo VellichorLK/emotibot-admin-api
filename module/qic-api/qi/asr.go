@@ -39,7 +39,10 @@ func ASRWorkFlow(output []byte) error {
 	} else if err != nil {
 		return fmt.Errorf("fetch call failed, %v", err)
 	}
-
+	c.LeftSpeed = &resp.LeftChannel.Speed
+	c.RightSpeed = &resp.RightChannel.Speed
+	c.LeftSilenceTime = &resp.LeftChannel.Quiet
+	c.RightSilenceTime = &resp.RightChannel.Quiet
 	tx, err := dbLike.Begin()
 	if err != nil {
 		return fmt.Errorf("can not begin a transaction")
@@ -87,11 +90,11 @@ func ASRWorkFlow(output []byte) error {
 	}
 
 	segments := resp.Segments()
+	segments = injectSilenceInterposalSegs(segments)
 
 	switch c.Type {
 	case model.CallTypeWholeFile:
 		logger.Trace.Println("Create segments returned from ASR.")
-		segments = injectSilenceInterposalSegs(segments)
 		segments, err = segmentDao.NewSegments(tx, segments)
 		if err != nil {
 			return fmt.Errorf("new segment failed, %v", err)
@@ -111,127 +114,9 @@ func ASRWorkFlow(output []byte) error {
 		}
 	}
 
-	// Channel silence & interposal does not have role concept,
-	// but we still put it into speaker for a unify access.
-	var channelRoles = map[int8]int{
-		model.ChanSilence:    SilenceSpeaker,
-		model.ChanInterposal: InterposalSpeaker,
-		model.ChanLeft:       int(c.LeftChanRole),
-		model.ChanRight:      int(c.RightChanRole),
-	}
-
-	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
-	segWithSp := make([]*SegmentWithSpeaker, 0)              //segments only with speaker,staff and customer
-	for _, s := range segments {
-		ws := &SegmentWithSpeaker{
-			RealSegment: s,
-			Speaker:     channelRoles[s.Channel],
-		}
-		allSegs = append(allSegs, ws)
-		if ws.Channel > 0 {
-			segWithSp = append(segWithSp, ws)
-		}
-	}
-
-	//TODO: 計算靜音比例跟規則
-	isEnabled := true
-	groups, err := serviceDAO.Group(tx, model.GroupQuery{
-		IsEnable: &isEnabled,
-	})
-	if err != nil {
-		return fmt.Errorf("get groups by call failed, %v", err)
-	}
-
-	score := BaseScore
-	rootID, err := StoreRootCallCredit(tx, uint64(c.ID))
-	if err != nil {
-		return fmt.Errorf("create root call %d credit failed, %s", rootID, err)
-	}
-	if len(groups) != 0 {
-		credits, err := RuleGroupCriteria(groups, segWithSp, time.Duration(30)*time.Minute)
-		if err != nil {
-			return fmt.Errorf("get rule group credit failed, %v", err)
-		}
-		if len(credits) != len(groups) {
-			return fmt.Errorf("get credits %d not equal to groups %d", len(credits), len(groups))
-		}
-		for _, credit := range credits {
-			score += credit.Score
-		}
-		machineCredits := make([]machineCredit, 0, len(groups))
-
-		for idx, grp := range groups {
-			var rulesWithException []RulesException
-			var combineCredit machineCredit
-			combineCredit.credit = credits[idx]
-
-			silenceCredit, err := RuleSilenceCheck(grp, allSegs, credits[0].Matched)
-			if err != nil {
-				return fmt.Errorf("get silence rule credit failed, %v", err)
-			}
-
-			var staffSpeed float64
-			if c.LeftChanRole == model.CallChanStaff {
-				staffSpeed = resp.LeftChannel.Speed
-			} else {
-				staffSpeed = resp.RightChannel.Speed
-			}
-
-			speedCredit, err := RuleSpeedCheck(grp, credits[0].Matched, segWithSp, staffSpeed)
-			if err != nil {
-				return fmt.Errorf("get speed rule credit failed, %v", err)
-			}
-			interposalCredit, err := RuleInterposalCheck(grp, allSegs)
-			if err != nil {
-				return fmt.Errorf("get speed rule credit failed, %v", err)
-			}
-			rulesWithException = append(rulesWithException, silenceCredit...)
-			rulesWithException = append(rulesWithException, speedCredit...)
-			rulesWithException = append(rulesWithException, interposalCredit...)
-			combineCredit.others = rulesWithException
-			machineCredits = append(machineCredits, combineCredit)
-			for _, r := range rulesWithException {
-				score += r.Score
-				credits[idx].Score += r.Score //Add the silence/interposal/speed score to rule group
-			}
-		}
-		err = StoreMachineCredit(tx, uint64(c.ID), uint64(rootID), machineCredits)
-		if err != nil {
-			return fmt.Errorf("store machine credits failed. %s", err)
-		}
-	}
-
-	swCredits, err := SensitiveWordsVerificationWithPacked(resp.CallID, segWithSp, c.EnterpriseID)
-	if err != nil {
-		return err
-	}
-
-	for _, sc := range swCredits {
-		score += sc.sensitiveWord.Score
-	}
-	err = StoreSensitiveCredit(tx, swCredits, rootID)
-	if err != nil {
-		logger.Error.Printf("store sensitive credit failed. %s\n", err)
-		return err
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("commit sql failed, %v", err)
-	}
-
-	_, err = UpdateCredit(dbLike.Conn(), rootID, &model.UpdateCreditSet{Score: &score})
-	if err != nil {
-		logger.Error.Printf("update the score of call %d failed. %s\n", rootID, err)
-		return fmt.Errorf("update the credit failed. %s", err)
-	}
-
+	err = CreditWorkflow(tx, &c, segments)
 	isDone = true
 	c.Status = model.CallStatusDone
-	c.LeftSpeed = &resp.LeftChannel.Speed
-	c.RightSpeed = &resp.RightChannel.Speed
-	c.LeftSilenceTime = &resp.LeftChannel.Quiet
-	c.RightSilenceTime = &resp.RightChannel.Quiet
 	err = UpdateCall(&c)
 	logger.Info.Println("finish asr flow for ", resp.CallID)
 	if err != nil {
@@ -342,4 +227,141 @@ type voiceSentence struct {
 	ASR       string  `json:"asr"`
 	Emotion   float64 `json:"emotion"`
 	SegmentID int64   `json:"segment_id"`
+}
+
+// CreditWorkflow is the workflow for computing call's rule & credits.
+// if tx is not given, a tx is generated by default dbLike.
+// if c
+// segments must contains silence & interposal segments for corresponding rules to work.
+// use injectSilenceInterposalSegs for that.
+func CreditWorkflow(tx model.SQLTx, c *model.Call, segments []model.RealSegment) error {
+	var (
+		err             error
+		isSelfCompleted bool = tx == nil
+	)
+	if isSelfCompleted {
+		tx, err = dbLike.Begin()
+		if err != nil {
+			return fmt.Errorf("Begin default tx failed, %v", err)
+		}
+	}
+	// Channel silence & interposal does not have role concept,
+	// but we still put it into speaker for a unify access.
+	var channelRoles = map[int8]int{
+		model.ChanSilence:    SilenceSpeaker,
+		model.ChanInterposal: InterposalSpeaker,
+		model.ChanLeft:       int(c.LeftChanRole),
+		model.ChanRight:      int(c.RightChanRole),
+	}
+
+	allSegs := make([]*SegmentWithSpeaker, 0, len(segments)) //all segments including interposal and silence segment
+	segWithSp := make([]*SegmentWithSpeaker, 0)              //segments only with speaker,staff and customer
+	for _, s := range segments {
+		ws := &SegmentWithSpeaker{
+			RealSegment: s,
+			Speaker:     channelRoles[s.Channel],
+		}
+		allSegs = append(allSegs, ws)
+		if ws.Channel > 0 {
+			segWithSp = append(segWithSp, ws)
+		}
+	}
+
+	//TODO: 計算靜音比例跟規則
+	isEnabled := true
+	groups, err := serviceDAO.Group(tx, model.GroupQuery{
+		IsEnable: &isEnabled,
+	})
+	if err != nil {
+		return fmt.Errorf("get groups by call failed, %v", err)
+	}
+
+	score := BaseScore
+	rootID, err := StoreRootCallCredit(tx, uint64(c.ID))
+	if err != nil {
+		return fmt.Errorf("create root call %d credit failed, %s", rootID, err)
+	}
+	if len(groups) != 0 {
+		credits, err := RuleGroupCriteria(groups, segWithSp, time.Duration(30)*time.Minute)
+		if err != nil {
+			return fmt.Errorf("get rule group credit failed, %v", err)
+		}
+		if len(credits) != len(groups) {
+			return fmt.Errorf("get credits %d not equal to groups %d", len(credits), len(groups))
+		}
+		for _, credit := range credits {
+			score += credit.Score
+		}
+		machineCredits := make([]machineCredit, 0, len(groups))
+
+		for idx, grp := range groups {
+			var rulesWithException []RulesException
+			var combineCredit machineCredit
+			combineCredit.credit = credits[idx]
+
+			silenceCredit, err := RuleSilenceCheck(grp, allSegs, credits[0].Matched)
+			if err != nil {
+				return fmt.Errorf("get silence rule credit failed, %v", err)
+			}
+
+			var staffSpeed float64
+			if c.LeftChanRole == model.CallChanStaff {
+				staffSpeed = *c.LeftSpeed
+			} else {
+				staffSpeed = *c.RightSpeed
+			}
+
+			speedCredit, err := RuleSpeedCheck(grp, credits[0].Matched, segWithSp, staffSpeed)
+			if err != nil {
+				return fmt.Errorf("get speed rule credit failed, %v", err)
+			}
+			interposalCredit, err := RuleInterposalCheck(grp, allSegs)
+			if err != nil {
+				return fmt.Errorf("get speed rule credit failed, %v", err)
+			}
+			rulesWithException = append(rulesWithException, silenceCredit...)
+			rulesWithException = append(rulesWithException, speedCredit...)
+			rulesWithException = append(rulesWithException, interposalCredit...)
+			combineCredit.others = rulesWithException
+			machineCredits = append(machineCredits, combineCredit)
+			for _, r := range rulesWithException {
+				score += r.Score
+				credits[idx].Score += r.Score //Add the silence/interposal/speed score to rule group
+			}
+		}
+		err = StoreMachineCredit(tx, uint64(c.ID), uint64(rootID), machineCredits)
+		if err != nil {
+			return fmt.Errorf("store machine credits failed. %s", err)
+		}
+	}
+
+	swCredits, err := SensitiveWordsVerificationWithPacked(c.ID, segWithSp, c.EnterpriseID)
+	if err != nil {
+		return err
+	}
+
+	for _, sc := range swCredits {
+		score += sc.sensitiveWord.Score
+	}
+	err = StoreSensitiveCredit(tx, swCredits, rootID)
+	if err != nil {
+		logger.Error.Printf("store sensitive credit failed. %s\n", err)
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit sql failed, %v", err)
+	}
+
+	_, err = UpdateCredit(dbLike.Conn(), rootID, &model.UpdateCreditSet{Score: &score})
+	if err != nil {
+		logger.Error.Printf("update the score of call %d failed. %s\n", rootID, err)
+		return fmt.Errorf("update the credit failed. %s", err)
+	}
+	// a self completed
+	if isSelfCompleted {
+		return tx.Commit()
+	}
+	return nil
 }
