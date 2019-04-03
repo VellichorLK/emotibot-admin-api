@@ -697,7 +697,6 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		logger.Error.Printf("get sentence group failed. %s\n", err)
 		return nil, err
 	}
-
 	//lookup map by id and uuid
 	senGrpMap := make(map[int64]model.SentenceGroup)
 	senGrpUUIDMap := make(map[string]model.SentenceGroup)
@@ -749,7 +748,9 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		if flow.IgnoreIntent == 0 {
 			sf.Type = callInIntentCodeMap[1]
 			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
-			resp.NodeLocal[flow.IntentLinkID] = append(resp.NodeLocal[flow.IntentLinkID], loc)
+			intentUUID := senGrpIDToUUIDMap[flow.IntentLinkID]
+			intentNewID := senGrpUUIDMap[intentUUID].ID
+			resp.NodeLocal[intentNewID] = append(resp.NodeLocal[intentNewID], loc)
 		} else {
 			sf.Type = callInIntentCodeMap[0]
 		}
