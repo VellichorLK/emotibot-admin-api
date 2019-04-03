@@ -7,8 +7,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 )
 
-func GetRobotWords(appid string) ([]*ChatInfoV2, int, error) {
-	ret, err := getRobotWords(appid)
+func GetRobotWords(appid string, locale string) ([]*ChatInfoV2, int, error) {
+	ret, err := getRobotWords(appid, locale)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ApiError.NOT_FOUND_ERROR, err

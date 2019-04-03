@@ -19,7 +19,8 @@ import (
 func handleDBFunctionListV2(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 
-	ret, errCode, err := GetDBFunctions(appid, 2)
+	locale := requestheader.GetLocale(r)
+	ret, errCode, err := GetDBFunctions(appid, 2, locale)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
@@ -37,7 +38,8 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 		funcName = function
 	}
 
-	ret, errCode, err := GetDBFunctions(appid, 2)
+	locale := requestheader.GetLocale(r)
+	ret, errCode, err := GetDBFunctions(appid, 2, locale)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
@@ -60,7 +62,7 @@ func handleUpdateDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	activeStr := r.FormValue("active")
 	active := (activeStr == "true")
 
-	errCode, err = UpdateDBFunction(appid, function, active, 2)
+	errCode, err = UpdateDBFunction(appid, function, active, 2, locale)
 	origStatus := util.Msg["Close"]
 	if origInfo.Active {
 		origStatus = util.Msg["Open"]
@@ -93,7 +95,8 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	result := 0
 
-	origFunctions, errCode, err := GetDBFunctions(appid, 2)
+	locale := requestheader.GetLocale(r)
+	origFunctions, errCode, err := GetDBFunctions(appid, 2, locale)
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
@@ -158,7 +161,8 @@ func handleUpdateAllDBFunctionV2(w http.ResponseWriter, r *http.Request) {
 func handleDBFunctionList(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 
-	ret, errCode, err := GetDBFunctions(appid, 1)
+	locale := requestheader.GetLocale(r)
+	ret, errCode, err := GetDBFunctions(appid, 1, locale)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 	} else {
@@ -176,7 +180,8 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 		funcName = function
 	}
 
-	ret, errCode, err := GetDBFunctions(appid, 1)
+	locale := requestheader.GetLocale(r)
+	ret, errCode, err := GetDBFunctions(appid, 1, locale)
 	if errCode != ApiError.SUCCESS {
 		util.WriteJSON(w, util.GenRetObj(errCode, err))
 		errMsg := fmt.Sprintf("%s [%s] %s", util.Msg["Read"], funcName, util.Msg["Error"])
@@ -199,7 +204,7 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 	activeStr := r.FormValue("active")
 	active := (activeStr == "true")
 
-	errCode, err = UpdateDBFunction(appid, function, active, 1)
+	errCode, err = UpdateDBFunction(appid, function, active, 1, locale)
 	origStatus := util.Msg["Close"]
 	if origInfo.Active {
 		origStatus = util.Msg["Open"]
@@ -231,8 +236,9 @@ func handleUpdateDBFunction(w http.ResponseWriter, r *http.Request) {
 func handleUpdateAllDBFunction(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	result := 0
+	locale := requestheader.GetLocale(r)
 
-	origFunctions, errCode, err := GetDBFunctions(appid, 1)
+	origFunctions, errCode, err := GetDBFunctions(appid, 1, locale)
 	if errCode != ApiError.SUCCESS {
 		errMsg := fmt.Sprintf("Get orig setting error: %s", ApiError.GetErrorMsg(errCode))
 		util.WriteJSON(w, util.GenRetObj(errCode, err))

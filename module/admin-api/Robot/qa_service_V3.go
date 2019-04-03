@@ -18,8 +18,8 @@ var (
 	syncSolrTimeout = 5 * 60
 )
 
-func GetRobotQAListV3(appid string) ([]*QAInfoV3, int, error) {
-	qainfos, err := getRobotQAListV3(appid)
+func GetRobotQAListV3(appid string, locale string) ([]*QAInfoV3, int, error) {
+	qainfos, err := getRobotQAListV3(appid, locale)
 	if err == sql.ErrNoRows {
 		return []*QAInfoV3{}, ApiError.SUCCESS, nil
 	} else if err != nil {

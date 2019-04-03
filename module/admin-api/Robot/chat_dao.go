@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 var errDuplicate = errors.New("duplicate")
 
-func getRobotWords(appid string) (ret []*ChatInfoV2, err error) {
+func getRobotWords(appid string, locale string) (ret []*ChatInfoV2, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -38,6 +40,13 @@ func getRobotWords(appid string) (ret []*ChatInfoV2, err error) {
 			return
 		}
 		infos = append(infos, tmp)
+		if locale == "zh-cn" {
+			tmp.Name = zhconverter.T2S(tmp.Name)
+			tmp.Comment = zhconverter.T2S(tmp.Comment)
+		} else if locale == "zh-tw" {
+			tmp.Name = zhconverter.S2T(tmp.Name)
+			tmp.Comment = zhconverter.S2T(tmp.Comment)
+		}
 		infoMap[tmp.Type] = tmp
 	}
 

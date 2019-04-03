@@ -112,7 +112,8 @@ func addAudit(r *http.Request, module string, operation string, msg string, resu
 func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 	appid := r.FormValue("appid")
 
-	errRobot := InitRobotFunction(appid)
+	locale := requestheader.GetLocale(r)
+	errRobot := InitRobotFunction(appid, locale)
 	errQA := InitRobotQAData(appid)
 	errWordbank := InitWordbankData(appid)
 	if errRobot != nil {
