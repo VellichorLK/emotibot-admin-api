@@ -266,8 +266,16 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 	for _, v := range senGrpsID[nav] {
 		int64SenGrpIDs = append(int64SenGrpIDs, v)
 	}
+	var intentUUID string
 	if flow[0].IntentLinkID != 0 {
 		int64SenGrpIDs = append(int64SenGrpIDs, flow[0].IntentLinkID)
+
+		intentSenGrp, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{ID: []uint64{uint64(flow[0].IntentLinkID)}}, dbLike.Conn())
+		if err != nil || len(intentSenGrp) == 0 {
+			logger.Error.Printf("get intent %d sentence group failed. %s\n", flow[0].IntentLinkID, err)
+			return nil, err
+		}
+		intentUUID = intentSenGrp[0].UUID
 	}
 
 	resp := &DetailNavFlow{Nodes: []model.SentenceGroup{}, NavFlow: *flow[0]}
@@ -282,7 +290,7 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		var intent model.SentenceGroup
 		senGrpsMap := make(map[string]model.SentenceGroup)
 		for _, senGrp := range senGrps {
-			if senGrp.ID == flow[0].IntentLinkID {
+			if senGrp.UUID == intentUUID {
 				intent = senGrp
 			} else {
 				senGrpsMap[senGrp.UUID] = senGrp
