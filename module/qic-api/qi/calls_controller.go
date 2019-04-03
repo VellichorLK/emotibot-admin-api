@@ -63,6 +63,29 @@ func CallsHandler(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, resp)
 }
 
+// CallsGroupedHandler return the list of Calls and CallGroups
+func CallsGroupedHandler(w http.ResponseWriter, r *http.Request) {
+	query, err := newModelCallQuery(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("request error: %v", err))
+		return
+	}
+	groupedCalls, total, err := GetGroupedCalls(query)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, fmt.Sprintf("get grouped calls failed, %v", err))
+		return
+	}
+	resp := CallsGroupedResponse{
+		Paging: general.Paging{
+			Page:  query.Paging.Page,
+			Limit: query.Paging.Limit,
+			Total: total,
+		},
+		Data: groupedCalls,
+	}
+	util.WriteJSON(w, resp)
+}
+
 // NewCallsHandler create a call but no upload file itself.
 func NewCallsHandler(w http.ResponseWriter, r *http.Request) {
 	type response struct {
@@ -243,6 +266,7 @@ type NewCallReq struct {
 	Type          int8                   `json:"-"`
 	CustomColumns map[string]interface{} `json:"-"` //Custom columns of the call.
 	RemoteFile    string                 `json:"remote_file"`
+	CallSource    int8                   `json:"call_source"`
 }
 
 // ReservedCustomKeywords is a list of keywords reserved at NewCallReq.
@@ -329,6 +353,11 @@ type CallDetail struct {
 type CallsResponse struct {
 	Paging general.Paging `json:"paging"`
 	Data   []CallResp     `json:"data"`
+}
+
+type CallsGroupedResponse struct {
+	Paging general.Paging      `json:"paging"`
+	Data   []*GroupedCallsResp `json:"data"`
 }
 
 //CallResp is the UI struct of the call.
@@ -437,22 +466,19 @@ func newModelCallQuery(r *http.Request) (*model.CallQuery, error) {
 	}
 	query.Paging = paging
 
-	// if content := values.Get("content"); content != "" {
-	// 	query.Content = &content
-	// }
 	if start := values.Get("start"); start != "" {
 		startTime, err := strconv.ParseInt(start, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("start is not a valid int, %v", err)
 		}
-		query.CallTimeStart = &startTime
+		query.CallTime.SetLowerBound(startTime)
 	}
 	if end := values.Get("end"); end != "" {
 		endTime, err := strconv.ParseInt(end, 10, 64)
 		if err != nil {
 			return nil, fmt.Errorf("end is not a valid int, %v", err)
 		}
-		query.CallTimeEnd = &endTime
+		query.CallTime.SetUpperBound(endTime)
 	}
 	if statusGrp := values["status"]; len(statusGrp) > 0 {
 		query.Status = make([]int8, 0, len(statusGrp))

@@ -282,6 +282,12 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 		logger.Error.Printf("Failed to open file %s \n", fileName)
 		return err
 	}
+
+	err = batchAddRules(xlFile, enterpriseID, preparedSentenceGroupMap, FromRule)
+	return err
+}
+
+func batchAddRules(xlFile *xlsx.File, enterpriseID string, preparedSentenceGroupMap map[string]*model.SentenceGroup, from string) error {
 	sheet, ok := xlFile.Sheet[RuleSheetName]
 	if !ok {
 		logger.Error.Printf("Failed to get sheet %s \n", RuleSheetName)
@@ -410,6 +416,25 @@ func BatchAddRules(fileName string, enterpriseID string) error {
 				UUID: item.UUID,
 				Name: item.Name,
 			}
+
+			if from == FromFlow {
+				if numOfOP != 0 {
+					if i == 0 {
+						cfExpression = operatorList[i] + " " + item.UUID
+					} else {
+						cfExpression = cfExpression + " " + operatorList[i] + " " + item.UUID
+					}
+				} else {
+					// default logic format: must -> then
+					if i == 0 {
+						cfExpression = "if " + item.UUID
+					} else {
+						cfExpression = cfExpression + " then " + item.UUID
+					}
+				}
+				continue
+			}
+
 			if numOfOP != 0 {
 				if i == 0 {
 					cfExpression = operatorList[i] + " " + item.UUID
@@ -696,7 +721,7 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 
 		// TODO check value or use constant variable
 		flowName = row.Cells[3].String()
-		logicList = row.Cells[5].String()
+		logicList = row.Cells[6].String()
 
 		flag := 0
 		query := &model.NavQuery{Enterprise: &enterpriseID, IsDelete: &flag, Name: &flowName}
@@ -772,7 +797,9 @@ func BatchAddFlows(fileName string, enterpriseID string) error {
 			logger.Trace.Printf("Create normal node %s \n", groupName)
 		}
 	}
-	return nil
+	// add rules for flow
+	err = batchAddRules(xlFile, enterpriseID, preparedSentenceGroupMap, FromFlow)
+	return err
 }
 
 func ExportGroups() (*bytes.Buffer, error) {

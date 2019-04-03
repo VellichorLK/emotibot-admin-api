@@ -1,11 +1,12 @@
 package sensitive
 
 import (
+	"fmt"
+
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
 	"emotibot.com/emotigo/pkg/logger"
-	"fmt"
-	"github.com/anknown/ahocorasick"
+	goahocorasick "github.com/anknown/ahocorasick"
 )
 
 var dao sensitiveDao = &sensitiveDAOImpl{}
@@ -161,7 +162,7 @@ func getWordExceptionSentences(customerSentences, staffSentences []string, enter
 
 	if len(staffSentences) > 0 {
 		sq = &model.SentenceQuery{
-			UUID:       customerSentences,
+			UUID:       staffSentences,
 			IsDelete:   &deleted,
 			Enterprise: &enterprise,
 			Limit:      100,

@@ -9,8 +9,8 @@ import (
 
 // RuleMethod 正面與反面規則 flag
 const (
-	RuleMethodNegative int8 = 1
-	RuleMethodPositive int8 = -1
+	RuleMethodNegative int8 = -1
+	RuleMethodPositive int8 = 1
 )
 
 type RuleCompleteness struct {
@@ -53,6 +53,58 @@ type ConversationRuleFilter struct {
 	Severity   int8
 	IsDeleted  int8
 	CFUUID     []string // filter by conversation flow uuid
+	Paging     *Pagination
+}
+
+func baseFilterCondition(filter *ConversationRuleFilter) (string, []interface{}) {
+	if filter == nil {
+		return "", nil
+	}
+	var conditions []string
+	values := make([]interface{}, 0)
+	var conditionStr string
+	if len(filter.UUID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.UUID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldUUID, idStr))
+
+		for _, uuid := range filter.UUID {
+			values = append(values, uuid)
+		}
+	}
+
+	if len(filter.ID) > 0 {
+		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
+		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldID, idStr))
+
+		for _, id := range filter.ID {
+			values = append(values, id)
+		}
+	}
+
+	if filter.Enterprise != "" {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldEnterprise))
+		values = append(values, filter.Enterprise)
+	}
+
+	if filter.Name != "" {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldName))
+		values = append(values, filter.Name)
+	}
+
+	if filter.IsDeleted != -1 {
+		conditions = append(conditions, fmt.Sprintf("%s=?", fldIsDelete))
+		values = append(values, filter.IsDeleted)
+	}
+
+	if filter.Severity != -1 {
+		conditions = append(conditions, fmt.Sprintf("%s=?", CRSeverity))
+		values = append(values, filter.Severity)
+	}
+
+	if len(conditions) > 0 {
+		conditionStr = fmt.Sprintf("WHERE %s", strings.Join(conditions, " and "))
+	}
+	return conditionStr, values
 }
 
 type ConversationRuleDao interface {
@@ -247,52 +299,10 @@ func (dao *ConversationRuleSqlDaoImpl) CreateMany(rules []ConversationRule, sqlL
 }
 
 func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr string, values []interface{}) {
-	values = []interface{}{}
-	conditionStr := "WHERE "
-	conditions := []string{}
+	conditionStr, values := baseFilterCondition(filter)
 
-	if len(filter.UUID) > 0 {
-		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.UUID)-1))
-		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldUUID, idStr))
-
-		for _, uuid := range filter.UUID {
-			values = append(values, uuid)
-		}
-	}
-
-	if len(filter.ID) > 0 {
-		idStr := fmt.Sprintf("? %s", strings.Repeat(", ?", len(filter.ID)-1))
-		conditions = append(conditions, fmt.Sprintf("%s IN(%s)", fldID, idStr))
-
-		for _, id := range filter.ID {
-			values = append(values, id)
-		}
-	}
-
-	if filter.Enterprise != "" {
-		conditions = append(conditions, fmt.Sprintf("%s=?", fldEnterprise))
-		values = append(values, filter.Enterprise)
-	}
-
-	if filter.Name != "" {
-		conditions = append(conditions, fmt.Sprintf("%s=?", fldName))
-		values = append(values, filter.Name)
-	}
-
-	if filter.IsDeleted != -1 {
-		conditions = append(conditions, fmt.Sprintf("%s=?", fldIsDelete))
-		values = append(values, filter.IsDeleted)
-	}
-
-	if filter.Severity != -1 {
-		conditions = append(conditions, fmt.Sprintf("%s=?", CRSeverity))
-		values = append(values, filter.Severity)
-	}
-
-	if len(conditions) > 0 {
-		conditionStr = fmt.Sprintf("%s %s", conditionStr, strings.Join(conditions, " and "))
-	} else {
-		conditionStr = ""
+	if filter.Paging != nil {
+		conditionStr = conditionStr + filter.Paging.offsetSQL()
 	}
 
 	cfCondition := fmt.Sprintf("LEFT JOIN %s", tblConversationflow)
@@ -343,9 +353,8 @@ func queryConversationRulesSQLBy(filter *ConversationRuleFilter) (queryStr strin
 }
 
 func (dao *ConversationRuleSqlDaoImpl) CountBy(filter *ConversationRuleFilter, sql SqlLike) (total int64, err error) {
-	queryStr, values := queryConversationRulesSQLBy(filter)
-	queryStr = fmt.Sprintf("SELECT COUNT(cr.%s) FROM (%s) as cr", fldID, queryStr)
-
+	condition, values := baseFilterCondition(filter)
+	queryStr := fmt.Sprintf("SELECT COUNT(%s) FROM %s %s", fldID, tblRule, condition)
 	rows, err := sql.Query(queryStr, values...)
 	if err != nil {
 		err = fmt.Errorf("error while count rules in dao.CountBy, err: %s", err.Error())

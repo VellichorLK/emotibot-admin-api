@@ -1,9 +1,12 @@
 package qi
 
 import (
+	"fmt"
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
@@ -134,18 +137,96 @@ func handleCreateConversationRule(w http.ResponseWriter, r *http.Request) {
 	util.WriteJSON(w, ruleInRes)
 }
 
+func intergrityToRespCompletness(valids []LevelVaild) []*model.RuleCompleteness {
+	validRuleCompleteness := &model.RuleCompleteness{RuleCompleted: 1, HasDescription: true, HasConversationFlow: true, SetenceCompleted: 1}
+	invalidRuleCompleteness := &model.RuleCompleteness{RuleCompleted: 0, HasDescription: true, HasConversationFlow: false, SetenceCompleted: 0}
+
+	RuleNotCompleteness := &model.RuleCompleteness{RuleCompleted: 0, HasDescription: true, HasConversationFlow: true, SetenceCompleted: 1}
+	hasNoConversationFlow := &model.RuleCompleteness{RuleCompleted: 0, HasDescription: true, HasConversationFlow: false, SetenceCompleted: 0}
+	sentenceNoCompletness := &model.RuleCompleteness{RuleCompleted: 0, HasDescription: true, HasConversationFlow: true, SetenceCompleted: 0}
+	resp := make([]*model.RuleCompleteness, 0, len(valids))
+
+	for _, v := range valids {
+		var thisCompleteness model.RuleCompleteness
+		if v.Valid {
+			thisCompleteness = *validRuleCompleteness
+		} else {
+
+			var checker *model.RuleCompleteness
+
+			for _, info := range v.InValidInfo {
+				switch info.InValidLevel {
+				case LevRuleGroup:
+					checker = invalidRuleCompleteness
+				case LevRule:
+					checker = hasNoConversationFlow
+				case LevConversation:
+					checker = sentenceNoCompletness
+				case LevSenGroup:
+					checker = sentenceNoCompletness
+				case LevSentence:
+					if checker == nil {
+						checker = RuleNotCompleteness
+					}
+				default:
+				}
+			}
+			thisCompleteness = *checker
+		}
+		resp = append(resp, &thisCompleteness)
+	}
+	return resp
+}
+
+func addIntegrityInfo(rules []model.ConversationRule) error {
+	numOfRules := len(rules)
+	if numOfRules > 0 {
+		ruleIDs := make([]uint64, 0, numOfRules)
+		for _, v := range rules {
+			ruleIDs = append(ruleIDs, uint64(v.ID))
+		}
+		ruleValid, err := CheckIntegrity(LevRule, ruleIDs)
+		if err != nil || len(ruleValid) != numOfRules {
+			logger.Error.Printf("get rule integrity failed. %s. %d, %d\n", err, len(ruleValid), numOfRules)
+			return fmt.Errorf("get rule integrity failed. %s", err)
+
+		}
+
+		checkValid := intergrityToRespCompletness(ruleValid)
+		for i, v := range checkValid {
+			rules[i].Completeness = v
+			if rules[i].Description == "" {
+				rules[i].Completeness.HasDescription = false
+			}
+		}
+
+	}
+	return nil
+}
+
 func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 	enterprise := requestheader.GetEnterpriseID(r)
+	page, limit, err := getPageLimit(r)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("parse request failed, %v", err))
+		return
+	}
 
 	filter := &model.ConversationRuleFilter{
 		Enterprise: enterprise,
 		Severity:   -1,
+		Paging:     &model.Pagination{Limit: limit, Page: page},
 	}
 
 	total, rules, err := GetConversationRulesBy(filter)
 	if err != nil {
 		logger.Error.Printf("error while get rules in handleGetConversationRules, reason: %s\n", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	err = addIntegrityInfo(rules)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 
@@ -162,9 +243,9 @@ func handleGetConversationRules(w http.ResponseWriter, r *http.Request) {
 
 	response := Response{
 		Paging: &general.Paging{
-			Page:  0,
+			Page:  page,
 			Total: total,
-			Limit: len(rules),
+			Limit: limit,
 		},
 		Data: rulesInRes,
 	}
@@ -193,6 +274,12 @@ func handleGetConversationRule(w http.ResponseWriter, r *http.Request) {
 
 	if len(rules) == 0 {
 		http.NotFound(w, r)
+		return
+	}
+
+	err = addIntegrityInfo(rules)
+	if err != nil {
+		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
 		return
 	}
 

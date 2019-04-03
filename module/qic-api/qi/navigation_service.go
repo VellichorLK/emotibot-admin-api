@@ -10,12 +10,22 @@ import (
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
 	"emotibot.com/emotigo/module/qic-api/util/general"
+	emotionengine "emotibot.com/emotigo/pkg/api/emotion-engine/v1"
 )
 
 var (
 	navDao         model.NavigationDao  = &model.NavigationSQLDao{}
 	navOnTheFlyDao model.NavOnTheFlyDao = &model.NavOnTheFlySQLDao{}
 )
+
+var emotionTypes = map[string]int8{
+	"不满": model.ETypAngry,
+	"称赞": model.ETypPraise,
+	"难过": model.ETypSad,
+	"高兴": model.ETypJoyful,
+	"冷漠": model.ETypColdness,
+	"害怕": model.ETypAfraid,
+}
 
 //NewFlow creates the new flow and sets the empty node and intent
 func NewFlow(r *reqNewFlow, enterprise string) (int64, error) {
@@ -256,8 +266,16 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 	for _, v := range senGrpsID[nav] {
 		int64SenGrpIDs = append(int64SenGrpIDs, v)
 	}
+	var intentUUID string
 	if flow[0].IntentLinkID != 0 {
 		int64SenGrpIDs = append(int64SenGrpIDs, flow[0].IntentLinkID)
+
+		intentSenGrp, err := sentenceGroupDao.GetBy(&model.SentenceGroupFilter{ID: []uint64{uint64(flow[0].IntentLinkID)}}, dbLike.Conn())
+		if err != nil || len(intentSenGrp) == 0 {
+			logger.Error.Printf("get intent %d sentence group failed. %s\n", flow[0].IntentLinkID, err)
+			return nil, err
+		}
+		intentUUID = intentSenGrp[0].UUID
 	}
 
 	resp := &DetailNavFlow{Nodes: []model.SentenceGroup{}, NavFlow: *flow[0]}
@@ -272,7 +290,7 @@ func GetFlowSetting(nav int64, enterprise string) (*DetailNavFlow, error) {
 		var intent model.SentenceGroup
 		senGrpsMap := make(map[string]model.SentenceGroup)
 		for _, senGrp := range senGrps {
-			if senGrp.ID == flow[0].IntentLinkID {
+			if senGrp.UUID == intentUUID {
 				intent = senGrp
 			} else {
 				senGrpsMap[senGrp.UUID] = senGrp
@@ -377,6 +395,7 @@ func createFlowConversation(enterprise string, user string, body *apiFlowCreateB
 	}
 	defer tx.Rollback()
 
+	//Notice!! default sets the left channel as staff, and right channel as customer
 	reqCall := &NewCallReq{FileName: body.FileName, Enterprise: enterprise, Type: model.CallTypeRealTime, CallTime: body.CreateTime,
 		UploadUser: user, LeftChannel: CallStaffRoleName, RightChannel: CallCustomerRoleName}
 	call, err := NewCall(reqCall)
@@ -459,8 +478,83 @@ func updateFlowQI(c *NewCallReq, call *model.Call) error {
 	}
 	defer tx.Rollback()
 
+	err = callDao.SetCall(tx, *call)
+	if err != nil {
+		return err
+	}
+
 	timestamp := time.Now().Unix()
 	return updateCallCustomInfo(tx, c, call, timestamp)
+}
+
+func updateCallTextEmotion(call *model.Call) error {
+	// Get call's segments to create VAD list of the call
+	segments, err := getSegments(*call)
+	if err != nil {
+		logger.Error.Printf("Cannot get segments of call %s, error: %s",
+			call.UUID, err.Error())
+		return err
+	}
+
+	results := []model.RealSegmentEmotion{}
+
+	for _, s := range segments {
+		req := emotionengine.PredictRequest{
+			AppID:    "demo",
+			Sentence: s.ASRText,
+		}
+
+		logger.Trace.Printf("Predict emotion: %s", s.ASRText)
+
+		predictions, err := emotionPredict(req)
+		if err != nil {
+			logger.Error.Printf("Emotion prediction failed: %s\n", err.Error())
+			return err
+		}
+
+		if len(predictions) == 0 {
+			logger.Trace.Printf("%s has no emotion", s.ASRText)
+			continue
+		}
+		prediction := predictions[0]
+
+		logger.Trace.Printf("Label: %s, Score: %d\n", prediction.Label, prediction.Score)
+		if prediction.Score < filterScore {
+			continue
+		}
+
+		emotionType, ok := emotionTypes[prediction.Label]
+		if !ok {
+			logger.Warn.Printf("Unsupported emotion: %s", prediction.Label)
+			continue
+		}
+
+		results = append(results, model.RealSegmentEmotion{
+			SegmentID: s.SegmentID,
+			Typ:       emotionType,
+			Score:     float64(prediction.Score),
+		})
+	}
+
+	tx, err := dbLike.Begin()
+	if err != nil {
+		return fmt.Errorf("Can not begin a transaction")
+	}
+	defer tx.Rollback()
+
+	err = segmentDao.NewEmotions(tx, results)
+	if err != nil {
+		logger.Error.Printf("Emotion prediction failed: %s\n", err.Error())
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		logger.Error.Printf("Transaction commit failed. %s\n", err.Error())
+		return err
+	}
+
+	return nil
 }
 
 type NavFlowSetting struct {
@@ -549,7 +643,6 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 	for _, v := range flows {
 		if v.IgnoreIntent == 0 {
 			intentIDs = append(intentIDs, v.IntentLinkID)
-			allNewSenGrpsIDUint64 = append(allNewSenGrpsIDUint64, uint64(v.IntentLinkID))
 		}
 		flowIDs = append(flowIDs, v.ID)
 	}
@@ -603,7 +696,6 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 		logger.Error.Printf("get sentence group failed. %s\n", err)
 		return nil, err
 	}
-
 	//lookup map by id and uuid
 	senGrpMap := make(map[int64]model.SentenceGroup)
 	senGrpUUIDMap := make(map[string]model.SentenceGroup)
@@ -653,9 +745,15 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 	for flowIdx, flow := range flows {
 		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.ID}
 		if flow.IgnoreIntent == 0 {
-			sf.Type = callInIntentCodeMap[1]
-			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
-			resp.NodeLocal[flow.IntentLinkID] = append(resp.NodeLocal[flow.IntentLinkID], loc)
+			if intentUUID, ok := senGrpIDToUUIDMap[flow.IntentLinkID]; ok {
+				if sg, ok := senGrpUUIDMap[intentUUID]; ok {
+					sf.Type = callInIntentCodeMap[1]
+					loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
+					intentNewID := sg.ID
+					resp.NodeLocal[intentNewID] = append(resp.NodeLocal[intentNewID], loc)
+				}
+			}
+
 		} else {
 			sf.Type = callInIntentCodeMap[0]
 		}

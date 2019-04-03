@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 	model "emotibot.com/emotigo/module/qic-api/model/v1"
+	"emotibot.com/emotigo/module/qic-api/sensitive"
 	"emotibot.com/emotigo/module/qic-api/util/logicaccess"
 )
 
@@ -106,6 +107,9 @@ type SilenceRuleCredit struct {
 	Name        string                 `json:"name"`
 	Valid       bool                   `json:"valid"`
 	Score       int                    `json:"score"`
+	CreditID    int64                  `json:"revise_id,string"`
+	Revise      int                    `json:"revise"`
+	Comment     string                 `json:"comment"`
 	Setting     model.SilenceRule      `json:"setting"`
 	Exception   SilenceExceptionCredit `json:"exception"`
 	InvalidSegs []SegmentTimeRange     `json:"invalid_segment"`
@@ -120,6 +124,9 @@ type SpeedRuleCredit struct {
 	ID        int64                `json:"id"`
 	Name      string               `json:"name"`
 	Valid     bool                 `json:"valid"`
+	CreditID  int64                `json:"revise_id,string"`
+	Revise    int                  `json:"revise"`
+	Comment   string               `json:"comment"`
 	Score     int                  `json:"score"`
 	Setting   model.SpeedRule      `json:"setting"`
 	Exception SpeedExceptionCredit `json:"exception"`
@@ -129,6 +136,9 @@ type InterposalRuleCredit struct {
 	ID          int64                `json:"id"`
 	Name        string               `json:"name"`
 	Valid       bool                 `json:"valid"`
+	CreditID    int64                `json:"revise_id,string"`
+	Revise      int                  `json:"revise"`
+	Comment     string               `json:"comment"`
 	Score       int                  `json:"score"`
 	Setting     model.InterposalRule `json:"setting"`
 	InvalidSegs []SegmentTimeRange   `json:"invalid_segment"`
@@ -151,11 +161,14 @@ type RuleGrpCredit struct {
 
 //RuleCredit stores the rule level result
 type RuleCredit struct {
-	ID      uint64                    `json:"id"`
-	Valid   bool                      `json:"valid"`
-	Score   int                       `json:"score"`
-	CFs     []*ConversationFlowCredit `json:"conversation_flow"`
-	Setting *ConversationRuleInRes    `json:"setting"`
+	ID       uint64                    `json:"id"`
+	Valid    bool                      `json:"valid"`
+	Score    int                       `json:"score"`
+	CreditID int64                     `json:"revise_id,string"`
+	Revise   int                       `json:"revise"`
+	Comment  string                    `json:"comment"`
+	CFs      []*ConversationFlowCredit `json:"conversation_flow"`
+	Setting  *ConversationRuleInRes    `json:"setting"`
 }
 
 //ConversationFlowCredit stores the conversation flow level result
@@ -194,6 +207,44 @@ type TagCredit struct {
 	MatchTxt   string
 	SegmentIdx int
 	SegmentID  int64 //for controller usage
+}
+
+/*
+//SensitiveUsrCol is the usr column exception
+type SensitiveUsrCol struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	InputName   string `json:"inputname"`
+	Type        int    `json:"type"`
+	Description string `json:"description"`
+	//Values
+}
+*/
+//SWExceptionMatched is the exception and its matched segment
+type SWExceptionMatched struct {
+	Customer  []*SentenceWithPrediction `json:"customer"`
+	CustomCol []*sensitive.CustomValues `json:"customcol"`
+	Staff     []*SentenceWithPrediction `json:"staff"`
+}
+
+//SWSettingException is the setting of sensitive word and exception matched segments
+type SWSettingException struct {
+	ID         string             `json:"sw_id"`
+	Name       string             `json:"sw_name"`
+	Score      int                `json:"score"`
+	Exceptions SWExceptionMatched `json:"exception"`
+}
+
+//SWRuleCredit is the sensitive word result credit
+type SWRuleCredit struct {
+	Valid               bool               `json:"valid"`
+	Score               int                `json:"score"`
+	CreditID            int64              `json:"revise_id,string"`
+	Revise              int                `json:"revise"`
+	Comment             string             `json:"comment"`
+	InvalidSegs         []int64            `json:"invalid_segment"`
+	CustomMatched       bool               `json:"customcol_matched"`
+	SettingAndException SWSettingException `json:"setting"`
 }
 
 //FlowExpressionToNode converts the conversation flow expression to node

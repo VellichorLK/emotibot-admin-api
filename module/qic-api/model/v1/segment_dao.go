@@ -7,6 +7,15 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+const MAXIMUM_SEGMENT_LENGTH = 256
+
+const (
+	ChanInterposal int8 = -2
+	ChanSilence         = -1
+	ChanLeft            = 1
+	ChanRight           = 2
+)
+
 type SegmentDao interface {
 	NewSegments(delegatee SqlLike, segments []RealSegment) ([]RealSegment, error)
 	Segments(delegatee SqlLike, query SegmentQuery) ([]RealSegment, error)
@@ -49,8 +58,18 @@ type RealSegmentEmotion struct {
 }
 
 const (
-	//ETypAngry is the value of angry(憤怒) emotion type for the RealSegmentEmotion
-	ETypAngry = 1
+	//ETypAngry is the value of angry (憤怒、不滿) emotion type for the RealSegmentEmotion
+	ETypAngry = iota + 1
+	//EtypPraise is the value of praise (稱讚) emotion type for the RealSegmentEmotion
+	ETypPraise
+	// EtypSad is the value of praise (難過) emotion type for the RealSegmentEmotion
+	ETypSad
+	//EtypJoyful is the value of praise (高興) emotion type for the RealSegmentEmotion
+	ETypJoyful
+	//EtypColdness is the value of praise (冷漠) emotion type for the RealSegmentEmotion
+	ETypColdness
+	//EtypAfraid is the value of praise (害怕) emotion type for the RealSegmentEmotion
+	ETypAfraid
 )
 
 // SegmentQuery is the AND query conditions for the segment table

@@ -1,6 +1,11 @@
 package sensitive
 
 import (
+	"net/http"
+	"net/url"
+	"strconv"
+	"time"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -9,9 +14,6 @@ import (
 	"emotibot.com/emotigo/module/qic-api/util/request"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/gorilla/mux"
-	"net/http"
-	"net/url"
-	"strconv"
 )
 
 type ExceptionInReq struct {
@@ -250,19 +252,24 @@ func handleUpdateSensitiveWord(w http.ResponseWriter, r *http.Request) {
 		customerException = append(customerException, ss)
 	}
 
+	now := time.Now().Unix()
 	// TODO: handle different type of UserValue
 	userValues := []model.UserValue{}
 	for _, cv := range swInReq.Exception.Values {
 		for _, content := range cv.Values {
 			uk := &model.UserKey{
-				InputName: cv.InputName,
-				Name:      cv.Name,
-				Type:      cv.Type,
+				InputName:  cv.InputName,
+				Name:       cv.Name,
+				Type:       cv.Type,
+				CreateTime: now,
+				UpdateTime: now,
 			}
 			uv := model.UserValue{
-				Value:   content,
-				UserKey: uk,
-				Type:    model.UserValueTypSensitiveWord,
+				Value:      content,
+				UserKey:    uk,
+				Type:       model.UserValueTypSensitiveWord,
+				CreateTime: now,
+				UpdateTime: now,
 			}
 			userValues = append(userValues, uv)
 		}

@@ -49,7 +49,7 @@ func handleGetSentences(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var isDelete int8
-	total, sentences, err := GetSentenceList(enterprise, page, limit, &isDelete, id)
+	total, sentences, err := GetSentenceList(enterprise, page, limit, &isDelete, id, r.FormValue("keyword"))
 	if err != nil {
 		logger.Error.Printf("get sentence list failed. %s\n", err)
 		util.WriteJSONWithStatus(w, util.GenRetObj(ApiError.DB_ERROR, err.Error()), http.StatusInternalServerError)
@@ -240,6 +240,8 @@ func getPageLimit(r *http.Request) (page int, limit int, err error) {
 		if err != nil || limit < 0 {
 			return 0, 0, errLimit
 		}
+	} else {
+		limit = DLimit
 	}
 
 	if pageStr != "" {

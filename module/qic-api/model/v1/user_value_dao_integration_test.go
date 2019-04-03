@@ -51,6 +51,24 @@ func TestITUserValueDaoUserValues(t *testing.T) {
 			},
 			want: examples[:1],
 		},
+		{
+			name: "value",
+			args: args{
+				query: UserValueQuery{
+					Value: "nvidia",
+				},
+			},
+			want: examples[2:3],
+		},
+		{
+			name: "values",
+			args: args{
+				query: UserValueQuery{
+					Values: []string{"nvidia", "AMD"},
+				},
+			},
+			want: examples[2:4],
+		},
 	}
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {
