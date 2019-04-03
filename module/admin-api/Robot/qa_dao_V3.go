@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"emotibot.com/emotigo/pkg/logger"
@@ -95,9 +97,9 @@ func getRobotQAListV3(appid string, locale string) (ret []*QAInfoV3, err error) 
 			RelatedQuestions: []*InfoV3{},
 			Answers:          []*InfoV3{},
 		}
-		if locale == "zh-cn" {
+		if locale == localemsg.ZhCn {
 			qaMap[id].Question = zhconverter.T2S(content)
-		} else if locale == "zh-tw" {
+		} else if locale == localemsg.ZhTw {
 			qaMap[id].Question = zhconverter.S2T(content)
 		}
 		qaList = append(qaList, qaMap[id])

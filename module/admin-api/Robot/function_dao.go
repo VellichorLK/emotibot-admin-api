@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
@@ -20,10 +22,10 @@ func getDBFunction(appid string, code string, version int, locale string) (ret *
 	var queryStr string
 	var row *sql.Row
 	var moduleName, remark string
-	if locale == "zh-cn" {
+	if locale == localemsg.ZhCn {
 		moduleName = "module_name_zh"
 		remark = "remark"
-	} else if locale == "zh-tw" {
+	} else if locale == localemsg.ZhTw {
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
 	}
@@ -65,10 +67,10 @@ func getDBFunctions(appid string, version int, locale string) (ret []*Function, 
 	var queryStr string
 	var rows *sql.Rows
 	var moduleName, remark string
-	if locale == "zh-cn" {
+	if locale == localemsg.ZhCn {
 		moduleName = "module_name_zh"
 		remark = "remark"
-	} else if locale == "zh-tw" {
+	} else if locale == localemsg.ZhTw {
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
 	}
@@ -215,10 +217,10 @@ func initRobotFunctionData(appid string, locale string) (err error) {
 	}
 
 	var moduleName, remark string
-	if locale == "zh-cn" {
+	if locale == localemsg.ZhCn {
 		moduleName = "module_name_zh"
 		remark = "remark"
-	} else if locale == "zh-tw" {
+	} else if locale == localemsg.ZhTw {
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
 	}

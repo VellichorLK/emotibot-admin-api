@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -40,10 +42,10 @@ func getRobotWords(appid string, locale string) (ret []*ChatInfoV2, err error) {
 			return
 		}
 		infos = append(infos, tmp)
-		if locale == "zh-cn" {
+		if locale == localemsg.ZhCn {
 			tmp.Name = zhconverter.T2S(tmp.Name)
 			tmp.Comment = zhconverter.T2S(tmp.Comment)
-		} else if locale == "zh-tw" {
+		} else if locale == localemsg.ZhTw {
 			tmp.Name = zhconverter.S2T(tmp.Name)
 			tmp.Comment = zhconverter.S2T(tmp.Comment)
 		}
