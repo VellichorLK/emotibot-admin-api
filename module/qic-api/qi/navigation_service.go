@@ -643,7 +643,6 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 	for _, v := range flows {
 		if v.IgnoreIntent == 0 {
 			intentIDs = append(intentIDs, v.IntentLinkID)
-			allNewSenGrpsIDUint64 = append(allNewSenGrpsIDUint64, uint64(v.IntentLinkID))
 		}
 		flowIDs = append(flowIDs, v.ID)
 	}
@@ -746,11 +745,15 @@ func getCurSetting(enterprise string) (*NavFlowSetting, error) {
 	for flowIdx, flow := range flows {
 		sf := StreamingFlow{Name: flow.Name, IntentName: flow.IntentName, ID: flow.ID}
 		if flow.IgnoreIntent == 0 {
-			sf.Type = callInIntentCodeMap[1]
-			loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
-			intentUUID := senGrpIDToUUIDMap[flow.IntentLinkID]
-			intentNewID := senGrpUUIDMap[intentUUID].ID
-			resp.NodeLocal[intentNewID] = append(resp.NodeLocal[intentNewID], loc)
+			if intentUUID, ok := senGrpIDToUUIDMap[flow.IntentLinkID]; ok {
+				if sg, ok := senGrpUUIDMap[intentUUID]; ok {
+					sf.Type = callInIntentCodeMap[1]
+					loc := CreditLoc{FlowOrder: flowIdx, IsIntent: true}
+					intentNewID := sg.ID
+					resp.NodeLocal[intentNewID] = append(resp.NodeLocal[intentNewID], loc)
+				}
+			}
+
 		} else {
 			sf.Type = callInIntentCodeMap[0]
 		}
