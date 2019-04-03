@@ -5,6 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 type SessionsRequest struct {
@@ -150,16 +151,19 @@ var SessionsTableHeader = map[string][]data.TableHeaderItem{
 	},
 }
 
-var SessionsExportHeader = []string{
-	"会话ID",
-	"会话开始时间",
-	"会话结束时间",
-	"用户ID",
-	"满意度",
-	"客制化资讯",
-	"反馈选择",
-	"反馈文字",
-	"反馈时间",
+func GetSessionsExportHeader(locale string) []string {
+	var SessionsExportHeader = []string{
+		localemsg.Get(locale, "sessionId"),
+		localemsg.Get(locale, "startTime"),
+		localemsg.Get(locale, "endTime"),
+		localemsg.Get(locale, "userId"),
+		localemsg.Get(locale, "rating"),
+		localemsg.Get(locale, "customInfo"),
+		localemsg.Get(locale, "feedback"),
+		localemsg.Get(locale, "customFeedback"),
+		localemsg.Get(locale, "feedbackTime"),
+	}
+	return SessionsExportHeader
 }
 
 type SessionsExportResponse struct {
