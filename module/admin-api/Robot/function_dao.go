@@ -26,7 +26,7 @@ func getDBFunction(appid string, code string, version int, locale string) (ret *
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
 	} else {
-		moduleName = "module_name_cn"
+		moduleName = "module_name_zh"
 		remark = "remark"
 	}
 	if version == 1 {
@@ -71,7 +71,7 @@ func getDBFunctions(appid string, version int, locale string) (ret []*Function, 
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
 	} else {
-		moduleName = "module_name_cn"
+		moduleName = "module_name_zh"
 		remark = "remark"
 	}
 	if version == 1 {
@@ -219,8 +219,8 @@ func initRobotFunctionData(appid string, locale string) (err error) {
 	// copy default function to appid
 	queryStr = `
 		INSERT INTO function_switch
-		(appid, module_name, module_name_cn, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status)
-			SELECT ?, module_name, module_name_cn, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status
+		(appid, module_name, module_name_zh, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status)
+			SELECT ?, module_name, module_name_zh, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status
 			FROM function_switch
 			WHERE appid = ''`
 	_, err = tx.Exec(queryStr, appid)
