@@ -192,8 +192,8 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 	err = service.UpdateSystemAdminV3(origAdmin, newAdmin, adminID)
 	if err != nil {
 		switch err {
-		case util.ErrUserEmailExists:
-			returnBadRequest(w, "email")
+		case util.ErrUserNameExists:
+			returnBadRequest(w, "username")
 			return
 		default:
 			returnInternalError(w, err.Error())

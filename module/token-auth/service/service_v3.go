@@ -63,7 +63,7 @@ func UpdateSystemAdminV3(origAdmin *data.UserDetailV3, newAdmin *data.UserDetail
 		return err
 	}
 
-	if newAdmin.UserName != origAdmin.UserName || newAdmin.Email != origAdmin.Email {
+	if newAdmin.UserName != origAdmin.UserName {
 		exists, existedAdminName, _, err := useDBV3.EnterpriseUserInfoExistsV3(
 			newAdmin.Type, "", newAdmin.UserName, newAdmin.Email)
 		if err != nil {
