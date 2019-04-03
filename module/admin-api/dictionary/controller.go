@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -1228,11 +1229,11 @@ func parseWordbankV3FromRequest(r *http.Request) (*WordBankV3, error) {
 		return nil, errors.New("empty name")
 	}
 
-	if len(ret.Name) > maxNameLen {
+	if utf8.RuneCountInString(ret.Name) > maxNameLen {
 		return nil, errors.New(util.Msg["ErrorAPINameTooLong"])
 	}
 	for idx := range ret.SimilarWords {
-		if len(ret.SimilarWords[idx]) > maxSimilarWordsPerRow {
+		if utf8.RuneCountInString(ret.SimilarWords[idx]) > maxSimilarWordsPerRow {
 			return nil, errors.New(util.Msg["ErrorAPISimilarTooLong"])
 		}
 	}
