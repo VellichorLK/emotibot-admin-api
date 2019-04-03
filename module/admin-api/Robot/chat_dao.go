@@ -42,12 +42,12 @@ func getRobotWords(appid string, locale string) (ret []*ChatInfoV2, err error) {
 			return
 		}
 		infos = append(infos, tmp)
-		if locale == localemsg.ZhCn {
-			tmp.Name = zhconverter.T2S(tmp.Name)
-			tmp.Comment = zhconverter.T2S(tmp.Comment)
-		} else if locale == localemsg.ZhTw {
+		if locale == localemsg.ZhTw {
 			tmp.Name = zhconverter.S2T(tmp.Name)
 			tmp.Comment = zhconverter.S2T(tmp.Comment)
+		} else {
+			tmp.Name = zhconverter.T2S(tmp.Name)
+			tmp.Comment = zhconverter.T2S(tmp.Comment)
 		}
 		infoMap[tmp.Type] = tmp
 	}

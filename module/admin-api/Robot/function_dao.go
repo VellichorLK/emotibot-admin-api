@@ -22,12 +22,12 @@ func getDBFunction(appid string, code string, version int, locale string) (ret *
 	var queryStr string
 	var row *sql.Row
 	var moduleName, remark string
-	if locale == localemsg.ZhCn {
-		moduleName = "module_name_zh"
-		remark = "remark"
-	} else if locale == localemsg.ZhTw {
+	if locale == localemsg.ZhTw {
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
+	} else {
+		moduleName = "module_name_cn"
+		remark = "remark"
 	}
 	if version == 1 {
 		queryStr = fmt.Sprintf(`
@@ -67,12 +67,12 @@ func getDBFunctions(appid string, version int, locale string) (ret []*Function, 
 	var queryStr string
 	var rows *sql.Rows
 	var moduleName, remark string
-	if locale == localemsg.ZhCn {
-		moduleName = "module_name_zh"
-		remark = "remark"
-	} else if locale == localemsg.ZhTw {
+	if locale == localemsg.ZhTw {
 		moduleName = "module_name_tw"
 		remark = "remark_tw"
+	} else {
+		moduleName = "module_name_cn"
+		remark = "remark"
 	}
 	if version == 1 {
 		queryStr = fmt.Sprintf(`
@@ -216,19 +216,11 @@ func initRobotFunctionData(appid string, locale string) (err error) {
 		return nil
 	}
 
-	var moduleName, remark string
-	if locale == localemsg.ZhCn {
-		moduleName = "module_name_zh"
-		remark = "remark"
-	} else if locale == localemsg.ZhTw {
-		moduleName = "module_name_tw"
-		remark = "remark_tw"
-	}
 	// copy default function to appid
 	queryStr = `
 		INSERT INTO function_switch
-		(appid, module_name, ` + moduleName + `, third_url, on_off, ` + remark + `, intent, type, status)
-			SELECT ?, module_name, ` + moduleName + `, third_url, on_off, ` + remark + `, intent, type, status
+		(appid, module_name, module_name_cn, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status)
+			SELECT ?, module_name, module_name_cn, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status
 			FROM function_switch
 			WHERE appid = ''`
 	_, err = tx.Exec(queryStr, appid)

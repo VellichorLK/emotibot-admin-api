@@ -97,10 +97,10 @@ func getRobotQAListV3(appid string, locale string) (ret []*QAInfoV3, err error) 
 			RelatedQuestions: []*InfoV3{},
 			Answers:          []*InfoV3{},
 		}
-		if locale == localemsg.ZhCn {
-			qaMap[id].Question = zhconverter.T2S(content)
-		} else if locale == localemsg.ZhTw {
+		if locale == localemsg.ZhTw {
 			qaMap[id].Question = zhconverter.S2T(content)
+		} else {
+			qaMap[id].Question = zhconverter.T2S(content)
 		}
 		qaList = append(qaList, qaMap[id])
 	}
