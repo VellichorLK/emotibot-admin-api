@@ -161,7 +161,7 @@ func (resp *ASRResponse) Segments() []model.RealSegment {
 			if lastSeg != nil &&
 				lastSeg.Status == 200 &&
 				sen.Status == 200 &&
-				sen.Start-lastSeg.EndTime < 3 &&
+				sen.Start-lastSeg.EndTime < 2 &&
 				lastWordCount+currentWordCount < model.MAXIMUM_SEGMENT_LENGTH {
 
 				lastSeg.EndTime = sen.End
