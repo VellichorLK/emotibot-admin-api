@@ -3,6 +3,7 @@ package v2
 import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 type VisitRecordsRequest struct {
@@ -305,29 +306,32 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 	},
 }
 
-var VisitRecordsExportHeader = []string{
-	"会话ID",
-	"多轮ID",
-	"用户ID",
-	"用户问题",
-	"标准问题",
-	"机器人回答",
-	"匹配分数",
-	"出话模块",
-	"出话来源",
-	"访问时间",
-	"情感",
-	"情感分数",
-	"意图",
-	"意图分数",
-	"客制化资讯",
-	"FAQ 分类",
-	"FAQ 标签",
-	"反馈选择",
-	"反馈文字",
-	"反馈时间",
-	"出话阈值",
-	"响应时间",
+func GetVisitRecordsExportHeader(locale string) []string {
+	var VisitRecordsExportHeader = []string{
+		localemsg.Get(locale, "sessionId"),
+		localemsg.Get(locale, "taskEngineId"),
+		localemsg.Get(locale, "userId"),
+		localemsg.Get(locale, "userQ"),
+		localemsg.Get(locale, "FAQ"),
+		localemsg.Get(locale, "robotAnswer"),
+		localemsg.Get(locale, "matchScore"),
+		localemsg.Get(locale, "module"),
+		localemsg.Get(locale, "source"),
+		localemsg.Get(locale, "logTime"),
+		localemsg.Get(locale, "emotionCol"),
+		localemsg.Get(locale, "emotionScore"),
+		localemsg.Get(locale, "intent"),
+		localemsg.Get(locale, "intentScore"),
+		localemsg.Get(locale, "customInfo"),
+		localemsg.Get(locale, "FAQCategory"),
+		localemsg.Get(locale, "FAQLabel"),
+		localemsg.Get(locale, "feedback"),
+		localemsg.Get(locale, "customFeedback"),
+		localemsg.Get(locale, "feedbackTime"),
+		localemsg.Get(locale, "threshold"),
+		localemsg.Get(locale, "respondTime"),
+	}
+	return VisitRecordsExportHeader
 }
 
 type VisitRecordsExportResponse struct {

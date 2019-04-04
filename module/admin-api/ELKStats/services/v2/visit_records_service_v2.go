@@ -350,7 +350,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 
 	// Header row
 	row := sheet.AddRow()
-	for _, header := range dataV2.VisitRecordsExportHeader {
+	for _, header := range dataV2.GetVisitRecordsExportHeader(locale) {
 		cell := row.AddCell()
 		cell.Value = header
 	}

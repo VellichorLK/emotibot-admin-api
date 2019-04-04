@@ -6,7 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -56,7 +59,7 @@ func scanInfo(row scanner) (*InfoV3, error) {
 	return &ret, nil
 }
 
-func getRobotQAListV3(appid string) (ret []*QAInfoV3, err error) {
+func getRobotQAListV3(appid string, locale string) (ret []*QAInfoV3, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -93,6 +96,11 @@ func getRobotQAListV3(appid string) (ret []*QAInfoV3, err error) {
 			Question:         content,
 			RelatedQuestions: []*InfoV3{},
 			Answers:          []*InfoV3{},
+		}
+		if locale == localemsg.ZhTw {
+			qaMap[id].Question = zhconverter.S2T(content)
+		} else {
+			qaMap[id].Question = zhconverter.T2S(content)
 		}
 		qaList = append(qaList, qaMap[id])
 	}

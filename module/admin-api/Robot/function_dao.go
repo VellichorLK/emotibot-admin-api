@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+
 	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 var errInvalidVersion = errors.New("invalid version")
 
-func getDBFunction(appid string, code string, version int) (ret *Function, err error) {
+func getDBFunction(appid string, code string, version int, locale string) (ret *Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = util.ErrDBNotInit
@@ -19,15 +21,23 @@ func getDBFunction(appid string, code string, version int) (ret *Function, err e
 
 	var queryStr string
 	var row *sql.Row
+	var moduleName, remark string
+	if locale == localemsg.ZhTw {
+		moduleName = "module_name_tw"
+		remark = "remark_tw"
+	} else {
+		moduleName = "module_name_zh"
+		remark = "remark"
+	}
 	if version == 1 {
 		queryStr = fmt.Sprintf(`
-			SELECT module_name, module_name_zh, on_off, remark, intent
+			SELECT module_name, `+moduleName+`, on_off, `+remark+`, intent
 			FROM %s_function
 			WHERE module_name = ? AND status != -1`, appid)
 		row = mySQL.QueryRow(queryStr, code)
 	} else if version == 2 {
 		queryStr = `
-			SELECT module_name, module_name_zh, on_off, remark, intent
+			SELECT module_name, ` + moduleName + `, on_off, ` + remark + `, intent
 			FROM function_switch
 			WHERE module_name = ? AND appid = ? AND status != -1`
 		row = mySQL.QueryRow(queryStr, code, appid)
@@ -47,7 +57,7 @@ func getDBFunction(appid string, code string, version int) (ret *Function, err e
 	return
 }
 
-func getDBFunctions(appid string, version int) (ret []*Function, err error) {
+func getDBFunctions(appid string, version int, locale string) (ret []*Function, err error) {
 	mySQL := util.GetMainDB()
 	if mySQL == nil {
 		err = util.ErrDBNotInit
@@ -56,15 +66,23 @@ func getDBFunctions(appid string, version int) (ret []*Function, err error) {
 
 	var queryStr string
 	var rows *sql.Rows
+	var moduleName, remark string
+	if locale == localemsg.ZhTw {
+		moduleName = "module_name_tw"
+		remark = "remark_tw"
+	} else {
+		moduleName = "module_name_zh"
+		remark = "remark"
+	}
 	if version == 1 {
 		queryStr = fmt.Sprintf(`
-			SELECT module_name, module_name_zh, on_off, remark, intent
+			SELECT module_name, `+moduleName+`, on_off, `+remark+`, intent
 			FROM %s_function
 			WHERE status != -1`, appid)
 		rows, err = mySQL.Query(queryStr)
 	} else if version == 2 {
 		queryStr = `
-			SELECT module_name, module_name_zh, on_off, remark, intent
+			SELECT module_name, ` + moduleName + `, on_off, ` + remark + `, intent
 			FROM function_switch
 			WHERE status != -1 AND appid = ?`
 		rows, err = mySQL.Query(queryStr, appid)
@@ -165,7 +183,7 @@ func setDBMultiFunctionActiveStatus(appid string, active map[string]bool, versio
 }
 
 // initRobotFunction only support in version 2
-func initRobotFunctionData(appid string) (err error) {
+func initRobotFunctionData(appid string, locale string) (err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -201,8 +219,8 @@ func initRobotFunctionData(appid string) (err error) {
 	// copy default function to appid
 	queryStr = `
 		INSERT INTO function_switch
-		(appid, module_name, module_name_zh, third_url, on_off, remark, intent, type, status)
-			SELECT ?, module_name, module_name_zh, third_url, on_off, remark, intent, type, status
+		(appid, module_name, module_name_zh, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status)
+			SELECT ?, module_name, module_name_zh, module_name_tw, third_url, on_off, remark, remark_tw, intent, type, status
 			FROM function_switch
 			WHERE appid = ''`
 	_, err = tx.Exec(queryStr, appid)

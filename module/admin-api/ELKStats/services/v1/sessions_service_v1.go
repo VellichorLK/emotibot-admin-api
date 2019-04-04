@@ -298,7 +298,7 @@ func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, lo
 
 	// Header row
 	row := sheet.AddRow()
-	for _, header := range dataV1.SessionsExportHeader {
+	for _, header := range dataV1.GetSessionsExportHeader(locale) {
 		cell := row.AddCell()
 		cell.Value = header
 	}

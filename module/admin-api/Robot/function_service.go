@@ -9,16 +9,16 @@ import (
 // ==========================================
 // Functions for using mysql
 // ==========================================
-func GetDBFunctions(appid string, version int) ([]*Function, int, error) {
-	functions, err := getDBFunctions(appid, version)
+func GetDBFunctions(appid string, version int, locale string) ([]*Function, int, error) {
+	functions, err := getDBFunctions(appid, version, locale)
 	if err != nil {
 		return nil, ApiError.DB_ERROR, err
 	}
 	return functions, ApiError.SUCCESS, nil
 }
 
-func UpdateDBFunction(appid string, function string, active bool, version int) (int, error) {
-	_, err := getDBFunction(appid, function, version)
+func UpdateDBFunction(appid string, function string, active bool, version int, locale string) (int, error) {
+	_, err := getDBFunction(appid, function, version, locale)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return ApiError.REQUEST_ERROR, err
@@ -74,6 +74,6 @@ func UpdateFunctions(appid string, newInfos map[string]*FunctionInfo) (int, erro
 	return ApiError.SUCCESS, nil
 }
 
-func InitRobotFunction(appid string) error {
-	return initRobotFunctionData(appid)
+func InitRobotFunction(appid string, locale string) error {
+	return initRobotFunctionData(appid, locale)
 }
