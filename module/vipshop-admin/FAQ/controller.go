@@ -35,6 +35,7 @@ func init() {
 			util.NewEntryPoint("POST", "question/{qid:string}/similar-questions", []string{"edit"}, handleUpdateSimilarQuestions),
 
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
+			util.NewEntryPoint("GET", "questions/similar/search", []string{"view"}, handleSearchSQuestion),
 			util.NewEntryPoint("POST", "question", []string{"edit"}, handleCreateQuestion),
 			util.NewEntryPoint("PUT", "question/{qid:int}", []string{"edit"}, handleUpdateQuestion),
 			util.NewEntryPoint("GET", "question/{qid:int}", []string{"view"}, handleQueryQuestion),
@@ -158,8 +159,6 @@ func handleDeleteCategory(ctx context.Context) {
 	util.LogInfo.Printf("delete category in handleDeleteCategory took: %s\n", time.Since(lastOperation))
 	lastOperation = time.Now()
 
-
-	
 	util.AddAuditLog(userID, userIP, util.AuditModuleQA, util.AuditOperationEdit, auditMessage, auditRet)
 	util.LogInfo.Printf("write auditlog in handleDeleteCategory took: %s\n", time.Since(lastOperation))
 }
@@ -289,7 +288,6 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	util.LogInfo.Printf("get category in handleUpdateSimilarQuestions took: %s\n", time.Since(lastOperation))
 	lastOperation = time.Now()
 
-
 	categoryName, err := questionCategory.FullName()
 	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -310,7 +308,6 @@ func handleUpdateSimilarQuestions(ctx context.Context) {
 	for i := 0; i < len(similarityQuestions); i++ {
 		originSimilarityQuestions = append(originSimilarityQuestions, similarityQuestions[i].Content)
 	}
-
 
 	body := SimilarQuestionReqBody{}
 	if err = ctx.ReadJSON(&body); err != nil {
@@ -378,18 +375,27 @@ func handleSearchQuestion(ctx context.Context) {
 	appid := util.GetAppID(ctx)
 	question, err := searchQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
-		ctx.StatusCode(http.StatusNotFound)
-		return
+		squestion, err := searchSQuestionByContent(content, appid)
+		if err == util.ErrSQLRowNotFound {
+			ctx.StatusCode(http.StatusNotFound)
+			return
+		} else if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			util.LogError.Printf("searching SQuestion by content [%s] failed, %s", content, err)
+			return
+		} else {
+			ctx.StatusCode(http.StatusOK)
+			ctx.JSON(squestion)
+		}
 	} else if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Printf("searching Question by content [%s] failed, %s", content, err)
 		return
+	} else {
+		ctx.StatusCode(http.StatusOK)
+		ctx.JSON(question)
 	}
 	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
-
-	ctx.StatusCode(http.StatusOK)
-	ctx.JSON(question)
-
 }
 
 func handleCategoryQuestions(ctx iris.Context) {
@@ -1059,7 +1065,7 @@ func handleQueryQuestion(ctx context.Context) {
 		ctx.StatusCode(http.StatusBadRequest)
 	}
 
-	var targetQuestions []Question = []Question {
+	var targetQuestions []Question = []Question{
 		Question{
 			QuestionId: qid,
 		},
@@ -1067,7 +1073,7 @@ func handleQueryQuestion(ctx context.Context) {
 
 	questions, err := FindQuestions(appid, targetQuestions)
 	if err != nil {
-		util.LogError.Printf("Error happened while get question %d, reason: %s", qid,  err.Error())
+		util.LogError.Printf("Error happened while get question %d, reason: %s", qid, err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
 		return
 	}
@@ -1091,7 +1097,7 @@ func handleQueryQuestion(ctx context.Context) {
 	question.AppID = appid
 	err = question.FetchAnswers()
 	if err != nil {
-		util.LogError.Printf("Error happened while fetch answers of question %d, reason: %s", qid,  err.Error())
+		util.LogError.Printf("Error happened while fetch answers of question %d, reason: %s", qid, err.Error())
 		ctx.StatusCode(http.StatusInternalServerError)
 	}
 	util.LogInfo.Printf("fetch answers of question in handleQueryQuestion took: %s\n", time.Since(lastOperation))
@@ -1107,4 +1113,25 @@ func handleQueryQuestion(ctx context.Context) {
 	}
 
 	ctx.JSON(question)
+}
+
+// search simialr question by exactly matching content
+func handleSearchSQuestion(ctx context.Context) {
+	lastOperation := time.Now()
+	content := ctx.FormValue("content")
+	appid := util.GetAppID(ctx)
+
+	squestion, err := searchSQuestionByContent(content, appid)
+	if err == util.ErrSQLRowNotFound {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	} else if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Printf("searching SQuestion by content [%s] failed, %s", content, err)
+		return
+	}
+	ctx.StatusCode(http.StatusOK)
+	ctx.JSON(squestion)
+
+	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
 }

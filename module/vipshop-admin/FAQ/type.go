@@ -1,16 +1,16 @@
 package FAQ
 
 import (
-	"strings"
 	"fmt"
+	"strings"
 
-	"emotibot.com/emotigo/module/vipshop-admin/util"
 	"emotibot.com/emotigo/module/vipshop-admin/imagesManager"
+	"emotibot.com/emotigo/module/vipshop-admin/util"
 )
 
 const (
 	FOREVER_BEGIN = "1970-01-01 00:00:00"
-	FOREVER_END = "2999-12-31 23:59:00"
+	FOREVER_END   = "2999-12-31 23:59:00"
 )
 
 type APICategory struct {
@@ -36,6 +36,7 @@ type StdQuestion struct {
 	QuestionID int    `json:"questionId"`
 	Content    string `json:"content"`
 	CategoryID int    `json:"categoryId"`
+	Type       int    `json:"type"`
 }
 
 //Category represents sql table vipshop_category
@@ -58,9 +59,9 @@ type Question struct {
 	CategoryName    string   `json:"categoryName"`
 	CategoryId      int      `json:"categoryId"`
 	Answers         []Answer `json:"answerItem"`
-	User			string   `json:"createuser"`
-	AppID			string
-	Status          int      `json:"status"`
+	User            string   `json:"createuser"`
+	AppID           string
+	Status          int `json:"status"`
 }
 
 func (q *Question) FetchAnswers() (err error) {
@@ -77,6 +78,7 @@ func (q *Question) FetchAnswers() (err error) {
 	q.Answers, err = FindAnswers(q.AppID, answerDAOs)
 	return
 }
+
 type Answer struct {
 	QuestionId       int      `json:"Question_Id"`
 	AnswerId         int      `json:"Answer_Id"`
@@ -91,9 +93,9 @@ type Answer struct {
 	Dimension        []string `json:"dimension"`
 	DimensionIDs     []int
 	RelatedQuestions []string `json:"relatedQ"`
-	DynamicMenus 	[]string `json:"dynamicMenu"`
-	AppID			string
-	Images           []int    `json:"images"`
+	DynamicMenus     []string `json:"dynamicMenu"`
+	AppID            string
+	Images           []int `json:"images"`
 }
 
 func (a *Answer) Fetch() (err error) {
@@ -169,11 +171,12 @@ func (a *Answer) Fetch() (err error) {
 
 	return
 }
+
 type AnswerJson struct {
-	ID int `json:"id"`
-	QuestionID int
-	Content string `json:"answer"`
-	DynamicMenu []string `json:"dynamicMenu"`
+	ID               int `json:"id"`
+	QuestionID       int
+	Content          string   `json:"answer"`
+	DynamicMenu      []string `json:"dynamicMenu"`
 	RelatedQuestions []string `json:"relatedQ"`
 	AnswerCMD        string   `json:"answerCMD"`
 	AnswerCMDMsg     string   `json:"answerCMDMsg"`
@@ -181,7 +184,7 @@ type AnswerJson struct {
 	Dimension        []int    `json:"dimension"`
 	BeginTime        string   `json:"begin_time"`
 	EndTime          string   `json:"end_time"`
-	Images			 []int	  `json:"images"`
+	Images           []int    `json:"images"`
 }
 
 type QuestionJson struct {
