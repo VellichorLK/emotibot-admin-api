@@ -1079,7 +1079,8 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 		return 0, data.TestStatusNeedTest, 0, 0, nil
 	}
 
-	if status == data.TestStatusTesting {
+	switch status {
+	case data.TestStatusTesting:
 		// Currently there's already a running test task exists,
 		// check whether it has expired or not
 		// Return test failed if it has expired
@@ -1088,53 +1089,58 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 		if now.Sub(testStartTime) > data.TestTaskExpiredDuration {
 			return 0, data.TestStatusFailed, 0, 0, nil
 		}
-
 		return
-	}
-
-	// Latest test has finished or failed
-	// Check if there are editing test intents newer than current in used intent test
-	var latestTestIntentUpdatedTime int64
-	queryStr = fmt.Sprintf(`
-		SELECT MAX(updated_time)
-		FROM %s
-		WHERE app_id = ? AND version IS NULL`, IntentTestIntentsTable)
-	err = dao.db.QueryRow(queryStr, appID).Scan(&latestTestIntentUpdatedTime)
-	if err != nil {
+	case data.TestStatusFailed:
 		return
-	}
+	case data.TestStatusTested:
+		// Latest test has finished or failed
+		// Check if there are editing test intents newer than current in used intent test
+		var latestTestIntentUpdatedTime int64
+		queryStr = fmt.Sprintf(`
+			SELECT MAX(updated_time)
+			FROM %s
+			WHERE app_id = ? AND version IS NULL`, IntentTestIntentsTable)
+		err = dao.db.QueryRow(queryStr, appID).Scan(&latestTestIntentUpdatedTime)
+		if err != nil {
+			return
+		}
 
-	var latestTestTaskEndTime sql.NullInt64
-	queryStr = fmt.Sprintf(`
-		SELECT id, end_time, status, sentences_count, progress
-		FROM %s
-		WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
-	err = dao.db.QueryRow(queryStr, appID).Scan(&version, &latestTestTaskEndTime,
-		&status, &sentencesCount, &progress)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = fmt.Errorf("Cannot find in used intent test, but intent tests does exist")
+		var latestTestTaskEndTime sql.NullInt64
+		queryStr = fmt.Sprintf(`
+			SELECT id, end_time, status, sentences_count, progress
+			FROM %s
+			WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
+		err = dao.db.QueryRow(queryStr, appID).Scan(&version, &latestTestTaskEndTime,
+			&status, &sentencesCount, &progress)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				err = fmt.Errorf("Cannot find in used intent test, but intent tests does exist")
+				logger.Error.Println(err.Error())
+				return
+			}
+			return
+		}
+
+		if latestTestTaskEndTime.Valid {
+			if latestTestIntentUpdatedTime > latestTestTaskEndTime.Int64 {
+				// Newer editing test intents exist, return 'need test' status
+				return 0, data.TestStatusNeedTest, 0, 0, nil
+			}
+		} else {
+			err = fmt.Errorf("end_time should not be null for in used intent test version: %d, status: %d",
+				version, status)
 			logger.Error.Println(err.Error())
 			return
 		}
-		return
-	}
 
-	if latestTestTaskEndTime.Valid {
-		if latestTestIntentUpdatedTime > latestTestTaskEndTime.Int64 {
-			// Newer editing test intents exist, return 'need test' status
-			return 0, data.TestStatusNeedTest, 0, 0, nil
-		}
-	} else {
-		err = fmt.Errorf("end_time should not be null for in used intent test version: %d, status: %d",
-			version, status)
+		// No newer editing test intents exist, return in used test task's
+		// status and progress
+		return
+	default:
+		err = fmt.Errorf("Unknown status of intent test version: %d, status: %d", version, status)
 		logger.Error.Println(err.Error())
 		return
 	}
-
-	// No newer editing test intents exist, return in used test task's
-	// status and progress
-	return
 }
 
 func (dao IntentTestDao) UpdateIntentTest(version int64, name string) error {
