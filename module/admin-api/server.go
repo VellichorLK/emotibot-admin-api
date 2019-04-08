@@ -45,6 +45,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/misc/emotibothttpwriter"
+	"emotibot.com/emotigo/module/admin-api/CustomChat"
 )
 
 // constant define all const used in server
@@ -79,6 +80,7 @@ var modules = []*util.ModuleInfo{
 	&Service.ModuleInfo,
 	&integration.ModuleInfo,
 	&feedback.ModuleInfo,
+	&CustomChat.ModuleInfo,
 }
 
 var serverConfig map[string]string
