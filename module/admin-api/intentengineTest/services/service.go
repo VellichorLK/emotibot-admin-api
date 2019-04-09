@@ -359,7 +359,7 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 
 	defer func() {
 		if predictErr != nil {
-			intentTestDao.TestIntentsFailed(version, err.Error())
+			intentTestDao.TestIntentsFailed(version, predictErr.Error())
 			logger.Info.Printf("Intent test task failed: %s.", predictErr.Error())
 		} else if err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
