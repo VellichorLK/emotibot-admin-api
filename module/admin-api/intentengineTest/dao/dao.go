@@ -1079,7 +1079,8 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 		return 0, data.TestStatusNeedTest, 0, 0, nil
 	}
 
-	if status == data.TestStatusTesting {
+	switch status {
+	case data.TestStatusTesting:
 		// Currently there's already a running test task exists,
 		// check whether it has expired or not
 		// Return test failed if it has expired
@@ -1088,53 +1089,58 @@ func (dao IntentTestDao) GetIntentTestStatus(appID string) (version int64,
 		if now.Sub(testStartTime) > data.TestTaskExpiredDuration {
 			return 0, data.TestStatusFailed, 0, 0, nil
 		}
-
 		return
-	}
-
-	// Latest test has finished or failed
-	// Check if there are editing test intents newer than current in used intent test
-	var latestTestIntentUpdatedTime int64
-	queryStr = fmt.Sprintf(`
-		SELECT MAX(updated_time)
-		FROM %s
-		WHERE app_id = ? AND version IS NULL`, IntentTestIntentsTable)
-	err = dao.db.QueryRow(queryStr, appID).Scan(&latestTestIntentUpdatedTime)
-	if err != nil {
+	case data.TestStatusFailed:
 		return
-	}
+	case data.TestStatusTested:
+		// Latest test has finished or failed
+		// Check if there are editing test intents newer than current in used intent test
+		var latestTestIntentUpdatedTime int64
+		queryStr = fmt.Sprintf(`
+			SELECT MAX(updated_time)
+			FROM %s
+			WHERE app_id = ? AND version IS NULL`, IntentTestIntentsTable)
+		err = dao.db.QueryRow(queryStr, appID).Scan(&latestTestIntentUpdatedTime)
+		if err != nil {
+			return
+		}
 
-	var latestTestTaskEndTime sql.NullInt64
-	queryStr = fmt.Sprintf(`
-		SELECT id, end_time, status, sentences_count, progress
-		FROM %s
-		WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
-	err = dao.db.QueryRow(queryStr, appID).Scan(&version, &latestTestTaskEndTime,
-		&status, &sentencesCount, &progress)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			err = fmt.Errorf("Cannot find in used intent test, but intent tests does exist")
+		var latestTestTaskEndTime sql.NullInt64
+		queryStr = fmt.Sprintf(`
+			SELECT id, end_time, status, sentences_count, progress
+			FROM %s
+			WHERE app_id = ? AND in_used = 1`, IntentTestVersionsTable)
+		err = dao.db.QueryRow(queryStr, appID).Scan(&version, &latestTestTaskEndTime,
+			&status, &sentencesCount, &progress)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				err = fmt.Errorf("Cannot find in used intent test, but intent tests does exist")
+				logger.Error.Println(err.Error())
+				return
+			}
+			return
+		}
+
+		if latestTestTaskEndTime.Valid {
+			if latestTestIntentUpdatedTime > latestTestTaskEndTime.Int64 {
+				// Newer editing test intents exist, return 'need test' status
+				return 0, data.TestStatusNeedTest, 0, 0, nil
+			}
+		} else {
+			err = fmt.Errorf("end_time should not be null for in used intent test version: %d, status: %d",
+				version, status)
 			logger.Error.Println(err.Error())
 			return
 		}
-		return
-	}
 
-	if latestTestTaskEndTime.Valid {
-		if latestTestIntentUpdatedTime > latestTestTaskEndTime.Int64 {
-			// Newer editing test intents exist, return 'need test' status
-			return 0, data.TestStatusNeedTest, 0, 0, nil
-		}
-	} else {
-		err = fmt.Errorf("end_time should not be null for in used intent test version: %d, status: %d",
-			version, status)
+		// No newer editing test intents exist, return in used test task's
+		// status and progress
+		return
+	default:
+		err = fmt.Errorf("Unknown status of intent test version: %d, status: %d", version, status)
 		logger.Error.Println(err.Error())
 		return
 	}
-
-	// No newer editing test intents exist, return in used test task's
-	// status and progress
-	return
 }
 
 func (dao IntentTestDao) UpdateIntentTest(version int64, name string) error {
@@ -1665,38 +1671,46 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 		return ErrDBNotInit
 	}
 
-	sentenceValues := make([]interface{}, len(sentences)*6)
+	if len(sentences) > 0 {
+		totalParams := len(sentences) * 2
 
-	for i := 0; i < len(sentences); i++ {
-		offset := i * 2
-		scoreOffset := len(sentences)*2 + offset
-		answerOffset := len(sentences)*4 + offset
-		sentenceValues[offset] = sentences[i].ID
-		sentenceValues[offset+1] = sentences[i].Result
-		sentenceValues[scoreOffset] = sentences[i].ID
-		sentenceValues[scoreOffset+1] = sentences[i].Score
-		sentenceValues[answerOffset] = sentences[i].ID
-		sentenceValues[answerOffset+1] = sentences[i].Answer
-	}
+		resultValues := make([]interface{}, totalParams)
+		scoreValues := make([]interface{}, totalParams)
+		answerValues := make([]interface{}, totalParams)
 
-	// Update 'intent_test_sentences' table
-	sentencesPerOp := 2000
-	start := 0
+		for i := 0; i < len(sentences); i++ {
+			offset := i * 2
+			resultValues[offset] = sentences[i].ID
+			resultValues[offset+1] = sentences[i].Result
+			scoreValues[offset] = sentences[i].ID
+			scoreValues[offset+1] = sentences[i].Score
+			answerValues[offset] = sentences[i].ID
+			answerValues[offset+1] = sentences[i].Answer
+		}
 
-	if len(sentenceValues) > 0 {
-		whenCases := make([]string, len(sentenceValues)/6)
-		for i := 0; i < len(sentenceValues)/6; i++ {
+		// Update 'intent_test_sentences' table
+		sentencesPerOp := 2000
+		start := 0
+
+		whenCases := make([]string, sentencesPerOp)
+		for i := 0; i < sentencesPerOp; i++ {
 			whenCases[i] = "WHEN ? THEN ?"
 		}
-		whenCasesStr := strings.Join(whenCases, " ")
 
 		for {
-			end := start + sentencesPerOp*6
-			if end > len(sentenceValues) {
-				end = len(sentenceValues)
+			end := start + sentencesPerOp*2
+			if end > totalParams {
+				end = totalParams
 			}
 
-			params := sentenceValues[start:end]
+			sentencesCount := (end - start) / 2
+			whenCasesStr := strings.Join(whenCases[:sentencesCount], " ")
+
+			params := []interface{}{}
+			params = append(params, resultValues[start:end]...)
+			params = append(params, scoreValues[start:end]...)
+			params = append(params, answerValues[start:end]...)
+
 			queryStr := fmt.Sprintf(`
 				UPDATE %s
 				SET result =
@@ -1720,7 +1734,7 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 				return err
 			}
 
-			if end == len(sentenceValues) {
+			if end == totalParams {
 				return nil
 			}
 			start = end
