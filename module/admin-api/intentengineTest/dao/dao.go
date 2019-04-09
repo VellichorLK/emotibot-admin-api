@@ -1671,38 +1671,46 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 		return ErrDBNotInit
 	}
 
-	sentenceValues := make([]interface{}, len(sentences)*6)
+	if len(sentences) > 0 {
+		totalParams := len(sentences) * 2
 
-	for i := 0; i < len(sentences); i++ {
-		offset := i * 2
-		scoreOffset := len(sentences)*2 + offset
-		answerOffset := len(sentences)*4 + offset
-		sentenceValues[offset] = sentences[i].ID
-		sentenceValues[offset+1] = sentences[i].Result
-		sentenceValues[scoreOffset] = sentences[i].ID
-		sentenceValues[scoreOffset+1] = sentences[i].Score
-		sentenceValues[answerOffset] = sentences[i].ID
-		sentenceValues[answerOffset+1] = sentences[i].Answer
-	}
+		resultValues := make([]interface{}, totalParams)
+		scoreValues := make([]interface{}, totalParams)
+		answerValues := make([]interface{}, totalParams)
 
-	// Update 'intent_test_sentences' table
-	sentencesPerOp := 2000
-	start := 0
+		for i := 0; i < len(sentences); i++ {
+			offset := i * 2
+			resultValues[offset] = sentences[i].ID
+			resultValues[offset+1] = sentences[i].Result
+			scoreValues[offset] = sentences[i].ID
+			scoreValues[offset+1] = sentences[i].Score
+			answerValues[offset] = sentences[i].ID
+			answerValues[offset+1] = sentences[i].Answer
+		}
 
-	if len(sentenceValues) > 0 {
-		whenCases := make([]string, len(sentenceValues)/6)
-		for i := 0; i < len(sentenceValues)/6; i++ {
+		// Update 'intent_test_sentences' table
+		sentencesPerOp := 2000
+		start := 0
+
+		whenCases := make([]string, sentencesPerOp)
+		for i := 0; i < sentencesPerOp; i++ {
 			whenCases[i] = "WHEN ? THEN ?"
 		}
-		whenCasesStr := strings.Join(whenCases, " ")
 
 		for {
-			end := start + sentencesPerOp*6
-			if end > len(sentenceValues) {
-				end = len(sentenceValues)
+			end := start + sentencesPerOp*2
+			if end > totalParams {
+				end = totalParams
 			}
 
-			params := sentenceValues[start:end]
+			sentencesCount := (end - start) / 2
+			whenCasesStr := strings.Join(whenCases[:sentencesCount], " ")
+
+			params := []interface{}{}
+			params = append(params, resultValues[start:end]...)
+			params = append(params, scoreValues[start:end]...)
+			params = append(params, answerValues[start:end]...)
+
 			queryStr := fmt.Sprintf(`
 				UPDATE %s
 				SET result =
@@ -1726,7 +1734,7 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 				return err
 			}
 
-			if end == len(sentenceValues) {
+			if end == totalParams {
 				return nil
 			}
 			start = end
