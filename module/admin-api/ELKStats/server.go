@@ -89,6 +89,8 @@ func Init() error {
 			util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV2.NewRecordsMarkUpdateHandler(dalClient), 2),
 			util.NewEntryPointWithVer("POST", "records/ignore", []string{"view", "export"}, controllersV2.RecordsIgnoredUpdateHandler, 2),
 			util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV2.NewRecordSSMHandler(dalClient), 2),
+			util.NewEntryPointWithVer("GET", "records/{id}/marked-intent", []string{"view", "export"}, controllersV2.RecordIntentHandler, 2),
+			util.NewEntryPointWithVer("POST", "records/intent-mark", []string{"view", "export"}, controllersV2.RecordsIntentMarkHandler, 2),
 		},
 	}
 

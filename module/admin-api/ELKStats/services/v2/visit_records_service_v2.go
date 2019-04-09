@@ -45,6 +45,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricSource,
 		"unique_id",
 		"isMarked",
+		"marked_intent",
 		"isIgnored",
 		"faq_cat_id",
 		"faq_robot_tag_id",
@@ -115,6 +116,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 			VisitRecordsCommon: *recordCommon,
 			UniqueID:           rawRecord.UniqueID,
 			IsMarked:           rawRecord.IsMarked,
+			MarkedIntent:       rawRecord.MarkedIntent,
 			IsIgnored:          rawRecord.IsIgnored,
 		}
 
@@ -538,11 +540,13 @@ func newBoolQueryWithRecordQuery(query *dataV2.VisitRecordsQuery) *elastic.BoolQ
 	if query.IsMarked != nil {
 		if *query.IsMarked {
 			boolQuery.Filter(elastic.NewTermQuery("isMarked", true))
+			boolQuery.Filter(elastic.NewExistsQuery("markedIntent"))
 		} else {
 			q := elastic.NewBoolQuery()
 			q.Should(elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery("isMarked")))
 			q.Should(elastic.NewBoolQuery().Filter(elastic.NewTermQuery("isMarked", false)))
 			boolQuery.Filter(q)
+			boolQuery.Filter(elastic.NewBoolQuery().MustNot(elastic.NewExistsQuery("markedIntent")))
 		}
 	}
 

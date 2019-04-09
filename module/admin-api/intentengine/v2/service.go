@@ -44,6 +44,17 @@ func GetIntent(appid string, intentID int64, keyword string) (*IntentV2, AdminEr
 	return intent, nil
 }
 
+func GetCurrentViaName(appid string, version *int64, name string) (*IntentV2, AdminErrors.AdminError) {
+	intent, err := dao.GetIntentViaName(appid, version, name)
+	if err == sql.ErrNoRows {
+		return nil, AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+	} else if err != nil {
+		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
+	}
+
+	return intent, nil
+}
+
 func AddIntent(appid, name string, positive, negative []string) (*IntentV2, AdminErrors.AdminError) {
 	intent, err := dao.AddIntent(appid, name, positive, negative)
 	if err == sql.ErrNoRows {
@@ -718,4 +729,20 @@ func SearchSentenceWithType(appid string, version *int, content string, sentence
 		return
 	}
 	return intent.Name, nil
+}
+
+func AddIntentSentences(appid string, intentID int64, sentenceType SentenceType, sentences []string) error {
+	dbErr := dao.AddIntentSentences(appid, intentID, sentenceType, sentences)
+	if dbErr != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+	}
+	return nil
+}
+
+func DelIntentSentences(appid string, intentID int64, sentences []string) error {
+	dbErr := dao.DelIntentSentences(appid, intentID, sentences)
+	if dbErr != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+	}
+	return nil
 }

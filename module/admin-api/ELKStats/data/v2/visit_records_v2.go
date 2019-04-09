@@ -15,6 +15,7 @@ type VisitRecordsRequest struct {
 	Emotions      []string `json:"emotions,omitempty"`
 	IsIgnored     *bool    `json:"is_ignored,omitempty"`
 	IsMarked      *bool    `json:"is_marked,omitempty"`
+	MarkedIntent  *int64   `json:"marked_intent,omitempty"`
 	Keyword       *string  `json:"keyword,omitempty"`
 	UserID        *string  `json:"uid,omitempty"`
 	SessionID     *string  `json:"session_id,omitempty"`
@@ -89,6 +90,7 @@ type VisitRecordsRawData struct {
 	CustomInfo     map[string]interface{} `json:"custom_info"`
 	Note           string                 `json:"note"`
 	IsMarked       bool                   `json:"isMarked"`
+	MarkedIntent   *int64                 `json:"marked_intent"`
 	IsIgnored      bool                   `json:"isIgnored"`
 	FaqCategoryID  int64                  `json:"faq_cat_id"`
 	FaqRobotTagIDs []int64                `json:"faq_robot_tag_id"`
@@ -114,9 +116,10 @@ type VisitRecordsCommon struct {
 }
 type VisitRecordsData struct {
 	VisitRecordsCommon
-	UniqueID  string `json:"id"`
-	IsMarked  bool   `json:"is_marked"`
-	IsIgnored bool   `json:"is_ignored"`
+	UniqueID     string `json:"id"`
+	IsMarked     bool   `json:"is_marked"`
+	MarkedIntent *int64 `json:"marked_intent,omitempty"`
+	IsIgnored    bool   `json:"is_ignored"`
 }
 
 type VisitRecordsQueryResult struct {

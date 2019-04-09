@@ -20,6 +20,7 @@ type intentDaoInterface interface {
 	// GetIntent will get intent from db with specific appid and id
 	// It will return full data of the intent, containing id, name, count and sentences
 	GetIntent(appid string, intentID int64, keyword string) (*IntentV2, error)
+	GetIntentViaName(appid string, version *int64, name string) (*IntentV2, error)
 
 	// AddIntent will add new intent of appid. The version of new intent will be NULL, which
 	// means that intent hasn't been trained
@@ -52,6 +53,9 @@ type intentDaoInterface interface {
 	// If not existed, return err will be sql.ErrNoRows
 	// The extended params will at most only one, sentenceType(int)
 	SearchIntentOfSentence(appid string, version *int, content string, params ...interface{}) (intent *IntentV2, sentence *SentenceV2WithType, err error)
+
+	AddIntentSentences(appid string, intentID int64, sType SentenceType, sentences []string) error
+	DelIntentSentences(appid string, intentID int64, sentences []string) (err error)
 }
 
 // intentDaoV2 implement interface of intentDaoInterface, which will store for service to use
@@ -145,10 +149,10 @@ func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (r
 		if _, ok := intentMap[id]; !ok {
 			continue
 		}
-		switch contentType {
-		case 0:
+		switch SentenceType(contentType) {
+		case TypePositive:
 			intentMap[id].PositiveCount = count
-		case 1:
+		case TypeNegative:
 			intentMap[id].NegativeCount = count
 		}
 	}
@@ -204,6 +208,65 @@ func (dao intentDaoV2) GetIntent(appid string, intentID int64, keyword string) (
 		queryStr = "SELECT id, sentence, type FROM intent_train_sets WHERE intent = ?"
 		contentRows, err = dao.db.Query(queryStr, intentID)
 	}
+	if err != nil {
+		if err == sql.ErrNoRows {
+			err = nil
+			intent.Negative = &[]*SentenceV2{}
+			intent.Positive = &[]*SentenceV2{}
+			ret = &intent
+		}
+		return
+	}
+	defer contentRows.Close()
+
+	for contentRows.Next() {
+		sentence := SentenceV2{}
+		sentenceType := 0
+		err = contentRows.Scan(&sentence.ID, &sentence.Content, &sentenceType)
+		if sentenceType == typePositive {
+			positiveList = append(positiveList, &sentence)
+		} else if sentenceType == typeNegative {
+			negativeList = append(negativeList, &sentence)
+		}
+	}
+	intent.NegativeCount = len(negativeList)
+	intent.PositiveCount = len(positiveList)
+	intent.Negative = &negativeList
+	intent.Positive = &positiveList
+	ret = &intent
+	return
+}
+func (dao intentDaoV2) GetIntentViaName(appid string, version *int64, name string) (ret *IntentV2, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return nil, util.ErrDBNotInit
+	}
+
+	var queryStr string
+	var intentRow *sql.Row
+	if version == nil {
+		queryStr := "SELECT id, name FROM intents WHERE appid = ? AND name = ? AND status = 0 AND version is NULL"
+		intentRow = dao.db.QueryRow(queryStr, appid, name)
+	} else {
+		queryStr := "SELECT id, name FROM intents WHERE appid = ? AND name = ? AND status = 0 AND version = ?"
+		intentRow = dao.db.QueryRow(queryStr, appid, name, version)
+	}
+
+	intent := IntentV2{}
+	err = intentRow.Scan(&intent.ID, &intent.Name)
+	if err != nil {
+		return
+	}
+
+	negativeList := []*SentenceV2{}
+	positiveList := []*SentenceV2{}
+	// Get train data count, type 0 is Positive, type 1 is Negative
+	var contentRows *sql.Rows
+	queryStr = "SELECT id, sentence, type FROM intent_train_sets WHERE intent = ?"
+	contentRows, err = dao.db.Query(queryStr, intent.ID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			err = nil
@@ -1161,6 +1224,23 @@ func updateIntentTest(tx db, appid string, intentID int64, newName string,
 	return err
 }
 
+func updateIntentTestTime(tx db, appid string, intentID int64, updatedTime int64) error {
+	if tx == nil {
+		return util.ErrDBNotInit
+	}
+
+	queryStr := `
+		UPDATE intent_test_intents
+		SET updated_time = ?
+		WHERE app_id = ? AND intent_name = (
+			SELECT name
+			FROM intents
+			WHERE id = ?
+		) AND version IS NULL`
+	_, err := tx.Exec(queryStr, updatedTime, appid, intentID)
+	return err
+}
+
 func deleteIntentTest(tx db, appid string, intentID int64) error {
 	if tx == nil {
 		return util.ErrDBNotInit
@@ -1346,4 +1426,104 @@ type db interface {
 	Query(query string, args ...interface{}) (*sql.Rows, error)
 	QueryRow(query string, args ...interface{}) *sql.Row
 	Exec(query string, args ...interface{}) (sql.Result, error)
+}
+
+func (dao intentDaoV2) AddIntentSentences(appid string, intentID int64, sType SentenceType, sentences []string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return util.ErrDBNotInit
+	}
+
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	timestamp := time.Now().Unix()
+	queryStr := "UPDATE intents SET updatetime = ? WHERE id = ?"
+	_, err = tx.Exec(queryStr, timestamp, intentID)
+	if err != nil {
+		return
+	}
+
+	queryStr = "SELECT id, sentence, type FROM intent_train_sets WHERE intent = ?"
+	rows, err := tx.Query(queryStr, intentID)
+	if err != nil {
+		return err
+	}
+
+	existedSentence := map[string]SentenceType{}
+	sentenceID := map[string]int64{}
+	for rows.Next() {
+		sentence, t := "", 0
+		id := int64(0)
+		err = rows.Scan(&id, &sentence, &t)
+		if err != nil {
+			return err
+		}
+		existedSentence[sentence] = SentenceType(t)
+		sentenceID[sentence] = id
+	}
+
+	insertQuery := "INSERT INTO intent_train_sets (sentence, intent, type) VALUES (?, ?, ?)"
+	updateQuery := "UPDATE intent_train_sets SET type = ? WHERE id = ?"
+	for _, sentence := range sentences {
+		if val, ok := existedSentence[sentence]; !ok {
+			_, err = tx.Exec(insertQuery, sentence, intentID, sType)
+		} else if val != sType {
+			_, err = tx.Exec(updateQuery, sType, sentenceID[sentence])
+		}
+		if err != nil {
+			return
+		}
+	}
+	err = updateIntentTestTime(tx, appid, intentID, timestamp)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
+	return err
+}
+
+func (dao intentDaoV2) DelIntentSentences(appid string, intentID int64, sentences []string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return util.ErrDBNotInit
+	}
+
+	tx, err := dao.db.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	timestamp := time.Now().Unix()
+	queryStr := "UPDATE intents SET updatetime = ? WHERE id = ?"
+	_, err = tx.Exec(queryStr, timestamp, intentID)
+	if err != nil {
+		return
+	}
+
+	queryStr = "DELETE FROM intent_train_sets WHERE sentence = ? AND intent = ?"
+	for _, sentence := range sentences {
+		_, err = tx.Exec(queryStr, sentence, intentID)
+		if err != nil {
+			return
+		}
+	}
+	err = updateIntentTestTime(tx, appid, intentID, timestamp)
+	if err != nil {
+		return
+	}
+
+	err = tx.Commit()
+	return err
 }
