@@ -1143,7 +1143,7 @@ func handleBatchSearchSQuestion(ctx context.Context) {
 
 	appid := util.GetAppID(ctx)
 	type Parameters struct {
-		Question []string `json:"question"`
+		Question []string `json:"contents"`
 	}
 	parameters := Parameters{}
 	err := ctx.ReadJSON(&parameters)
