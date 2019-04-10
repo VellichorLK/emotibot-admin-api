@@ -31,7 +31,7 @@ func init() {
 			[]util.EntryPoint{
 				util.NewEntryPointWithVer("POST", "import/question", []string{"view"}, handleImportCustomChatQuestion, 1),
 				util.NewEntryPointWithVer("POST", "import/extend", []string{"view"}, handleImportCustomChatExtend, 1),
-				util.NewEntryPointWithVer("GET", "export/question", []string{}, handleExportCustomChatQuestion, 1),
+				util.NewEntryPointWithVer("GET", "export/question", []string{"export"}, handleExportCustomChatQuestion, 1),
 
 			}),
 	}
