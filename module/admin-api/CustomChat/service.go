@@ -1,7 +1,6 @@
 package CustomChat
 
 import (
-	"errors"
 	"github.com/tealeg/xlsx"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
@@ -29,7 +28,8 @@ func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*Cust
 
 	sheets := file.Sheets
 	if len(sheets) <= 0 {
-		return nil, errors.New(localemsg.Get(locale, "CustomChatUploadSheetErr"))
+		return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+			localemsg.Get(locale, "CustomChatUploadSheetErr"))
 	}
 
 	for idx := range sheets {
@@ -40,7 +40,8 @@ func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*Cust
 	}
 
 	if hasContent != true {
-		return nil, errors.New(localemsg.Get(locale, "CustomChatUploadSheetErr"))
+		return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+			localemsg.Get(locale, "CustomChatUploadSheetErr"))
 	}
 
 	return parseCustomChatQuestionSheets(sheets, locale)
@@ -55,19 +56,21 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 		if sheets[idx].Name == localemsg.Get(locale, "CustomChatQuestionSheetName") {
 			rows := sheets[idx].Rows
 			if len(rows) == 0 {
-				return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name)
+				return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 			categoryIdx, questionIdx, answerIdx := getQuestionColumnIdx(rows[0], locale)
 			if categoryIdx < 0 || categoryIdx > 2 || questionIdx < 0 || questionIdx > 2 || answerIdx < 0 || answerIdx > 2 {
-				return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name)
+				return nil,  AdminErrors.New(AdminErrors.ErrnoRequestError,
+					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 
 			rows = rows[1:]
 			for rowIdx := range rows {
 				cells := rows[rowIdx].Cells
 				if len(cells) < 2 {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowInvalidTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowInvalidTpl"), sheets[idx].Name, rowIdx+1))
 				}
 				category := strings.TrimSpace(cells[categoryIdx].String())
 				question := strings.TrimSpace(cells[questionIdx].String())
@@ -75,25 +78,27 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 
 				qLength := utf8.RuneCountInString(question)
 				if qLength > 50{
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"),
-						sheets[idx].Name, rowIdx+1, 50)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
+
 				}
 				aLength := utf8.RuneCountInString(answer)
 				if aLength > 1500{
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"),
-						sheets[idx].Name, rowIdx+1, 1500)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 1500))
 				}
 
 				if question == "" && answer == "" {
 					continue
 				}
 				if question == "" {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoQuestionTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoQuestionTpl"), sheets[idx].Name, rowIdx+1))
+
 				}
 				if answer == "" {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoAnswerTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoAnswerTpl"), sheets[idx].Name, rowIdx+1))
 				}
 				if _, ok := questionsMap[question]; !ok {
 					questionEnt := Question{}
@@ -168,7 +173,8 @@ func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err 
 
 	sheets := file.Sheets
 	if len(sheets) <= 0 {
-		return nil, errors.New(localemsg.Get(locale, "CustomChatUploadSheetErr"))
+		return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+			fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadSheetErr")))
 	}
 
 	for idx := range sheets {
@@ -179,7 +185,8 @@ func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err 
 	}
 
 	if hasContent != true {
-		return nil, errors.New(localemsg.Get(locale, "CustomChatUploadSheetErr"))
+		return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+			fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadSheetErr")))
 	}
 
 	return parseCustomChatExtendSheets(sheets, locale)
@@ -194,39 +201,41 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
 			rows := sheets[idx].Rows
 			if len(rows) == 0 {
-				return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name)
+				return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 			questionIdx, extendIdx := getExtendColumnIdx(rows[0], locale)
 			if questionIdx < 0 || questionIdx > 1 || extendIdx < 0 || extendIdx > 1 {
-				return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name)
+				return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 
 			rows = rows[1:]
 			for rowIdx := range rows {
 				cells := rows[rowIdx].Cells
 				if len(cells) < 2 {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowInvalidTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowInvalidTpl"), sheets[idx].Name, rowIdx+1))
 				}
 
 				question := strings.TrimSpace(cells[questionIdx].String())
 				extend := strings.TrimSpace(cells[extendIdx].String())
 				extendLength := utf8.RuneCountInString(extend)
 				if extendLength > 50{
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"),
-						sheets[idx].Name, rowIdx+1, 50)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
 				}
 
 				if question == "" && extend == "" {
 					continue
 				}
 				if question == "" {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoQuestionTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoQuestionTpl"), sheets[idx].Name, rowIdx+1))
 				}
 				if extend == "" {
-					return nil, fmt.Errorf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoExtendTpl"),
-						sheets[idx].Name, rowIdx+1)
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoExtendTpl"), sheets[idx].Name, rowIdx+1))
 				}
 
 
