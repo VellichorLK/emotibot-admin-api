@@ -1991,3 +1991,39 @@ func searchSQuestionByContent(content string, appid string) (StdQuestion, error)
 	return q, nil
 
 }
+
+// query batch similar question
+func searchBatchSQuestionByContent(content []string, appid string) ([]string, error) {
+	lastOperation := time.Now()
+	var questions []string
+
+	db := util.GetMainDB()
+	if db == nil {
+		return questions, fmt.Errorf("main db connection pool is nil")
+	}
+
+	rawQuery := fmt.Sprintf("SELECT  a.content FROM  %s_squestion a WHERE a.Content in (?"+strings.Repeat(",?", len(content)-1)+") and Status >= 0", appid)
+	util.LogInfo.Printf("rawQuery = %s", rawQuery)
+	args := make([]interface{}, len(content))
+	for idx := range content {
+		args[idx] = content[idx]
+	}
+	results, err := db.Query(rawQuery, args...)
+	if err != nil {
+		return questions, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
+	}
+	defer results.Close()
+	util.LogInfo.Printf("set search squesiton by content in searchBatchSQuestionByContent took: %s\n", time.Since(lastOperation))
+
+	for results.Next() {
+		var sq string
+		results.Scan(&sq)
+		questions = append(questions, sq)
+	}
+
+	if err = results.Err(); err != nil {
+		return questions, fmt.Errorf("scanning data have failed, %s", err)
+	}
+	return questions, nil
+
+}

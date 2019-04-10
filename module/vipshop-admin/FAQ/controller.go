@@ -1,6 +1,7 @@
 package FAQ
 
 import (
+	"container/list"
 	"database/sql"
 	"fmt"
 	"math"
@@ -36,6 +37,7 @@ func init() {
 
 			util.NewEntryPoint("DELETE", "question/{qid:string}/similar-questions", []string{"edit"}, handleDeleteSimilarQuestions),
 			util.NewEntryPoint("GET", "questions/similar/search", []string{"view"}, handleSearchSQuestion),
+			util.NewEntryPoint("POST", "questions/similar/search", []string{"view"}, handleBatchSearchSQuestion),
 			util.NewEntryPoint("POST", "question", []string{"edit"}, handleCreateQuestion),
 			util.NewEntryPoint("PUT", "question/{qid:int}", []string{"edit"}, handleUpdateQuestion),
 			util.NewEntryPoint("GET", "question/{qid:int}", []string{"view"}, handleQueryQuestion),
@@ -1132,6 +1134,60 @@ func handleSearchSQuestion(ctx context.Context) {
 	}
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(squestion)
+
+	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
+}
+
+func handleBatchSearchSQuestion(ctx context.Context) {
+	lastOperation := time.Now()
+
+	appid := util.GetAppID(ctx)
+	type Parameters struct {
+		Question []string `json:"question"`
+	}
+	parameters := Parameters{}
+	err := ctx.ReadJSON(&parameters)
+	util.LogInfo.Printf("%s", parameters.Question)
+	if err != nil {
+		util.LogError.Printf("Error happened delete questions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		return
+	}
+
+	squestion, err := searchBatchSQuestionByContent(parameters.Question, appid)
+	if err == util.ErrSQLRowNotFound {
+		ctx.StatusCode(http.StatusNotFound)
+		return
+	} else if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Printf("searching SQuestion by content failed, %s", err)
+		return
+	}
+
+	l := list.New()
+	for i := 0; i < len(parameters.Question); i++ {
+		l.PushBack(parameters.Question[i])
+	}
+	for _, sq := range squestion {
+		var next *list.Element
+		for e := l.Front(); e != nil; {
+			if e.Value.(string) == sq {
+				next = e.Next()
+				l.Remove(e)
+				e = next
+			} else {
+				e = e.Next()
+			}
+		}
+	}
+
+	var result []string
+	for e := l.Front(); e != nil; e = e.Next() {
+		result = append(result, e.Value.(string))
+	}
+
+	ctx.StatusCode(http.StatusOK)
+	ctx.JSON(result)
 
 	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
 }
