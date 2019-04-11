@@ -808,7 +808,7 @@ func parseQA(ctx context.Context) (question Question, answers []Answer, err erro
 
 	question.CategoryId = questionJson.CategoryID
 	question.User = questionJson.User
-	question.Content = questionJson.Content
+	question.Content = strings.TrimSpace(questionJson.Content)
 
 	appid := util.GetAppID(ctx)
 	for _, answerJson := range questionJson.Answers {
