@@ -16,6 +16,8 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleRobotChatSkill":    "话术设置",
 		"AuditModuleRobotFunction":     "技能设置",
 		"AuditModuleRobotCommand":      "指令设置",
+		"AuditModuleRobotCustomChat":   "第三方闲聊库",
+		"AuditModuleRobotConfig":       "系统功能配置",
 		"AuditModuleIntegration":       "接入部署",
 		"AuditModuleManageUser":        "企业用户管理",
 		"AuditModuleManageRobot":       "机器人列表",
@@ -31,6 +33,8 @@ var auditMsg = map[string]map[string]string{
 		"AuditOperationPublish":  "发布",
 		"AuditOperationActive":   "启动",
 		"AuditOperationDeactive": "关闭",
+
+		"AuditRobotConfigChangeTemplate": "修改设定 %s 的值为 %s",
 	},
 	ZhTw: map[string]string{
 		// Modules
@@ -47,6 +51,8 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleRobotChatSkill":    "話術設置",
 		"AuditModuleRobotFunction":     "技能設置",
 		"AuditModuleRobotCommand":      "指令設置",
+		"AuditModuleRobotCustomChat":   "第三方閒聊庫",
+		"AuditModuleRobotConfig":       "系統功能配置",
 		"AuditModuleIntegration":       "接入部署",
 		"AuditModuleManageUser":        "企業用戶管理",
 		"AuditModuleManageRobot":       "機器人列表",
@@ -62,5 +68,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditOperationPublish":  "發布",
 		"AuditOperationActive":   "啟動",
 		"AuditOperationDeactive": "關閉",
+
+		"AuditRobotConfigChangeTemplate": "修改設定 %s 的值為 %s",
 	},
 }
