@@ -29,7 +29,7 @@ func main() {
 	app.Handle("POST", "/userRoleRest/getRolesByUsers", getRolesByUsers)
 	app.Handle("POST", "/userRest/getUsesByRole", getUsesByRole)
 
-	app.Run(iris.Addr(":8787"), iris.WithoutVersionChecker)
+	app.Run(iris.Addr(":8787"))
 }
 
 func checkRequestorMiddleware(ctx context.Context) {
