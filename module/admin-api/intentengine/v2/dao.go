@@ -1512,9 +1512,13 @@ func (dao intentDaoV2) DelIntentSentences(appid string, intentID int64, sentence
 		return
 	}
 
-	queryStr = "DELETE FROM intent_train_sets WHERE sentence = ? AND intent = ?"
+	queryStr = `
+		DELETE FROM intent_train_sets
+		WHERE sentence = ? AND intent IN (
+			SELECT id FROM intents WHERE version is NULL AND appid = ?
+		)`
 	for _, sentence := range sentences {
-		_, err = tx.Exec(queryStr, sentence, intentID)
+		_, err = tx.Exec(queryStr, sentence, appid)
 		if err != nil {
 			return
 		}
