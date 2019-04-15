@@ -9,6 +9,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"github.com/olivere/elastic"
 )
 
@@ -93,8 +94,8 @@ func createTEVisitStatsDateHistogramAggregation(query dataV1.TEVisitStatsQuery) 
 
 func doTEVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESTERecordsIndex)
-	result, err := services.CreateSearchService(ctx, client, query, index, data.ESTERecordsType, aggName, agg)
+	index := fmt.Sprintf("%s-*", esData.ESTERecordsIndex)
+	result, err := services.CreateSearchService(ctx, client, query, index, esData.ESTERecordsType, aggName, agg)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +106,6 @@ func doTEVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.
 
 func doTEVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESTERecordsIndex)
-	return services.DoTermsAggService(ctx, client, query, index, data.ESTERecordsType, aggName, agg)
+	index := fmt.Sprintf("%s-*", esData.ESTERecordsIndex)
+	return services.DoTermsAggService(ctx, client, query, index, esData.ESTERecordsType, aggName, agg)
 }

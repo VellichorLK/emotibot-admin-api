@@ -13,6 +13,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
 )
@@ -34,11 +35,11 @@ func SessionsQuery(query *dataV1.SessionsQuery) (sessions []*dataV1.SessionsData
 		dataCommon.SessionsMetricFeedbackTime,
 	)
 
-	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
 
 	results, err := client.Search().
 		Index(index).
-		Type(data.ESSessionsType).
+		Type(esData.ESSessionsType).
 		Query(boolQuery).
 		FetchSourceContext(source).
 		From(int(query.From)).
@@ -336,7 +337,7 @@ func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, lo
 
 func createExportSessionsTaskOption(query *dataV1.SessionsQuery,
 	exportTaskID string, locale string) *data.ExportTaskOption {
-	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
 
 	boolQuery := newSessionBoolQuery(query)
 

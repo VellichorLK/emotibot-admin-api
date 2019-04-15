@@ -12,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"github.com/olivere/elastic"
 )
 
@@ -27,8 +28,8 @@ func ConversationCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, e
 		dateHistogramAgg := services.CreateDateHistogramAggregation(query.CommonQuery, data.SessionStartTimeFieldName).
 			Interval(query.AggInterval)
 
-		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-		result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, dateHistogramAgg)
+		index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
+		result, err := services.CreateSearchService(ctx, client, boolQuery, index, esData.ESSessionsType, aggName, dateHistogramAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -40,8 +41,8 @@ func ConversationCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, e
 		boolQuery = boolQuery.Filter(tagExistsQuery)
 		tagTermAgg := common.CreateStatsTagTermsAggregation(query.AggTagType)
 
-		index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-		result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESSessionsType, aggName, tagTermAgg)
+		index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
+		result, err := services.CreateSearchService(ctx, client, boolQuery, index, esData.ESSessionsType, aggName, tagTermAgg)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +96,7 @@ func UniqueUserCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, err
 		for _, bucket := range agg.Buckets {
 			uniqueUserCount, found := bucket.Cardinality(uniqueUserCountAggName)
 			if !found {
-				return nil, data.ErrESCardinalityNotFound
+				return nil, esData.ErrESCardinalityNotFound
 			}
 
 			var bucketKey string
@@ -147,8 +148,8 @@ func NewUserCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error)
 		return nil, data.ErrInvalidAggType
 	}
 
-	index := fmt.Sprintf("%s-*", data.ESUsersIndex)
-	result, err := services.CreateSearchService(ctx, client, boolQuery, index, data.ESUsersType, aggName, _agg)
+	index := fmt.Sprintf("%s-*", esData.ESUsersIndex)
+	result, err := services.CreateSearchService(ctx, client, boolQuery, index, esData.ESUsersType, aggName, _agg)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +160,7 @@ func NewUserCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error)
 		for _, bucket := range agg.Buckets {
 			uniqueUserCount, found := bucket.Cardinality(uniqueUserCountAggName)
 			if !found {
-				return nil, data.ErrESCardinalityNotFound
+				return nil, esData.ErrESCardinalityNotFound
 			}
 
 			var bucketKey string
@@ -419,7 +420,7 @@ func TopUnmatchQuestions(query dataV1.VisitStatsQuery, topN int) ([]*dataV1.Unma
 		for _, bucket := range agg.Buckets {
 			maxLogTimeBucket, found := bucket.MaxBucket(maxLogTimeAggName)
 			if !found {
-				return nil, data.ErrESMaxBucketNotFound
+				return nil, esData.ErrESMaxBucketNotFound
 			}
 
 			// Note: We have to convert maximum log_time (UTC+0) to local time
@@ -431,7 +432,7 @@ func TopUnmatchQuestions(query dataV1.VisitStatsQuery, topN int) ([]*dataV1.Unma
 
 			minLogTimeBucket, found := bucket.MinBucket(minLogTimeAggName)
 			if !found {
-				return nil, data.ErrESMinBucketNotFound
+				return nil, esData.ErrESMinBucketNotFound
 			}
 
 			// Note: We have to convert minimum log_time (UTC+0) to local time
@@ -491,17 +492,17 @@ func AnswerCategoryCounts(query dataV1.VisitStatsQuery) (map[string]interface{},
 	if agg, found := result.Aggregations.Filters(aggName); found {
 		businessBucket, ok := agg.NamedBuckets[businessFilterName]
 		if !ok {
-			return nil, data.ErrESNameBucketNotFound
+			return nil, esData.ErrESNameBucketNotFound
 		}
 
 		chatBucket, ok := agg.NamedBuckets[chatFilterName]
 		if !ok {
-			return nil, data.ErrESNameBucketNotFound
+			return nil, esData.ErrESNameBucketNotFound
 		}
 
 		otherBucket, ok := agg.NamedBuckets[otherFilterName]
 		if !ok {
-			return nil, data.ErrESNameBucketNotFound
+			return nil, esData.ErrESNameBucketNotFound
 		}
 
 		answerCategoryCounts[businessFilterName] = businessBucket.DocCount
@@ -520,19 +521,19 @@ func createVisitStatsDateHistogramAggregation(query dataV1.VisitStatsQuery) *ela
 
 func createVisitStatsSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
-	return services.CreateSearchService(ctx, client, query, index, data.ESRecordType, aggName, agg)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
+	return services.CreateSearchService(ctx, client, query, index, esData.ESRecordType, aggName, agg)
 }
 
 func doVisitStatsDateHistogramAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 	return services.DoDateHistogramAggService(ctx, client, query,
-		index, data.ESRecordType, aggName, agg)
+		index, esData.ESRecordType, aggName, agg)
 }
 
 func doVisitStatsTermsAggService(ctx context.Context, client *elastic.Client, query elastic.Query,
 	aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
-	return services.DoTermsAggService(ctx, client, query, index, data.ESRecordType, aggName, agg)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
+	return services.DoTermsAggService(ctx, client, query, index, esData.ESRecordType, aggName, agg)
 }

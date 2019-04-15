@@ -14,6 +14,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/olivere/elastic"
@@ -51,7 +52,7 @@ type RecordResult struct {
 //In the return, result.Aggs may contain isMarked or isIgnored key if correspond ElasticSearchCommand have bee given in aggs
 func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticSearchCommand) (*RecordResult, error) {
 	ctx, client := elasticsearch.GetClient()
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 	logger.Trace.Printf("index: %s\n", index)
 	boolQuery := newBoolQueryWithRecordQuery(&query)
 	traceQuery(boolQuery)
@@ -77,7 +78,7 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 	}
 	result, err := ss.
 		Index(index).
-		Type(data.ESRecordType).
+		Type(esData.ESRecordType).
 		Query(boolQuery).
 		From(int(query.From)).
 		Size(query.Limit).
@@ -202,11 +203,11 @@ func UpdateRecordIgnore(status bool) servicesCommon.UpdateCommand {
 // It will return error if any problem occur.
 func UpdateRecords(query dataV1.RecordQuery, cmd servicesCommon.UpdateCommand) error {
 	ctx, client := elasticsearch.GetClient()
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 	bq := newBoolQueryWithRecordQuery(&query)
 	traceQuery(bq)
 	s := client.UpdateByQuery(index)
-	s.Type(data.ESRecordType)
+	s.Type(esData.ESRecordType)
 	s.Query(bq)
 	s.ProceedOnVersionConflict()
 	s = cmd(s)
@@ -491,7 +492,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 }
 
 func createExportRecordsTaskOption(query *dataV1.RecordQuery, exportTaskID string) *data.ExportTaskOption {
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 
 	boolQuery := newBoolQueryWithRecordQuery(query)
 

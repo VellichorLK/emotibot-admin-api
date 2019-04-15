@@ -14,6 +14,7 @@ import (
 	servicesV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
@@ -140,7 +141,7 @@ func TEVisitRecordsExportDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		if err == data.ErrExportTaskNotFound {
 			controllers.ReturnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
 		} else {
-			controllers.ReturnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse(esData.ErrNotInit.Error()))
 		}
 		return
 	}
@@ -161,7 +162,7 @@ func TEVisitRecordsExportStatusHandler(w http.ResponseWriter, r *http.Request) {
 		if err == data.ErrExportTaskNotFound {
 			controllers.ReturnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
 		} else {
-			controllers.ReturnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse(esData.ErrNotInit.Error()))
 		}
 		return
 	}

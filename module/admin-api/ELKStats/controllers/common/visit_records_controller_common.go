@@ -8,6 +8,7 @@ import (
 	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 )
 
 func VisitRecordsExportDownloadHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +50,7 @@ func VisitRecordsExportDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		if err == data.ErrExportTaskNotFound {
 			controllers.ReturnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
 		} else {
-			controllers.ReturnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse(esData.ErrNotInit.Error()))
 		}
 		return
 	}
@@ -70,7 +71,7 @@ func VisitRecordsExportStatusHandler(w http.ResponseWriter, r *http.Request) {
 		if err == data.ErrExportTaskNotFound {
 			controllers.ReturnNotFoundRequest(w, data.NewErrorResponse(err.Error()))
 		} else {
-			controllers.ReturnInternalServerError(w, data.NewErrorResponse(data.ErrNotInit.Error()))
+			controllers.ReturnInternalServerError(w, data.NewErrorResponse(esData.ErrNotInit.Error()))
 		}
 		return
 	}

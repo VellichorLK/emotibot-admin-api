@@ -9,6 +9,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 
 	"github.com/olivere/elastic"
 )
@@ -55,7 +56,7 @@ func CreateSearchService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, index string, indexType string,
 	aggName string, agg elastic.Aggregation) (*elastic.SearchResult, error) {
 	if client == nil {
-		return nil, data.ErrNotInit
+		return nil, esData.ErrNotInit
 	}
 
 	return client.Search().

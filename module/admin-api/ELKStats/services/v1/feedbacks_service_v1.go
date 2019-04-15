@@ -10,6 +10,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"github.com/olivere/elastic"
 )
 
@@ -219,14 +220,14 @@ func Feedbacks(query dataV1.FeedbacksQuery, topN int) (dataV1.FeedbackCounts, er
 func getIndexAndType(query dataV1.FeedbacksQuery) (index string, indexType string, err error) {
 	switch query.Type {
 	case dataCommon.FeedbacksStatsTypeSessions:
-		index = fmt.Sprintf("%s-*", data.ESSessionsIndex)
-		indexType = data.ESSessionsType
+		index = fmt.Sprintf("%s-*", esData.ESSessionsIndex)
+		indexType = esData.ESSessionsType
 	case dataCommon.FeedbacksStatsTypeRecords:
-		index = fmt.Sprintf("%s-*", data.ESRecordsIndex)
-		indexType = data.ESRecordType
+		index = fmt.Sprintf("%s-*", esData.ESRecordsIndex)
+		indexType = esData.ESRecordType
 	case dataCommon.FeedbacksStatsTypeTERecords:
-		index = fmt.Sprintf("%s-*", data.ESTERecordsIndex)
-		indexType = data.ESTERecordsType
+		index = fmt.Sprintf("%s-*", esData.ESTERecordsIndex)
+		indexType = esData.ESTERecordsType
 	default:
 		err = data.ErrInvalidFeedbacksType
 	}

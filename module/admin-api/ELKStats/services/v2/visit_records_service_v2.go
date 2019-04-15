@@ -17,6 +17,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/pkg/logger"
 	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
@@ -56,7 +57,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricTSpan,
 	)
 
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 	ss := client.Search()
 
 	for _, agg := range aggs {
@@ -65,7 +66,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 
 	result, err := ss.
 		Index(index).
-		Type(data.ESRecordType).
+		Type(esData.ESRecordType).
 		Query(boolQuery).
 		FetchSourceContext(source).
 		From(int(query.From)).
@@ -182,9 +183,9 @@ func UpdateRecords(query *dataV2.VisitRecordsQuery, cmd servicesCommon.UpdateCom
 	ctx, client := elasticsearch.GetClient()
 	boolQuery := newBoolQueryWithRecordQuery(query)
 
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 	s := client.UpdateByQuery(index)
-	s.Type(data.ESRecordType)
+	s.Type(esData.ESRecordType)
 	s.Query(boolQuery)
 	s.ProceedOnVersionConflict()
 	s = cmd(s)
@@ -412,7 +413,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 }
 
 func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID string, locale string) *data.ExportTaskOption {
-	index := fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 
 	boolQuery := newBoolQueryWithRecordQuery(query)
 
