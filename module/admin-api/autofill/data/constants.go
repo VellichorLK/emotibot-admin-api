@@ -1,10 +1,8 @@
 package data
 
 import (
-    "time"
+	"time"
 )
-
-const THIRD_CORE = "3rd_core"
 
 const (
 	SyncTaskModeReset = iota
@@ -19,7 +17,7 @@ const (
 )
 
 const (
-    AutofillModuleIntent = "intent"
+	AutofillModuleIntent = "autofill_intent"
 )
 
 const ExpiredDuration = 15 * time.Minute

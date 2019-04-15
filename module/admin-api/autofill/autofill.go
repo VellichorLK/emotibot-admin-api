@@ -1,19 +1,16 @@
 package autofill
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
-	"time"
 
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
+	qaServices "emotibot.com/emotigo/module/admin-api/QADoc/services"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/autofill/dao"
 	"emotibot.com/emotigo/module/admin-api/autofill/data"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/module/admin-api/util/solr"
 	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -81,165 +78,38 @@ func UpdateAutofills(appID string, option *data.AutofillOption) {
 	}()
 }
 
-func createAutofills(appID string, docs []*data.AutofillBody) error {
-	indexURL := fmt.Sprintf("%s/%s/update", solr.GetBaseURL(), data.THIRD_CORE)
-
-	// NOTE:
-	//	Solr accepts duplicate keys to add multiple documents in one request,
-	//		ex: {
-	//				"add": {
-	//					"id": "ID1",
-	//					"sentence": "Hello"
-	//				},
-	//				"add": {
-	//					"id": "ID2",
-	//					"sentence": "World"
-	//				}
-	//		 	}
-	//  However, duplicated key JSON is not supported by "encoding/json" package in Golang.
-	//  Thus, we have to compose JSON string body by our own selves.
-	addCmds := make([]string, len(docs))
-
-	for i, doc := range docs {
-		addCmd := solr.AddCmd{
-			Add: solr.AddCmdBody{
-				Doc: doc,
-			},
-		}
-
-		cmd, err := json.Marshal(&addCmd)
-		if err != nil {
-			return err
-		}
-
-		// Remove the leading '{' and trailing '}'
-		addCmds[i] = string(cmd[1 : len(cmd)-1])
-	}
-
-	addCmdsJSON := fmt.Sprintf("{%s}", strings.Join(addCmds, ","))
-
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", indexURL, strings.NewReader(addCmdsJSON))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	_, err = client.Do(req)
+func createAutofills(docs []*qaData.QACoreDoc) error {
+	_, err := qaServices.BulkCreateQADocs(docs)
 	return err
 }
 
 func deleteAllAutofills(appID string, module string) error {
-	deleteURL := fmt.Sprintf("%s/%s/update", solr.GetBaseURL(), data.THIRD_CORE)
-	deleteCmd := solr.DeleteByQueryCmd{
-		Delete: solr.DeleteByQueryCmdBody{
-			Query: fmt.Sprintf("id:%s_autofill#%s_*", appID, module),
-		},
-	}
-
-	reqBody, err := json.Marshal(&deleteCmd)
-	if err != nil {
-		return err
-	}
-
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", deleteURL, bytes.NewBuffer(reqBody))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	_, err = client.Do(req)
+	_, err := qaServices.DeleteQADocs(appID, module)
 	return err
 }
 
-func enableAutofills(ids []string) error {
-	docs := make([]*data.AutofillToggleBody, len(ids))
-	for i, id := range ids {
-		docs[i] = data.NewAutofillToggleBody(id, true)
-	}
-	return toggleAutofills(docs)
-}
-
-func disableAutofills(ids []string) error {
-	docs := make([]*data.AutofillToggleBody, len(ids))
-	for i, id := range ids {
-		docs[i] = data.NewAutofillToggleBody(id, false)
-	}
-	return toggleAutofills(docs)
-}
-
-func toggleAutofills(docs []*data.AutofillToggleBody) error {
-	updateURL := fmt.Sprintf("%s/%s/update", solr.GetBaseURL(), data.THIRD_CORE)
-
-	// NOTE:
-	//	Solr accepts duplicate keys to in-place update multiple documents in one request,
-	//		ex: {
-	//				"add": {
-	//					"id": "ID1",
-	//					"sentence": { "set": "Hello" }
-	//				},
-	//				"add": {
-	//					"id": "ID2",
-	//					"sentence": { "set": "World" }
-	//				}
-	//		 	}
-	//  However, duplicated key JSON is not supported by "encoding/json" package in Golang.
-	//  Thus, we have to compose JSON string body by our own selves.
-	updateCmds := make([]string, len(docs))
-
-	for i, doc := range docs {
-		updateCmd := solr.UpdateCmd{
-			Add: solr.UpdateCmdBody{
-				Doc: doc,
-			},
-		}
-
-		cmd, err := json.Marshal(&updateCmd)
-		if err != nil {
-			return err
-		}
-
-		// Remove the leading '{' and trailing '}'
-		updateCmds[i] = string(cmd[1 : len(cmd)-1])
-	}
-
-	updateCmdsJSON := fmt.Sprintf("{%s}", strings.Join(updateCmds, ","))
-
-	client := &http.Client{}
-	req, err := http.NewRequest("POST", updateURL, strings.NewReader(updateCmdsJSON))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	_, err = client.Do(req)
+func toggleAutofills(enabled bool, ids ...interface{}) error {
+	script := fmt.Sprintf("ctx._source.autofill_enabled=%t", enabled)
+	_, err := qaServices.UpdateQADocsByQuery(script, ids)
 	return err
 }
 
 func createAutofillDocID(appID string, module string, moduleID int64,
 	sentenceID int64) string {
-	return fmt.Sprintf("%s_autofill#%s_%d_%d", appID, module, moduleID, sentenceID)
-}
-
-func createAutofillDatabase(appID string, module string) string {
-	return fmt.Sprintf("%s_autofill#%s", appID, module)
+	return fmt.Sprintf("%s_%s_%d_%d", appID, module, moduleID, sentenceID)
 }
 
 func complementSet(a []string, b []string) []string {
+	m := map[string]bool{}
+
+	for _, elementB := range b {
+		m[elementB] = true
+	}
+
 	complement := make([]string, 0)
 
 	for _, elementA := range a {
-		found := false
-
-		for _, elementB := range b {
-			if elementB == elementA {
-				found = true
-				break
-			}
-		}
-
-		if !found {
+		if _, ok := m[elementA]; !ok {
 			complement = append(complement, elementA)
 		}
 	}
@@ -259,7 +129,7 @@ func resetIntentAutofills(appID string) error {
 	sentences := make([]string, 0)
 
 	// Sentence: autofill bodies
-	autofillBodies := make(map[string][]*data.AutofillBody)
+	var autofillBodies map[string][]*data.QACoreDoc
 
 	// Current intent IDs used by Task Engine
 	teIntentIDs, err := autofillDao.GetTECurrentIntentIDs(appID)
@@ -294,14 +164,19 @@ func resetIntentAutofills(appID string) error {
 
 			// Autofill body
 			if _, ok := autofillBodies[sentence]; !ok {
-				autofillBodies[sentence] = make([]*data.AutofillBody, 0)
+				autofillBodies[sentence] = make([]*data.QACoreDoc, 0)
 			}
 
-			autofillBodies[sentence] = append(autofillBodies[sentence], &data.AutofillBody{
-				ModuleID:         intentSentence.ModuleID,
-				SentenceID:       intentSentence.SentenceID,
-				SentenceOriginal: strings.ToLower(zhconverter.T2S(sentence)),
-			})
+			autofillBodies[sentence] = append(autofillBodies[sentence],
+				&data.QACoreDoc{
+					QACoreDoc: qaData.QACoreDoc{
+						AppID:        appID,
+						Module:       data.AutofillModuleIntent,
+						SentenceOrig: strings.ToLower(zhconverter.T2S(sentence)),
+					},
+					ModuleID:   intentSentence.ModuleID,
+					SentenceID: intentSentence.SentenceID,
+				})
 
 			// Sentences
 			sentences = append(sentences, sentence)
@@ -316,31 +191,24 @@ func resetIntentAutofills(appID string) error {
 			bodies := autofillBodies[sentence]
 
 			for _, body := range bodies {
-				body.ID = createAutofillDocID(appID,
-					data.AutofillModuleIntent, body.ModuleID, body.SentenceID)
-				body.Database = createAutofillDatabase(appID, data.AutofillModuleIntent)
-
-				// Related sentences
-				relatedSentence := data.NewRelatedSentence(sentence)
-				relatedSentenceJSON, err := json.Marshal(&relatedSentence)
-				if err != nil {
-					return err
+				body.QACoreDoc = qaData.QACoreDoc{
+					DocID: createAutofillDocID(appID, data.AutofillModuleIntent,
+						body.ModuleID, body.SentenceID),
+					Answers: []*qaData.Answer{
+						&qaData.Answer{
+							Sentence: sentence,
+						},
+					},
+					Sentence:     strings.ToLower(zhconverter.T2S(nluResult.Keyword.ToString())),
+					SentenceType: strings.ToLower(zhconverter.T2S(nluResult.SentenceType)),
 				}
-				body.RelatedSentences = string(relatedSentenceJSON)
-
-				body.Sentence = strings.ToLower(zhconverter.T2S(nluResult.Keyword.ToString()))
-				body.SentenceCU = "{}"
-				body.SentenceKeywords = strings.ToLower(zhconverter.T2S(nluResult.Keyword.ToString()))
-				body.SentenceType = strings.ToLower(zhconverter.T2S(nluResult.SentenceType))
-				body.SentencePos = strings.ToLower(zhconverter.T2S(nluResult.Segment.ToFullString()))
-				body.Source = time.Now().Format("2006-01-02 15:04:05")
 
 				// Autofill enabled
 				enabled := false
 				if _, ok := teIntentIDsMap[body.ModuleID]; ok {
 					enabled = true
 				}
-				body.Enabled = enabled
+				body.QACoreDoc.AutofillEnabled = enabled
 			}
 		}
 
@@ -357,10 +225,10 @@ func resetIntentAutofills(appID string) error {
 			continue
 		}
 
-		autofills := make([]*data.AutofillBody, 0)
+		autofills := make([]*qaData.QACoreDoc, 0)
 		for _, bodies := range autofillBodies {
 			for _, body := range bodies {
-				autofills = append(autofills, body)
+				autofills = append(autofills, &body.QACoreDoc)
 			}
 		}
 
@@ -370,7 +238,7 @@ func resetIntentAutofills(appID string) error {
 			return err
 		}
 
-		err = createAutofills(appID, autofills)
+		err = createAutofills(autofills)
 		if err != nil {
 			return err
 		}
@@ -429,7 +297,7 @@ func updateIntentAutofills(appID string) error {
 					intentSentence.ModuleID, intentSentence.SentenceID)
 			}
 
-			err = enableAutofills(docIDs)
+			err = toggleAutofills(true, docIDs)
 			if err != nil {
 				return err
 			}
@@ -461,7 +329,7 @@ func updateIntentAutofills(appID string) error {
 					intentSentence.ModuleID, intentSentence.SentenceID)
 			}
 
-			err = disableAutofills(docIDs)
+			err = toggleAutofills(false, docIDs)
 			if err != nil {
 				return err
 			}
