@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
+	"emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/pkg/logger"
 
 	"github.com/olivere/elastic"
