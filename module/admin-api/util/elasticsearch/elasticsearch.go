@@ -22,23 +22,41 @@ var (
 )
 
 func Setup(envHost string, envPort string,
-	envBasicAuthUsername string, envBasicAuthPasword string) (err error) {
+	envBasicAuthUsername string, envBasicAuthPasword string) error {
 	host = envHost
 	port = envPort
 	basicAuthUsername = envBasicAuthUsername
 	basicAuthPassword = envBasicAuthPasword
 
 	ctx, client, err := initClient()
-	if err == nil {
-		esClient = client
-		esCtx = ctx
+	if err != nil {
+		return err
 	}
 
-	createRecordsIndexTemplateIfNeed()
-	createSessionsIndexTemplateIfNeed()
-	createUsersIndexTemplateIfNeed()
+	esClient = client
+	esCtx = ctx
 
-	return
+	err = createRecordsIndexTemplateIfNeed()
+	if err != nil {
+		return err
+	}
+
+	err = createSessionsIndexTemplateIfNeed()
+	if err != nil {
+		return err
+	}
+
+	err = createUsersIndexTemplateIfNeed()
+	if err != nil {
+		return err
+	}
+
+	err = createQACoreIndextemplateIfNeed()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func initClient() (ctx context.Context, client *elastic.Client, err error) {
@@ -77,103 +95,132 @@ func GetClient() (context.Context, *elastic.Client) {
 	return esCtx, esClient
 }
 
-func createRecordsIndexTemplateIfNeed() {
+func createRecordsIndexTemplateIfNeed() error {
 	ctx, client := GetClient()
 	if ctx == nil || client == nil {
-		return
+		return nil
 	}
 
 	// Check existence of records index template
 	exists, err := client.IndexTemplateExists(data.ESRecordsTemplate).Do(ctx)
 	if err != nil {
-		return
+		return err
 	}
 
 	if !exists {
 		// Create records index template
-		template, _err := ioutil.ReadFile(data.ESRecordsTemplateFile)
-		if _err != nil {
-			err = _err
-			return
+		template, err := ioutil.ReadFile(data.ESRecordsTemplateFile)
+		if err != nil {
+			return err
 		}
 
-		service, _err := client.IndexPutTemplate(data.ESRecordsTemplate).BodyString(string(template)).Do(ctx)
-		if _err != nil {
-			err = _err
-			return
+		service, err := client.IndexPutTemplate(data.ESRecordsTemplate).BodyString(string(template)).Do(ctx)
+		if err != nil {
+			return err
 		}
 
 		if !service.Acknowledged {
-			err = data.ErrESNotAcknowledged
-			return
+			return data.ErrESNotAcknowledged
 		}
 	}
+
+	return nil
 }
 
-func createSessionsIndexTemplateIfNeed() {
+func createSessionsIndexTemplateIfNeed() error {
 	ctx, client := GetClient()
 	if ctx == nil || client == nil {
-		return
+		return nil
 	}
 
 	// Check existence of sessions index template
 	exists, err := client.IndexTemplateExists(data.ESSessionsTemplate).Do(ctx)
 	if err != nil {
-		return
+		return err
 	}
 
 	if !exists {
 		// Create sessions index template
-		template, _err := ioutil.ReadFile(data.ESSessionsTemplateFile)
-		if _err != nil {
-			err = _err
-			return
+		template, err := ioutil.ReadFile(data.ESSessionsTemplateFile)
+		if err != nil {
+			return err
 		}
 
-		service, _err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(ctx)
-		if _err != nil {
-			err = _err
-			return
+		service, err := client.IndexPutTemplate(data.ESSessionsTemplate).BodyString(string(template)).Do(ctx)
+		if err != nil {
+			return err
 		}
 
 		if !service.Acknowledged {
-			err = data.ErrESNotAcknowledged
-			return
+			return data.ErrESNotAcknowledged
 		}
 	}
+
+	return nil
 }
 
-func createUsersIndexTemplateIfNeed() {
+func createUsersIndexTemplateIfNeed() error {
 	ctx, client := GetClient()
 	if ctx == nil || client == nil {
-		return
+		return nil
 	}
 
 	// Check existence of users index template
 	exists, err := client.IndexTemplateExists(data.ESUsersTemplate).Do(ctx)
 	if err != nil {
-		return
+		return err
 	}
 
 	if !exists {
 		// Create users index template
-		template, _err := ioutil.ReadFile(data.ESUsersTemplateFile)
-		if _err != nil {
-			err = _err
-			return
+		template, err := ioutil.ReadFile(data.ESUsersTemplateFile)
+		if err != nil {
+			return err
 		}
 
-		service, _err := client.IndexPutTemplate(data.ESUsersTemplate).BodyString(string(template)).Do(ctx)
-		if _err != nil {
-			err = _err
-			return
+		service, err := client.IndexPutTemplate(data.ESUsersTemplate).BodyString(string(template)).Do(ctx)
+		if err != nil {
+			return err
 		}
 
 		if !service.Acknowledged {
-			err = data.ErrESNotAcknowledged
-			return
+			return data.ErrESNotAcknowledged
 		}
 	}
+
+	return nil
+}
+
+func createQACoreIndextemplateIfNeed() error {
+	ctx, client := GetClient()
+	if ctx == nil || client == nil {
+		return nil
+	}
+
+	// Check existence of records index template.
+	exists, err := client.IndexTemplateExists(data.ESQACoreTemplate).Do(ctx)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		// Create records index template.
+		template, err := ioutil.ReadFile(data.ESQACoreTemplateFile)
+		if err != nil {
+			return err
+		}
+
+		service, err := client.IndexPutTemplate(data.ESQACoreTemplate).BodyString(string(template)).Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		if !service.Acknowledged {
+			return data.ErrESNotAcknowledged
+		}
+	}
+
+	return nil
 }
 
 func CreateTimeRangeFromString(startDate string,

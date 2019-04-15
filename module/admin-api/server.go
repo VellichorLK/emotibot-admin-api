@@ -19,9 +19,11 @@ import (
 	"github.com/robfig/cron"
 
 	"emotibot.com/emotigo/module/admin-api/BF"
+	"emotibot.com/emotigo/module/admin-api/CustomChat"
 	"emotibot.com/emotigo/module/admin-api/ELKStats"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
+	"emotibot.com/emotigo/module/admin-api/QADoc"
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/Stats"
@@ -45,7 +47,6 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/validate"
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/misc/emotibothttpwriter"
-	"emotibot.com/emotigo/module/admin-api/CustomChat"
 )
 
 // constant define all const used in server
@@ -66,6 +67,7 @@ var modules = []*util.ModuleInfo{
 	&Switch.ModuleInfo,
 	&Robot.ModuleInfo,
 	&QA.ModuleInfo,
+	&QADoc.ModuleInfo,
 	&FAQ.ModuleInfo,
 	&QA.TestModuleInfo,
 	&Task.ModuleInfo,

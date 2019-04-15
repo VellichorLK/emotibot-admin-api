@@ -8,7 +8,9 @@ type QACoreDoc struct {
 	Sentence        string       `json:"sentence"`
 	SentenceOrig    string       `json:"sentence_original"`
 	SentenceType    string       `json:"sentence_type,omitempty"`
+	SentencePos     string       `json:"sentence_pos,omitempty"`
 	Keywords        string       `json:"keywords,omitempty"`
+	Source          string       `json:"source,omitempty"`
 	Emotions        []*Emotion   `json:"emotions,omitempty"`
 	Topics          []*Topic     `json:"topics,omitempty"`
 	SpeechActs      []*SpeechAct `json:"speech_acts,omitempty"`
@@ -20,6 +22,7 @@ type Answer struct {
 	Emotions   []*Emotion   `json:"emotions,omitempty"`
 	Topics     []*Topic     `json:"topics,omitempty"`
 	SpeechActs []*SpeechAct `json:"speech_acts,omitempty"`
+	Creator    string       `json:"creator,omitempty"`
 }
 
 type Emotion struct {
@@ -40,4 +43,18 @@ type SpeechAct struct {
 type AutofillToggleBody struct {
 	ID      string `json:"autofill_id"`
 	Enabled bool   `json:"autofill_enabled"`
+}
+
+type RegexQuery struct {
+	Field      string
+	Expression string
+}
+
+type DeleteQADocsRequest struct {
+	AppID  string `json:"app_id"`
+	Module string `json:"module"`
+}
+
+type DeleteQADocsByIDsRequest struct {
+	IDs []interface{} `json:"ids"`
 }
