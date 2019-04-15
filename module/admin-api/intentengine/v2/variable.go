@@ -2,6 +2,7 @@ package intentenginev2
 
 import (
 	"errors"
+	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/util"
 )
@@ -69,6 +70,30 @@ var (
 
 var (
 	// ErrReadOnlyIntent means trying to modify intent which is trained (version is not NULL)
-	ErrReadOnlyIntent = errors.New("intent is readonly if it is trained")
-	dao               intentDaoInterface
+	ErrReadOnlyIntent   = errors.New("intent is readonly if it is trained")
+	dao                 intentDaoInterface
+	defaultTrainTimeout = 30 * 60 // 30 minutes
 )
+
+func getTrainTimeout() int {
+	str := getEnvironment("INTENT_TRAIN_TIMEOUT")
+	timeout, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return defaultTrainTimeout
+	}
+	return int(timeout)
+}
+
+func getEnvironments() map[string]string {
+	return util.GetEnvOf(moduleName)
+}
+
+func getEnvironment(key string) string {
+	envs := util.GetEnvOf(moduleName)
+	if envs != nil {
+		if val, ok := envs[key]; ok {
+			return val
+		}
+	}
+	return ""
+}

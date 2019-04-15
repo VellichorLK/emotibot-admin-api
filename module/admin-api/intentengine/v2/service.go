@@ -124,13 +124,20 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	ret.LastFinishTime = latestInfo.TrainEndTime
 	ret.Progress = latestInfo.Progress
 	ret.Version = latestInfo.Version
-	if ret.CurrentStartTime == nil && ret.LastFinishTime == nil {
+	if ret.CurrentStartTime == nil {
 		logger.Trace.Println("Version hasn't start, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	} else if ret.LastFinishTime == nil {
-		logger.Trace.Println("Version hasn't end, return TRAINING")
-		ret.Status = statusTraining
+		timeout := getTrainTimeout()
+		if time.Now().Unix() > *ret.CurrentStartTime+int64(timeout) {
+			logger.Trace.Printf("Version start from %d, timeout with %d, NEED_TRAIN\n",
+				*ret.CurrentStartTime, int64(timeout))
+			ret.Status = statusNeedTrain
+		} else {
+			logger.Trace.Println("Version hasn't end, return TRAINING")
+			ret.Status = statusTraining
+		}
 		return
 	} else if latestInfo.TrainResult == trainResultFail {
 		logger.Trace.Println("Version fail, return NEED_TRAIN")
