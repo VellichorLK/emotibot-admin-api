@@ -129,7 +129,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		return nil, err
 	}
 
-	// Convert FAQ robot tag IDs to FAQ FAQ robot tag names
+	// Convert FAQ robot tag IDs to FAQ robot tag names
 	err = updateFaqRobotTags(records)
 	if err != nil {
 		return nil, err
@@ -367,7 +367,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 			faqCategoryName = faqCategoryPath.Path
 		}
 
-		// Convert FAQ robot tag IDs to FAQ FAQ robot tag names
+		// Convert FAQ robot tag IDs to FAQ robot tag names
 		var faqRobotTagNames []string
 		for _, faqRobotTagID := range record.FaqRobotTagIDs {
 			if faqRobotTag, ok := faqRobotTags[faqRobotTagID]; ok {
@@ -434,7 +434,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricCustomInfo,
 		dataCommon.VisitRecordsMetricSource,
 		"faq_cat_id",
-		"fat_robot_tag_id",
+		"faq_robot_tag_id",
 		dataCommon.VisitRecordsMetricFeedback,
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
