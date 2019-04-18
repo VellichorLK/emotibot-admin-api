@@ -373,7 +373,8 @@ func handleDeleteSimilarQuestions(ctx context.Context) {
 // search question by exactly matching content
 func handleSearchQuestion(ctx context.Context) {
 	lastOperation := time.Now()
-	content := ctx.FormValue("content")
+	content := strings.TrimSpace(ctx.FormValue("content"))
+	util.LogInfo.Printf("check stand question:{%s}", content)
 	appid := util.GetAppID(ctx)
 	question, err := searchQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
@@ -1120,9 +1121,9 @@ func handleQueryQuestion(ctx context.Context) {
 // search simialr question by exactly matching content
 func handleSearchSQuestion(ctx context.Context) {
 	lastOperation := time.Now()
-	content := ctx.FormValue("content")
+	content := strings.TrimSpace(ctx.FormValue("content"))
 	appid := util.GetAppID(ctx)
-
+	util.LogInfo.Printf("check simalar question {%s}", content)
 	squestion, err := searchSQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
 		ctx.StatusCode(http.StatusNotFound)

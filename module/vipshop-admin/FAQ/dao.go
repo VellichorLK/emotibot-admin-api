@@ -2006,7 +2006,7 @@ func searchBatchSQuestionByContent(content []string, appid string) ([]string, er
 	util.LogInfo.Printf("rawQuery = %s", rawQuery)
 	args := make([]interface{}, len(content))
 	for idx := range content {
-		args[idx] = content[idx]
+		args[idx] = strings.TrimSpace(content[idx])
 	}
 	results, err := db.Query(rawQuery, args...)
 	if err != nil {
