@@ -436,7 +436,8 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err

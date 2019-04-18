@@ -281,7 +281,8 @@ func extractExportSessionsHitResultHandler(hit *elastic.SearchHit) (sessionPtr i
 	return
 }
 
-func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
