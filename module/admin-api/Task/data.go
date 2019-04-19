@@ -26,6 +26,7 @@ type TEConfig struct {
 type TEv2Config struct {
 	EnableJSCode bool        `json:"enable_js_code"`
 	EnableNode   *EnableNode `json:"enable_node"`
+	EnableCustomUrl bool     `json:"enable_custom_url"`
 }
 
 // EnableNode defines the structure of the enabled nodes in TEv2 config json
