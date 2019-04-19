@@ -2,20 +2,21 @@ package Robot
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	qaServices "emotibot.com/emotigo/module/admin-api/QADoc/services"
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
 var (
-	syncSolrTimeout = 5 * 60
+	syncTimeout = 5 * 60
 )
 
 func GetRobotQAListV3(appid string, locale string) ([]*QAInfoV3, int, error) {
@@ -143,19 +144,19 @@ func DeleteRobotQARQuestionV3(appid string, qid, rQid int) (int, error) {
 }
 
 func SyncOnce() {
-	SyncRobotProfileToSolr()
+	SyncRobotProfile()
 }
 
-func SyncRobotProfileToSolr() (err error) {
-	return ForceSyncRobotProfileToSolr(false)
+func SyncRobotProfile() (err error) {
+	return ForceSyncRobotProfile(false)
 }
 
-func ForceSyncRobotProfileToSolr(force bool) (err error) {
+func ForceSyncRobotProfile(force bool) (err error) {
 	restart := false
-	body := ""
+	var body []byte
 	defer func() {
 		if err != nil {
-			logger.Error.Println("Error when sync to solr:", err.Error())
+			logger.Error.Println("Error while syncing robot profile:", err.Error())
 			return
 		}
 	}()
@@ -163,7 +164,7 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 	if !force {
 		var start bool
 		var pid int
-		start, pid, err = tryStartSyncProcess(syncSolrTimeout)
+		start, pid, err = tryStartSyncProcess(syncTimeout)
 		if err != nil {
 			return
 		}
@@ -197,7 +198,7 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 			if restart {
 				logger.Trace.Println("Restart sync process")
 				time.Sleep(time.Second)
-				go SyncRobotProfileToSolr()
+				go SyncRobotProfile()
 			}
 		}()
 	}
@@ -207,7 +208,7 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 		return
 	}
 
-	deleteSolrIDs, deleteRQIDs, err := getDeleteModifyRobotQA()
+	deleteDocIDs, deleteRQIDs, err := getDeleteModifyRobotQA()
 	if err != nil {
 		return
 	}
@@ -223,7 +224,7 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 
 	tagInfos = convertTagInfoWithZhCn(tagInfos)
 
-	validInfos := []*ManualTagging{}
+	validInfos := ManualTaggings{}
 	for idx := range tagInfos {
 		if tagInfos[idx].Answers != nil && len(tagInfos[idx].Answers) > 0 {
 			validInfos = append(validInfos, tagInfos[idx])
@@ -237,11 +238,10 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 			return
 		}
 
-		jsonStr, _ := json.Marshal(validInfos)
-		// logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
-		body, err = Service.IncrementAddSolr(jsonStr)
+		body, err = qaServices.BulkCreateQADocs(validInfos.convertToQACoreDocs())
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s",
+				err.Error(), string(body))
 			return
 		}
 	}
@@ -253,24 +253,70 @@ func ForceSyncRobotProfileToSolr(force bool) (err error) {
 			if _, ok := deleteStdQIDs[info.AppID]; !ok {
 				deleteStdQIDs[info.AppID] = []string{}
 			}
-			deleteStdQIDs[info.AppID] = append(deleteStdQIDs[info.AppID], info.SolrID)
+			deleteStdQIDs[info.AppID] = append(deleteStdQIDs[info.AppID], info.DocID)
 		}
 	}
+
 	if len(deleteStdQIDs) > 0 {
-		body, err = Service.DeleteInSolr("robot", deleteStdQIDs)
+		deleteIDs := []interface{}{}
+		deleteAnsRegexps := []*qaData.RegexQuery{}
+
+		for appID, ids := range deleteStdQIDs {
+			for _, id := range ids {
+				qDocID := createRobotQuestionDocID(appID, id)
+				deleteIDs = append(deleteIDs, qDocID)
+				deleteAnsRegexps = append(deleteAnsRegexps, &qaData.RegexQuery{
+					Field:      "doc_id",
+					Expression: fmt.Sprintf("%s#.*", qDocID),
+				})
+			}
+		}
+
+		// Delete questions
+		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
+			return
+		}
+
+		// Delete all related answers
+		body, err = qaServices.DeleteQADocsByRegex(deleteAnsRegexps)
+		if err != nil {
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
 		}
 	}
 
 	if len(deleteRQIDs) > 0 {
-		body, err = Service.DeleteInSolr("robot", deleteSolrIDs)
+		deleteIDs := []interface{}{}
+		deleteAnsRegexps := []*qaData.RegexQuery{}
+
+		for appID, ids := range deleteDocIDs {
+			for _, id := range ids {
+				qDocID := createRobotQuestionDocID(appID, id)
+				deleteIDs = append(deleteIDs, qDocID)
+				deleteAnsRegexps = append(deleteAnsRegexps, &qaData.RegexQuery{
+					Field:      "doc_id",
+					Expression: fmt.Sprintf("%s#.*", qDocID),
+				})
+			}
+		}
+
+		// Delete questions
+		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
+			return
+		}
+
+		// Delete all related answers
+		body, err = qaServices.DeleteQADocsByRegex(deleteAnsRegexps)
+		if err != nil {
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
 		}
 	}
+
 	err = resetRobotQAData(rqIDs, deleteRQIDs, ansIDs, delAnsIDs)
 	if err != nil {
 		logger.Error.Println("Reset status to 0 fail: ", err.Error())

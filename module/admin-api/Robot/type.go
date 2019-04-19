@@ -1,7 +1,10 @@
 package Robot
 
 import (
+	"fmt"
 	"time"
+
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
 )
 
 // FunctionInfo store info about robot's function
@@ -104,9 +107,9 @@ type QAInfoV3 struct {
 	Answers          []*InfoV3 `json:"answers"`
 }
 
-// ManualAnswerTagging is used when update robot profile to solr
+// ManualAnswerTagging is used when updating robot profile
 type ManualAnswerTagging struct {
-	SolrID       string `json:"answer_id"`
+	DocID        string `json:"answer_id"`
 	Answer       string `json:"content"`
 	Segment      string `json:"answer_seg"`
 	WordPos      string `json:"answer_word_pos"`
@@ -114,9 +117,9 @@ type ManualAnswerTagging struct {
 	SentenceType string `json:"answer_sentence_type"`
 }
 
-// ManualTagging is used when update robot profile to solr
+// ManualTagging is used when updating robot profile
 type ManualTagging struct {
-	SolrID       string                 `json:"id"`
+	DocID        string                 `json:"id"`
 	Question     string                 `json:"question"`
 	Segment      string                 `json:"question_seg"`
 	WordPos      string                 `json:"question_word_pos"`
@@ -124,4 +127,70 @@ type ManualTagging struct {
 	SentenceType string                 `json:"question_sentence_type"`
 	Answers      []*ManualAnswerTagging `json:"answers"`
 	AppID        string                 `json:"app_id"`
+}
+
+func (tag *ManualTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc {
+	docs := []*qaData.QACoreDoc{}
+
+	qDoc := &qaData.QACoreDoc{
+		DocID:        createRobotQuestionDocID(appID, tag.DocID),
+		AppID:        appID,
+		Module:       "robot",
+		Sentence:     tag.Segment,
+		SentenceOrig: tag.Question,
+		SentenceType: tag.SentenceType,
+		SentencePos:  tag.WordPos,
+		Keywords:     tag.Keyword,
+	}
+
+	docs = append(docs, qDoc)
+
+	if len(tag.Answers) > 0 {
+		// Question doc's answers
+		answers := []*qaData.Answer{}
+
+		for _, answer := range tag.Answers {
+			ans := &qaData.Answer{
+				Sentence: answer.Answer,
+			}
+			answers = append(answers, ans)
+
+			// Answer doc
+			ansDoc := &qaData.QACoreDoc{
+				DocID:        createRobotAnswerDocID(qDoc.DocID, answer.DocID),
+				AppID:        appID,
+				Module:       "robot",
+				Sentence:     answer.Segment,
+				SentenceOrig: answer.Answer,
+				SentenceType: answer.SentenceType,
+				SentencePos:  answer.WordPos,
+				Keywords:     answer.Keyword,
+			}
+			docs = append(docs, ansDoc)
+		}
+
+		qDoc.Answers = answers
+	}
+
+	return docs
+}
+
+type ManualTaggings []*ManualTagging
+
+func (tags ManualTaggings) convertToQACoreDocs() []*qaData.QACoreDoc {
+	docs := []*qaData.QACoreDoc{}
+
+	for _, tag := range tags {
+		docs = append(docs, tag.convertToQACoreDocs(tag.AppID)...)
+	}
+
+	return docs
+}
+
+func createRobotQuestionDocID(appID string, questionID string) string {
+	return fmt.Sprintf("%s_robot_%s", appID, questionID)
+}
+
+func createRobotAnswerDocID(questionDocID string, answerID string) string {
+	return fmt.Sprintf("%s#%s", questionDocID, answerID)
 }
