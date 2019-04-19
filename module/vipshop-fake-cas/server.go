@@ -42,7 +42,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.Compare(parameters["appid"][0], "vca") != 0 {
+	if strings.Compare(parameters["appid"][0], "VCA") != 0 && strings.Compare(parameters["appid"][0], "vca") != 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "appid incorrect")
 		return
@@ -59,6 +59,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	ret := ret_msg{
 		Code: 200,
 	}
+
 	var acct = parameters["ac"][0]
 	var password = parameters["pw"][0]
 	log.Printf("login attempt from ip:%s ac:%s, pw:%s", r.RemoteAddr, acct, password)
@@ -73,16 +74,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 var valid_users = map[string]string{
-	"user1":  "12345",
-	"user2":  "12345",
-	"user3":  "12345",
-	"user4":  "12345",
-	"user5":  "12345",
-	"user6":  "12345",
-	"user7":  "12345",
-	"user8":  "12345",
-	"user9":  "12345",
-	"user10": "12345",
+	"user1":   "12345",
+	"user2":   "12345",
+	"user3":   "12345",
+	"user4":   "12345",
+	"user5":   "12345",
+	"user6":   "12345",
+	"user7":   "12345",
+	"user8":   "12345",
+	"user9":   "12345",
+	"user10":  "12345",
+	"user11":  "12345+6",
+	"user1+1": "12345+6",
 }
 
 func validateUser(userID string, pw string) (isValid bool) {

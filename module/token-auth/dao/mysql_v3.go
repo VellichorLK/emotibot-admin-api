@@ -574,7 +574,7 @@ func (controller MYSQLController) GetAuthUserV3(account string, passwd string) (
 	queryStr := fmt.Sprintf(`
 		SELECT uuid, user_name, display_name, email, phone, type, enterprise, status, product
 		FROM %s
-		WHERE (user_name = ? OR email = ?) AND password = ?`,
+		WHERE (user_name = binary? OR email = ?) AND password = ?`,
 		userTableV3)
 	row := controller.connectDB.QueryRow(queryStr, account, account, passwd)
 

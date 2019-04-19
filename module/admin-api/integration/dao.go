@@ -27,6 +27,21 @@ func getPlatformConfig(appid, platform string) (map[string]string, error) {
 		}
 		ret[key] = value
 	}
+	rows.Close()
+
+	queryStr = "SELECT pkey FROM integration WHERE appid = '' AND platform = ?"
+	rows, err = mySQL.Query(queryStr, platform)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		key := ""
+		err = rows.Scan(&key)
+		if err != nil {
+			return nil, err
+		}
+		ret[key] = ""
+	}
 
 	return ret, nil
 }

@@ -140,6 +140,14 @@ var (
 		"IntentVersionError":   "意图版本错误",
 		"PreviousStillRunning": "前一次训练进行中",
 		"UploadIntentInfoTpl":  "上传 %d 个意图",
+
+		//custom chat
+		"UploadCustomChatQuestion":   "上传闲聊问题",
+		"UploadCustomChatExtend":   "上传闲聊扩写",
+		"DownloadCustomChatQuestion":   "下载闲聊问题",
+		"DownloadCustomChatExtend":   "下载闲聊扩写",
+		"UploadCustomChatInfoTpl":  "上传 %d 个闲聊类别",
+		"UploadCustomChatExtendInfoTpl":  "上传 %d 个问题的闲聊语料",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

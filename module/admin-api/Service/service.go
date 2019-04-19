@@ -199,6 +199,10 @@ func getSolrDeleteURL() string {
 	url := strings.TrimSpace(getEnvironment(serviceSolrETLKey))
 	return fmt.Sprintf("%s/editorial/deletebyids", url)
 }
+func getSolrDeleteByFieldURL() string {
+	url := strings.TrimSpace(getEnvironment(serviceSolrETLKey))
+	return fmt.Sprintf("%s/editorial/deletebyquery", url)
+}
 
 func getEnvironments() map[string]string {
 	return util.GetEnvOf(ModuleInfo.ModuleName)
@@ -234,4 +238,46 @@ func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, Adm
 		logger.Trace.Printf("Reload %d std questions of %s, timeout when %d\n", len(questions), appid, stdQuestionExpire[appid])
 	}
 	return matcher[appid].FindNSentence(pattern, n), nil
+}
+
+
+
+
+func IncrementAddSolrByType(content []byte, kind string) (string, error) {
+	url := getSolrIncrementURL()
+	if url == "" {
+		return "", errors.New("Solr-etl Service not set")
+	}
+	filename := "other" + "_tagging.json"
+	if kind == "other"{
+		filename = "other" + "_tagging.json"
+	}
+
+	reader := bytes.NewReader(content)
+	status, body, err := util.HTTPPostFileWithStatus(url, reader, filename, "file", 30)
+	if err != nil {
+		return "", err
+	}
+	if status != http.StatusOK {
+		return body, fmt.Errorf("Status not 200, is %d", status)
+	}
+	return body, nil
+}
+
+func DeleteInSolrByFiled(field string, deleteQuery string) (string, error) {
+	url := getSolrDeleteByFieldURL()
+
+	params := map[string]string{
+		"query":   deleteQuery,
+		"field": field,
+		"core": "3rd_core",
+	}
+	content, err := util.HTTPGet(url, params, 30)
+	if err != nil {
+		return "", err
+	}
+	logger.Trace.Println("Send to solr-etl: ", params)
+	logger.Trace.Println("Get from delete in solr: ", content)
+
+	return "", nil
 }

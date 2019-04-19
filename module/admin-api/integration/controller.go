@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+
 	"github.com/siongui/gojianfan"
 
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
@@ -29,8 +31,8 @@ func init() {
 			util.NewEntryPoint("POST", "chat/{platform}/{appid}", []string{}, handlePlatformChat),
 			util.NewEntryPoint("GET", "configs/reload", []string{}, handleReloadPlatformConfig),
 			// util.NewEntryPoint("GET", "configs", []string{"view"}, handleGetConfigs),
-			// util.NewEntryPoint("Get", "config/{platform}", []string{"view"}, handleGetConfigTemplate),
-			// util.NewEntryPoint("Get", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
+			util.NewEntryPoint("GET", "config/{platform}", []string{"view"}, handleGetConfig),
+			// util.NewEntryPoint("GET", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
 		},
 	}
 	go sendFromQueue()
@@ -106,4 +108,11 @@ var configCache = map[string]map[string]string{}
 
 func handleReloadPlatformConfig(w http.ResponseWriter, r *http.Request) {
 	configCache = map[string]map[string]string{}
+}
+
+func handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	platform := util.GetMuxVar(r, "platform")
+	configs, err := GetPlatformConfig(appid, platform)
+	util.Return(w, err, configs)
 }

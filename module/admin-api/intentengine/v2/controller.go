@@ -501,17 +501,3 @@ func handleDeleteMultiIntentV2(w http.ResponseWriter, r *http.Request) {
 	err = DeleteIntents(appid, input.ID)
 	return
 }
-
-func getEnvironments() map[string]string {
-	return util.GetEnvOf(moduleName)
-}
-
-func getEnvironment(key string) string {
-	envs := util.GetEnvOf(moduleName)
-	if envs != nil {
-		if val, ok := envs[key]; ok {
-			return val
-		}
-	}
-	return ""
-}

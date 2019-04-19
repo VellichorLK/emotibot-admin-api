@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
+
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/pkg/logger"
 )
@@ -61,6 +63,10 @@ func GetChatResult(appid, userid, input string) []*QA.BFOPOpenapiAnswer {
 	return ret
 }
 
-func GetPlatformConfig(appid, platform string) (map[string]string, error) {
-	return getPlatformConfig(appid, platform)
+func GetPlatformConfig(appid, platform string) (map[string]string, adminerrors.AdminError) {
+	configs, err := getPlatformConfig(appid, platform)
+	if err != nil {
+		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+	}
+	return configs, nil
 }

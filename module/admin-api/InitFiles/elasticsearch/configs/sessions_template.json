@@ -2,7 +2,7 @@
     "index_patterns": [
         "emotibot-sessions-*"
     ],
-    "version": 20181206,
+    "version": 20190319,
     "settings": {
         "number_of_replicas": 1,
         "number_of_shards": 1
@@ -49,6 +49,24 @@
                 "feedback_time": {
                     "type": "date",
                     "format": "epoch_second"
+                },
+                "chat_cnt": {
+                    "type": "integer"
+                },
+                "is_to_human": {
+                    "type": "boolean"
+                },
+                "to_human_time": {
+                    "type": "date",
+                    "format": "epoch_second"
+                },
+                "to_human_source": {
+                    "type": "text",
+                    "fields": {
+                        "keyword": {
+                            "type": "keyword"
+                        }
+                    }
                 }
             }
         }

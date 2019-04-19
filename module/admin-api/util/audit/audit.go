@@ -32,11 +32,13 @@ const (
 	AuditModuleStatisticDaily    = "statistic_daily"    //  "日誌管理"
 	AuditModuleStatisticAnalysis = "statistic_analysis" //  "統計分析"
 	AuditModuleAudit             = "statistic_audit"
-	AuditModuleRobotProfile      = "robot_profile"    //  "機器人形象"
-	AuditModuleRobotChatSkill    = "robot_chat_skill" //  "話術設置"
-	AuditModuleRobotFunction     = "robot_function"   //  "技能設置"
-	AuditModuleRobotCommand      = "robot_command"    //  "指令設置"
-	AuditModuleIntegration       = "integration"      //  "接入部署"
+	AuditModuleRobotProfile      = "robot_profile"     //  "機器人形象"
+	AuditModuleRobotChatSkill    = "robot_chat_skill"  //  "話術設置"
+	AuditModuleRobotFunction     = "robot_function"    //  "技能設置"
+	AuditModuleRobotCommand      = "robot_command"     //  "指令設置"
+	AuditModuleIntegration       = "integration"       //  "接入部署"
+	AuditModuleRobotCustomChat   = "robot_custom_chat" // "第三方閒聊庫"
+	AuditModuleRobotConfig       = "robot_config"      // "機器人內容設置"
 	AuditModuleManageUser        = "manage_user"
 	AuditModuleManageRobot       = "manage_robot"
 	AuditModuleManageAdmin       = "manage_admin"
@@ -46,6 +48,7 @@ const (
 var moduleMap = map[string]string{
 	"intents":    AuditModuleIntentManage,
 	"dictionary": AuditModuleWordbank,
+	"customchat": AuditModuleRobotCustomChat,
 }
 
 var operationLocaleKeyMap = map[string]string{
@@ -98,6 +101,8 @@ var moduleLocalKeyMap = map[string]string{
 	AuditModuleManageRobot:       "AuditModuleManageRobot",
 	AuditModuleManageAdmin:       "AuditModuleManageAdmin",
 	AuditModuleManageEnterprise:  "AuditModuleManageEnterprise",
+	AuditModuleRobotCustomChat:   "AuditModuleRobotCustomChat",
+	AuditModuleRobotConfig:       "AuditModuleRobotConfig",
 }
 
 type auditLog struct {

@@ -44,6 +44,19 @@ func UpdateRecordMark(status bool) UpdateCommand {
 	}
 }
 
+func UpdateRecordIntentMark(intentID int64) UpdateCommand {
+	return func(qs *elastic.UpdateByQueryService) *elastic.UpdateByQueryService {
+		script := elastic.NewScript("ctx._source.marked_intent = params.mark")
+		script.Param("mark", intentID)
+
+		if intentID < 0 {
+			script = elastic.NewScript("ctx._source.remove(\"marked_intent\")")
+		}
+		qs.Script(script)
+		return qs
+	}
+}
+
 func UpdateRecordIgnore(status bool) UpdateCommand {
 	return func(qs *elastic.UpdateByQueryService) *elastic.UpdateByQueryService {
 		script := elastic.NewScript("ctx._source.isIgnored = params.ignore")

@@ -1,5 +1,10 @@
 package intentenginev2
 
+type SentenceType int
+
+var TypePositive SentenceType = 0
+var TypeNegative SentenceType = 1
+
 // SentenceV2 describe a sentence in trainint data
 type SentenceV2 struct {
 	ID      int64  `json:"id"`

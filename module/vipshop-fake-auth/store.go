@@ -214,6 +214,20 @@ var (
 			UserCode:       "0",
 			Roles:          []string{"test"},
 		},
+		"user11": &StoreUser{
+			UserName:       "测试11",
+			UserDepartment: "test",
+			UserAccountID:  "user11",
+			UserCode:       "0",
+			Roles:          []string{"test"},
+		},
+		"user1+1": &StoreUser{
+			UserName:       "测试1+1",
+			UserDepartment: "test",
+			UserAccountID:  "user12",
+			UserCode:       "0",
+			Roles:          []string{"test"},
+		},
 	}
 )
 

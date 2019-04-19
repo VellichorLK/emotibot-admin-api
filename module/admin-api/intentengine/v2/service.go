@@ -44,6 +44,17 @@ func GetIntent(appid string, intentID int64, keyword string) (*IntentV2, AdminEr
 	return intent, nil
 }
 
+func GetCurrentViaName(appid string, version *int64, name string) (*IntentV2, AdminErrors.AdminError) {
+	intent, err := dao.GetIntentViaName(appid, version, name)
+	if err == sql.ErrNoRows {
+		return nil, AdminErrors.New(AdminErrors.ErrnoNotFound, "")
+	} else if err != nil {
+		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
+	}
+
+	return intent, nil
+}
+
 func AddIntent(appid, name string, positive, negative []string) (*IntentV2, AdminErrors.AdminError) {
 	intent, err := dao.AddIntent(appid, name, positive, negative)
 	if err == sql.ErrNoRows {
@@ -113,13 +124,20 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	ret.LastFinishTime = latestInfo.TrainEndTime
 	ret.Progress = latestInfo.Progress
 	ret.Version = latestInfo.Version
-	if ret.CurrentStartTime == nil && ret.LastFinishTime == nil {
+	if ret.CurrentStartTime == nil {
 		logger.Trace.Println("Version hasn't start, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	} else if ret.LastFinishTime == nil {
-		logger.Trace.Println("Version hasn't end, return TRAINING")
-		ret.Status = statusTraining
+		timeout := getTrainTimeout()
+		if time.Now().Unix() > *ret.CurrentStartTime+int64(timeout) {
+			logger.Trace.Printf("Version start from %d, timeout with %d, NEED_TRAIN\n",
+				*ret.CurrentStartTime, int64(timeout))
+			ret.Status = statusNeedTrain
+		} else {
+			logger.Trace.Println("Version hasn't end, return TRAINING")
+			ret.Status = statusTraining
+		}
 		return
 	} else if latestInfo.TrainResult == trainResultFail {
 		logger.Trace.Println("Version fail, return NEED_TRAIN")
@@ -718,4 +736,20 @@ func SearchSentenceWithType(appid string, version *int, content string, sentence
 		return
 	}
 	return intent.Name, nil
+}
+
+func AddIntentSentences(appid string, intentID int64, sentenceType SentenceType, sentences []string) error {
+	dbErr := dao.AddIntentSentences(appid, intentID, sentenceType, sentences)
+	if dbErr != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+	}
+	return nil
+}
+
+func DelIntentSentences(appid string, intentID int64, sentences []string) error {
+	dbErr := dao.DelIntentSentences(appid, intentID, sentences)
+	if dbErr != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, dbErr.Error())
+	}
+	return nil
 }

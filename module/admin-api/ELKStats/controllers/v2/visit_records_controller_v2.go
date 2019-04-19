@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	intentengine "emotibot.com/emotigo/module/admin-api/intentengine/v2"
+
 	"emotibot.com/emotigo/module/admin-api/ELKStats/controllers"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/controllers/common"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
@@ -405,6 +407,74 @@ func NewRecordSSMHandler(client *dal.Client) func(http.ResponseWriter, *http.Req
 	}
 }
 
+func RecordIntentHandler(w http.ResponseWriter, r *http.Request) {
+	id, ok := mux.Vars(r)["id"]
+	if !ok {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "no path variable id"))
+		return
+	}
+
+	appid := requestheader.GetAppID(r)
+	query := &dataV2.VisitRecordsQuery{
+		CommonQuery: data.CommonQuery{
+			AppID: appid,
+		},
+		RecordIDs: []interface{}{id},
+		Limit:     1,
+	}
+
+	result, err := servicesV2.VisitRecordsQuery(query)
+	if err != nil {
+		logger.Error.Printf("fetch es records failed, %v\n", err)
+		controllers.ReturnInternalServerError(w, data.NewErrorResponse("internal server error"))
+		return
+	}
+	if size := len(result.Data); size == 0 || size > 1 {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "record id "+id+" is ambiguous(results: "+strconv.Itoa(size)+")"))
+		return
+	}
+
+	userQ := result.Data[0].UserQ
+	intentID := result.Data[0].MarkedIntent
+	if intentID == nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "no marked intent"))
+		return
+	}
+	origIntent, err := intentengine.GetIntent(appid, *intentID, "")
+	if err != nil || origIntent == nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "cannot get marked intent"))
+		return
+	}
+	intent, err := intentengine.GetCurrentViaName(appid, nil, origIntent.Name)
+	if err != nil || intent == nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "marked intent is not existed in current version"))
+		return
+	}
+	positive := true
+	if intent.Negative != nil {
+		for _, sentence := range *intent.Negative {
+			if sentence == nil {
+				continue
+			}
+			if userQ == sentence.Content {
+				positive = false
+				break
+			}
+		}
+	}
+
+	type RetIntent struct {
+		ID       int64  `json:"id"`
+		Name     string `json:"name"`
+		Positive bool   `json:"positive"`
+	}
+	controllers.ReturnOK(w, &RetIntent{
+		ID:       intent.ID,
+		Name:     intent.Name,
+		Positive: positive,
+	})
+}
+
 func newRecordQuery(r *http.Request) (query *dataV2.VisitRecordsQuery, err error, errCode int) {
 	request := dataV2.VisitRecordsRequest{}
 	err = json.NewDecoder(r.Body).Decode(&request)
@@ -497,4 +567,116 @@ func newRecordQuery(r *http.Request) (query *dataV2.VisitRecordsQuery, err error
 	}
 
 	return
+}
+
+func RecordsIntentMarkHandler(w http.ResponseWriter, r *http.Request) {
+	type internalError struct {
+		IsRollbacked bool `json:"rollbacked"`
+	}
+	var request struct {
+		IntentID int64    `json:"intent"`
+		Positive *bool    `json:"positive"`
+		Records  []string `json:"records"`
+	}
+	defer r.Body.Close()
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, err.Error()))
+		return
+	}
+	if request.IntentID != -1 && request.Positive == nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "positive is required."))
+		return
+	}
+	if request.Records == nil {
+		controllers.ReturnBadRequest(w, data.NewErrorResponseWithCode(http.StatusBadRequest, "records is required"))
+		return
+	}
+
+	appid := requestheader.GetAppID(r)
+	q := &dataV2.VisitRecordsQuery{
+		CommonQuery: data.CommonQuery{
+			AppID: appid,
+		},
+		RecordIDs: make([]interface{}, len(request.Records)),
+		Limit:     int64(len(request.Records)),
+	}
+
+	for i, r := range request.Records {
+		q.RecordIDs[i] = r
+	}
+
+	// Need retrive record's userq
+	result, err := servicesV2.VisitRecordsQuery(q)
+	if err != nil {
+		logger.Error.Printf("check record content failed, %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(internalError{
+			IsRollbacked: true,
+		})
+		return
+	}
+
+	sentenceType := intentengine.TypePositive
+	if request.Positive != nil && !(*request.Positive) {
+		sentenceType = intentengine.TypeNegative
+	}
+	existed := map[string]bool{}
+	updateSentences := []string{}
+	for _, record := range result.Data {
+		// ignore duplicated sentence
+		if _, ok := existed[record.UserQ]; ok {
+			continue
+		}
+
+		existed[record.UserQ] = true
+		updateSentences = append(updateSentences, record.UserQ)
+	}
+
+	if request.IntentID > 0 {
+		err = intentengine.AddIntentSentences(appid, request.IntentID, sentenceType, updateSentences)
+	} else {
+		err = intentengine.DelIntentSentences(appid, request.IntentID, updateSentences)
+	}
+	if err != nil {
+		logger.Error.Printf("update intent failed, %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(internalError{
+			IsRollbacked: true,
+		})
+		return
+	}
+
+	newQuery := &dataV2.VisitRecordsQuery{
+		CommonQuery: data.CommonQuery{
+			AppID: appid,
+		},
+		RecordIDs: make([]interface{}, len(request.Records)),
+	}
+
+	for i, r := range request.Records {
+		newQuery.RecordIDs[i] = r
+	}
+
+	err = servicesV2.UpdateRecords(newQuery, servicesCommon.UpdateRecordIntentMark(request.IntentID))
+	if err != nil {
+		logger.Error.Printf("service update record failed, %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(internalError{
+			IsRollbacked: true,
+		})
+		return
+	}
+
+	type response struct {
+		Done []string `json:"done"`
+		Skip []string `json:"skip"`
+	}
+	w.WriteHeader(http.StatusOK)
+	resp := response{
+		Done: request.Records,
+		Skip: []string{},
+	}
+	data, _ := json.Marshal(resp)
+	w.Write(data)
 }

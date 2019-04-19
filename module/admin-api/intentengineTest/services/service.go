@@ -359,7 +359,7 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 
 	defer func() {
 		if predictErr != nil {
-			intentTestDao.TestIntentsFailed(version, err.Error())
+			intentTestDao.TestIntentsFailed(version, predictErr.Error())
 			logger.Info.Printf("Intent test task failed: %s.", predictErr.Error())
 		} else if err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
@@ -370,7 +370,7 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 			logger.Info.Println("Intent test task finished.")
 			if err != nil {
 				intentTestDao.TestIntentsFailed(version, err.Error())
-				logger.Info.Printf("Intent test task failed: %s.\n", err.Error())
+				logger.Error.Printf("Intent test task failed: %s.\n", err.Error())
 			}
 		}
 	}()
@@ -504,6 +504,7 @@ func predictSentences(version int64, appID string,
 	logger.Info.Printf("Start predicting %d intent sentences...", len(sentences))
 
 	var sentenceErr error
+	testCount := 0
 
 	for _, sentence := range sentences {
 		retryLeft := maxRetries
@@ -517,7 +518,8 @@ func predictSentences(version int64, appID string,
 			}
 
 			if sentenceErr != nil {
-				logger.Error.Println("Predict failed, retry predicting intent sentence...")
+				logger.Error.Printf("Predict failed, retry predicting intent sentence, %d retries left...",
+					retryLeft)
 			}
 
 			retryLeft--
@@ -591,6 +593,11 @@ func predictSentences(version int64, appID string,
 			logger.Error.Printf("Error while predicting intent sentence: %s.\n", sentenceErr.Error())
 			testResult.Error = sentenceErr
 			break
+		}
+
+		testCount++
+		if testCount%500 == 0 {
+			logger.Trace.Printf("500 sentences tested")
 		}
 	}
 
