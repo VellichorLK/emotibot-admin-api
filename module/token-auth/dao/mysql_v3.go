@@ -15,9 +15,8 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"strconv"
-	"errors"
 )
 
 const (
@@ -1037,7 +1036,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 
 	if robotCount >= limitCount {
-		return "", errors.New("Only support " + strconv.Itoa(limitCount) +" robots!" )
+		return "", util.ErrOperationForbidden
 	}
 
 
