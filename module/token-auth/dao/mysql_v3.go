@@ -14,7 +14,10 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/pkg/logger"
 
+
 	uuid "github.com/satori/go.uuid"
+	"strconv"
+	"errors"
 )
 
 const (
@@ -893,6 +896,60 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 	}
 }
 
+func GetAppCount(controller MYSQLController, enterpriseID string) (int, error){
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return -1, err
+	}
+	num := -1
+
+	queryStr := fmt.Sprintf(`
+		SELECT count(*) as num
+		FROM %s
+		WHERE enterprise = ?`, appTableV3)
+
+	err = controller.connectDB.QueryRow(queryStr, enterpriseID).Scan(&num)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+	return num, err
+}
+
+func GetEnterpriseRobotLimit(controller MYSQLController) (int, error){
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return -1, err
+	}
+	limitEncrypt := ""
+
+	queryStr := fmt.Sprintf(`
+		SELECT value 
+		FROM %s
+		WHERE name = ?`, "tbl_system_param")
+
+	err = controller.connectDB.QueryRow(queryStr, "enterprise_robot_limit").Scan(&limitEncrypt)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+	limitString , err := util.AesBase64Decrypt(limitEncrypt)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+	limit, err := strconv.Atoi(limitString)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+
+	return limit, err
+}
+
+
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -965,6 +1022,24 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 		return
 	}
 	defer util.ClearTransition(t)
+
+
+	robotCount, err := GetAppCount(controller, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	limitCount, err := GetEnterpriseRobotLimit(controller)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	if robotCount >= limitCount {
+		return "", errors.New("Only support " + strconv.Itoa(limitCount) +" robots!" )
+	}
+
 
 	appUUID, err := uuid.NewV4()
 	if err != nil {
