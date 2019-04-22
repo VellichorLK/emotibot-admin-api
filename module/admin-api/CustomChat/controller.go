@@ -1,18 +1,18 @@
 package CustomChat
 
 import (
-	"emotibot.com/emotigo/module/admin-api/util"
-	"net/http"
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"bytes"
-	"emotibot.com/emotigo/module/admin-api/util/audit"
-	"io"
 	"fmt"
-	"emotibot.com/emotigo/module/admin-api/util/localemsg"
-	"emotibot.com/emotigo/module/admin-api/util/validate"
+	"io"
+	"net/http"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/validate"
 )
 
 var (
@@ -32,7 +32,6 @@ func init() {
 				util.NewEntryPointWithVer("POST", "import/question", []string{"view"}, handleImportCustomChatQuestion, 1),
 				util.NewEntryPointWithVer("POST", "import/extend", []string{"view"}, handleImportCustomChatExtend, 1),
 				util.NewEntryPointWithVer("GET", "export/question", []string{"export"}, handleExportCustomChatQuestion, 1),
-
 			}),
 	}
 
@@ -184,4 +183,3 @@ func handleExportCustomChatQuestion(w http.ResponseWriter, r *http.Request) {
 //	appid := requestheader.GetAppID(r)
 //	SyncCustomChat(appid, true)
 //}
-

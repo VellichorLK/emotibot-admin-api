@@ -36,7 +36,7 @@ func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*Cust
 	}
 
 	for idx := range sheets {
-		if sheets[idx].Name == localemsg.Get(locale, "CustomChatQuestionSheetName"){
+		if sheets[idx].Name == localemsg.Get(locale, "CustomChatQuestionSheetName") {
 			hasContent = true
 			break
 		}
@@ -64,7 +64,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 			}
 			categoryIdx, questionIdx, answerIdx := getQuestionColumnIdx(rows[0], locale)
 			if categoryIdx < 0 || categoryIdx > 2 || questionIdx < 0 || questionIdx > 2 || answerIdx < 0 || answerIdx > 2 {
-				return nil,  AdminErrors.New(AdminErrors.ErrnoRequestError,
+				return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 
@@ -80,13 +80,13 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 				answer := strings.TrimSpace(cells[answerIdx].String())
 
 				qLength := utf8.RuneCountInString(question)
-				if qLength > 50{
+				if qLength > 50 {
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
 
 				}
 				aLength := utf8.RuneCountInString(answer)
-				if aLength > 1500{
+				if aLength > 1500 {
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 1500))
 				}
@@ -114,7 +114,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 
 				}
 				ans := Answer{}
-				ans.Content =answer
+				ans.Content = answer
 				answerList := append(questionsMap[question].Answers, ans)
 				questionsMap[question].Category = category
 				questionsMap[question].Answers = answerList
@@ -122,7 +122,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 
 			}
 
-			for k,v := range questionsMap {
+			for k, v := range questionsMap {
 
 				if _, ok := customQuestionsMap[v.Category]; !ok {
 					customQuestionsEnt := CustomQuestions{}
@@ -166,7 +166,6 @@ func UpdateLatestCustomChatExtends(appid string, questions []*Question) AdminErr
 	return nil
 }
 
-
 func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err error) {
 	file, err := xlsx.OpenBinary(buf)
 	if err != nil {
@@ -181,7 +180,7 @@ func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err 
 	}
 
 	for idx := range sheets {
-		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName"){
+		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
 			hasContent = true
 			break
 		}
@@ -224,7 +223,7 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 				question := strings.TrimSpace(cells[questionIdx].String())
 				extend := strings.TrimSpace(cells[extendIdx].String())
 				extendLength := utf8.RuneCountInString(extend)
-				if extendLength > 50{
+				if extendLength > 50 {
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
 				}
@@ -240,7 +239,6 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoExtendTpl"), sheets[idx].Name, rowIdx+1))
 				}
-
 
 				if _, ok := questionsMap[question]; !ok {
 					questionEnt := Question{}
@@ -291,27 +289,27 @@ func GetExportCustomChat(appid string, locale string) (ret []byte, err AdminErro
 	sheets := []*xlsx.Sheet{sheetQuestion, sheetExtend}
 
 	for _, sheet := range sheets {
-		if sheet.Name == localemsg.Get(locale, "CustomChatQuestionSheetName"){
+		if sheet.Name == localemsg.Get(locale, "CustomChatQuestionSheetName") {
 			headerRow := sheet.AddRow()
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatCategory"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatQuestion"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatAnswer"))
-		}else if sheet.Name == localemsg.Get(locale, "CustomChatExtendSheetName"){
+		} else if sheet.Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
 			headerRow := sheet.AddRow()
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatQuestion"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatExtend"))
 		}
 	}
 
-	for _, cq := range customQuestions{
-		for _, question := range cq.Questions{
-			for _, answer := range question.Answers{
+	for _, cq := range customQuestions {
+		for _, question := range cq.Questions {
+			for _, answer := range question.Answers {
 				row := sheetQuestion.AddRow()
 				row.AddCell().SetString(cq.Category)
 				row.AddCell().SetString(question.Content)
 				row.AddCell().SetString(answer.Content)
 			}
-			for _, extend := range question.Extends{
+			for _, extend := range question.Extends {
 				row := sheetExtend.AddRow()
 				row.AddCell().SetString(question.Content)
 				row.AddCell().SetString(extend.Content)
@@ -328,7 +326,6 @@ func GetExportCustomChat(appid string, locale string) (ret []byte, err AdminErro
 	}
 	return buf.Bytes(), nil
 }
-
 
 //func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQuestions []*CustomQuestions, err error) {
 //	customQuestionsMap := map[string]*CustomQuestions{}
@@ -424,9 +421,9 @@ func getExtendColumnIdx(row *xlsx.Row, locale string) (questionIdx, extendIdx in
 	questionIdx, extendIdx = -1, -1
 	for idx := range row.Cells {
 		cellStr := row.Cells[idx].String()
-		if cellStr == localemsg.Get(locale, "CustomChatQuestion"){
+		if cellStr == localemsg.Get(locale, "CustomChatQuestion") {
 			questionIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatExtend"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatExtend") {
 			extendIdx = idx
 		}
 	}
@@ -438,11 +435,11 @@ func getQuestionColumnIdx(row *xlsx.Row, locale string) (categoryIdx, questionId
 	categoryIdx, questionIdx, answerIdx = -1, -1, -1
 	for idx := range row.Cells {
 		cellStr := row.Cells[idx].String()
-		if cellStr == localemsg.Get(locale, "CustomChatCategory")  {
+		if cellStr == localemsg.Get(locale, "CustomChatCategory") {
 			categoryIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatQuestion"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatQuestion") {
 			questionIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatAnswer"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatAnswer") {
 			answerIdx = idx
 		}
 	}
@@ -460,7 +457,7 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 	var body []byte
 	defer func() {
 		if err != nil {
-			logger.Error.Println("Error when sync to solr:", err.Error())
+			logger.Error.Println("Error when syncing:", err.Error())
 			return
 		}
 	}()
@@ -520,10 +517,10 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 
 		for _, q := range cq.Questions {
 			question := ChatQuestionTagging{}
-			qID:=strconv.FormatInt(q.ID,10)
+			qID := strconv.FormatInt(q.ID, 10)
 			for _, a := range q.Answers {
 
-				aID:=strconv.FormatInt(a.ID,10)
+				aID := strconv.FormatInt(a.ID, 10)
 				answer := ChatAnswerTagging{}
 				answer.AnswerID = qID + "_" + "0" + "_" + aID
 				answer.Answer = a.Content
@@ -543,9 +540,9 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 
 			questions = append(questions, &question)
 
-			for _, e := range q.Extends{
+			for _, e := range q.Extends {
 				extend := ChatQuestionTagging{}
-				eID:=strconv.FormatInt(e.ID,10)
+				eID := strconv.FormatInt(e.ID, 10)
 				extend.QuestionID = qID + "_" + eID
 				extend.Question = e.Content
 				extend.Keyword = ""
@@ -597,7 +594,6 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 	finishSyncProcess(pid, true, "")
 	return
 }
-
 
 func convertQuestionContentWithZhCn(questions []*ChatQuestionTagging) []*ChatQuestionTagging {
 	if questions == nil {
@@ -686,7 +682,6 @@ func tryStartSyncProcess(syncTimeout int) (ret bool, processID int, err error) {
 	return
 }
 
-
 func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	// this sync status no need to check appid
 	defer func() {
@@ -710,7 +705,6 @@ func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	_, err = mySQL.Exec(queryStr, status, msg, pid)
 	return
 }
-
 
 func needProcessCustomChatData(appid string) (ret bool, err error) {
 	ret = false

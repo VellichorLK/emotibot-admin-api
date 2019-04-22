@@ -1,20 +1,19 @@
 package CustomChat
 
 import (
-	"emotibot.com/emotigo/module/admin-api/util"
-	"time"
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 type customChatDaoInterface interface {
-
 	UpdateLatestCustomChatQuestions(appid string, customChatQuestions []*CustomQuestions) (err error)
 	GetCustomChatDetail(appid string) (ret []*CustomQuestions, err error)
 	UpdateLatestCustomChatExtends(appid string, questions []*Question) (err error)
 	GetCustomChatQuestionsWithStatus(appid string) (ret []*CustomQuestions, err error)
-
 }
 
 type customChatDao struct {
@@ -68,7 +67,6 @@ func (dao customChatDao) UpdateLatestCustomChatQuestions(appid string, customQue
 	return
 }
 
-
 func insertCustomChatQuestion(tx db, appid string, customQuestions []*CustomQuestions, now int64) (err error) {
 	if tx == nil {
 		return util.ErrDBNotInit
@@ -84,7 +82,7 @@ func insertCustomChatQuestion(tx db, appid string, customQuestions []*CustomQues
 
 	var result sql.Result
 	for _, cq := range customQuestions {
-		for _, question := range cq.Questions{
+		for _, question := range cq.Questions {
 			result, err = tx.Exec(insertQuestionStr, appid, question.Category, question.Content, 1)
 			if err != nil {
 				return
@@ -94,7 +92,7 @@ func insertCustomChatQuestion(tx db, appid string, customQuestions []*CustomQues
 				return
 			}
 
-			for _, answer := range question.Answers{
+			for _, answer := range question.Answers {
 				result, err = tx.Exec(insertAnswerStr, question.ID, answer.Content, 1)
 				if err != nil {
 					return
@@ -105,7 +103,6 @@ func insertCustomChatQuestion(tx db, appid string, customQuestions []*CustomQues
 
 	return
 }
-
 
 func (dao customChatDao) UpdateLatestCustomChatExtends(appid string, questions []*Question) (err error) {
 	defer func() {
@@ -139,14 +136,13 @@ func (dao customChatDao) UpdateLatestCustomChatExtends(appid string, questions [
 	return
 }
 
-
 func insertCustomChatExtend(tx db, appid string, questions []*Question, now int64) (err error) {
 	if tx == nil {
 		return util.ErrDBNotInit
 	}
 	questionsMap := map[string]*Question{}
 
-	for _, question := range questions{
+	for _, question := range questions {
 
 		questionsConditions := []string{"appid = ?", "content = ?"}
 		questionsParams := []interface{}{appid, question.Content}
@@ -172,8 +168,8 @@ func insertCustomChatExtend(tx db, appid string, questions []*Question, now int6
 		INSERT INTO custom_chat_extend (qid, content, status)
 		VALUES (?, ?, ?)`
 
-	for _, question := range questionsMap{
-		for _, extend := range question.Extends{
+	for _, question := range questionsMap {
+		for _, extend := range question.Extends {
 			_, err = tx.Exec(insertExtendStr, question.ID, extend.Content, 1)
 			if err != nil {
 				return
@@ -182,7 +178,6 @@ func insertCustomChatExtend(tx db, appid string, questions []*Question, now int6
 	}
 	return
 }
-
 
 func (dao customChatDao) GetCustomChatDetail(appid string) (ret []*CustomQuestions, err error) {
 	defer func() {
@@ -212,7 +207,6 @@ func (dao customChatDao) GetCustomChatDetail(appid string) (ret []*CustomQuestio
 	return
 }
 
-
 func GetCustomChatQuestions(tx db, appid string) (ret []*CustomQuestions, err error) {
 	if tx == nil {
 		return nil, util.ErrDBNotInit
@@ -224,8 +218,7 @@ func GetCustomChatQuestions(tx db, appid string) (ret []*CustomQuestions, err er
 	return customQuestions, nil
 }
 
-
-func GetCustomQuestions(tx db, appid string )(ret []*CustomQuestions, err error) {
+func GetCustomQuestions(tx db, appid string) (ret []*CustomQuestions, err error) {
 	if tx == nil {
 		return nil, util.ErrDBNotInit
 	}
@@ -251,7 +244,7 @@ func GetCustomQuestions(tx db, appid string )(ret []*CustomQuestions, err error)
 		questionsMap[question.Content] = question
 	}
 
-	for _, question := range questionsMap{
+	for _, question := range questionsMap {
 		answerConditions := []string{"qid = ?", "status = 0"}
 		answerParams := []interface{}{question.ID}
 
@@ -313,7 +306,6 @@ func GetCustomQuestions(tx db, appid string )(ret []*CustomQuestions, err error)
 	return ret, nil
 }
 
-
 func (dao customChatDao) GetCustomChatQuestionsWithStatus(appid string) (ret []*CustomQuestions, err error) {
 	defer func() {
 		util.ShowError(err)
@@ -341,7 +333,6 @@ func (dao customChatDao) GetCustomChatQuestionsWithStatus(appid string) (ret []*
 	ret = customQuestions
 	return
 }
-
 
 func GetQuestionsWithStatus(tx db, appid string) (ret []*CustomQuestions, err error) {
 	defer func() {
@@ -373,7 +364,7 @@ func GetQuestionsWithStatus(tx db, appid string) (ret []*CustomQuestions, err er
 		questionsMap[question.Content] = question
 	}
 
-	for _, question := range questionsMap{
+	for _, question := range questionsMap {
 		answerConditions := []string{"qid = ?"}
 		answerParams := []interface{}{question.ID}
 
@@ -449,7 +440,7 @@ func UpdateCustomChatStatus(customQuestions []*CustomQuestions) (err error) {
 		return
 	}
 	defer util.ClearTransition(t)
-	var qIDList  []interface{}
+	var qIDList []interface{}
 
 	for _, cq := range customQuestions {
 		for _, q := range cq.Questions {
