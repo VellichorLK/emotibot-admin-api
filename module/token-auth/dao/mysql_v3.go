@@ -15,7 +15,7 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"strconv"
 )
 
