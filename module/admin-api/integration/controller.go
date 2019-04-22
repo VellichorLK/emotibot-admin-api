@@ -32,7 +32,9 @@ func init() {
 			util.NewEntryPoint("GET", "configs/reload", []string{}, handleReloadPlatformConfig),
 			// util.NewEntryPoint("GET", "configs", []string{"view"}, handleGetConfigs),
 			util.NewEntryPoint("GET", "config/{platform}", []string{"view"}, handleGetConfig),
-			// util.NewEntryPoint("GET", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
+			//util.NewEntryPoint("GET", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
+			util.NewEntryPoint("POST", "config/{platform}", []string{}, handleSetConfig),
+			util.NewEntryPoint("DELETE", "config/{platform", []string{}, handleDeleteConfig),
 		},
 	}
 	go sendFromQueue()
@@ -114,5 +116,15 @@ func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	platform := util.GetMuxVar(r, "platform")
 	configs, err := GetPlatformConfig(appid, platform)
+	util.Return(w, err, configs)
+}
+
+func handleSetConfig(w http.ResponseWriter, r *http.Request) {
+	configs, err := SetPlatformConfig(w, r)
+	util.Return(w, err, configs)
+}
+
+func handleDeleteConfig(w http.ResponseWriter, r *http.Request) {
+	configs, err := DeletePlatformConfig(w, r)
 	util.Return(w, err, configs)
 }

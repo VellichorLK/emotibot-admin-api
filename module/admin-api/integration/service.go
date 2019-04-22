@@ -1,10 +1,13 @@
 package integration
 
 import (
+	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
 	"encoding/json"
 	"fmt"
-
-	"emotibot.com/emotigo/pkg/misc/adminerrors"
+	"io/ioutil"
+	"net/http"
 
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/pkg/logger"
@@ -65,6 +68,41 @@ func GetChatResult(appid, userid, input string) []*QA.BFOPOpenapiAnswer {
 
 func GetPlatformConfig(appid, platform string) (map[string]string, adminerrors.AdminError) {
 	configs, err := getPlatformConfig(appid, platform)
+	if err != nil {
+		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+	}
+	return configs, nil
+}
+
+func SetPlatformConfig(w http.ResponseWriter, r *http.Request) ([]map[string]interface{}, adminerrors.AdminError) {
+	params := make(map[string]interface{})
+
+	rawJson, _ := ioutil.ReadAll(r.Body)
+	logger.Info.Println(rawJson)
+	json.Unmarshal(rawJson, &params)
+
+	params["appid"] = requestheader.GetAppID(r)
+	params["platform"] = util.GetMuxVar(r, "platform")
+
+	configs, err := setPlatformConfig(params)
+	if err != nil {
+		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+	}
+	return configs, nil
+}
+
+func DeletePlatformConfig(w http.ResponseWriter, r *http.Request) ([]map[string]interface{}, adminerrors.AdminError) {
+	params := make(map[string]interface{})
+	params["appid"] = requestheader.GetAppID(r)
+	params["platform"] = util.GetMuxVar(r, "platform")
+
+	scheme := "http://"
+	if r.TLS != nil {
+		scheme = "https://"
+	}
+	params["url"] = scheme + r.Host + "/api/v1/integration/chat/" + params["platform"].(string) + "/" + params["appid"].(string)
+
+	configs, err := deletePlatformConfig(params)
 	if err != nil {
 		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
 	}

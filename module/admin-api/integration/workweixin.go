@@ -11,12 +11,12 @@ import (
 var workWeixinBot = map[string]*workweixin.Client{}
 
 func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string, config map[string]string) {
-	if config["token"] == "" || config["encoded-aes"] == "" || config["cropid"] == "" || config["secret"] == "" {
+	if config["token"] == "" || config["encoded-aes"] == "" || config["corpid"] == "" || config["secret"] == "" {
 		return
 	}
 	// If client is not created, create it with config
 	if _, ok := workWeixinBot[appid]; !ok {
-		bot, err := workweixin.New(config["cropid"], config["secret"], config["token"], config["encoded-aes"])
+		bot, err := workweixin.New(config["corpid"], config["secret"], config["token"], config["encoded-aes"])
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			logger.Error.Println("workWeixinBot init fail: ", err.Error())

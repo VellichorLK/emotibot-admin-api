@@ -2,6 +2,7 @@ package util
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 
@@ -117,4 +118,70 @@ func GetDBStatus() map[string]string {
 		}
 	}
 	return ret
+}
+
+func DbQuery(sql string, args ...interface{}) ([]map[string]interface{}, error) {
+	db := GetMainDB()
+	if db == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	rows, err := db.Query(sql, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	cols, _ := rows.Columns()
+	colsLen := len(cols)
+	colsArgs := make([]interface{}, colsLen)
+	values := make([][]byte, colsLen)
+	for i := range colsArgs {
+		colsArgs[i] = &values[i]
+	}
+
+	result := []map[string]interface{}{}
+	for rows.Next() {
+		err = rows.Scan(colsArgs...)
+		if err != nil {
+			return nil, err
+		}
+
+		row := map[string]interface{}{}
+		for k, v := range values {
+			row[cols[k]] = string(v)
+		}
+		result = append(result, row)
+	}
+
+	return result, nil
+}
+
+func DbExec(sql string, args ...interface{}) (sql.Result, error) {
+	db := GetMainDB()
+	if db == nil {
+		return nil, errors.New("DB not init")
+	}
+	res, err := db.Exec(sql, args...)
+	if err != nil {
+		return nil, errors.New("DB Exec failed")
+	}
+
+	return res, nil
+}
+
+func DbPrepareExec(sql string, args ...interface{}) (sql.Result, error) {
+	db := GetMainDB()
+	if db == nil {
+		return nil, errors.New("DB not init")
+	}
+	stmt, err := db.Prepare(sql)
+	if err != nil {
+		return nil, errors.New("DB Prepare failed")
+	}
+	res, err := stmt.Exec(args...)
+	if err != nil {
+		return nil, errors.New("DB Exec failed")
+	}
+
+	return res, nil
 }
