@@ -1,22 +1,25 @@
 package CustomChat
 
 import (
-	"github.com/tealeg/xlsx"
-	"emotibot.com/emotigo/module/admin-api/util/localemsg"
-	"emotibot.com/emotigo/pkg/logger"
-	"fmt"
-	"strings"
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-	"bytes"
 	"bufio"
-	"emotibot.com/emotigo/module/admin-api/util"
-	"time"
+	"bytes"
 	"database/sql"
-	"strconv"
-	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"encoding/json"
-	"emotibot.com/emotigo/module/admin-api/Service"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
 	"unicode/utf8"
+
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
+	qaServices "emotibot.com/emotigo/module/admin-api/QADoc/services"
+	"emotibot.com/emotigo/module/admin-api/Service"
+	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+	"emotibot.com/emotigo/pkg/logger"
+	"github.com/tealeg/xlsx"
 )
 
 func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*CustomQuestions, err error) {
@@ -447,16 +450,14 @@ func getQuestionColumnIdx(row *xlsx.Row, locale string) (categoryIdx, questionId
 	return
 }
 
+func SyncCustomChat(appid string, force bool) (err error) {
 
-func SyncCustomChatToSolr(appid string ,force bool) (err error) {
-
-	return ForceSyncCustomChatToSolr(appid, true)
+	return ForceSyncCustomChatTo(appid, true)
 }
 
-
-func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
+func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 	restart := false
-	body := ""
+	var body []byte
 	defer func() {
 		if err != nil {
 			logger.Error.Println("Error when sync to solr:", err.Error())
@@ -467,7 +468,7 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 	if !force {
 		var start bool
 		var pid int
-		start, pid, err = tryStartSyncProcess(syncSolrTimeout)
+		start, pid, err = tryStartSyncProcess(syncTimeout)
 		if err != nil {
 			return
 		}
@@ -501,20 +502,20 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 			if restart {
 				logger.Trace.Println("Restart sync process")
 				time.Sleep(time.Second)
-				go ForceSyncCustomChatToSolr(appid, false)
+				go ForceSyncCustomChatTo(appid, false)
 			}
 		}()
 	}
 
 	var pid int
-	_, pid, err = tryStartSyncProcess(syncSolrTimeout)
+	_, pid, err = tryStartSyncProcess(syncTimeout)
 
 	customQuestions, err := dao.GetCustomChatQuestionsWithStatus(appid)
 	if err != nil {
 		return
 	}
 
-	questions := []*ChatQuestionTagging{}
+	questions := ChatQuestionTaggings{}
 	for _, cq := range customQuestions {
 
 		for _, q := range cq.Questions {
@@ -568,19 +569,26 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 			return
 		}
 
-		jsonStr, _ := json.Marshal(questions)
-
-		body, err = Service.DeleteInSolrByFiled("id", appid + "_other*")
-
+		// Delete all questions and related answers
+		body, err = qaServices.DeleteQADocsByRegex([]*qaData.RegexQuery{
+			&qaData.RegexQuery{
+				Field:      "doc_id",
+				Expression: fmt.Sprintf("%s_other.*", appid),
+			},
+		})
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n",
+				err.Error(), string(body))
 			return
 		}
 
-		logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
-		body, err = Service.IncrementAddSolrByType(jsonStr, "other")
+		jsonStr, _ := json.Marshal(questions)
+		logger.Trace.Printf("Synced JSON: %s\n", jsonStr)
+
+		body, err = qaServices.BulkCreateQADocs(questions.convertToQACoreDocs())
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n",
+				err.Error(), string(body))
 			return
 		}
 	}
@@ -610,8 +618,7 @@ func convertQuestionContentWithZhCn(questions []*ChatQuestionTagging) []*ChatQue
 	return questions
 }
 
-
-func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err error) {
+func tryStartSyncProcess(syncTimeout int) (ret bool, processID int, err error) {
 	// this sync status no need to check appid
 	defer func() {
 		util.ShowError(err)
@@ -650,7 +657,7 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 	now := time.Now().Unix()
 	if running {
 		logger.Trace.Printf("Previous still running from %d", start)
-		if int(now)-start <= syncSolrTimeout {
+		if int(now)-start <= syncTimeout {
 			return
 		}
 	}

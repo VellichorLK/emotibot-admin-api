@@ -1,5 +1,10 @@
 package CustomChat
 
+import (
+	"fmt"
+
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
+)
 
 type Answer struct {
 	ID             int64          `json:"id"`
@@ -50,4 +55,66 @@ type ChatQuestionTagging struct {
 	SentenceType string                 `json:"question_sentence_type"`
 	Answers      []*ChatAnswerTagging   `json:"answers"`
 	AppID        string                 `json:"app_id"`
+}
+
+func (tag *ChatQuestionTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc {
+	docs := []*qaData.QACoreDoc{}
+
+	qDoc := &qaData.QACoreDoc{
+		DocID:        createCustomChatQuestionDocID(appID, tag.QuestionID),
+		AppID:        appID,
+		Module:       "other",
+		Sentence:     tag.Segment,
+		SentenceOrig: tag.Question,
+		SentenceType: tag.SentenceType,
+		SentencePos:  tag.WordPos,
+		Keywords:     tag.Keyword,
+	}
+
+	docs = append(docs, qDoc)
+
+	if len(tag.Answers) > 0 {
+		// Question doc's answers
+		answers := []*qaData.Answer{}
+
+		for _, answer := range tag.Answers {
+			ans := &qaData.Answer{
+				Sentence: answer.Answer,
+			}
+			answers = append(answers, ans)
+
+			ansDoc := &qaData.QACoreDoc{
+				DocID:        createCustomChatAnswerDocID(qDoc.DocID, answer.AnswerID),
+				Sentence:     answer.Segment,
+				SentenceOrig: answer.Answer,
+				SentenceType: answer.SentenceType,
+				Keywords:     answer.Keyword,
+			}
+			docs = append(docs, ansDoc)
+		}
+
+		qDoc.Answers = answers
+	}
+
+	return docs
+}
+
+type ChatQuestionTaggings []*ChatQuestionTagging
+
+func (tags ChatQuestionTaggings) convertToQACoreDocs() []*qaData.QACoreDoc {
+	docs := []*qaData.QACoreDoc{}
+
+	for _, tag := range tags {
+		docs = append(docs, tag.convertToQACoreDocs(tag.AppID)...)
+	}
+
+	return docs
+}
+
+func createCustomChatQuestionDocID(appID string, questionID string) string {
+	return fmt.Sprintf("%s_other_%s", appID, questionID)
+}
+
+func createCustomChatAnswerDocID(questionDocID string, answerID string) string {
+	return fmt.Sprintf("%s#%s", questionDocID, answerID)
 }

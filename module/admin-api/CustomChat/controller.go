@@ -86,7 +86,7 @@ func handleImportCustomChatQuestion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go SyncCustomChatToSolr(appid, false)
+	go SyncCustomChat(appid, false)
 
 	return
 }
@@ -138,7 +138,7 @@ func handleImportCustomChatExtend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go SyncCustomChatToSolr(appid, false)
+	go SyncCustomChat(appid, false)
 
 	return
 }
@@ -182,6 +182,6 @@ func handleExportCustomChatQuestion(w http.ResponseWriter, r *http.Request) {
 
 //func Test(w http.ResponseWriter, r *http.Request)  {
 //	appid := requestheader.GetAppID(r)
-//	SyncCustomChatToSolr(appid, true)
+//	SyncCustomChat(appid, true)
 //}
 
