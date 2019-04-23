@@ -1,8 +1,11 @@
 package integration
 
 import (
-	"emotibot.com/emotigo/module/admin-api/util"
 	"errors"
+	"fmt"
+	"strings"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
 func getPlatformConfig(appid, platform string) (map[string]string, error) {
@@ -28,98 +31,102 @@ func getPlatformConfig(appid, platform string) (map[string]string, error) {
 	}
 	rows.Close()
 
-	//queryStr = "SELECT pkey FROM integration WHERE appid = '' AND platform = ?"
-	//rows, err = mySQL.Query(queryStr, platform)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//for rows.Next() {
-	//	key := ""
-	//	err = rows.Scan(&key)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	ret[key] = ""
-	//}
+	queryStr = "SELECT pkey FROM integration WHERE appid = '' AND platform = ?"
+	rows, err = mySQL.Query(queryStr, platform)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		key := ""
+		err = rows.Scan(&key)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := ret[key]; !ok {
+			ret[key] = ""
+		}
+	}
+	rows.Close()
 
 	return ret, nil
 }
 
-func setPlatformConfig(params map[string]interface{}) ([]map[string]interface{}, error) {
+func setPlatformConfig(appid, platform string, values map[string]string) (map[string]string, error) {
+	db := util.GetMainDB()
+	if db == nil {
+		return nil, util.ErrDBNotInit
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer util.ClearTransition(tx)
+
+	// Get default keys from db
 	sql := `
-		SELECT appid, platform, pkey, pvalue 
+		SELECT pkey 
 		FROM integration 
-		WHERE appid = ? 
+		WHERE appid = ''
 		AND platform = ? 
 	`
-	result, err := util.DbQuery(sql, params["appid"], params["platform"])
+	existedKeys := map[string]string{}
+	rows, err := tx.Query(sql, platform)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		key := ""
+		err = rows.Scan(&key)
+		if err != nil {
+			return nil, err
+		}
+		existedKeys[key] = ""
+	}
+
+	// platform default keys must set in db
+	if len(existedKeys) <= 0 {
+		return nil, errors.New("Not valid platform")
+	}
+
+	// Remove old setting
+	sql = `DELETE FROM integration WHERE appid = ? AND platform = ?`
+	_, err = tx.Exec(sql, appid, platform)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := make([]map[string]interface{}, 0)
-	rowMap := make(map[string]map[string]interface{})
-	for _, v := range result {
-		rowKey := v["appid"].(string) + "_" + v["platform"].(string)
-
-		if _, ok := rowMap[rowKey]; !ok {
-			rowMap[rowKey] = make(map[string]interface{})
-
-			rowMap[rowKey]["appid"] = v["appid"].(string)
-			rowMap[rowKey]["platform"] = v["platform"].(string)
-			rowMap[rowKey][v["pkey"].(string)] = v["pvalue"].(string)
-		} else {
-			rowMap[rowKey][v["pkey"].(string)] = v["pvalue"].(string)
-		}
-	}
-
-	if len(rowMap) > 0 {
-		for _, v := range rowMap {
-			ret = append(ret, v)
-		}
-		return ret, errors.New("already bound")
-	}
-
-	sql = `
+	// insert new values from input, but only accept key in platform default key
+	sql = fmt.Sprintf(`
 		INSERT INTO integration(appid, platform, pkey, pvalue)
-		values(?, ?, ?, ?)
-		,(?, ?, ?, ?)
-		,(?, ?, ?, ?)
-		,(?, ?, ?, ?)
-		,(?, ?, ?, ?)
-		,(?, ?, ?, ?)
-	`
-	_, err = util.DbExec(sql,
-		params["appid"], params["platform"], "corp_id", params["corp_id"],
-		params["appid"], params["platform"], "agent_id", params["agent_id"],
-		params["appid"], params["platform"], "secret", params["secret"],
-		params["appid"], params["platform"], "url", params["url"],
-		params["appid"], params["platform"], "token", params["token"],
-		params["appid"], params["platform"], "encoded-aes", params["encoded-aes"],
-	)
-	//tmp := make([]interface{}, 0)
-	//util.DbExec(sql, tmp...)
+		values (?, ?, ?, ?)%s`, strings.Repeat(",(?,?,?,?)", len(existedKeys)-1))
+	params := []interface{}{}
+	for key := range existedKeys {
+		existedKeys[key] = values[key]
+		params = append(params, appid, platform, key, values[key])
+	}
+
+	_, err = tx.Exec(sql, params...)
 	if err != nil {
 		return nil, err
 	}
 
-	//ret = append(ret, res.RowsAffected())
-
-	return ret, nil
+	// Finish transition
+	err = tx.Commit()
+	return existedKeys, err
 }
 
-func deletePlatformConfig(params map[string]interface{}) ([]map[string]interface{}, error) {
-	ret := make([]map[string]interface{}, 0)
-
+func deletePlatformConfig(appid, platform string) error {
 	sql := `
 		DELETE FROM integration 
 		WHERE appid = ? 
 		AND platform = ? 
 	`
-	_, err := util.DbExec(sql, params["appid"], params["platform"])
-	if err != nil {
-		return nil, err
-	}
 
-	return ret, nil
+	db := util.GetMainDB()
+	if db == nil {
+		return errors.New("DB not init")
+	}
+	_, err := db.Exec(sql, appid, platform)
+	return err
 }

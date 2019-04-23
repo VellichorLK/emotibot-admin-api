@@ -1,13 +1,10 @@
 package integration
 
 import (
-	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
-	"emotibot.com/emotigo/pkg/misc/adminerrors"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
 
 	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/pkg/logger"
@@ -74,37 +71,18 @@ func GetPlatformConfig(appid, platform string) (map[string]string, adminerrors.A
 	return configs, nil
 }
 
-func SetPlatformConfig(w http.ResponseWriter, r *http.Request) ([]map[string]interface{}, adminerrors.AdminError) {
-	params := make(map[string]interface{})
-
-	rawJson, _ := ioutil.ReadAll(r.Body)
-	logger.Info.Println(rawJson)
-	json.Unmarshal(rawJson, &params)
-
-	params["appid"] = requestheader.GetAppID(r)
-	params["platform"] = util.GetMuxVar(r, "platform")
-
-	configs, err := setPlatformConfig(params)
+func SetPlatformConfig(appid, platform string, values map[string]string) (map[string]string, adminerrors.AdminError) {
+	configs, err := setPlatformConfig(appid, platform, values)
 	if err != nil {
 		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
 	}
 	return configs, nil
 }
 
-func DeletePlatformConfig(w http.ResponseWriter, r *http.Request) ([]map[string]interface{}, adminerrors.AdminError) {
-	params := make(map[string]interface{})
-	params["appid"] = requestheader.GetAppID(r)
-	params["platform"] = util.GetMuxVar(r, "platform")
-
-	scheme := "http://"
-	if r.TLS != nil {
-		scheme = "https://"
-	}
-	params["url"] = scheme + r.Host + "/api/v1/integration/chat/" + params["platform"].(string) + "/" + params["appid"].(string)
-
-	configs, err := deletePlatformConfig(params)
+func DeletePlatformConfig(appid, platform string) adminerrors.AdminError {
+	err := deletePlatformConfig(appid, platform)
 	if err != nil {
-		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+		return adminerrors.New(adminerrors.ErrnoDBError, err.Error())
 	}
-	return configs, nil
+	return nil
 }

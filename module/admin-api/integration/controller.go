@@ -1,8 +1,11 @@
 package integration
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"emotibot.com/emotigo/pkg/misc/adminerrors"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 
@@ -34,7 +37,7 @@ func init() {
 			util.NewEntryPoint("GET", "config/{platform}", []string{"view"}, handleGetConfig),
 			//util.NewEntryPoint("GET", "config/{platform}/{appid}", []string{"view"}, handleGetConfig),
 			util.NewEntryPoint("POST", "config/{platform}", []string{}, handleSetConfig),
-			util.NewEntryPoint("DELETE", "config/{platform", []string{}, handleDeleteConfig),
+			util.NewEntryPoint("DELETE", "config/{platform}", []string{}, handleDeleteConfig),
 		},
 	}
 	go sendFromQueue()
@@ -120,11 +123,25 @@ func handleGetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSetConfig(w http.ResponseWriter, r *http.Request) {
-	configs, err := SetPlatformConfig(w, r)
+	appid := requestheader.GetAppID(r)
+	platform := util.GetMuxVar(r, "platform")
+	values := map[string]string{}
+	defer r.Body.Close()
+
+	decoder := json.NewDecoder(r.Body)
+	decodeError := decoder.Decode(&values)
+	if decodeError != nil {
+		util.ReturnError(w, adminerrors.ErrnoRequestError, decodeError.Error())
+		return
+	}
+
+	configs, err := SetPlatformConfig(appid, platform, values)
 	util.Return(w, err, configs)
 }
 
 func handleDeleteConfig(w http.ResponseWriter, r *http.Request) {
-	configs, err := DeletePlatformConfig(w, r)
-	util.Return(w, err, configs)
+	appid := requestheader.GetAppID(r)
+	platform := util.GetMuxVar(r, "platform")
+	err := DeletePlatformConfig(appid, platform)
+	util.Return(w, err, nil)
 }
