@@ -173,11 +173,12 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 	if err != sql.ErrNoRows {
 		return nil, err
 	}
+	err = nil
 
 	// If config not find in BFOP system, Get config from BF system
 	queryStr =
 		"SELECT default.name, default.value, custom.value, default.enabled FROM " +
-			"(SELECT `name`, `value` FROM `ent_config` WHERE name = ?) AS `default` " +
+			"(SELECT `name`, `value`, `enabled` FROM `ent_config` WHERE name = ?) AS `default` " +
 			"LEFT JOIN " +
 			"(SELECT `name`, `app_id`, `value` FROM `ent_config_appid_customization` WHERE `app_id` = ?) AS `custom` " +
 			"ON default.name = custom.name"

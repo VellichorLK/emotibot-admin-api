@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
+	robotConfig "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
 
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -135,7 +137,15 @@ func handleSetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	values = generateConfigOfPlatform(platform, values)
+
 	configs, err := SetPlatformConfig(appid, platform, values)
+	if err != nil {
+		util.Return(w, err, nil)
+		return
+	}
+
+	configs["url"] = getWebhookURL(appid, platform, requestheader.GetOrigin(r))
 	util.Return(w, err, configs)
 }
 
@@ -144,4 +154,25 @@ func handleDeleteConfig(w http.ResponseWriter, r *http.Request) {
 	platform := util.GetMuxVar(r, "platform")
 	err := DeletePlatformConfig(appid, platform)
 	util.Return(w, err, nil)
+}
+
+func generateConfigOfPlatform(platform string, values map[string]string) map[string]string {
+	if platform == "workweixin" {
+		return generateWorkWeixinConfig(values)
+	}
+	return values
+}
+
+func getWebhookURL(appid, platform, dftHost string) string {
+	server := dftHost
+
+	config, err := robotConfig.GetConfig(appid, "uploadimg_server")
+	if err == nil && config != nil {
+		if config.Value != "" {
+			server = config.Value
+		}
+	}
+
+	return fmt.Sprintf("%s/api/v1/integration/chat/%s/%s",
+		server, platform, appid)
 }

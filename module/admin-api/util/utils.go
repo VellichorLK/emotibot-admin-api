@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"math/rand"
 	"runtime"
 	"time"
@@ -10,6 +11,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/pkg/logger"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func GenRandomUUIDSameAsOpenAPI() string {
 	now := time.Now()
@@ -70,4 +75,22 @@ func GenSimpleRetObj(status int) RetObj {
 		Status:  status,
 		Message: ApiError.GetErrorMsg(status),
 	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func GenRandomString(length int) string {
+	b := make([]rune, length)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+func GenRandomBytes(length int) []byte {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = byte(rand.Intn(math.MaxInt8))
+	}
+	return b
 }
