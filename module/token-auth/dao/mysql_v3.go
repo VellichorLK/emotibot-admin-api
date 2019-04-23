@@ -13,9 +13,8 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/pkg/logger"
+	uuid "github.com/satori/go.uuid"
 
-
-	"github.com/satori/go.uuid"
 	"strconv"
 )
 
@@ -895,7 +894,7 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 	}
 }
 
-func GetAppCount(controller MYSQLController, enterpriseID string) (int, error){
+func (controller MYSQLController) getAppCount(enterpriseID string) (int, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -916,7 +915,7 @@ func GetAppCount(controller MYSQLController, enterpriseID string) (int, error){
 	return num, err
 }
 
-func GetEnterpriseRobotLimit(controller MYSQLController) (int, error){
+func (controller MYSQLController) GetRobotLimitPerEnterprise() (int, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -934,7 +933,7 @@ func GetEnterpriseRobotLimit(controller MYSQLController) (int, error){
 		util.LogDBError(err)
 		return -1, err
 	}
-	limitString , err := util.AesBase64Decrypt(limitEncrypt)
+	limitString, err := util.AesBase64Decrypt(limitEncrypt)
 	if err != nil {
 		util.LogDBError(err)
 		return -1, err
@@ -947,7 +946,6 @@ func GetEnterpriseRobotLimit(controller MYSQLController) (int, error){
 
 	return limit, err
 }
-
 
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
@@ -1022,14 +1020,13 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 	defer util.ClearTransition(t)
 
-
-	robotCount, err := GetAppCount(controller, enterpriseID)
+	robotCount, err := controller.getAppCount(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return "", err
 	}
 
-	limitCount, err := GetEnterpriseRobotLimit(controller)
+	limitCount, err := controller.GetRobotLimitPerEnterprise()
 	if err != nil {
 		util.LogDBError(err)
 		return "", err
@@ -1038,7 +1035,6 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	if robotCount >= limitCount {
 		return "", util.ErrOperationForbidden
 	}
-
 
 	appUUID, err := uuid.NewV4()
 	if err != nil {
@@ -1439,8 +1435,8 @@ func (controller MYSQLController) GetRolesV3(enterpriseID string) ([]*data.RoleV
 	rows.Close()
 
 	for _, role := range roles {
-		getRoleUserCount(controller, role)
-		getRolePrivileges(controller, role)
+		controller.getRoleUserCount(role)
+		controller.getRolePrivileges(role)
 	}
 
 	return roles, nil
@@ -1470,8 +1466,8 @@ func (controller MYSQLController) GetRoleV3(enterpriseID string, roleID string) 
 		return nil, err
 	}
 
-	getRoleUserCount(controller, &role)
-	getRolePrivileges(controller, &role)
+	controller.getRoleUserCount(&role)
+	controller.getRolePrivileges(&role)
 
 	return &role, nil
 }
@@ -1998,7 +1994,7 @@ func updateModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *s
 	return
 }
 
-func getRoleUserCount(controller MYSQLController, role *data.RoleV3) error {
+func (controller MYSQLController) getRoleUserCount(role *data.RoleV3) error {
 	queryStr := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM %s
@@ -2011,7 +2007,7 @@ func getRoleUserCount(controller MYSQLController, role *data.RoleV3) error {
 	return nil
 }
 
-func getRolePrivileges(controller MYSQLController, role *data.RoleV3) error {
+func (controller MYSQLController) getRolePrivileges(role *data.RoleV3) error {
 	queryStr := fmt.Sprintf(`
 		SELECT m.code, p.cmd_list
 		FROM %s AS p
