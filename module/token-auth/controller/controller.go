@@ -576,6 +576,11 @@ func ReturnUnauthorized(w http.ResponseWriter) {
 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
 }
 
+func returnForbiddenWithMsg(w http.ResponseWriter, msg string) {
+	w.WriteHeader(http.StatusForbidden)
+	writeErrJSON(w, msg)
+}
+
 func returnForbidden(w http.ResponseWriter) {
 	http.Error(w, "", http.StatusForbidden)
 }

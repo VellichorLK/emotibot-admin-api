@@ -931,6 +931,8 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case util.ErrAppInfoExists:
 			returnBadRequest(w, "name")
+		case util.ErrOperationForbidden:
+			returnForbiddenWithMsg(w, err.Error())
 		default:
 			returnInternalError(w, err.Error())
 		}
