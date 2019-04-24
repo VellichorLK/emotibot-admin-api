@@ -34,8 +34,6 @@ const (
 	columnTableV3         = "columns"
 	moduleTableV3         = "modules"
 	auditTableV3          = "audit_record"
-	customSystemParamV3   = "tbl_custom_system_param"
-	systemParamV3         = "tbl_system_param"
 )
 
 func (controller MYSQLController) GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
@@ -211,16 +209,6 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 		VALUES (?, ?, ?, ?, ?, ?, ?)`, userTableV3)
 	_, err = t.Exec(queryStr, adminUserID, adminUser.DisplayName, adminUser.UserName,
 		adminUser.Email, enterpriseID, adminUser.Type, adminUser.Password)
-	if err != nil {
-		util.LogDBError(err)
-		return
-	}
-
-	queryStr = fmt.Sprintf(`
-		INSERT INTO %s
-		(enterprise_id, name, value)
-		VALUES (?, ?, ?)`, customSystemParamV3)
-	_, err = t.Exec(queryStr, enterpriseID, "enterprise_robot_limit", "kD2bsVy8fJiroNA5ysybwQ==")
 	if err != nil {
 		util.LogDBError(err)
 		return
@@ -928,39 +916,24 @@ func GetAppCount(controller MYSQLController, enterpriseID string) (int, error){
 	return num, err
 }
 
-func GetEnterpriseRobotLimit(controller MYSQLController, enterpriseID string) (int, error){
+func GetEnterpriseRobotLimit(controller MYSQLController) (int, error){
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
 		return -1, err
 	}
-
 	limitEncrypt := ""
-
-	customLimitEncrypt := ""
 
 	queryStr := fmt.Sprintf(`
 		SELECT value 
 		FROM %s
-		WHERE enterprise_id = ? AND name = ? ORDER BY id DESC LIMIT 1`, customSystemParamV3)
+		WHERE name = ?`, "tbl_system_param")
 
-	err = controller.connectDB.QueryRow(queryStr, enterpriseID, "enterprise_robot_limit").Scan(&customLimitEncrypt)
-
-	if customLimitEncrypt != "" {
-		limitEncrypt = customLimitEncrypt;
-	} else {
-		queryStr = fmt.Sprintf(`
-		SELECT value 
-		FROM %s
-		WHERE name = ?`, systemParamV3)
-
-		err = controller.connectDB.QueryRow(queryStr, "enterprise_robot_limit").Scan(&limitEncrypt)
-		if err != nil {
-			util.LogDBError(err)
-			return -1, err
-		}
+	err = controller.connectDB.QueryRow(queryStr, "enterprise_robot_limit").Scan(&limitEncrypt)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
 	}
-
 	limitString , err := util.AesBase64Decrypt(limitEncrypt)
 	if err != nil {
 		util.LogDBError(err)
@@ -1056,7 +1029,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 		return "", err
 	}
 
-	limitCount, err := GetEnterpriseRobotLimit(controller, enterpriseID)
+	limitCount, err := GetEnterpriseRobotLimit(controller)
 	if err != nil {
 		util.LogDBError(err)
 		return "", err
