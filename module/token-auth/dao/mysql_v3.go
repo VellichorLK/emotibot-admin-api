@@ -13,8 +13,9 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/pkg/logger"
-	uuid "github.com/satori/go.uuid"
 
+
+	uuid "github.com/satori/go.uuid"
 	"strconv"
 )
 
@@ -33,6 +34,7 @@ const (
 	columnTableV3         = "columns"
 	moduleTableV3         = "modules"
 	auditTableV3          = "audit_record"
+	systemParamV3         = "system_param"
 )
 
 func (controller MYSQLController) GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
@@ -212,6 +214,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 		util.LogDBError(err)
 		return
 	}
+
 
 	err = addModulesEnterpriseWithTxV3(modules, enterpriseID, t)
 	if err != nil {
@@ -894,7 +897,7 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 	}
 }
 
-func (controller MYSQLController) getAppCount(enterpriseID string) (int, error) {
+func (controller MYSQLController) GetAppCount(enterpriseID string) (int, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
@@ -915,25 +918,38 @@ func (controller MYSQLController) getAppCount(enterpriseID string) (int, error) 
 	return num, err
 }
 
-func (controller MYSQLController) GetRobotLimitPerEnterprise() (int, error) {
+
+
+func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string) (int, error) {
 	ok, err := controller.checkDB()
 	if !ok {
 		util.LogDBError(err)
 		return -1, err
 	}
+
 	limitEncrypt := ""
+
+	customLimitEncrypt := ""
 
 	queryStr := fmt.Sprintf(`
 		SELECT value 
 		FROM %s
-		WHERE name = ?`, "tbl_system_param")
+		WHERE enterprise_id = ? AND name = ? ORDER BY id DESC LIMIT 1`, systemParamV3)
 
-	err = controller.connectDB.QueryRow(queryStr, "enterprise_robot_limit").Scan(&limitEncrypt)
-	if err != nil {
-		util.LogDBError(err)
-		return -1, err
+	err = controller.connectDB.QueryRow(queryStr, enterpriseID, "enterprise_robot_limit").Scan(&customLimitEncrypt)
+
+	if customLimitEncrypt != "" {
+		limitEncrypt = customLimitEncrypt;
+	} else {
+
+		err = controller.connectDB.QueryRow(queryStr, "", "enterprise_robot_limit").Scan(&limitEncrypt)
+		if err != nil {
+			util.LogDBError(err)
+			return -1, err
+		}
 	}
-	limitString, err := util.AesBase64Decrypt(limitEncrypt)
+
+	limitString , err := util.AesBase64Decrypt(limitEncrypt)
 	if err != nil {
 		util.LogDBError(err)
 		return -1, err
@@ -946,6 +962,7 @@ func (controller MYSQLController) GetRobotLimitPerEnterprise() (int, error) {
 
 	return limit, err
 }
+
 
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
@@ -1020,13 +1037,14 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 	defer util.ClearTransition(t)
 
-	robotCount, err := controller.getAppCount(enterpriseID)
+
+	robotCount, err := controller.GetAppCount(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return "", err
 	}
 
-	limitCount, err := controller.GetRobotLimitPerEnterprise()
+	limitCount, err := controller.GetRobotLimitPerEnterprise(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
 		return "", err
@@ -1035,6 +1053,7 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	if robotCount >= limitCount {
 		return "", util.ErrOperationForbidden
 	}
+
 
 	appUUID, err := uuid.NewV4()
 	if err != nil {
