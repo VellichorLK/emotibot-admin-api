@@ -11,7 +11,7 @@ import (
 )
 
 func IMUserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var user *data.UserDetailV3
@@ -85,7 +85,7 @@ func IMUserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var userID string
@@ -154,7 +154,7 @@ func IMUserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func IMUserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var userID string
