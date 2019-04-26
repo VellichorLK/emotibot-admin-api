@@ -186,7 +186,7 @@ func StartTrain(appid string) (version int, err AdminErrors.AdminError) {
 		return 0, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
 	}
 
-	go checkIntentModelStatus(appid, modelID, version)
+	go checkIntentModelStatus(appid, modelID, version, -1)
 
 	return version, nil
 }
@@ -218,7 +218,9 @@ func trainIntent(appid string) (modelID string, err error) {
 	return ret.ModelID, nil
 }
 
-func checkIntentModelStatus(appid, modelID string, version int) {
+const ErrRetryCount = 6
+
+func checkIntentModelStatus(appid, modelID string, version int, errRetry int) {
 	time.Sleep(time.Second * 5)
 	payload := map[string]string{
 		"app_id":   appid,
@@ -246,7 +248,13 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	now := time.Now().Unix()
 	switch ret.Status {
 	case statusIETrainError:
-		dao.UpdateVersionStatus(appid, version, now, trainResultFail)
+		if errRetry == 1 {
+			dao.UpdateVersionStatus(appid, version, now, trainResultFail)
+		} else if errRetry == -1 {
+			go checkIntentModelStatus(appid, modelID, version, ErrRetryCount)
+		} else {
+			go checkIntentModelStatus(appid, modelID, version, errRetry-1)
+		}
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(appid, version, now, trainResultSuccess)
 		util.ConsulUpdateIntent(appid)
@@ -257,7 +265,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 			TaskMode: autofillData.SyncTaskModeReset,
 		})
 	default:
-		go checkIntentModelStatus(appid, modelID, version)
+		go checkIntentModelStatus(appid, modelID, version, errRetry-1)
 	}
 }
 
