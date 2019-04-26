@@ -87,6 +87,7 @@ type VisitRecordsRawData struct {
 	IntentScore    float64                `json:"intent_score"`
 	UniqueID       string                 `json:"unique_id"`
 	Answer         []data.Answer          `json:"answer"`
+	RawAnswer      string                 `json:"raw_answer"`
 	CustomInfo     map[string]interface{} `json:"custom_info"`
 	Note           string                 `json:"note"`
 	IsMarked       bool                   `json:"isMarked"`
@@ -104,6 +105,7 @@ type VisitRecordsRawData struct {
 type VisitRecordsCommon struct {
 	VisitRecordsDataBase
 	Answer           string  `json:"answer"`
+	RawAnswer        string  `json:"raw_answer"`
 	FaqCategoryName  string  `json:"faq_cat_name"`
 	FaqRobotTagNames string  `json:"faq_robot_tag_name"`
 	FaqCategoryID    int64   `json:"-"` // Redundant field for FAQ category name conversion
@@ -163,6 +165,10 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: "机器人回答",
 			ID:   common.VisitRecordsMetricAnswer,
+		},
+		data.TableHeaderItem{
+			Text: "机器人回答 JSON",
+			ID:   common.VisitRecordsMetricRawAnswer,
 		},
 		data.TableHeaderItem{
 			Text: "访问时间",
@@ -251,6 +257,10 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 			ID:   common.VisitRecordsMetricAnswer,
 		},
 		data.TableHeaderItem{
+			Text: "機器人回答 JSON",
+			ID:   common.VisitRecordsMetricRawAnswer,
+		},
+		data.TableHeaderItem{
 			Text: "訪問時間",
 			ID:   common.VisitRecordsMetricLogTime,
 		},
@@ -317,6 +327,7 @@ func GetVisitRecordsExportHeader(locale string) []string {
 		localemsg.Get(locale, "userQ"),
 		localemsg.Get(locale, "FAQ"),
 		localemsg.Get(locale, "robotAnswer"),
+		localemsg.Get(locale, "robotRawAnswer"),
 		localemsg.Get(locale, "matchScore"),
 		localemsg.Get(locale, "module"),
 		localemsg.Get(locale, "source"),
