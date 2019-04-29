@@ -146,6 +146,11 @@ func handleSetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	configs["url"] = getWebhookURL(appid, platform, requestheader.GetOrigin(r))
+
+	// 更新配置缓存
+	key := fmt.Sprintf("%s-%s", appid, platform)
+	configCache[key] = configs
+
 	util.Return(w, err, configs)
 }
 
