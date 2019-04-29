@@ -167,10 +167,6 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 			ID:   common.VisitRecordsMetricAnswer,
 		},
 		data.TableHeaderItem{
-			Text: "机器人回答 JSON",
-			ID:   common.VisitRecordsMetricRawAnswer,
-		},
-		data.TableHeaderItem{
 			Text: "访问时间",
 			ID:   common.VisitRecordsMetricLogTime,
 		},
@@ -255,10 +251,6 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 		data.TableHeaderItem{
 			Text: "機器人回答",
 			ID:   common.VisitRecordsMetricAnswer,
-		},
-		data.TableHeaderItem{
-			Text: "機器人回答 JSON",
-			ID:   common.VisitRecordsMetricRawAnswer,
 		},
 		data.TableHeaderItem{
 			Text: "訪問時間",
