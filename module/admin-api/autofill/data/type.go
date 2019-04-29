@@ -1,5 +1,7 @@
 package data
 
+import "time"
+
 const (
 	TaskStatusRunning = iota
 	TaskStatusFinished
@@ -52,6 +54,14 @@ type Sentence struct {
 type AutofillToggleBody struct {
 	ID              string                 `json:"id"`
 	AutofillEnabled map[string]interface{} `json:"autofill_enabled"`
+}
+
+
+type BfAccessToken struct {
+	UserId             string     `json:"USER_ID"`
+	AccessToken        string     `json:"access_token"`
+	Expiration         float64      `json:"expiration"`
+	CreateDatetime     time.Time  `json:"create_datetime"`
 }
 
 func NewAutofillToggleBody(id string, enabled bool) *AutofillToggleBody {

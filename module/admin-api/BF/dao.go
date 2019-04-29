@@ -13,6 +13,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/module/admin-api/autofill/data"
 )
 
 var (
@@ -491,6 +492,24 @@ func getBFAccessToken(userid string) (string, error) {
 	}
 
 	now := time.Now()
+
+	var bfAccessToken data.BfAccessToken
+
+	queryTokenStr := "SELECT * FROM tbl_user_access_token WHERE USER_ID = ? ORDER BY create_datetime DESC LIMIT 1"
+	err := mySQL.QueryRow(queryTokenStr, userid).Scan(&bfAccessToken.UserId,&bfAccessToken.AccessToken,&bfAccessToken.Expiration,&bfAccessToken.CreateDatetime)
+
+	if err == nil {
+		dis := time.Now().Sub(bfAccessToken.CreateDatetime).Seconds()
+		if dis < bfAccessToken.Expiration {
+
+			updateStr := "UPDATE tbl_user_access_token SET create_datetime = ?  WHERE USER_ID = ? AND access_token = ? "
+			_, err = mySQL.Exec(updateStr, now, userid, bfAccessToken.AccessToken)
+			if err == nil {
+				return bfAccessToken.AccessToken, nil
+			}
+		}
+	}
+
 	data := []byte(fmt.Sprintf("%s%s", now.Format("2006-01-02 15:04:05"), userid))
 	md5Part := fmt.Sprintf("%x", md5.Sum(data))
 	sha1Part := fmt.Sprintf("%x", sha1.Sum([]byte(strconv.FormatFloat(rand.Float64(), 'f', 17, 64))))
@@ -498,7 +517,7 @@ func getBFAccessToken(userid string) (string, error) {
 	logger.Trace.Printf("Gen new access token: %s\n", accessToken)
 
 	queryStr := "INSERT INTO tbl_user_access_token (USER_ID, access_token, expiration, create_datetime) VALUES (?, ?, ?, ?)"
-	_, err := mySQL.Exec(queryStr, userid, accessToken, accessTokenExpire, now)
+	_, err = mySQL.Exec(queryStr, userid, accessToken, accessTokenExpire, now)
 	if err != nil {
 		return "", err
 	}
