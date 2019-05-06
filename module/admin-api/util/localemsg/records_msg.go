@@ -10,7 +10,8 @@ var recordsMsg = map[string]map[string]string{
 		"faq":         "常用标准问题",
 		"task_engine": "多轮对话引擎",
 		"to_human":    "转人工",
-		"knowledge":   "知识图谱",
+		"knowledge":   "知识百科",
+		"domain_kg":   "知识图谱",
 		"command":     "机器人话术",
 		"emotion":     "情绪话术",
 
@@ -48,7 +49,8 @@ var recordsMsg = map[string]map[string]string{
 		"faq":         "常用標準問題",
 		"task_engine": "多輪對話引擎",
 		"to_human":    "轉人工",
-		"knowledge":   "知識圖譜",
+		"knowledge":   "知識百科",
+		"domain_kg":   "知識圖譜",
 		"command":     "機器人話術",
 		"emotion":     "情緒話術",
 
