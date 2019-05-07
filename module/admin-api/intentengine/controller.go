@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
-	"emotibot.com/emotigo/module/admin-api/intentengine/v2"
+	intentenginev2 "emotibot.com/emotigo/module/admin-api/intentengine/v2"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
@@ -43,6 +43,9 @@ func init() {
 				util.NewEntryPoint("GET", "getData", []string{}, handleGetData),
 			},
 			intentenginev2.EntryList...),
+		OneTimeFunc: map[string]func(){
+			"PollingStatusV2": intentenginev2.PollingCheckStatus,
+		},
 	}
 }
 

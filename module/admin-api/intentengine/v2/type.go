@@ -133,3 +133,9 @@ type FeatureRule struct {
 	Black        []interface{} `json:"black"`
 	ReturnValues interface{}   `json:"return_values"`
 }
+
+type TrainMission struct {
+	Version int
+	AppID   string
+	ModelID string
+}

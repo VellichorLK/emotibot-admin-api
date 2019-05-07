@@ -191,6 +191,18 @@ func StartTrain(appid string) (version int, err AdminErrors.AdminError) {
 	return version, nil
 }
 
+func PollingCheckStatus() {
+	missions, err := dao.GetUnfinishedTraining()
+	if err != nil {
+		logger.Error.Println("Cannot get unfinished training, ", err.Error())
+		return
+	}
+
+	for _, mission := range missions {
+		go checkIntentModelStatus(mission.AppID, mission.ModelID, mission.Version, ErrRetryCount)
+	}
+}
+
 func trainIntent(appid string) (modelID string, err error) {
 	payload := map[string]interface{}{
 		"app_id":      appid,
@@ -238,7 +250,7 @@ func checkIntentModelStatus(appid, modelID string, version int, errRetry int) {
 	if err != nil {
 		return
 	}
-	logger.Trace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Printf("Get status of [%s][%s] from intent-engine: %s\n", appid, modelID, body)
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
 	if err != nil {
