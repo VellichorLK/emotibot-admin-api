@@ -11,7 +11,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+
 	"emotibot.com/emotigo/module/admin-api/ApiError"
+	"emotibot.com/emotigo/module/admin-api/auth"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
@@ -67,6 +70,7 @@ func init() {
 			util.NewEntryPointWithVer("GET", "download/{file}", []string{}, handleDownloadFromMySQLV3, 3),
 			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWordV3, 3),
 			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonymsV3, 3),
+			util.NewEntryPointWithCustom("Get", "sync", []string{"edit"}, handleSyncConsul, 3, false, true),
 		},
 	}
 	maxDirDepth = 4
@@ -1266,4 +1270,27 @@ func wordbankClassDeletable(wordbanks *WordBankClassV3) bool {
 	}
 
 	return true
+}
+
+func handleSyncConsul(w http.ResponseWriter, r *http.Request) {
+	appids, err := auth.GetAllApps()
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
+		return
+	}
+
+	go syncConsul(appids)
+	util.Return(w, nil, appids)
+}
+
+func syncConsul(appids []string) {
+	for idx, appid := range appids {
+		err := TriggerUpdateWordbankV3(appid)
+		if err != nil {
+			logger.Error.Println("Update wordbank consul fail, ", err.Error())
+			return
+		} else {
+			logger.Info.Printf("Finish wordbank sync %d/%d\n", idx+1, len(appids))
+		}
+	}
 }
