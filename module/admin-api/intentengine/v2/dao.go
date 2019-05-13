@@ -76,7 +76,7 @@ func (dao intentDaoV2) GetUnfinishedTraining() (trainings []*TrainMission, err e
 	queryStr := `
 		SELECT version, appid, ie_model_id
 		FROM intent_versions
-		WHERE end_train IS NULL
+		WHERE end_train IS NULL AND ie_model_id IS NOT NULL
 		ORDER BY version DESC`
 	rows, err := dao.db.Query(queryStr)
 	if err != nil {
