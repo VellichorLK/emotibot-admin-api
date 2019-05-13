@@ -262,7 +262,7 @@ func checkIntentModelStatus(appid, modelID string, version int, errRetry int) {
 	case statusIETrainError:
 		if errRetry == 1 {
 			dao.UpdateVersionStatus(appid, version, now, trainResultFail)
-		} else if errRetry == -1 {
+		} else if errRetry < 0 {
 			go checkIntentModelStatus(appid, modelID, version, ErrRetryCount)
 		} else {
 			go checkIntentModelStatus(appid, modelID, version, errRetry-1)
@@ -277,7 +277,7 @@ func checkIntentModelStatus(appid, modelID string, version int, errRetry int) {
 			TaskMode: autofillData.SyncTaskModeReset,
 		})
 	default:
-		go checkIntentModelStatus(appid, modelID, version, errRetry-1)
+		go checkIntentModelStatus(appid, modelID, version, -1)
 	}
 }
 
