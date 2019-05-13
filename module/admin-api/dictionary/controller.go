@@ -71,6 +71,7 @@ func init() {
 			util.NewEntryPointWithVer("GET", "words/{appid}", []string{}, handleGetWordV3, 3),
 			util.NewEntryPointWithVer("GET", "synonyms/{appid}", []string{}, handleGetSynonymsV3, 3),
 			util.NewEntryPointWithCustom("Get", "sync", []string{"edit"}, handleSyncConsul, 3, false, true),
+			util.NewEntryPointWithCustom("Get", "sync/{appid}", []string{"edit"}, handleSyncConsul, 3, false, true),
 		},
 	}
 	maxDirDepth = 4
@@ -1273,7 +1274,14 @@ func wordbankClassDeletable(wordbanks *WordBankClassV3) bool {
 }
 
 func handleSyncConsul(w http.ResponseWriter, r *http.Request) {
-	appids, err := auth.GetAllApps()
+	appid := util.GetMuxVar(r, "appid")
+	var appids []string
+	var err error
+	if appid == "" {
+		appids, err = auth.GetAllApps()
+	} else {
+		appids = []string{appid}
+	}
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 		return
