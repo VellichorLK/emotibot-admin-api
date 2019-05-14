@@ -37,3 +37,4 @@ RUN go get -u github.com/jstemmer/go-junit-report
 RUN go get github.com/stretchr/testify
 RUN go get github.com/mojocn/base64Captcha
 
+RUN go get github.com/minio/minio-go
