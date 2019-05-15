@@ -13,6 +13,7 @@ import (
 
 	"emotibot.com/emotigo/pkg/services/fileservice"
 
+	"emotibot.com/emotigo/module/admin-api/media"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 
 	"emotibot.com/emotigo/pkg/misc/emotijwt"
@@ -83,6 +84,7 @@ var modules = []*util.ModuleInfo{
 	&integration.ModuleInfo,
 	&feedback.ModuleInfo,
 	&CustomChat.ModuleInfo,
+	&media.ModuleInfo,
 }
 
 var serverConfig map[string]string

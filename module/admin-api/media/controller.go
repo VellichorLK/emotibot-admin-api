@@ -22,7 +22,7 @@ func init() {
 		ModuleName: "media",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "image", []string{"edit"}, handleUploadImage),
-			util.NewEntryPoint("GET", "image/{id}", []string{}, handleGetImage),
+			util.NewEntryPoint("GET", "image/{appid}/{id}", []string{}, handleGetImage),
 		},
 	}
 }
@@ -31,21 +31,25 @@ func handleUploadImage(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 
 	file, info, formErr := r.FormFile("file")
-	defer file.Close()
-	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
-	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	if formErr != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, fmt.Sprintf("Cannot get upload file, %s", formErr.Error()))
 		return
 	}
+	defer func() {
+		if file != nil {
+			file.Close()
+		}
+	}()
+	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
+	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	id, err := AddFile(appid, file)
 	util.Return(w, err, id)
 }
 
 func handleGetImage(w http.ResponseWriter, r *http.Request) {
-	appid := requestheader.GetAppID(r)
+	appid := util.GetMuxVar(r, "appid")
 	id := util.GetMuxVar(r, "id")
 	if id == "" {
 		w.Write([]byte("Id is invalid"))
