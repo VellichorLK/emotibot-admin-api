@@ -1,6 +1,8 @@
 package fileservice
 
 import (
+	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -30,7 +32,7 @@ func AddFile(namespace string, path string, contentReader io.Reader) error {
 
 	if ok, err := minioClient.BucketExists(namespace); !ok {
 		if err != nil {
-			return fmt.Errorf("Create bucket - %s", err.Error())
+			return fmt.Errorf("Check bucket - %s", err.Error())
 		}
 		err = minioClient.MakeBucket(namespace, "")
 		if err != nil {
@@ -44,4 +46,31 @@ func AddFile(namespace string, path string, contentReader io.Reader) error {
 	}
 
 	return nil
+}
+
+func GetFile(namespace string, path string) ([]byte, error) {
+	if minioClient == nil {
+		return nil, ErrClientNotInit
+	}
+
+	if ok, err := minioClient.BucketExists(namespace); !ok {
+		if err != nil {
+			return nil, fmt.Errorf("Check bucket - %s", err.Error())
+		}
+		return nil, fmt.Errorf("Bucket not found")
+	}
+
+	obj, err := minioClient.GetObject(namespace, path, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("Get object - %s", err.Error())
+	}
+
+	var b bytes.Buffer
+	writer := bufio.NewWriter(&b)
+	_, err = io.Copy(writer, obj)
+	if err != nil {
+		return nil, fmt.Errorf("Buf copy - %s", err.Error())
+	}
+
+	return b.Bytes(), nil
 }

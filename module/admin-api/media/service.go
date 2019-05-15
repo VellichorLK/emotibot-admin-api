@@ -25,3 +25,12 @@ func AddFile(appid string, input io.Reader) (string, AdminErrors.AdminError) {
 	}
 	return id, nil
 }
+
+func GetFile(appid string, id string) ([]byte, AdminErrors.AdminError) {
+	path := fmt.Sprintf("%s/%s", appid, id)
+	buf, err := fileservice.GetFile(MinioNamespace, path)
+	if err != nil {
+		return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, err.Error())
+	}
+	return buf, nil
+}
