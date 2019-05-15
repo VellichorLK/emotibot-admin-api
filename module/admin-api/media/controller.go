@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strconv"
 
+	config "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 
 	"emotibot.com/emotigo/module/admin-api/util"
@@ -14,7 +16,8 @@ import (
 
 var (
 	// ModuleInfo is needed for module define
-	ModuleInfo util.ModuleInfo
+	ModuleInfo        util.ModuleInfo
+	OuterURLConfigKey = "uploadimg_server"
 )
 
 func init() {
@@ -45,7 +48,27 @@ func handleUploadImage(w http.ResponseWriter, r *http.Request) {
 	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
 	id, err := AddFile(appid, file)
-	util.Return(w, err, id)
+	if err != nil {
+		util.Return(w, err, nil)
+		return
+	}
+
+	config, err := config.GetConfig(appid, OuterURLConfigKey)
+	if err != nil {
+		util.Return(w, err, nil)
+		return
+	}
+	outerURL := ""
+	if config != nil {
+		outerURL = config.Value
+	}
+
+	url := fmt.Sprintf("%s/api/v1/media/image/%s/%s", outerURL, appid, id)
+	ret := &map[string]string{
+		"id":  id,
+		"url": url,
+	}
+	util.Return(w, err, ret)
 }
 
 func handleGetImage(w http.ResponseWriter, r *http.Request) {
