@@ -17,7 +17,9 @@ RUN go get github.com/gorilla/mux
 RUN go get github.com/dgrijalva/jwt-go
 RUN go get github.com/siongui/gojianfan
 RUN go get github.com/satori/go.uuid
-RUN go get github.com/olivere/elastic
+RUN go get gopkg.in/olivere/elastic.v6
+RUN go get github.com/olivere/elastic/config
+RUN go get github.com/olivere/elastic/uritemplates
 RUN go get gopkg.in/DATA-DOG/go-sqlmock.v1
 RUN go get github.com/rubenv/sql-migrate/...
 RUN go get github.com/coreos/go-semver/semver
