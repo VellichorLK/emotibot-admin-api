@@ -1,6 +1,6 @@
- package v1
- 
- import (
+package v1
+
+import (
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,7 +12,7 @@
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 func createCallStatsDateHistogramAggregation(query dataV1.CallStatsQuery) *elastic.DateHistogramAggregation {

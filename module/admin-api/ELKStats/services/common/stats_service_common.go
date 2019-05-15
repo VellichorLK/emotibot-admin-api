@@ -5,7 +5,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 func CreateStatsBoolQuery(query data.CommonQuery) *elastic.BoolQuery {

@@ -16,8 +16,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 var platformDict = map[string]string{

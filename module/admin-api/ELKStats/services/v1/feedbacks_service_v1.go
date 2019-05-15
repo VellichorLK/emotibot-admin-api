@@ -10,7 +10,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 func DailyAvgRating(query dataV1.FeedbacksQuery) (map[int64]*dataV1.RatingAverageInfo, error) {

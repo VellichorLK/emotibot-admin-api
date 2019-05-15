@@ -13,7 +13,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"github.com/olivere/elastic"
+	"gopkg.in/olivere/elastic.v6"
 	"github.com/tealeg/xlsx"
 )
 

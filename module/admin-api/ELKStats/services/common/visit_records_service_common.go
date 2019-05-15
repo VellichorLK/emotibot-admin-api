@@ -3,7 +3,7 @@ package common
 import (
 	"net/http"
 
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 type ElasticSearchCommand func(*elastic.SearchService) *elastic.SearchService

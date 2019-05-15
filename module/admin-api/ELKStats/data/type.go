@@ -3,7 +3,7 @@ package data
 import (
 	"time"
 
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 type CommonQuery struct {

@@ -19,8 +19,8 @@ import (
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 const maxFAQCategoryLevels = 10

@@ -13,8 +13,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 func TEVisitRecordsQuery(query *dataV1.TEVisitRecordsQuery) (teRecords []*dataV1.TEVisitRecordsData, totalSize int64, err error) {
