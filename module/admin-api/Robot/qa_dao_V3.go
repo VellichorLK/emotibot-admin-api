@@ -738,11 +738,13 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 						DocID: fmt.Sprintf("%s_%d", info.DocID, id),
 						Answer: content,
 					})
+					appidMap[appid] = true
 				}
 			}
 		}
-		ansIDs = append(ansIDs, id)
-		appidMap[appid] = true
+		if appidMap[appid] == true {
+			ansIDs = append(ansIDs, id)
+		}
 	}
 
 	queryStr = fmt.Sprintf(`
