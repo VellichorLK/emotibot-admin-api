@@ -107,7 +107,7 @@ func SystemAdminAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var adminID string
@@ -205,7 +205,7 @@ func SystemAdminUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func SystemAdminDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	if requester.Type != enum.SuperAdminUser {
@@ -546,7 +546,7 @@ func UserGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var user *data.UserDetailV3
@@ -637,7 +637,7 @@ func UserAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var userID string
@@ -777,7 +777,7 @@ func UserUpdateHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserDeleteHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	vars := mux.Vars(r)
 
 	var userID string
@@ -931,6 +931,8 @@ func AppAddHandlerV3(w http.ResponseWriter, r *http.Request) {
 		switch err {
 		case util.ErrAppInfoExists:
 			returnBadRequest(w, "name")
+		case util.ErrOperationForbidden:
+			returnForbiddenWithMsg(w, err.Error())
 		default:
 			returnInternalError(w, err.Error())
 		}
@@ -1939,7 +1941,7 @@ func UserInfoGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func EnterpriseAppGetHandlerV3(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 
 	var ret []*data.EnterpriseAppListV3
 	var err error
@@ -2108,7 +2110,7 @@ func IssueApiKeyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ValidateApiKey(w http.ResponseWriter, r *http.Request) {
-	requester := getRequesterV3(r)
+	requester := GetRequesterV3(r)
 	if requester != nil {
 		returnSuccess(w, requester)
 		return

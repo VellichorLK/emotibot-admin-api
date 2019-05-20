@@ -11,7 +11,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 var tags map[string]map[string][]data.Tag

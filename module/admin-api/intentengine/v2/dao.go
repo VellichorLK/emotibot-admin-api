@@ -56,11 +56,58 @@ type intentDaoInterface interface {
 
 	AddIntentSentences(appid string, intentID int64, sType SentenceType, sentences []string) error
 	DelIntentSentences(appid string, intentID int64, sentences []string) (err error)
+
+	GetUnfinishedTraining() (trainings []*TrainMission, err error)
 }
 
 // intentDaoV2 implement interface of intentDaoInterface, which will store for service to use
 type intentDaoV2 struct {
 	db *sql.DB
+}
+
+func (dao intentDaoV2) GetUnfinishedTraining() (trainings []*TrainMission, err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	dao.checkDB()
+	if dao.db == nil {
+		return nil, util.ErrDBNotInit
+	}
+	queryStr := `
+		SELECT version, appid, ie_model_id
+		FROM intent_versions
+		WHERE end_train IS NULL AND ie_model_id IS NOT NULL
+		ORDER BY version DESC`
+	rows, err := dao.db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []*TrainMission{}
+	robotTrain := map[string]*TrainMission{}
+	for rows.Next() {
+		var version int
+		appid, model := "", ""
+		err = rows.Scan(&version, &appid, &model)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := robotTrain[appid]; ok {
+			continue
+		}
+
+		mission := &TrainMission{
+			AppID:   appid,
+			ModelID: model,
+			Version: version,
+		}
+		robotTrain[appid] = mission
+		ret = append(ret, mission)
+
+		logger.Trace.Printf("%+v\n", *mission)
+	}
+
+	return ret, nil
 }
 
 func (dao intentDaoV2) GetIntents(appid string, version *int, keyword string) (ret []*IntentV2, err error) {
@@ -1512,9 +1559,13 @@ func (dao intentDaoV2) DelIntentSentences(appid string, intentID int64, sentence
 		return
 	}
 
-	queryStr = "DELETE FROM intent_train_sets WHERE sentence = ? AND intent = ?"
+	queryStr = `
+		DELETE FROM intent_train_sets
+		WHERE sentence = ? AND intent IN (
+			SELECT id FROM intents WHERE version is NULL AND appid = ?
+		)`
 	for _, sentence := range sentences {
-		_, err = tx.Exec(queryStr, sentence, intentID)
+		_, err = tx.Exec(queryStr, sentence, appid)
 		if err != nil {
 			return
 		}

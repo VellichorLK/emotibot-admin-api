@@ -17,6 +17,7 @@ const (
 	VisitRecordsMetricUserQ           = "user_q"
 	VisitRecordsMetricStdQ            = "std_q"
 	VisitRecordsMetricAnswer          = "answer"
+	VisitRecordsMetricRawAnswer       = "raw_answer"
 	VisitRecordsMetricModule          = "module"
 	VisitRecordsMetricEmotion         = "emotion"
 	VisitRecordsMetricEmotionScore    = "emotion_score"

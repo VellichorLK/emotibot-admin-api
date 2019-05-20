@@ -70,3 +70,19 @@ func GetPlatformConfig(appid, platform string) (map[string]string, adminerrors.A
 	}
 	return configs, nil
 }
+
+func SetPlatformConfig(appid, platform string, values map[string]string) (map[string]string, adminerrors.AdminError) {
+	configs, err := setPlatformConfig(appid, platform, values)
+	if err != nil {
+		return nil, adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+	}
+	return configs, nil
+}
+
+func DeletePlatformConfig(appid, platform string) adminerrors.AdminError {
+	err := deletePlatformConfig(appid, platform)
+	if err != nil {
+		return adminerrors.New(adminerrors.ErrnoDBError, err.Error())
+	}
+	return nil
+}

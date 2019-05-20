@@ -17,8 +17,8 @@ import (
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 var platformDict = map[string]string{
@@ -437,7 +437,8 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err

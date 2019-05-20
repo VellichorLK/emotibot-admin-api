@@ -102,3 +102,7 @@ func SetAppID(r *http.Request, appid string) {
 func SetUserID(r *http.Request, user string) {
 	r.Header.Set(ConstUserIDHeaderKey, user)
 }
+
+func GetOrigin(r *http.Request) string {
+	return r.Header.Get("Origin")
+}

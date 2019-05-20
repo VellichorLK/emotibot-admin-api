@@ -3,7 +3,7 @@ package data
 import (
 	"time"
 
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 type CommonQuery struct {
@@ -59,9 +59,11 @@ type Answer struct {
 }
 
 type ExtractExportHitResultHandler func(hit *elastic.SearchHit) (recordPtr interface{}, err error)
-type XlsxCreateHandler func(recordPtrs []interface{}, fileName string, locale string) (filePath string, err error)
+type XlsxCreateHandler func(recordPtrs []interface{}, fileName string, locale string,
+	params ...interface{}) (filePath string, err error)
 
 type ExportTaskOption struct {
+	AppID                string
 	TaskID               string
 	Index                string
 	BoolQuery            *elastic.BoolQuery

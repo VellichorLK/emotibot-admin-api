@@ -14,8 +14,8 @@ import (
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
 
 func TEVisitRecordsQuery(query *dataV1.TEVisitRecordsQuery) (teRecords []*dataV1.TEVisitRecordsData, totalSize int64, err error) {
@@ -236,7 +236,8 @@ func extractExportTERecordsHitResultHandler(hit *elastic.SearchHit) (teRecordPtr
 	return
 }
 
-func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err

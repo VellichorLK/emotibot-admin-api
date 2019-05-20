@@ -13,10 +13,12 @@ var customChatMsg = map[string]map[string]string{
 		"CustomChatUploadQuestionRowInvalidTpl":    "资料表 %s 中第 %d 行缺少栏位",
 		"CustomChatUploadQuestionRowNoQuestionTpl":     "资料表 %s 中第 %d 行问题为空",
 		"CustomChatUploadQuestionRowNoAnswerTpl": "资料表 %s 中第 %d 行答案为空",
-		"CustomChatUploadQuestionRowNoExtendTpl": "资料表 %s 中第 %d 行答案为空",
+		"CustomChatUploadQuestionRowNoExtendTpl": "资料表 %s 中第 %d 行相似问为空",
 		"CustomChatExport": "导出闲聊",
 		"CustomChatUploadQuestionExceedLimit": "资料表 %s 中第 %d 行问题超过%d",
 		"CustomChatUploadAnswerExceedLimit": "资料表 %s 中第 %d 行答案超过%d",
+		"CustomChatUploadExtendDuplicate":    "资料表 %s 中第 %d 行出现重复",
+		"CustomChatUploadQuestionAnswerCountExceedLimit": "资料表 %s 中问题 %s  的答案个数超过%d个",
 	},
 	ZhTw: map[string]string{
 		"CustomChatUploadSheetErr":            "上传的资料表数量错误",
@@ -34,6 +36,8 @@ var customChatMsg = map[string]map[string]string{
 		"CustomChatExport": "導出閒聊",
 		"CustomChatUploadQuestionExceedLimit": "資料表 %s 中第 %d 行問題超过%d",
 		"CustomChatUploadAnswerExceedLimit": "資料表 %s 中第 %d 行答案超过%d",
+		"CustomChatUploadExtendDuplicate":    "资料表 %s 中第 %d 行出現重複",
+		"CustomChatUploadQuestionAnswerCountExceedLimit": "资料表 %s 中問題 %s 的答案个数超过%d个",
 	},
 }
 

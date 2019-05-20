@@ -363,7 +363,7 @@ func searchQuestionByContent(content string, appid string) (StdQuestion, error) 
 	if err = results.Err(); err != nil {
 		return q, fmt.Errorf("scanning data have failed, %s", err)
 	}
-
+	q.Type = 1
 	return q, nil
 
 }
@@ -1061,7 +1061,6 @@ func updateAnswer(appid string, answer *Answer, tx *sql.Tx) (err error) {
 		return
 	}
 
-
 	if len(answer.Images) > 0 {
 		err = imagesManager.CreateMediaRef(answer.AnswerId, answer.Images)
 	}
@@ -1313,7 +1312,7 @@ func FindQuestions(appid string, targets []Question) (questions []Question, err 
 		err = rows.Scan(&question.QuestionId, &question.Content, &question.CategoryId, &categoryName, &question.Status)
 		if err != nil {
 			err = fmt.Errorf("error while fetching question, error: %s", err)
-			return 
+			return
 		}
 
 		if categoryName != nil {
@@ -1962,3 +1961,69 @@ func LabelMap(appid string) (map[int]string, error) {
 	return tagMap, nil
 }
 
+// query similar question
+func searchSQuestionByContent(content string, appid string) (StdQuestion, error) {
+	var q StdQuestion
+	db := util.GetMainDB()
+	if db == nil {
+		return q, fmt.Errorf("main db connection pool is nil")
+	}
+
+	lastOperation := time.Now()
+	rawQuery := fmt.Sprintf("SELECT a.Question_Id, a.Content, a.CategoryId FROM %s_question a, %s_squestion b WHERE a.Question_Id = b.Question_Id and  b.Content = ? and a.Status >= 0 and  b.Status >= 0", appid, appid)
+	results, err := db.Query(rawQuery, content)
+	if err != nil {
+		return q, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
+	}
+	defer results.Close()
+	util.LogInfo.Printf("set search squesiton by content in searchSQuestionByContent took: %s\n", time.Since(lastOperation))
+
+	if results.Next() {
+		results.Scan(&q.QuestionID, &q.Content, &q.CategoryID)
+	} else { //404 Not Found
+		return q, util.ErrSQLRowNotFound
+	}
+
+	if err = results.Err(); err != nil {
+		return q, fmt.Errorf("scanning data have failed, %s", err)
+	}
+	q.Type = 2
+	return q, nil
+
+}
+
+// query batch similar question
+func searchBatchSQuestionByContent(content []string, appid string) ([]string, error) {
+	lastOperation := time.Now()
+	var questions []string
+
+	db := util.GetMainDB()
+	if db == nil {
+		return questions, fmt.Errorf("main db connection pool is nil")
+	}
+
+	rawQuery := fmt.Sprintf("SELECT  a.content FROM  %s_squestion a WHERE a.Content in (?"+strings.Repeat(",?", len(content)-1)+") and Status >= 0", appid)
+	util.LogInfo.Printf("rawQuery = %s", rawQuery)
+	args := make([]interface{}, len(content))
+	for idx := range content {
+		args[idx] = strings.TrimSpace(content[idx])
+	}
+	results, err := db.Query(rawQuery, args...)
+	if err != nil {
+		return questions, fmt.Errorf("sql query %s failed, %v", rawQuery, err)
+	}
+	defer results.Close()
+	util.LogInfo.Printf("set search squesiton by content in searchBatchSQuestionByContent took: %s\n", time.Since(lastOperation))
+
+	for results.Next() {
+		var sq string
+		results.Scan(&sq)
+		questions = append(questions, sq)
+	}
+
+	if err = results.Err(); err != nil {
+		return questions, fmt.Errorf("scanning data have failed, %s", err)
+	}
+	return questions, nil
+
+}

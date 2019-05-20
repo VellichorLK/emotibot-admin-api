@@ -229,3 +229,34 @@ func GetEnterpriseAdminOfRobot(appid string) ([]string, error) {
 
 	return ret, nil
 }
+
+func GetAllApps() ([]string, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+
+	db := util.GetDB(ModuleInfo.ModuleName)
+	if db == nil {
+		err = util.ErrDBNotInit
+		return nil, err
+	}
+
+	queryStr := "SELECT uuid FROM apps"
+	rows, err := db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	for rows.Next() {
+		uuid := ""
+		err = rows.Scan(&uuid)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, uuid)
+	}
+
+	return ret, nil
+}

@@ -1,1 +1,1 @@
-docker-reg.emotibot.com.cn:55688/gobase:1.10
+harbor.emotibot.com/library/gobase:1.10

@@ -185,76 +185,38 @@ func checkAuth(r *http.Request, route Route) bool {
 		return false
 	}
 
-	switch route.Version {
-	case 2:
-		userInfo := data.User{}
-		err := userInfo.SetValueWithToken(vals[1])
-		if err != nil {
-			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
-			return false
-		}
+	userInfo := controller.GetRequesterV3(r)
+	if userInfo == nil {
+		util.LogInfo.Printf("[Auth check] Auth fail: no valid token\n")
+		return false
+	}
 
-		if !util.IsInSlice(userInfo.Type, route.GrantType) {
+	if !util.IsInSlice(userInfo.Type, route.GrantType) {
+		util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+		return false
+	}
+
+	vars := mux.Vars(r)
+	// Enterprise admin user can only check enterprise of itself
+	// Enterprise normal can only check enterprise of itself and user info of itself
+	if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
+		if userInfo.Enterprise == nil {
 			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
 			return false
 		}
 
-		vars := mux.Vars(r)
-		// Enterprise admin user can only check enterprise of itself
-		// Enterprise normal can only check enterprise of itself and user info of itself
-		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
-			if userInfo.Enterprise == nil {
-				return false
-			}
-
-			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
-				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
-				return false
-			}
-		}
-
-		if userInfo.Type == enum.NormalUser {
-			userID := vars["userID"]
-			if userID != "" && userID != userInfo.ID {
-				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
-				return false
-			}
-		}
-	case 3:
-		userInfo := data.UserDetailV3{}
-		err := userInfo.SetValueWithToken(vals[1])
-		if err != nil {
-			util.LogInfo.Printf("[Auth check] Auth fail: no valid token [%s]\n", err.Error())
+		enterpriseID := vars["enterpriseID"]
+		if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
+			util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
 			return false
 		}
+	}
 
-		if !util.IsInSlice(userInfo.Type, route.GrantType) {
-			util.LogInfo.Printf("[Auth check] Need user be [%v], get [%d]\n", route.GrantType, userInfo.Type)
+	if userInfo.Type == enum.NormalUser {
+		userID := vars["userID"]
+		if userID != "" && userID != userInfo.ID {
+			util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
 			return false
-		}
-
-		vars := mux.Vars(r)
-		// Enterprise admin user can only check enterprise of itself
-		// Enterprise normal can only check enterprise of itself and user info of itself
-		if userInfo.Type == enum.AdminUser || userInfo.Type == enum.NormalUser {
-			if userInfo.Enterprise == nil {
-				return false
-			}
-
-			enterpriseID := vars["enterpriseID"]
-			if enterpriseID != "" && enterpriseID != *userInfo.Enterprise {
-				util.LogInfo.Printf("[Auth check] user of [%s] can not access [%s]\n", *userInfo.Enterprise, enterpriseID)
-				return false
-			}
-		}
-
-		if userInfo.Type == enum.NormalUser {
-			userID := vars["userID"]
-			if userID != "" && userID != userInfo.ID {
-				util.LogInfo.Printf("[Auth check] user [%s] can not access other users' info\n", userInfo.ID)
-				return false
-			}
 		}
 	}
 

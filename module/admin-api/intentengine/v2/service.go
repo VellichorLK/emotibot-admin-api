@@ -124,13 +124,20 @@ func GetIntentEngineStatus(appid string) (ret *StatusV2, err AdminErrors.AdminEr
 	ret.LastFinishTime = latestInfo.TrainEndTime
 	ret.Progress = latestInfo.Progress
 	ret.Version = latestInfo.Version
-	if ret.CurrentStartTime == nil && ret.LastFinishTime == nil {
+	if ret.CurrentStartTime == nil {
 		logger.Trace.Println("Version hasn't start, return NEED_TRAIN")
 		ret.Status = statusNeedTrain
 		return
 	} else if ret.LastFinishTime == nil {
-		logger.Trace.Println("Version hasn't end, return TRAINING")
-		ret.Status = statusTraining
+		timeout := getTrainTimeout()
+		if time.Now().Unix() > *ret.CurrentStartTime+int64(timeout) {
+			logger.Trace.Printf("Version start from %d, timeout with %d, NEED_TRAIN\n",
+				*ret.CurrentStartTime, int64(timeout))
+			ret.Status = statusNeedTrain
+		} else {
+			logger.Trace.Println("Version hasn't end, return TRAINING")
+			ret.Status = statusTraining
+		}
 		return
 	} else if latestInfo.TrainResult == trainResultFail {
 		logger.Trace.Println("Version fail, return NEED_TRAIN")
@@ -179,9 +186,21 @@ func StartTrain(appid string) (version int, err AdminErrors.AdminError) {
 		return 0, AdminErrors.New(AdminErrors.ErrnoDBError, daoErr.Error())
 	}
 
-	go checkIntentModelStatus(appid, modelID, version)
+	go checkIntentModelStatus(appid, modelID, version, -1)
 
 	return version, nil
+}
+
+func PollingCheckStatus() {
+	missions, err := dao.GetUnfinishedTraining()
+	if err != nil {
+		logger.Error.Println("Cannot get unfinished training, ", err.Error())
+		return
+	}
+
+	for _, mission := range missions {
+		go checkIntentModelStatus(mission.AppID, mission.ModelID, mission.Version, ErrRetryCount)
+	}
 }
 
 func trainIntent(appid string) (modelID string, err error) {
@@ -211,7 +230,9 @@ func trainIntent(appid string) (modelID string, err error) {
 	return ret.ModelID, nil
 }
 
-func checkIntentModelStatus(appid, modelID string, version int) {
+const ErrRetryCount = 6
+
+func checkIntentModelStatus(appid, modelID string, version int, errRetry int) {
 	time.Sleep(time.Second * 5)
 	payload := map[string]string{
 		"app_id":   appid,
@@ -229,7 +250,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	if err != nil {
 		return
 	}
-	logger.Trace.Println("Get response when training intent-engine:", body)
+	logger.Trace.Printf("Get status of [%s][%s] from intent-engine: %s\n", appid, modelID, body)
 	ret := IETrainStatus{}
 	err = json.Unmarshal([]byte(body), &ret)
 	if err != nil {
@@ -239,7 +260,13 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 	now := time.Now().Unix()
 	switch ret.Status {
 	case statusIETrainError:
-		dao.UpdateVersionStatus(appid, version, now, trainResultFail)
+		if errRetry == 1 {
+			dao.UpdateVersionStatus(appid, version, now, trainResultFail)
+		} else if errRetry < 0 {
+			go checkIntentModelStatus(appid, modelID, version, ErrRetryCount)
+		} else {
+			go checkIntentModelStatus(appid, modelID, version, errRetry-1)
+		}
 	case statusIETrainReady:
 		dao.UpdateVersionStatus(appid, version, now, trainResultSuccess)
 		util.ConsulUpdateIntent(appid)
@@ -250,7 +277,7 @@ func checkIntentModelStatus(appid, modelID string, version int) {
 			TaskMode: autofillData.SyncTaskModeReset,
 		})
 	default:
-		go checkIntentModelStatus(appid, modelID, version)
+		go checkIntentModelStatus(appid, modelID, version, -1)
 	}
 }
 

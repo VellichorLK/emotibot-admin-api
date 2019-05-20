@@ -10,6 +10,7 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 
+	"emotibot.com/emotigo/module/admin-api/BF"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/dao"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	dataCommon "emotibot.com/emotigo/module/admin-api/ELKStats/data/common"
@@ -19,9 +20,11 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"emotibot.com/emotigo/pkg/logger"
-	"github.com/olivere/elastic"
 	"github.com/tealeg/xlsx"
+	elastic "gopkg.in/olivere/elastic.v6"
 )
+
+const maxFAQCategoryLevels = 10
 
 func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 	aggs ...servicesCommon.ElasticSearchCommand) (queryResult *dataV2.VisitRecordsQueryResult, err error) {
@@ -37,6 +40,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricScore,
 		dataCommon.VisitRecordsMetricStdQ,
 		"answer.value",
+		dataCommon.VisitRecordsMetricRawAnswer,
 		dataCommon.VisitRecordsMetricLogTime,
 		dataCommon.VisitRecordsMetricEmotion,
 		dataCommon.VisitRecordsMetricEmotionScore,
@@ -130,7 +134,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		return nil, err
 	}
 
-	// Convert FAQ robot tag IDs to FAQ FAQ robot tag names
+	// Convert FAQ robot tag IDs to FAQ robot tag names
 	err = updateFaqRobotTags(records)
 	if err != nil {
 		return nil, err
@@ -238,6 +242,7 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 			Source:       rawRecord.Source,
 		},
 		Answer:         strings.Join(answers, ", "),
+		RawAnswer:      rawRecord.RawAnswer,
 		FaqCategoryID:  rawRecord.FaqCategoryID,
 		FaqRobotTagIDs: rawRecord.FaqRobotTagIDs,
 		Feedback:       rawRecord.Feedback,
@@ -326,7 +331,8 @@ func extractExportRecordsHitResultHandler(hit *elastic.SearchHit) (recordPtr int
 	return
 }
 
-func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err
@@ -341,9 +347,27 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 		return
 	}
 
+	if len(params) == 0 {
+		return "", fmt.Errorf("Missing app ID parameter...")
+	}
+
+	appID := params[0].(string)
+
+	// TODO: Pass FAQ category paths, SSM categories and FAQ robot tags
+	// 		 as parameters to avoid redundant database queries.
 	faqCategoryPaths, err := dao.GetAllFaqCategoryPaths()
 	if err != nil {
 		return "", err
+	}
+
+	faqCategoriesMap := map[string]string{}
+	faqCategories, err := BF.GetSSMCategories(appID)
+	if err != nil {
+		return "", err
+	}
+
+	if faqCategories != nil {
+		buildFAQCategoriesMap(faqCategories, faqCategoriesMap)
 	}
 
 	faqRobotTags, err := dao.GetAllFaqRobotTags()
@@ -365,10 +389,15 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 		// Convert FAQ category ID to FAQ category names
 		var faqCategoryName string
 		if faqCategoryPath, ok := faqCategoryPaths[record.FaqCategoryID]; ok {
-			faqCategoryName = faqCategoryPath.Path
+			name, ok := faqCategoriesMap[faqCategoryPath.Path]
+			if ok {
+				faqCategoryName = name
+			} else {
+				faqCategoryName = faqCategoryPath.Path
+			}
 		}
 
-		// Convert FAQ robot tag IDs to FAQ FAQ robot tag names
+		// Convert FAQ robot tag IDs to FAQ robot tag names
 		var faqRobotTagNames []string
 		for _, faqRobotTagID := range record.FaqRobotTagIDs {
 			if faqRobotTag, ok := faqRobotTags[faqRobotTagID]; ok {
@@ -384,6 +413,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 			record.UserQ,
 			record.StdQ,
 			record.Answer,
+			record.RawAnswer,
 			strconv.FormatFloat(record.Score, 'f', -1, 64),
 			localemsg.Get(locale, record.Module),
 			record.Source,
@@ -425,6 +455,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricUserQ,
 		dataCommon.VisitRecordsMetricStdQ,
 		"answer.value",
+		dataCommon.VisitRecordsMetricRawAnswer,
 		dataCommon.VisitRecordsMetricScore,
 		dataCommon.VisitRecordsMetricModule,
 		dataCommon.VisitRecordsMetricLogTime,
@@ -435,7 +466,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 		dataCommon.VisitRecordsMetricCustomInfo,
 		dataCommon.VisitRecordsMetricSource,
 		"faq_cat_id",
-		"fat_robot_tag_id",
+		"faq_robot_tag_id",
 		dataCommon.VisitRecordsMetricFeedback,
 		dataCommon.VisitRecordsMetricCustomFeedback,
 		dataCommon.VisitRecordsMetricFeedbackTime,
@@ -444,6 +475,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 	)
 
 	return &data.ExportTaskOption{
+		AppID:                query.AppID,
 		TaskID:               exportTaskID,
 		Index:                index,
 		BoolQuery:            boolQuery,
@@ -633,4 +665,31 @@ func newBoolQueryWithRecordQuery(query *dataV2.VisitRecordsQuery) *elastic.BoolQ
 	}
 
 	return boolQuery
+}
+
+// Use BFS to iterate category tree level-by-level, up to maxFAQCategoryLevels
+func buildFAQCategoriesMap(root *BF.Category, m map[string]string) {
+	if root != nil {
+		queue := []*BF.Category{root} // Enqueue
+		level := 0
+
+		for {
+			level++
+
+			if len(queue) == 0 || level > maxFAQCategoryLevels {
+				break
+			}
+
+			for i := len(queue); i > 0; i-- {
+				category := queue[0] // Dequeue
+				queue = queue[1:]
+
+				m[category.CatID] = category.Name
+
+				for _, child := range category.Children {
+					queue = append(queue, child) // Enqueue
+				}
+			}
+		}
+	}
 }

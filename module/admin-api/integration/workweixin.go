@@ -1,7 +1,11 @@
 package integration
 
 import (
+	"encoding/base64"
 	"net/http"
+	"strings"
+
+	"emotibot.com/emotigo/module/admin-api/util"
 
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/services/workweixin"
@@ -11,12 +15,13 @@ import (
 var workWeixinBot = map[string]*workweixin.Client{}
 
 func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string, config map[string]string) {
-	if config["token"] == "" || config["encoded-aes"] == "" || config["cropid"] == "" || config["secret"] == "" {
+	if config["token"] == "" || config["encoded-aes"] == "" || config["corpid"] == "" || config["secret"] == "" {
 		return
 	}
 	// If client is not created, create it with config
 	if _, ok := workWeixinBot[appid]; !ok {
-		bot, err := workweixin.New(config["cropid"], config["secret"], config["token"], config["encoded-aes"])
+		fullEncoded := strings.Replace(config["encoded-aes"], "=", "", -1) + "="
+		bot, err := workweixin.New(config["corpid"], config["secret"], config["token"], fullEncoded)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			logger.Error.Println("workWeixinBot init fail: ", err.Error())
@@ -64,4 +69,17 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 		}
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+func generateWorkWeixinConfig(values map[string]string) map[string]string {
+	token := util.GenRandomString(32)
+
+	randomBytes := util.GenRandomBytes(32)
+	originEncodedAES := base64.StdEncoding.EncodeToString(randomBytes)
+	workWeixinEncoded := strings.Replace(originEncodedAES, "=", "", -1)
+
+	values["token"] = token
+	values["encoded-aes"] = workWeixinEncoded
+
+	return values
 }

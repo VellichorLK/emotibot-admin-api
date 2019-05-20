@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/pkg/services/fileservice"
+
+	"emotibot.com/emotigo/module/admin-api/media"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 
 	"emotibot.com/emotigo/pkg/misc/emotijwt"
@@ -83,6 +86,7 @@ var modules = []*util.ModuleInfo{
 	&integration.ModuleInfo,
 	&feedback.ModuleInfo,
 	&CustomChat.ModuleInfo,
+	&media.ModuleInfo,
 }
 
 var serverConfig map[string]string
@@ -502,7 +506,7 @@ func initDB() {
 	db := getServerEnv("MYSQL_DB")
 	err := util.InitMainDB(url, user, pass, db)
 	if err != nil {
-		logger.Error.Println("Init main db fail")
+		logger.Error.Println("Init main db fail, ", err.Error())
 		initErrors = append(initErrors, err)
 	}
 
@@ -512,18 +516,32 @@ func initDB() {
 	db = getServerEnv("AUDIT_MYSQL_DB")
 	err = util.InitAuditDB(url, user, pass, db)
 	if err != nil {
-		logger.Error.Println("Init audit db fail")
+		logger.Error.Println("Init audit db fail, ", err.Error())
 		initErrors = append(initErrors, err)
 	}
 
 	err = Stats.InitDB()
 	if err != nil {
-		logger.Error.Println("Init stats db fail")
+		logger.Error.Println("Init stats db fail, ", err.Error())
 		initErrors = append(initErrors, err)
 	}
 	err = auth.InitDB()
 	if err != nil {
-		logger.Error.Println("Init auth db fail")
+		logger.Error.Println("Init auth db fail, ", err.Error())
+		initErrors = append(initErrors, err)
+	}
+
+	url = strings.TrimSpace(getServerEnv("MINIO_URL"))
+	accessKey := strings.TrimSpace(getServerEnv("MINIO_ACCESS"))
+	secretKey := strings.TrimSpace(getServerEnv("MINIO_SECRET"))
+	useSSLStr := strings.TrimSpace(getServerEnv("MINIO_USE_SSL"))
+	useSSL := false
+	if useSSLStr == "1" || useSSLStr == "on" {
+		useSSL = true
+	}
+	err = fileservice.Init(url, accessKey, secretKey, useSSL)
+	if err != nil {
+		logger.Error.Println("Init minio service fail, ", err.Error())
 		initErrors = append(initErrors, err)
 	}
 }

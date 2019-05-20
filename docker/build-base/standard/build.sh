@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REPO=docker-reg.emotibot.com.cn:55688
+REPO=harbor.emotibot.com/library
 CONTAINER=gobase
 VERSION=$1
 TAG=$VERSION

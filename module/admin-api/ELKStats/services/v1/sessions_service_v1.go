@@ -14,7 +14,7 @@ import (
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
-	"github.com/olivere/elastic"
+	elastic "gopkg.in/olivere/elastic.v6"
 	"github.com/tealeg/xlsx"
 )
 
@@ -282,7 +282,8 @@ func extractExportSessionsHitResultHandler(hit *elastic.SearchHit) (sessionPtr i
 	return
 }
 
-func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale string) (xlsxFilePath string, err error) {
+func createExportSessionsXlsx(sessionPtrs []interface{}, xlsxFileName string, locale string,
+	params ...interface{}) (xlsxFilePath string, err error) {
 	dirPath, _err := servicesCommon.GetExportRecordsDir()
 	if _err != nil {
 		err = _err

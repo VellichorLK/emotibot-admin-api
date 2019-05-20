@@ -120,6 +120,12 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 				questionsMap[question].Answers = answerList
 				questionsMap[question].AnswerCount++
 
+
+				ansCount := questionsMap[question].AnswerCount
+				if ansCount > 10{
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionAnswerCountExceedLimit"), sheets[idx].Name, question, 10))
+				}
 			}
 
 			for k, v := range questionsMap {
@@ -198,6 +204,7 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 	//questionsArray := map[string]*Question{}
 	questionsMap := map[string]*Question{}
 
+	globalExtendsMap  := map[string]*string{}//[]string{}
 	for idx := range sheets {
 
 		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
@@ -223,7 +230,23 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 				question := strings.TrimSpace(cells[questionIdx].String())
 				extend := strings.TrimSpace(cells[extendIdx].String())
 				extendLength := utf8.RuneCountInString(extend)
-				if extendLength > 50 {
+
+				if _, ok := globalExtendsMap[extend]; !ok {
+					globalExtendsMap[extend] = &extend
+
+				}else {
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadExtendDuplicate"), sheets[idx].Name, rowIdx+1))
+				}
+
+				qLength := utf8.RuneCountInString(question)
+				if qLength > 50{
+					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
+						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
+
+				}
+
+				if extendLength > 50{
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
 				}
@@ -592,6 +615,13 @@ func ForceSyncCustomChatToES(appid string, force bool) (err error) {
 	}
 
 	UpdateCustomChatStatus(customQuestions)
+
+	logger.Trace.Printf("Update profile consul of appid [%s]\n", appid)
+	_, consulErr := util.ConsulUpdateProfile(appid)
+	if err != nil {
+		logger.Error.Println("Update consul error:", consulErr.Error())
+	}
+
 	finishSyncProcess(pid, true, "")
 	return
 }

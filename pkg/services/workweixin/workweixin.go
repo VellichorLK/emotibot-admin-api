@@ -70,7 +70,8 @@ func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
 	`, signature, timestamp, nonce, encryptStr)
 	verify := calculateSignature(c.Token, timestamp, nonce, encryptStr)
 	logger.Trace.Printf("Signature check: %s, %s\n", verify, signature)
-	if verify != signature {
+
+	if strings.Trim(verify, " ") != strings.Trim(signature, " ") {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -14,7 +14,9 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/pkg/logger"
 
+
 	uuid "github.com/satori/go.uuid"
+	"strconv"
 )
 
 const (
@@ -32,6 +34,7 @@ const (
 	columnTableV3         = "columns"
 	moduleTableV3         = "modules"
 	auditTableV3          = "audit_record"
+	systemParamV3         = "system_param"
 )
 
 func (controller MYSQLController) GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
@@ -211,6 +214,7 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 		util.LogDBError(err)
 		return
 	}
+
 
 	err = addModulesEnterpriseWithTxV3(modules, enterpriseID, t)
 	if err != nil {
@@ -893,6 +897,73 @@ func (controller MYSQLController) EnterpriseUserInfoExistsV3(userType int,
 	}
 }
 
+func (controller MYSQLController) GetAppCount(enterpriseID string) (int, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return -1, err
+	}
+	num := -1
+
+	queryStr := fmt.Sprintf(`
+		SELECT count(*) as num
+		FROM %s
+		WHERE enterprise = ?`, appTableV3)
+
+	err = controller.connectDB.QueryRow(queryStr, enterpriseID).Scan(&num)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+	return num, err
+}
+
+
+
+func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string) (int, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return -1, err
+	}
+
+	limitEncrypt := ""
+
+	customLimitEncrypt := ""
+
+	queryStr := fmt.Sprintf(`
+		SELECT value 
+		FROM %s
+		WHERE enterprise_id = ? AND name = ? ORDER BY id DESC LIMIT 1`, systemParamV3)
+
+	err = controller.connectDB.QueryRow(queryStr, enterpriseID, "enterprise_robot_limit").Scan(&customLimitEncrypt)
+
+	if customLimitEncrypt != "" {
+		limitEncrypt = customLimitEncrypt;
+	} else {
+
+		err = controller.connectDB.QueryRow(queryStr, "", "enterprise_robot_limit").Scan(&limitEncrypt)
+		if err != nil {
+			util.LogDBError(err)
+			return -1, err
+		}
+	}
+
+	limitString , err := util.AesBase64Decrypt(limitEncrypt)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+	limit, err := strconv.Atoi(limitString)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+
+	return limit, err
+}
+
+
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -965,6 +1036,24 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 		return
 	}
 	defer util.ClearTransition(t)
+
+
+	robotCount, err := controller.GetAppCount(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	limitCount, err := controller.GetRobotLimitPerEnterprise(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	if robotCount >= limitCount {
+		return "", util.ErrOperationForbidden
+	}
+
 
 	appUUID, err := uuid.NewV4()
 	if err != nil {
@@ -1365,8 +1454,8 @@ func (controller MYSQLController) GetRolesV3(enterpriseID string) ([]*data.RoleV
 	rows.Close()
 
 	for _, role := range roles {
-		getRoleUserCount(controller, role)
-		getRolePrivileges(controller, role)
+		controller.getRoleUserCount(role)
+		controller.getRolePrivileges(role)
 	}
 
 	return roles, nil
@@ -1396,8 +1485,8 @@ func (controller MYSQLController) GetRoleV3(enterpriseID string, roleID string) 
 		return nil, err
 	}
 
-	getRoleUserCount(controller, &role)
-	getRolePrivileges(controller, &role)
+	controller.getRoleUserCount(&role)
+	controller.getRolePrivileges(&role)
 
 	return &role, nil
 }
@@ -1924,7 +2013,7 @@ func updateModulesEnterpriseWithTxV3(modules []string, enterpriseID string, t *s
 	return
 }
 
-func getRoleUserCount(controller MYSQLController, role *data.RoleV3) error {
+func (controller MYSQLController) getRoleUserCount(role *data.RoleV3) error {
 	queryStr := fmt.Sprintf(`
 		SELECT COUNT(*)
 		FROM %s
@@ -1937,7 +2026,7 @@ func getRoleUserCount(controller MYSQLController, role *data.RoleV3) error {
 	return nil
 }
 
-func getRolePrivileges(controller MYSQLController, role *data.RoleV3) error {
+func (controller MYSQLController) getRolePrivileges(role *data.RoleV3) error {
 	queryStr := fmt.Sprintf(`
 		SELECT m.code, p.cmd_list
 		FROM %s AS p
