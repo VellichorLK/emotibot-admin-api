@@ -88,9 +88,9 @@ func deleteAllAutofills(appID string, module string) error {
 	return err
 }
 
-func toggleAutofills(enabled bool, ids ...interface{}) error {
+func toggleAutofills(enabled bool, ids []interface{}) error {
 	script := fmt.Sprintf("ctx._source.autofill_enabled=%t", enabled)
-	_, err := qaServices.UpdateQADocsByQuery(script, ids)
+	_, err := qaServices.UpdateQADocsByQuery(script, ids...)
 	return err
 }
 
@@ -279,7 +279,7 @@ func updateIntentAutofills(appID string) error {
 		return err
 	}
 
-	var docIDs []string
+	var docIDs []interface{}
 	var lastSentenceID int64 = -1
 
 	// Enable autofills
@@ -300,7 +300,7 @@ func updateIntentAutofills(appID string) error {
 			// Update last sentence ID for next interation
 			lastSentenceID = enableIntentSentences[len(enableIntentSentences)-1].SentenceID
 
-			docIDs = make([]string, len(enableIntentSentences))
+			docIDs = make([]interface{}, len(enableIntentSentences))
 			for i, intentSentence := range enableIntentSentences {
 				docIDs[i] = createAutofillDocID(appID, data.AutofillModuleIntent,
 					intentSentence.ModuleID, intentSentence.SentenceID)
@@ -332,7 +332,7 @@ func updateIntentAutofills(appID string) error {
 			// Update last sentence ID for next interation
 			lastSentenceID = disableIntentSentences[len(disableIntentSentences)-1].SentenceID
 
-			docIDs = make([]string, len(disableIntentSentences))
+			docIDs = make([]interface{}, len(disableIntentSentences))
 			for i, intentSentence := range disableIntentSentences {
 				docIDs[i] = createAutofillDocID(appID, data.AutofillModuleIntent,
 					intentSentence.ModuleID, intentSentence.SentenceID)
