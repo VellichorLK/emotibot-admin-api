@@ -61,7 +61,7 @@ func (tag *ChatQuestionTagging) convertToQACoreDocs(appID string) []*qaData.QACo
 	qDoc := &qaData.QACoreDoc {
 		DocID:        createCustomChatQuestionDocID(appID, tag.QuestionID),
 		AppID:        appID,
-		Module:       "editroial_custom",
+		Module:       "editorial_custom",
 		Domain:       "",
 		Sentence:     tag.Segment,
 		SentenceOrig: tag.Question,
