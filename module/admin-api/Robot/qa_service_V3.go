@@ -9,7 +9,6 @@ import (
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	qaServices "emotibot.com/emotigo/module/admin-api/QADoc/services"
-	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
@@ -215,6 +214,7 @@ func ForceSyncRobotProfile(force bool) (err error) {
 	logger.Trace.Printf("relate question: %+v", rqIDs)
 	logger.Trace.Printf("update answers: %+v", ansIDs)
 	logger.Trace.Printf("delete answers: %+v", delAnsIDs)
+	logger.Trace.Printf("delete docid: %+v", deleteDocIDs)
 	logger.Trace.Printf("delete relate question: %+v", deleteRQIDs)
 
 	if len(tagInfos) == 0 && len(deleteRQIDs) == 0 && len(delAnsIDs) == 0 {
@@ -238,7 +238,7 @@ func ForceSyncRobotProfile(force bool) (err error) {
 			return
 		}
 
-		body, err = qaServices.BulkCreateQADocs(validInfos.convertToQACoreDocs())
+		body, err = qaServices.BulkCreateOrUpdateQADocs(validInfos.convertToQACoreDocs())
 		if err != nil {
 			logger.Error.Printf("QA service fail, err: %s, response: %s",
 				err.Error(), string(body))
@@ -259,28 +259,15 @@ func ForceSyncRobotProfile(force bool) (err error) {
 
 	if len(deleteStdQIDs) > 0 {
 		deleteIDs := []interface{}{}
-		deleteAnsRegexps := []*qaData.RegexQuery{}
-
 		for appID, ids := range deleteStdQIDs {
 			for _, id := range ids {
 				qDocID := createRobotQuestionDocID(appID, id)
 				deleteIDs = append(deleteIDs, qDocID)
-				deleteAnsRegexps = append(deleteAnsRegexps, &qaData.RegexQuery{
-					Field:      "doc_id",
-					Expression: fmt.Sprintf("%s#.*", qDocID),
-				})
 			}
 		}
 
 		// Delete questions
 		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
-		if err != nil {
-			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
-			return
-		}
-
-		// Delete all related answers
-		body, err = qaServices.DeleteQADocsByRegex(deleteAnsRegexps)
 		if err != nil {
 			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
@@ -289,28 +276,15 @@ func ForceSyncRobotProfile(force bool) (err error) {
 
 	if len(deleteRQIDs) > 0 {
 		deleteIDs := []interface{}{}
-		deleteAnsRegexps := []*qaData.RegexQuery{}
-
 		for appID, ids := range deleteDocIDs {
 			for _, id := range ids {
 				qDocID := createRobotQuestionDocID(appID, id)
 				deleteIDs = append(deleteIDs, qDocID)
-				deleteAnsRegexps = append(deleteAnsRegexps, &qaData.RegexQuery{
-					Field:      "doc_id",
-					Expression: fmt.Sprintf("%s#.*", qDocID),
-				})
 			}
 		}
 
 		// Delete questions
 		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
-		if err != nil {
-			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
-			return
-		}
-
-		// Delete all related answers
-		body, err = qaServices.DeleteQADocsByRegex(deleteAnsRegexps)
 		if err != nil {
 			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
@@ -348,9 +322,6 @@ func convertTagInfoWithZhCn(tagInfos []*ManualTagging) []*ManualTagging {
 		tagInfo.Question = zhconverter.T2S(tagInfo.Question)
 		if tagInfo.Answers == nil {
 			continue
-		}
-		for _, answer := range tagInfo.Answers {
-			answer.Answer = zhconverter.T2S(answer.Answer)
 		}
 	}
 	return tagInfos

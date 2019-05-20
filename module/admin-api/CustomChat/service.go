@@ -449,10 +449,10 @@ func getQuestionColumnIdx(row *xlsx.Row, locale string) (categoryIdx, questionId
 
 func SyncCustomChat(appid string, force bool) (err error) {
 
-	return ForceSyncCustomChatTo(appid, true)
+	return ForceSyncCustomChatToES(appid, true)
 }
 
-func ForceSyncCustomChatTo(appid string, force bool) (err error) {
+func ForceSyncCustomChatToES(appid string, force bool) (err error) {
 	restart := false
 	var body []byte
 	defer func() {
@@ -499,7 +499,7 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 			if restart {
 				logger.Trace.Println("Restart sync process")
 				time.Sleep(time.Second)
-				go ForceSyncCustomChatTo(appid, false)
+				go ForceSyncCustomChatToES(appid, false)
 			}
 		}()
 	}
@@ -524,12 +524,11 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 				answer := ChatAnswerTagging{}
 				answer.AnswerID = qID + "_" + "0" + "_" + aID
 				answer.Answer = a.Content
-				answer.Keyword = ""
-				answer.Segment = ""
-				answer.WordPos = ""
-				answer.SentenceType = ""
 				question.Answers = append(question.Answers, &answer)
 			}
+			// The stdQId and content are original content
+			question.StdQID = qID
+			question.StdQContent = q.Content
 			question.QuestionID = qID + "_" + "0"
 			question.Question = q.Content
 			question.Keyword = ""
@@ -543,6 +542,8 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 			for _, e := range q.Extends {
 				extend := ChatQuestionTagging{}
 				eID := strconv.FormatInt(e.ID, 10)
+				extend.StdQID = qID
+				extend.StdQContent = e.Content
 				extend.QuestionID = qID + "_" + eID
 				extend.Question = e.Content
 				extend.Keyword = ""
@@ -570,7 +571,7 @@ func ForceSyncCustomChatTo(appid string, force bool) (err error) {
 		body, err = qaServices.DeleteQADocsByRegex([]*qaData.RegexQuery{
 			&qaData.RegexQuery{
 				Field:      "doc_id",
-				Expression: fmt.Sprintf("%s_other.*", appid),
+				Expression: fmt.Sprintf("%s_editorial_custom.*", appid),
 			},
 		})
 		if err != nil {
@@ -606,9 +607,6 @@ func convertQuestionContentWithZhCn(questions []*ChatQuestionTagging) []*ChatQue
 		q.Question = zhconverter.T2S(q.Question)
 		if q.Answers == nil {
 			continue
-		}
-		for _, answer := range q.Answers {
-			answer.Answer = zhconverter.T2S(answer.Answer)
 		}
 	}
 	return questions

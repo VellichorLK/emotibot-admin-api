@@ -618,7 +618,7 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 	if forceMode {
 		// TODO: modify this sql, this will be
 		queryStr = `
-		SELECT id, qid, content, appid
+		SELECT extendQA.id, extendQA.qid, extendQA.content, extendQA.appid, stdQ.content
 		FROM
 		(
 				SELECT id, r.qid as qid, content, appid, status, aid
@@ -631,28 +631,30 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 						GROUP BY qid
 					) as changeQ
 				ON r.qid = changeQ.qid
-		) AS final
+		) AS extendQA
+		INNER JOIN robot_profile_question AS stdQ ON extendQA.qid = stdQ.id
 		-- get all extend q who is not deleted
-		WHERE (final.status >= 0 OR final.aid IS NOT NULL)`
+		WHERE (extendQA.status >= 0 OR extendQA.aid IS NOT NULL)`
 	} else {
 		queryStr = `
-		SELECT id, qid, content, appid
+		SELECT extendQA.id, extendQA.qid, extendQA.content, extendQA.appid, stdQ.content
 		FROM
 		(
-				SELECT id, r.qid as qid, content, appid, status, aid
+				SELECT id, r.qid as qid, content, r.appid, status, aid
 				FROM robot_profile_extend AS r
 				-- select answer changed from answer
 				LEFT JOIN
 					(
-						SELECT qid, GROUP_CONCAT(id) as aid
+						SELECT qid, appid, GROUP_CONCAT(id) as aid
 						FROM robot_profile_answer
 						WHERE status = 1 OR status = -1
-						GROUP BY qid
-					) as changeQ
-				ON r.qid = changeQ.qid
-		) AS final
+						GROUP BY qid, appid
+					) as changeA
+				ON r.qid = changeA.qid AND r.appid = changeA.appid
+		) AS extendQA
+		INNER JOIN robot_profile_question AS stdQ ON extendQA.qid = stdQ.id
 		-- only get changed extend q, and extend q whose answer changed
-		WHERE final.status = 1 OR final.aid IS NOT NULL`
+		WHERE extendQA.status = 1 OR extendQA.aid IS NOT NULL`
 	}
 	rqRows, err = t.Query(queryStr)
 	if err != nil {
@@ -668,7 +670,8 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 	for rqRows.Next() {
 		temp := ManualTagging{}
 		id, qid := 0, 0
-		err = rqRows.Scan(&id, &qid, &temp.Question, &temp.AppID)
+		err = rqRows.Scan(&id, &qid, &temp.Question, &temp.AppID, &temp.StdQContent)
+		temp.StdQID = fmt.Sprintf("%d", qid)
 		temp.DocID = fmt.Sprintf("%d_%d", qid, id)
 		if _, ok := rqMap[qid]; !ok {
 			rqMap[qid] = ManualTaggings{}
@@ -694,6 +697,8 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 		temp := ManualTagging{}
 		id := 0
 		err = qRows.Scan(&id, &temp.Question, &temp.AppID)
+		temp.StdQID = fmt.Sprintf("%d", id)
+		temp.StdQContent = temp.Question
 		temp.DocID = fmt.Sprintf("%d_0", id)
 		if _, ok := rqMap[id]; !ok {
 			rqMap[id] = []*ManualTagging{}

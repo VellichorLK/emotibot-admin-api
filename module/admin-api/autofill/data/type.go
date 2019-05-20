@@ -20,6 +20,7 @@ type QACoreDoc struct {
 	qaData.QACoreDoc
 	ModuleID   int64
 	SentenceID int64
+	Sentence   string
 }
 
 type Sentence struct {

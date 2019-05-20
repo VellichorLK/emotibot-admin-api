@@ -4,6 +4,7 @@ type QACoreDoc struct {
 	DocID           string       `json:"doc_id"`
 	AppID           string       `json:"app_id"`
 	Module          string       `json:"module"`
+	Domain          string       `json:"domain"`
 	Answers         []*Answer    `json:"answers,omitempty"`
 	Sentence        string       `json:"sentence"`
 	SentenceOrig    string       `json:"sentence_original"`
@@ -15,6 +16,8 @@ type QACoreDoc struct {
 	Topics          []*Topic     `json:"topics,omitempty"`
 	SpeechActs      []*SpeechAct `json:"speech_acts,omitempty"`
 	AutofillEnabled bool         `json:"autofill_enabled"`
+	StdQID          string       `json:"std_q_id"`
+	StdQContent     string       `json:"std_q_content"`
 }
 
 type Answer struct {

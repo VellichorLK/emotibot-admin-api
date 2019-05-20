@@ -40,10 +40,6 @@ type CustomQuestions struct {
 type ChatAnswerTagging struct {
 	AnswerID     string `json:"answer_id"`
 	Answer       string `json:"content"`
-	Segment      string `json:"answer_seg"`
-	WordPos      string `json:"answer_word_pos"`
-	Keyword      string `json:"answer_keyword"`
-	SentenceType string `json:"answer_sentence_type"`
 }
 
 type ChatQuestionTagging struct {
@@ -55,24 +51,26 @@ type ChatQuestionTagging struct {
 	SentenceType string               `json:"question_sentence_type"`
 	Answers      []*ChatAnswerTagging `json:"answers"`
 	AppID        string               `json:"app_id"`
+	StdQID       string               `json:"std_q_id"`
+	StdQContent  string               `json:"std_q_content"`
 }
 
 func (tag *ChatQuestionTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc {
 	docs := []*qaData.QACoreDoc{}
 
-	qDoc := &qaData.QACoreDoc{
+	qDoc := &qaData.QACoreDoc {
 		DocID:        createCustomChatQuestionDocID(appID, tag.QuestionID),
 		AppID:        appID,
-		Module:       "other",
+		Module:       "editroial_custom",
+		Domain:       "",
 		Sentence:     tag.Segment,
 		SentenceOrig: tag.Question,
 		SentenceType: tag.SentenceType,
 		SentencePos:  tag.WordPos,
 		Keywords:     tag.Keyword,
+		StdQID:       tag.StdQID,
+		StdQContent:  tag.StdQContent,
 	}
-
-	docs = append(docs, qDoc)
-
 	if len(tag.Answers) > 0 {
 		// Question doc's answers
 		answers := []*qaData.Answer{}
@@ -82,20 +80,11 @@ func (tag *ChatQuestionTagging) convertToQACoreDocs(appID string) []*qaData.QACo
 				Sentence: answer.Answer,
 			}
 			answers = append(answers, ans)
-
-			ansDoc := &qaData.QACoreDoc{
-				DocID:        createCustomChatAnswerDocID(qDoc.DocID, answer.AnswerID),
-				Sentence:     answer.Segment,
-				SentenceOrig: answer.Answer,
-				SentenceType: answer.SentenceType,
-				Keywords:     answer.Keyword,
-			}
-			docs = append(docs, ansDoc)
 		}
 
 		qDoc.Answers = answers
+		docs = append(docs, qDoc)
 	}
-
 	return docs
 }
 
@@ -112,7 +101,7 @@ func (tags ChatQuestionTaggings) convertToQACoreDocs() []*qaData.QACoreDoc {
 }
 
 func createCustomChatQuestionDocID(appID string, questionID string) string {
-	return fmt.Sprintf("%s_other_%s", appID, questionID)
+	return fmt.Sprintf("%s_editorial_custom_%s", appID, questionID)
 }
 
 func createCustomChatAnswerDocID(questionDocID string, answerID string) string {

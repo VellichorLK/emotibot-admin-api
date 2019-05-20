@@ -32,6 +32,45 @@ func CreateQADoc(doc *data.QACoreDoc) ([]byte, error) {
 	return json.Marshal(resp)
 }
 
+func BulkCreateOrUpdateQADocs(docs []*data.QACoreDoc) ([]byte, error) {
+	if len(docs) == 0 {
+		return []byte{}, nil
+	}
+
+	ctx, client := elasticsearch.GetClient()
+	service := elastic.NewBulkService(client)
+
+	var resp *elastic.BulkResponse
+	var err error
+	start := 0
+	end := 0
+
+	for {
+		end += maxNumBulkDocs
+		if end > len(docs) {
+			end = len(docs)
+		}
+
+		for i := start; i < end; i++ {
+			indexRequest := elastic.NewBulkUpdateRequest()
+			indexRequest.Index(esData.ESQACoreIndex).Type(esData.ESQACoreType).Id(docs[i].DocID).Doc(docs[i]).DocAsUpsert(true)
+			service.Add(indexRequest)
+		}
+
+		resp, err = service.Do(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if end >= len(docs) {
+			break
+		}
+
+		start = end
+	}
+
+	return json.Marshal(resp)
+}
 func BulkCreateQADocs(docs []*data.QACoreDoc) ([]byte, error) {
 	if len(docs) == 0 {
 		return []byte{}, nil

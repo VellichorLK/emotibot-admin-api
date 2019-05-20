@@ -111,10 +111,6 @@ type QAInfoV3 struct {
 type ManualAnswerTagging struct {
 	DocID        string `json:"answer_id"`
 	Answer       string `json:"content"`
-	Segment      string `json:"answer_seg"`
-	WordPos      string `json:"answer_word_pos"`
-	Keyword      string `json:"answer_keyword"`
-	SentenceType string `json:"answer_sentence_type"`
 }
 
 // ManualTagging is used when updating robot profile
@@ -127,6 +123,8 @@ type ManualTagging struct {
 	SentenceType string                 `json:"question_sentence_type"`
 	Answers      []*ManualAnswerTagging `json:"answers"`
 	AppID        string                 `json:"app_id"`
+	StdQID       string                 `json:"std_q_id"`
+	StdQContent  string                 `json:"std_q_content"`
 }
 
 func (tag *ManualTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc {
@@ -135,12 +133,15 @@ func (tag *ManualTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc 
 	qDoc := &qaData.QACoreDoc{
 		DocID:        createRobotQuestionDocID(appID, tag.DocID),
 		AppID:        appID,
-		Module:       "robot",
+		Module:       "robot_custom",
+		Domain:       "",
 		Sentence:     tag.Segment,
 		SentenceOrig: tag.Question,
 		SentenceType: tag.SentenceType,
 		SentencePos:  tag.WordPos,
 		Keywords:     tag.Keyword,
+		StdQID:       tag.StdQID,
+		StdQContent:  tag.StdQContent,
 	}
 
 	docs = append(docs, qDoc)
@@ -154,19 +155,6 @@ func (tag *ManualTagging) convertToQACoreDocs(appID string) []*qaData.QACoreDoc 
 				Sentence: answer.Answer,
 			}
 			answers = append(answers, ans)
-
-			// Answer doc
-			ansDoc := &qaData.QACoreDoc{
-				DocID:        createRobotAnswerDocID(qDoc.DocID, answer.DocID),
-				AppID:        appID,
-				Module:       "robot",
-				Sentence:     answer.Segment,
-				SentenceOrig: answer.Answer,
-				SentenceType: answer.SentenceType,
-				SentencePos:  answer.WordPos,
-				Keywords:     answer.Keyword,
-			}
-			docs = append(docs, ansDoc)
 		}
 
 		qDoc.Answers = answers
@@ -188,7 +176,7 @@ func (tags ManualTaggings) convertToQACoreDocs() []*qaData.QACoreDoc {
 }
 
 func createRobotQuestionDocID(appID string, questionID string) string {
-	return fmt.Sprintf("%s_robot_%s", appID, questionID)
+	return fmt.Sprintf("%s_robot_custom_%s", appID, questionID)
 }
 
 func createRobotAnswerDocID(questionDocID string, answerID string) string {

@@ -176,6 +176,7 @@ func resetIntentAutofills(appID string) error {
 					},
 					ModuleID:   intentSentence.ModuleID,
 					SentenceID: intentSentence.SentenceID,
+					Sentence:   sentence,
 				})
 
 			// Sentences
@@ -194,13 +195,21 @@ func resetIntentAutofills(appID string) error {
 				body.QACoreDoc = qaData.QACoreDoc{
 					DocID: createAutofillDocID(appID, data.AutofillModuleIntent,
 						body.ModuleID, body.SentenceID),
-					Answers: []*qaData.Answer{
-						&qaData.Answer{
-							Sentence: sentence,
-						},
-					},
-					Sentence:     strings.ToLower(zhconverter.T2S(nluResult.Keyword.ToString())),
-					SentenceType: strings.ToLower(zhconverter.T2S(nluResult.SentenceType)),
+					AppID:        appID,
+					Module:       "autofill_intent",
+					Domain:       "",
+					Answers:      []*qaData.Answer{
+						              &qaData.Answer{
+							              Sentence: sentence,
+						              },
+					              },
+					Sentence:     strings.ToLower(nluResult.Segment.ToString()),
+					SentenceOrig: body.Sentence,
+					SentenceType: strings.ToLower(nluResult.SentenceType),
+					SentencePos:  strings.ToLower(nluResult.Segment.ToFullString()),
+					Keywords:     strings.ToLower(nluResult.Keyword.ToString()),
+					StdQID:       fmt.Sprintf("%d", body.SentenceID),
+					StdQContent:  body.Sentence,
 				}
 
 				// Autofill enabled
