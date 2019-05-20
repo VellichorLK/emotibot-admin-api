@@ -543,7 +543,7 @@ func ForceSyncCustomChatToES(appid string, force bool) (err error) {
 				extend := ChatQuestionTagging{}
 				eID := strconv.FormatInt(e.ID, 10)
 				extend.StdQID = qID
-				extend.StdQContent = e.Content
+				extend.StdQContent = q.Content
 				extend.QuestionID = qID + "_" + eID
 				extend.Question = e.Content
 				extend.Keyword = ""
