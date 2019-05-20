@@ -118,13 +118,14 @@ func UpdateQADocsByQuery(script string, ids ...interface{}) ([]byte, error) {
 
 	ctx, client := elasticsearch.GetClient()
 	termsQuery := elastic.NewTermsQuery("doc_id", ids...)
-	elastic.NewScript(script)
+	updateScript := elastic.NewScript(script)
 
 	service := elastic.NewUpdateByQueryService(client)
 	resp, err := service.
 		Index(esData.ESQACoreIndex).
 		Type(esData.ESQACoreType).
 		Query(termsQuery).
+		Script(updateScript).
 		Do(ctx)
 	if err != nil {
 		// Ignore index not found error
