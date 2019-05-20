@@ -88,7 +88,7 @@ func deleteAllAutofills(appID string, module string) error {
 	return err
 }
 
-func toggleAutofills(enabled bool, ids []interface{}) error {
+func toggleAutofills(enabled bool, ids ...interface{}) error {
 	script := fmt.Sprintf("ctx._source.autofill_enabled=%t", enabled)
 	_, err := qaServices.UpdateQADocsByQuery(script, ids...)
 	return err
@@ -306,7 +306,7 @@ func updateIntentAutofills(appID string) error {
 					intentSentence.ModuleID, intentSentence.SentenceID)
 			}
 
-			err = toggleAutofills(true, docIDs)
+			err = toggleAutofills(true, docIDs...)
 			if err != nil {
 				return err
 			}
@@ -338,7 +338,7 @@ func updateIntentAutofills(appID string) error {
 					intentSentence.ModuleID, intentSentence.SentenceID)
 			}
 
-			err = toggleAutofills(false, docIDs)
+			err = toggleAutofills(false, docIDs...)
 			if err != nil {
 				return err
 			}

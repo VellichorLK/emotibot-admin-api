@@ -117,7 +117,7 @@ func UpdateQADocsByQuery(script string, ids ...interface{}) ([]byte, error) {
 	}
 
 	ctx, client := elasticsearch.GetClient()
-	termsQuery := elastic.NewTermsQuery("doc_id", ids)
+	termsQuery := elastic.NewTermsQuery("doc_id", ids...)
 	elastic.NewScript(script)
 
 	service := elastic.NewUpdateByQueryService(client)
