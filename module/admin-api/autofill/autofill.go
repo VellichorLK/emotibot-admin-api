@@ -129,7 +129,7 @@ func resetIntentAutofills(appID string) error {
 	sentences := make([]string, 0)
 
 	// Sentence: autofill bodies
-	var autofillBodies map[string][]*data.QACoreDoc
+	autofillBodies := map[string][]*data.QACoreDoc{}
 
 	// Current intent IDs used by Task Engine
 	teIntentIDs, err := autofillDao.GetTECurrentIntentIDs(appID)
