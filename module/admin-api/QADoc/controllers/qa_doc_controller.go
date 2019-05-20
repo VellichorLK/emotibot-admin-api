@@ -77,7 +77,7 @@ func DeleteQADocsByIDsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = services.DeleteQADocsByIds(request.IDs)
+	_, err = services.DeleteQADocsByIds(request.IDs...)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoIOError, err.Error())
 		return

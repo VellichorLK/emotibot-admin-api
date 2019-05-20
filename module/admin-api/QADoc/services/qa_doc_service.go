@@ -163,7 +163,7 @@ func DeleteQADocs(appID string, module string) ([]byte, error) {
 	return json.Marshal(resp)
 }
 
-func DeleteQADocsByIds(ids []interface{}) ([]byte, error) {
+func DeleteQADocsByIds(ids ...interface{}) ([]byte, error) {
 	ctx, client := elasticsearch.GetClient()
 	termsQuery := elastic.NewTermsQuery("doc_id", ids...)
 

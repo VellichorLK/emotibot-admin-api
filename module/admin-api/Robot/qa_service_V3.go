@@ -267,7 +267,7 @@ func ForceSyncRobotProfile(force bool) (err error) {
 		}
 
 		// Delete questions
-		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
+		body, err = qaServices.DeleteQADocsByIds(deleteIDs...)
 		if err != nil {
 			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
@@ -284,7 +284,7 @@ func ForceSyncRobotProfile(force bool) (err error) {
 		}
 
 		// Delete questions
-		body, err = qaServices.DeleteQADocsByIds(deleteIDs)
+		body, err = qaServices.DeleteQADocsByIds(deleteIDs...)
 		if err != nil {
 			logger.Error.Printf("QA service fail, err: %s, response: %s, \n", err.Error(), string(body))
 			return
