@@ -56,7 +56,9 @@ func (segments NLUKeywords) ToFullString() string {
 func (segments NLUKeywords) ToString() string {
 	temp := make([]string, 0, len(segments))
 	for _, seg := range segments {
-		temp = append(temp, seg.Word)
+		if seg.Level != "0" {
+			temp = append(temp, seg.Word)
+		}
 	}
 	return strings.Join(temp, " ")
 }

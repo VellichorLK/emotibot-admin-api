@@ -18,7 +18,7 @@ func main() {
 		}
 	}
 	initDB()
-	Robot.SyncRobotProfileToSolr()
+	Robot.SyncOnce()
 }
 
 func initDB() {

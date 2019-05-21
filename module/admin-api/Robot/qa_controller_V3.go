@@ -122,7 +122,7 @@ func handleAddRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 		ID:      id,
 		Content: answer,
 	}
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 
@@ -205,7 +205,7 @@ func handleUpdateRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ret = origAnswerInfo
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 
@@ -276,7 +276,7 @@ func handleDeleteRobotQAAnswerV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -343,7 +343,7 @@ func handleAddRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 		ID:      id,
 		Content: relateQuestion,
 	}
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -425,7 +425,7 @@ func handleUpdateRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ret = origRQuestionInfo
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
@@ -495,13 +495,13 @@ func handleDeleteRobotQARQuestionV3(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	go SyncRobotProfileToSolr()
+	go SyncRobotProfile()
 	return
 }
 
 func handleRebuildRobotQAV3(w http.ResponseWriter, r *http.Request) {
 	// TODO: only force update data of robot itself
-	err := ForceSyncRobotProfileToSolr(true)
+	err := ForceSyncRobotProfile(true)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoAPIError, err.Error())
 	}

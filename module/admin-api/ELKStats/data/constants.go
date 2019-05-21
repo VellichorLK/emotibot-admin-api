@@ -25,26 +25,6 @@ const (
 	AppIDHeaderKey = "X-AppID"
 )
 
-const ESRecordsTemplate = "emotibot_records_template"
-const ESRecordsTemplateFile = "./InitFiles/elasticsearch/configs/records_template.json"
-const ESRecordsIndex = "emotibot-records"
-const ESRecordType = "doc"
-
-const ESSessionsTemplate = "emotibot_sessions_template"
-const ESSessionsTemplateFile = "./InitFiles/elasticsearch/configs/sessions_template.json"
-const ESSessionsIndex = "emotibot-sessions"
-const ESSessionsType = "doc"
-
-const ESUsersTemplate = "emotibot_users_template"
-const ESUsersTemplateFile = "./InitFiles/elasticsearch/configs/users_template.json"
-const ESUsersIndex = "emotibot-users"
-const ESUsersType = "doc"
-
-const ESTERecordsTemplate = "emotibot_te_records_template"
-const ESTERecordsTemplateFile = "./InitFiles/elasticsearch/configs/te_records_template.json"
-const ESTERecordsIndex = "emotibot-te-records"
-const ESTERecordsType = "doc"
-
 const StandardTimeFormat = "2006-01-02 15:04:05"
 
 var ESTimeFormat = StandardTimeFormat

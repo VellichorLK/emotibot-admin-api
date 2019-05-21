@@ -13,6 +13,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	servicesCommon "emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"github.com/tealeg/xlsx"
 	elastic "gopkg.in/olivere/elastic.v6"
 )
@@ -37,11 +38,11 @@ func TEVisitRecordsQuery(query *dataV1.TEVisitRecordsQuery) (teRecords []*dataV1
 		dataCommon.TEVisitRecordsMetricFeedbackTime,
 	)
 
-	index := fmt.Sprintf("%s-*", data.ESTERecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESTERecordsIndex)
 
 	results, err := client.Search().
 		Index(index).
-		Type(data.ESTERecordsType).
+		Type(esData.ESTERecordsType).
 		Query(boolQuery).
 		FetchSourceContext(source).
 		From(int(query.From)).
@@ -290,7 +291,7 @@ func createExportTERecordsXlsx(teRecordPtrs []interface{}, xlsxFileName string, 
 
 func createExportTERecordsTaskOption(query *dataV1.TEVisitRecordsQuery,
 	exportTaskID string, locale string) *data.ExportTaskOption {
-	index := fmt.Sprintf("%s-*", data.ESTERecordsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESTERecordsIndex)
 
 	boolQuery := newTEBoolQueryWithRecordQuery(query)
 

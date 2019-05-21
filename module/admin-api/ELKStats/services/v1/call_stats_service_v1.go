@@ -12,6 +12,7 @@ import (
 	dataV1 "emotibot.com/emotigo/module/admin-api/ELKStats/data/v1"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
+	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	elastic "gopkg.in/olivere/elastic.v6"
 )
 
@@ -23,8 +24,8 @@ func createCallStatsDateHistogramAggregation(query dataV1.CallStatsQuery) *elast
 
 func doCallStatsDateHistogramAggService(ctx context.Context, client *elastic.Client,
 	query elastic.Query, aggName string, agg elastic.Aggregation) (map[string]interface{}, error) {
-	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
-	result, err := services.CreateSearchService(ctx, client, query, index, data.ESSessionsType, aggName, agg)
+	index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
+	result, err := services.CreateSearchService(ctx, client, query, index, esData.ESSessionsType, aggName, agg)
 	if err != nil {
 		return nil, err
 	}
@@ -160,11 +161,11 @@ func TopToHumanAnswers(query dataV1.CallStatsQuery, topN int) (dataV1.ToHumanAns
 		Field("session_id").
 		Size(data.ESTermAggSize)
 
-	index := fmt.Sprintf("%s-*", data.ESSessionsIndex)
+	index := fmt.Sprintf("%s-*", esData.ESSessionsIndex)
 
 	result, err := client.Search().
 		Index(index).
-		Type(data.ESSessionsType).
+		Type(esData.ESSessionsType).
 		Query(boolQuery).
 		Aggregation(groupBySessionsAggName, groupBySessionsAgg).
 		Size(0).
@@ -195,11 +196,11 @@ func TopToHumanAnswers(query dataV1.CallStatsQuery, topN int) (dataV1.ToHumanAns
 	latestRecordsTopHitAgg := elastic.NewTopHitsAggregation().Sort(data.LogTimeFieldName, false).Size(vaildRecordCount)
 	groupBySessionsAgg.SubAggregation(latestRecordsAggName, latestRecordsTopHitAgg)
 
-	index = fmt.Sprintf("%s-*", data.ESRecordsIndex)
+	index = fmt.Sprintf("%s-*", esData.ESRecordsIndex)
 
 	result, err = client.Search().
 		Index(index).
-		Type(data.ESRecordType).
+		Type(esData.ESRecordType).
 		Query(termsQuery).
 		Aggregation(groupBySessionsAggName, groupBySessionsAgg).
 		Size(0).
@@ -212,7 +213,7 @@ func TopToHumanAnswers(query dataV1.CallStatsQuery, topN int) (dataV1.ToHumanAns
 		for _, bucket := range agg.Buckets {
 			recordBuckets, found := bucket.TopHits(latestRecordsAggName)
 			if !found {
-				return nil, data.ErrESTopHitNotFound
+				return nil, esData.ErrESTopHitNotFound
 			}
 
 			if recordBuckets.Hits.TotalHits < int64(vaildRecordCount) {

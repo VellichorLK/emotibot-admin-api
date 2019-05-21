@@ -1,22 +1,25 @@
 package CustomChat
 
 import (
-	"github.com/tealeg/xlsx"
-	"emotibot.com/emotigo/module/admin-api/util/localemsg"
-	"emotibot.com/emotigo/pkg/logger"
-	"fmt"
-	"strings"
-	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
-	"bytes"
 	"bufio"
-	"emotibot.com/emotigo/module/admin-api/util"
-	"time"
+	"bytes"
 	"database/sql"
-	"strconv"
-	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
 	"encoding/json"
-	"emotibot.com/emotigo/module/admin-api/Service"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
 	"unicode/utf8"
+
+	qaData "emotibot.com/emotigo/module/admin-api/QADoc/data"
+	qaServices "emotibot.com/emotigo/module/admin-api/QADoc/services"
+	"emotibot.com/emotigo/module/admin-api/Service"
+	"emotibot.com/emotigo/module/admin-api/util"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/zhconverter"
+	"emotibot.com/emotigo/pkg/logger"
+	"github.com/tealeg/xlsx"
 )
 
 func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*CustomQuestions, err error) {
@@ -33,7 +36,7 @@ func ParseImportQuestionFile(buf []byte, locale string) (customQuestions []*Cust
 	}
 
 	for idx := range sheets {
-		if sheets[idx].Name == localemsg.Get(locale, "CustomChatQuestionSheetName"){
+		if sheets[idx].Name == localemsg.Get(locale, "CustomChatQuestionSheetName") {
 			hasContent = true
 			break
 		}
@@ -61,7 +64,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 			}
 			categoryIdx, questionIdx, answerIdx := getQuestionColumnIdx(rows[0], locale)
 			if categoryIdx < 0 || categoryIdx > 2 || questionIdx < 0 || questionIdx > 2 || answerIdx < 0 || answerIdx > 2 {
-				return nil,  AdminErrors.New(AdminErrors.ErrnoRequestError,
+				return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 					fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadNoHeaderTpl"), sheets[idx].Name))
 			}
 
@@ -77,13 +80,13 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 				answer := strings.TrimSpace(cells[answerIdx].String())
 
 				qLength := utf8.RuneCountInString(question)
-				if qLength > 50{
+				if qLength > 50 {
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 50))
 
 				}
 				aLength := utf8.RuneCountInString(answer)
-				if aLength > 1500{
+				if aLength > 1500 {
 					return nil, AdminErrors.New(AdminErrors.ErrnoRequestError,
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionExceedLimit"), sheets[idx].Name, rowIdx+1, 1500))
 				}
@@ -111,7 +114,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 
 				}
 				ans := Answer{}
-				ans.Content =answer
+				ans.Content = answer
 				answerList := append(questionsMap[question].Answers, ans)
 				questionsMap[question].Category = category
 				questionsMap[question].Answers = answerList
@@ -125,7 +128,7 @@ func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQ
 				}
 			}
 
-			for k,v := range questionsMap {
+			for k, v := range questionsMap {
 
 				if _, ok := customQuestionsMap[v.Category]; !ok {
 					customQuestionsEnt := CustomQuestions{}
@@ -169,7 +172,6 @@ func UpdateLatestCustomChatExtends(appid string, questions []*Question) AdminErr
 	return nil
 }
 
-
 func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err error) {
 	file, err := xlsx.OpenBinary(buf)
 	if err != nil {
@@ -184,7 +186,7 @@ func ParseImportExtendFile(buf []byte, locale string) (extends []*Question, err 
 	}
 
 	for idx := range sheets {
-		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName"){
+		if sheets[idx].Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
 			hasContent = true
 			break
 		}
@@ -261,7 +263,6 @@ func parseCustomChatExtendSheets(sheets []*xlsx.Sheet, locale string) (questions
 						fmt.Sprintf(localemsg.Get(locale, "CustomChatUploadQuestionRowNoExtendTpl"), sheets[idx].Name, rowIdx+1))
 				}
 
-
 				if _, ok := questionsMap[question]; !ok {
 					questionEnt := Question{}
 
@@ -311,27 +312,27 @@ func GetExportCustomChat(appid string, locale string) (ret []byte, err AdminErro
 	sheets := []*xlsx.Sheet{sheetQuestion, sheetExtend}
 
 	for _, sheet := range sheets {
-		if sheet.Name == localemsg.Get(locale, "CustomChatQuestionSheetName"){
+		if sheet.Name == localemsg.Get(locale, "CustomChatQuestionSheetName") {
 			headerRow := sheet.AddRow()
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatCategory"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatQuestion"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatAnswer"))
-		}else if sheet.Name == localemsg.Get(locale, "CustomChatExtendSheetName"){
+		} else if sheet.Name == localemsg.Get(locale, "CustomChatExtendSheetName") {
 			headerRow := sheet.AddRow()
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatQuestion"))
 			headerRow.AddCell().SetString(localemsg.Get(locale, "CustomChatExtend"))
 		}
 	}
 
-	for _, cq := range customQuestions{
-		for _, question := range cq.Questions{
-			for _, answer := range question.Answers{
+	for _, cq := range customQuestions {
+		for _, question := range cq.Questions {
+			for _, answer := range question.Answers {
 				row := sheetQuestion.AddRow()
 				row.AddCell().SetString(cq.Category)
 				row.AddCell().SetString(question.Content)
 				row.AddCell().SetString(answer.Content)
 			}
-			for _, extend := range question.Extends{
+			for _, extend := range question.Extends {
 				row := sheetExtend.AddRow()
 				row.AddCell().SetString(question.Content)
 				row.AddCell().SetString(extend.Content)
@@ -348,7 +349,6 @@ func GetExportCustomChat(appid string, locale string) (ret []byte, err AdminErro
 	}
 	return buf.Bytes(), nil
 }
-
 
 //func parseCustomChatQuestionSheets(sheets []*xlsx.Sheet, locale string) (customQuestions []*CustomQuestions, err error) {
 //	customQuestionsMap := map[string]*CustomQuestions{}
@@ -444,9 +444,9 @@ func getExtendColumnIdx(row *xlsx.Row, locale string) (questionIdx, extendIdx in
 	questionIdx, extendIdx = -1, -1
 	for idx := range row.Cells {
 		cellStr := row.Cells[idx].String()
-		if cellStr == localemsg.Get(locale, "CustomChatQuestion"){
+		if cellStr == localemsg.Get(locale, "CustomChatQuestion") {
 			questionIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatExtend"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatExtend") {
 			extendIdx = idx
 		}
 	}
@@ -458,11 +458,11 @@ func getQuestionColumnIdx(row *xlsx.Row, locale string) (categoryIdx, questionId
 	categoryIdx, questionIdx, answerIdx = -1, -1, -1
 	for idx := range row.Cells {
 		cellStr := row.Cells[idx].String()
-		if cellStr == localemsg.Get(locale, "CustomChatCategory")  {
+		if cellStr == localemsg.Get(locale, "CustomChatCategory") {
 			categoryIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatQuestion"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatQuestion") {
 			questionIdx = idx
-		} else if cellStr == localemsg.Get(locale, "CustomChatAnswer"){
+		} else if cellStr == localemsg.Get(locale, "CustomChatAnswer") {
 			answerIdx = idx
 		}
 	}
@@ -470,19 +470,17 @@ func getQuestionColumnIdx(row *xlsx.Row, locale string) (categoryIdx, questionId
 	return
 }
 
+func SyncCustomChat(appid string, force bool) (err error) {
 
-func SyncCustomChatToSolr(appid string ,force bool) (err error) {
-
-	return ForceSyncCustomChatToSolr(appid, true)
+	return ForceSyncCustomChatToES(appid, true)
 }
 
-
-func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
+func ForceSyncCustomChatToES(appid string, force bool) (err error) {
 	restart := false
-	body := ""
+	var body []byte
 	defer func() {
 		if err != nil {
-			logger.Error.Println("Error when sync to solr:", err.Error())
+			logger.Error.Println("Error when syncing:", err.Error())
 			return
 		}
 	}()
@@ -490,7 +488,7 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 	if !force {
 		var start bool
 		var pid int
-		start, pid, err = tryStartSyncProcess(syncSolrTimeout)
+		start, pid, err = tryStartSyncProcess(syncTimeout)
 		if err != nil {
 			return
 		}
@@ -524,37 +522,36 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 			if restart {
 				logger.Trace.Println("Restart sync process")
 				time.Sleep(time.Second)
-				go ForceSyncCustomChatToSolr(appid, false)
+				go ForceSyncCustomChatToES(appid, false)
 			}
 		}()
 	}
 
 	var pid int
-	_, pid, err = tryStartSyncProcess(syncSolrTimeout)
+	_, pid, err = tryStartSyncProcess(syncTimeout)
 
 	customQuestions, err := dao.GetCustomChatQuestionsWithStatus(appid)
 	if err != nil {
 		return
 	}
 
-	questions := []*ChatQuestionTagging{}
+	questions := ChatQuestionTaggings{}
 	for _, cq := range customQuestions {
 
 		for _, q := range cq.Questions {
 			question := ChatQuestionTagging{}
-			qID:=strconv.FormatInt(q.ID,10)
+			qID := strconv.FormatInt(q.ID, 10)
 			for _, a := range q.Answers {
 
-				aID:=strconv.FormatInt(a.ID,10)
+				aID := strconv.FormatInt(a.ID, 10)
 				answer := ChatAnswerTagging{}
 				answer.AnswerID = qID + "_" + "0" + "_" + aID
 				answer.Answer = a.Content
-				answer.Keyword = ""
-				answer.Segment = ""
-				answer.WordPos = ""
-				answer.SentenceType = ""
 				question.Answers = append(question.Answers, &answer)
 			}
+			// The stdQId and content are original content
+			question.StdQID = qID
+			question.StdQContent = q.Content
 			question.QuestionID = qID + "_" + "0"
 			question.Question = q.Content
 			question.Keyword = ""
@@ -565,9 +562,11 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 
 			questions = append(questions, &question)
 
-			for _, e := range q.Extends{
+			for _, e := range q.Extends {
 				extend := ChatQuestionTagging{}
-				eID:=strconv.FormatInt(e.ID,10)
+				eID := strconv.FormatInt(e.ID, 10)
+				extend.StdQID = qID
+				extend.StdQContent = q.Content
 				extend.QuestionID = qID + "_" + eID
 				extend.Question = e.Content
 				extend.Keyword = ""
@@ -591,19 +590,26 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 			return
 		}
 
-		jsonStr, _ := json.Marshal(questions)
-
-		body, err = Service.DeleteInSolrByFiled("id", appid + "_other*")
-
+		// Delete all questions and related answers
+		body, err = qaServices.DeleteQADocsByRegex([]*qaData.RegexQuery{
+			&qaData.RegexQuery{
+				Field:      "doc_id",
+				Expression: fmt.Sprintf("%s_editorial_custom.*", appid),
+			},
+		})
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n",
+				err.Error(), string(body))
 			return
 		}
 
-		logger.Trace.Printf("JSON send to solr: %s\n", jsonStr)
-		body, err = Service.IncrementAddSolrByType(jsonStr, "other")
+		jsonStr, _ := json.Marshal(questions)
+		logger.Trace.Printf("Synced JSON: %s\n", jsonStr)
+
+		body, err = qaServices.BulkCreateQADocs(questions.convertToQACoreDocs())
 		if err != nil {
-			logger.Error.Printf("Solr-etl fail, err: %s, response: %s, \n", err.Error(), body)
+			logger.Error.Printf("QA service fail, err: %s, response: %s, \n",
+				err.Error(), string(body))
 			return
 		}
 	}
@@ -620,7 +626,6 @@ func ForceSyncCustomChatToSolr(appid string, force bool) (err error) {
 	return
 }
 
-
 func convertQuestionContentWithZhCn(questions []*ChatQuestionTagging) []*ChatQuestionTagging {
 	if questions == nil {
 		return questions
@@ -633,15 +638,11 @@ func convertQuestionContentWithZhCn(questions []*ChatQuestionTagging) []*ChatQue
 		if q.Answers == nil {
 			continue
 		}
-		for _, answer := range q.Answers {
-			answer.Answer = zhconverter.T2S(answer.Answer)
-		}
 	}
 	return questions
 }
 
-
-func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err error) {
+func tryStartSyncProcess(syncTimeout int) (ret bool, processID int, err error) {
 	// this sync status no need to check appid
 	defer func() {
 		util.ShowError(err)
@@ -680,7 +681,7 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 	now := time.Now().Unix()
 	if running {
 		logger.Trace.Printf("Previous still running from %d", start)
-		if int(now)-start <= syncSolrTimeout {
+		if int(now)-start <= syncTimeout {
 			return
 		}
 	}
@@ -709,7 +710,6 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 	return
 }
 
-
 func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	// this sync status no need to check appid
 	defer func() {
@@ -733,7 +733,6 @@ func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	_, err = mySQL.Exec(queryStr, status, msg, pid)
 	return
 }
-
 
 func needProcessCustomChatData(appid string) (ret bool, err error) {
 	ret = false

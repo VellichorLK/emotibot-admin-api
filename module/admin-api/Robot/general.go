@@ -71,7 +71,7 @@ func init() {
 			util.NewEntryPoint("PUT", "config", []string{"edit"}, config.HandleSetRobotConfig),
 		},
 		OneTimeFunc: map[string]func(){
-			"SyncRobotProfileToSolr": SyncOnce,
+			"SyncRobotProfile": SyncOnce,
 		},
 	}
 }

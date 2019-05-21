@@ -503,7 +503,7 @@ func deleteRobotQARQuestionV3(appid string, qid, rQid int) (err error) {
 	return err
 }
 
-func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err error) {
+func tryStartSyncProcess(syncTimeout int) (ret bool, processID int, err error) {
 	// this sync status no need to check appid
 	defer func() {
 		util.ShowError(err)
@@ -542,7 +542,7 @@ func tryStartSyncProcess(syncSolrTimeout int) (ret bool, processID int, err erro
 	now := time.Now().Unix()
 	if running {
 		logger.Trace.Printf("Previous still running from %d", start)
-		if int(now)-start <= syncSolrTimeout {
+		if int(now)-start <= syncTimeout {
 			return
 		}
 	}
@@ -595,7 +595,7 @@ func finishSyncProcess(pid int, result bool, msg string) (err error) {
 	return
 }
 
-func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret []*ManualTagging, appids []string, err error) {
+func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []interface{}, deleteAnsIDs []interface{}, ret ManualTaggings, appids []string, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -618,7 +618,7 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 	if forceMode {
 		// TODO: modify this sql, this will be
 		queryStr = `
-		SELECT id, qid, content, appid
+		SELECT extendQA.id, extendQA.qid, extendQA.content, extendQA.appid, stdQ.content
 		FROM
 		(
 				SELECT id, r.qid as qid, content, appid, status, aid
@@ -631,28 +631,30 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 						GROUP BY qid
 					) as changeQ
 				ON r.qid = changeQ.qid
-		) AS final
+		) AS extendQA
+		INNER JOIN robot_profile_question AS stdQ ON extendQA.qid = stdQ.id
 		-- get all extend q who is not deleted
-		WHERE (final.status >= 0 OR final.aid IS NOT NULL)`
+		WHERE (extendQA.status >= 0 OR extendQA.aid IS NOT NULL)`
 	} else {
 		queryStr = `
-		SELECT id, qid, content, appid
+		SELECT extendQA.id, extendQA.qid, extendQA.content, extendQA.appid, stdQ.content
 		FROM
 		(
-				SELECT id, r.qid as qid, content, appid, status, aid
+				SELECT id, r.qid as qid, content, r.appid, status, aid
 				FROM robot_profile_extend AS r
 				-- select answer changed from answer
 				LEFT JOIN
 					(
-						SELECT qid, GROUP_CONCAT(id) as aid
+						SELECT qid, appid, GROUP_CONCAT(id) as aid
 						FROM robot_profile_answer
 						WHERE status = 1 OR status = -1
-						GROUP BY qid
-					) as changeQ
-				ON r.qid = changeQ.qid
-		) AS final
+						GROUP BY qid, appid
+					) as changeA
+				ON r.qid = changeA.qid AND r.appid = changeA.appid
+		) AS extendQA
+		INNER JOIN robot_profile_question AS stdQ ON extendQA.qid = stdQ.id
 		-- only get changed extend q, and extend q whose answer changed
-		WHERE final.status = 1 OR final.aid IS NOT NULL`
+		WHERE extendQA.status = 1 OR extendQA.aid IS NOT NULL`
 	}
 	rqRows, err = t.Query(queryStr)
 	if err != nil {
@@ -660,18 +662,19 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 	}
 	defer rqRows.Close()
 
-	rqInfos := []*ManualTagging{}
+	rqInfos := ManualTaggings{}
 	// key is standard q id, values are rq of standard q
-	rqMap := map[int][]*ManualTagging{}
+	rqMap := map[int]ManualTaggings{}
 	qids := []interface{}{}
 
 	for rqRows.Next() {
 		temp := ManualTagging{}
 		id, qid := 0, 0
-		err = rqRows.Scan(&id, &qid, &temp.Question, &temp.AppID)
-		temp.SolrID = fmt.Sprintf("%d_%d", qid, id)
+		err = rqRows.Scan(&id, &qid, &temp.Question, &temp.AppID, &temp.StdQContent)
+		temp.StdQID = fmt.Sprintf("%d", qid)
+		temp.DocID = fmt.Sprintf("%d_%d", qid, id)
 		if _, ok := rqMap[qid]; !ok {
-			rqMap[qid] = []*ManualTagging{}
+			rqMap[qid] = ManualTaggings{}
 			qids = append(qids, qid)
 		}
 		rqMap[qid] = append(rqMap[qid], &temp)
@@ -694,7 +697,9 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 		temp := ManualTagging{}
 		id := 0
 		err = qRows.Scan(&id, &temp.Question, &temp.AppID)
-		temp.SolrID = fmt.Sprintf("%d_0", id)
+		temp.StdQID = fmt.Sprintf("%d", id)
+		temp.StdQContent = temp.Question
+		temp.DocID = fmt.Sprintf("%d_0", id)
 		if _, ok := rqMap[id]; !ok {
 			rqMap[id] = []*ManualTagging{}
 			qids = append(qids, id)
@@ -730,14 +735,16 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 				info := rqMap[qid][idx]
 				if info.AppID == appid {
 					info.Answers = append(info.Answers, &ManualAnswerTagging{
-						SolrID: fmt.Sprintf("%s_%d", info.SolrID, id),
+						DocID: fmt.Sprintf("%s_%d", info.DocID, id),
 						Answer: content,
 					})
+					appidMap[appid] = true
 				}
 			}
 		}
-		ansIDs = append(ansIDs, id)
-		appidMap[appid] = true
+		if appidMap[appid] == true {
+			ansIDs = append(ansIDs, id)
+		}
 	}
 
 	queryStr = fmt.Sprintf(`
@@ -770,7 +777,7 @@ func getProcessModifyRobotQA(forceMode bool) (rqIDs []interface{}, ansIDs []inte
 	return
 }
 
-func getDeleteModifyRobotQA() (mapSolrIDs map[string][]string, rqIDs []interface{}, err error) {
+func getDeleteModifyRobotQA() (mapDocIDs map[string][]string, rqIDs []interface{}, err error) {
 	defer func() {
 		util.ShowError(err)
 	}()
@@ -796,7 +803,7 @@ func getDeleteModifyRobotQA() (mapSolrIDs map[string][]string, rqIDs []interface
 	}
 	defer rqRows.Close()
 
-	mapSolrIDs = map[string][]string{}
+	mapDocIDs = map[string][]string{}
 	for rqRows.Next() {
 		id, qid := 0, 0
 		appid := ""
@@ -804,10 +811,10 @@ func getDeleteModifyRobotQA() (mapSolrIDs map[string][]string, rqIDs []interface
 		if err != nil {
 			return
 		}
-		if _, ok := mapSolrIDs[appid]; !ok {
-			mapSolrIDs[appid] = []string{}
+		if _, ok := mapDocIDs[appid]; !ok {
+			mapDocIDs[appid] = []string{}
 		}
-		mapSolrIDs[appid] = append(mapSolrIDs[appid], fmt.Sprintf("%d_%d", qid, id))
+		mapDocIDs[appid] = append(mapDocIDs[appid], fmt.Sprintf("%d_%d", qid, id))
 		rqIDs = append(rqIDs, id)
 	}
 	err = t.Commit()

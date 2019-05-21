@@ -26,6 +26,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats"
 	"emotibot.com/emotigo/module/admin-api/FAQ"
 	"emotibot.com/emotigo/module/admin-api/QA"
+	"emotibot.com/emotigo/module/admin-api/QADoc"
 	"emotibot.com/emotigo/module/admin-api/Robot"
 	"emotibot.com/emotigo/module/admin-api/Service"
 	"emotibot.com/emotigo/module/admin-api/Stats"
@@ -69,6 +70,7 @@ var modules = []*util.ModuleInfo{
 	&Switch.ModuleInfo,
 	&Robot.ModuleInfo,
 	&QA.ModuleInfo,
+	&QADoc.ModuleInfo,
 	&FAQ.ModuleInfo,
 	&QA.TestModuleInfo,
 	&Task.ModuleInfo,
