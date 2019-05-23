@@ -1150,7 +1150,7 @@ func handleSearchSQuestion(ctx context.Context) {
 		if len(stdquestion) > 0 {
 			util.LogInfo.Printf("found for by stdq {%s}", content)
 			ctx.StatusCode(http.StatusOK)
-			ctx.JSON(stdquestion)
+			ctx.JSON(stdquestion[0])
 		}
 		return
 	} else if err != nil {
