@@ -1137,7 +1137,21 @@ func handleSearchSQuestion(ctx context.Context) {
 	util.LogInfo.Printf("check simalar question {%s}", content)
 	squestion, err := searchSQuestionByContent(content, appid)
 	if err == util.ErrSQLRowNotFound {
+		util.LogInfo.Printf("not Found for sq {%s}", content)
 		ctx.StatusCode(http.StatusNotFound)
+		//return
+		var contents = []string{content}
+		stdquestion, err := FilterQuestions(appid, contents)
+		if err != nil {
+			ctx.StatusCode(http.StatusInternalServerError)
+			util.LogError.Printf("searching SQuestion by content failed, %s", err)
+			return
+		}
+		if len(stdquestion) > 0 {
+			util.LogInfo.Printf("found for by stdq {%s}", content)
+			ctx.StatusCode(http.StatusOK)
+			ctx.JSON(stdquestion)
+		}
 		return
 	} else if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
@@ -1166,11 +1180,9 @@ func handleBatchSearchSQuestion(ctx context.Context) {
 		return
 	}
 
+	//过滤相似问
 	squestion, err := searchBatchSQuestionByContent(parameters.Question, appid)
-	if err == util.ErrSQLRowNotFound {
-		ctx.StatusCode(http.StatusNotFound)
-		return
-	} else if err != nil {
+	if err != nil {
 		ctx.StatusCode(http.StatusInternalServerError)
 		util.LogError.Printf("searching SQuestion by content failed, %s", err)
 		return
@@ -1184,6 +1196,26 @@ func handleBatchSearchSQuestion(ctx context.Context) {
 		var next *list.Element
 		for e := l.Front(); e != nil; {
 			if e.Value.(string) == sq {
+				next = e.Next()
+				l.Remove(e)
+				e = next
+			} else {
+				e = e.Next()
+			}
+		}
+	}
+
+	//过滤标准问
+	stdquestion, err := FilterQuestions(appid, parameters.Question)
+	if err != nil {
+		ctx.StatusCode(http.StatusInternalServerError)
+		util.LogError.Printf("searching SQuestion by content failed, %s", err)
+		return
+	}
+	for _, std := range stdquestion {
+		var next *list.Element
+		for e := l.Front(); e != nil; {
+			if e.Value.(string) == std.Content {
 				next = e.Next()
 				l.Remove(e)
 				e = next
