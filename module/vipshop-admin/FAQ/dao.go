@@ -2027,3 +2027,25 @@ func searchBatchSQuestionByContent(content []string, appid string) ([]string, er
 	return questions, nil
 
 }
+
+func DeleteSQuestions(appid string, questions []Question) error {
+	lastOperation := time.Now()
+	db := util.GetMainDB()
+	if db == nil {
+		return fmt.Errorf("main db connection pool is nil")
+	}
+
+	sqlStr := fmt.Sprintf("delete FROM %s_squestion where Question_id=? ", appid)
+	util.LogInfo.Printf("sqlStr: %s\n", sqlStr)
+
+	for _, question := range questions {
+		_, err := db.Exec(sqlStr, question.QuestionId)
+		if err != nil {
+			util.LogInfo.Printf("err: %s\n", err)
+		}
+	}
+
+	util.LogInfo.Printf("delete questions in DeleteQuestions took: %s\n", time.Since(lastOperation))
+
+	return nil
+}

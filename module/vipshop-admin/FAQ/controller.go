@@ -997,6 +997,7 @@ func extractRawFileName(tag string) string {
 func handleDeleteQuestion(ctx context.Context) {
 	// 1. get to be deleted questions
 	// 2. delete questions
+	// 2.1 delete squestions
 	// 3. write audit log
 	lastOperation := time.Now()
 	type Parameters struct {
@@ -1044,6 +1045,16 @@ func handleDeleteQuestion(ctx context.Context) {
 		auditRet = 0
 	}
 	util.LogInfo.Printf("delete questions in handleDeleteQuestion took: %s\n", time.Since(lastOperation))
+	lastOperation = time.Now()
+
+	//2.1
+	err = DeleteSQuestions(appid, targetQuestions)
+	if err != nil {
+		util.LogError.Printf("Error happened delete squestions %s", err.Error())
+		ctx.StatusCode(http.StatusInternalServerError)
+		auditRet = 0
+	}
+	util.LogInfo.Printf("delete squestions in handleDeleteQuestion took: %s\n", time.Since(lastOperation))
 	lastOperation = time.Now()
 
 	// write audit log
@@ -1182,13 +1193,27 @@ func handleBatchSearchSQuestion(ctx context.Context) {
 		}
 	}
 
-	var result []string
+	var result = []string{}
 	for e := l.Front(); e != nil; e = e.Next() {
 		result = append(result, e.Value.(string))
 	}
+	result = RemoveRepByMap(result)
 
 	ctx.StatusCode(http.StatusOK)
 	ctx.JSON(result)
 
 	util.LogInfo.Printf("search question content in handleSearchQuestion took: %s\n", time.Since(lastOperation))
+}
+
+func RemoveRepByMap(slc []string) []string {
+	result := []string{}
+	tempMap := map[string]byte{} // 存放不重复主键
+	for _, e := range slc {
+		l := len(tempMap)
+		tempMap[e] = 0
+		if len(tempMap) != l { // 加入map后，map长度变化，则元素不重复
+			result = append(result, e)
+		}
+	}
+	return result
 }
