@@ -21,6 +21,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/api/faqcluster/v1"
 	"emotibot.com/emotigo/pkg/logger"
+
+	dac "emotibot.com/emotigo/pkg/api/dac/v1"
 )
 
 var (
@@ -62,11 +64,24 @@ func Init() error {
 		return fmt.Errorf("new dal client failed, %v", err)
 	}
 
+	dacURL, found := util.GetEnvOf("server")["DAC_URL"]
+	if !found {
+		return fmt.Errorf("CAN NOT FOUND SERVER ENV \"DAC_URL\"")
+	}
+
+	dacClient, err := dac.NewClientWithHTTPClient(dacURL, &http.Client{Timeout: time.Duration(5) * time.Second})
+	if err != nil {
+		return fmt.Errorf("new dac client failed, %v", err)
+	}
+
+
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient, dalClient)),
 			util.NewEntryPoint(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss)),
+
+			util.NewEntryPointWithVer(http.MethodPut, "reports", []string{}, NewDoReportHandlerV2(ss, ss, ss, ss, clusterClient, dacClient), 2),
 		},
 	}
 	worker = newClusteringWork(ss, ss, ss, clusterClient)
@@ -183,6 +198,120 @@ func NewDoReportHandler(reportService ReportsService, recordsService ReportRecor
 		}{ID: id})
 	})
 }
+
+
+//NewDoReportHandler create a DoReport Handler with given reportSerivce & faqClient.
+func NewDoReportHandlerV2(reportService ReportsService, recordsService ReportRecordsService, clusterService ReportClustersService, simpleFTService SimpleFTService, faqClient *faqcluster.Client, dacClient *dac.Client) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		appid := requestheader.GetAppID(r)
+		var query statDataV1.RecordQuery
+		requestBody, _ := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
+		err := json.Unmarshal(requestBody, &query)
+		if err != nil {
+			logger.Warn.Printf("PUT /reports: request body can not be decoded, %s", requestBody)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "input format error"), nil)
+			return
+		}
+		rawRequestQuery, _ := json.Marshal(query)
+		query.AppID = appid
+		query.Limit = 0
+		result, err := statServiceV1.VisitRecordsQuery(query,
+			statServiceCommon.AggregateFilterMarkedRecord, statServiceCommon.AggregateFilterIgnoredRecord)
+		if err != nil {
+			logger.Error.Printf("get records failed, %v", err)
+		}
+		markedSize, _ := result.Aggs["isMarked"].(int64)
+		ignoredSize, _ := result.Aggs["isIgnored"].(int64)
+		logger.Trace.Printf("agg info: %+v\n", result.Aggs)
+		//Because we need to query a user query first to see if aggregation result
+		//than we change query condition to match the spec of new report(do not include marked & ignored records)
+		//limit 10000 is the limitation of elastic search.
+		query.Limit = 10000
+		query.IsIgnored = new(bool)
+		query.IsMarked = new(bool)
+		result, err = statServiceV1.VisitRecordsQuery(query)
+		now := time.Now().Unix()
+		thirtyMinAgo := now - 1800
+		s := int(ReportStatusRunning)
+		rQuery := ReportQuery{
+			AppID: appid,
+			UpdatedTime: &searchPeriod{
+				StartTime: &thirtyMinAgo,
+				EndTime:   &now,
+			},
+			Status: &s,
+		}
+
+		reports, err := reportService.QueryReports(rQuery)
+		if err != nil {
+			logger.Error.Printf("PUT /reports: new request error, %v\n", err)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
+			return
+		}
+		if len(reports) > 0 {
+			http.Error(w, "conflicted", http.StatusConflict)
+			return
+		}
+
+		newReport := Report{
+			CreatedTime: time.Now().Unix(),
+			UpdatedTime: time.Now().Unix(),
+			Condition:   string(rawRequestQuery),
+			UserID:      requestheader.GetUserID(r),
+			AppID:       appid,
+			IgnoredSize: ignoredSize,
+			MarkedSize:  markedSize,
+			SkippedSize: 0,
+			Status:      ReportStatusRunning,
+		}
+		model, err := simpleFTService.GetFTModel(appid)
+		if err == sql.ErrNoRows {
+			newReportError(reportService, "bad request, need train model before use", 0)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoRequestError, "找不到Model，请先透过SSM训练"), nil)
+			return
+		}
+		if err != nil {
+			newReportError(reportService, "Failed to get simpleFT model, "+err.Error(), 0)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
+			return
+		}
+		var inputs = []interface{}{}
+		for _, h := range result.Hits {
+			found, err := dacClient.IsStandardQuestion(appid, h.UserQ)
+			if err != nil {
+				newReportError(reportService, "dac client error "+err.Error(), 0)
+				util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
+				return
+			}
+			if found {
+				newReport.SkippedSize++
+				continue
+			}
+			var input = map[string]string{
+				"id":    h.UniqueID,
+				"value": h.UserQ,
+			}
+			inputs = append(inputs, input)
+		}
+		id, err := reportService.NewReport(newReport)
+		if err != nil {
+			logger.Error.Printf("Failed to create new report, %v", err)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoDBError, "internal server error"), nil)
+			return
+		}
+		var paramas = map[string]interface{}{
+			"model_version": model,
+		}
+		go worker(id, paramas, inputs)
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(struct {
+			ID uint64 `json:"report_id"`
+		}{ID: id})
+	})
+}
+
+
 
 //NewGetReportHandler create a http.Handler for handling request of
 func NewGetReportHandler(rs ReportsService, cs ReportClustersService, rrs ReportRecordsService) http.HandlerFunc {

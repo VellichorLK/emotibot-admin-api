@@ -240,7 +240,27 @@ func GetRecommandStdQuestion(appid string, pattern string, n int) ([]string, Adm
 	return matcher[appid].FindNSentence(pattern, n), nil
 }
 
-
+func GetRecommandStdQuestionFromDac(appid string, pattern string, n int) ([]string, AdminErrors.AdminError) {
+	now := time.Now().Unix()
+	typeStr := getEnvironment("MATCH_TYPE")
+	if typeStr == "prefix" {
+		matcherType = match.PrefixMode
+	}
+	expirePeriod, err := strconv.ParseInt(getEnvironment("MATCH_CACHE_TIMEOUT"), 10, 64)
+	if err != nil || expirePeriod == 0 {
+		expirePeriod = dftExpirePeriod
+	}
+	if now >= stdQuestionExpire[appid] || matcher[appid] == nil {
+		questions, err := dacClient.Questions(appid)
+		if err != nil {
+			return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, err.Error())
+		}
+		matcher[appid] = match.New(questions, matcherType)
+		stdQuestionExpire[appid] = now + expirePeriod
+		logger.Trace.Printf("Reload %d std questions of %s, timeout when %d\n", len(questions), appid, stdQuestionExpire[appid])
+	}
+	return matcher[appid].FindNSentence(pattern, n), nil
+}
 
 
 func IncrementAddSolrByType(content []byte, kind string) (string, error) {
