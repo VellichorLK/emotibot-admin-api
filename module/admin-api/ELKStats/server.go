@@ -114,8 +114,8 @@ func Init() error {
 			util.NewEntryPointWithVer("POST", "records/intent-mark", []string{"view", "export"}, controllersV2.RecordsIntentMarkHandler, 2),
 
 
-			util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV1.NewRecordsMarkUpdateHandlerV2(dacClient), 2),
-			util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandlerV2(dacClient), 2),
+			//util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV1.NewRecordsMarkUpdateHandlerV2(dacClient), 3),
+			//util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandlerV2(dacClient), 3),
 			util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV2.NewRecordsMarkUpdateHandlerV3(dacClient), 3),
 			util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV2.NewRecordSSMHandlerV3(dacClient), 3),
 
