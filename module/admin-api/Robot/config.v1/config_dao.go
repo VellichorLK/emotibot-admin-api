@@ -156,7 +156,7 @@ func (dao configMySQL) GetConfig(appid, configName string) (*Config, error) {
 
 	// order by appid will let row with appid nonempty be the first row.
 	queryStr := `
-		SELECT appid, module, value, update_time, status
+		SELECT appid, code, module, value, update_time, status
 		FROM bfop_config
 		WHERE
 			(appid = ? OR appid = '') AND
