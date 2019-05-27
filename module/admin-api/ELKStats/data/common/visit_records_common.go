@@ -37,6 +37,16 @@ const (
 	VisitRecordsMetricFeedbackTime    = "feedback_time"
 	VisitRecordsMetricThreshold       = "threshold"
 	VisitRecordsMetricTSpan           = "tspan"
+
+	// ccs
+	VisitRecordsMetricUnique      = "unique_id"
+	VisitRecordsMetricRecordID    = "record_id"
+	VisitRecordsMetricRuleIDs     = "rule_ids"
+	VisitRecordsMetricTaskID      = "task_id"
+	VisitRecordsMetricRawResponse = "raw_response"
+	VisitMetricTagID              = "tag_id"
+	VisitTagsMetricAnswers		  = "answers"
+	VisitTagsMetricAIModule		  = "ai_module"
 )
 
 type VisitRecordsExportResponse struct {
