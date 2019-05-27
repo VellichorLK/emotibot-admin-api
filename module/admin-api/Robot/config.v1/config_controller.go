@@ -15,6 +15,13 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
+func HandleGetRobotConfig(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	configName := r.FormValue("configName")
+	config, err := GetConfig(appid, configName)
+	util.Return(w, err, config)
+}
+
 func HandleGetRobotConfigs(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	configs, err := GetConfigs(appid)

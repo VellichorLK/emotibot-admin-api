@@ -67,6 +67,7 @@ func init() {
 				IgnoreAppID: true,
 			}),
 
+			util.NewEntryPoint("GET", "config", []string{"view"}, config.HandleGetRobotConfig),
 			util.NewEntryPoint("GET", "configs", []string{"view"}, config.HandleGetRobotConfigs),
 			util.NewEntryPoint("PUT", "config", []string{"edit"}, config.HandleSetRobotConfig),
 		},
