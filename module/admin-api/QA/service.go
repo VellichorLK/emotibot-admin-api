@@ -35,6 +35,13 @@ func DoChatRequestWithBFOPController(appid string, user string, inputData *QATes
 	customHeader := make(map[string]string)
 	customHeader["X-Lb-Uid"] = user
 
+	// for openapi
+	customHeader["uuid"] = genRandomUUIDSameAsOpenAPI()
+	customHeader["appId"] = appid
+	customHeader["userId"] = user
+	input["text"] = inputData.UserInput
+	input["extendData"] = inputData.ExtendData
+
 	response, err := util.HTTPPostJSONWithHeader(controllerURL, input, 10, customHeader)
 	if err != nil {
 		return nil, ApiError.OPENAPI_URL_ERROR, err
