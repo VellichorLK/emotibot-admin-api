@@ -6,15 +6,16 @@ import (
 )
 
 type QATestInput struct {
-	QuestionType string            `json:"qtype"`
-	Top          int               `json:"top"`
-	Platform     string            `json:"platform"`
-	Brand        string            `json:"brand"`
-	Gender       string            `json:"sex"`
-	Age          string            `json:"age"`
-	Hobbies      string            `json:"hobbies"`
-	UserInput    string            `json:"text"`
-	Info         map[string]string `json:"info"`
+	QuestionType string                 `json:"qtype"`
+	Top          int                    `json:"top"`
+	Platform     string                 `json:"platform"`
+	Brand        string                 `json:"brand"`
+	Gender       string                 `json:"sex"`
+	Age          string                 `json:"age"`
+	Hobbies      string                 `json:"hobbies"`
+	UserInput    string                 `json:"text"`
+	Info         map[string]string      `json:"info"`
+	ExtendData   map[string]interface{} `json:"extend_data"`
 }
 
 type RetData struct {
