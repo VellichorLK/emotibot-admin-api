@@ -42,6 +42,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/integration"
 	"emotibot.com/emotigo/module/admin-api/intentengine"
 	"emotibot.com/emotigo/module/admin-api/intentengineTest"
+	"emotibot.com/emotigo/module/admin-api/lqcheck"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
@@ -87,6 +88,7 @@ var modules = []*util.ModuleInfo{
 	&feedback.ModuleInfo,
 	&CustomChat.ModuleInfo,
 	&media.ModuleInfo,
+	&lqcheck.ModuleInfo,
 }
 
 var serverConfig map[string]string
