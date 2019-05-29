@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -353,17 +354,20 @@ func parseImportTestFile(appID string,
 }
 
 func runIntentsTest(appID string, version int64, ieModelID string) {
-	var err, predictErr error
+	var err, loadModelErr, predictErr error
 	var sentences []*data.IntentTestSentence
 	overallTestResult := &data.TestResult{}
 
 	defer func() {
-		if predictErr != nil {
+		if loadModelErr != nil {
+			intentTestDao.TestIntentsFailed(version, loadModelErr.Error())
+			logger.Error.Printf("Intent test task failed: %s.", loadModelErr.Error())
+		} else if predictErr != nil {
 			intentTestDao.TestIntentsFailed(version, predictErr.Error())
-			logger.Info.Printf("Intent test task failed: %s.", predictErr.Error())
+			logger.Error.Printf("Intent test task failed: %s.", predictErr.Error())
 		} else if err != nil {
 			intentTestDao.TestIntentsFailed(version, err.Error())
-			logger.Info.Printf("Intent test task failed: %s.", err.Error())
+			logger.Error.Printf("Intent test task failed: %s.", err.Error())
 		} else {
 			err = intentTestDao.TestIntentsFinished(appID, version, sentences,
 				overallTestResult)
@@ -412,6 +416,38 @@ func runIntentsTest(appID string, version int64, ieModelID string) {
 		logger.Info.Printf("Unload Intent Engine model with fake app ID: %s.\n", fakeAppID)
 		err = unloadIEModel(fakeAppID)
 	}()
+
+	// Ensure intent model is loaded
+	loadRetry := 0
+	payload := map[string]interface{}{
+		"app_id":   fakeAppID,
+		"sentence": "测试语句",
+	}
+
+	logger.Info.Println("Waiting for Intent Engine model loaded...")
+
+	for {
+		time.Sleep(10 * time.Second)
+		loadRetry++
+		if loadRetry > maxRetries {
+			loadModelErr = fmt.Errorf("Intent Engine model not loaded, exceeded max retries: %d", maxRetries)
+			logger.Error.Printf(loadModelErr.Error())
+			return
+		}
+
+		logger.Info.Println("Checking Intent Engine model load status...")
+		loaded, loadModelErr := ieModelLoaded(payload)
+		if loadModelErr != nil {
+			logger.Error.Printf(loadModelErr.Error())
+			return
+		}
+
+		if loaded {
+			logger.Info.Println("Intent Engine model is loaded")
+			break
+		}
+		logger.Info.Println("Intent Engine model not loaded")
+	}
 
 	// Start predicting
 	var numOfPredictThreads int
@@ -486,6 +522,34 @@ func loadIEModel(appID string, ieModelID string) (err error) {
 		}
 	}
 	return
+}
+
+func ieModelLoaded(payload map[string]interface{}) (bool, error) {
+	intentEngineURL := getEnvironment("INTENT_ENGINE_URL")
+	if intentEngineURL == "" {
+		intentEngineURL = defaultIntentEngineURL
+	}
+	iePredictURL := fmt.Sprintf("%s/%s", intentEngineURL, "predict")
+
+	body, err := util.HTTPPostJSON(iePredictURL, payload, 30)
+	if err != nil {
+		return false, err
+	}
+
+	resp := data.IEPredictResp{}
+	err = json.Unmarshal([]byte(body), &resp)
+	if err != nil {
+		return false, err
+	}
+
+	if !strings.EqualFold(resp.Status, "OK") {
+		if strings.HasPrefix(resp.Error, "Model is loading") {
+			return false, nil
+		}
+		return false, errors.New(resp.Error)
+	}
+
+	return true, nil
 }
 
 func predictSentences(version int64, appID string,
@@ -598,13 +662,19 @@ func predictSentences(version int64, appID string,
 		testCount++
 		if testCount%500 == 0 {
 			logger.Trace.Printf("500 sentences tested")
+			// Update test progress
+			intentTestDao.UpdateTestIntentsProgress(version, testCount)
+			testCount = 0
 		}
 	}
 
 	// Update test progress
 	if testResult.Error == nil {
 		logger.Info.Printf("Total %d intent sentences predicted.\n", len(sentences))
-		intentTestDao.UpdateTestIntentsProgress(version, len(sentences))
+		if testCount%500 != 0 {
+			// Update test progress
+			intentTestDao.UpdateTestIntentsProgress(version, testCount)
+		}
 	}
 
 	resultsChan <- testResult
