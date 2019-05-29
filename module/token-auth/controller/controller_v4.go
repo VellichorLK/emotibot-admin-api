@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"emotibot.com/emotigo/module/token-auth/cache"
@@ -592,6 +593,26 @@ func AppAddHandlerV4(w http.ResponseWriter, r *http.Request) {
 	}
 	returnSuccess(w, newApp)
 }
+
+func AppsGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	retData, err := service.GetAppsV4(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+	}
+
+	returnSuccess(w, retData)
+}
 func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")
@@ -599,7 +620,7 @@ func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
 
 	ret := data.AppDetailV4{
 		AppV4: data.AppV4{
-			Name: name,
+			Name:    name,
 			AppType: appType,
 		},
 		Description: description,

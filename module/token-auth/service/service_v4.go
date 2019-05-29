@@ -108,6 +108,22 @@ func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
 	return useDBV4.AddEnterpriseV4(enterprise, modules, adminUser, dryRun, active)
 }
 
+func GetAppsV4(enterpriseID string) ([]*data.AppDetailV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, nil
+	}
+
+	return useDBV4.GetAppsV4(enterpriseID)
+}
+
 func UpdateEnterpriseStatusV4(enterpriseID string, status bool) error {
 	return useDBV4.UpdateEnterpriseStatusV4(enterpriseID, status)
 }

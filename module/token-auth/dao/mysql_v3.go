@@ -968,7 +968,7 @@ func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDet
 	}
 
 	queryStr := fmt.Sprintf(`
-		SELECT uuid, name, status, description, app_type
+		SELECT uuid, name, status, description
 		FROM %s
 		WHERE enterprise = ?`, appTableV3)
 	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
@@ -981,7 +981,7 @@ func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDet
 	apps := make([]*data.AppDetailV3, 0)
 	for rows.Next() {
 		app := data.AppDetailV3{}
-		err := rows.Scan(&app.ID, &app.Name, &app.Status, &app.Description, &app.AppType)
+		err := rows.Scan(&app.ID, &app.Name, &app.Status, &app.Description)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err

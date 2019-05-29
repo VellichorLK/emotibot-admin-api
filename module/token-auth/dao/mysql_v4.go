@@ -215,6 +215,37 @@ func (controller MYSQLController) AddAppV4(enterpriseID string, app *data.AppDet
 
 	return
 }
+func (controller MYSQLController) GetAppsV4(enterpriseID string) ([]*data.AppDetailV4, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT uuid, name, status, description, app_type
+		FROM %s
+		WHERE enterprise = ?`, appTableV3)
+	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	apps := make([]*data.AppDetailV4, 0)
+	for rows.Next() {
+		app := data.AppDetailV4{}
+		err := rows.Scan(&app.ID, &app.Name, &app.Status, &app.Description, &app.AppType)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		apps = append(apps, &app)
+	}
+
+	return apps, nil
+}
 
 func (controller MYSQLController) UpdateEnterpriseStatusV4(enterpriseID string, active bool) (err error) {
 	defer func() {
