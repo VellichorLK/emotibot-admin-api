@@ -527,3 +527,83 @@ func UserGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 
 	util.Return(w, nil, retData)
 }
+func AppAddHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	var app *data.AppDetailV4
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		if app != nil {
+			auditMessage = fmt.Sprintf("[%s]: %s", data.AuditContentAppAdd, app.Name)
+		} else {
+			auditMessage = data.AuditContentAppAdd
+		}
+
+		addAuditLog(r, audit.AuditModuleManageRobot, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	app, err = parseAppFromRequestV4(r)
+	if err != nil {
+		returnBadRequest(w, err.Error())
+		return
+	}
+
+	if app.Name == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "name")
+		return
+	}
+
+	id, err := service.AddAppV4(enterpriseID, app)
+	if err != nil {
+		switch err {
+		case util.ErrAppInfoExists:
+			returnBadRequest(w, "name")
+		case util.ErrOperationForbidden:
+			returnForbiddenWithMsg(w, err.Error())
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if id == "" {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	newApp, err := service.GetAppV3(enterpriseID, id)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if newApp == nil {
+		err = util.ErrInteralServer
+		returnInternalError(w, err.Error())
+		return
+	}
+	returnSuccess(w, newApp)
+}
+func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
+	name := strings.TrimSpace(r.FormValue("name"))
+	description := r.FormValue("description")
+	appType, _ := strconv.Atoi(r.FormValue("app_type"))
+
+	ret := data.AppDetailV4{
+		AppV4: data.AppV4{
+			Name: name,
+			AppType: appType,
+		},
+		Description: description,
+	}
+
+	return &ret, nil
+}

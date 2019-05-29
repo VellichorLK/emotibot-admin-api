@@ -66,6 +66,30 @@ func CheckOauthRequest(clientID, clientSecret, redirectURL string) (bool, error)
 	return true, nil
 }
 
+// AddAppV4 is to add app to service with app_type info
+func AddAppV4(enterpriseID string, app *data.AppDetailV4) (appID string, err error) {
+	err = checkDB()
+	if err != nil {
+		return "", err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
+	exists, err = useDBV3.EnterpriseAppInfoExistsV3(enterpriseID, app.Name)
+	if err != nil {
+		return "", err
+	} else if exists {
+		return "", util.ErrAppInfoExists
+	}
+
+	return useDBV4.AddAppV4(enterpriseID, app)
+}
+
 // AddEnterpriseV4 will add enterprise into system. If dryRun is true, it will only run for check
 func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
 	adminUser *data.UserDetailV3, dryRun bool, active bool) (enterpriseID string, err error) {
