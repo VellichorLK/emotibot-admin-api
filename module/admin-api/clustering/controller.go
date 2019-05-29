@@ -82,6 +82,7 @@ func Init() error {
 			util.NewEntryPoint(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss)),
 
 			util.NewEntryPointWithVer(http.MethodPut, "reports", []string{}, NewDoReportHandlerV2(ss, ss, ss, ss, clusterClient, dacClient), 2),
+			util.NewEntryPointWithVer(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss), 2),
 		},
 	}
 	worker = newClusteringWork(ss, ss, ss, clusterClient)
