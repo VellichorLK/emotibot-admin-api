@@ -16,7 +16,7 @@ func init() {
 			// 获取报告
 			util.NewEntryPointWithVer("GET", "report/{appid}", []string{}, handleGetLqCheckReport, 1),
 			// 生成报告
-			util.NewEntryPointWithVer("POST", "report/{appid}", []string{}, handleCreateLqCheckReport, 1),
+			util.NewEntryPointWithVer("POST", "report/{appid}/locale/{locale}", []string{}, handleCreateLqCheckReport, 1),
 			// 获取报告状态
 			util.NewEntryPointWithVer("GET", "report/status/{taskid}", []string{}, handleHealthCheckStatus, 1),
 			// 获取标准问语料
@@ -37,8 +37,9 @@ func handleGetLqCheckReport(w http.ResponseWriter, r *http.Request) {
 // 创建健康检查报告，获取任务id
 func handleCreateLqCheckReport(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetMuxVar(r, "appid")
+	locale := util.GetMuxVar(r, "locale")
 
-	data, err := createReport(appid)
+	data, err := createReport(appid, locale)
 
 	util.Return(w, err, data)
 }

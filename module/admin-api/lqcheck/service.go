@@ -14,7 +14,7 @@ import (
 
 // 健康度检查报告生成主流程
 // 返回冲突检查id
-func createReport(appid string) (*ConflictCheckReturn, AdminErrors.AdminError) {
+func createReport(appid string, locale string) (*ConflictCheckReturn, AdminErrors.AdminError) {
 	dacRet := SsmDacRet{}
 	healthReport := HealthReport{}
 	ConflictCheckRequest := ConflictCheckRequest{}
@@ -23,10 +23,13 @@ func createReport(appid string) (*ConflictCheckReturn, AdminErrors.AdminError) {
 	dacRet.getSqLqFromDac(appid)
 
 	// 发送冲突检查请求
-	_, ConflictCheckReturn := ConflictCheckRequest.convertSqLq(appid, &dacRet).requestConflictCheck()
+	_, ConflictCheckReturn := ConflictCheckRequest.convertSqLq(appid, locale, &dacRet).requestConflictCheck()
+	if len(ConflictCheckReturn.TaskId) == 0 {
+		return nil, AdminErrors.New(AdminErrors.ErrnoAPIError, "")
+	}
 
 	// 异步计算标准问语料数量
-	dacRet.countSqLq(appid, ConflictCheckReturn.TaskId, &healthReport)
+	go dacRet.countSqLq(appid, ConflictCheckReturn.TaskId, &healthReport)
 
 	// 返回冲突检查id
 	return ConflictCheckReturn, nil
@@ -130,11 +133,6 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport) Adm
 	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_sq_rate_remark"]), &hp.LqSqRate.LqSqRateRemark)
 	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_distribution_recommended"]), &hp.LqDistribution.Recommended)
 
-	//lq_sq_rate_remark
-	fmt.Println(healthCheckConfigs)
-	fmt.Println(healthCheckConfigs["score_standard"])
-	fmt.Println(hp.HealthScore.Standard)
-
 	// 标准问语料数量分布计算
 	LqDist := hp.LqDistribution.Recommended
 
@@ -160,10 +158,10 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport) Adm
 	}
 	hp.LqDistribution.Current = LqDist
 
-	// 计算健康度分数
-	hp.HealthScore.Score = 20
-
 	// 查询冲突检查结果
+
+	// 计算健康度分数
+	hp.HealthScore.Score = 55
 
 	// 保存检查结果
 	hpStr, _ := json.Marshal(hp)
@@ -185,7 +183,20 @@ func getHealthCheckStatus(taskid string) (interface{}, AdminErrors.AdminError) {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 
-	return res[0], nil
+	ret := map[string]string{}
+	if len(res[0]) < 1 {
+		ret["progress"] = "0"
+		ret["status"] = "error"
+	} else {
+		ret["progress"] = res[0]["progress"]
+		ret["status"] = res[0]["message"]
+
+		if res[0]["progress"] == "100" {
+			ret["status"] = "done"
+		}
+	}
+
+	return ret, nil
 }
 
 // 获取健康检查报告
@@ -239,8 +250,9 @@ func getSqLqUpdateTime(appid string, lastCheckTime int64) *SsmDacCheckRet {
 }
 
 // 标准问语料格式转换
-func (c *ConflictCheckRequest) convertSqLq(appid string, d *SsmDacRet) *ConflictCheckRequest {
+func (c *ConflictCheckRequest) convertSqLq(appid string, locale string, d *SsmDacRet) *ConflictCheckRequest {
 	c.AppId = appid
+	c.Locale = locale
 	for _, v := range d.ActualResults {
 		tmp := ConflictCheckSqLq{}
 		tmp.Lq = v.LqContent
@@ -267,7 +279,7 @@ func (c *ConflictCheckRequest) requestConflictCheck() (*ConflictCheckResponse, *
 }
 
 func (c *ConflictCheckRequest) getConflictCheckApi() string {
-	url := "http://" + getENV("CONFLICT_CHECK_URL") + "/data_health_check"
+	url := "http://" + getENV("CONFLICT_CHECK_URL") + "/data_health_check/check"
 
 	return url
 }

@@ -10,8 +10,9 @@ type ConflictCheckSqLq struct {
 
 // 冲突检测请求
 type ConflictCheckRequest struct {
-	AppId string              `json:"appid"`
-	Data  []ConflictCheckSqLq `json:"data"`
+	AppId  string              `json:"appid"`
+	Locale string              `json:"locale"`
+	Data   []ConflictCheckSqLq `json:"data"`
 }
 
 // 冲突检测任务
