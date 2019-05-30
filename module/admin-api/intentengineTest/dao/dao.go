@@ -1703,13 +1703,19 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 				end = totalParams
 			}
 
-			sentencesCount := (end - start) / 2
+			sentencesCount := (end - start) >> 1
 			whenCasesStr := strings.Join(whenCases[:sentencesCount], " ")
+			whereClause := make([]interface{}, sentencesCount)
+
+			for i := 0; i < sentencesCount; i++ {
+				whereClause[i] = sentences[(start>>1)+i].ID
+			}
 
 			params := []interface{}{}
 			params = append(params, resultValues[start:end]...)
 			params = append(params, scoreValues[start:end]...)
 			params = append(params, answerValues[start:end]...)
+			params = append(params, whereClause...)
 
 			queryStr := fmt.Sprintf(`
 				UPDATE %s
@@ -1727,8 +1733,10 @@ func updateIntentSentencesWithTx(tx *sql.Tx,
 						CASE id
 							%s
 							ELSE answer
-						END`, IntentTestSentencesTable,
-				whenCasesStr, whenCasesStr, whenCasesStr)
+						END
+				WHERE id IN (?%s)`, IntentTestSentencesTable,
+				whenCasesStr, whenCasesStr, whenCasesStr,
+				strings.Repeat(", ?", len(whereClause)-1))
 			_, err = tx.Exec(queryStr, params...)
 			if err != nil {
 				return err
