@@ -126,19 +126,22 @@ func CreateScenarioWithTemplate(appid, userid, scenarioName, template string) (*
 }
 
 // ImportScenarios import scenarios to the specified appid
-func ImportScenarios(appid, userid string, useNewID bool, datas []interface{}) {
+func ImportScenarios(appid, userid string, useNewID bool, datas []interface{}) []string {
+	var scenarioids []string
 	for _, data := range datas {
-		ImportScenario(appid, userid, useNewID, data)
+		_, _, scenarioid := ImportScenario(appid, userid, useNewID, data)
+		scenarioids = append(scenarioids, scenarioid)
 	}
+	return scenarioids
 }
 
 // ImportScenario import the scenario to the specified appid
-func ImportScenario(appid, userid string, useNewID bool, jsonData interface{}) (int, error) {
+func ImportScenario(appid, userid string, useNewID bool, jsonData interface{}) (int, error, string) {
 	scenarioid, _, content, layout := parseJSONData(jsonData)
 	if useNewID {
 		id, err := generateScenarioID()
 		if err != nil {
-			return ApiError.DB_ERROR, err
+			return ApiError.DB_ERROR, err, scenarioid
 		}
 		scenarioid = id
 		contentObj := content.(map[string]interface{})
@@ -149,27 +152,27 @@ func ImportScenario(appid, userid string, useNewID bool, jsonData interface{}) (
 	// prepare contentString
 	contentBytes, err := json.Marshal(content)
 	if err != nil {
-		return ApiError.JSON_PARSE_ERROR, err
+		return ApiError.JSON_PARSE_ERROR, err, scenarioid
 	}
 	contentString := string(contentBytes)
 	// encrypt js_code if exist
 	contentString, err = encryptJSCode(contentString)
 	if err != nil {
-		return ApiError.BASE64_PARSE_ERROR, err
+		return ApiError.BASE64_PARSE_ERROR, err, scenarioid
 	}
 
 	// prepare layoutString
 	layoutBytes, err := json.Marshal(layout)
 	if err != nil {
-		return ApiError.JSON_PARSE_ERROR, err
+		return ApiError.JSON_PARSE_ERROR, err, scenarioid
 	}
 	layoutString := string(layoutBytes)
 	// create scenario
 	err = createScenario(scenarioid, userid, appid, contentString, layoutString, 0, 0, contentString, layoutString, 1)
 	if err != nil {
-		return ApiError.DB_ERROR, err
+		return ApiError.DB_ERROR, err, scenarioid
 	}
-	return ApiError.SUCCESS, nil
+	return ApiError.SUCCESS, nil, scenarioid
 }
 
 func generateScenarioID() (string, error) {

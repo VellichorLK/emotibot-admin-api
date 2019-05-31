@@ -145,15 +145,20 @@ func handleUploadScenarios(w http.ResponseWriter, r *http.Request) {
 		addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 		return
 	}
+
+	var scenarioids []string
+	if err == nil {
+		_, _, scenarioid := ImportScenario(appid, appid, useNewID, taskEngineJSON)
+		scenarioids = append(scenarioids, scenarioid)
+	} else {
+		scenarioids = ImportScenarios(appid, appid, useNewID, *multiTaskEngineJSON)
+	}
 	ret := map[string]interface{}{
 		"return": 0,
-		"error":  "Update success",
+		"error": "Update success",
+		"scenarioids": scenarioids,
 	}
-	if err == nil {
-		ImportScenario(appid, appid, useNewID, taskEngineJSON)
-	} else {
-		ImportScenarios(appid, appid, useNewID, *multiTaskEngineJSON)
-	}
+
 	auditMsg := fmt.Sprintf(util.Msg["AuditImportTpl"], info.Filename)
 	addAuditLog(r, audit.AuditOperationImport, auditMsg, true)
 	util.WriteJSON(w, ret)
