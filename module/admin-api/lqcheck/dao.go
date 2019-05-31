@@ -52,14 +52,16 @@ func queryDB(sql string, params ...interface{}) (map[int]map[string]string, erro
 	return ret, nil
 }
 
-func getHealthCheck(taskid string) (map[int]map[string]string, error) {
+func getHealthCheckStatus(appid string) (map[int]map[string]string, error) {
 	sql := `
 		select * 
 		from health_check_status
-		where task_id = ?
+		where appid = ? 
+		order by update_time desc 
+		limit 1 
 	`
 	params := make([]interface{}, 1)
-	params[0] = taskid
+	params[0] = appid
 
 	return queryDB(sql, params...)
 }
@@ -69,7 +71,7 @@ func getLatestHealthCheckReport(appid string) (map[int]map[string]string, error)
 		select * 
 		from health_check_report 
 		where appid = ? 
-		order by update_time
+		order by update_time desc 
 		limit 1
 	`
 	params := make([]interface{}, 1)

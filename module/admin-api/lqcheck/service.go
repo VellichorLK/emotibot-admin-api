@@ -7,14 +7,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // 健康度检查报告生成主流程
 // 返回冲突检查id
-func createReport(appid string, locale string) (*ConflictCheckReturn, AdminErrors.AdminError) {
+func createReport(appid string, locale string, outerUrl string) (*ConflictCheckReturn, AdminErrors.AdminError) {
 	dacRet := SsmDacRet{}
 	healthReport := HealthReport{}
 	ConflictCheckRequest := ConflictCheckRequest{}
@@ -29,14 +31,14 @@ func createReport(appid string, locale string) (*ConflictCheckReturn, AdminError
 	}
 
 	// 异步计算标准问语料数量
-	go dacRet.countSqLq(appid, ConflictCheckReturn.TaskId, &healthReport)
+	go dacRet.countSqLq(appid, ConflictCheckReturn.TaskId, &healthReport, outerUrl)
 
 	// 返回冲突检查id
 	return ConflictCheckReturn, nil
 }
 
 func getDacUrl() string {
-	url := "http://" + getENV("DAC_URL")
+	url := "http://" + getENV("DAC_URL", "SSM")
 	return url
 }
 
@@ -106,7 +108,7 @@ func getSqLq(appid string) (interface{}, AdminErrors.AdminError) {
 	return sqLq, nil
 }
 
-func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport) AdminErrors.AdminError {
+func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, outerUrl string) AdminErrors.AdminError {
 	res := getSqLqUpdateTime(appid, 0)
 	hp.LqLatestUpdateTime = res.ActualResults.Time
 
@@ -159,13 +161,20 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport) Adm
 	hp.LqDistribution.Current = LqDist
 
 	// 查询冲突检查结果
+	for {
+		checkStatus, _ := getHealthCheckStatus(appid)
+		if len(checkStatus) > 0 && checkStatus[0]["task_id"] == taskid && checkStatus[0]["message"] == "save_report_ok" {
+			hp.LqQuality.ReportFilePath = outerUrl + checkStatus[0]["download_url"]
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
 
 	// 计算健康度分数
-	hp.HealthScore.Score = 55
+	hp.HealthScore.Score = rand.Intn(90-55) + 55
 
 	// 保存检查结果
 	hpStr, _ := json.Marshal(hp)
-	fmt.Println(string(hpStr))
 
 	reportRec := make([]interface{}, 3)
 	reportRec[0] = taskid
@@ -173,12 +182,17 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport) Adm
 	reportRec[2] = string(hpStr)
 	saveReportRecord(reportRec)
 
-	return AdminErrors.New(AdminErrors.ErrnoJSONParse, "err")
+	return nil
 }
 
 // 获取健康检查状态
-func getHealthCheckStatus(taskid string) (interface{}, AdminErrors.AdminError) {
-	res, err := getHealthCheck(taskid)
+func getHealthCheckResult(appid string) (interface{}, AdminErrors.AdminError) {
+	res, err := getHealthCheckStatus(appid)
+	if err != nil {
+		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
+	}
+
+	report, err := getLatestHealthCheckReport(appid)
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
@@ -188,12 +202,15 @@ func getHealthCheckStatus(taskid string) (interface{}, AdminErrors.AdminError) {
 		ret["progress"] = "0"
 		ret["status"] = "error"
 	} else {
+		if len(report) < 1 && res[0]["progress"] == "100" {
+			res[0]["progress"] = "99"
+			res[0]["message"] = "creating_report"
+		} else {
+			res[0]["message"] = "done"
+		}
+
 		ret["progress"] = res[0]["progress"]
 		ret["status"] = res[0]["message"]
-
-		if res[0]["progress"] == "100" {
-			ret["status"] = "done"
-		}
 	}
 
 	return ret, nil
@@ -206,7 +223,6 @@ func getHealCheckReport(appid string) (interface{}, AdminErrors.AdminError) {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 
-	//var ret map[string]interface{}
 	var hr HealthReport
 	if _, ok := res[0]["report"]; ok {
 		json.Unmarshal([]byte(res[0]["report"]), &hr)
@@ -279,14 +295,16 @@ func (c *ConflictCheckRequest) requestConflictCheck() (*ConflictCheckResponse, *
 }
 
 func (c *ConflictCheckRequest) getConflictCheckApi() string {
-	url := "http://" + getENV("CONFLICT_CHECK_URL") + "/data_health_check/check"
+	url := "http://" + getENV("CONFLICT_CHECK_URL", "") + "/data_health_check/check"
 
 	return url
 }
 
-func getENV(key string) string {
-	moduleName := "lqcheck"
-	envs := util.GetModuleEnvironments(moduleName)
+func getENV(key string, module string) string {
+	if len(module) == 0 {
+		module = "lqcheck"
+	}
+	envs := util.GetModuleEnvironments(module)
 	env, _ := envs[key]
 
 	return env
