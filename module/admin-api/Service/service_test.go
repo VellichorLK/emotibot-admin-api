@@ -21,7 +21,6 @@ func setup() {
 		panic("Init temp file fail")
 	}
 	tempFile.WriteString(fmt.Sprintln("ADMIN_SERVICE_NLU=http://172.16.101.98:13901/"))
-	tempFile.WriteString(fmt.Sprintln("ADMIN_SERVER_DAL_URL=http://172.16.101.98:8885/"))
 	tempFile.Close()
 	tempFileName = tempFile.Name()
 	err = util.LoadConfigFromFile(tempFile.Name())
