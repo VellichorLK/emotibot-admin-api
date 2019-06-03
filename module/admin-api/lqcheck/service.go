@@ -22,7 +22,10 @@ func createReport(appid string, locale string, outerUrl string) (*ConflictCheckR
 	ConflictCheckRequest := ConflictCheckRequest{}
 
 	// 获取所有语料
-	dacRet.getSqLqFromDac(appid)
+	err := dacRet.getSqLqFromDac(appid)
+	if err != nil {
+		return nil, err
+	}
 
 	// 发送冲突检查请求
 	_, ConflictCheckReturn := ConflictCheckRequest.convertSqLq(appid, locale, &dacRet).requestConflictCheck()
@@ -111,6 +114,7 @@ func getSqLq(appid string) (interface{}, AdminErrors.AdminError) {
 func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, outerUrl string) AdminErrors.AdminError {
 	res := getSqLqUpdateTime(appid, 0)
 	hp.LqLatestUpdateTime = res.ActualResults.Time
+	hp.LastCheckTime = time.Now().Format("2006-01-02 15:04:05")
 
 	// 语料总数
 	hp.LqQuality.LqCount = len(d.ActualResults)
@@ -127,7 +131,7 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	// 标准问总数
 	hp.LqSqRate.SqCount = len(sqLq)
 	// 标准问语料比例
-	hp.LqSqRate.SqLqRate = fmt.Sprintf("%.2f", float32(hp.LqSqRate.SqCount)/float32(hp.LqSqRate.LqCount)*100)
+	hp.LqSqRate.SqLqRate = "1 : " + fmt.Sprintf("%.3f", float32(hp.LqSqRate.LqCount)/float32(hp.LqSqRate.SqCount))
 
 	// 需要读取模板
 	healthCheckConfigs := getBFOPconfig("")
@@ -198,13 +202,15 @@ func getHealthCheckResult(appid string) (interface{}, AdminErrors.AdminError) {
 	}
 
 	ret := map[string]string{}
-	if len(res[0]) < 1 {
+	if len(res[0]) < 1 && len(report) < 1 {
 		ret["progress"] = "0"
-		ret["status"] = "error"
+		ret["status"] = "nodata"
 	} else {
-		if len(report) < 1 && res[0]["progress"] == "100" {
-			res[0]["progress"] = "99"
-			res[0]["message"] = "creating_report"
+		if len(report) < 1 && res[0]["progress"] <= "100" {
+			if res[0]["progress"] == "100" {
+				res[0]["progress"] = "99"
+			}
+			res[0]["message"] = "progress"
 		} else {
 			res[0]["message"] = "done"
 		}
