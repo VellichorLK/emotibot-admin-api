@@ -3,19 +3,27 @@ package Robot
 import (
 	"net/http"
 
-	config "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+	"emotibot.com/emotigo/module/admin-api/Robot/config.v1"
 
 	"emotibot.com/emotigo/module/admin-api/ApiError"
 	"emotibot.com/emotigo/module/admin-api/dictionary"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/audit"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"fmt"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 )
 
 var (
 	// ModuleInfo is needed for module define
 	ModuleInfo util.ModuleInfo
 )
+
+//var (
+//	serviceDacKey     = "DAC_URL"
+//)
+
 
 func init() {
 	ModuleInfo = util.ModuleInfo{
@@ -69,11 +77,129 @@ func init() {
 
 			util.NewEntryPoint("GET", "configs", []string{"view"}, config.HandleGetRobotConfigs),
 			util.NewEntryPoint("PUT", "config", []string{"edit"}, config.HandleSetRobotConfig),
+
+
+			util.NewEntryPoint("GET", "ssmconfig/get/{name}/{type}", []string{"view"}, HandleGetSSMConfig),
+			util.NewEntryPoint("POST", "ssmconfig/set", []string{"edit"}, HandleSetSSMConfig),
+			util.NewEntryPoint("GET", "ssmconfig/publish", []string{"edit"}, HandlePublishSSMConfig),
 		},
 		OneTimeFunc: map[string]func(){
 			"SyncRobotProfile": SyncOnce,
 		},
 	}
+}
+
+
+func getSSMConfigUrl() string {
+	//dacURL := strings.TrimSpace(getEnvironment(serviceDacKey))
+	dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%sssm/dac/openapi/ssmconfig", dacAddress)
+}
+func getSSMConfigInfoUrl() string {
+	//dacURL := strings.TrimSpace(getEnvironment(serviceDacKey))
+	dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%sssm/dac/configInfo", dacAddress)
+}
+func publishSSMConfigInfoUrl() string {
+	//dacURL := strings.TrimSpace(getEnvironment(serviceDacKey))
+	dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
+	if !ok {
+		return ""
+	}
+	return fmt.Sprintf("%sopenapi/sync/ssmconfig", dacAddress)
+}
+
+func HandleGetSSMConfig(w http.ResponseWriter, r *http.Request)  {
+
+	appid := requestheader.GetAppID(r)
+	name := util.GetMuxVar(r, "name")
+	configType := util.GetMuxVar(r, "type")
+
+	//locale := requestheader.GetLocale(r)
+
+	if name == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "empty config name")
+		return
+	}
+
+	baseUrl := getSSMConfigUrl();
+
+	requestString := fmt.Sprintf("%s?appId=%s&type=%", baseUrl, appid, configType)
+	configs, resErr := util.HTTPGetSimpleWithTimeout(requestString, 30)
+	if resErr != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "dac interface error")
+		return
+	}
+	util.Return(w, nil, configs)
+
+}
+
+func HandleSetSSMConfig(w http.ResponseWriter, r *http.Request)  {
+
+	appid := requestheader.GetAppID(r)
+	userid := requestheader.GetUserID(r)
+	locale := requestheader.GetLocale(r)
+	name := r.FormValue("name")
+	value := r.FormValue("value")
+
+	if name == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "empty config name")
+		return
+	}
+	if value == "" {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "empty config value")
+		return
+	}
+
+	baseUrl := getSSMConfigInfoUrl();
+
+	params := map[string]string {
+		"app_id": appid,
+		"user_id": userid,
+		"name": name,
+		"value": value,
+	}
+
+	content, err := util.HTTPPostJSON(baseUrl, params, 30)
+
+	auditMsg := fmt.Sprintf(localemsg.Get(locale, "AuditRobotConfigChangeTemplate"),
+		name, value)
+	result := 1
+	if err != nil {
+		result = 0
+	}
+	audit.AddAuditFromRequest(r, audit.AuditModuleRobotConfig, audit.AuditOperationEdit, auditMsg, result)
+
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "dac interface error")
+		return
+	}
+
+	util.Return(w, nil, content)
+
+}
+
+
+func HandlePublishSSMConfig(w http.ResponseWriter, r *http.Request)  {
+
+	appid := requestheader.GetAppID(r)
+	//locale := requestheader.GetLocale(r)
+	baseUrl := publishSSMConfigInfoUrl();
+	requestString := fmt.Sprintf("%s?appId=%s", baseUrl, appid)
+	res, resErr := util.HTTPGetSimpleWithTimeout(requestString, 30)
+
+	if resErr != nil {
+		util.ReturnError(w, AdminErrors.ErrnoRequestError, "dac interface error")
+		return
+	}
+
+	util.Return(w, nil, res)
 }
 
 func getEnvironments() map[string]string {
