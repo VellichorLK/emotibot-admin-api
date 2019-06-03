@@ -140,6 +140,11 @@ func setUpRoutes() {
 		Route{"ActivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/active", nil, controller.EnterpriseActivateHandlerV4, []interface{}{0}},
 		Route{"DeactivateEnterprise", "POST", 4, "enterprise/{enterpriseID}/deactive", nil, controller.EnterpriseDeactivateHandlerV4, []interface{}{0}},
 
+		// 新增App带有app_type信息。 0: Bot App 1: CCS app
+		Route{"AddApp", "POST", 4, "enterprise/{enterpriseID}/app", nil, controller.AppAddHandlerV4, []interface{}{0, 1}},
+
+		Route{"GetApps", "GET", 4, "enterprise/{enterpriseID}/apps", nil, controller.AppsGetHandlerV4, []interface{}{0, 1, 2}},
+
 		// 获取账号信息
 		Route{"GetUsers", "GET", 4, "enterprise/{enterpriseID}/users", nil, controller.UsersGetHandlerV4, []interface{}{0, 1, 2}},
 		// 获取企业用户下所有子账号

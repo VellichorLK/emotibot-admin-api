@@ -14,9 +14,9 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/pkg/logger"
 
+	"strconv"
 
 	uuid "github.com/satori/go.uuid"
-	"strconv"
 )
 
 const (
@@ -214,7 +214,6 @@ func (controller MYSQLController) AddEnterpriseV3(enterprise *data.EnterpriseV3,
 		util.LogDBError(err)
 		return
 	}
-
 
 	err = addModulesEnterpriseWithTxV3(modules, enterpriseID, t)
 	if err != nil {
@@ -918,8 +917,6 @@ func (controller MYSQLController) GetAppCount(enterpriseID string) (int, error) 
 	return num, err
 }
 
-
-
 func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string) (int, error) {
 	ok, err := controller.checkDB()
 	if !ok {
@@ -939,7 +936,7 @@ func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string
 	err = controller.connectDB.QueryRow(queryStr, enterpriseID, "enterprise_robot_limit").Scan(&customLimitEncrypt)
 
 	if customLimitEncrypt != "" {
-		limitEncrypt = customLimitEncrypt;
+		limitEncrypt = customLimitEncrypt
 	} else {
 
 		err = controller.connectDB.QueryRow(queryStr, "", "enterprise_robot_limit").Scan(&limitEncrypt)
@@ -949,7 +946,7 @@ func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string
 		}
 	}
 
-	limitString , err := util.AesBase64Decrypt(limitEncrypt)
+	limitString, err := util.AesBase64Decrypt(limitEncrypt)
 	if err != nil {
 		util.LogDBError(err)
 		return -1, err
@@ -962,7 +959,6 @@ func (controller MYSQLController) GetRobotLimitPerEnterprise(enterpriseID string
 
 	return limit, err
 }
-
 
 func (controller MYSQLController) GetAppsV3(enterpriseID string) ([]*data.AppDetailV3, error) {
 	ok, err := controller.checkDB()
@@ -1037,7 +1033,6 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	}
 	defer util.ClearTransition(t)
 
-
 	robotCount, err := controller.GetAppCount(enterpriseID)
 	if err != nil {
 		util.LogDBError(err)
@@ -1053,7 +1048,6 @@ func (controller MYSQLController) AddAppV3(enterpriseID string, app *data.AppDet
 	if robotCount >= limitCount {
 		return "", util.ErrOperationForbidden
 	}
-
 
 	appUUID, err := uuid.NewV4()
 	if err != nil {

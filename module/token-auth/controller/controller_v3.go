@@ -1853,7 +1853,6 @@ func loadUserFromRequestV3(r *http.Request) *data.UserDetailV3 {
 func parseAppFromRequestV3(r *http.Request) (*data.AppDetailV3, error) {
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := r.FormValue("description")
-
 	ret := data.AppDetailV3{
 		AppV3: data.AppV3{
 			Name: name,

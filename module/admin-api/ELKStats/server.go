@@ -68,6 +68,7 @@ func Init() error {
 			util.NewEntryPoint("GET", "visit", []string{"view"}, controllersV1.VisitStatsGetHandler),
 			util.NewEntryPoint("GET", "question", []string{"view"}, controllersV1.QuestionStatsGetHandler),
 			util.NewEntryPoint("POST", "records/query", []string{"view"}, controllersV1.VisitRecordsGetHandler),
+			util.NewEntryPoint("POST", "records/ccs/query", []string{"view"}, controllersV1.VisitCcsRecordsGetHandler),
 			util.NewEntryPoint("POST", "records/export", []string{"view", "export"}, controllersV1.VisitRecordsExportHandler),
 			util.NewEntryPoint("GET", "records/export/{export_id}",
 				[]string{"view", "export"}, controllersV1.VisitRecordsExportDownloadHandler),
@@ -100,6 +101,7 @@ func Init() error {
 			util.NewEntryPoint("GET", "call", []string{"view"}, controllersV1.CallStatsGetHandler),
 			// v2 APIs
 			util.NewEntryPointWithVer("POST", "records/query", []string{"view"}, controllersV2.VisitRecordsGetHandler, 2),
+			util.NewEntryPointWithVer("POST", "records/ccs/query", []string{"view"}, controllersV2.VisitCcsRecordsGetHandler, 2),
 			util.NewEntryPointWithVer("POST", "records/export", []string{"view", "export"}, controllersV2.VisitRecordsExportHandler, 2),
 			util.NewEntryPointWithVer("GET", "records/export/{export_id}",
 				[]string{"view", "export"}, controllersV2.VisitRecordsExportDownloadHandler, 2),

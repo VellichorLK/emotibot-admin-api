@@ -178,6 +178,9 @@ type DBV4 interface {
 
 	// AddAuditLog(auditLog data.AuditLog) error
 
+	AddAppV4(enterpriseID string, app *data.AppDetailV4) (string, error)
+	GetAppsV4(enterpriseID string) ([]*data.AppDetailV4, error)
+
 	// OAuth part
 	GetOAuthClient(clientID string) (*data.OAuthClient, error)
 }

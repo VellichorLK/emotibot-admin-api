@@ -66,6 +66,30 @@ func CheckOauthRequest(clientID, clientSecret, redirectURL string) (bool, error)
 	return true, nil
 }
 
+// AddAppV4 is to add app to service with app_type info
+func AddAppV4(enterpriseID string, app *data.AppDetailV4) (appID string, err error) {
+	err = checkDB()
+	if err != nil {
+		return "", err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return "", err
+	} else if !exists {
+		return "", nil
+	}
+
+	exists, err = useDBV3.EnterpriseAppInfoExistsV3(enterpriseID, app.Name)
+	if err != nil {
+		return "", err
+	} else if exists {
+		return "", util.ErrAppInfoExists
+	}
+
+	return useDBV4.AddAppV4(enterpriseID, app)
+}
+
 // AddEnterpriseV4 will add enterprise into system. If dryRun is true, it will only run for check
 func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
 	adminUser *data.UserDetailV3, dryRun bool, active bool) (enterpriseID string, err error) {
@@ -82,6 +106,22 @@ func AddEnterpriseV4(enterprise *data.EnterpriseV3, modules []string,
 	}
 
 	return useDBV4.AddEnterpriseV4(enterprise, modules, adminUser, dryRun, active)
+}
+
+func GetAppsV4(enterpriseID string) ([]*data.AppDetailV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, nil
+	}
+
+	return useDBV4.GetAppsV4(enterpriseID)
 }
 
 func UpdateEnterpriseStatusV4(enterpriseID string, status bool) error {

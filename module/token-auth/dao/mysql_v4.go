@@ -148,6 +148,105 @@ func (controller MYSQLController) AddEnterpriseV4(enterprise *data.EnterpriseV3,
 	return
 }
 
+func (controller MYSQLController) AddAppV4(enterpriseID string, app *data.AppDetailV4) (appID string, err error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return
+	}
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+	defer util.ClearTransition(t)
+
+	robotCount, err := controller.GetAppCount(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	limitCount, err := controller.GetRobotLimitPerEnterprise(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return "", err
+	}
+
+	if robotCount >= limitCount {
+		return "", util.ErrOperationForbidden
+	}
+
+	appUUID, err := uuid.NewV4()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+	appID = hex.EncodeToString(appUUID[:])
+
+	// Insert machine table entry
+	queryStr := fmt.Sprintf("INSERT INTO %s (uuid) VALUES (?)", machineTableV3)
+	_, err = t.Exec(queryStr, appID)
+	if err != nil {
+		return
+	}
+
+	queryStr = fmt.Sprintf(`
+		INSERT INTO %s
+		(uuid, name, description, enterprise, status, app_type)
+		VALUES (?, ?, ?, ?, 1, ?)`, appTableV3)
+
+	_, err = t.Exec(queryStr, appID, app.Name, app.Description, enterpriseID, app.AppType)
+	if err != nil {
+		return
+	}
+
+	err = t.Commit()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	_, secretErr := controller.RenewAppSecretV3(appID)
+	if secretErr != nil {
+		util.LogError.Println("Create app secret fail, auth may need migration")
+	}
+
+	return
+}
+func (controller MYSQLController) GetAppsV4(enterpriseID string) ([]*data.AppDetailV4, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT uuid, name, status, description, app_type
+		FROM %s
+		WHERE enterprise = ?`, appTableV3)
+	rows, err := controller.connectDB.Query(queryStr, enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	apps := make([]*data.AppDetailV4, 0)
+	for rows.Next() {
+		app := data.AppDetailV4{}
+		err := rows.Scan(&app.ID, &app.Name, &app.Status, &app.Description, &app.AppType)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+		apps = append(apps, &app)
+	}
+
+	return apps, nil
+}
+
 func (controller MYSQLController) UpdateEnterpriseStatusV4(enterpriseID string, active bool) (err error) {
 	defer func() {
 		if err != nil {
