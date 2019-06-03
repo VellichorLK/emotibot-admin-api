@@ -131,7 +131,7 @@ func HandleGetSSMConfig(w http.ResponseWriter, r *http.Request)  {
 
 	baseUrl := getSSMConfigUrl();
 
-	requestString := fmt.Sprintf("%s?appId=%s&type=%", baseUrl, appid, configType)
+	requestString := fmt.Sprintf("%s?appId=%s&type=%s", baseUrl, appid, configType)
 	configs, resErr := util.HTTPGetSimpleWithTimeout(requestString, 30)
 	if resErr != nil {
 		util.ReturnError(w, AdminErrors.ErrnoRequestError, "dac interface error")
