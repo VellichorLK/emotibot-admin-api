@@ -66,17 +66,29 @@ func getHealthCheckStatus(appid string) (map[int]map[string]string, error) {
 	return queryDB(sql, params...)
 }
 
-func getLatestHealthCheckReport(appid string) (map[int]map[string]string, error) {
+func getLatestHealthCheckReport(appid string, taskid string) (map[int]map[string]string, error) {
+	params := make([]interface{}, 1)
+
 	sql := `
 		select * 
 		from health_check_report 
-		where appid = ? 
+	`
+	if len(taskid) == 0 {
+		sql += `
+			where appid = ? 
+		`
+		params[0] = appid
+	} else {
+		sql += `
+			where task_id = ? 
+		`
+		params[0] = taskid
+	}
+
+	sql += `
 		order by update_time desc 
 		limit 1
 	`
-	params := make([]interface{}, 1)
-	params[0] = appid
-
 	return queryDB(sql, params...)
 }
 

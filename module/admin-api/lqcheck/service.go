@@ -164,18 +164,32 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	}
 	hp.LqDistribution.Current = LqDist
 
+	// 计算循环检查结果秒数，预估每秒处理450条，外加300秒冗余
+	checkCountLimit := hp.LqSqRate.LqCount/450 + 300
+
 	// 查询冲突检查结果
+	checkCount := 0
 	for {
 		checkStatus, _ := getHealthCheckStatus(appid)
 		if len(checkStatus) > 0 && checkStatus[0]["task_id"] == taskid && checkStatus[0]["message"] == "save_report_ok" {
 			hp.LqQuality.ReportFilePath = outerUrl + checkStatus[0]["download_url"]
+			hp.ReportStatus = true
 			break
 		}
-		time.Sleep(500 * time.Millisecond)
+
+		if checkCount < checkCountLimit {
+			time.Sleep(time.Second)
+			checkCount++
+		} else {
+			hp.ReportStatus = false
+			break
+		}
 	}
 
 	// 计算健康度分数
-	hp.HealthScore.Score = rand.Intn(90-55) + 55
+	if hp.ReportStatus {
+		hp.HealthScore.Score = rand.Intn(90-55) + 55
+	}
 
 	// 保存检查结果
 	hpStr, _ := json.Marshal(hp)
@@ -196,7 +210,7 @@ func getHealthCheckResult(appid string) (interface{}, AdminErrors.AdminError) {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 
-	report, err := getLatestHealthCheckReport(appid)
+	report, err := getLatestHealthCheckReport(appid, res[0]["task_id"])
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
@@ -206,13 +220,20 @@ func getHealthCheckResult(appid string) (interface{}, AdminErrors.AdminError) {
 		ret["progress"] = "0"
 		ret["status"] = "nodata"
 	} else {
-		if len(report) < 1 && res[0]["progress"] <= "100" {
-			if res[0]["progress"] == "100" {
+		progress, _ := strconv.Atoi(res[0]["progress"])
+		if len(report) < 1 && progress <= 100 {
+			if progress == 100 {
 				res[0]["progress"] = "99"
 			}
 			res[0]["message"] = "progress"
 		} else {
-			res[0]["message"] = "done"
+			var hr *HealthReport
+			json.Unmarshal([]byte(report[0]["report"]), &hr)
+			if hr.ReportStatus {
+				res[0]["message"] = "done"
+			} else {
+				res[0]["message"] = "error"
+			}
 		}
 
 		ret["progress"] = res[0]["progress"]
@@ -224,18 +245,20 @@ func getHealthCheckResult(appid string) (interface{}, AdminErrors.AdminError) {
 
 // 获取健康检查报告
 func getHealCheckReport(appid string) (interface{}, AdminErrors.AdminError) {
-	res, err := getLatestHealthCheckReport(appid)
+	res, err := getLatestHealthCheckReport(appid, "")
 	if err != nil {
 		return nil, AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
 
 	var hr HealthReport
-	if _, ok := res[0]["report"]; ok {
+	_, ok := res[0]["report"]
+	if ok && len(res[0]["report"]) > 0 {
 		json.Unmarshal([]byte(res[0]["report"]), &hr)
 		checkSqLqUpdateStatus(appid, &hr)
+		return hr, nil
+	} else {
+		return nil, nil
 	}
-
-	return hr, nil
 }
 
 // 查询标准问语料是否发生变更

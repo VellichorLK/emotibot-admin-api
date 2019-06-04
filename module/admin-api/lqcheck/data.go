@@ -123,6 +123,7 @@ type HealthReport struct {
 	LqSqRate           LqSqRate       `json:"lq_sq_rate"`
 	LqDistribution     LqDistribution `json:"lq_distribution"`
 	LqLatestUpdateTime int64          `json:"lq_latest_update_time"`
+	ReportStatus       bool           `json:"report_status"`
 }
 
 // 报告记录
