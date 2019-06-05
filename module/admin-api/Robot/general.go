@@ -113,7 +113,7 @@ func publishSSMConfigInfoUrl() string {
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("%sopenapi/sync/ssmconfig", dacAddress)
+	return fmt.Sprintf("%sssm/dac/openapi/sync/ssmconfig", dacAddress)
 }
 
 func HandleGetSSMConfig(w http.ResponseWriter, r *http.Request)  {
