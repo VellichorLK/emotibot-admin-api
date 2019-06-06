@@ -355,3 +355,15 @@ func getBFOPconfig(module string) map[string]string {
 
 	return hcConfig
 }
+
+func getSqLqCount(appid string) (map[string]int, AdminErrors.AdminError) {
+	d := SsmDacRet{}
+
+	// 获取所有标准问语料
+	d.getSqLqFromDac(appid)
+
+	lqCount := map[string]int{}
+	lqCount["lq_count"] = len(d.ActualResults)
+
+	return lqCount, nil
+}
