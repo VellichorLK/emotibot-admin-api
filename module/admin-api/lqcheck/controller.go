@@ -23,6 +23,8 @@ func init() {
 			util.NewEntryPointWithVer("GET", "report/status/{appid}", []string{}, handleHealthCheckStatus, 1),
 			// 获取标准问语料
 			util.NewEntryPointWithVer("GET", "report/sqlq/{appid}", []string{}, handleGetReportSqLq, 1),
+			// 获取标准问语料总数
+			util.NewEntryPointWithVer("GET", "report/sqlq_count/{appid}", []string{}, handleGetReportSqLqCount, 1),
 		},
 	}
 }
@@ -60,6 +62,15 @@ func handleGetReportSqLq(w http.ResponseWriter, r *http.Request) {
 	appid := util.GetMuxVar(r, "appid")
 
 	data, err := getSqLq(appid)
+
+	util.Return(w, err, data)
+}
+
+// 获取标准问语料总数
+func handleGetReportSqLqCount(w http.ResponseWriter, r *http.Request) {
+	appid := util.GetMuxVar(r, "appid")
+
+	data, err := getSqLqCount(appid)
 
 	util.Return(w, err, data)
 }
