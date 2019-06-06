@@ -1147,7 +1147,7 @@ func (controller MYSQLController) EnterpriseAppInfoExistsV3(enterpriseID string,
 	querStr := fmt.Sprintf(`
 		SELECT 1
 		FROM %s
-		WHERE enterprise = ? AND name = ?`, appTableV3)
+		WHERE enterprise = ? AND name = BINARY ?`, appTableV3)
 	return controller.rowExists(querStr, enterpriseID, appName)
 }
 
