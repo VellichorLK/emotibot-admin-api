@@ -438,6 +438,18 @@ func getSessions(appID string, condition SessionCondition) (sessions []Session, 
 	if db == nil {
 		return nil, fmt.Errorf("can not get main DB")
 	}
+
+	appsql := "SELECT uuid FROM auth.apps WHERE uuid = ?"
+	nums, err := db.Query(appsql, appID)
+	if err != nil {
+		return nil, fmt.Errorf("session sql query error, %v", err.Error())
+	}
+	if (!nums.Next()) {
+		return nil, fmt.Errorf("appId not exist")
+	}
+
+
+
 	whereText, values := condition.JoinedSQLCondition("sessions", "records")
 	selectColumns := "SELECT sessions.session_id, sessions.start_time, sessions.end_time, records.user_id, sessions.status, sessions.data"
 	fromText := " FROM sessions JOIN records ON sessions.session_id = records.session_id "
