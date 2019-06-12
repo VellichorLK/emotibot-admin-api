@@ -43,7 +43,7 @@ type Cmd struct {
 	Status    bool          `json:"status"`
 	Begin     *time.Time    `json:"begin_time"`
 	End       *time.Time    `json:"end_time"`
-	LinkLabel []string      `json:"labels"`
+	LinkLabel []int         `json:"labels"`
 }
 
 func (r CmdContent) IsValid() bool {

@@ -125,7 +125,7 @@ func getCmds(appid string) (*CmdClass, error) {
 	}
 	defer idRows.Close()
 
-	idMap := map[int][]string{}
+	idMap := map[int][]int{}
 	for idRows.Next() {
 		rid, lid := 0, 0
 		err = idRows.Scan(&rid, &lid)
@@ -133,16 +133,16 @@ func getCmds(appid string) (*CmdClass, error) {
 			return nil, err
 		}
 		if _, ok := idMap[rid]; !ok {
-			idMap[rid] = []string{}
+			idMap[rid] = []int{}
 		}
-		idMap[rid] = append(idMap[rid], fmt.Sprintf("%d", lid))
+		idMap[rid] = append(idMap[rid], lid)
 	}
 
 	for _, cmd := range cmds {
 		if ids, ok := idMap[cmd.ID]; ok {
 			cmd.LinkLabel = ids
 		} else {
-			cmd.LinkLabel = []string{}
+			cmd.LinkLabel = []int{}
 		}
 	}
 
@@ -221,7 +221,7 @@ func getCmd(appid string, id int) (*Cmd, error) {
 		if err != nil {
 			return nil, err
 		}
-		cmd.LinkLabel = append(cmd.LinkLabel, fmt.Sprintf("%d", lid))
+		cmd.LinkLabel = append(cmd.LinkLabel, lid)
 	}
 
 	return cmd, nil
