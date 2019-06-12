@@ -265,16 +265,17 @@ func parseCmdFromRequest(r *http.Request) (cmd *Cmd, err error) {
 	ret.Rule = ruleContents
 
 	labelsStr := r.FormValue("labels")
-	labelIDs := []string{}
+	labelIDs := []int{}
 	err = json.Unmarshal([]byte(labelsStr), &labelIDs)
 	if err != nil {
 		return
 	}
 	existedLabel := map[string]bool{}
 	for _, id := range labelIDs {
-		if _, ok := existedLabel[id]; !ok {
+		idx := fmt.Sprintf("%d", id)
+		if _, ok := existedLabel[idx]; !ok {
 			ret.LinkLabel = append(ret.LinkLabel, id)
-			existedLabel[id] = true
+			existedLabel[idx] = true
 		}
 	}
 

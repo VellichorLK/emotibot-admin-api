@@ -876,7 +876,7 @@ func deleteWordbankV3(appid string, id int) (err error) {
 	DELETE e.* FROM 
 	entities as e,
 		(SELECT * FROM (
-			SELECT e.id as id, c.id as cid, c.editable as editable  FROM
+			SELECT e.id as id, c.id as cid, e.editable as editable  FROM
 				(SELECT * FROM entities WHERE id = ? AND appid = ?) AS e
 			LEFT JOIN entity_class as c
 			ON
@@ -887,6 +887,8 @@ func deleteWordbankV3(appid string, id int) (err error) {
 	WHERE e.id = temp2.id
 	`
 	_, err = mySQL.Exec(queryStr, id, appid)
+	fmt.Print(id)
+	fmt.Print(appid)
 	return err
 }
 func deleteWordbankClassV3(appid string, id int) (err error) {
