@@ -15,6 +15,7 @@ func IsValidAppID(id string) bool {
 	if err != nil {
 		return false
 	}
+	defer nums.Close()
 	if !nums.Next() {
 		return false
 	}
