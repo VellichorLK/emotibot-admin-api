@@ -80,6 +80,7 @@ func VisitCcsRecordsQuery(query *dataV2.VisitCcsRecordsQuery,
 			LogTime:	rawRecord.LogTime,
 			RawResponse:rawRecord.RawResponse,
 			Answers:	rawRecord.Answers,
+			AIModule:	rawRecord.AIModule,
 		}
 
 		records = append(records, record)
