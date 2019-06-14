@@ -6,9 +6,10 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
 	"encoding/json"
 	"fmt"
+	"github.com/tealeg/xlsx"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -123,24 +124,32 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	sqLq := make(map[int64]int)
 	for _, v := range d.ActualResults {
 		if _, ok := sqLq[v.SqId]; ok {
-			sqLq[v.SqId] = 1
-		} else {
 			sqLq[v.SqId]++
+		} else {
+			sqLq[v.SqId] = 1
 		}
 	}
 	// 标准问总数
 	hp.LqSqRate.SqCount = len(sqLq)
 	// 标准问语料比例
-	hp.LqSqRate.SqLqRate = "1 : " + fmt.Sprintf("%.3f", float32(hp.LqSqRate.LqCount)/float32(hp.LqSqRate.SqCount))
+	hp.LqSqRate.LqRate = float64(hp.LqSqRate.LqCount) / float64(hp.LqSqRate.SqCount)
+	hp.LqSqRate.SqLqRate = "1 : " + fmt.Sprintf("%.3f", hp.LqSqRate.LqRate)
 
 	// 需要读取模板
 	healthCheckConfigs := getBFOPconfig("")
 	_ = json.Unmarshal([]byte(healthCheckConfigs["score_standard"]), &hp.HealthScore.Standard)
 	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_sq_rate_remark"]), &hp.LqSqRate.LqSqRateRemark)
 	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_distribution_recommended"]), &hp.LqDistribution.Recommended)
+	var lqSqRateRange []LqSqRateRange
+	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_sq_rate_range"]), &lqSqRateRange)
+	var lqConflictRange []LqConflictScoreRange
+	_ = json.Unmarshal([]byte(healthCheckConfigs["lq_conflict_range"]), &lqConflictRange)
+	var healthReportScoreWeight HealthReportScoreWeight
+	_ = json.Unmarshal([]byte(healthCheckConfigs["health_report_score_weight"]), &healthReportScoreWeight)
 
 	// 标准问语料数量分布计算
-	LqDist := hp.LqDistribution.Recommended
+	LqDist := make([]LqDistributionTemplate, len(hp.LqDistribution.Recommended))
+	copy(LqDist, hp.LqDistribution.Recommended)
 
 	// 计算语料分布计数
 	for _, v := range sqLq {
@@ -148,10 +157,12 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 			if vv.To == 0 {
 				if v >= vv.From {
 					LqDist[kk].SqNum += 1
+					break
 				}
 			} else {
 				if v >= vv.From && v <= vv.To {
 					LqDist[kk].SqNum += 1
+					break
 				}
 			}
 		}
@@ -159,7 +170,7 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 
 	// 计算语料分布占比
 	for k, v := range LqDist {
-		rate := float32(v.SqNum) / float32(hp.LqQuality.LqCount) * 100
+		rate := float32(v.SqNum) / float32(hp.LqSqRate.SqCount) * 100
 		LqDist[k].SqRate, _ = strconv.ParseFloat(fmt.Sprintf("%.2f", rate), 3)
 	}
 	hp.LqDistribution.Current = LqDist
@@ -169,8 +180,9 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 
 	// 查询冲突检查结果
 	checkCount := 0
+	var checkStatus map[int]map[string]string
 	for {
-		checkStatus, _ := getHealthCheckStatus(appid)
+		checkStatus, _ = getHealthCheckStatus(appid)
 		if len(checkStatus) > 0 && checkStatus[0]["task_id"] == taskid && checkStatus[0]["message"] == "save_report_ok" {
 			hp.LqQuality.ReportFilePath = outerUrl + checkStatus[0]["download_url"]
 			hp.ReportStatus = true
@@ -186,9 +198,96 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 		}
 	}
 
+	if hp.ReportStatus {
+		reportFileUrl := "http://" + getENV("CONFLICT_CHECK_URL", "") + checkStatus[0]["download_url"]
+		res, err := http.Get(reportFileUrl)
+		if err != nil || res.StatusCode != 200 {
+			hp.ReportStatus = false
+		} else {
+			data, err2 := ioutil.ReadAll(res.Body)
+			if err2 != nil {
+				hp.ReportStatus = false
+			} else {
+				reportFilePath := "./" + taskid + ".xlsx"
+				ioutil.WriteFile(reportFilePath, data, 0644)
+
+				_, err := os.Stat(reportFilePath)
+				if err != nil {
+					if !os.IsExist(err) {
+						hp.ReportStatus = false
+					}
+				}
+
+				if hp.ReportStatus {
+					hFile, err := xlsx.OpenFile(reportFilePath)
+					if err != nil {
+						hp.ReportStatus = false
+					} else {
+						reportData, _ := hFile.ToSlice()
+						if len(reportData) > 0 {
+							for _, v := range reportData[0] {
+								if v[0] == "推荐处理" || v[0] == "推薦處理" {
+									hp.LqQuality.Recommended++
+								}
+								if v[0] == "强烈建议" || v[0] == "強烈建議" {
+									hp.LqQuality.Bad++
+								}
+							}
+						}
+					}
+					os.Remove(reportFilePath)
+				}
+			}
+		}
+	}
+
 	// 计算健康度分数
 	if hp.ReportStatus {
-		hp.HealthScore.Score = rand.Intn(90-55) + 55
+		lqConflictRate := float64((hp.LqQuality.Bad + hp.LqQuality.Recommended) / hp.LqQuality.LqCount)
+		for _, v := range lqConflictRange {
+			if v.To == 0 && v.From != 0 {
+				if lqConflictRate >= v.From {
+					healthReportScoreWeight.LqConflictScore.Score = v.Score
+					break
+				}
+			} else if v.To != 0 && v.From == 0 {
+				if lqConflictRate > v.From && lqConflictRate < v.To {
+					healthReportScoreWeight.LqConflictScore.Score = v.Score
+					break
+				}
+			} else if v.To == 0 && v.From == 0 {
+				healthReportScoreWeight.LqConflictScore.Score = v.Score
+				break
+			} else {
+				if lqConflictRate >= v.From && lqConflictRate < v.To {
+					healthReportScoreWeight.LqConflictScore.Score = v.Score
+					break
+				}
+			}
+		}
+
+		for _, v := range lqSqRateRange {
+			if v.To == 0 {
+				if hp.LqSqRate.LqRate > v.From {
+					healthReportScoreWeight.LqSqRateScore.Score = v.Score
+					break
+				}
+			} else {
+				if hp.LqSqRate.LqRate > v.From && hp.LqSqRate.LqRate <= v.To {
+					healthReportScoreWeight.LqSqRateScore.Score = v.Score
+					break
+				}
+			}
+		}
+
+		for _, v := range hp.LqDistribution.Current {
+			healthReportScoreWeight.LqDistributionScore.Score += v.SqRate * v.SqRateScore / 100
+		}
+
+		healthScore := healthReportScoreWeight.LqConflictScore.Score*healthReportScoreWeight.LqConflictScore.Weight +
+			healthReportScoreWeight.LqSqRateScore.Score*healthReportScoreWeight.LqSqRateScore.Weight +
+			healthReportScoreWeight.LqDistributionScore.Score*healthReportScoreWeight.LqDistributionScore.Weight
+		hp.HealthScore.Score = fmt.Sprintf("%.2f", healthScore)
 	}
 
 	// 保存检查结果
@@ -310,6 +409,7 @@ func (c *ConflictCheckRequest) convertSqLq(appid string, locale string, d *SsmDa
 // 发送冲突检查请求
 func (c *ConflictCheckRequest) requestConflictCheck() (*ConflictCheckResponse, *ConflictCheckReturn) {
 	d, _ := json.Marshal(c)
+	//fmt.Println(strings.NewReader(string(d)))
 	res, _ := http.Post(c.getConflictCheckApi(), "application/json", strings.NewReader(string(d)))
 
 	body, _ := ioutil.ReadAll(res.Body)
