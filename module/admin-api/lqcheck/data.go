@@ -68,7 +68,7 @@ type ReportLq struct {
 
 // 整体健康度
 type HealthScore struct {
-	Score    int                 `json:"score"`
+	Score    string              `json:"score"`
 	Standard HealthScoreStandard `json:"standard"`
 }
 
@@ -96,17 +96,19 @@ type LqSqRateRecommended struct {
 type LqSqRate struct {
 	LqCount        int      `json:"lq_count"`
 	SqCount        int      `json:"sq_count"`
+	LqRate         float64  `json:"lq_rate"`
 	SqLqRate       string   `json:"sq_lq_rate"`
 	LqSqRateRemark []string `json:"remark"`
 }
 
 // 语料数量分布
 type LqDistributionTemplate struct {
-	Label  string  `json:"label"`
-	From   int     `json:"from,omitempty"`
-	To     int     `json:"to,omitempty"`
-	SqNum  int     `json:"sq_num"`
-	SqRate float64 `json:"sq_rate"`
+	Label       string  `json:"label"`
+	From        int     `json:"from,omitempty"`
+	To          int     `json:"to,omitempty"`
+	SqNum       int     `json:"sq_num"`
+	SqRate      float64 `json:"sq_rate"`
+	SqRateScore float64 `json:"sq_rate_score"`
 }
 
 type LqDistribution struct {
@@ -132,4 +134,27 @@ type HealthReportRecord struct {
 	AppId      string
 	Report     string
 	UpdateTime int
+}
+
+type LqSqRateRange struct {
+	From  float64 `json:"from"`
+	To    float64 `json:"to"`
+	Score float64 `json:"score"`
+}
+
+type LqConflictScoreRange struct {
+	From  float64 `json:"from"`
+	To    float64 `json:"to"`
+	Score float64 `json:"score"`
+}
+
+type HealthReportScoreWeight struct {
+	LqConflictScore     *HealthReportScoreWeightTemplate `json:"lq_conflict_score"`
+	LqSqRateScore       *HealthReportScoreWeightTemplate `json:"lq_sq_rate_score"`
+	LqDistributionScore *HealthReportScoreWeightTemplate `json:"lq_distribution_score"`
+}
+
+type HealthReportScoreWeightTemplate struct {
+	Score  float64 `json:"score"`
+	Weight float64 `json:"weight"`
 }
