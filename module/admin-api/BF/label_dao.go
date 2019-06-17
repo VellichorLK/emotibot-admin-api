@@ -564,6 +564,29 @@ func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
 	}
 
 	queryStr = `
+		SELECT rl.cmd_id, rl.robot_tag_id
+		FROM cmd_robot_tag AS rl, cmd AS r
+		WHERE rl.cmd_id = r.cmd_id AND r.appid = ?`
+	idRows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+	defer idRows.Close()
+
+	idMap := map[int][]int{}
+	for idRows.Next() {
+		rid, lid := 0, 0
+		err = idRows.Scan(&rid, &lid)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := idMap[rid]; !ok {
+			idMap[rid] = []int{}
+		}
+		idMap[rid] = append(idMap[rid], lid)
+	}
+
+	queryStr = `
 		SELECT
 			cid, cmd_id, name, target, rule, answer,
 			response_type, status, begin_time, end_time
@@ -583,6 +606,11 @@ func getCmdClass(appid string, classID int) (ret *CmdClass, err error) {
 		_, cmd, err = scanRowToCmd(rows)
 		if err != nil {
 			return
+		}
+		if ids, ok := idMap[cmd.ID]; ok {
+			cmd.LinkLabel = ids
+		} else {
+			cmd.LinkLabel = []int{}
 		}
 		cmdClass.Cmds = append(cmdClass.Cmds, cmd)
 	}
