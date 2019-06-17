@@ -192,7 +192,7 @@ func (s *sqlService) GetRecords(reportID uint64) ([]ReportRecord, error) {
 }
 
 func (s *sqlService) GetFTModel(appID string) (string, error) {
-	query := "SELECT `value` FROM `ent_config_appid_customization` WHERE `name` LIKE 'ssm_config' AND `app_id` LIKE ?"
+	query := "SELECT `value` FROM `faq3.ent_config_appid_customization` WHERE `name` = 'ssm_config_rc' AND `app_id` = ?"
 	var value string
 	err := s.db.QueryRow(query, appID).Scan(&value)
 	if err == sql.ErrNoRows {
