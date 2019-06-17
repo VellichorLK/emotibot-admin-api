@@ -413,7 +413,7 @@ func ExportTask(option *data.ExportTaskOption, locale string) {
 			numOfXlsxFiles++
 			xlsxFileName := fmt.Sprintf("%s_%d", timestamp, numOfXlsxFiles)
 			logger.Info.Printf("Task %s: Create Excel file %s.xlsx\n", option.TaskID, xlsxFileName)
-			xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName, localeStr)
+			xlsxFilePath, _err := option.XlsxCreateHandler(records, xlsxFileName, localeStr, option.AppID)
 			if _err != nil {
 				err = _err
 				return
