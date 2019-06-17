@@ -754,10 +754,12 @@ func (dao intentDaoV2) UpdateLatestIntents(appid string, intents []*IntentV2) (e
 	(
 		SELECT t1.id as id, intents.id as iid
 		FROM intent_train_sets as t1
-		LEFT JOIN intents ON t1.intent = intents.id
+		LEFT JOIN intents
+		ON t1.intent = intents.id
+		WHERE intents.appid = ?
 	) as t2
 	ON t2.iid is NULL AND s.id = t2.id`
-	_, err = tx.Exec(queryStr)
+	_, err = tx.Exec(queryStr, appid)
 	if err != nil {
 		return
 	}
