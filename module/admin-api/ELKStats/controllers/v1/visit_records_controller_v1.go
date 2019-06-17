@@ -405,6 +405,7 @@ func NewRecordsMarkUpdateHandlerV2(client *dac.Client) func(w http.ResponseWrite
 			return
 		}
 		appID := requestheader.GetAppID(r)
+		userId := requestheader.GetUserID(r)
 		q := dataV1.RecordQuery{
 			AppID:   appID,
 			Records: make([]interface{}, len(request.Records)),
@@ -473,8 +474,8 @@ func NewRecordsMarkUpdateHandlerV2(client *dac.Client) func(w http.ResponseWrite
 
 		if *request.Mark {
 			// If delete Simq have problem, we will know at next step setSimQ, so dont bother to check delete simQ operation at all.
-			client.DeleteSimilarQuestions(appID, uniqueUserQ...)
-			err = client.SetSimilarQuestion(appID, request.Content, uniqueUserQ...)
+			client.DeleteSimilarQuestionsWithUser(appID, userId, uniqueUserQ...)
+			err = client.SetSimilarQuestionWithUser(appID, userId, request.Content, uniqueUserQ...)
 			if err != nil {
 				logger.Error.Printf("set simQ failed, %v\n", err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -485,7 +486,7 @@ func NewRecordsMarkUpdateHandlerV2(client *dac.Client) func(w http.ResponseWrite
 			}
 		} else {
 			// Unmark should remove the records from ssm store
-			err = client.DeleteSimilarQuestions(appID, uniqueUserQ...)
+			err = client.DeleteSimilarQuestionsWithUser(appID, userId, uniqueUserQ...)
 			//Note: because ssm wont sync with record, so it can be someone delete the ssm
 			//We only need to return error if the problem is not "not exist"
 			if dErr, ok := err.(*dac.DetailError); ok {
