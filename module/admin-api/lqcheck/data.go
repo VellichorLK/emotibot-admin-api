@@ -40,7 +40,7 @@ type SsmDacSqLq struct {
 	LqContent string `json:"lq_content"`
 	LqId      int64  `json:"lq_id"`
 	SqContent string `json:"sq_content"`
-	SqId      int64  `json:"sq_id"`
+	SqId      int    `json:"sq_id"`
 }
 
 type SsmDacCheckRet struct {
@@ -55,7 +55,7 @@ type SsmDacCheckData struct {
 
 // 返回标准问语料列表
 type ReportSq struct {
-	SqId    int64      `json:"sq_id"`
+	SqId    int        `json:"sq_id"`
 	Sq      string     `json:"sq"`
 	LqCount int        `json:"lq_count"`
 	Lq      []ReportLq `json:"lq"`
@@ -157,4 +157,18 @@ type HealthReportScoreWeight struct {
 type HealthReportScoreWeightTemplate struct {
 	Score  float64 `json:"score"`
 	Weight float64 `json:"weight"`
+}
+
+type ReportSqSlice []int
+
+func (r ReportSqSlice) Len() int {
+	return len(r)
+}
+
+func (r ReportSqSlice) Swap(i, j int) {
+	r[i], r[j] = r[j], r[i]
+}
+
+func (r ReportSqSlice) Less(i, j int) bool {
+	return r[j] < r[i]
 }
