@@ -219,7 +219,7 @@ func NormalResponseCounts(query dataV1.VisitStatsQuery) (map[string]interface{},
 	ctx, client := elasticsearch.GetClient()
 	aggName := "normal_responses"
 	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
-	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
+	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "domain_kg")
 	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.Filter(termsQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
