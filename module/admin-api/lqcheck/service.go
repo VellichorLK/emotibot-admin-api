@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -84,7 +85,7 @@ func getSqLq(appid string) (interface{}, AdminErrors.AdminError) {
 	// 获取所有标准问语料
 	d.getSqLqFromDac(appid)
 
-	sqLq := make(map[int64]*ReportSq)
+	sqLq := map[int]*ReportSq{}
 
 	for _, v := range d.ActualResults {
 		if _, ok := sqLq[v.SqId]; !ok {
@@ -109,7 +110,25 @@ func getSqLq(appid string) (interface{}, AdminErrors.AdminError) {
 		}
 	}
 
-	return sqLq, nil
+	mapLqCountToSqIds := make(map[int][]*ReportSq)
+	for _, v := range sqLq {
+		mapLqCountToSqIds[v.LqCount] = append(mapLqCountToSqIds[v.LqCount], v)
+	}
+
+	var keys []int
+	for k := range mapLqCountToSqIds {
+		keys = append(keys, k)
+	}
+	sort.Sort(ReportSqSlice(keys))
+
+	sqLqRet := []*ReportSq{}
+	for _, v := range keys {
+		for _, vv := range mapLqCountToSqIds[v] {
+			sqLqRet = append(sqLqRet, vv)
+		}
+	}
+
+	return sqLqRet, nil
 }
 
 func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, outerUrl string) AdminErrors.AdminError {
@@ -121,7 +140,7 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	hp.LqQuality.LqCount = len(d.ActualResults)
 	hp.LqSqRate.LqCount = len(d.ActualResults)
 	// 各标准问包含的语料数
-	sqLq := make(map[int64]int)
+	sqLq := make(map[int]int)
 	for _, v := range d.ActualResults {
 		if _, ok := sqLq[v.SqId]; ok {
 			sqLq[v.SqId]++
