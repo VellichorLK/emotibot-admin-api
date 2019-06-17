@@ -465,7 +465,7 @@ func AnswerCategoryCounts(query dataV1.VisitStatsQuery) (map[string]interface{},
 	filtersAgg := elastic.NewFiltersAggregation()
 
 	businessFilterName := dataCommon.CategoryBusiness
-	businessTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine")
+	businessTermsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "domain_kg")
 
 	chatFilterName := dataCommon.CategoryChat
 	chatTermQuery := elastic.NewTermQuery("module", "chat")
