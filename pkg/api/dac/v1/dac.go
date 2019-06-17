@@ -1,16 +1,17 @@
 package v1
 
-
 import (
 	"emotibot.com/emotigo/pkg/api"
 	"net/url"
 	"fmt"
 	"net/http"
 	"encoding/json"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
+/*
+操作时（增加或删除添加userid）
+ */
 // Client can call dac module api by
 type Client struct {
 	client  api.HTTPClient
