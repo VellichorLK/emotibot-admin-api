@@ -76,6 +76,16 @@ type Category struct {
 	CatID string `json:"cat_id"`
 }
 
+// Category is the struct mapping to an SSM category
+type CategoryDac struct {
+	ID       int            `json:"id"`
+	Parent   int            `json:"parent_id"`
+	Name     string         `json:"name"`
+	Children []*CategoryDac `json:"children"`
+	Level    int            `json:"level"`
+	AppID    string         `json:"app_id"`
+}
+
 type SSMLabel struct {
 	ID          int    `json:"id"`
 	Name        string `json:"name"`

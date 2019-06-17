@@ -10,6 +10,10 @@ func GetSSMCategories(appid string) (*Category, error) {
 	return getSSMCategories(appid, false)
 }
 
+func GetSSMCategoriesV2(appid string) (*CategoryDac, error) {
+	return getSSMCategoriesV2(appid)
+}
+
 func GetSSMLabels(appid string) ([]*SSMLabel, error) {
 	return getSSMLabels(appid)
 }
