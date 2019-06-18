@@ -160,7 +160,7 @@ func GetAllFaqCategoryPathsV3() (categoryPaths map[int64]*data.FaqCategoryPath, 
 		return
 	}
 
-	queryStr := fmt.Sprintf(`SELECT id, fullname FROM %s`, FaqCategoryTableV3)
+	queryStr := fmt.Sprintf(`SELECT id, substring_index(fullname,',', 1) as fullname FROM %s`, FaqCategoryTableV3)
 	rows, err := db.Query(queryStr)
 	if err != nil {
 		return nil, err
