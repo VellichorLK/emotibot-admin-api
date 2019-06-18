@@ -74,5 +74,6 @@ func handleGetReportSqLqCount(w http.ResponseWriter, r *http.Request) {
 }
 
 func getOuterUrl(r *http.Request, appid string) string {
+	// get origin host
 	return r.Header.Get("Origin")
 }
