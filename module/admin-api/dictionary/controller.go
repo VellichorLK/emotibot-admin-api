@@ -896,7 +896,7 @@ func handleAddWordbankClassV3(w http.ResponseWriter, r *http.Request) {
 		result = "Class name should not be empty"
 		return
 	}
-	if len(className) > maxDirNameLen {
+	if utf8.RuneCountInString(className) > maxDirNameLen {
 		retCode, result = ApiError.REQUEST_ERROR, util.Msg["ErrorAPIPathTooLong"]
 		return
 	}
