@@ -256,7 +256,8 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 }
 
 func updateFaqCategoryNames(records []*dataV2.VisitRecordsData) error {
-	categoryPaths, err := dao.GetAllFaqCategoryPaths()
+	//categoryPaths, err := dao.GetAllFaqCategoryPaths()
+	categoryPaths, err := dao.GetAllFaqCategoryPathsV3()
 	if err != nil {
 		return err
 	}
@@ -355,7 +356,8 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 
 	// TODO: Pass FAQ category paths, SSM categories and FAQ robot tags
 	// 		 as parameters to avoid redundant database queries.
-	faqCategoryPaths, err := dao.GetAllFaqCategoryPaths()
+	//faqCategoryPaths, err := dao.GetAllFaqCategoryPaths()
+	faqCategoryPaths, err := dao.GetAllFaqCategoryPathsV3()
 	if err != nil {
 		return "", err
 	}

@@ -17,6 +17,7 @@ const (
 	TagTypeTable           = "tag_type"
 	TagsTable              = "tags"
 	FaqCategoryTable       = "tbl_sq_category"
+	FaqCategoryTableV3     = "faq3.tbl_folder"
 	FaqRobotTagTable       = "tbl_robot_tag"
 	RecordsExportTaskTable = "records_export_tasks"
 	RecordsExportTable     = "records_export"
@@ -132,6 +133,34 @@ func GetAllFaqCategoryPaths() (categoryPaths map[int64]*data.FaqCategoryPath, er
 	}
 
 	queryStr := fmt.Sprintf(`SELECT id, path FROM %s`, FaqCategoryTable)
+	rows, err := db.Query(queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	categoryPaths = make(map[int64]*data.FaqCategoryPath)
+
+	for rows.Next() {
+		categoryPath := data.FaqCategoryPath{}
+		err = rows.Scan(&categoryPath.ID, &categoryPath.Path)
+		if err != nil {
+			return nil, err
+		}
+
+		categoryPaths[categoryPath.ID] = &categoryPath
+	}
+
+	return
+}
+
+func GetAllFaqCategoryPathsV3() (categoryPaths map[int64]*data.FaqCategoryPath, err error) {
+	db := util.GetMainDB()
+	if db == nil {
+		err = errors.New("DB not init")
+		return
+	}
+
+	queryStr := fmt.Sprintf(`SELECT id, fullname FROM %s`, FaqCategoryTableV3)
 	rows, err := db.Query(queryStr)
 	if err != nil {
 		return nil, err
