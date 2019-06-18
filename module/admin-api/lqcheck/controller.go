@@ -1,9 +1,7 @@
 package lqcheck
 
 import (
-	robotConfig "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"net/http"
 )
 
@@ -76,12 +74,5 @@ func handleGetReportSqLqCount(w http.ResponseWriter, r *http.Request) {
 }
 
 func getOuterUrl(r *http.Request, appid string) string {
-	server := requestheader.GetOrigin(r)
-
-	config, err := robotConfig.GetConfig(appid, "uploadimg_server")
-	if err == nil && config != nil && config.Value != "" {
-		server = config.Value
-	}
-
-	return server
+	return r.Header.Get("Origin")
 }
