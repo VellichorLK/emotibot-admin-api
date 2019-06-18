@@ -91,6 +91,8 @@ func init() {
 				IgnoreAppID:     true,
 				IgnoreAuthToken: false,
 			}),
+
+			util.NewEntryPointWithVer("GET", "ssm/categories", []string{"view"}, handleGetSSMCategoriesV2, 2),
 		},
 		EntryPrefix: []util.EntryPoint{
 			util.NewEntryPoint("GET", "dal/", []string{}, handleRedirect),
@@ -293,6 +295,18 @@ func handleGetSSMCategories(w http.ResponseWriter, r *http.Request) {
 	var err error
 	appid := requestheader.GetAppID(r)
 	retObj, err = GetSSMCategories(appid)
+	if err != nil {
+		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
+	} else {
+		util.Return(w, nil, retObj)
+	}
+}
+
+func handleGetSSMCategoriesV2(w http.ResponseWriter, r *http.Request) {
+	var retObj interface{}
+	var err error
+	appid := requestheader.GetAppID(r)
+	retObj, err = GetSSMCategoriesV2(appid)
 	if err != nil {
 		util.ReturnError(w, AdminErrors.ErrnoDBError, err.Error())
 	} else {

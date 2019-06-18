@@ -10,6 +10,7 @@ type DB interface {
 	GetFaqCategoryPathByID(categoryID string) (categoryPath string, err error)
 	GetFaqCategoryPathsByIDs(categoryIDs []int64) (categoryPaths map[int64]*data.FaqCategoryPath, err error)
 	GetAllFaqCategoryPaths() (categoryPaths map[int64]*data.FaqCategoryPath, err error)
+	GetAllFaqCategoryPathsV3() (categoryPaths map[int64]*data.FaqCategoryPath, err error)
 	GetFaqRobotTagByID(robotTagID string) (robotTag string, err error)
 	GetFaqRobotTagsByIDs(robotTagIDs []int64) (robotTags map[int64]*data.FaqRobotTag, err error)
 	GetAllFaqRobotTags() (robotTags map[int64]*data.FaqRobotTag, err error)

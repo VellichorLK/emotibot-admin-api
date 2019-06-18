@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/autofill/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
-	"emotibot.com/emotigo/module/admin-api/autofill/data"
 )
 
 var (
@@ -451,6 +451,44 @@ func getSSMCategories(appid string, containSoftDelete bool) (*Category, error) {
 	return root, nil
 }
 
+func getSSMCategoriesV2(appid string) (*CategoryDac, error) {
+	var err error
+	checkDB()
+	mySQL := useDB
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := "SELECT id, parent_folder_id, name, app_id, level FROM faq3.tbl_folder WHERE app_id = ?"
+	rows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+	var root *CategoryDac
+	root = &CategoryDac{}
+	categoryMap := map[int]*CategoryDac{}
+	for rows.Next() {
+		tmp := &CategoryDac{}
+		tmp.Children = []*CategoryDac{}
+		err = rows.Scan(&tmp.ID, &tmp.Parent, &tmp.Name, &tmp.AppID, &tmp.Level)
+		if err != nil {
+			return nil, err
+		}
+		categoryMap[tmp.ID] = tmp
+		if tmp.Parent == 0 {
+			root.Children = append(root.Children, tmp)
+		}
+	}
+
+	for _, category := range categoryMap {
+		if parent, ok := categoryMap[category.Parent]; ok {
+			parent.Children = append(parent.Children, category)
+		}
+	}
+
+	return root, nil
+}
+
 func getSSMLabels(appid string) ([]*SSMLabel, error) {
 	var err error
 	checkDB()
@@ -496,7 +534,7 @@ func getBFAccessToken(userid string) (string, error) {
 	var bfAccessToken data.BfAccessToken
 
 	queryTokenStr := "SELECT * FROM tbl_user_access_token WHERE USER_ID = ? ORDER BY create_datetime DESC LIMIT 1"
-	err := mySQL.QueryRow(queryTokenStr, userid).Scan(&bfAccessToken.UserId,&bfAccessToken.AccessToken,&bfAccessToken.Expiration,&bfAccessToken.CreateDatetime)
+	err := mySQL.QueryRow(queryTokenStr, userid).Scan(&bfAccessToken.UserId, &bfAccessToken.AccessToken, &bfAccessToken.Expiration, &bfAccessToken.CreateDatetime)
 
 	if err == nil {
 		dis := time.Now().Sub(bfAccessToken.CreateDatetime).Seconds()
