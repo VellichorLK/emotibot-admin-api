@@ -476,7 +476,7 @@ func updateRobotQARQuestionV3(appid string, qid, rQid int, relateQuestion string
 		return
 	}
 
-	queryStr = `UPDATE robot_profile_extend SET content = ?
+	queryStr = `UPDATE robot_profile_extend SET content = ?, status = 1
 		WHERE appid = ? AND qid = ? AND id = ? AND status >= 0`
 	_, err = t.Exec(queryStr, relateQuestion, appid, qid, rQid)
 	if err != nil {
