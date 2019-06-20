@@ -43,10 +43,15 @@ func Init() error {
 	moduleName := "clustering"
 	envs := util.GetModuleEnvironments(moduleName)
 	db := util.GetMainDB()
+	dbfaq := util.GetFaqDB()
 	if db == nil {
 		return fmt.Errorf("cant not get db of " + moduleName)
 	}
+	if dbfaq == nil {
+		return fmt.Errorf("cant not get db of " + moduleName)
+	}
 	ss := &sqlService{db: db}
+	ssfaq := &sqlService{db: dbfaq}
 	httpClient := &http.Client{Timeout: 0}
 	toolURL, _ := envs["TOOL_URL"]
 	addr, err := url.Parse(toolURL)
@@ -81,7 +86,7 @@ func Init() error {
 			util.NewEntryPoint(http.MethodPut, "reports", []string{}, NewDoReportHandler(ss, ss, ss, ss, clusterClient, dalClient)),
 			util.NewEntryPoint(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss)),
 
-			util.NewEntryPointWithVer(http.MethodPut, "reports", []string{}, NewDoReportHandlerV2(ss, ss, ss, ss, clusterClient, dacClient), 2),
+			util.NewEntryPointWithVer(http.MethodPut, "reports", []string{}, NewDoReportHandlerV2(ss, ss, ss, ssfaq, clusterClient, dacClient), 2),
 			util.NewEntryPointWithVer(http.MethodGet, "reports/{id}", []string{}, NewGetReportHandler(ss, ss, ss), 2),
 		},
 	}

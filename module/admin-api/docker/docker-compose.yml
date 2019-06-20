@@ -27,6 +27,11 @@ services:
       - ADMIN_SERVER_AUDIT_MYSQL_USER=root
       - ADMIN_SERVER_AUDIT_MYSQL_PASS=password
       - ADMIN_SERVER_AUDIT_MYSQL_DB=emotibot
+      # - Audit DB of admin-api
+      - ADMIN_SERVER_FAQ_MYSQL_URL=${MYSQL_HOST}:${MYSQL_PORT}
+      - ADMIN_SERVER_FAQ_MYSQL_USER=root
+      - ADMIN_SERVER_FAQ_MYSQL_PASS=password
+      - ADMIN_SERVER_FAQ_MYSQL_DB=faq
       # - CONSUL setting, all module setting will in PREFIX(idc) folder
       # - but deploy version information is in root
       - ADMIN_SERVER_CONSUL_URL=http://${CONSUL_HOST}:${CONSUL_PORT}
