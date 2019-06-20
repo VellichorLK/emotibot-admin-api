@@ -203,7 +203,7 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	for {
 		checkStatus, _ = getHealthCheckStatus(appid)
 		if len(checkStatus) > 0 && checkStatus[0]["task_id"] == taskid && checkStatus[0]["message"] == "save_report_ok" {
-			hp.LqQuality.ReportFilePath = outerUrl + checkStatus[0]["download_url"]
+			hp.LqQuality.ReportFilePath = "." + checkStatus[0]["download_url"]
 			hp.ReportStatus = true
 			break
 		}
