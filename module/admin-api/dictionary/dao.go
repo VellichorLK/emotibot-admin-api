@@ -609,7 +609,10 @@ func parseWordbankRowsV3(rootMap map[string]*WordBankClassV3, classMap map[int]*
 		}
 
 		if cid == nil || *cid == -1 {
-			rootMap[appid].Wordbank = append(rootMap[appid].Wordbank, temp)
+			//rootMap[appid].Wordbank = append(rootMap[appid].Wordbank, temp)
+			if _, ok := rootMap[appid]; ok {
+				rootMap[appid].Wordbank = append(rootMap[appid].Wordbank, temp)
+			}
 		} else {
 			var classObj *WordBankClassV3
 			classObj = classMap[*cid]
