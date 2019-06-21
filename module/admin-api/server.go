@@ -522,10 +522,10 @@ func initDB() {
 		initErrors = append(initErrors, err)
 	}
 
-	url = getServerEnv("FAQ_MYSQL_URL")
-	user = getServerEnv("FAQ_MYSQL_USER")
-	pass = getServerEnv("FAQ_MYSQL_PASS")
-	db = getServerEnv("FAQ_MYSQL_DB")
+	url = getServerEnv("MYSQL_URL")
+	user = getServerEnv("MYSQL_USER")
+	pass = getServerEnv("MYSQL_PASS")
+	db = "faq3"
 	err = util.InitFAQDB(url, user, pass, db)
 	if err != nil {
 		logger.Error.Println("Init audit db fail, ", err.Error())
