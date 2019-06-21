@@ -111,6 +111,7 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 	for _, hit := range result.Hits.Hits {
 		hitResult := dataV1.VisitRecordsHitResult{}
 		jsonStr, _ := hit.Source.MarshalJSON()
+
 		err = json.Unmarshal(jsonStr, &hitResult)
 		if err != nil {
 			return nil, fmt.Errorf("hit result unmarshal failed, %v", err)
@@ -119,8 +120,11 @@ func VisitRecordsQuery(query dataV1.RecordQuery, aggs ...servicesCommon.ElasticS
 		// Note: We have to convert log_time (UTC+0) to local time and reformat
 		logTime, _err := time.Parse(data.LogTimeFormat, hitResult.LogTime)
 		if _err != nil {
-			err = fmt.Errorf("Result LogTime cant not parse into time, reason: %v", _err)
-			return nil, err
+			logTime, _err = time.Parse("2006-01-02 15:04:05", hitResult.LogTime)
+			if _err != nil {
+				err = fmt.Errorf("Result LogTime cant not parse into time, reason: %v", _err)
+				return nil, err
+			}
 		}
 		logTime = logTime.Local()
 		hitResult.LogTime = logTime.Format("2006-01-02 15:04:05")
