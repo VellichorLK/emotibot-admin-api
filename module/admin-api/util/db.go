@@ -17,6 +17,7 @@ var (
 const (
 	mainDBKey  = "main"
 	auditDBKey = "audit"
+	faqDBKey = "faq"
 )
 
 const (
@@ -50,6 +51,16 @@ func InitAuditDB(auditURL string, auditUser string, auditPass string, auditDB st
 	return nil
 }
 
+// InitFAQDB should be called before insert all audit log
+func InitFAQDB(auditURL string, auditUser string, auditPass string, auditDB string) error {
+	db, err := InitDB(auditURL, auditUser, auditPass, auditDB)
+	if err != nil {
+		return err
+	}
+	allDB[faqDBKey] = db
+	return nil
+}
+
 func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) {
 	linkURL := fmt.Sprintf("%s:%s@tcp(%s)/%s?timeout=%s&readTimeout=%s&writeTimeout=%s&parseTime=true&loc=%s",
 		user,
@@ -79,6 +90,11 @@ func InitDB(dbURL string, user string, pass string, db string) (*sql.DB, error) 
 // GetAuditDB will return audit db in allDB
 func GetAuditDB() *sql.DB {
 	return GetDB(auditDBKey)
+}
+
+// GetFaqDB will return audit db in allDB
+func GetFaqDB() *sql.DB {
+	return GetDB(faqDBKey)
 }
 
 // GetDB will return db has assigned key in allDB
