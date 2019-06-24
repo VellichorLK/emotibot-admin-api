@@ -1412,7 +1412,7 @@ func (controller MYSQLController) GroupExistsV3(groupID string) (bool, error) {
 
 func (controller MYSQLController) EnterpriseGroupInfoExistsV3(enterpriseID string,
 	groupName string) (bool, error) {
-	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND name = ?", groupTableV3)
+	queryStr := fmt.Sprintf("SELECT 1 FROM %s WHERE enterprise = ? AND name = BINARY ?", groupTableV3)
 	return controller.rowExists(queryStr, enterpriseID, groupName)
 }
 
