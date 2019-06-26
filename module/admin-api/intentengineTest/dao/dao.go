@@ -1427,6 +1427,36 @@ func (dao IntentTestDao) GetRestoreIEModelID(version int64) (found bool,
 	return true, ieModelID, nil
 }
 
+func (dao IntentTestDao) GetLatestIntentNames(appID string) (intentNames []string,
+	err error) {
+	if dao.db == nil {
+		return nil, ErrDBNotInit
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT name
+		FROM %s
+		WHERE appid = ? AND version IS NULL AND status != -1`, IntentsTable)
+	rows, err := dao.db.Query(queryStr, appID)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	intentNames = []string{}
+
+	for rows.Next() {
+		var intentName string
+		err = rows.Scan(&intentName)
+		if err != nil {
+			return nil, err
+		}
+
+		intentNames = append(intentNames, intentName)
+	}
+
+	return intentNames, nil
+}
+
 func GetLatestIntentTestIntentsWithTx(tx *sql.Tx,
 	appID string) (results []*data.IntentTestIntent, err error) {
 	if tx == nil {
@@ -1911,36 +1941,6 @@ func toggleInUsedIEModelWithTx(tx *sql.Tx, appID string,
 		WHERE appid = ? AND version = ?`, IntentVersionsTable)
 	_, err = tx.Exec(queryStr, appID, intentVersion)
 	return
-}
-
-func getLatestIntentNamesWithTx(tx *sql.Tx,
-	appID string) (intentNames []string, err error) {
-	if tx == nil {
-		return nil, ErrDBNotInit
-	}
-
-	intentNames = []string{}
-
-	queryStr := fmt.Sprintf(`
-		SELECT name
-		FROM %s
-		WHERE appid = ? AND version IS NULL`, IntentsTable)
-	rows, err := tx.Query(queryStr, appID)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
-	}
-
-	for rows.Next() {
-		var intentName string
-		err = rows.Scan(&intentName)
-		if err != nil {
-			return nil, err
-		}
-
-		intentNames = append(intentNames, intentName)
-	}
-
-	return intentNames, nil
 }
 
 func diffIntentTestIntents(testIntents []*data.IntentTestIntent,
