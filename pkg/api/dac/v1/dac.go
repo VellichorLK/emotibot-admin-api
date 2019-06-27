@@ -143,6 +143,46 @@ func (c *Client) Questions(appID string) ([]string, error) {
 	return questions, nil
 }
 
+// Questions retrive all of the standard question(sq) by given app ID.
+func (c *Client) GetQuestionsMap(appID string) (map[string]string, error) {
+
+	var (
+		err  error
+	)
+
+	params := map[string]string{
+		"op":   "query",
+		"category": "sq",
+		"appId": appID,
+	}
+
+	status, rets, err := util.HTTPPostJSONWithStatus(c.address, params, 30)
+	if err != nil {
+		return nil, err
+	}
+
+	if status != http.StatusOK {
+		return nil, fmt.Errorf("response status is %d(not healthy)", status)
+	}
+
+	result := SQResult{}
+
+	err = json.Unmarshal([]byte(rets), &result)
+	if err != nil {
+		logger.Error.Println("Resolve result from json fail:", err.Error())
+		return nil, err
+	}
+	//var questions = make([]string, len(result.ActualResults))
+	var questions = make(map[string]string)
+	if len(result.ActualResults) > 0 && result.Errno == "OK" {
+
+		for _, item := range result.ActualResults {
+			questions[item.Content] = item.Content
+		}
+	}
+	return questions, nil
+}
+
 //SimilarQuestions retrive lq (similar question) of given sq(standard question) & app ID.
 func (c *Client) SimilarQuestions(appID string, sq string) ([]string, error) {
 

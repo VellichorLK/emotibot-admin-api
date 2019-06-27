@@ -283,23 +283,44 @@ func NewDoReportHandlerV2(reportService ReportsService, recordsService ReportRec
 			return
 		}
 		var inputs = []interface{}{}
+		start := time.Now()
+		questions, err := dacClient.GetQuestionsMap(appid)
+		if err != nil {
+			logger.Error.Printf("Failed to get sq, %v", err)
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
+			return
+		}
+		if questions == nil || len(questions) == 0 {
+			util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
+			return
+		}
+
 		for _, h := range result.Hits {
-			found, err := dacClient.IsStandardQuestion(appid, h.UserQ)
-			if err != nil {
-				newReportError(reportService, "dac client error "+err.Error(), 0)
-				util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
-				return
-			}
-			if found {
+			//found, err := dacClient.IsStandardQuestion(appid, h.UserQ)
+			//found := false
+			if _, ok := questions[h.UserQ];ok {
+				//found = true
 				newReport.SkippedSize++
 				continue
 			}
+			//if err != nil {
+			//	newReportError(reportService, "dac client error "+err.Error(), 0)
+			//	util.Return(w, AdminErrors.New(AdminErrors.ErrnoAPIError, "internal server error"), nil)
+			//	return
+			//}
+			//if found {
+			//	newReport.SkippedSize++
+			//	continue
+			//}
 			var input = map[string]string{
 				"id":    h.UniqueID,
 				"value": h.UserQ,
 			}
 			inputs = append(inputs, input)
 		}
+		cost := time.Since(start)
+		fmt.Printf("userlog is standquestion cost=[%s]",cost)
+
 		id, err := reportService.NewReport(newReport)
 		if err != nil {
 			logger.Error.Printf("Failed to create new report, %v", err)
