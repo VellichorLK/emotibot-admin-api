@@ -196,7 +196,7 @@ func GetLatestIntents(appID string, keyword string,
 
 func ImportLatestIntentTest(appID string, buf []byte,
 	locale string) AdminErrors.AdminError {
-	testIntents, err := parseImportTestFile(appID, buf, locale)
+	testIntents, negativeTestIntent, err := parseImportTestFile(appID, buf, locale)
 	if err != nil {
 		switch err {
 		case data.ErrTestImportSheetFormat:
@@ -213,7 +213,47 @@ func ImportLatestIntentTest(appID string, buf []byte,
 		}
 	}
 
-	err = intentTestDao.IntentTestImport(appID, testIntents)
+	latestIntents, err := intentTestDao.GetLatestIntentNames(appID)
+	if err != nil {
+		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
+	}
+
+	intents := map[string]bool{}
+
+	for _, intentName := range latestIntents {
+		intents[intentName] = false
+	}
+
+	_testIntents := []*data.IntentTestIntent{}
+
+	// Ensure the imported test intents exists in current intents.
+	for _, testIntent := range testIntents {
+		if testIntent.IntentName == nil {
+			// Safety check, should not happen.
+			continue
+		}
+
+		if _, ok := intents[*testIntent.IntentName]; !ok {
+			// Imported test intent does not exist in current intents,
+			// move test sentences under negative test intent.
+			negativeTestIntent.Sentences = append(negativeTestIntent.Sentences,
+				testIntent.Sentences...)
+		} else {
+			_testIntents = append(_testIntents, testIntent)
+			intents[*testIntent.IntentName] = true
+		}
+	}
+
+	// Ensure all test intents equals to current intents, even imported test intents may not include them.
+	for intentName, ok := range intents {
+		if !ok {
+			_testIntents = append(_testIntents, &data.IntentTestIntent{
+				IntentName: &intentName,
+			})
+		}
+	}
+
+	err = intentTestDao.IntentTestImport(appID, append(_testIntents, negativeTestIntent))
 	if err != nil {
 		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
@@ -276,28 +316,32 @@ func UpdateIntent(testIntentID int64, updateList []*data.UpdateCmd,
 }
 
 func parseImportTestFile(appID string,
-	buf []byte, locale string) (testIntents []*data.IntentTestIntent, err error) {
+	buf []byte, locale string) (testIntents []*data.IntentTestIntent,
+	negativeTestIntent *data.IntentTestIntent, err error) {
 	file, err := xlsx.OpenBinary(buf)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	testIntents = []*data.IntentTestIntent{}
+	negativeTestIntent = &data.IntentTestIntent{
+		Sentences: make([]*data.IntentTestSentence, 0),
+	}
 	testIntentsMap := make(map[string]*data.IntentTestIntent)
 	sheets := file.Sheets
 
 	if len(sheets) != 1 {
-		return nil, data.ErrTestImportSheetFormat
+		return nil, nil, data.ErrTestImportSheetFormat
 	}
 
 	if len(sheets[0].Rows) == 0 {
-		return nil, data.ErrTestImportSheetNoHeader
+		return nil, nil, data.ErrTestImportSheetNoHeader
 	}
 
 	headerRow := sheets[0].Rows[0]
 
 	if len(headerRow.Cells) < 2 {
-		return nil, data.ErrTestImportSheetNoHeader
+		return nil, nil, data.ErrTestImportSheetNoHeader
 	}
 
 	intentNameHeader := headerRow.Cells[0].String()
@@ -305,12 +349,12 @@ func parseImportTestFile(appID string,
 
 	if intentNameHeader != localemsg.Get(locale, "IntentName") &&
 		intentNameHeader != localemsg.Get("", "IntentName") {
-		return nil, data.ErrTestImportSheetNoHeader
+		return nil, nil, data.ErrTestImportSheetNoHeader
 	}
 
 	if sentenceHeader != localemsg.Get(locale, "TestSentence") &&
 		sentenceHeader != localemsg.Get("", "TestSentence") {
-		return nil, data.ErrTestImportSheetNoHeader
+		return nil, nil, data.ErrTestImportSheetNoHeader
 	}
 
 	// Skip header rows
@@ -322,35 +366,32 @@ func parseImportTestFile(appID string,
 		sentence := strings.TrimSpace(cells[1].String())
 
 		if sentence == "" {
-			return nil, data.ErrTestImportSheetEmptySentence
+			return nil, nil, data.ErrTestImportSheetEmptySentence
 		}
 
 		testSentence := data.IntentTestSentence{
 			Sentence: sentence,
 		}
 
-		testIntent, ok := testIntentsMap[intentName]
-		if !ok {
-			if intentName != "" {
+		if intentName != "" {
+			testIntent, ok := testIntentsMap[intentName]
+			if !ok {
 				testIntent = &data.IntentTestIntent{
 					IntentName: &intentName,
 					Sentences:  make([]*data.IntentTestSentence, 0),
 				}
-			} else {
-				// Negative test intent
-				testIntent = &data.IntentTestIntent{
-					Sentences: make([]*data.IntentTestSentence, 0),
-				}
+				testIntents = append(testIntents, testIntent)
+				testIntentsMap[intentName] = testIntent
 			}
 
-			testIntents = append(testIntents, testIntent)
-			testIntentsMap[intentName] = testIntent
+			testIntent.Sentences = append(testIntent.Sentences, &testSentence)
+		} else {
+			// Negative test intent
+			negativeTestIntent.Sentences = append(negativeTestIntent.Sentences, &testSentence)
 		}
-
-		testIntent.Sentences = append(testIntent.Sentences, &testSentence)
 	}
 
-	return testIntents, nil
+	return testIntents, negativeTestIntent, nil
 }
 
 func runIntentsTest(appID string, version int64, ieModelID string) {

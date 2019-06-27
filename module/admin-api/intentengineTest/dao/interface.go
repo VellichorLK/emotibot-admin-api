@@ -137,4 +137,8 @@ type Dao interface {
 	// of the specified intent test version
 	// 'found' will be false if the specified intent test version cannot be found
 	GetRestoreIEModelID(version int64) (found bool, ieModelID string, err error)
+
+	// GetLatestIntentNames return the names of latest intents
+	// (which version is NULL)
+	GetLatestIntentNames(appID string) (intentNames []string, err error)
 }
