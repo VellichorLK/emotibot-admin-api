@@ -247,8 +247,12 @@ func ImportLatestIntentTest(appID string, buf []byte,
 	// Ensure all test intents equals to current intents, even imported test intents may not include them.
 	for intentName, ok := range intents {
 		if !ok {
+			// Make a copy of 'intentName'.
+			// (We cannot use the address of 'intentName' directly,
+			// 	for range reuses the same variable for different values during iteration.)
+			_intentName := intentName
 			_testIntents = append(_testIntents, &data.IntentTestIntent{
-				IntentName: &intentName,
+				IntentName: &_intentName,
 			})
 		}
 	}
