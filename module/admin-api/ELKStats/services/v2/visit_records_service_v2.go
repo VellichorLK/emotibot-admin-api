@@ -363,7 +363,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 	}
 
 	faqCategoriesMap := map[string]string{}
-	faqCategories, err := BF.GetSSMCategories(appID)
+	faqCategories, err := BF.GetSSMCategoriesV2(appID)
 	if err != nil {
 		return "", err
 	}
@@ -670,9 +670,9 @@ func newBoolQueryWithRecordQuery(query *dataV2.VisitRecordsQuery) *elastic.BoolQ
 }
 
 // Use BFS to iterate category tree level-by-level, up to maxFAQCategoryLevels
-func buildFAQCategoriesMap(root *BF.Category, m map[string]string) {
+func buildFAQCategoriesMap(root *BF.CategoryDac, m map[string]string) {
 	if root != nil {
-		queue := []*BF.Category{root} // Enqueue
+		queue := []*BF.CategoryDac{root} // Enqueue
 		level := 0
 
 		for {
@@ -686,7 +686,7 @@ func buildFAQCategoriesMap(root *BF.Category, m map[string]string) {
 				category := queue[0] // Dequeue
 				queue = queue[1:]
 
-				m[category.CatID] = category.Name
+				m[fmt.Sprintf("%d", category.ID)] = category.Name
 
 				for _, child := range category.Children {
 					queue = append(queue, child) // Enqueue
