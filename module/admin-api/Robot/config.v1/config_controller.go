@@ -47,7 +47,7 @@ func HandleSetRobotConfig(w http.ResponseWriter, r *http.Request) {
 
 	var err AdminErrors.AdminError
 	if value == "" {
-		err = SetConfigToDefault(appid, configName)
+		err = SetConfigToDefault(appid, module, configName)
 	} else {
 		err = SetConfig(appid, module, configName, value)
 	}
