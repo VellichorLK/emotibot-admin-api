@@ -1,16 +1,18 @@
 package v1
 
-
 import (
 	"emotibot.com/emotigo/pkg/api"
 	"net/url"
 	"fmt"
 	"net/http"
 	"encoding/json"
-	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/module/admin-api/util"
 )
 
+/*
+操作时（增加或删除添加userid）
+ */
 // Client can call dac module api by
 type Client struct {
 	client  api.HTTPClient
@@ -269,6 +271,92 @@ func (c *Client) SetSimilarQuestion(appID, sq string, lq ...string) error {
 
 }
 
+
+// SetSimilarQuestion set given slice of lq to a sq.
+func (c *Client) SetSimilarQuestionWithUser(appID, userId, sq string, lq ...string) error {
+
+	var (
+		err  error
+	)
+	lqs := make([]string, len(lq))
+	for i, content := range lq {
+		lqs[i] = content
+	}
+
+	params := map[string]interface{}{
+		"op":   "add",
+		"category": "lq",
+		"appId": appID,
+		"sqContent": sq,
+		"lqContentList": lqs,
+		"userId": userId,
+	}
+
+	status, rets, err := util.HTTPPostJSONWithStatus(c.address, params, 30)
+	if err != nil {
+		return err
+	}
+
+	if status != http.StatusOK {
+		return fmt.Errorf("response status is %d(not healthy)", status)
+	}
+
+	result := LQResult{}
+
+	err = json.Unmarshal([]byte(rets), &result)
+	if err != nil {
+		logger.Error.Println("Resolve result from json fail:", err.Error())
+		return err
+	}
+
+	if result.Errno != "OK" {
+		return fmt.Errorf(result.Errno)
+	}
+	return nil
+
+}
+
+
+// DeleteSimilarQuestions Delete lq from the ssm datastore.
+func (c *Client) DeleteSimilarQuestionsWithUser(appID, userId string, lq ...string) error {
+	var (
+		err  error
+	)
+	lqs := make([]string, len(lq))
+	for i, content := range lq {
+		lqs[i] = content
+	}
+
+	params := map[string]interface{}{
+		"op":   "delete",
+		"category": "lq",
+		"appId": appID,
+		"lqContentList": lqs,
+		"userId": userId,
+	}
+
+	status, rets, err := util.HTTPPostJSONWithStatus(c.address, params, 30)
+	if err != nil {
+		return err
+	}
+
+	if status != http.StatusOK {
+		return fmt.Errorf("response status is %d(not healthy)", status)
+	}
+
+	result := LQResult{}
+
+	err = json.Unmarshal([]byte(rets), &result)
+	if err != nil {
+		logger.Error.Println("Resolve result from json fail:", err.Error())
+		return err
+	}
+
+	if result.Errno != "OK" {
+		return fmt.Errorf(result.Errno)
+	}
+	return nil
+}
 
 // DeleteSimilarQuestions Delete lq from the ssm datastore.
 func (c *Client) DeleteSimilarQuestions(appID string, lq ...string) error {
