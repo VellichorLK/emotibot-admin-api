@@ -14,7 +14,7 @@ type configDaoInterface interface {
 	GetConfigs(appid string) ([]*Config, error)
 	GetConfig(appid, configName string) (*Config, error)
 	SetConfig(appid, module, configName, value string) error
-	SetConfigToDefault(appid, configName string) error
+	SetConfigToDefault(appid, module, configName string) error
 }
 
 type configMySQL struct {
@@ -260,7 +260,7 @@ func (dao configMySQL) SetConfig(appid, module, configName, value string) error 
 	return nil
 }
 
-func (dao configMySQL) SetConfigToDefault(appid, configName string) error {
+func (dao configMySQL) SetConfigToDefault(appid, module, configName string) error {
 	var err error
 	defer func() {
 		util.ShowError(err)
@@ -270,7 +270,20 @@ func (dao configMySQL) SetConfigToDefault(appid, configName string) error {
 	}
 
 	now := time.Now()
-	queryStr := `
+	if module == moduleBFSource {
+		queryStr := `
+		UPDATE ent_config_appid_customization as config,
+			(SELECT value FROM ent_config WHERE name = ?)  as d
+		SET
+		config.value = d.value
+		WHERE config.app_id = ? AND	name= ?
+		`
+		_, err = dao.db.Exec(queryStr, configName, appid, configName)
+		if err != nil {
+			return err
+		}
+	} else {
+		queryStr := `
 	UPDATE bfop_config as config,
 		(SELECT value FROM bfop_config WHERE appid = '' AND code = ?) as d
 	SET
@@ -279,9 +292,10 @@ func (dao configMySQL) SetConfigToDefault(appid, configName string) error {
 	WHERE
 		config.appid = ? AND code = ?
 	`
-	_, err = dao.db.Exec(queryStr, configName, now.Unix(), appid, configName)
-	if err != nil {
-		return err
+		_, err = dao.db.Exec(queryStr, configName, now.Unix(), appid, configName)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

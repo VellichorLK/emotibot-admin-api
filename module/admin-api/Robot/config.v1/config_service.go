@@ -56,8 +56,8 @@ func SetConfig(appid, module, configName, value string) AdminErrors.AdminError {
 }
 
 // SetConfigToDefault will set specific config to system default
-func SetConfigToDefault(appid, configName string) AdminErrors.AdminError {
-	err := dao.SetConfigToDefault(appid, configName)
+func SetConfigToDefault(appid, module, configName string) AdminErrors.AdminError {
+	err := dao.SetConfigToDefault(appid, module, configName)
 	if err != nil {
 		return AdminErrors.New(AdminErrors.ErrnoDBError, err.Error())
 	}
