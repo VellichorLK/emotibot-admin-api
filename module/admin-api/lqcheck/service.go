@@ -482,7 +482,12 @@ func getSqLqCount(appid string) (map[string]int, AdminErrors.AdminError) {
 	d.getSqLqFromDac(appid)
 
 	lqCount := map[string]int{}
-	lqCount["lq_count"] = len(d.ActualResults)
+	lqLen := len(d.ActualResults)
+	if lqLen >= 2 {
+		lqCount["lq_count"] = lqLen
+	} else {
+		lqCount["lq_count"] = 0
+	}
 
 	return lqCount, nil
 }
