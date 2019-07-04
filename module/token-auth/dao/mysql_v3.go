@@ -19,24 +19,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 )
 
-const (
-	enterpriseTableV3     = "enterprises"
-	userTableV3           = "users"
-	userInfoTableV3       = "user_info"
-	userPrivilegesTableV3 = "user_privileges"
-	appTableV3            = "apps"
-	appGroupTableV3       = "app_group"
-	groupTableV3          = "robot_groups"
-	roleTableV3           = "roles"
-	rolePrivilegeTableV3  = "privileges"
-	humanTableV3          = "human"
-	machineTableV3        = "machine"
-	columnTableV3         = "columns"
-	moduleTableV3         = "modules"
-	auditTableV3          = "audit_record"
-	systemParamV3         = "system_param"
-)
-
 func (controller MYSQLController) GetEnterprisesV3() ([]*data.EnterpriseV3, error) {
 	ok, err := controller.checkDB()
 	if !ok {

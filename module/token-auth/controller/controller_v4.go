@@ -628,3 +628,45 @@ func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
 
 	return &ret, nil
 }
+
+func ModulesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterpriseID")
+		return
+	}
+
+	retData, err := service.GetModulesV4(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func RolesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterpriseID")
+		return
+	}
+
+	retData, err := service.GetRolesV4(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}

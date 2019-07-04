@@ -4,6 +4,25 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 )
 
+const (
+	enterpriseTableV3     = "enterprises"
+	userTableV3           = "users"
+	userInfoTableV3       = "user_info"
+	userPrivilegesTableV3 = "user_privileges"
+	appTableV3            = "apps"
+	appGroupTableV3       = "app_group"
+	groupTableV3          = "robot_groups"
+	roleTableV3           = "roles"
+	rolePrivilegeTableV3  = "privileges"
+	humanTableV3          = "human"
+	machineTableV3        = "machine"
+	columnTableV3         = "columns"
+	moduleTableV3         = "modules"
+	moduleCmdsTableV4     = "modules_cmds"
+	auditTableV3          = "audit_record"
+	systemParamV3         = "system_param"
+)
+
 // DB define interface for different dao modules
 type DB interface {
 	GetEnterprises() (*data.Enterprises, error)
@@ -154,7 +173,7 @@ type DBV4 interface {
 	// GroupExists(groupID string) (bool, error)
 	// EnterpriseGroupInfoExists(enterpriseID string, groupName string) (bool, error)
 
-	// GetRoles(enterpriseID string) ([]*data.RoleV3, error)
+	GetRolesV4(enterpriseID string) ([]*data.RoleV4, error)
 	// GetRole(enterpriseID string, roleID string) (*data.RoleV3, error)
 	// AddRole(enterpriseID string, role *data.RoleV3) (string, error)
 	// UpdateRole(enterpriseID string, roleID string, role *data.RoleV3) error
@@ -163,7 +182,7 @@ type DBV4 interface {
 	// RoleExists(roleID string) (bool, error)
 	// EnterpriseRoleInfoExists(enterpriseID string, roleName string) (bool, error)
 
-	// GetModules(enterpriseID string) ([]*data.ModuleDetailV3, error)
+	GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error)
 
 	// GetEnterpriseID(appID string) (string, error)
 	// GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)

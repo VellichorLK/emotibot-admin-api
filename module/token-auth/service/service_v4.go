@@ -131,3 +131,35 @@ func UpdateEnterpriseStatusV4(enterpriseID string, status bool) error {
 func ActivateEnterpriseV4(enterpriseID string, username string, password string) error {
 	return useDBV4.ActivateEnterpriseV4(enterpriseID, username, password)
 }
+
+func GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, nil
+	}
+
+	return useDBV4.GetModulesV4(enterpriseID)
+}
+
+func GetRolesV4(enterpriseID string) ([]*data.RoleV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return nil, err
+	} else if !exists {
+		return nil, nil
+	}
+
+	return useDBV4.GetRolesV4(enterpriseID)
+}
