@@ -131,6 +131,7 @@ func setUpRoutes() {
 		Route{"ValidateToken", "GET", 3, "trace/token/{token}", nil, controller.TraceValidateTokenHandlerV3, []interface{}{}},
 		Route{"ValidateToken", "GET", 3, "trace/token", nil, controller.TraceValidateTokenHandlerV3, []interface{}{}},
 
+		// v4 API
 		Route{"GetOauthLogin", "GET", 4, "oauth/login", nil, controller.GetOAuthLoginPage, []interface{}{}},
 		Route{"DoOauthLogin", "POST", 4, "oauth/login", nil, controller.HandleOAuthLoginPage, []interface{}{}},
 		Route{"GetUserTokenFromCode", "GET", 4, "oauth/token", nil, controller.GetOAuthTokenViaCode, []interface{}{}},
@@ -149,6 +150,9 @@ func setUpRoutes() {
 		Route{"GetUsers", "GET", 4, "enterprise/{enterpriseID}/users", nil, controller.UsersGetHandlerV4, []interface{}{0, 1, 2}},
 		// 获取企业用户下所有子账号
 		Route{"GetUser", "GET", 4, "enterprise/{enterpriseID}/user/{userID}", nil, controller.UserGetHandlerV4, []interface{}{0, 1, 2}},
+
+		Route{"GetModules", "GET", 4, "enterprise/{enterpriseID}/modules", nil, controller.ModulesGetHandlerV4, []interface{}{0, 1, 2}},
+		Route{"GetRoles", "GET", 4, "enterprise/{enterpriseID}/roles", nil, controller.RolesGetHandlerV4, []interface{}{0, 1, 2}},
 	}
 }
 
