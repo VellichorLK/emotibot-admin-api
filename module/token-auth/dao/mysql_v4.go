@@ -406,12 +406,12 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 	sql := `
 		SELECT * 
 		FROM modules_cmds
-		WHERE is_show = ?
+		WHERE is_show > ?
 		ORDER BY parent_id, sort
 	`
 
 	params := make([]interface{}, 1)
-	params[0] = 1
+	params[0] = 0
 
 	res, err := controller.queryDB(sql, params...)
 	if err != nil {
@@ -421,17 +421,17 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 	if res == nil {
 		return nil, nil
 	}
-	fmt.Println(res)
 
 	parentMap := map[int]int{}
-	ret := []*data.ModuleDetailV4{}
+	var ret []*data.ModuleDetailV4
 	for _, v := range res {
 		parentId, _ := strconv.Atoi(v["parent_id"])
 		cmdId, _ := strconv.Atoi(v["id"])
+
 		if parentId == 0 {
-			m := data.ModuleDetailV4{}
+			var m data.ModuleDetailV4
 			m.ID, _ = strconv.Atoi(v["id"])
-			m.ParentId, _ = strconv.Atoi(v["parent_id"])
+			m.ParentId = parentId
 			m.ParentCmd = v["parent_cmd"]
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
@@ -445,9 +445,9 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 			ret = append(ret, &m)
 			parentMap[cmdId] = len(ret) - 1
 		} else {
-			m := data.ModuleV4{}
+			var m data.ModuleV4
 			m.ID, _ = strconv.Atoi(v["id"])
-			m.ParentId, _ = strconv.Atoi(v["parent_id"])
+			m.ParentId = parentId
 			m.ParentCmd = v["parent_cmd"]
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
@@ -558,7 +558,7 @@ func (controller MYSQLController) getRolePrivilegesV4(role *data.RoleV4) error {
 	return nil
 }
 
-func (controller MYSQLController) queryDB(sql string, params ...interface{}) (map[int]map[string]string, error) {
+func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
 	var err error
 	ok, err := controller.checkDB()
 	if !ok {
@@ -583,9 +583,8 @@ func (controller MYSQLController) queryDB(sql string, params ...interface{}) (ma
 		scans[i] = &values[i]
 	}
 
-	ret := map[int]map[string]string{}
+	ret := []map[string]string{}
 
-	i := 0
 	for rows.Next() {
 		if err := rows.Scan(scans...); err != nil {
 			return nil, err
@@ -597,8 +596,7 @@ func (controller MYSQLController) queryDB(sql string, params ...interface{}) (ma
 			key := cols[k]
 			row[key] = string(v)
 		}
-		ret[i] = row
-		i++
+		ret = append(ret, row)
 	}
 	defer rows.Close()
 
