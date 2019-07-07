@@ -163,3 +163,12 @@ func GetRolesV4(enterpriseID string) ([]*data.RoleV4, error) {
 
 	return useDBV4.GetRolesV4(enterpriseID)
 }
+
+func GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) (*data.RoleV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	return useDBV4.GetRoleV4(enterpriseID, roleID, userInfo)
+}

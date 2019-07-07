@@ -551,9 +551,68 @@ func (controller MYSQLController) getRolePrivilegesV4(role *data.RoleV4) error {
 			cmdKey := code + "_" + v
 			role.Privileges = append(role.Privileges, cmdKey)
 		}
-		//role.Privileges[code] = strings.Split(cmdList, ",")
 	}
 	rows.Close()
+
+	return nil
+}
+
+func (controller MYSQLController) GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) (*data.RoleV4, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT id, uuid, name, description
+		FROM %s
+		WHERE enterprise = ? AND uuid = ?`, roleTableV3)
+	row := controller.connectDB.QueryRow(queryStr, enterpriseID, roleID)
+
+	role := data.RoleV4{}
+	err = row.Scan(&role.ID, &role.UUID, &role.Name, &role.Description)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	controller.getRoleUserCountV4(&role)
+	controller.getRolePrivilegesV4(&role)
+	controller.getMenuV4(enterpriseID, &role, userInfo)
+
+	return &role, nil
+}
+
+func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.RoleV4, userInfo *data.UserDetailV3) error {
+	role.Menu, _ = controller.GetModulesV4(enterpriseID)
+
+	if userInfo.Type > 1 {
+		for _, v := range role.Menu {
+			for _, vv := range v.SubCmd {
+				hasPrivilege := false
+				for _, pri := range role.Privileges {
+					if vv.CmdKey == pri {
+						hasPrivilege = true
+						break
+					}
+				}
+				if hasPrivilege {
+					//	delete menu node
+				}
+			}
+		}
+		for _, v := range role.Menu {
+			if v.SubCmd == nil {
+				//	delete menu node
+
+			}
+		}
+	}
 
 	return nil
 }

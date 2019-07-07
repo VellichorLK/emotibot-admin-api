@@ -670,3 +670,33 @@ func RolesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 
 	returnSuccess(w, retData)
 }
+
+func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	userInfo := GetRequesterV3(r)
+	fmt.Println(userInfo)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	roleID := vars["roleID"]
+	if !util.IsValidUUID(roleID) {
+		returnBadRequest(w, "role-id")
+		return
+	}
+
+	retData, err := service.GetRoleV4(enterpriseID, roleID, userInfo)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}

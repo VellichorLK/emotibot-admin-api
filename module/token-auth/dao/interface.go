@@ -174,7 +174,7 @@ type DBV4 interface {
 	// EnterpriseGroupInfoExists(enterpriseID string, groupName string) (bool, error)
 
 	GetRolesV4(enterpriseID string) ([]*data.RoleV4, error)
-	// GetRole(enterpriseID string, roleID string) (*data.RoleV3, error)
+	GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) (*data.RoleV4, error)
 	// AddRole(enterpriseID string, role *data.RoleV3) (string, error)
 	// UpdateRole(enterpriseID string, roleID string, role *data.RoleV3) error
 	// DeleteRole(enterpriseID string, roleID string) error
