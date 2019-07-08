@@ -183,6 +183,7 @@ type DBV4 interface {
 	// EnterpriseRoleInfoExists(enterpriseID string, roleName string) (bool, error)
 
 	GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error)
+	GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error)
 
 	// GetEnterpriseID(appID string) (string, error)
 	// GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)

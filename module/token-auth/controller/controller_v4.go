@@ -675,7 +675,6 @@ func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	userInfo := GetRequesterV3(r)
-	fmt.Println(userInfo)
 
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
@@ -690,6 +689,24 @@ func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retData, err := service.GetRoleV4(enterpriseID, roleID, userInfo)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	local := r.Header["X-Locale"][0]
+	//appid := r.Header["x-AppId"]
+	//vars := mux.Vars(r)
+	userInfo := GetRequesterV3(r)
+
+	retData, err := service.GetMenuV4(userInfo, local)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

@@ -418,13 +418,18 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 		util.LogDBError(err)
 		return nil, err
 	}
-	if res == nil {
+
+	return controller.processMenuData(res, "")
+}
+
+func (controller MYSQLController) processMenuData(menuRes []map[string]string, local string) ([]*data.ModuleDetailV4, error) {
+	if menuRes == nil {
 		return nil, nil
 	}
 
 	parentMap := map[int]int{}
 	var ret []*data.ModuleDetailV4
-	for _, v := range res {
+	for _, v := range menuRes {
 		parentId, _ := strconv.Atoi(v["parent_id"])
 		cmdId, _ := strconv.Atoi(v["id"])
 
@@ -615,6 +620,78 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 	}
 
 	return nil
+}
+
+func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error) {
+	var menus []*data.ModuleDetailV4
+	if userInfo.Type < 2 {
+		menus, _ = controller.GetModulesV4(*userInfo.Enterprise)
+	} else {
+		//	user -> role -> privileges
+		sql := `
+		    select p.module, p.cmd_list, m.code
+		    from privileges as p 
+		    left join roles as r on r.id = p.role
+		    left join user_privileges as up on up.role = r.uuid
+			left join modules as m on m.id = p.module
+	    	where up.human = ?
+			group by p.module, p.cmd_list
+    	`
+		params := make([]interface{}, 1)
+		params[0] = userInfo.ID
+
+		res, err := controller.queryDB(sql, params...)
+		if err != nil {
+			return nil, err
+		}
+
+		moduleCmd := []map[string]string{}
+		for _, v := range res {
+			cmds := strings.Split(v["cmd_list"], ",")
+			fmt.Println(cmds)
+			if len(cmds) > 0 {
+				for _, vv := range cmds {
+					tmp := map[string]string{}
+					tmp["code"] = v["code"]
+					tmp["cmd"] = vv
+					moduleCmd = append(moduleCmd, tmp)
+				}
+			}
+		}
+
+		sql = `
+			SELECT * 
+			FROM modules_cmds 
+			where (parent_id = ? and is_show = ?) 
+		`
+
+		for _, v := range moduleCmd {
+			sql += fmt.Sprintf("or (code = \"%s\" and cmd = \"%s\" and is_show = 1) ", v["code"], v["cmd"])
+		}
+
+		sql += `
+			order by parent_id, sort 
+		`
+		params = make([]interface{}, 2)
+		params[0] = 0
+		params[1] = 1
+
+		res, err = controller.queryDB(sql, params...)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+
+		var retMenus []*data.ModuleDetailV4
+		retMenus, _ = controller.processMenuData(res, "")
+		for _, v := range retMenus {
+			if v.SubCmd != nil {
+				menus = append(menus, v)
+			}
+		}
+	}
+
+	return menus, nil
 }
 
 func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
