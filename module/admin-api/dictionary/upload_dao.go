@@ -114,15 +114,59 @@ func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
 	}
 	defer util.ClearTransition(t)
 
-	queryStr := fmt.Sprintf("DELETE FROM entity_class WHERE appid = ?")
-	result, err := t.Exec(queryStr, appid)
-	if err != nil {
-		return
+
+	ids := []interface{}{}
+	buf := 0
+	queryStr := `SELECT id FROM entity_class WHERE 
+		name = ?  and appid = ?`
+	row := mySQL.QueryRow(queryStr, "自定义NER词库", appid)
+	err = row.Scan(&buf)
+
+	if buf != 0 {
+		ids = append(ids, buf)
+		id := 0
+		queryStr = `SELECT id FROM entity_class WHERE 
+		pid = ? `
+		rows, _ := mySQL.Query(queryStr, buf)
+		defer rows.Close()
+		for rows.Next() {
+			rows.Scan(&id)
+			ids = append(ids, id)
+		}
 	}
-	c, err := result.RowsAffected()
-	if err == nil {
-		logger.Trace.Printf("Delete %d rows\n", c)
+
+//	var strIds string
+//	for _, value := range ids {
+//		strIds += fmt.Sprintf("%d,", value)
+//	}
+//	strIds = strIds[0:len(strIds) - 1]
+
+	if len(ids) != 0 {
+	//	queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE appid = ? AND id NOT IN  (?)")
+	//	result, err2 := t.Exec(queryStr, appid, strIds)
+
+		queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE appid='%s' AND id NOT IN (?%s)", appid, strings.Repeat(",?", len(ids)-1))
+		result, err2 := t.Exec(queryStr, ids...)
+		if err2 != nil {
+			return
+		}
+		c, err := result.RowsAffected()
+		if err == nil {
+			logger.Trace.Printf("Delete %d rows\n", c)
+		}
+	} else {
+		queryStr = fmt.Sprintf("DELETE FROM entity_class WHERE appid = ?")
+		result, err2 := t.Exec(queryStr, appid)
+		if err2 != nil {
+			return
+		}
+		c, err := result.RowsAffected()
+		if err == nil {
+			logger.Trace.Printf("Delete %d rows\n", c)
+		}
 	}
+
+
 
 	queryStr = fmt.Sprintf(`
 		DELETE FROM entities WHERE id IN (
@@ -132,12 +176,12 @@ func saveWordbankV3Rows(appid string, root *WordBankClassV3) (err error) {
 				LEFT JOIN entity_class AS c
 				ON e.cid = c.id) AS tmp
 			WHERE cid IS NULL)`)
-	result, err = t.Exec(queryStr)
+	result, err := t.Exec(queryStr)
 	if err != nil {
 		return
 	}
-	c, err = result.RowsAffected()
-	if err == nil {
+	c, err_ := result.RowsAffected()
+	if err_ == nil {
 		logger.Trace.Printf("Delete %d rows\n", c)
 	}
 
