@@ -400,18 +400,31 @@ func (controller MYSQLController) setBFUserPassword(username, password string) e
 	return err
 }
 
-func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int) ([]*data.ModuleDetailV4, error) {
 	var err error
+	var params []interface{}
 
 	sql := `
 		SELECT * 
 		FROM modules_cmds
-		WHERE is_show > ?
-		ORDER BY parent_id, sort
+		WHERE sort > ?
 	`
 
-	params := make([]interface{}, 1)
-	params[0] = 0
+	if isShow == 1 {
+		sql += `
+			AND is_show = ?
+		`
+		params = make([]interface{}, 2)
+		params[0] = 0
+		params[1] = isShow
+	} else {
+		params = make([]interface{}, 1)
+		params[0] = 0
+	}
+
+	sql += `
+		ORDER BY parent_id, sort
+	`
 
 	res, err := controller.queryDB(sql, params...)
 	if err != nil {
@@ -444,6 +457,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
+			m.IsLink, _ = strconv.ParseBool(v["is_link"])
 			m.IsShow, _ = strconv.ParseBool(v["is_show"])
 			m.CreateTime = v["create_time"]
 
@@ -460,6 +474,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
+			m.IsLink, _ = strconv.ParseBool(v["is_link"])
 			m.IsShow, _ = strconv.ParseBool(v["is_show"])
 			m.CreateTime = v["create_time"]
 
@@ -594,7 +609,7 @@ func (controller MYSQLController) GetRoleV4(enterpriseID string, roleID string, 
 }
 
 func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.RoleV4, userInfo *data.UserDetailV3) error {
-	role.Menu, _ = controller.GetModulesV4(enterpriseID)
+	role.Menu, _ = controller.GetModulesV4(enterpriseID, 1)
 
 	if userInfo.Type > 1 {
 		for _, v := range role.Menu {
@@ -625,7 +640,7 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
-		menus, _ = controller.GetModulesV4(*userInfo.Enterprise)
+		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 1)
 	} else {
 		//	user -> role -> privileges
 		sql := `
@@ -635,6 +650,7 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		    left join user_privileges as up on up.role = r.uuid
 			left join modules as m on m.id = p.module
 	    	where up.human = ?
+			and m.is_show = 1
 			group by p.module, p.cmd_list
     	`
 		params := make([]interface{}, 1)

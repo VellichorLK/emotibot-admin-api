@@ -144,7 +144,7 @@ func GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
 		return nil, nil
 	}
 
-	return useDBV4.GetModulesV4(enterpriseID)
+	return useDBV4.GetModulesV4(enterpriseID, 0)
 }
 
 func GetRolesV4(enterpriseID string) ([]*data.RoleV4, error) {
