@@ -66,6 +66,7 @@ type VisitRecordsResponse struct {
 }
 
 type VisitRecordsDataBase struct {
+	UniqueID     string  `json:"unique_id"`
 	SessionID    string  `json:"session_id"`
 	TESessionID  string  `json:"taskengine_session_id"`
 	UserID       string  `json:"user_id"`
@@ -118,7 +119,7 @@ type VisitRecordsCommon struct {
 }
 type VisitRecordsData struct {
 	VisitRecordsCommon
-	UniqueID     string `json:"id"`
+	UniqueID     string `json:"unique_id"`
 	IsMarked     bool   `json:"is_marked"`
 	MarkedIntent *int64 `json:"marked_intent,omitempty"`
 	IsIgnored    bool   `json:"is_ignored"`
@@ -138,6 +139,10 @@ type VisitRecordsExportData struct {
 
 var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 	"zh-cn": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "对话ID",
+			ID:   common.VisitRecordsMetricUnique,
+		},
 		data.TableHeaderItem{
 			Text: "会话ID",
 			ID:   common.VisitRecordsMetricSessionID,
@@ -224,6 +229,10 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 		},
 	},
 	"zh-tw": []data.TableHeaderItem{
+		data.TableHeaderItem{
+			Text: "對話ID",
+			ID:   common.VisitRecordsMetricUnique,
+		},
 		data.TableHeaderItem{
 			Text: "會話ID",
 			ID:   common.VisitRecordsMetricSessionID,
@@ -313,6 +322,7 @@ var VisitRecordsTableHeader = map[string][]data.TableHeaderItem{
 
 func GetVisitRecordsExportHeader(locale string) []string {
 	var VisitRecordsExportHeader = []string{
+		localemsg.Get(locale, "unique_id"),
 		localemsg.Get(locale, "sessionId"),
 		localemsg.Get(locale, "taskEngineId"),
 		localemsg.Get(locale, "userId"),

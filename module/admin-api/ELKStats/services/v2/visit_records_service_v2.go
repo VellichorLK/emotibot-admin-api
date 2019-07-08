@@ -48,7 +48,7 @@ func VisitRecordsQuery(query *dataV2.VisitRecordsQuery,
 		dataCommon.VisitRecordsMetricIntentScore,
 		dataCommon.VisitRecordsMetricModule,
 		dataCommon.VisitRecordsMetricSource,
-		"unique_id",
+		dataCommon.VisitRecordsMetricUnique,
 		"isMarked",
 		"marked_intent",
 		"isIgnored",
@@ -227,6 +227,7 @@ func extractRawRecord(rawRecord *dataV2.VisitRecordsRawData) (*dataV2.VisitRecor
 
 	record := &dataV2.VisitRecordsCommon{
 		VisitRecordsDataBase: dataV2.VisitRecordsDataBase{
+			UniqueID:     rawRecord.UniqueID,
 			SessionID:    rawRecord.SessionID,
 			TESessionID:  rawRecord.TESessionID,
 			UserID:       rawRecord.UserID,
@@ -409,6 +410,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 
 		row := sheet.AddRow()
 		xlsxData := []string{
+			record.UniqueID,
 			record.SessionID,
 			record.TESessionID,
 			record.UserID,
@@ -451,6 +453,7 @@ func createExportRecordsTaskOption(query *dataV2.VisitRecordsQuery, exportTaskID
 
 	source := elastic.NewFetchSourceContext(true)
 	source.Include(
+		dataCommon.VisitRecordsMetricUnique,
 		dataCommon.VisitRecordsMetricSessionID,
 		dataCommon.VisitRecordsMetricTESessionID,
 		dataCommon.VisitRecordsMetricUserID,

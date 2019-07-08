@@ -16,6 +16,7 @@ var recordsMsg = map[string]map[string]string{
 		"emotion":     "情绪话术",
 
 		// Export records
+		"unique_id":      "对话ID",
 		"sessionId":      "会话ID",
 		"taskEngineId":   "多轮ID",
 		"userId":         "用户ID",
@@ -55,6 +56,7 @@ var recordsMsg = map[string]map[string]string{
 		"emotion":     "情緒話術",
 
 		// Export records
+		"unique_id":      "對話ID",
 		"sessionId":      "會話ID",
 		"taskEngineId":   "多輪場景ID",
 		"userId":         "用戶ID",
