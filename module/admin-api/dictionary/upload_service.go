@@ -661,9 +661,12 @@ func createV3ObjsFromParseContent(classReadOnly map[string]bool, classWordbank m
 				IntentEngine: false,
 				RuleEngine:   true,
 			}
-			classMap[selfPath] = newWordbankClass
-			currentClass.Children = append(currentClass.Children, newWordbankClass)
-			currentClass = classMap[selfPath]
+			if !strings.Contains(selfPath, "自定义NER词库") {
+				classMap[selfPath] = newWordbankClass
+				currentClass.Children = append(currentClass.Children, newWordbankClass)
+				currentClass = classMap[selfPath]
+			}
+
 		}
 	}
 
