@@ -3,6 +3,7 @@ package dao
 import (
 	"crypto/md5"
 	"database/sql"
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"encoding/hex"
 	"fmt"
 	"sort"
@@ -1510,7 +1511,7 @@ func (controller MYSQLController) AddRoleV3(enterpriseID string, role *data.Role
 	}
 
 	moduleMap := map[string]*data.ModuleDetailV3{}
-	modules, err := controller.GetModulesV3(enterpriseID)
+	modules, err := controller.GetModulesV3(enterpriseID, "")
 	if err != nil {
 		util.LogDBError(err)
 		return
@@ -1580,7 +1581,7 @@ func (controller MYSQLController) UpdateRoleV3(enterpriseID string, roleUUID str
 	}
 
 	moduleMap := map[string]*data.ModuleDetailV3{}
-	modules, err := controller.GetModulesV3(enterpriseID)
+	modules, err := controller.GetModulesV3(enterpriseID, "")
 	if err != nil {
 		util.LogDBError(err)
 		return err
@@ -1669,7 +1670,10 @@ func (controller MYSQLController) EnterpriseRoleInfoExistsV3(enterpriseID string
 	return controller.rowExists(querStr, enterpriseID, roleName)
 }
 
-func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
+func (controller MYSQLController) GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error) {
+	if len(local) == 0 {
+		local = "zh-cn"
+	}
 	var err error
 	ok, err := controller.checkDB()
 	if !ok {
@@ -1681,7 +1685,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 	queryStr := fmt.Sprintf(`
 		SELECT id, code, name, status, description, cmd_list
 		FROM %s
-		WHERE enterprise IS NULL`, moduleTableV3)
+		WHERE enterprise IS NULL AND status = 1`, moduleTableV3)
 	rows, err = controller.connectDB.Query(queryStr)
 
 	if err != nil {
@@ -1701,6 +1705,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 		}
 
 		module.Commands = strings.Split(commands, ",")
+		module.Name = lang.Get(local, "auth_"+module.Code)
 		moduleMap[module.Code] = &module
 	}
 
@@ -1708,7 +1713,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string) ([]*data.Mod
 		queryStr := fmt.Sprintf(`
 			SELECT id, code, name, status, description, cmd_list
 			FROM %s
-			WHERE enterprise = ?`, moduleTableV3)
+			WHERE enterprise = ? and status = 1`, moduleTableV3)
 		selfRows, err := controller.connectDB.Query(queryStr, enterpriseID)
 		if err != nil {
 			util.LogDBError(err)

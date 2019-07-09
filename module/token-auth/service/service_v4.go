@@ -131,7 +131,7 @@ func ActivateEnterpriseV4(enterpriseID string, username string, password string)
 	return useDBV4.ActivateEnterpriseV4(enterpriseID, username, password)
 }
 
-func GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
+func GetModulesV4(enterpriseID string, local string) ([]*data.ModuleDetailV4, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
 		return nil, nil
 	}
 
-	return useDBV4.GetModulesV4(enterpriseID, 0)
+	return useDBV4.GetModulesV4(enterpriseID, 0, local, "auth_")
 }
 
 func GetRolesV4(enterpriseID string) ([]*data.RoleV4, error) {
@@ -179,4 +179,13 @@ func GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV
 	}
 
 	return useDBV4.GetMenuV4(userInfo, local)
+}
+
+func GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+
+	return useDBV4.GetEnterpriseMenuV4(userInfo, local)
 }

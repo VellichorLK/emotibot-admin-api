@@ -1708,7 +1708,8 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func GlobalModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
-	retData, err := service.GetGlobalModulesV3()
+	local := r.Header["X-Locale"][0]
+	retData, err := service.GetGlobalModulesV3(local)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"encoding/hex"
 	"fmt"
@@ -400,7 +401,7 @@ func (controller MYSQLController) setBFUserPassword(username, password string) e
 	return err
 }
 
-func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, local string, prefix string) ([]*data.ModuleDetailV4, error) {
 	var err error
 	var params []interface{}
 
@@ -432,10 +433,10 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int) 
 		return nil, err
 	}
 
-	return controller.processMenuData(res, "")
+	return controller.processMenuData(res, local, prefix)
 }
 
-func (controller MYSQLController) processMenuData(menuRes []map[string]string, local string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) processMenuData(menuRes []map[string]string, local string, prefix string) ([]*data.ModuleDetailV4, error) {
 	if menuRes == nil {
 		return nil, nil
 	}
@@ -454,6 +455,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
 			m.CmdKey = getCmdKey(v["code"], v["cmd"])
+			m.Name = lang.Get(local, prefix+m.CmdKey)
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
@@ -471,6 +473,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
 			m.CmdKey = getCmdKey(v["code"], v["cmd"])
+			m.Name = lang.Get(local, prefix+m.CmdKey)
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
@@ -609,7 +612,7 @@ func (controller MYSQLController) GetRoleV4(enterpriseID string, roleID string, 
 }
 
 func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.RoleV4, userInfo *data.UserDetailV3) error {
-	role.Menu, _ = controller.GetModulesV4(enterpriseID, 1)
+	role.Menu, _ = controller.GetModulesV4(enterpriseID, 1, "", "auth_")
 
 	if userInfo.Type > 1 {
 		for _, v := range role.Menu {
@@ -640,7 +643,7 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
-		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0)
+		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
 	} else {
 		//	user -> role -> privileges
 		sql := `
@@ -698,7 +701,7 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		}
 
 		var retMenus []*data.ModuleDetailV4
-		retMenus, _ = controller.processMenuData(res, "")
+		retMenus, _ = controller.processMenuData(res, local, "menu_")
 		for _, v := range retMenus {
 			if v.SubCmd != nil {
 				menus = append(menus, v)
@@ -707,6 +710,51 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 	}
 
 	return menus, nil
+}
+
+func (controller MYSQLController) GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error) {
+	if userInfo.Type != 0 {
+		return nil, nil
+	}
+
+	sql := `
+		select * 
+		from modules_cmds
+		where cmd = "view"
+		and parent_cmd = ""
+        and sort > ?
+		order by parent_id, sort
+	`
+	params := make([]interface{}, 1)
+	params[0] = 0
+
+	res, err := controller.queryDB(sql, params...)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+	fmt.Println(res)
+
+	var ret []*data.ModuleV4
+	for _, v := range res {
+		var m data.ModuleV4
+		m.ID, _ = strconv.Atoi(v["id"])
+		m.ParentId, _ = strconv.Atoi(v["parent_id"])
+		m.ParentCmd = v["parent_cmd"]
+		m.Code = v["code"]
+		m.Cmd = v["cmd"]
+		m.CmdKey = getCmdKey(v["code"], v["cmd"])
+		m.Sort, _ = strconv.Atoi(v["sort"])
+		m.Icon = v["icon"]
+		m.Route = v["route"]
+		m.IsLink, _ = strconv.ParseBool(v["is_link"])
+		m.IsShow, _ = strconv.ParseBool(v["is_show"])
+		m.CreateTime = v["create_time"]
+
+		ret = append(ret, &m)
+	}
+
+	return ret, nil
 }
 
 func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
