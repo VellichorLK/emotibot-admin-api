@@ -1,6 +1,7 @@
 package main
 
 import (
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"fmt"
 	"net/http"
 	"os"
@@ -244,7 +245,7 @@ func main() {
 	setUpLog()
 	setupRoutines()
 
-	// lang.LoadLang()
+	lang.LoadLang()
 
 	router := mux.NewRouter().StrictSlash(true)
 

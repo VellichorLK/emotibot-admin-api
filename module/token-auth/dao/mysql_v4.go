@@ -640,7 +640,7 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
-		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 1)
+		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0)
 	} else {
 		//	user -> role -> privileges
 		sql := `
@@ -650,7 +650,6 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		    left join user_privileges as up on up.role = r.uuid
 			left join modules as m on m.id = p.module
 	    	where up.human = ?
-			and m.is_show = 1
 			group by p.module, p.cmd_list
     	`
 		params := make([]interface{}, 1)
