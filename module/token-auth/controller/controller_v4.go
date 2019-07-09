@@ -703,9 +703,10 @@ func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 
 func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	local := r.Header["X-Locale"][0]
+	appId := r.Header["X-Appid"][0]
 	userInfo := GetRequesterV3(r)
 
-	retData, err := service.GetMenuV4(userInfo, local)
+	retData, err := service.GetMenuV4(userInfo, local, appId)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

@@ -406,14 +406,26 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 	var params []interface{}
 
 	sql := `
-		SELECT * 
-		FROM modules_cmds
-		WHERE sort > ?
+		select mc.* 
+		from modules_cmds as mc 
+		where sort > ? 
+		and mc.code in (
+			select mc.code 
+			from modules as m 
+			where 1 
 	`
+
+	if len(enterpriseID) == 0 {
+		sql += `
+			and m.enterprise is null ) 
+		`
+	} else {
+		sql += fmt.Sprintf("and m.enterprise = \"%s\" ) ", enterpriseID)
+	}
 
 	if isShow == 1 {
 		sql += `
-			AND is_show = ?
+			AND mc.is_show = ?
 		`
 		params = make([]interface{}, 2)
 		params[0] = 0
@@ -424,7 +436,7 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 	}
 
 	sql += `
-		ORDER BY parent_id, sort
+		ORDER BY mc.parent_id, mc.sort
 	`
 
 	res, err := controller.queryDB(sql, params...)
@@ -640,10 +652,14 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 	return nil
 }
 
-func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, appId string) ([]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
-		menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
+		if userInfo.Enterprise == nil {
+			menus, _ = controller.GetModulesV4("", 0, local, "menu_")
+		} else {
+			menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
+		}
 	} else {
 		//	user -> role -> privileges
 		sql := `
@@ -653,10 +669,19 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		    left join user_privileges as up on up.role = r.uuid
 			left join modules as m on m.id = p.module
 	    	where up.human = ?
+			and up.machine in (
+				select a.uuid
+				from apps as a 
+				where uuid = ? 
+				union 
+				select ag.robot_group 
+				from app_group as ag 
+				where ag.app = ? 
+			)
 			group by p.module, p.cmd_list
     	`
-		params := make([]interface{}, 1)
-		params[0] = userInfo.ID
+		var params []interface{}
+		params = append(params, userInfo.ID, appId, appId)
 
 		res, err := controller.queryDB(sql, params...)
 		if err != nil {
