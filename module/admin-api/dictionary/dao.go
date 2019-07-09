@@ -449,8 +449,15 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 	queryStr := `
 		SELECT id, appid, name, pid, editable, intent_engine, rule_engine
 		FROM entity_class
-		WHERE appid = ? ORDER BY name DESC`
-	rows, err := mySQL.Query(queryStr, appid)
+		WHERE appid = ? and id NOT IN (
+			SELECT b.id
+			FROM entity_class AS a
+			JOIN entity_class AS b ON (a.id=b.pid)
+			WHERE a.name='自定义NER词库' AND a.appid=?
+		)
+		AND name!='自定义NER词库'
+		ORDER BY name DESC`
+	rows, err := mySQL.Query(queryStr, appid, appid)
 	if err != nil {
 		return
 	}
