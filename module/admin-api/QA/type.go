@@ -26,6 +26,7 @@ type RetData struct {
 	Answers         []*string       `json:"answers"`
 	Tokens          []*string       `json:"tokens"`
 	Module          string          `json:"module"`
+	TaskInfo	 	interface{}		`json:"task_info"`
 }
 
 type QuestionInfo struct {
@@ -100,6 +101,7 @@ type InfoNode struct {
 	Emotion      string    `json:"emotion"`
 	EmotionScore float32   `json:"emotionScore"`
 	Tokens       []*string `json:"tokens"`
+	TaskInfo	 interface{}	`json:"taskInfo"`
 }
 
 type BFOPControllerResponse struct {

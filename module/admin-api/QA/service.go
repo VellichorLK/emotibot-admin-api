@@ -70,6 +70,7 @@ func DoChatRequestWithBFOPController(appid string, user string, inputData *QATes
 		ret.Intent = controllerRet.Info.Intent
 		ret.Tokens = controllerRet.Info.Tokens
 		ret.Module = controllerRet.Info.Module
+		ret.TaskInfo = controllerRet.Info.TaskInfo
 	}
 	ret.OpenAPIReturn = controllerRet.Status
 
