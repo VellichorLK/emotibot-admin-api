@@ -85,9 +85,9 @@
   "menu_ccs_config_edit":"",
   "menu_ccs_config_export":"",
   "menu_ccs_config_import":"",
-  "auth_ner_factory": "自定義解析器",
-  "auth_ner_factory_view": "抽取器",
-  "auth_ner_factory_edit": "編輯",
-  "auth_ner_factory_export": "導出",
-  "auth_ner_factory_import": "導入"
+  "menu_ner_factory": "自定義解析器",
+  "menu_ner_factory_view": "抽取器",
+  "menu_ner_factory_edit": "編輯",
+  "menu_ner_factory_export": "導出",
+  "menu_ner_factory_import": "導入"
 }
