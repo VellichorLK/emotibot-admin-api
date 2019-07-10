@@ -33,11 +33,13 @@ func VisitCcsRecordsQuery(query dataV1.CcsRecordQuery, aggs ...servicesCommon.El
 		dataCommon.VisitRecordsMetricAnswer,
 		dataCommon.VisitRecordsMetricLogTime,
 		dataCommon.VisitRecordsMetricModule,
-		dataCommon.VisitRecordsMetricIntent,
 		dataCommon.VisitRecordsMetricUnique,
 		dataCommon.VisitRecordsMetricRawResponse,
 		dataCommon.VisitRecordsMetricRuleIDs,
 		dataCommon.VisitRecordsMetricTaskID,
+		dataCommon.VisitTagsMetricCaseId,
+		dataCommon.VisitTagsMetricAppId,
+		dataCommon.VisitTagsMetricDataset,
 	)
 
 	ss := client.Search()
