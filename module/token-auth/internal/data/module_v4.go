@@ -11,6 +11,7 @@ type ModuleV4 struct {
 	Sort       int    `json:"sort"`
 	Icon       string `json:"icon"`
 	Route      string `json:"route"`
+	IsLink     bool   `json:"is_link"`
 	IsShow     bool   `json:"is_show"`
 	CreateTime string `json:"create_time"`
 }

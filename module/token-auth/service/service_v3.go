@@ -577,15 +577,15 @@ func GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error) {
 		return nil, nil
 	}
 
-	return useDBV3.GetModulesV3(enterpriseID)
+	return useDBV3.GetModulesV3(enterpriseID, "")
 }
 
-func GetGlobalModulesV3() ([]*data.ModuleDetailV3, error) {
+func GetGlobalModulesV3(local string) ([]*data.ModuleDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
 	}
-	return useDBV3.GetModulesV3("")
+	return useDBV3.GetModulesV3("", local)
 }
 
 func GetUserPasswordV3(userID string) (string, error) {

@@ -1,9 +1,7 @@
 def TestBaseImage='harbor.emotibot.com/library/go-build:d433a6fc-1.10-standard'
 def havePushed=false
 pipeline {
-    agent {
-        node('docker-build01')
-    }
+    agent any
     environment {
         // credential from "harbor login test"
         DOCKER_SECRECT=credentials('500bc2f5-9bf7-485a-9748-30998e62e8fb')

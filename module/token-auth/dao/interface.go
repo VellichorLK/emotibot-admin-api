@@ -110,7 +110,7 @@ type DBV3 interface {
 	RoleExistsV3(roleID string) (bool, error)
 	EnterpriseRoleInfoExistsV3(enterpriseID string, roleName string) (bool, error)
 
-	GetModulesV3(enterpriseID string) ([]*data.ModuleDetailV3, error)
+	GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error)
 
 	GetEnterpriseIDV3(appID string) (string, error)
 	GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)
@@ -174,7 +174,7 @@ type DBV4 interface {
 	// EnterpriseGroupInfoExists(enterpriseID string, groupName string) (bool, error)
 
 	GetRolesV4(enterpriseID string) ([]*data.RoleV4, error)
-	// GetRole(enterpriseID string, roleID string) (*data.RoleV3, error)
+	GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) (*data.RoleV4, error)
 	// AddRole(enterpriseID string, role *data.RoleV3) (string, error)
 	// UpdateRole(enterpriseID string, roleID string, role *data.RoleV3) error
 	// DeleteRole(enterpriseID string, roleID string) error
@@ -182,7 +182,9 @@ type DBV4 interface {
 	// RoleExists(roleID string) (bool, error)
 	// EnterpriseRoleInfoExists(enterpriseID string, roleName string) (bool, error)
 
-	GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error)
+	GetModulesV4(enterpriseID string, isShow int, local string, prefix string) ([]*data.ModuleDetailV4, error)
+	GetMenuV4(userInfo *data.UserDetailV3, local string, appId string) ([]*data.ModuleDetailV4, error)
+	GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error)
 
 	// GetEnterpriseID(appID string) (string, error)
 	// GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)

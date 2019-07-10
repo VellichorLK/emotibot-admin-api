@@ -630,6 +630,7 @@ func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
 }
 
 func ModulesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	local := r.Header["X-Locale"][0]
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -638,7 +639,7 @@ func ModulesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetModulesV4(enterpriseID)
+	retData, err := service.GetModulesV4(enterpriseID, local)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -660,6 +661,68 @@ func RolesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	}
 
 	retData, err := service.GetRolesV4(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	userInfo := GetRequesterV3(r)
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	roleID := vars["roleID"]
+	if !util.IsValidUUID(roleID) {
+		returnBadRequest(w, "role-id")
+		return
+	}
+
+	retData, err := service.GetRoleV4(enterpriseID, roleID, userInfo)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	local := r.Header["X-Locale"][0]
+	appId := r.Header["X-Appid"][0]
+	userInfo := GetRequesterV3(r)
+
+	retData, err := service.GetMenuV4(userInfo, local, appId)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
+func EnterpriseMenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
+	local := r.Header["X-Locale"][0]
+	userInfo := GetRequesterV3(r)
+
+	retData, err := service.GetEnterpriseMenuV4(userInfo, local)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

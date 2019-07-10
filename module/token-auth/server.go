@@ -1,6 +1,7 @@
 package main
 
 import (
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"fmt"
 	"net/http"
 	"os"
@@ -153,6 +154,9 @@ func setUpRoutes() {
 
 		Route{"GetModules", "GET", 4, "enterprise/{enterpriseID}/modules", nil, controller.ModulesGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetRoles", "GET", 4, "enterprise/{enterpriseID}/roles", nil, controller.RolesGetHandlerV4, []interface{}{0, 1, 2}},
+		Route{"GetRole", "GET", 4, "enterprise/{enterpriseID}/role/{roleID}", nil, controller.RoleGetHandlerV4, []interface{}{0, 1, 2}},
+		Route{"GetMenus", "GET", 4, "menus/{enterpriseID}", nil, controller.MenuGetHandlerV4, []interface{}{0, 1, 2}},
+		Route{"GetEnterpriseMenus", "GET", 4, "enterprise/{enterpriseID}/menus", nil, controller.EnterpriseMenuGetHandlerV4, []interface{}{0}},
 	}
 }
 
@@ -241,6 +245,8 @@ func main() {
 	setUpDB()
 	setUpLog()
 	setupRoutines()
+
+	lang.LoadLang()
 
 	router := mux.NewRouter().StrictSlash(true)
 

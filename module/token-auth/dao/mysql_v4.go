@@ -3,6 +3,7 @@ package dao
 import (
 	"database/sql"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"encoding/hex"
 	"fmt"
@@ -400,31 +401,61 @@ func (controller MYSQLController) setBFUserPassword(username, password string) e
 	return err
 }
 
-func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, local string, prefix string) ([]*data.ModuleDetailV4, error) {
 	var err error
+	var params []interface{}
 
 	sql := `
-		SELECT * 
-		FROM modules_cmds
-		WHERE is_show > ?
-		ORDER BY parent_id, sort
+		select mc.* 
+		from modules_cmds as mc 
+		where sort > ? 
+		and mc.code in (
+			select mc.code 
+			from modules as m 
+			where 1 
 	`
 
-	params := make([]interface{}, 1)
-	params[0] = 0
+	if len(enterpriseID) == 0 {
+		sql += `
+			and m.enterprise is null ) 
+		`
+	} else {
+		sql += fmt.Sprintf("and m.enterprise = \"%s\" ) ", enterpriseID)
+	}
+
+	if isShow == 1 {
+		sql += `
+			AND mc.is_show = ?
+		`
+		params = make([]interface{}, 2)
+		params[0] = 0
+		params[1] = isShow
+	} else {
+		params = make([]interface{}, 1)
+		params[0] = 0
+	}
+
+	sql += `
+		ORDER BY mc.parent_id, mc.sort
+	`
 
 	res, err := controller.queryDB(sql, params...)
 	if err != nil {
 		util.LogDBError(err)
 		return nil, err
 	}
-	if res == nil {
+
+	return controller.processMenuData(res, local, prefix)
+}
+
+func (controller MYSQLController) processMenuData(menuRes []map[string]string, local string, prefix string) ([]*data.ModuleDetailV4, error) {
+	if menuRes == nil {
 		return nil, nil
 	}
 
 	parentMap := map[int]int{}
 	var ret []*data.ModuleDetailV4
-	for _, v := range res {
+	for _, v := range menuRes {
 		parentId, _ := strconv.Atoi(v["parent_id"])
 		cmdId, _ := strconv.Atoi(v["id"])
 
@@ -436,9 +467,11 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
 			m.CmdKey = getCmdKey(v["code"], v["cmd"])
+			m.Name = lang.Get(local, prefix+m.CmdKey)
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
+			m.IsLink, _ = strconv.ParseBool(v["is_link"])
 			m.IsShow, _ = strconv.ParseBool(v["is_show"])
 			m.CreateTime = v["create_time"]
 
@@ -452,9 +485,11 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string) ([]*data.Mod
 			m.Code = v["code"]
 			m.Cmd = v["cmd"]
 			m.CmdKey = getCmdKey(v["code"], v["cmd"])
+			m.Name = lang.Get(local, prefix+m.CmdKey)
 			m.Sort, _ = strconv.Atoi(v["sort"])
 			m.Icon = v["icon"]
 			m.Route = v["route"]
+			m.IsLink, _ = strconv.ParseBool(v["is_link"])
 			m.IsShow, _ = strconv.ParseBool(v["is_show"])
 			m.CreateTime = v["create_time"]
 
@@ -551,11 +586,200 @@ func (controller MYSQLController) getRolePrivilegesV4(role *data.RoleV4) error {
 			cmdKey := code + "_" + v
 			role.Privileges = append(role.Privileges, cmdKey)
 		}
-		//role.Privileges[code] = strings.Split(cmdList, ",")
 	}
 	rows.Close()
 
 	return nil
+}
+
+func (controller MYSQLController) GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) (*data.RoleV4, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	queryStr := fmt.Sprintf(`
+		SELECT id, uuid, name, description
+		FROM %s
+		WHERE enterprise = ? AND uuid = ?`, roleTableV3)
+	row := controller.connectDB.QueryRow(queryStr, enterpriseID, roleID)
+
+	role := data.RoleV4{}
+	err = row.Scan(&role.ID, &role.UUID, &role.Name, &role.Description)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	controller.getRoleUserCountV4(&role)
+	controller.getRolePrivilegesV4(&role)
+	controller.getMenuV4(enterpriseID, &role, userInfo)
+
+	return &role, nil
+}
+
+func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.RoleV4, userInfo *data.UserDetailV3) error {
+	role.Menu, _ = controller.GetModulesV4(enterpriseID, 1, "", "auth_")
+
+	if userInfo.Type > 1 {
+		for _, v := range role.Menu {
+			for _, vv := range v.SubCmd {
+				hasPrivilege := false
+				for _, pri := range role.Privileges {
+					if vv.CmdKey == pri {
+						hasPrivilege = true
+						break
+					}
+				}
+				if hasPrivilege {
+					//	delete menu node
+				}
+			}
+		}
+		for _, v := range role.Menu {
+			if v.SubCmd == nil {
+				//	delete menu node
+
+			}
+		}
+	}
+
+	return nil
+}
+
+func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, appId string) ([]*data.ModuleDetailV4, error) {
+	var menus []*data.ModuleDetailV4
+	if userInfo.Type < 2 {
+		if userInfo.Enterprise == nil {
+			menus, _ = controller.GetModulesV4("", 0, local, "menu_")
+		} else {
+			menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
+		}
+	} else {
+		//	user -> role -> privileges
+		sql := `
+		    select p.module, p.cmd_list, m.code
+		    from privileges as p 
+		    left join roles as r on r.id = p.role
+		    left join user_privileges as up on up.role = r.uuid
+			left join modules as m on m.id = p.module
+	    	where up.human = ?
+			and up.machine in (
+				select a.uuid
+				from apps as a 
+				where uuid = ? 
+				union 
+				select ag.robot_group 
+				from app_group as ag 
+				where ag.app = ? 
+			)
+			group by p.module, p.cmd_list
+    	`
+		var params []interface{}
+		params = append(params, userInfo.ID, appId, appId)
+
+		res, err := controller.queryDB(sql, params...)
+		if err != nil {
+			return nil, err
+		}
+
+		moduleCmd := []map[string]string{}
+		for _, v := range res {
+			cmds := strings.Split(v["cmd_list"], ",")
+			fmt.Println(cmds)
+			if len(cmds) > 0 {
+				for _, vv := range cmds {
+					tmp := map[string]string{}
+					tmp["code"] = v["code"]
+					tmp["cmd"] = vv
+					moduleCmd = append(moduleCmd, tmp)
+				}
+			}
+		}
+
+		sql = `
+			SELECT * 
+			FROM modules_cmds 
+			where (parent_id = ? and is_show = ?) 
+		`
+
+		for _, v := range moduleCmd {
+			sql += fmt.Sprintf("or (code = \"%s\" and cmd = \"%s\" and is_show = 1) ", v["code"], v["cmd"])
+		}
+
+		sql += `
+			order by parent_id, sort 
+		`
+		params = make([]interface{}, 2)
+		params[0] = 0
+		params[1] = 1
+
+		res, err = controller.queryDB(sql, params...)
+		if err != nil {
+			util.LogDBError(err)
+			return nil, err
+		}
+
+		var retMenus []*data.ModuleDetailV4
+		retMenus, _ = controller.processMenuData(res, local, "menu_")
+		for _, v := range retMenus {
+			if v.SubCmd != nil {
+				menus = append(menus, v)
+			}
+		}
+	}
+
+	return menus, nil
+}
+
+func (controller MYSQLController) GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error) {
+	if userInfo.Type != 0 {
+		return nil, nil
+	}
+
+	sql := `
+		select * 
+		from modules_cmds
+		where cmd = "view"
+		and parent_cmd = ""
+        and sort > ?
+		order by parent_id, sort
+	`
+	params := make([]interface{}, 1)
+	params[0] = 0
+
+	res, err := controller.queryDB(sql, params...)
+	if err != nil {
+		util.LogDBError(err)
+		return nil, err
+	}
+	fmt.Println(res)
+
+	var ret []*data.ModuleV4
+	for _, v := range res {
+		var m data.ModuleV4
+		m.ID, _ = strconv.Atoi(v["id"])
+		m.ParentId, _ = strconv.Atoi(v["parent_id"])
+		m.ParentCmd = v["parent_cmd"]
+		m.Code = v["code"]
+		m.Cmd = v["cmd"]
+		m.CmdKey = getCmdKey(v["code"], v["cmd"])
+		m.Sort, _ = strconv.Atoi(v["sort"])
+		m.Icon = v["icon"]
+		m.Route = v["route"]
+		m.IsLink, _ = strconv.ParseBool(v["is_link"])
+		m.IsShow, _ = strconv.ParseBool(v["is_show"])
+		m.CreateTime = v["create_time"]
+
+		ret = append(ret, &m)
+	}
+
+	return ret, nil
 }
 
 func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
