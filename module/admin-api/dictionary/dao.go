@@ -493,7 +493,7 @@ func getWordbanksV3(appid string) (ret *WordBankClassV3, err error) {
 		queryStr = fmt.Sprintf(`
 			SELECT id, appid, name, editable, cid, similar_words, answer
 			FROM entities
-			WHERE cid in (%s) OR appid = ? ORDER BY name DESC`, strings.Join(queryQuestion, ","))
+			WHERE cid in (%s) AND appid = ? ORDER BY name DESC`, strings.Join(queryQuestion, ","))
 	}
 	entityRows, err := mySQL.Query(queryStr, queryParam...)
 	if err != nil {
