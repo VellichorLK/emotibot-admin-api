@@ -427,12 +427,9 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 		sql += `
 			AND mc.is_show = ?
 		`
-		params = make([]interface{}, 2)
-		params[0] = 0
-		params[1] = isShow
+		params = append(params, 0, isShow)
 	} else {
-		params = make([]interface{}, 1)
-		params[0] = 0
+		params = append(params, 0)
 	}
 
 	sql += `
@@ -709,17 +706,16 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		`
 
 		for _, v := range moduleCmd {
-			sql += fmt.Sprintf("or (code = \"%s\" and cmd = \"%s\" and is_show = 1) ", v["code"], v["cmd"])
+			sql += fmt.Sprintf("or (code = \"%s\" and cmd = \"%s\") ", v["code"], v["cmd"])
 		}
 
 		sql += `
 			order by parent_id, sort 
 		`
-		params = make([]interface{}, 2)
-		params[0] = 0
-		params[1] = 1
+		var params1 []interface{}
+		params1 = append(params1, 0, 1)
 
-		res, err = controller.queryDB(sql, params...)
+		res, err = controller.queryDB(sql, params1...)
 		if err != nil {
 			util.LogDBError(err)
 			return nil, err
