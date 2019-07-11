@@ -33,9 +33,10 @@ type UserGroupRoleV3 struct {
 }
 
 type UserAppRoleV3 struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	Role string `json:"role"`
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Role    string `json:"role"`
+	AppType int    `json:"app_type"`
 }
 
 type UserRolesV3 struct {
