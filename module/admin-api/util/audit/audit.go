@@ -44,6 +44,7 @@ const (
 	AuditModuleManageAdmin       = "manage_admin"
 	AuditModuleManageEnterprise  = "manage_enterprise"
 	AuditModuleNerFactory        = "ner_factory"
+	AuditModuleCCS               = "ccs"
 )
 
 var moduleMap = map[string]string{
@@ -105,6 +106,7 @@ var moduleLocalKeyMap = map[string]string{
 	AuditModuleRobotCustomChat:   "AuditModuleRobotCustomChat",
 	AuditModuleRobotConfig:       "AuditModuleRobotConfig",
 	AuditModuleNerFactory:        "AuditModuleNerFactory",
+	AuditModuleCCS:               "AuditModuleCCS",
 }
 
 type auditLog struct {

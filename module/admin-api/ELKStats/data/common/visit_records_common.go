@@ -40,13 +40,14 @@ const (
 
 	// ccs
 	VisitRecordsMetricUnique      = "unique_id"
-	VisitRecordsMetricRecordID    = "record_id"
 	VisitRecordsMetricRuleIDs     = "rule_ids"
 	VisitRecordsMetricTaskID      = "task_id"
 	VisitRecordsMetricRawResponse = "raw_response"
-	VisitMetricTagID              = "tag_id"
 	VisitTagsMetricAnswers		  = "answers"
 	VisitTagsMetricAIModule		  = "ai_module"
+	VisitTagsMetricCaseId		  = "case_id"
+	VisitTagsMetricAppId		  = "app_id"
+	VisitTagsMetricDataset		  = "dataset"
 )
 
 type VisitRecordsExportResponse struct {

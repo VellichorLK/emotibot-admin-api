@@ -1814,7 +1814,7 @@ func (controller MYSQLController) getUserRolesV3(userID string) (roles *data.Use
 
 	// Get user's app roles
 	queryStr = fmt.Sprintf(`
-		SELECT a.uuid , a.name , r.uuid
+		SELECT a.uuid , a.name , r.uuid, a.app_type
 		FROM %s AS u
 		INNER JOIN %s AS p
 		ON p.human = u.uuid
@@ -1833,7 +1833,7 @@ func (controller MYSQLController) getUserRolesV3(userID string) (roles *data.Use
 	appRoles := make([]*data.UserAppRoleV3, 0)
 	for rows.Next() {
 		appRole := data.UserAppRoleV3{}
-		err = rows.Scan(&appRole.ID, &appRole.Name, &appRole.Role)
+		err = rows.Scan(&appRole.ID, &appRole.Name, &appRole.Role, &appRole.AppType)
 		if err != nil {
 			return
 		}
