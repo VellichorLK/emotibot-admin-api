@@ -1687,6 +1687,7 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
+	local := r.Header["X-Locale"][0]
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -1695,7 +1696,7 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetModulesV3(enterpriseID)
+	retData, err := service.GetModulesV3(enterpriseID, local)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
