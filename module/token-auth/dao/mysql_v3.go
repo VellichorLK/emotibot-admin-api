@@ -1713,7 +1713,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string, local string
 		queryStr := fmt.Sprintf(`
 			SELECT id, code, name, status, description, cmd_list
 			FROM %s
-			WHERE enterprise = ? and status = 1`, moduleTableV3)
+			WHERE enterprise = ? `, moduleTableV3)
 		selfRows, err := controller.connectDB.Query(queryStr, enterpriseID)
 		if err != nil {
 			util.LogDBError(err)
