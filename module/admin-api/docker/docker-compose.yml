@@ -95,4 +95,5 @@ services:
       - ADMIN_CLUSTERING_TOOL_URL=http://${CLUSTER_HOST}:13014/
       # - env for general-ui module list
       - ADMIN_UI_ENABLE_TDE_MODULE=0
+      - ADMIN_UI_ENABLE_TE_TTS_MODULE=0
     restart: always
