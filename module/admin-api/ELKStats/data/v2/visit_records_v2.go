@@ -119,7 +119,7 @@ type VisitRecordsCommon struct {
 }
 type VisitRecordsData struct {
 	VisitRecordsCommon
-	UniqueID     string `json:"unique_id"`
+	UniqueID     string `json:"id"`
 	IsMarked     bool   `json:"is_marked"`
 	MarkedIntent *int64 `json:"marked_intent,omitempty"`
 	IsIgnored    bool   `json:"is_ignored"`
