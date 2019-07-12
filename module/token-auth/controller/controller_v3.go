@@ -1687,8 +1687,11 @@ func LoginHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
-	local := r.Header["X-Locale"][0]
 	vars := mux.Vars(r)
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
 
 	enterpriseID := vars["enterpriseID"]
 	if !util.IsValidUUID(enterpriseID) {
@@ -1696,7 +1699,7 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetModulesV3(enterpriseID, local)
+	retData, err := service.GetModulesV3(enterpriseID, locale)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -1709,8 +1712,12 @@ func ModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 }
 
 func GlobalModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
-	local := r.Header["X-Locale"][0]
-	retData, err := service.GetGlobalModulesV3(local)
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
+
+	retData, err := service.GetGlobalModulesV3(locale)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

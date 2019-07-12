@@ -630,7 +630,10 @@ func parseAppFromRequestV4(r *http.Request) (*data.AppDetailV4, error) {
 }
 
 func ModulesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
-	local := r.Header["X-Locale"][0]
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
 	vars := mux.Vars(r)
 
 	enterpriseID := vars["enterpriseID"]
@@ -639,7 +642,7 @@ func ModulesGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	retData, err := service.GetModulesV4(enterpriseID, local)
+	retData, err := service.GetModulesV4(enterpriseID, locale)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -702,11 +705,14 @@ func RoleGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 }
 
 func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
-	local := r.Header["X-Locale"][0]
-	appId := r.Header["X-Appid"][0]
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
+	appId := r.Header.Get("X-Appid")
 	userInfo := GetRequesterV3(r)
 
-	retData, err := service.GetMenuV4(userInfo, local, appId)
+	retData, err := service.GetMenuV4(userInfo, locale, appId)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
@@ -719,10 +725,13 @@ func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 }
 
 func EnterpriseMenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
-	local := r.Header["X-Locale"][0]
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
 	userInfo := GetRequesterV3(r)
 
-	retData, err := service.GetEnterpriseMenuV4(userInfo, local)
+	retData, err := service.GetEnterpriseMenuV4(userInfo, locale)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return
