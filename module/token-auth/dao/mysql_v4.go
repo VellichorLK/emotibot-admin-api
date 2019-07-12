@@ -458,7 +458,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 
 		if parentId == 0 {
 			var m data.ModuleDetailV4
-			m.ID, _ = strconv.Atoi(v["id"])
+			m.ID = cmdId
 			m.ParentId = parentId
 			m.ParentCmd = v["parent_cmd"]
 			m.Code = v["code"]
@@ -476,7 +476,7 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			parentMap[cmdId] = len(ret) - 1
 		} else {
 			var m data.ModuleV4
-			m.ID, _ = strconv.Atoi(v["id"])
+			m.ID = cmdId
 			m.ParentId = parentId
 			m.ParentCmd = v["parent_cmd"]
 			m.Code = v["code"]
@@ -490,7 +490,9 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 			m.IsShow, _ = strconv.ParseBool(v["is_show"])
 			m.CreateTime = v["create_time"]
 
-			ret[parentMap[parentId]].SubCmd = append(ret[parentMap[parentId]].SubCmd, &m)
+			if _, ok := parentMap[parentId]; ok {
+				ret[parentMap[parentId]].SubCmd = append(ret[parentMap[parentId]].SubCmd, &m)
+			}
 		}
 	}
 
