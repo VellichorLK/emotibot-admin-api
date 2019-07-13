@@ -769,3 +769,309 @@ func moveCmd(appid string, id int, cid int) (err error) {
 
 	return tx.Commit()
 }
+
+
+
+func addCmdImportRecord(appid string, userid string, filename string, rows int, valid_rows int) (int, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return -1, err
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return -1, err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		INSERT INTO tbl_upload_cmd_history
+		(user_id, app_id, rows, valid_rows, file_name)
+		VALUES (?, ?, ?, ?, ?)`
+
+	queryParams := []interface{}{
+		userid,
+		appid,
+		rows,
+		valid_rows,
+		filename,
+	}
+	result, err := tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return -1, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return -1, err
+	}
+
+	return int(id), tx.Commit()
+}
+
+func updateCommandImportProgress(recordId int, finish_rows int) (error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return err
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return  err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		UPDATE tbl_upload_cmd_history
+        SET finish_rows = ?
+        WHERE id = ?`
+
+
+	queryParams := []interface{}{
+		finish_rows,
+		recordId,
+	}
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return  err
+	}
+	//id, err := result.LastInsertId()
+	//if err != nil {
+	//	return -1, err
+	//}
+
+	return  tx.Commit()
+}
+
+
+func updateCommandReportFile(recordId int, path string) (error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return err
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return  err
+	}
+	defer util.ClearTransition(tx)
+
+	queryStr := `
+		UPDATE tbl_upload_cmd_history
+        SET upload_detail_file_path = ?
+        WHERE id = ?`
+
+
+	queryParams := []interface{}{
+		path,
+		recordId,
+	}
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return  err
+	}
+	//id, err := result.LastInsertId()
+	//if err != nil {
+	//	return -1, err
+	//}
+
+	return  tx.Commit()
+}
+func deleteAllCommand(appid string) (error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return err
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return  err
+	}
+	defer util.ClearTransition(tx)
+	queryStr := `
+		DELETE FROM cmd
+        WHERE appid = ?`
+
+
+	queryParams := []interface{}{
+		appid,
+	}
+	_, err = tx.Exec(queryStr, queryParams...)
+	if err != nil {
+		return  err
+	}
+	//id, err := result.LastInsertId()
+	//if err != nil {
+	//	return -1, err
+	//}
+
+	return  tx.Commit()
+}
+
+
+func getCommandImportReportPath(recordId int) (string, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return "", errDBNotInit
+	}
+
+	queryStr := `
+		SELECT upload_detail_file_path
+		FROM tbl_upload_cmd_history
+		WHERE id = ?`
+	row := mySQL.QueryRow(queryStr, recordId)
+	path := ""
+	err = row.Scan(&path)
+	if err != nil && err != sql.ErrNoRows {
+		return "", err
+	}
+	return path, nil
+}
+
+
+func getCommandImportProgress(recordId int) (int, error) {
+	var err error
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		return 0, errDBNotInit
+	}
+
+	queryStr := `
+		SELECT rows, finish_rows
+		FROM tbl_upload_cmd_history
+		WHERE id = ?`
+	row := mySQL.QueryRow(queryStr, recordId)
+	total := 0
+	finish := 0
+	err = row.Scan(&total, &finish)
+
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	if total == 0 {
+		return 0, err
+	}
+	progress := (finish * 100)/total
+
+	return progress, nil
+}
+
+
+func getAllCommand(appid string) (rcommandObjList []*CommandObj, err error) {
+
+	commands, err := combineCommand(appid)
+	if err != nil {
+		return nil, err
+	}
+
+	return commands, nil
+}
+
+
+func combineCommand(appid string) (commandObjList []*CommandObj, err error) {
+
+	commandList, err := getOriginCommand(appid)
+
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	if err == nil {
+		for _, command := range commandList {
+
+			queryStr := `SELECT cmd_id, robot_tag_id FROM cmd_robot_tag WHERE cmd_id = ?`
+			labelRows, err:= t.Query(queryStr, command.Id)
+			if err != nil {
+				continue
+			}
+			defer labelRows.Close()
+			cmdTag := CmdTag{}
+			for labelRows.Next(){
+				labelRows.Scan(&cmdTag.CmdId, &cmdTag.RobotTagId)
+				command.Tags = append(command.Tags, cmdTag.RobotTagId)
+			}
+		}
+	}
+
+	err = t.Commit()
+	return commandList, err
+
+}
+
+
+func getOriginCommand(appid string)(commandObjList []*CommandObj, err error){
+
+
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = errDBNotInit
+		return
+	}
+
+	t, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(t)
+
+	queryStr := `SELECT cmd_id, cid, name, target, rule, answer, response_type, begin_time, end_time FROM cmd WHERE appid = ?`
+	cmdRows, err:= t.Query(queryStr, appid)
+
+
+	for cmdRows.Next() {
+		commandObj := CommandObj{}
+		err = cmdRows.Scan(&commandObj.Id, &commandObj.ClassId, &commandObj.Name, &commandObj.Target,
+			&commandObj.Rule, &commandObj.Answer, &commandObj.ResponseType, &commandObj.BeginTime, &commandObj.EndTime )
+		if err != nil {
+			continue
+		}
+		commandObjList = append(commandObjList, &commandObj)
+
+	}
+
+	defer cmdRows.Close()
+	err = t.Commit()
+	return commandObjList, err
+
+}

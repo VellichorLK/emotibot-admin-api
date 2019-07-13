@@ -148,6 +148,11 @@ var (
 		"DownloadCustomChatExtend":   "下载闲聊扩写",
 		"UploadCustomChatInfoTpl":  "上传 %d 个闲聊类别",
 		"UploadCustomChatExtendInfoTpl":  "上传 %d 个问题的闲聊语料",
+
+		//batch op cmd
+		"UploadBatchCommands":   "批量上传指令",
+		"ExportCommands":        "导出指令",
+		"ExportCommandsReport":        "导出指令报告",
 	}
 	ModuleName = map[string]string{
 		"user-manage":        "用户管理",

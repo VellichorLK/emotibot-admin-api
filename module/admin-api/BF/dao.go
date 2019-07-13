@@ -516,6 +516,35 @@ func getSSMLabels(appid string) ([]*SSMLabel, error) {
 	return ret, nil
 }
 
+
+func getCmdClassList(appid string) ([]*CmdClassObj, error) {
+	var err error
+	checkDB()
+	mySQL := useDB
+	if mySQL == nil {
+		return nil, errors.New("DB not init")
+	}
+
+	queryStr := "SELECT id, name FROM cmd_class WHERE appid = ? "
+	rows, err := mySQL.Query(queryStr, appid)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := []*CmdClassObj{}
+
+	for rows.Next() {
+		tmp := &CmdClassObj{}
+		err = rows.Scan(&tmp.ID, &tmp.Name)
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, tmp)
+	}
+	return ret, nil
+}
+
+
 func checkDB() {
 	if useDB == nil {
 		useDB = util.GetMainDB()

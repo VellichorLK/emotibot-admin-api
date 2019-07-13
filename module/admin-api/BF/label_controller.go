@@ -13,6 +13,12 @@ import (
 	"emotibot.com/emotigo/module/admin-api/util"
 	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/pkg/logger"
+	"emotibot.com/emotigo/module/admin-api/util/audit"
+	"emotibot.com/emotigo/module/admin-api/util/AdminErrors"
+	"bytes"
+	"io"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/validate"
 )
 
 func handleGetCmds(w http.ResponseWriter, r *http.Request) {
@@ -478,4 +484,141 @@ func handleMoveCmd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	go util.ConsulUpdateCmd(appid)
+}
+
+
+func handleImportCmds(w http.ResponseWriter, r *http.Request) {
+	appid := requestheader.GetAppID(r)
+	userid := requestheader.GetUserID(r)
+	locale := requestheader.GetLocale(r)
+	var err AdminErrors.AdminError
+	var auditMsg bytes.Buffer
+	var recordId int
+	var status int
+
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(status, recordId))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(status, err.Error()), ApiError.GetHttpStatus(status))
+		}
+
+		audit.AddAuditFromRequestAuto(r, auditMsg.String(), status)
+		//util.Return(w, err, auditMsg.String())
+	}()
+	auditMsg.WriteString(util.Msg["UploadBatchCommands"])
+
+	file, info, ioErr := r.FormFile("file")
+
+	if ioErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, "")
+		return
+	}
+
+	var buffer bytes.Buffer
+	_, ioErr = io.Copy(&buffer, file)
+	if ioErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoIOError, "")
+		return
+	}
+	auditMsg.WriteString(info.Filename)
+
+	status, recordId, parseErr := ProcessImportCmdFile(appid, userid, buffer.Bytes(), info, locale)
+
+	if parseErr != nil {
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, parseErr.Error())
+		return
+	}
+
+	go util.ConsulUpdateCmd(appid)
+	return
+}
+func handleGetImportCmdsStatus(w http.ResponseWriter, r *http.Request) {
+	recordId, _ := util.GetMuxIntVar(r, "id")
+
+	//rId, _ := strconv.Atoi(recordId)
+	var err AdminErrors.AdminError
+	var ret int
+	defer func() {
+		if err == nil {
+			util.WriteJSON(w, util.GenRetObj(AdminErrors.ErrnoSuccess, ret))
+		} else {
+			util.WriteJSONWithStatus(w, util.GenRetObj(err.Errno(), err.Error()), ApiError.GetHttpStatus(err.Errno()))
+		}
+	}()
+	ret, err = GetCmdImportProcess(recordId)
+}
+func handleGetImportCmdsReport(w http.ResponseWriter, r *http.Request) {
+
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
+	recordId, _ := util.GetMuxIntVar(r, "id")
+	var err AdminErrors.AdminError
+	var ret []byte
+	var auditMsg bytes.Buffer
+	var filename string
+
+	defer func() {
+		retVal := 0
+		if err == nil {
+			retVal = 1
+			//now := time.Now()
+			//filename := fmt.Sprintf("custom_chat_%d%02d%02d_%02d%02d%02d.xlsx",
+			//	now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+			util.ReturnFile(w, filename, ret)
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(filename)
+		} else {
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(err.Error())
+			util.Return(w, err, nil)
+		}
+		audit.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+	}()
+	auditMsg.WriteString(localemsg.Get(locale, "ExportCommandsReport"))
+
+	if !validate.IsValidAppID(appid) {
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, "APPID")
+		return
+	}
+
+	//rId, _ := strconv.Atoi(recordId)
+
+	ret, filename, err = GetCmdImportReport(recordId)
+	return
+}
+func handleExportCmds(w http.ResponseWriter, r *http.Request) {
+	//appid := r.URL.Query().Get("appid")
+	appid := requestheader.GetAppID(r)
+	locale := requestheader.GetLocale(r)
+	var err AdminErrors.AdminError
+	var ret []byte
+	var auditMsg bytes.Buffer
+
+	defer func() {
+		retVal := 0
+		if err == nil {
+			retVal = 1
+			now := time.Now()
+			filename := fmt.Sprintf("command_%d%02d%02d_%02d%02d%02d.xlsx",
+				now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second())
+			util.ReturnFile(w, filename, ret)
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(filename)
+		} else {
+			auditMsg.WriteString(":")
+			auditMsg.WriteString(err.Error())
+			util.Return(w, err, nil)
+		}
+		audit.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+	}()
+	auditMsg.WriteString(localemsg.Get(locale, "ExportCommands"))
+
+	if !validate.IsValidAppID(appid) {
+		err = AdminErrors.New(AdminErrors.ErrnoRequestError, "APPID")
+		return
+	}
+
+	ret, err = GetFormatCmdByteForExport(appid, locale)
+	return
 }

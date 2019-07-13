@@ -84,6 +84,11 @@ func init() {
 			util.NewEntryPoint("PUT", "cmd-class/{id}", []string{"edit"}, handleUpdateCmdClass),
 			util.NewEntryPoint("DELETE", "cmd-class/{id}", []string{"delete"}, handleDeleteCmdClass),
 
+			util.NewEntryPoint("POST", "cmds/import", []string{"edit"}, handleImportCmds),
+			util.NewEntryPoint("GET", "cmds/import/{id}", []string{"view"}, handleGetImportCmdsStatus),
+			util.NewEntryPoint("GET", "cmds/report/{id}", []string{"view"}, handleGetImportCmdsReport),
+			util.NewEntryPoint("GET", "cmds/export", []string{"export"}, handleExportCmds),
+
 			util.NewEntryPoint("GET", "ssm/categories", []string{"view"}, handleGetSSMCategories),
 			util.NewEntryPoint("GET", "ssm/labels", []string{"veiw"}, handleGetSSMLabels),
 			util.NewEntryPointWithConfig("GET", "access-token", []string{"view"}, handleGetBFAccessToken, util.EntryConfig{

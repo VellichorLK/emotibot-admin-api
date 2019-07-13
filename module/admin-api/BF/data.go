@@ -91,3 +91,9 @@ type SSMLabel struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 }
+
+type CmdClassObj struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Parent      int    `json:"parent"`
+}
