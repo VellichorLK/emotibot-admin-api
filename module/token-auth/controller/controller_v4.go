@@ -712,7 +712,10 @@ func MenuGetHandlerV4(w http.ResponseWriter, r *http.Request) {
 	appId := r.Header.Get("X-Appid")
 	userInfo := GetRequesterV3(r)
 
-	retData, err := service.GetMenuV4(userInfo, locale, appId)
+	vars := mux.Vars(r)
+	enterpriseID := vars["enterpriseID"]
+
+	retData, err := service.GetMenuV4(userInfo, locale, enterpriseID, appId)
 	if err != nil {
 		returnInternalError(w, err.Error())
 		return

@@ -410,7 +410,7 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 		from modules_cmds as mc 
 		where sort > ? 
 		and mc.code in (
-			select mc.code 
+			select m.code 
 			from modules as m 
 			where 1 
 	`
@@ -420,7 +420,7 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 			and m.enterprise is null ) 
 		`
 	} else {
-		sql += fmt.Sprintf("and m.enterprise = \"%s\" ) ", enterpriseID)
+		sql += fmt.Sprintf("and m.enterprise = \"%s\" and status = 1 ) ", enterpriseID)
 	}
 
 	if isShow == 1 {
@@ -651,13 +651,17 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 	return nil
 }
 
-func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, appId string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, enterpriseID string, appId string) ([]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
-		if userInfo.Enterprise == nil {
+		if userInfo.Enterprise == nil && len(enterpriseID) == 0 {
 			menus, _ = controller.GetModulesV4("", 0, local, "menu_")
 		} else {
-			menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
+			if len(enterpriseID) == 0 {
+				menus, _ = controller.GetModulesV4(*userInfo.Enterprise, 0, local, "menu_")
+			} else {
+				menus, _ = controller.GetModulesV4(enterpriseID, 0, local, "menu_")
+			}
 		}
 	} else {
 		//	user -> role -> privileges
