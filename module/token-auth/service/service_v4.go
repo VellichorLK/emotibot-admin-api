@@ -172,13 +172,13 @@ func GetRoleV4(enterpriseID string, roleID string, userInfo *data.UserDetailV3) 
 	return useDBV4.GetRoleV4(enterpriseID, roleID, userInfo)
 }
 
-func GetMenuV4(userInfo *data.UserDetailV3, local string, appId string) ([]*data.ModuleDetailV4, error) {
+func GetMenuV4(userInfo *data.UserDetailV3, local string, enterpriseID string, appId string) ([]*data.ModuleDetailV4, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
 	}
 
-	return useDBV4.GetMenuV4(userInfo, local, appId)
+	return useDBV4.GetMenuV4(userInfo, local, enterpriseID, appId)
 }
 
 func GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error) {
