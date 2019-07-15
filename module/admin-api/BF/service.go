@@ -18,6 +18,10 @@ func GetSSMLabels(appid string) ([]*SSMLabel, error) {
 	return getSSMLabels(appid)
 }
 
+func GetCmdClassList(appid string) ([]*CmdClassObj, error) {
+	return getCmdClassList(appid)
+}
+
 func GetBFAccessToken(userid string) (string, error) {
 	return getBFAccessToken(userid)
 }
