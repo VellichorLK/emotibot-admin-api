@@ -428,8 +428,9 @@ func handlePutScenarios(w http.ResponseWriter, r *http.Request) {
 			util.WriteJSONWithStatus(w, util.GenRetObj(errno, err.Error()), ApiError.GetHttpStatus(errno))
 			return
 		}
-		auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
-		addAuditLog(r, audit.AuditOperationPublish, auditMsg, err == nil)
+		//auditMsg := fmt.Sprintf(util.Msg["AuditPublishTpl"], scenarioid)
+		auditMsg := fmt.Sprintf("%s%s: %s", util.Msg["Deleted"], util.Msg["TaskEngineScenario"], scenarioid)
+		addAuditLog(r, audit.AuditOperationDelete, auditMsg, err == nil)
 	} else if publish != "" {
 		// publish scenario
 		errno, err := PublishScenario(scenarioid, appid, appid)
