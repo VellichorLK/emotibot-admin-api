@@ -61,6 +61,10 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 					replyMessages = append(replyMessages, workweixin.NewTextMessage(
 						message.From, message.AgentID, textConverter(answer.ToString())))
 				}
+				if answer.Type == "cmd" {
+					replyMessages = append(replyMessages, workweixin.NewTextMessage(
+						message.From, message.AgentID, textConverter(answer.ToString())))
+				}
 			}
 			workWeixinQueue <- &workWeixinTask{
 				Bot:      bot,
