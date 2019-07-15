@@ -16,8 +16,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	servicesV1 "emotibot.com/emotigo/module/admin-api/ELKStats/services/v1"
 	"emotibot.com/emotigo/module/admin-api/util/elasticsearch"
-	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 	"emotibot.com/emotigo/module/admin-api/util/localemsg"
+	"emotibot.com/emotigo/module/admin-api/util/requestheader"
 )
 
 // Top questions
@@ -383,7 +383,7 @@ func fetchVisitStats(query dataV1.VisitStatsQuery) (map[string]map[string]interf
 		visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
 	conversationsPerSessions := servicesV1.
 		CoversationsPerSessionCounts(visitStatsCounts[dataCommon.VisitStatsMetricConversations],
-		visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
+			visitStatsCounts[dataCommon.VisitStatsMetricTotalAsks])
 
 	visitStatsCounts[dataCommon.VisitStatsMetricSuccessRate] = successRates
 	visitStatsCounts[dataCommon.VisitStatsMetricConversationsPerSession] = conversationsPerSessions
@@ -473,7 +473,7 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 		return nil, err
 	}
 
-	tagData := make([]dataV1.VisitStatsTagData, 0)
+	var tagData []dataV1.VisitStatsTagData
 
 	for tagName, q := range visitStatsQ {
 		tagID, found := services.GetTagIDByName(query.AppID, query.AggTagType, tagName)
@@ -487,7 +487,31 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 			Name: tagName,
 		}
 
-		tagData = append(tagData, t)
+		aLen := len(tagData)
+		if aLen == 0 || t.ID > tagData[aLen-1].ID {
+			tagData = append(tagData, t)
+		} else {
+			var idx int
+			for k, v := range tagData {
+				if t.ID < v.ID {
+					idx = k
+					break
+				}
+			}
+
+			var tmpData []dataV1.VisitStatsTagData
+			if idx > 0 {
+				for _, v := range tagData[:idx] {
+					tmpData = append(tmpData, v)
+				}
+			}
+			tmpData = append(tmpData, t)
+			for _, v := range tagData[idx:] {
+				tmpData = append(tmpData, v)
+			}
+
+			tagData = tmpData
+		}
 	}
 
 	response := dataV1.VisitStatsTagResponse{
@@ -502,13 +526,13 @@ func createVisitStatsTagResponse(query dataV1.VisitStatsQuery,
 func createAnswerCategoryStatsResponse(
 	statCounts map[string]interface{}, locale string) (*dataV1.AnswerCategoryStatsResponse, error) {
 
-	businessStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryBusiness, localemsg.Get(locale,"BizCate"))
+	businessStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryBusiness, localemsg.Get(locale, "BizCate"))
 	businessStatData.Q.TotalAsks = statCounts[dataCommon.CategoryBusiness].(int64)
 
-	chatStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryChat, localemsg.Get(locale,"ChatCate"))
+	chatStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryChat, localemsg.Get(locale, "ChatCate"))
 	chatStatData.Q.TotalAsks = statCounts[dataCommon.CategoryChat].(int64)
 
-	otherStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryOther, localemsg.Get(locale,"OtherCate"))
+	otherStatData := dataV1.NewAnswerCategoryStatData(dataCommon.CategoryOther, localemsg.Get(locale, "OtherCate"))
 	otherStatData.Q.TotalAsks = statCounts[dataCommon.CategoryOther].(int64)
 
 	answerCategoryStatsData := []dataV1.AnswerCategoryStatData{
@@ -675,7 +699,7 @@ func createVisitStatsQ(
 	if totalVisitStatsQ.TotalAsks != 0 {
 		totalVisitStatsQ.SuccessRate = strconv.
 			FormatFloat((float64(totalVisitStatsQ.TotalAsks-totalVisitStatsQ.UnknownQnA) /
-			float64(totalVisitStatsQ.TotalAsks)), 'f', 2, 64)
+				float64(totalVisitStatsQ.TotalAsks)), 'f', 2, 64)
 	} else {
 		totalVisitStatsQ.SuccessRate = "N/A"
 	}
