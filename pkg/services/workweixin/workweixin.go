@@ -57,21 +57,17 @@ func New(corpid, secret, token, encodingAES string) (*Client, error) {
 // VerifyURL will used to reply workweixin validation
 // refs: https://work.weixin.qq.com/api/doc#90000/90135/90237/%E9%AA%8C%E8%AF%81URL%E6%9C%89%E6%95%88%E6%80%A7
 func (c *Client) VerifyURL(w http.ResponseWriter, r *http.Request) {
-	signature := r.URL.Query().Get("msg_signature")
-	timestamp := r.URL.Query().Get("timestamp")
-	nonce := r.URL.Query().Get("nonce")
-	encryptStr := r.URL.Query().Get("echostr")
+	signature := strings.TrimSpace(r.URL.Query().Get("msg_signature"))
+	timestamp := strings.TrimSpace(r.URL.Query().Get("timestamp"))
+	nonce := strings.TrimSpace(r.URL.Query().Get("nonce"))
+	encryptStr := strings.TrimSpace(r.URL.Query().Get("echostr"))
 
-	logger.Trace.Printf(`Verify with:
-	signature:	%s
-	timestamp: %s
-	nonce: %s
-	encryptStr: %s
-	`, signature, timestamp, nonce, encryptStr)
+	logger.Trace.Printf(`Verify with: signature: %s -- timestamp: %s -- nonce: %s -- encryptStr: %s`,
+		signature, timestamp, nonce, encryptStr)
 	verify := calculateSignature(c.Token, timestamp, nonce, encryptStr)
 	logger.Trace.Printf("Signature check: %s, %s\n", verify, signature)
 
-	if strings.Trim(verify, " ") != strings.Trim(signature, " ") {
+	if strings.TrimSpace(verify) != strings.TrimSpace(signature) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -146,12 +142,8 @@ func (c *Client) getPostMsg(r *http.Request) ([]byte, error) {
 	nonce := r.URL.Query().Get("nonce")
 	encryptStr := input.Encrypted
 
-	logger.Trace.Printf(`Verify with:
-	signature:	%s
-	timestamp: %s
-	nonce: %s
-	encryptStr: %s
-	`, signature, timestamp, nonce, encryptStr)
+	logger.Trace.Printf(`Verify with: -- signature: %s -- timestamp: %s -- nonce: %s -- encryptStr: %s`,
+		signature, timestamp, nonce, encryptStr)
 	verify := calculateSignature(c.Token, timestamp, nonce, encryptStr)
 	logger.Trace.Printf("Signature check: %s, %s\n", verify, signature)
 	if verify != signature {
@@ -291,7 +283,7 @@ func (c *Client) AccessTokenValidate() bool {
 // refs: https://work.weixin.qq.com/api/doc#90000/90135/91039
 func (c *Client) GetNewAccessToken() error {
 	now := time.Now()
-	url := fmt.Sprintf("%s?corpid=%s&corpsecret=%s", TokenIssueURL, c.CorpID, c.Secret)
+	url := fmt.Sprintf("%s?corpid=%s&corpsecret=%s", TokenIssueURL, strings.TrimSpace(c.CorpID), strings.TrimSpace(c.Secret))
 	logger.Trace.Println("Get token with url:", url)
 	rsp, err := http.Get(url)
 	if err != nil {
