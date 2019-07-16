@@ -405,23 +405,55 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 	var err error
 	var params []interface{}
 
+	//select mc.*
+	//from auth.modules_cmds as mc
+	//where sort > 0
+	//and mc.code in (
+	//	select m1.code
+	//	from auth.modules as m1
+	//	left join (
+	//		select m2.code
+	//		from auth.modules as m2
+	//		where m2.enterprise = "d8fd73954131493ea5b0494e20615908"
+	//		and status = 0
+	//	) as m3 on m1.code = m3.code
+	//	where 1
+	//	and m3.code is null
+	//	and m1.enterprise is null
+	//	and m1.status = 1
+	//)
+	//ORDER BY mc.parent_id, mc.sort
+
 	sql := `
 		select mc.* 
-		from modules_cmds as mc 
+		from auth.modules_cmds as mc 
 		where sort > ? 
 		and mc.code in (
-			select m.code 
-			from modules as m 
-			where 1 
+			select m1.code
+			from auth.modules as m1
 	`
-
-	if len(enterpriseID) == 0 {
-		sql += `
-			and m.enterprise is null ) 
+	if len(enterpriseID) > 0 {
+		tmpStr := `
+			left outer join (
+				select m2.code 
+				from auth.modules as m2 
+				where m2.enterprise = "%s" 
+				and status = 0 
+			) as m3 on m1.code = m3.code 
+			where 1 
+			and m3.code is null
 		`
+		sql += fmt.Sprintf(tmpStr, enterpriseID)
 	} else {
-		sql += fmt.Sprintf("and m.enterprise = \"%s\" and status = 1 ) ", enterpriseID)
+		sql += `
+			where 1 
+		`
 	}
+	sql += `
+			and m1.enterprise is null
+			and m1.status = 1
+		)
+	`
 
 	if isShow == 1 {
 		sql += `
