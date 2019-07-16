@@ -166,7 +166,7 @@ func handleExportCustomChatQuestion(w http.ResponseWriter, r *http.Request) {
 			auditMsg.WriteString(err.Error())
 			util.Return(w, err, nil)
 		}
-		audit.AddAuditFromRequestAuto(r, auditMsg.String(), retVal)
+		audit.AddAuditFromRequestAutoWithOP(r, auditMsg.String(), retVal, audit.AuditOperationExport)
 	}()
 	auditMsg.WriteString(localemsg.Get(locale, "CustomChatExport"))
 
