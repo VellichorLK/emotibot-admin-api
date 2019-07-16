@@ -834,6 +834,17 @@ func handleExportFromMySQLV3(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var auditMsg bytes.Buffer
+
+	defer func() {
+		retVal := 0
+		if err == nil {
+			retVal = 1
+		}
+		audit.AddAuditFromRequestAutoWithOP(r, auditMsg.String(), retVal, audit.AuditOperationExport)
+	}()
+	auditMsg.WriteString(localemsg.Get(locale, "DictionaryExport"))
+
 	now := time.Now()
 	filename := fmt.Sprintf("wordbank_%s.xlsx", now.Format("20060102150405"))
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
