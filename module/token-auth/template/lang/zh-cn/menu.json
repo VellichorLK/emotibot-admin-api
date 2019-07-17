@@ -89,5 +89,6 @@
   "menu_ner_factory_view": "抽取器",
   "menu_ner_factory_edit": "编辑",
   "menu_ner_factory_export": "导出",
-  "menu_ner_factory_import": "导入"
+  "menu_ner_factory_import": "导入",
+  "auth_ai_tools": "AI工具"
 }

@@ -426,17 +426,17 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 
 	sql := `
 		select mc.* 
-		from auth.modules_cmds as mc 
+		from modules_cmds as mc 
 		where sort > ? 
 		and mc.code in (
 			select m1.code
-			from auth.modules as m1
+			from modules as m1
 	`
 	if len(enterpriseID) > 0 {
 		tmpStr := `
 			left outer join (
 				select m2.code 
-				from auth.modules as m2 
+				from modules as m2 
 				where m2.enterprise = "%s" 
 				and status = 0 
 			) as m3 on m1.code = m3.code 
@@ -477,7 +477,7 @@ func (controller MYSQLController) GetModulesV4(enterpriseID string, isShow int, 
 	return controller.processMenuData(res, local, prefix)
 }
 
-func (controller MYSQLController) processMenuData(menuRes []map[string]string, local string, prefix string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) processMenuData(menuRes []map[string]string, locale string, prefix string) ([]*data.ModuleDetailV4, error) {
 	if menuRes == nil {
 		return nil, nil
 	}
@@ -488,40 +488,12 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 		parentId, _ := strconv.Atoi(v["parent_id"])
 		cmdId, _ := strconv.Atoi(v["id"])
 
-		if parentId == 0 {
-			var m data.ModuleDetailV4
-			m.ID = cmdId
-			m.ParentId = parentId
-			m.ParentCmd = v["parent_cmd"]
-			m.Code = v["code"]
-			m.Cmd = v["cmd"]
-			m.CmdKey = getCmdKey(v["code"], v["cmd"])
-			m.Name = lang.Get(local, prefix+m.CmdKey)
-			m.Sort, _ = strconv.Atoi(v["sort"])
-			m.Icon = v["icon"]
-			m.Route = v["route"]
-			m.IsLink, _ = strconv.ParseBool(v["is_link"])
-			m.IsShow, _ = strconv.ParseBool(v["is_show"])
-			m.CreateTime = v["create_time"]
+		m := renderModuleDetail(v, locale, prefix)
 
+		if parentId == 0 {
 			ret = append(ret, &m)
 			parentMap[cmdId] = len(ret) - 1
 		} else {
-			var m data.ModuleV4
-			m.ID = cmdId
-			m.ParentId = parentId
-			m.ParentCmd = v["parent_cmd"]
-			m.Code = v["code"]
-			m.Cmd = v["cmd"]
-			m.CmdKey = getCmdKey(v["code"], v["cmd"])
-			m.Name = lang.Get(local, prefix+m.CmdKey)
-			m.Sort, _ = strconv.Atoi(v["sort"])
-			m.Icon = v["icon"]
-			m.Route = v["route"]
-			m.IsLink, _ = strconv.ParseBool(v["is_link"])
-			m.IsShow, _ = strconv.ParseBool(v["is_show"])
-			m.CreateTime = v["create_time"]
-
 			if _, ok := parentMap[parentId]; ok {
 				ret[parentMap[parentId]].SubCmd = append(ret[parentMap[parentId]].SubCmd, &m)
 			}
@@ -529,6 +501,27 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 	}
 
 	return ret, nil
+}
+
+func renderModuleDetail(mLine map[string]string, locale string, prefix string) data.ModuleDetailV4 {
+	var m data.ModuleDetailV4
+
+	m.ID, _ = strconv.Atoi(mLine["parent_id"])
+	m.ParentId, _ = strconv.Atoi(mLine["id"])
+	m.ParentCmd = mLine["parent_cmd"]
+	m.Code = mLine["code"]
+	m.Cmd = mLine["cmd"]
+	m.CmdKey = getCmdKey(mLine["code"], mLine["cmd"])
+	m.Name = lang.Get(locale, prefix+m.CmdKey)
+	m.Sort, _ = strconv.Atoi(mLine["sort"])
+	m.Position = mLine["position"]
+	m.Icon = mLine["icon"]
+	m.Route = mLine["route"]
+	m.IsLink, _ = strconv.ParseBool(mLine["is_link"])
+	m.IsShow, _ = strconv.ParseBool(mLine["is_show"])
+	m.CreateTime = mLine["create_time"]
+
+	return m
 }
 
 func getCmdKey(code string, cmd string) string {
@@ -683,7 +676,7 @@ func (controller MYSQLController) getMenuV4(enterpriseID string, role *data.Role
 	return nil
 }
 
-func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, enterpriseID string, appId string) ([]*data.ModuleDetailV4, error) {
+func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local string, enterpriseID string, appId string) (map[string][]*data.ModuleDetailV4, error) {
 	var menus []*data.ModuleDetailV4
 	if userInfo.Type < 2 {
 		if userInfo.Enterprise == nil && len(enterpriseID) == 0 {
@@ -768,10 +761,15 @@ func (controller MYSQLController) GetMenuV4(userInfo *data.UserDetailV3, local s
 		}
 	}
 
-	return menus, nil
+	positionMenus := make(map[string][]*data.ModuleDetailV4)
+	for _, v := range menus {
+		positionMenus[v.Position] = append(positionMenus[v.Position], v)
+	}
+
+	return positionMenus, nil
 }
 
-func (controller MYSQLController) GetEnterpriseMenuV4(userInfo *data.UserDetailV3, local string) ([]*data.ModuleV4, error) {
+func (controller MYSQLController) GetEnterpriseMenuV4(userInfo *data.UserDetailV3, locale string) ([]*data.ModuleDetailV4, error) {
 	if userInfo.Type != 0 {
 		return nil, nil
 	}
@@ -794,22 +792,9 @@ func (controller MYSQLController) GetEnterpriseMenuV4(userInfo *data.UserDetailV
 	}
 	fmt.Println(res)
 
-	var ret []*data.ModuleV4
+	var ret []*data.ModuleDetailV4
 	for _, v := range res {
-		var m data.ModuleV4
-		m.ID, _ = strconv.Atoi(v["id"])
-		m.ParentId, _ = strconv.Atoi(v["parent_id"])
-		m.ParentCmd = v["parent_cmd"]
-		m.Code = v["code"]
-		m.Cmd = v["cmd"]
-		m.CmdKey = getCmdKey(v["code"], v["cmd"])
-		m.Sort, _ = strconv.Atoi(v["sort"])
-		m.Icon = v["icon"]
-		m.Route = v["route"]
-		m.IsLink, _ = strconv.ParseBool(v["is_link"])
-		m.IsShow, _ = strconv.ParseBool(v["is_show"])
-		m.CreateTime = v["create_time"]
-
+		m := renderModuleDetail(v, locale, "menu_")
 		ret = append(ret, &m)
 	}
 
