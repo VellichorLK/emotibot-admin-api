@@ -18,6 +18,7 @@ var dictionaryMsg = map[string]map[string]string{
 		"DictionaryErrorAPISimilarTooLong": "同义词超过64字",
 		"DictionaryErrorAPIPathTooLong":    "目录名超过20字",
 		"DictionaryErrorMoveTarget":        "目标目录已有相同名称的词库",
+		"DictionaryExport":                 "导出词库",
 	},
 	ZhTw: map[string]string{
 		"DictionaryNoClass":                "未分類",
@@ -36,5 +37,6 @@ var dictionaryMsg = map[string]map[string]string{
 		"DictionaryErrorAPISimilarTooLong": "同義詞超過64字",
 		"DictionaryErrorAPIPathTooLong":    "目錄名超過20字",
 		"DictionaryErrorMoveTarget":        "目標目錄已有相同名稱的詞庫",
+		"DictionaryExport":                 "導出詞庫",
 	},
 }
