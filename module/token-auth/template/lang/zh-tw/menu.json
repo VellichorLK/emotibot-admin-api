@@ -81,7 +81,7 @@
   "menu_ssm3_publish":"發佈上線",
   "menu_ssm3_edit-label":"管理標籤",
   "menu_qa_records_view":"變更記錄",
-  "menu_ccs_config_view":"",
+  "menu_ccs_config_view":"中控",
   "menu_ccs_config_edit":"",
   "menu_ccs_config_export":"",
   "menu_ccs_config_import":"",
@@ -90,5 +90,6 @@
   "menu_ner_factory_edit": "編輯",
   "menu_ner_factory_export": "導出",
   "menu_ner_factory_import": "導入",
-  "auth_ai_tools": "AI工具"
+  "menu_ai_tools": "AI工具",
+  "menu_ai_tools_chat": "對話測試"
 }

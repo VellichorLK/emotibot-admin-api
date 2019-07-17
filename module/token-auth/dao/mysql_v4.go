@@ -485,17 +485,14 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 	parentMap := map[int]int{}
 	var ret []*data.ModuleDetailV4
 	for _, v := range menuRes {
-		parentId, _ := strconv.Atoi(v["parent_id"])
-		cmdId, _ := strconv.Atoi(v["id"])
-
 		m := renderModuleDetail(v, locale, prefix)
 
-		if parentId == 0 {
+		if m.ParentId == 0 {
 			ret = append(ret, &m)
-			parentMap[cmdId] = len(ret) - 1
+			parentMap[m.ID] = len(ret) - 1
 		} else {
-			if _, ok := parentMap[parentId]; ok {
-				ret[parentMap[parentId]].SubCmd = append(ret[parentMap[parentId]].SubCmd, &m)
+			if _, ok := parentMap[m.ParentId]; ok {
+				ret[parentMap[m.ParentId]].SubCmd = append(ret[parentMap[m.ParentId]].SubCmd, &m)
 			}
 		}
 	}
@@ -506,8 +503,8 @@ func (controller MYSQLController) processMenuData(menuRes []map[string]string, l
 func renderModuleDetail(mLine map[string]string, locale string, prefix string) data.ModuleDetailV4 {
 	var m data.ModuleDetailV4
 
-	m.ID, _ = strconv.Atoi(mLine["parent_id"])
-	m.ParentId, _ = strconv.Atoi(mLine["id"])
+	m.ID, _ = strconv.Atoi(mLine["id"])
+	m.ParentId, _ = strconv.Atoi(mLine["parent_id"])
 	m.ParentCmd = mLine["parent_cmd"]
 	m.Code = mLine["code"]
 	m.Cmd = mLine["cmd"]
