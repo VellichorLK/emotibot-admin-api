@@ -81,7 +81,7 @@
   "menu_ssm3_publish":"发布上线",
   "menu_ssm3_edit-label":"管理标签",
   "menu_qa_records_view":"变更记录",
-  "menu_ccs_config_view":"",
+  "menu_ccs_config_view":"中控",
   "menu_ccs_config_edit":"",
   "menu_ccs_config_export":"",
   "menu_ccs_config_import":"",
@@ -90,5 +90,7 @@
   "menu_ner_factory_edit": "编辑",
   "menu_ner_factory_export": "导出",
   "menu_ner_factory_import": "导入",
-  "auth_ai_tools": "AI工具"
+  "menu_ai_tools": "AI工具",
+  "menu_ai_tools_chat": "对话测试",
+  "menu_ai_tools_view": "对话测试"
 }
