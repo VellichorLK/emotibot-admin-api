@@ -91,5 +91,6 @@
   "menu_ner_factory_export": "导出",
   "menu_ner_factory_import": "导入",
   "menu_ai_tools": "AI工具",
-  "menu_ai_tools_chat": "对话测试"
+  "menu_ai_tools_chat": "对话测试",
+  "menu_ai_tools_view": "对话测试"
 }
