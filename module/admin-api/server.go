@@ -176,6 +176,7 @@ func init() {
 
 	autofill.Init()
 	feedback.SetupDB(util.GetMainDB())
+	media.Init()
 }
 
 func main() {
