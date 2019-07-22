@@ -10,7 +10,8 @@ import (
 	"emotibot.com/emotigo/pkg/logger"
 )
 
-const PlatformWorkWeixin = "workweixin"
+const PlatformWorkWeixin = "微信"
+const PlatformLine = "line"
 
 func genPureTextNode(input string) *QA.BFOPOpenapiAnswer {
 	return &QA.BFOPOpenapiAnswer{
@@ -21,9 +22,10 @@ func genPureTextNode(input string) *QA.BFOPOpenapiAnswer {
 	}
 }
 
-func GetChatResult(appid, userid, input string) []*QA.BFOPOpenapiAnswer {
+func GetChatResult(appid, userid, input string, platform string) []*QA.BFOPOpenapiAnswer {
 	conf := &QA.QATestInput{}
 	conf.UserInput = input
+	conf.Platform = platform
 	answer, _, err := QA.DoChatRequestWithBFOPOpenAPI(appid, userid, conf)
 	if err != nil {
 		return []*QA.BFOPOpenapiAnswer{

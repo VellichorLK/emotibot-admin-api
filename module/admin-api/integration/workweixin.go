@@ -49,7 +49,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 		switch message := msg.(type) {
 		case *workweixin.TextMessage:
 			logger.Trace.Printf("Receive: %s\n", message.Content)
-			answers := GetChatResult(appid, message.From, message.Content)
+			answers := GetChatResult(appid, message.From, message.Content, PlatformWorkWeixin)
 
 			replyMessages := []workweixin.SendingMessage{}
 			for _, answer := range answers {
