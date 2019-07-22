@@ -881,7 +881,9 @@ func ExportWordbankV3(appid string, locale string) (*bytes.Buffer, error) {
 				cell = row.AddCell()
 				cell.SetValue(strings.Join(words, ","))
 				cell = row.AddCell()
-				cell.SetValue(wb.Answer)
+				if node.Name == "敏感词库" {
+					cell.SetValue(wb.Answer)
+				}
 
 				if len(similarWords) == 0 {
 					break
