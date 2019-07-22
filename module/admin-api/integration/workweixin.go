@@ -1,7 +1,6 @@
 package integration
 
 import (
-	"encoding/base64"
 	"net/http"
 	"strings"
 
@@ -77,10 +76,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 
 func generateWorkWeixinConfig(values map[string]string) map[string]string {
 	token := util.GenRandomString(32)
-
-	randomBytes := util.GenRandomBytes(32)
-	originEncodedAES := base64.StdEncoding.EncodeToString(randomBytes)
-	workWeixinEncoded := strings.Replace(originEncodedAES, "=", "", -1)
+	workWeixinEncoded := util.GenRandomString(43)
 
 	values["token"] = token
 	values["encoded-aes"] = workWeixinEncoded
