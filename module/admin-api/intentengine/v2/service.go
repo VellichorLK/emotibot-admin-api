@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"emotibot.com/emotigo/module/admin-api/autofill"
 	autofillData "emotibot.com/emotigo/module/admin-api/autofill/data"
@@ -541,6 +542,10 @@ func parseBF2Sheets(sheets []*xlsx.Sheet, locale string) (intents []*IntentV2, e
 			if sentence == "" {
 				return nil, fmt.Errorf(localemsg.Get(locale, "IntentUploadBF2RowNoSentenceTpl"),
 					sheets[idx].Name, rowIdx+1)
+			}
+			if utf8.RuneCountInString(name) > 35 || utf8.RuneCountInString(sentence) > 50 {
+			//	logger.Trace.Print("%d, %d", length, namelength)
+				continue
 			}
 
 			if _, ok := intentMap[name]; !ok {
