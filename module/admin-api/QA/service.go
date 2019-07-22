@@ -367,6 +367,10 @@ func DoChatRequestWithBFOPOpenAPI(appid string, user string, inputData *QATestIn
 	customInfoStr, _ := json.Marshal(customInfo)
 
 	input["customInfo"] = customInfo
+	extendData := map[string]bool{
+		"online": true,
+	}
+	input["extend_data"] = extendData
 
 	logger.Trace.Printf("CustomInfo: %s\n", customInfoStr)
 
