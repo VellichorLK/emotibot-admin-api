@@ -201,6 +201,11 @@ func main() {
 
 // checkPrivilege will call auth api to check user's privilege of this API
 func checkPrivilege(r *http.Request, ep util.EntryPoint) bool {
+
+	if r.URL.Path == "/api/v2/statistic/audit/addAuditRecord" {
+		return true
+	}
+
 	paths := strings.Split(r.URL.Path, "/")
 	module := paths[3]
 	cmd := paths[4]
