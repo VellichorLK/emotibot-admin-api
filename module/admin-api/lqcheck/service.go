@@ -509,14 +509,13 @@ func getSqLqCount(appid string) (map[string]int, AdminErrors.AdminError) {
 			sqMap[v.SqId] = 1
 		}
 		if len(sqMap) >= 2 {
+			lqCount["lq_count"] = len(d.ActualResults)
 			break
 		}
 	}
 
 	if len(sqMap) < 2 {
 		lqCount["lq_count"] = 0
-	} else {
-		lqCount["lq_count"] = len(d.ActualResults)
 	}
 
 	return lqCount, nil
