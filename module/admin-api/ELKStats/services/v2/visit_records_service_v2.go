@@ -349,28 +349,12 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 		return
 	}
 
-	if len(params) == 0 {
-		return "", fmt.Errorf("Missing app ID parameter...")
-	}
-
-	appID := params[0].(string)
-
 	// TODO: Pass FAQ category paths, SSM categories and FAQ robot tags
 	// 		 as parameters to avoid redundant database queries.
 	//faqCategoryPaths, err := dao.GetAllFaqCategoryPaths()
 	faqCategoryPaths, err := dao.GetAllFaqCategoryPathsV3()
 	if err != nil {
 		return "", err
-	}
-
-	faqCategoriesMap := map[string]string{}
-	faqCategories, err := BF.GetSSMCategoriesV2(appID)
-	if err != nil {
-		return "", err
-	}
-
-	if faqCategories != nil {
-		buildFAQCategoriesMap(faqCategories, faqCategoriesMap)
 	}
 
 	faqRobotTags, err := dao.GetAllFaqRobotTags()
@@ -390,13 +374,18 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 		record := recordPtr.(*dataV2.VisitRecordsExportData)
 
 		// Convert FAQ category ID to FAQ category names
-		var faqCategoryName string
+		var faqCategoryNames string
 		if faqCategoryPath, ok := faqCategoryPaths[record.FaqCategoryID]; ok {
-			name, ok := faqCategoriesMap[faqCategoryPath.Path]
-			if ok {
-				faqCategoryName = name
-			} else {
-				faqCategoryName = faqCategoryPath.Path
+			faqCategoryPathArr := strings.Split(faqCategoryPath.Path, ",")
+			for _, faqCategoryID := range faqCategoryPathArr {
+				faqCategoryIDNum, _ := strconv.ParseInt(faqCategoryID, 10, 64)
+				if faqCategoryIDMap, ok := faqCategoryPaths[faqCategoryIDNum]; ok {
+					if faqCategoryNames == "" {
+						faqCategoryNames = fmt.Sprintf("%s", faqCategoryIDMap.Name)
+					} else {
+						faqCategoryNames = fmt.Sprintf("%s/%s", faqCategoryNames, faqCategoryIDMap.Name)
+					}
+				}
 			}
 		}
 
@@ -427,7 +416,7 @@ func createExportRecordsXlsx(recordPtrs []interface{}, xlsxFileName string, loca
 			record.Intent,
 			strconv.FormatFloat(record.IntentScore, 'f', -1, 64),
 			record.CustomInfo,
-			faqCategoryName,
+			faqCategoryNames,
 			strings.Join(faqRobotTagNames, ", "),
 			record.Feedback,
 			record.CustomFeedback,

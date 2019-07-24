@@ -42,6 +42,7 @@ type QueryTags struct {
 
 type FaqCategoryPath struct {
 	ID   int64
+	Name string
 	Path string
 }
 
