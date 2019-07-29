@@ -195,7 +195,7 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	hp.LqDistribution.Current = LqDist
 
 	// 计算循环检查结果秒数，预估每秒处理450条，外加300秒冗余
-	checkCountLimit := hp.LqSqRate.LqCount/450 + 300
+	checkCountLimit := getConflictCheckWaitSec(hp.LqSqRate.LqCount)
 
 	// 查询冲突检查结果
 	checkCount := 0
@@ -319,6 +319,24 @@ func (d *SsmDacRet) countSqLq(appid string, taskid string, hp *HealthReport, out
 	saveReportRecord(reportRec)
 
 	return nil
+}
+
+// 获取等待冲突检查时间秒数
+func getConflictCheckWaitSec(lqCount int) (res int) {
+	limit := lqCount / 10000
+	res = 0
+	minSec := 300
+	unitSec := 100
+
+	if limit < 2 {
+		res = minSec
+	} else {
+		for i := 1; i <= limit; i++ {
+			res += i * unitSec
+		}
+	}
+
+	return res
 }
 
 // 获取健康检查状态
@@ -482,10 +500,21 @@ func getSqLqCount(appid string) (map[string]int, AdminErrors.AdminError) {
 	d.getSqLqFromDac(appid)
 
 	lqCount := map[string]int{}
-	lqLen := len(d.ActualResults)
-	if lqLen >= 2 {
-		lqCount["lq_count"] = lqLen
-	} else {
+	sqMap := map[int]int{}
+
+	for _, v := range d.ActualResults {
+		if _, ok := sqMap[v.SqId]; ok {
+			sqMap[v.SqId]++
+		} else {
+			sqMap[v.SqId] = 1
+		}
+		if len(sqMap) >= 2 {
+			lqCount["lq_count"] = len(d.ActualResults)
+			break
+		}
+	}
+
+	if len(sqMap) < 2 {
 		lqCount["lq_count"] = 0
 	}
 
