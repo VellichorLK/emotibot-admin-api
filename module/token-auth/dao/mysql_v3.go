@@ -2588,3 +2588,127 @@ func (controller MYSQLController) ClearExpireToken() {
 
 	return
 }
+
+func (controller MYSQLController) ExistRobotLimitByEnterprise(enterpriseID string) (bool, error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return false, err
+	}
+	customLimitEncrypt := ""
+
+	queryStr := fmt.Sprintf(`
+		SELECT value 
+		FROM %s
+		WHERE enterprise_id = ? AND name = ? ORDER BY id DESC LIMIT 1`, systemParamV3)
+
+	err = controller.connectDB.QueryRow(queryStr, enterpriseID, "enterprise_robot_limit").Scan(&customLimitEncrypt)
+
+	if customLimitEncrypt != "" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+
+
+func (controller MYSQLController) AddAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return
+	}
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	hasLimit, err := controller.ExistRobotLimitByEnterprise(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
+	}
+
+	if hasLimit {
+		return false, util.ErrOperationForbidden
+	}
+
+	limitString, err:= util.AesBase64Encrypt(limit)
+
+	if err != nil {
+		return false, err
+	}
+
+	queryStr := fmt.Sprintf("INSERT INTO %s (enterprise_id, name, value) VALUES (?, ? ,?)", systemParamV3)
+	_, err = t.Exec(queryStr, enterpriseID, "enterprise_robot_limit", limitString)
+	if err != nil {
+		return false, err
+	}
+	defer util.ClearTransition(t)
+	err = t.Commit()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+	return true, nil
+}
+
+func (controller MYSQLController) UpdateAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return
+	}
+
+	t, err := controller.connectDB.Begin()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	hasLimit, err := controller.ExistRobotLimitByEnterprise(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return false, err
+	}
+
+	if !hasLimit {
+		return false, util.ErrOperationForbidden
+	}
+
+	limitString, err:= util.AesBase64Encrypt(limit)
+
+	if err != nil {
+		return false, err
+	}
+
+	queryStr := fmt.Sprintf(`UPDATE %s SET value = ? WHERE enterprise_id = ? AND name = ?`, systemParamV3)
+	_, err = t.Exec(queryStr, limitString, enterpriseID, "enterprise_robot_limit")
+	if err != nil {
+		return false, err
+	}
+	defer util.ClearTransition(t)
+	err = t.Commit()
+	if err != nil {
+		util.LogDBError(err)
+		return
+	}
+
+	return true, nil
+}
+
+func (controller MYSQLController) GetAppLimit(enterpriseID string) (limit int, err error) {
+	limitCount, err := controller.GetRobotLimitPerEnterprise(enterpriseID)
+	if err != nil {
+		util.LogDBError(err)
+		return -1, err
+	}
+
+	return limitCount, nil
+}
+
+
+

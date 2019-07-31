@@ -2213,6 +2213,118 @@ func EnterpriseRenewSecretHandlerV3(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func AddEnterpriseAppLimitHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		auditMessage = data.AuditContentAppLimitAdd
+		addAuditLog(r, audit.AuditModuleManageEnterprise, audit.AuditOperationAdd,
+			auditMessage, err)
+	}()
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	limit := strings.TrimSpace(r.FormValue("limit"))
+
+	if limit == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "limit")
+		return
+	}
+
+
+	success, err := service.AddAppLimit(enterpriseID, limit)
+	if err != nil {
+		switch err {
+		case util.ErrOperationForbidden:
+			returnForbiddenWithMsg(w, err.Error())
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if !success {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	returnSuccess(w, success)
+}
+
+func UpdateEnterpriseAppLimitHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	var err error
+
+	defer func() {
+		// Add audit log
+		var auditMessage string
+		auditMessage = data.AuditContentAppLimitUpdate
+		addAuditLog(r, audit.AuditModuleManageEnterprise, audit.AuditOperationEdit,
+			auditMessage, err)
+	}()
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	limit := strings.TrimSpace(r.FormValue("limit"))
+
+	if limit == "" {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "limit")
+		return
+	}
+
+	success, err := service.UpdateAppLimit(enterpriseID, limit)
+	if err != nil {
+		switch err {
+		case util.ErrOperationForbidden:
+			returnForbiddenWithMsg(w, err.Error())
+		default:
+			returnInternalError(w, err.Error())
+		}
+		return
+	} else if !success {
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	returnSuccess(w, success)
+}
+
+
+func GetEnterpriseAppLimitHandlerV3(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	var err error
+
+	enterpriseID := vars["enterpriseID"]
+	if !util.IsValidUUID(enterpriseID) {
+		err = util.ErrInvalidParameter
+		returnBadRequest(w, "enterprise-id")
+		return
+	}
+
+	limit, err := service.GetAppLimit(enterpriseID)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	}
+
+	returnSuccess(w, limit)
+}
+
 func isSSOValid() bool {
 	handler := sso.GetHandler(ssoConfig)
 	return ssoConfig != nil && handler != nil

@@ -739,3 +739,56 @@ func GetApiKeyOwner(apiKey string) (appid string, enterprise string, err error) 
 func ClearExpireToken() {
 	useDBV3.ClearExpireToken()
 }
+
+
+
+func AddAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	err = checkDB()
+	if err != nil {
+		return false, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return false, err
+	} else if !exists {
+		return false, nil
+	}
+
+	return useDBV3.AddAppLimit(enterpriseID, limit)
+}
+
+
+func UpdateAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	err = checkDB()
+	if err != nil {
+		return false, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return false, err
+	} else if !exists {
+		return false, nil
+	}
+
+	return useDBV3.UpdateAppLimit(enterpriseID, limit)
+}
+
+func GetAppLimit(enterpriseID string) (limit int, err error) {
+	err = checkDB()
+	if err != nil {
+		return -1, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return -1, err
+	} else if !exists {
+		return -1, nil
+	}
+
+	return useDBV3.GetAppLimit(enterpriseID)
+}
+
+
