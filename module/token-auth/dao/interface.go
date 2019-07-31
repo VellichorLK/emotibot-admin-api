@@ -127,6 +127,10 @@ type DBV3 interface {
 	ClearExpireToken()
 
 	AddAuditLog(auditLog data.AuditLog) error
+
+	AddAppLimit(enterpriseID string, limit string) (bool, error)
+	UpdateAppLimit(enterpriseID string, limit string) (bool, error)
+	GetAppLimit(enterpriseID string) (int, error)
 }
 
 type DBV4 interface {

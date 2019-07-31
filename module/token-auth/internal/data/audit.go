@@ -17,6 +17,9 @@ const (
 	AuditContentEnterpriseUpdate = "更新企业"
 	AuditContentEnterpriseDelete = "删除企业"
 	AuditLogin                   = "用户登入"
+	AuditContentAppLimitAdd      = "新增机器人数量限制"
+	AuditContentAppLimitUpdate   = "更新机器人数量限制"
+	AuditContentAppLimitDelete   = "删除机器人数量限制"
 )
 
 type AuditLog struct {

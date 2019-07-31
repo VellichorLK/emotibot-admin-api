@@ -157,6 +157,11 @@ func setUpRoutes() {
 		Route{"GetRole", "GET", 4, "enterprise/{enterpriseID}/role/{roleID}", nil, controller.RoleGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetMenus", "GET", 4, "menus/{enterpriseID}", nil, controller.MenuGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetEnterpriseMenus", "GET", 4, "enterprise/{enterpriseID}/menus", nil, controller.EnterpriseMenuGetHandlerV4, []interface{}{0}},
+
+
+		Route{"AddEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/add", nil, controller.AddEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
+		Route{"UpdateEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/update", nil, controller.UpdateEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
+		Route{"GetEnterpriseAppLimit", "GET", 3, "enterprise/{enterpriseID}/limit/app", nil, controller.GetEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
 	}
 }
 
