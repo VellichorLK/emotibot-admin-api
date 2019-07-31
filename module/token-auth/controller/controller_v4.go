@@ -29,7 +29,7 @@ const codeLength = 15
 const codeExpire = 600
 
 func init() {
-	loginTemplate = template.Must(template.ParseFiles("/Users/hyman/workspace/project/web/go/bfop/emotigo-api/src/emotibot.com/emotigo/module/token-auth/template/login.html"))
+	loginTemplate = template.Must(template.ParseFiles("template/login.html"))
 	authCache = cache.NewLocalCache()
 }
 
