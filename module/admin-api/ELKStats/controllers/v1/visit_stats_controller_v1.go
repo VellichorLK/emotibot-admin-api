@@ -689,7 +689,12 @@ func createVisitStatsQ(
 				visitStatsQ[key].UnknownQnA = count.(int64)
 				totalVisitStatsQ.UnknownQnA += count.(int64)
 			case dataCommon.VisitStatsMetricSuccessRate:
-				visitStatsQ[key].SuccessRate = count.(string)
+				if count != "N/A" {
+					fCount, _ := strconv.ParseFloat(count.(string), 64)
+					visitStatsQ[key].SuccessRate = strconv.FormatFloat(fCount*100, 'f', 2, 64)
+				} else {
+					visitStatsQ[key].SuccessRate = count.(string)
+				}
 			case dataCommon.VisitStatsMetricConversationsPerSession:
 				visitStatsQ[key].ConversationPerSession = count.(string)
 			}
@@ -697,9 +702,9 @@ func createVisitStatsQ(
 	}
 
 	if totalVisitStatsQ.TotalAsks != 0 {
-		totalVisitStatsQ.SuccessRate = strconv.
-			FormatFloat((float64(totalVisitStatsQ.TotalAsks-totalVisitStatsQ.UnknownQnA) /
-				float64(totalVisitStatsQ.TotalAsks)), 'f', 2, 64)
+		totalVisitStatsQ.SuccessRate = strconv.FormatFloat(
+			float64(totalVisitStatsQ.TotalAsks-totalVisitStatsQ.UnknownQnA)/float64(totalVisitStatsQ.TotalAsks),
+			'f', 2, 64)
 	} else {
 		totalVisitStatsQ.SuccessRate = "N/A"
 	}
