@@ -105,6 +105,7 @@
   "menu_ai_tools": "AI工具",
   "menu_ai_tools_chat": "對話測試",
   "menu_ai_tools_view": "對話批測",
+  "menu_statistic_records_view": "會話日誌",
   "menu_material_library": "素材庫",
   "menu_material_library_view": "素材管理"
 }
