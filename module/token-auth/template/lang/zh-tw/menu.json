@@ -92,5 +92,6 @@
   "menu_ner_factory_import": "導入",
   "menu_ai_tools": "AI工具",
   "menu_ai_tools_chat": "對話測試",
-  "menu_ai_tools_view": "對話批測"
+  "menu_ai_tools_view": "對話批測",
+  "menu_statistic_records_view": "會話日誌"
 }
