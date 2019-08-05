@@ -10,8 +10,8 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services"
 	"emotibot.com/emotigo/module/admin-api/ELKStats/services/common"
 	"emotibot.com/emotigo/module/admin-api/util"
-	"emotibot.com/emotigo/pkg/api/dal/v1"
 	dac "emotibot.com/emotigo/pkg/api/dac/v1"
+	"emotibot.com/emotigo/pkg/api/dal/v1"
 )
 
 var (
@@ -42,24 +42,21 @@ func Init() error {
 		return err
 	}
 
-
-	dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
-	if ok {
-		var httpClient = &http.Client{
-			Timeout: time.Duration(5) * time.Second,
-		}
-		dacClient, err = dac.NewClientWithHTTPClient(dacAddress, httpClient)
-		if err != nil {
-			err = fmt.Errorf("init dac client failed, %v", err)
-		}
-	} else {
-		err = fmt.Errorf("Require Module Env DAC_URL")
-	}
-	if err != nil {
-		return err
-	}
-
-
+	// dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
+	// if ok {
+	// 	var httpClient = &http.Client{
+	// 		Timeout: time.Duration(5) * time.Second,
+	// 	}
+	// 	dacClient, err = dac.NewClientWithHTTPClient(dacAddress, httpClient)
+	// 	if err != nil {
+	// 		err = fmt.Errorf("init dac client failed, %v", err)
+	// 	}
+	// } else {
+	// 	err = fmt.Errorf("Require Module Env DAC_URL")
+	// }
+	// if err != nil {
+	// 	return err
+	// }
 
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
@@ -115,13 +112,10 @@ func Init() error {
 			util.NewEntryPointWithVer("GET", "records/{id}/marked-intent", []string{"view", "export"}, controllersV2.RecordIntentHandler, 2),
 			util.NewEntryPointWithVer("POST", "records/intent-mark", []string{"view", "export"}, controllersV2.RecordsIntentMarkHandler, 2),
 
-
 			//util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV1.NewRecordsMarkUpdateHandlerV2(dacClient), 3),
 			//util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV1.NewRecordSSMHandlerV2(dacClient), 3),
 			util.NewEntryPointWithVer("POST", "records/mark", []string{"view", "export"}, controllersV2.NewRecordsMarkUpdateHandlerV3(dacClient), 3),
 			util.NewEntryPointWithVer("GET", "records/{id}/marked", []string{"view", "export"}, controllersV2.NewRecordSSMHandlerV3(dacClient), 3),
-
-
 		},
 	}
 
