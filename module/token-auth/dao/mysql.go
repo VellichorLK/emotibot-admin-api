@@ -117,6 +117,51 @@ func (controller MYSQLController) checkAuditDB() (bool, error) {
 	return true, nil
 }
 
+func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
+	var err error
+	ok, err := controller.checkDB()
+	if !ok {
+		util.LogDBError(err)
+		return nil, err
+	}
+
+	rows, err := controller.connectDB.Query(sql, params...)
+	if err != nil {
+		return nil, err
+	}
+	cols, _ := rows.Columns()
+	// TODO
+	//colTypes, _ := rows.ColumnTypes()
+	//for _, v := range colTypes {
+	//	fmt.Println(v.Name(), v.DatabaseTypeName(), v.ScanType())
+	//}
+
+	values := make([][]byte, len(cols))
+	scans := make([]interface{}, len(cols))
+	for i := range values {
+		scans[i] = &values[i]
+	}
+
+	ret := []map[string]string{}
+
+	for rows.Next() {
+		if err := rows.Scan(scans...); err != nil {
+			return nil, err
+		}
+
+		row := map[string]string{}
+
+		for k, v := range values {
+			key := cols[k]
+			row[key] = string(v)
+		}
+		ret = append(ret, row)
+	}
+	defer rows.Close()
+
+	return ret, nil
+}
+
 func (controller MYSQLController) GetEnterprises() (*data.Enterprises, error) {
 	ok, err := controller.checkDB()
 	if !ok {

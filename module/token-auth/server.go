@@ -1,7 +1,6 @@
 package main
 
 import (
-	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -116,6 +116,7 @@ func setUpRoutes() {
 
 		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", nil, controller.ModulesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetModules", "GET", 3, "modules", nil, controller.GlobalModulesGetHandlerV3, []interface{}{}},
+		Route{"AddModules", "PUT", 3, "modules/{enterpriseID}", nil, controller.GlobalModulesAddHandlerV3, []interface{}{}},
 
 		Route{"GetEnterpriseId", "GET", 3, "getEnterpriseId", []string{"app-id", "{app-id}"}, controller.EnterpriseIDGetHandlerV3, []interface{}{}},
 		Route{"GetUserBelong", "GET", 3, "user/{userID}/info", nil, controller.UserInfoGetHandler, []interface{}{0, 1, 2}},
@@ -166,7 +167,7 @@ func setUpDB() {
 
 	util.LogInfo.Println("Init mysql auth...")
 	url, port, user, passwd, dbName := util.GetMySQLConfig()
-	//util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	// util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitDB(url, port, dbName, user, passwd)
 	service.SetDB(&db)
 	service.SetDBV3(&db)
@@ -175,14 +176,14 @@ func setUpDB() {
 
 	util.LogInfo.Println("Init mysql audit...")
 	url, port, user, passwd, dbName = util.GetAuditMySQLConfig()
-	//util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	// util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitAuditDB(url, port, dbName, user, passwd)
 	audit.SetDB(&db)
 	util.LogInfo.Println("Init mysql audit success!!!")
 
-	//url, port, user, passwd, dbName = util.GetBFMySQLConfig()
-	//util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
-	//db.InitBFDB(url, port, dbName, user, passwd)
+	// url, port, user, passwd, dbName = util.GetBFMySQLConfig()
+	// util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	// db.InitBFDB(url, port, dbName, user, passwd)
 	util.LogInfo.Println("Init mysql success!!!")
 }
 

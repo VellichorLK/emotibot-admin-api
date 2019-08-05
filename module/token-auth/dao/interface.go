@@ -110,7 +110,8 @@ type DBV3 interface {
 	RoleExistsV3(roleID string) (bool, error)
 	EnterpriseRoleInfoExistsV3(enterpriseID string, roleName string) (bool, error)
 
-	GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error)
+	GetModulesV3(enterpriseID string, locale string) ([]*data.ModuleDetailV3, error)
+	AddModulesV3(enterpriseID string, modules []string, locale string) ([]*data.ModuleDetailV3, error)
 
 	GetEnterpriseIDV3(appID string) (string, error)
 	GetUserV3ByKeyValue(key string, value string) (*data.UserDetailV3, error)

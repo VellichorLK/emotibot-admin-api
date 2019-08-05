@@ -564,7 +564,7 @@ func LoginV3(account string, passwd string) (*data.UserDetailV3, error) {
 	return useDBV3.GetAuthUserV3(account, passwd)
 }
 
-func GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error) {
+func GetModulesV3(enterpriseID string, locale string) ([]*data.ModuleDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
@@ -577,15 +577,23 @@ func GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, er
 		return nil, nil
 	}
 
-	return useDBV3.GetModulesV3(enterpriseID, local)
+	return useDBV3.GetModulesV3(enterpriseID, locale)
 }
 
-func GetGlobalModulesV3(local string) ([]*data.ModuleDetailV3, error) {
+func GetGlobalModulesV3(locale string) ([]*data.ModuleDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
 	}
-	return useDBV3.GetModulesV3("", local)
+	return useDBV3.GetModulesV3("", locale)
+}
+
+func AddGlobalModulesV3(enterpriseID string, modules []string, locale string) ([]*data.ModuleDetailV3, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+	return useDBV3.AddModulesV3(enterpriseID, modules, locale)
 }
 
 func GetUserPasswordV3(userID string) (string, error) {
