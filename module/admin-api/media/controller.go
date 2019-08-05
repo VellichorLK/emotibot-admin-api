@@ -18,15 +18,20 @@ var (
 	// ModuleInfo is needed for module define
 	ModuleInfo        util.ModuleInfo
 	OuterURLConfigKey = "uploadimg_server"
+	bucketName        = "media"
 )
 
-func init() {
+func Init() {
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: "media",
 		EntryPoints: []util.EntryPoint{
 			util.NewEntryPoint("POST", "image", []string{"edit"}, handleUploadImage),
 			util.NewEntryPoint("GET", "image/{appid}/{id}", []string{}, handleGetImage),
 		},
+	}
+	mediaBucket, found := util.GetEnvOf("server")["MINIO_BUCKET_MEDIA"]
+	if found {
+		bucketName = mediaBucket
 	}
 }
 
@@ -47,7 +52,7 @@ func handleUploadImage(w http.ResponseWriter, r *http.Request) {
 	logger.Info.Printf("Receive uploaded file: %s", info.Filename)
 	logger.Trace.Printf("Uploaded file info %#v", info.Header)
 
-	id, err := AddFile(appid, file)
+	id, err := AddFile(appid, bucketName, file)
 	if err != nil {
 		util.Return(w, err, nil)
 		return
@@ -79,7 +84,7 @@ func handleGetImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	buf, err := GetFile(appid, id)
+	buf, err := GetFile(appid, bucketName, id)
 	if err != nil {
 		w.Write([]byte(fmt.Sprintf("Get file fail, %s", err.Error())))
 		return

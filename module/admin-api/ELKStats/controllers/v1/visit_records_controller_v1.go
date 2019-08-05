@@ -193,9 +193,11 @@ func RecordsIgnoredUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		return
+	} else {
+		controllers.ReturnOK(w, data.NewSuccessStatusResponse(http.StatusOK, "update success"))
+		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 }
 
 // NewRecordsMarkUpdateHandler create a handler to handle records mark & unmark request.
