@@ -277,7 +277,7 @@ func OtherCounts(query dataV1.VisitStatsQuery) (map[string]interface{}, error) {
 	ctx, client := elasticsearch.GetClient()
 	aggName := "others"
 	boolQuery := common.CreateStatsBoolQuery(query.CommonQuery)
-	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "chat", "backfill")
+	termsQuery := elastic.NewTermsQuery("module", "faq", "task_engine", "domain_kg", "knowledge", "chat", "backfill")
 	rangeQuery := services.CreateRangeQuery(query.CommonQuery, data.LogTimeFieldName)
 	boolQuery = boolQuery.MustNot(termsQuery)
 	boolQuery = boolQuery.Filter(rangeQuery)
