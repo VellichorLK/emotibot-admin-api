@@ -37,7 +37,7 @@ func VisitRecordsGetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if query.StartTime.After(query.EndTime) {
+	if query.CommonQuery.StartTime.After(query.CommonQuery.EndTime) {
 		errResponse := data.NewErrorResponseWithCode(data.ErrCodeInvalidParameterStartTime,
 			"start_time cannot greater than end_time")
 		controllers.ReturnBadRequest(w, errResponse)
