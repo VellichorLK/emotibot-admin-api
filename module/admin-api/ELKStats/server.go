@@ -42,21 +42,21 @@ func Init() error {
 		return err
 	}
 
-	// dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
-	// if ok {
-	// 	var httpClient = &http.Client{
-	// 		Timeout: time.Duration(5) * time.Second,
-	// 	}
-	// 	dacClient, err = dac.NewClientWithHTTPClient(dacAddress, httpClient)
-	// 	if err != nil {
-	// 		err = fmt.Errorf("init dac client failed, %v", err)
-	// 	}
-	// } else {
-	// 	err = fmt.Errorf("Require Module Env DAC_URL")
-	// }
-	// if err != nil {
-	// 	return err
-	// }
+	dacAddress, ok := util.GetEnvOf("server")["DAC_URL"]
+	if ok {
+		var httpClient = &http.Client{
+			Timeout: time.Duration(5) * time.Second,
+		}
+		dacClient, err = dac.NewClientWithHTTPClient(dacAddress, httpClient)
+		if err != nil {
+			err = fmt.Errorf("init dac client failed, %v", err)
+		}
+	} else {
+		err = fmt.Errorf("Require Module Env DAC_URL")
+	}
+	if err != nil {
+		return err
+	}
 
 	ModuleInfo = util.ModuleInfo{
 		ModuleName: moduleName,
