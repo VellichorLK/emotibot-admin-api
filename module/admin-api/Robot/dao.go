@@ -2,6 +2,7 @@ package Robot
 
 import (
 	"database/sql"
+	"emotibot.com/emotigo/module/admin-api/util/localemsg"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -854,5 +855,61 @@ func initWordbankData(appid string) (err error) {
 	if err != nil {
 		return
 	}
+	return tx.Commit()
+}
+
+func initPreinstallWords(appid string, locale string) (err error) {
+	defer func() {
+		util.ShowError(err)
+	}()
+	mySQL := util.GetMainDB()
+	if mySQL == nil {
+		err = util.ErrDBNotInit
+		return
+	}
+
+	tx, err := mySQL.Begin()
+	if err != nil {
+		return
+	}
+	defer util.ClearTransition(tx)
+
+	var type1str, type2str, type3str, type4str, type5str, type12str string
+	if locale == localemsg.ZhTw {
+		type1str = "你好，很高興為你服務。"
+		type2str = "您是不是想問："
+		type3str = "這對我來說有點難呢，還需要繼續努力，再換種問法試試唄~"
+		type4str = "您是不是很想瞭解："
+		type5str = "您是不是很想瞭解："
+		type12str = "這個敏感話題我們不討論哦"
+	} else {
+		type1str = "你好，很高兴为你服务。"
+		type2str = "您是不是想问："
+		type3str = "这对我来说有点难呢，还需要继续努力，再换种问法试试呗～"
+		type4str = "您是不是还想了解："
+		type5str = "您是不是还想了解："
+		type12str = "这个敏感话题我们不讨论哦"
+	}
+	varmap := map[string]string {
+		"1": type1str,
+		"2": type2str,
+		"3": type3str,
+		"4": type4str,
+		"5": type5str,
+		"12": type12str,
+	}
+
+	var queryStr string;
+	for key, value := range varmap {
+		queryStr = `
+		INSERT INTO robot_words ( appid, content, type)
+	SELECT  ?, ?, ?`
+		_, err = tx.Exec(queryStr, appid, value, key)
+		if err != nil {
+			return
+		}
+	}
+
+
 	return tx.Commit()
 }
