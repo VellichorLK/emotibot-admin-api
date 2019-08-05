@@ -1729,6 +1729,36 @@ func GlobalModulesGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	returnSuccess(w, retData)
 }
 
+func GlobalModulesAddHandlerV3(w http.ResponseWriter, r *http.Request) {
+	locale := r.Header.Get("X-Locale")
+	if len(locale) == 0 {
+		locale = "zh-cn"
+	}
+
+	vars := mux.Vars(r)
+	var modules []string
+
+	enterpriseID := vars["enterpriseID"]
+	sModules := r.FormValue("modules")
+
+	err := json.Unmarshal([]byte(sModules), &modules)
+	if err != nil {
+		returnBadRequest(w, "json decode err")
+		return
+	}
+
+	retData, err := service.AddGlobalModulesV3(enterpriseID, modules, locale)
+	if err != nil {
+		returnInternalError(w, err.Error())
+		return
+	} else if retData == nil {
+		returnNotFound(w)
+		return
+	}
+
+	returnSuccess(w, retData)
+}
+
 func EnterpriseIDGetHandlerV3(w http.ResponseWriter, r *http.Request) {
 	appID := r.URL.Query().Get("app-id")
 	if !util.IsValidUUID(appID) {

@@ -1670,9 +1670,9 @@ func (controller MYSQLController) EnterpriseRoleInfoExistsV3(enterpriseID string
 	return controller.rowExists(querStr, enterpriseID, roleName)
 }
 
-func (controller MYSQLController) GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error) {
-	if len(local) == 0 {
-		local = "zh-cn"
+func (controller MYSQLController) GetModulesV3(enterpriseID string, locale string) ([]*data.ModuleDetailV3, error) {
+	if len(locale) == 0 {
+		locale = "zh-cn"
 	}
 	var err error
 	ok, err := controller.checkDB()
@@ -1705,7 +1705,7 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string, local string
 		}
 
 		module.Commands = strings.Split(commands, ",")
-		module.Name = lang.Get(local, "auth_"+module.Code)
+		module.Name = lang.Get(locale, "auth_"+module.Code)
 		moduleMap[module.Code] = &module
 	}
 
@@ -1748,6 +1748,58 @@ func (controller MYSQLController) GetModulesV3(enterpriseID string, local string
 
 	sort.Sort(ByIDV3(modules))
 	return modules, nil
+}
+
+func (controller MYSQLController) AddModulesV3(enterpriseID string, modules []string, locale string) ([]*data.ModuleDetailV3, error) {
+	curModules, _ := controller.GetModulesV3(enterpriseID, locale)
+	enableModules := make(map[string]string)
+	for _, v := range modules {
+		enableModules[v] = ""
+	}
+
+	var updateModules []*data.ModuleDetailV3
+	for _, v := range curModules {
+		_, ok := enableModules[v.Code]
+		if !v.Status && ok {
+			updateModules = append(updateModules, v)
+		}
+	}
+
+	for _, v := range updateModules {
+		// select
+		sql := `
+            select * 
+            from ` + moduleTableV3 + ` 
+            where code = ? and enterprise = ? 
+        `
+		var params []interface{}
+		params = append(params, v.Code, enterpriseID)
+		res, _ := controller.queryDB(sql, params...)
+
+		params = nil
+		if len(res) == 0 {
+			// insert
+			sql = `
+				insert into ` + moduleTableV3 + ` (code, enterprise, cmd_list, status)
+				values (?, ?, ?, ?)
+			`
+			params = append(params, v.Code, enterpriseID, strings.Join(v.Commands, ","), 1)
+		} else {
+			// update
+			sql = `
+				update ` + moduleTableV3 + ` 
+				set status = 1 
+				where code = ? and enterprise = ? 
+			`
+			params = append(params, v.Code, enterpriseID)
+		}
+		_, err := controller.connectDB.Exec(sql, params...)
+		util.LogWarn.Println(err)
+	}
+
+	curModules, _ = controller.GetModulesV3(enterpriseID, locale)
+
+	return curModules, nil
 }
 
 func (controller MYSQLController) GetEnterpriseIDV3(appID string) (string, error) {
