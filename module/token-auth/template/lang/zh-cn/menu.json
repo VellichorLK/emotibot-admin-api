@@ -17,7 +17,7 @@
   "menu_task_engine":"任务引擎",
   "menu_intent_manage":"意图引擎",
   "menu_wordbank":"词库",
-  "menu_kg_data_manager": "知识图谱",
+  "menu_kg_data_manage": "知识图谱",
   "menu_statistic_daily":"数据优化",
   "menu_robot_config":"机器人设置",
   "menu_statistic_dash_view":"统计概览",
