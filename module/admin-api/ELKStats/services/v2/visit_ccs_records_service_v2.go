@@ -10,8 +10,8 @@ import (
 	esData "emotibot.com/emotigo/module/admin-api/util/elasticsearch/data"
 	"encoding/json"
 	"fmt"
-	elastic "gopkg.in/olivere/elastic.v6"
-	"strings"
+	"gopkg.in/olivere/elastic.v6"
+	"time"
 )
 
 func VisitCcsRecordsQuery(query *dataV2.VisitCcsRecordsQuery,
@@ -69,15 +69,17 @@ func VisitCcsRecordsQuery(query *dataV2.VisitCcsRecordsQuery,
 			return nil, err
 		}
 
-		logTime := rawRecord.LogTime
-		logTime = logTime[:len(logTime)-5]
-		logTime = strings.Replace(logTime, "T", " ", 1)
+		logTime, err := time.Parse(data.LogTimeFormat, rawRecord.LogTime)
+		if err != nil {
+			return nil, err
+		}
+		logTime = logTime.Local()
 
 		record := &dataV2.VisitCcsRecordsData{
 			SessionID:	rawRecord.SessionID,
 			UserID:		rawRecord.UserID,
 			UserQ:		rawRecord.UserQ,
-			LogTime:	rawRecord.LogTime,
+			LogTime:	logTime.Format(data.StandardTimeFormat),
 			RawResponse:rawRecord.RawResponse,
 			Answers:	rawRecord.Answers,
 			AIModule:	rawRecord.AIModule,

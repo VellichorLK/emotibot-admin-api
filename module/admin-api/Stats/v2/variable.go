@@ -19,6 +19,11 @@ var (
 			Version:     2,
 			IgnoreAppID: true,
 		}),
+		util.NewEntryPointWithConfig("POST", "audit/addAuditRecord", []string{"view"}, handleAddAuditRecord, util.EntryConfig{
+			Version:	2,
+			IgnoreAppID: true,
+		}),
+
 	}
 )
 

@@ -17,7 +17,7 @@
   "menu_task_engine":"任務引擎",
   "menu_intent_manage":"意圖引擎",
   "menu_wordbank":"詞庫",
-  "menu_domain_kg":"知識圖譜",
+  "menu_kg_data_manager": "知識圖譜",
   "menu_statistic_daily":"數據優化",
   "menu_robot_config":"機器人設置",
   "menu_statistic_dash_view":"統計概覽",
@@ -64,10 +64,22 @@
   "menu_integration_edit":"整合部署編輯",
   "menu_robot_config_view":"系統功能配置",
   "menu_robot_config_edit":"機器人設定變更",
-  "menu_domain_kg_view":"屬性管理",
-  "menu_domain_kg_edit":"知識圖譜編輯",
-  "menu_domain_kg_delete":"知識圖譜刪除",
-  "menu_domain_kg_import":"知識圖譜匯入",
+
+  "menu_kg_data_manage_view":"數據管理",
+  "menu_kg_data_manage_edit":"數據管理編輯",
+  "menu_kg_data_manage_delete":"數據管理刪除",
+  "menu_kg_data_manage_import":"數據管理導入",
+
+  "menu_kg_audit_manage_view":"變更審核",
+  "menu_kg_audit_manage_edit":"變更審核編輯",
+  "menu_kg_audit_manage_delete":"變更審核刪除",
+  "menu_kg_audit_manage_import":"變更審核導入",
+
+  "menu_kg_test_report_view":"測試報告",
+  "menu_kg_test_report_edit":"測試報告編輯",
+  "menu_kg_test_report_delete":"測試報告刪除",
+  "menu_kg_test_report_import":"測試報告導入",
+
   "menu_ssm3_view":"常用標準問題",
   "menu_ssm3_export":"匯出數據",
   "menu_ssm3_import":"匯入數據",
@@ -92,5 +104,7 @@
   "menu_ner_factory_import": "導入",
   "menu_ai_tools": "AI工具",
   "menu_ai_tools_chat": "對話測試",
-  "menu_ai_tools_view": "對話批測"
+  "menu_ai_tools_view": "對話批測",
+  "menu_material_library": "素材庫",
+  "menu_material_library_view": "素材管理"
 }

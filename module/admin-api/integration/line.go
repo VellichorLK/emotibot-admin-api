@@ -81,7 +81,7 @@ func handleLineReply(w http.ResponseWriter, r *http.Request, appid string, confi
 						lineAnswers = append(lineAnswers, linebot.NewTextMessage(lineConverterName[lineConverterIdx[appid]]))
 					}
 				} else {
-					answers := GetChatResult(appid, event.Source.UserID, message.Text)
+					answers := GetChatResult(appid, event.Source.UserID, message.Text, PlatformLine)
 					for _, answer := range answers {
 						if answer == nil {
 							continue
