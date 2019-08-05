@@ -70,7 +70,7 @@ func init() {
 			util.NewEntryPointWithVer("PUT", "chat/{id}/content/{cid}", []string{"edit"}, handleUpdateRobotWordContent, 2),
 			util.NewEntryPointWithVer("DELETE", "chat/{id}/content/{cid}", []string{"delete"}, handleDeleteRobotWordContent, 2),
 
-			util.NewEntryPointWithConfig("POST", "data", []string{"edit"}, handleInitRobotData, util.EntryConfig{
+			util.NewEntryPointWithConfig("POST", "data", []string{""}, handleInitRobotData, util.EntryConfig{
 				Version:     2,
 				IgnoreAppID: true,
 			}),
@@ -243,6 +243,7 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 	errRobot := InitRobotFunction(appid, locale)
 	errQA := InitRobotQAData(appid)
 	errWordbank := InitWordbankData(appid)
+	errPreinstall := InitPreinstallWord(appid, locale)
 	if errRobot != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errRobot.Error()))
 		return
@@ -253,6 +254,10 @@ func handleInitRobotData(w http.ResponseWriter, r *http.Request) {
 	}
 	if errWordbank != nil {
 		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errWordbank.Error()))
+		return
+	}
+	if errPreinstall != nil {
+		util.WriteJSON(w, util.GenRetObj(ApiError.DB_ERROR, errPreinstall.Error()))
 		return
 	}
 	// after init data, update consul to notify controller to init data
