@@ -1,7 +1,6 @@
 package main
 
 import (
-	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"emotibot.com/emotigo/module/token-auth/internal/audit"
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/enum"
+	"emotibot.com/emotigo/module/token-auth/internal/lang"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
 	"emotibot.com/emotigo/module/token-auth/service"
 
@@ -116,6 +116,7 @@ func setUpRoutes() {
 
 		Route{"GetModules", "GET", 3, "enterprise/{enterpriseID}/modules", nil, controller.ModulesGetHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetModules", "GET", 3, "modules", nil, controller.GlobalModulesGetHandlerV3, []interface{}{}},
+		Route{"AddModules", "PUT", 3, "modules/{enterpriseID}", nil, controller.GlobalModulesAddHandlerV3, []interface{}{}},
 
 		Route{"GetEnterpriseId", "GET", 3, "getEnterpriseId", []string{"app-id", "{app-id}"}, controller.EnterpriseIDGetHandlerV3, []interface{}{}},
 		Route{"GetUserBelong", "GET", 3, "user/{userID}/info", nil, controller.UserInfoGetHandler, []interface{}{0, 1, 2}},
@@ -157,6 +158,11 @@ func setUpRoutes() {
 		Route{"GetRole", "GET", 4, "enterprise/{enterpriseID}/role/{roleID}", nil, controller.RoleGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetMenus", "GET", 4, "menus/{enterpriseID}", nil, controller.MenuGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetEnterpriseMenus", "GET", 4, "enterprise/{enterpriseID}/menus", nil, controller.EnterpriseMenuGetHandlerV4, []interface{}{0}},
+
+
+		Route{"AddEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/add", nil, controller.AddEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
+		Route{"UpdateEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/update", nil, controller.UpdateEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
+		Route{"GetEnterpriseAppLimit", "GET", 3, "enterprise/{enterpriseID}/limit/app", nil, controller.GetEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
 	}
 }
 

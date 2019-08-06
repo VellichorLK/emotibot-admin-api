@@ -564,7 +564,7 @@ func LoginV3(account string, passwd string) (*data.UserDetailV3, error) {
 	return useDBV3.GetAuthUserV3(account, passwd)
 }
 
-func GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, error) {
+func GetModulesV3(enterpriseID string, locale string) ([]*data.ModuleDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
@@ -577,15 +577,23 @@ func GetModulesV3(enterpriseID string, local string) ([]*data.ModuleDetailV3, er
 		return nil, nil
 	}
 
-	return useDBV3.GetModulesV3(enterpriseID, local)
+	return useDBV3.GetModulesV3(enterpriseID, locale)
 }
 
-func GetGlobalModulesV3(local string) ([]*data.ModuleDetailV3, error) {
+func GetGlobalModulesV3(locale string) ([]*data.ModuleDetailV3, error) {
 	err := checkDB()
 	if err != nil {
 		return nil, err
 	}
-	return useDBV3.GetModulesV3("", local)
+	return useDBV3.GetModulesV3("", locale)
+}
+
+func AddGlobalModulesV3(enterpriseID string, modules []string, locale string) ([]*data.ModuleDetailV3, error) {
+	err := checkDB()
+	if err != nil {
+		return nil, err
+	}
+	return useDBV3.AddModulesV3(enterpriseID, modules, locale)
 }
 
 func GetUserPasswordV3(userID string) (string, error) {
@@ -739,3 +747,56 @@ func GetApiKeyOwner(apiKey string) (appid string, enterprise string, err error) 
 func ClearExpireToken() {
 	useDBV3.ClearExpireToken()
 }
+
+
+
+func AddAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	err = checkDB()
+	if err != nil {
+		return false, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return false, err
+	} else if !exists {
+		return false, nil
+	}
+
+	return useDBV3.AddAppLimit(enterpriseID, limit)
+}
+
+
+func UpdateAppLimit(enterpriseID string, limit string) (success bool, err error) {
+	err = checkDB()
+	if err != nil {
+		return false, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return false, err
+	} else if !exists {
+		return false, nil
+	}
+
+	return useDBV3.UpdateAppLimit(enterpriseID, limit)
+}
+
+func GetAppLimit(enterpriseID string) (limit int, err error) {
+	err = checkDB()
+	if err != nil {
+		return -1, err
+	}
+
+	exists, err := useDBV3.EnterpriseExistsV3(enterpriseID)
+	if err != nil {
+		return -1, err
+	} else if !exists {
+		return -1, nil
+	}
+
+	return useDBV3.GetAppLimit(enterpriseID)
+}
+
+

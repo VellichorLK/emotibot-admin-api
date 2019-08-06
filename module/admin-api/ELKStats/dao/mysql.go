@@ -10,7 +10,7 @@ import (
 	"emotibot.com/emotigo/module/admin-api/ELKStats/data"
 	"emotibot.com/emotigo/module/admin-api/util"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 const (
@@ -160,7 +160,7 @@ func GetAllFaqCategoryPathsV3() (categoryPaths map[int64]*data.FaqCategoryPath, 
 		return
 	}
 
-	queryStr := fmt.Sprintf(`SELECT id, fullname FROM %s`, FaqCategoryTableV3)
+	queryStr := fmt.Sprintf(`SELECT id, name, fullname FROM %s`, FaqCategoryTableV3)
 	rows, err := db.Query(queryStr)
 	if err != nil {
 		return nil, err
@@ -170,7 +170,7 @@ func GetAllFaqCategoryPathsV3() (categoryPaths map[int64]*data.FaqCategoryPath, 
 
 	for rows.Next() {
 		categoryPath := data.FaqCategoryPath{}
-		err = rows.Scan(&categoryPath.ID, &categoryPath.Path)
+		err = rows.Scan(&categoryPath.ID, &categoryPath.Name, &categoryPath.Path)
 		if err != nil {
 			return nil, err
 		}

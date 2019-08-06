@@ -191,3 +191,7 @@ func InitRobotQAData(appid string) error {
 func InitWordbankData(appid string) error {
 	return initWordbankData(appid)
 }
+
+func InitPreinstallWord(appid string, locale string) error {
+	return initPreinstallWords(appid, locale)
+}
