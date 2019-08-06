@@ -186,9 +186,9 @@ func setUpDB() {
 	audit.SetDB(&db)
 	util.LogInfo.Println("Init mysql audit success!!!")
 
-	// url, port, user, passwd, dbName = util.GetBFMySQLConfig()
-	// util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
-	// db.InitBFDB(url, port, dbName, user, passwd)
+	url, port, user, passwd, dbName = util.GetBFMySQLConfig()
+	util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	db.InitBFDB(url, port, dbName, user, passwd)
 	util.LogInfo.Println("Init mysql success!!!")
 }
 
