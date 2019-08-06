@@ -166,7 +166,7 @@ func setUpDB() {
 
 	util.LogInfo.Println("Init mysql auth...")
 	url, port, user, passwd, dbName := util.GetMySQLConfig()
-	//util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	// util.LogInfo.Printf("Init mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitDB(url, port, dbName, user, passwd)
 	service.SetDB(&db)
 	service.SetDBV3(&db)
@@ -175,14 +175,14 @@ func setUpDB() {
 
 	util.LogInfo.Println("Init mysql audit...")
 	url, port, user, passwd, dbName = util.GetAuditMySQLConfig()
-	//util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	// util.LogInfo.Printf("Init audit mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
 	db.InitAuditDB(url, port, dbName, user, passwd)
 	audit.SetDB(&db)
 	util.LogInfo.Println("Init mysql audit success!!!")
 
-	//url, port, user, passwd, dbName = util.GetBFMySQLConfig()
-	//util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
-	//db.InitBFDB(url, port, dbName, user, passwd)
+	url, port, user, passwd, dbName = util.GetBFMySQLConfig()
+	util.LogInfo.Printf("Init bf mysql: %s:%s@%s:%d/%s\n", user, passwd, url, port, dbName)
+	db.InitBFDB(url, port, dbName, user, passwd)
 	util.LogInfo.Println("Init mysql success!!!")
 }
 
