@@ -582,7 +582,7 @@ func newBoolQueryWithRecordQuery(query *dataV2.VisitRecordsQuery) *elastic.BoolQ
 		userQMatchQuery := elastic.NewMatchQuery("user_q", *query.Keyword)
 		answerMatchQuery := elastic.NewMatchQuery("answer.value", *query.Keyword)
 		answerNestedQuery := elastic.NewNestedQuery("answer", answerMatchQuery)
-		keywordBoolQuery := elastic.NewBoolQuery().Should(userQMatchQuery, answerNestedQuery)
+		keywordBoolQuery := elastic.NewBoolQuery().Must(userQMatchQuery, answerNestedQuery)
 		boolQuery = boolQuery.Filter(keywordBoolQuery)
 	}
 
