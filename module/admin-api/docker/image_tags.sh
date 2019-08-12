@@ -1,6 +1,6 @@
 #!/bin/sh
 
-GIT_HEAD="$(git rev-parse --short=7 HEAD)"
+GIT_HEAD="$(git rev-parse --short=8 HEAD)"
 GIT_DATE=$(git log HEAD -n1 --pretty='format:%cd' --date=format:'%Y%m%d-%H%M')
 
 # Use docker-reg for now, it will change to harbor after harbor usage is confirmed
