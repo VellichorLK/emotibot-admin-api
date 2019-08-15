@@ -26,7 +26,7 @@ type RetData struct {
 	Answers         []*string       `json:"answers"`
 	Tokens          []*string       `json:"tokens"`
 	Module          string          `json:"module"`
-	TaskInfo	 	interface{}		`json:"task_info"`
+	TaskInfo        interface{}     `json:"task_info"`
 }
 
 type QuestionInfo struct {
@@ -94,14 +94,14 @@ type ControllerResponse struct {
 }
 
 type InfoNode struct {
-	Module       string    `json:"module"`
-	Score        float32   `json:"textScore"`
-	Intent       string    `json:"intent"`
-	IntentScore  float32   `json:"intentScore"`
-	Emotion      string    `json:"emotion"`
-	EmotionScore float32   `json:"emotionScore"`
-	Tokens       []*string `json:"tokens"`
-	TaskInfo	 interface{}	`json:"taskInfo"`
+	Module       string      `json:"module"`
+	Score        float32     `json:"textScore"`
+	Intent       string      `json:"intent"`
+	IntentScore  float32     `json:"intentScore"`
+	Emotion      string      `json:"emotion"`
+	EmotionScore float32     `json:"emotionScore"`
+	Tokens       []*string   `json:"tokens"`
+	TaskInfo     interface{} `json:"taskInfo"`
 }
 
 type BFOPControllerResponse struct {
@@ -111,10 +111,10 @@ type BFOPControllerResponse struct {
 }
 
 type BFOPOpenapiAnswer struct {
-	Type    string   `json:"type"`
-	SubType string   `json:"subType"`
-	Value   string   `json:"value"`
-	Data    []string `json:"data"`
+	Type    string              `json:"type"`
+	SubType string              `json:"subType"`
+	Value   string              `json:"value"`
+	Data    []map[string]string `json:"data"`
 }
 
 func (a BFOPOpenapiAnswer) ToString() string {

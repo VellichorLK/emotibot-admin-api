@@ -37,6 +37,9 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 	}
 
 	bot := workWeixinBot[appid]
+	bot.GetNewAccessToken()
+	logger.Info.Println("bot config: ", bot)
+
 	if r.Method == http.MethodGet {
 		// Work weixin will use GET method to validate webhook validation
 		bot.VerifyURL(w, r)
@@ -51,20 +54,38 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 			logger.Trace.Printf("Receive: %s\n", message.Content)
 			answers := GetChatResult(appid, message.From, message.Content, PlatformWorkWeixin)
 
-			replyMessages := []workweixin.SendingMessage{}
+			var replyMessages []workweixin.SendingMessage
 			for _, answer := range answers {
 				if answer == nil {
 					continue
 				}
+				var objMessage interface{}
 				if answer.Type == "text" {
-					replyMessages = append(replyMessages, workweixin.NewTextMessage(
-						message.From, message.AgentID, textConverter(answer.ToString())))
+					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, textConverter(answer.ToString()))
 				}
 				if answer.Type == "cmd" {
-					replyMessages = append(replyMessages, workweixin.NewTextMessage(
-						message.From, message.AgentID, textConverter(answer.ToString())))
+					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, textConverter(answer.ToString()))
+				}
+				if answer.Type == "url" && answer.SubType == "image" {
+					mediaId, err := bot.UploadMedia(answer)
+					if err == nil {
+						objMessage = workweixin.NewImageMessage(message.From, message.AgentID, mediaId)
+					}
+				}
+				if answer.Type == "url" && answer.SubType == "docs" {
+					mediaId, err := bot.UploadMedia(answer)
+					if err == nil {
+						objMessage = workweixin.NewFileMessage(message.From, message.AgentID, mediaId)
+					}
+				}
+
+				if objMessage != nil {
+					replyMessages = append(replyMessages, objMessage)
 				}
 			}
+
+			logger.Info.Println("replyMessages: ", replyMessages)
+
 			workWeixinQueue <- &workWeixinTask{
 				Bot:      bot,
 				Messages: replyMessages,
