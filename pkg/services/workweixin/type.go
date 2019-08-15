@@ -12,12 +12,14 @@ const (
 	MessageTypeVedio    MessageType = "vedio"
 	MessageTypeLocation MessageType = "location"
 	MessageTypeLink     MessageType = "link"
+	MessageTypeFile     MessageType = "file"
 )
 
 const (
 	MsgSendURL       = "https://qyapi.weixin.qq.com/cgi-bin/message/send"
 	TokenValidateURL = "https://open.work.weixin.qq.com/devtool/getInfoByAccessToken"
 	TokenIssueURL    = "https://qyapi.weixin.qq.com/cgi-bin/gettoken"
+	MediaUploadURL   = "https://qyapi.weixin.qq.com/cgi-bin/media/upload"
 )
 
 var (
@@ -107,10 +109,30 @@ type TextNode struct {
 	Content string `json:"content"`
 }
 
+type ImageNode struct {
+	MediaId string `json:"media_id"`
+}
+
+type FileNode struct {
+	MediaId string `json:"media_id"`
+}
+
 type TextSendMessage struct {
 	SendingMessage
 	generalSendMessage
 	Text *TextNode `json:"text"`
+}
+
+type ImageSendMessage struct {
+	SendingMessage
+	generalSendMessage
+	Image *ImageNode `json:"image"`
+}
+
+type FileSendMessage struct {
+	SendingMessage
+	generalSendMessage
+	File *FileNode `json:"file"`
 }
 
 type APIReturn struct {
@@ -129,4 +151,11 @@ type APIAccessTokenReturn struct {
 	APIReturn
 	AccessToken string `json:"access_token"`
 	Expire      int64  `json:"expires_in"`
+}
+
+type APIMediaUploadReturn struct {
+	APIReturn
+	Type     string `json:"type"`
+	MediaId  string `json:"media_id"`
+	CreateAt string `json:"create_at"`
 }

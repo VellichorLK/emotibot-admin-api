@@ -13,11 +13,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
+	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/pkg/logger"
 )
 
@@ -197,6 +199,24 @@ func NewTextMessage(receiver string, agentID int, text string) SendingMessage {
 	return &ret
 }
 
+func NewImageMessage(receiver string, agentID int, mediaId string) SendingMessage {
+	ret := ImageSendMessage{}
+	ret.To = receiver
+	ret.Type = MessageTypeImage
+	ret.AgentID = agentID
+	ret.Image = &ImageNode{mediaId}
+	return &ret
+}
+
+func NewFileMessage(receiver string, agentID int, mediaId string) SendingMessage {
+	ret := FileSendMessage{}
+	ret.To = receiver
+	ret.Type = MessageTypeFile
+	ret.AgentID = agentID
+	ret.File = &FileNode{mediaId}
+	return &ret
+}
+
 // SendMessages will send message to user
 func (c *Client) SendMessages(messages []SendingMessage) error {
 	errMsg := ""
@@ -283,6 +303,11 @@ func (c *Client) AccessTokenValidate() bool {
 // refs: https://work.weixin.qq.com/api/doc#90000/90135/91039
 func (c *Client) GetNewAccessToken() error {
 	now := time.Now()
+	// access token 存在且未超时
+	if len(c.AccessToken) > 0 && c.ExpireTime > now.Unix() {
+		return nil
+	}
+	// 否则重新获取
 	url := fmt.Sprintf("%s?corpid=%s&corpsecret=%s", TokenIssueURL, strings.TrimSpace(c.CorpID), strings.TrimSpace(c.Secret))
 	logger.Trace.Println("Get token with url:", url)
 	rsp, err := http.Get(url)
@@ -306,4 +331,92 @@ func (c *Client) GetNewAccessToken() error {
 
 	logger.Trace.Printf("Get new access token: %s, %d\n", c.AccessToken, c.ExpireTime)
 	return nil
+}
+
+func (c *Client) UploadMedia(answer *QA.BFOPOpenapiAnswer) (string, error) {
+	mediaType := answer.SubType
+	if mediaType == "docs" {
+		mediaType = "file"
+	}
+	url := fmt.Sprintf("%s?access_token=%s&type=%s", MediaUploadURL, strings.TrimSpace(c.AccessToken), strings.TrimSpace(mediaType))
+
+	hFile, err := http.Get(answer.Value)
+	if err != nil {
+		logger.Error.Println("get answer file failed ", err)
+		return "", err
+	}
+	defer hFile.Body.Close()
+
+	var params map[string]string
+	bodyBytes, err := ioutil.ReadAll(hFile.Body)
+	data := bytes.NewReader(bodyBytes)
+
+	// process filename
+	filename := ""
+	if answer.SubType == "image" {
+		filename = "a.jpg"
+	} else {
+		filename = answer.Data[0]["name"]
+	}
+
+	res, err := PostUploadFileRequest(url, params, "media", filename, data)
+	if err != nil {
+		logger.Error.Println("upload media file failed ", err)
+		return "", err
+	}
+	defer res.Body.Close()
+
+	jsonBytes, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		logger.Error.Println("body to bytes failed ", err)
+		return "", err
+	}
+	mediaReturn := APIMediaUploadReturn{}
+	err = json.Unmarshal(jsonBytes, &mediaReturn)
+	if err != nil {
+		logger.Error.Println("json unmarshal failed ", err)
+		return "", err
+	}
+	logger.Info.Println("mediaReturn: ", mediaReturn)
+	if len(mediaReturn.MediaId) > 0 {
+		return mediaReturn.MediaId, nil
+	} else {
+		return "", errors.New(mediaReturn.ErrMsg)
+	}
+}
+
+func PostUploadFileRequest(url string, params map[string]string, fileKey string, filename string, data *bytes.Reader) (*http.Response, error) {
+	return uploadFileRequest(url, "POST", params, fileKey, filename, data)
+}
+
+func uploadFileRequest(url string, method string, params map[string]string, fileKey string, filename string, data *bytes.Reader) (*http.Response, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(fileKey, filename)
+	if err != nil {
+		return nil, err
+	}
+	io.Copy(part, data)
+
+	for k, v := range params {
+		_ = writer.WriteField(k, v)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "multipart/form-data")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
