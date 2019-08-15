@@ -11,7 +11,7 @@ var recordsMsg = map[string]map[string]string{
 		"task_engine": "多轮对话引擎",
 		"to_human":    "转人工",
 		"knowledge":   "知识百科",
-		"domain_kg":   "知识图谱",
+		"domain_kg":   "知识推理引擎",
 		"command":     "机器人话术",
 		"emotion":     "情绪话术",
 
@@ -51,7 +51,7 @@ var recordsMsg = map[string]map[string]string{
 		"task_engine": "多輪對話引擎",
 		"to_human":    "轉人工",
 		"knowledge":   "知識百科",
-		"domain_kg":   "知識圖譜",
+		"domain_kg":   "知識推理引擎",
 		"command":     "機器人話術",
 		"emotion":     "情緒話術",
 
