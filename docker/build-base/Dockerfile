@@ -40,3 +40,4 @@ RUN go get github.com/stretchr/testify
 RUN go get github.com/mojocn/base64Captcha
 
 RUN go get github.com/minio/minio-go
+RUN go get github.com/PuerkitoBio/goquery
