@@ -4,10 +4,11 @@ import (
 	"net/http"
 	"strings"
 
+	"emotibot.com/emotigo/module/admin-api/QA"
 	"emotibot.com/emotigo/module/admin-api/util"
-
 	"emotibot.com/emotigo/pkg/logger"
 	"emotibot.com/emotigo/pkg/services/workweixin"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/siongui/gojianfan"
 )
 
@@ -61,7 +62,46 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 				}
 				var objMessage interface{}
 				if answer.Type == "text" {
-					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, textConverter(answer.ToString()))
+					answerText := textConverter(answer.ToString())
+
+					html, err := goquery.NewDocumentFromReader(strings.NewReader(answerText))
+					if err != nil {
+						logger.Info.Println("answerText: ", answerText)
+						objMessage = workweixin.NewTextMessage(message.From, message.AgentID, answerText)
+					} else {
+						filterTags := html.Find("p, img")
+						if len(filterTags.Nodes) == 0 {
+							rText := html.Find("body").Text()
+							logger.Info.Println("rText: ", rText)
+							objMessage = workweixin.NewTextMessage(message.From, message.AgentID, strings.TrimSpace(rText))
+						} else {
+							filterTags.Each(func(i int, s *goquery.Selection) {
+								nodeTag := s.Nodes[0].Data
+								node := s.Nodes[0]
+								logger.Info.Println("nodeTag: ", nodeTag)
+								logger.Info.Println(node)
+								if nodeTag == "img" {
+									imgAnswer := QA.BFOPOpenapiAnswer{}
+									imgAnswer.Type = "url"
+									imgAnswer.SubType = "image"
+									imgAnswer.Value = node.Attr[0].Val
+									imgAnswer.Data = answer.Data
+									logger.Info.Println(imgAnswer)
+									mediaId, err := bot.UploadMedia(&imgAnswer)
+									if err == nil {
+										imgMessage := workweixin.NewImageMessage(message.From, message.AgentID, mediaId)
+										logger.Info.Println("imgMessage: ", imgMessage)
+										replyMessages = append(replyMessages, imgMessage)
+									}
+								}
+								if nodeTag == "p" {
+									txtMessage := workweixin.NewTextMessage(message.From, message.AgentID, strings.TrimSpace(s.Text()))
+									logger.Info.Println("txtMessage: ", txtMessage)
+									replyMessages = append(replyMessages, txtMessage)
+								}
+							})
+						}
+					}
 				}
 				if answer.Type == "cmd" {
 					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, textConverter(answer.ToString()))
