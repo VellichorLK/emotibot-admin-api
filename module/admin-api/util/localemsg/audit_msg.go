@@ -25,6 +25,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleManageEnterprise":  "企业列表",
 		"AuditModuleNerFactory":        "自定义解析器",
 		"AuditModuleCCS":               "中控",
+		"AuditModuleMaterial":          "素材库",
 		// Operation
 		"AuditOperationAdd":      "新增",
 		"AuditOperationEdit":     "编辑",
@@ -62,6 +63,7 @@ var auditMsg = map[string]map[string]string{
 		"AuditModuleManageEnterprise":  "企業列表",
 		"AuditModuleNerFactory":        "自定義解析器",
 		"AuditModuleCCS":               "中控",
+		"AuditModuleMaterial":          "素材庫",
 		// Operation
 		"AuditOperationAdd":      "新增",
 		"AuditOperationEdit":     "編輯",
