@@ -2,6 +2,7 @@ package dao
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"runtime"
@@ -10,6 +11,7 @@ import (
 
 	"emotibot.com/emotigo/module/token-auth/internal/data"
 	"emotibot.com/emotigo/module/token-auth/internal/util"
+	"emotibot.com/emotigo/pkg/logger"
 )
 
 const (
@@ -116,6 +118,19 @@ func (controller MYSQLController) checkAuditDB() (bool, error) {
 	controller.auditDB.Ping()
 	return true, nil
 }
+func (controller MYSQLController) queryDBToType(resType interface{}, sql string, params ...interface{}) error {
+	res, err := controller.queryDB(sql, params...)
+	if err != nil {
+		return err
+	}
+
+	err = controller.renderDbResultToType(res, resType)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]map[string]string, error) {
 	var err error
@@ -160,6 +175,19 @@ func (controller MYSQLController) queryDB(sql string, params ...interface{}) ([]
 	defer rows.Close()
 
 	return ret, nil
+}
+
+func (controller MYSQLController) renderDbResultToType(res []map[string]string, resType interface{}) error {
+	jsonStr, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+	if json.Unmarshal(jsonStr, resType) != nil {
+		return err
+	}
+	logger.Info.Println("resType: ", resType)
+
+	return nil
 }
 
 func (controller MYSQLController) GetEnterprises() (*data.Enterprises, error) {

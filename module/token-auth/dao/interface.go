@@ -21,6 +21,8 @@ const (
 	moduleCmdsTableV4     = "modules_cmds"
 	auditTableV3          = "audit_record"
 	systemParamV3         = "system_param"
+	appPropsTableV5       = "app_props"
+	appPropsRelTableV5    = "rel_app_props"
 )
 
 // DB define interface for different dao modules
@@ -209,4 +211,11 @@ type DBV4 interface {
 
 	// OAuth part
 	GetOAuthClient(clientID string) (*data.OAuthClient, error)
+}
+
+type DBV5 interface {
+	AddAppV5(enterpriseID string, app *data.AppDetailV5) (string, error)
+	AppPropsGetV5(pKey string) ([]*data.AppPropV5, error)
+	GetAppV5(enterpriseID string, appID string) (*data.AppDetailV5, error)
+	GetAppsV5(enterpriseID string) ([]*data.AppDetailV5, error)
 }

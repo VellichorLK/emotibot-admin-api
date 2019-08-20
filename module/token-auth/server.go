@@ -159,10 +159,17 @@ func setUpRoutes() {
 		Route{"GetMenus", "GET", 4, "menus/{enterpriseID}", nil, controller.MenuGetHandlerV4, []interface{}{0, 1, 2}},
 		Route{"GetEnterpriseMenus", "GET", 4, "enterprise/{enterpriseID}/menus", nil, controller.EnterpriseMenuGetHandlerV4, []interface{}{0}},
 
-
 		Route{"AddEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/add", nil, controller.AddEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
 		Route{"UpdateEnterpriseAppLimit", "POST", 3, "enterprise/{enterpriseID}/limit/app/update", nil, controller.UpdateEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
 		Route{"GetEnterpriseAppLimit", "GET", 3, "enterprise/{enterpriseID}/limit/app", nil, controller.GetEnterpriseAppLimitHandlerV3, []interface{}{0, 1, 2}},
+
+		// 添加机器人对话语言字段 chat_lang
+		Route{"AddApp", "POST", 5, "enterprise/{enterpriseID}/app", nil, controller.AppAddHandlerV5, []interface{}{0, 1}},
+		Route{"GetApps", "GET", 5, "enterprise/{enterpriseID}/apps", nil, controller.AppsGetHandlerV5, []interface{}{0, 1, 2}},
+		Route{"GetApp", "GET", 5, "enterprise/{enterpriseID}/app/{appID}", nil, controller.AppGetHandlerV5, []interface{}{0, 1, 2}},
+
+		Route{"GetAppProps", "GET", 5, "app_props", nil, controller.AppPropsGetHandlerV5, []interface{}{0, 1, 2}},
+		Route{"GetAppPropsByKey", "GET", 5, "app_props/{key}", nil, controller.AppPropsGetHandlerV5, []interface{}{0, 1, 2}},
 	}
 }
 
@@ -177,6 +184,7 @@ func setUpDB() {
 	service.SetDB(&db)
 	service.SetDBV3(&db)
 	service.SetDBV4(&db)
+	service.SetDBV5(&db)
 	util.LogInfo.Println("Init mysql auth success!!!")
 
 	util.LogInfo.Println("Init mysql audit...")
