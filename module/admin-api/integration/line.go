@@ -130,7 +130,7 @@ func createLineFlexMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage 
 		},
 	}
 	for idx, d := range answer.Data {
-		opt := textConverter(d["name"])
+		opt := textConverter(d.(string))
 		contents = append(contents,
 			&linebot.TextComponent{
 				Type:   linebot.FlexComponentTypeText,
@@ -158,7 +158,7 @@ func createLineFlexMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage 
 func createLineButtonTemplateMessage(answer *QA.BFOPOpenapiAnswer) linebot.SendingMessage {
 	options := []linebot.TemplateAction{}
 	for _, d := range answer.Data {
-		opt := textConverter(d["name"])
+		opt := textConverter(d.(string))
 		options = append(options, linebot.NewMessageAction(opt, opt))
 	}
 	buttons := linebot.NewButtonsTemplate("", "", textConverter(answer.Value), options...)

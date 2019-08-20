@@ -111,10 +111,10 @@ type BFOPControllerResponse struct {
 }
 
 type BFOPOpenapiAnswer struct {
-	Type    string              `json:"type"`
-	SubType string              `json:"subType"`
-	Value   string              `json:"value"`
-	Data    []map[string]string `json:"data"`
+	Type    string        `json:"type"`
+	SubType string        `json:"subType"`
+	Value   string        `json:"value"`
+	Data    []interface{} `json:"data"`
 }
 
 func (a BFOPOpenapiAnswer) ToString() string {

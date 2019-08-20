@@ -18,7 +18,7 @@ func genPureTextNode(input string) *QA.BFOPOpenapiAnswer {
 		Type:    "text",
 		SubType: "text",
 		Value:   input,
-		Data:    []map[string]string{},
+		Data:    nil,
 	}
 }
 
@@ -47,7 +47,7 @@ func GetChatResult(appid, userid, input string, platform string) []*QA.BFOPOpena
 				Type:    "text",
 				SubType: "text",
 				Value:   *answer.Answers[idx],
-				Data:    []map[string]string{},
+				Data:    nil,
 			})
 			logger.Trace.Println("Parse json fail:", err.Error())
 		} else {
