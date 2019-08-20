@@ -61,7 +61,7 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 					continue
 				}
 				var objMessage interface{}
-				if answer.Type == "text" {
+				if answer.Type == "text" && answer.SubType == "text" {
 					answerText := textConverter(answer.ToString())
 
 					html, err := goquery.NewDocumentFromReader(strings.NewReader(answerText))
@@ -102,6 +102,10 @@ func handleWorkWeixinReply(w http.ResponseWriter, r *http.Request, appid string,
 							})
 						}
 					}
+				}
+				// relatelist相关问，guslist相似问，guslist推荐问回答处理
+				if answer.Type == "text" && (answer.SubType == "relatelist" || answer.SubType == "guslist") {
+					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, answer.ToString())
 				}
 				if answer.Type == "cmd" {
 					objMessage = workweixin.NewTextMessage(message.From, message.AgentID, textConverter(answer.ToString()))
