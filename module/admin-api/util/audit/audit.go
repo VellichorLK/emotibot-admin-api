@@ -46,6 +46,7 @@ const (
 	AuditModuleNerFactory        = "ner_factory"
 	AuditModuleCCS               = "ccs"
 	AuditModuleMaterial          = "material"
+	AuditModuleMaterialLibrary   = "material_library"
 )
 
 var moduleMap = map[string]string{
@@ -109,6 +110,7 @@ var moduleLocalKeyMap = map[string]string{
 	AuditModuleNerFactory:        "AuditModuleNerFactory",
 	AuditModuleCCS:               "AuditModuleCCS",
 	AuditModuleMaterial:          "AuditModuleMaterial",
+	AuditModuleMaterialLibrary:   "AuditModuleMaterialLibrary",
 }
 
 type auditLog struct {

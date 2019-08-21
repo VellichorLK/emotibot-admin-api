@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	robotConfig "emotibot.com/emotigo/module/admin-api/Robot/config.v1"
+	"emotibot.com/emotigo/pkg/services/workweixin"
 
 	"emotibot.com/emotigo/pkg/misc/adminerrors"
 
@@ -92,7 +94,12 @@ func handlePlatformChat(w http.ResponseWriter, r *http.Request) {
 		config, err = GetPlatformConfig(appid, platform)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
-			logger.Error.Println("Get platform conf fail:", err.Error())
+			logger.Error.Println("Get platform conf failed: ", err.Error())
+			return
+		}
+		if len(config["token"]) == 0 {
+			w.WriteHeader(http.StatusInternalServerError)
+			logger.Error.Println("Get platform conf empty")
 			return
 		}
 		configCache[key] = config
@@ -151,6 +158,16 @@ func handleSetConfig(w http.ResponseWriter, r *http.Request) {
 	key := fmt.Sprintf("%s-%s", appid, platform)
 	configCache[key] = configs
 
+	fullEncoded := strings.Replace(configs["encoded-aes"], "=", "", -1) + "="
+	bot, err1 := workweixin.New(configs["corpid"], configs["secret"], configs["token"], fullEncoded)
+	if err1 != nil {
+		err = AdminErrors.New(adminerrors.ErrnoDBError, err.Error())
+	} else {
+		// 更新配置缓存信息
+		workWeixinBot[appid] = bot
+	}
+	logger.Info.Println("workWeixinBot update : ", workWeixinBot)
+
 	util.Return(w, err, configs)
 }
 
@@ -158,6 +175,13 @@ func handleDeleteConfig(w http.ResponseWriter, r *http.Request) {
 	appid := requestheader.GetAppID(r)
 	platform := util.GetMuxVar(r, "platform")
 	err := DeletePlatformConfig(appid, platform)
+	if err == nil {
+		// 更新配置缓存信息
+		workWeixinBot[appid] = nil
+		key := fmt.Sprintf("%s-%s", appid, platform)
+		configCache[key] = nil
+	}
+
 	util.Return(w, err, nil)
 }
 
