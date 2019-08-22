@@ -356,7 +356,12 @@ func (c *Client) UploadMedia(answer *QA.BFOPOpenapiAnswer) (string, error) {
 	if answer.SubType == "image" {
 		filename = "a.jpg"
 	} else {
-		filename = answer.Data[0].(string)
+		if len(answer.Data) > 0 {
+			tmp := answer.Data[0].(map[string]interface{})
+			if _, ok := tmp["name"]; ok {
+				filename = tmp["name"].(string)
+			}
+		}
 	}
 
 	res, err := PostUploadFileRequest(url, params, "media", filename, data)
